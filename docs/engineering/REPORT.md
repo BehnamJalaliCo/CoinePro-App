@@ -272,6 +272,24 @@ Not done: the home 12-column grid, DOM as a resizable table, journal/academy two
 | IRANYekanX Medium + SemiBold | **blocked on the owner**: the two TTFs are licensed and not in the repository; Medium and SemiBold resolve to Bold as before. `docs/OWNER_ACTIONS.md` §4 names the files and where they go | — |
 | proof: 5-second 60 fps tick recording, no glyph shift | a recording needs a device. What it would show is measured instead: `TabularFiguresTest` lays out the ten strings a price ticks through (`00,000.00` … `99,999.99`) under six styles with the shipped fonts on native Skia and asserts one width per style | `TabularFiguresTest` |
 
+### Item 4 — chart physics (4.55.0) — every mechanism in place; the benchmark needs a device
+
+| asked | state | proof |
+| --- | --- | --- |
+| float coordinates with snap-at-rest | **new**: the sub-bar remainder of a pan or a fling frame goes into `pixelShift` every frame (`panShift`), and `settlePan()` springs it to the nearest slot on the lift or when the fling ends | `ChartDeskPointerTest` (unchanged behaviour on the desk), goldens identical |
+| `exponentialDecay` fling ~1.2 s | `KineticScroll`'s exponential curve, friction 3.8: 2 000 px/s coasts ≈ 1.2 s, 4 000 px/s ≈ 1.4 s | `ChartPixelsTest` «an ordinary flick coasts about one point two seconds» |
+| right-edge rubber band + spring return | 4.4x: `stretchEdge` (o / (1 + o / 0.55w), capped at half the plot), `releaseEdge` spring 400 / 0.85 | — |
+| focal pinch zoom; price-axis pinch vertical only | 4.4x: the per-axis pinch observer (`axisSpan`), `zoomedBy(factor, focal)`, `priceZoomedBy` | `ChartDeskPointerTest` «a wheel notch towards the reader zooms in at the cursor» |
+| double-tap axis reset with spring | **new** `springTo(viewport.atRest())` for the time axis (spring 400, capped at two plot widths of travel); the price axis springs through `rangeLow`/`rangeHigh` as before | — |
+| auto-scale spring ~180 ms | 4.4x: `spring(stiffness 700, damping 1.0)` on the drawn range | — |
+| 150 ms tick animation | 4.4x: `LIVE_CLOSE_MS = 150`, `TICK_FLASH_MS = 200` | — |
+| history load without jump | 4.4x: `withSeries` keeps the anchor bar when older bars are prepended | `ChartPanRestoreTest`, `DeepSeriesViewportTest` |
+| draw-phase-only invalidation with three cached layers | **new** `StaticLayerCache`: bottom layer (grid … markers) as a bitmap keyed on `StaticLayerKey`; annotation layer (drawings, panes, axes) live; cursor layer its own `Canvas`. The `Invalidation` levels already gated the tick ladder | `StaticLayerCacheTest` (one miss, one hit, pixels identical; a new key repaints); all 36 chart-type goldens and the chart goldens unchanged through the cached path |
+| `MotionEventPredictor` | **new** `ChartStrokePredictor` on `androidx.input:input-motionprediction` 1.0.0, fed by a `pointerInteropFilter` on the freehand tool; the live stroke reaches to the predicted point. Built lazily and only where a display exists | compiles; the predictor answers only on a device |
+| `Surface.setFrameRate` | **new**: `View.setRequestedFrameRate(HIGH)` while a gesture or fling is in progress, `NO_PREFERENCE` at rest (Android 15+); the activity already prefers the fastest display mode | — |
+| mouse wheel / hover crosshair / keyboard shortcuts | 4.49–4.51 | `ChartDeskPointerTest`, `ChartKeyboardTest` |
+| `ChartFlingBenchmark` P95 ≤ 8 ms phone, ≤ 12 ms tablet 4-chart, 0 jank | **needs a device**: `benchmark/…/ChartFlingBenchmark.kt` and `scripts/quality/check-benchmark-thresholds.py` exist; nothing here has a GPU to time | — |
+
 ## Definition of done — as it stands
 
 - [x] §0 copy hygiene done; lint enforced (`tools/i18n/lint_strings.py` through the consistency gate).

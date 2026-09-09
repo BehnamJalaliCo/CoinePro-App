@@ -387,7 +387,7 @@ class ChartPixelsTest {
 
     @Test
     fun `the exponential curve coasts about a second from a hard flick and never speeds up`() {
-        // The design brief's curve: Compose's exponential decay at a friction multiplier of 1.35.
+        // The design brief's curve: exponential decay, tuned so an ordinary flick lasts about 1.2 s.
         val scroll = KineticScroll(PHONE_DENSITY, FlingCurve.EXPONENTIAL)
         scroll.start(4_000f)
         assertTrue(scroll.isRunning)
@@ -406,9 +406,9 @@ class ChartPixelsTest {
         }
         assertFalse(scroll.isRunning)
         val millis = frames * 16
-        assertTrue("a hard flick coasted for ${millis}ms", millis in 700..1_400)
+        assertTrue("a hard flick coasted for ${millis}ms", millis in 1_000..1_700)
         // v / f, to the frame.
-        assertEquals(4_000f / (4.2f * 1.35f), travelled, 2f)
+        assertEquals(4_000f / 3.8f, travelled, 2f)
     }
 
     @Test
@@ -470,5 +470,21 @@ class ChartPixelsTest {
     private companion object {
         /** A 420 dpi phone — the density the fling curve is tuned against on real hardware. */
         const val PHONE_DENSITY = 2.625f
+    }
+
+    @Test
+    fun `an ordinary flick coasts about one point two seconds`() {
+        val scroll = KineticScroll(PHONE_DENSITY, FlingCurve.EXPONENTIAL)
+        scroll.start(2_000f)
+        var now = 0L
+        var frames = 0
+        scroll.tick(now)
+        while (scroll.isRunning && frames < 1_000) {
+            now += 16
+            scroll.tick(now)
+            frames++
+        }
+        val millis = frames * 16
+        assertTrue("an ordinary flick coasted for ${millis}ms", millis in 1_000..1_400)
     }
 }

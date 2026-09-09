@@ -20,7 +20,7 @@ The chart's pointer code is in `chart/ui/.../CoineProChart.kt` (the desk handler
 | undo / redo | rail button | rail button | rail button | Z, Shift+Z, Y | rail button | `ChartKeyboardTest`, `ChartHistoryTest` |
 | pick a timeframe | the interval row | same | same | 1–6 (M1 M5 M15 H1 H4 D1, by name) | same | `ChartKeyboardTest` |
 | replay play/pause | the replay bar | same | same | Space | same | `ChartKeyboardTest` |
-| freehand | pen tool, one finger | pen tool — **pressure and tilt are not read** | pen tool | — | pen tool | `ChartCanvasGesturesTest` (freehand path) |
+| freehand | pen tool, one finger; the ink is drawn live | pen tool — live ink reaches to `MotionEventPredictor`'s next point; **pressure and tilt are not read** | pen tool | — | pen tool | `ChartCanvasGesturesTest` (freehand path), `ChartStrokePredictor` |
 
 ## What is deliberately different by input
 
@@ -31,6 +31,6 @@ The chart's pointer code is in `chart/ui/.../CoineProChart.kt` (the desk handler
 
 ## Not covered, and why
 
-- **Palm rejection, stylus pressure, `MotionEventPredictor`.** Compose exposes pressure but the freehand tool draws a fixed-width stroke; prediction is an `androidx.input` dependency not in the cache. Both need a Galaxy Tab with an S Pen to judge — listed in `docs/engineering/REPORT.md` §4 as device work.
+- **Palm rejection and stylus pressure.** Compose exposes pressure but the freehand tool draws a fixed-width stroke. Prediction is in since 4.55.0 (`ChartStrokePredictor`); whether it helps needs a Galaxy Tab with an S Pen to judge.
 - **Trackpad two-finger pinch.** ChromeOS delivers it as ctrl+wheel and Android 14 as a scale gesture on the mouse pointer; the first is covered (price zoom), the second reaches the pinch handler untested off-device.
 - **TalkBack focus order on the rail and the panes.** The rail's items carry `Role.Tab` and a content description; the order across rail → plot → tools column has not been walked with a screen reader. Device work.

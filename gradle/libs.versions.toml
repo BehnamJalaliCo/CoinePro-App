@@ -57,6 +57,7 @@ androidx-compose-material3-adaptive-layout = { module = "androidx.compose.materi
 androidx-compose-material3-adaptive-navigation = { module = "androidx.compose.material3.adaptive:adaptive-navigation" }
 androidx-compose-material3-adaptive-navigation-suite = { module = "androidx.compose.material3:material3-adaptive-navigation-suite" }
 androidx-window-core = { module = "androidx.window:window-core", version = "1.5.0" }
+androidx-input-motionprediction = { module = "androidx.input:input-motionprediction", version = "1.0.0" }
 androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTestRunner" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExtJunit" }
 androidx-test-uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "uiautomator" }

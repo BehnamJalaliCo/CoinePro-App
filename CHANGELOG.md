@@ -15,6 +15,34 @@ it is for.
 
 ---
 
+## [4.55.0] — 2026-09-09 — the chart moves like glass
+
+Item 4 of the 4.52 run: §2.5's physics, on top of the rubber band, the focal pinch, the per-axis
+pinch, the auto-scale spring and the tick animation that 4.4x already had.
+
+### Added
+- **Float coordinates, snapped at rest.** A pan moves the picture by the pixel, not by the bar;
+  on the lift, or when a fling runs out, the sub-bar remainder springs to the nearest slot.
+- **Three cached layers.** The grid, the bars, the volume, the overlays, the comparisons, the
+  levels and the markers are drawn into a bitmap keyed on everything they read and blitted until
+  the key changes; the drawings and the panes are drawn live; the cursor has its own canvas.
+  A crosshair sweep or a legend hover no longer repaints every candle (`StaticLayerCache`).
+- **Double-tap reset on a spring**: the time axis slides home (`springTo`) instead of cutting;
+  the price axis already sprang through the auto-scale range.
+- **Live freehand ink with `MotionEventPredictor`** (`androidx.input:input-motionprediction`
+  1.0.0): the stroke is drawn as it is made and reaches to the predicted next point, so the ink
+  meets an S Pen's tip rather than trailing it.
+- **Frame-rate hint**: while a finger or a fling moves the picture the chart's view asks for the
+  display's highest rate (`View.setRequestedFrameRate`, Android 15+) and lets go at rest.
+
+### Changed
+- The fling's exponential decay is tuned so an ordinary flick coasts about 1.2 s (friction 3.8;
+  was Compose's 4.2 × 1.35, about 0.9 s). Pinned in `ChartPixelsTest`.
+
+### Not done, and said so
+- `ChartFlingBenchmark` (P95 ≤ 8 ms phone, ≤ 12 ms four-chart tablet, zero jank) needs a device;
+  the benchmark and its threshold script exist and were not run here.
+
 ## [4.54.0] — 2026-09-09 — tabular figures everywhere
 
 Item 3 of the 4.52 run.

@@ -13,6 +13,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.animation.core.Animatable
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.input.pointer.pointerInteropFilter
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.animation.core.animate
+import android.view.View
+import android.os.Build
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -114,6 +121,7 @@ import kotlin.math.sin
  * coordinate of its own. That is what will let the drawing tools land later without touching this
  * file.
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun CoineProChart(
     series: CandleSeries,
@@ -721,8 +729,23 @@ fun CoineProChart(
         }
     }
 
+    val hostView = LocalView.current
+
+    /** Whether a finger, a stylus or a fling is moving the picture; drives the frame-rate hint. */
+    var interacting by remember { mutableStateOf(false) }
+
     /** Momentum after a flick. See [KineticScroll] for why it is touch-only. */
     val kinetic = remember(density) { KineticScroll(density.density) }
+
+    // The frame-rate hint: while a finger or a fling moves the picture the view asks the
+    // display for its highest rate (`View.setRequestedFrameRate`, Android 15+), and lets go
+    // when the chart is at rest, so a 120 Hz panel is spent on the gesture and not on the idle.
+    LaunchedEffect(interacting) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            hostView.requestedFrameRate =
+                if (interacting) View.REQUESTED_FRAME_RATE_CATEGORY_HIGH else View.REQUESTED_FRAME_RATE_CATEGORY_NO_PREFERENCE
+        }
+    }
     var flinging by remember { mutableStateOf(false) }
 
     /**
@@ -734,6 +757,20 @@ fun CoineProChart(
      */
     val edgePull = remember { Animatable(0f) }
     val pullScope = rememberCoroutineScope()
+
+    /**
+     * The sub-bar part of a pan, in pixels — float coordinates, snapped at rest.
+     *
+     * Panning used to be quantised to whole bars: a finger moving eleven pixels under a
+     * fourteen-pixel bar moved nothing, then the chart jumped a bar. The remainder now goes into
+     * the picture as a shift every frame, so the bars follow the finger to the pixel, and on the
+     * lift — or when a fling runs out — [settlePan] springs the remainder to the nearest bar so
+     * the chart always comes to rest on a whole slot, where the axis ticks and the crosshair
+     * arithmetic expect it.
+     */
+    var panShift by remember { mutableFloatStateOf(0f) }
+    val panSettling = remember { booleanArrayOf(false) }
+
     val fallbackPull = with(density) { EDGE_PULL_MAX_DP.toPx() }
 
     /** The refused travel itself, before the band's resistance is applied. See [stretchEdge]. */
@@ -769,6 +806,62 @@ fun CoineProChart(
                 // The brief's return: stiff and nearly critically damped, one small overshoot.
                 animationSpec = spring(dampingRatio = OVERSCROLL_DAMPING, stiffness = OVERSCROLL_STIFFNESS),
             )
+        }
+    }
+
+    /**
+     * Snap at rest: commit the larger part of a sub-bar remainder as a whole bar and spring the
+     * rest to zero, so the picture settles on a slot boundary without a visible jump.
+     */
+    fun settlePan() {
+        val width = lastView[0]?.barWidth ?: 0f
+        val remainder = panShift
+        if (width <= 0f || remainder == 0f || panSettling[0]) return
+        var start = remainder
+        if (abs(remainder) >= width / 2f) {
+            val step = if (remainder > 0f) 1 else -1
+            val before = viewport.offset
+            viewport = viewport.atOffset(before + step)
+            if (viewport.offset != before) start = remainder - step * width
+        }
+        panSettling[0] = true
+        pullScope.launch {
+            try {
+                animate(
+                    initialValue = start,
+                    targetValue = 0f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = PAN_SNAP_STIFFNESS),
+                ) { value, _ -> panShift = value }
+            } finally {
+                panShift = 0f
+                panSettling[0] = false
+            }
+        }
+    }
+
+    /**
+     * Move the viewport to [target] on a spring rather than a cut: the picture starts where it
+     * was and slides to where it is going. A double tap that resets the time scale reads as the
+     * chart coming home rather than as a different chart.
+     */
+    fun springTo(target: ChartViewport) {
+        val width = lastView[0]?.barWidth ?: 0f
+        val plot = lastView[0]?.plotWidth ?: 0f
+        val delta = (viewport.offset - target.offset) * width
+        viewport = target
+        if (width <= 0f || delta == 0f) return
+        val cap = if (plot > 0f) plot * SPRING_TRAVEL_CAP else abs(delta)
+        panShift = delta.coerceIn(-cap, cap)
+        pullScope.launch {
+            try {
+                animate(
+                    initialValue = panShift,
+                    targetValue = 0f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = AXIS_RESET_STIFFNESS),
+                ) { value, _ -> panShift = value }
+            } finally {
+                panShift = 0f
+            }
         }
     }
 
@@ -840,6 +933,9 @@ fun CoineProChart(
      * to be recomputed.
      */
     val dirty = remember { arrayOf(Invalidation.FULL) }
+    /** The bottom layer's bitmap — see `StaticLayerCache`. */
+    val staticLayer = remember { StaticLayerCache() }
+    val layoutDirection = LocalLayoutDirection.current
 
     /** The last scale and its ticks, reused when only the cursor has moved. See [Invalidation]. */
     val scaleCache = remember { ScaleCache() }
@@ -902,6 +998,9 @@ fun CoineProChart(
     val currentEraser = rememberUpdatedState(eraser)
     val currentScalePanes = rememberUpdatedState(onScalePanes)
     val freehandArmed = armed?.points == 0
+    /** The stroke under the stylus, in plot pixels, drawn live in the cursor layer. */
+    var strokePreview by remember { mutableStateOf<List<Offset>>(emptyList()) }
+    val strokePredictor = remember(hostView) { ChartStrokePredictor(hostView) }
 
     // Pull every magnet-bound anchor back onto its channel whenever the bars are replaced.
     //
@@ -952,6 +1051,7 @@ fun CoineProChart(
     LaunchedEffect(flinging) {
         if (!flinging) return@LaunchedEffect
         var residue = 0f
+        interacting = true
         while (kinetic.isRunning) {
             val step = withFrameMillis { now -> kinetic.tick(now) }
             residue += step
@@ -968,15 +1068,20 @@ fun CoineProChart(
                     // indistinguishable from the app having stopped listening, and the reader's
                     // next move is to flick again, harder, at a chart that has no more history.
                     kinetic.stop()
+                    residue = 0f
                     stretchEdge(step)
                 }
                 invalidate(Invalidation.FULL)
             }
+            // The part of the step under a bar moves the picture too — float coordinates.
+            panShift = residue
         }
         // Whether it ran out of momentum or hit the end, the band goes back either way — and
         // `releaseEdge` costs nothing on the ordinary fling that never reached an edge.
         releaseEdge()
         flinging = false
+        interacting = false
+        settlePan()
     }
 
     /**
@@ -1319,9 +1424,14 @@ fun CoineProChart(
                                                     // meets resistance instead of a dead surface.
                                                     if (viewport.offset == before) {
                                                         stretchEdge(bars * width)
+                                                        panResidue = 0f
                                                     }
                                                     invalidate(Invalidation.FULL)
                                                 }
+                                                // The rest of the travel, under a bar, moves the
+                                                // picture too: the bars follow the finger to the
+                                                // pixel rather than in fourteen-pixel steps.
+                                                panShift = panResidue
                                             }
                                         }
                                     },
@@ -1471,6 +1581,7 @@ fun CoineProChart(
                                     // A finger on the glass always beats momentum already running.
                                     kinetic.stop()
                                     flinging = false
+                                    interacting = true
                                     val tracker = VelocityTracker()
                                     tracker.addPosition(down.uptimeMillis, down.position)
                                     var flingable = down.type == PointerType.Touch
@@ -1501,7 +1612,11 @@ fun CoineProChart(
                                     // a fling *did* start, its own loop releases the band again at
                                     // the end, which is harmless because the release is a no-op on
                                     // a band already at rest.
-                                    if (!flinging) releaseEdge()
+                                    if (!flinging) {
+                                        releaseEdge()
+                                        interacting = false
+                                        settlePan()
+                                    }
                                 }
                             }
                             .pointerInput(Unit) {
@@ -1671,6 +1786,18 @@ fun CoineProChart(
                                     }
                                 }
                             }
+                            .then(
+                                if (freehandArmed) {
+                                    // The predictor speaks MotionEvent; this feeds it and consumes
+                                    // nothing, so the handlers below see every event they saw.
+                                    Modifier.pointerInteropFilter { event ->
+                                        strokePredictor.record(event)
+                                        false
+                                    }
+                                } else {
+                                    Modifier
+                                },
+                            )
                             .pointerInput(freehandArmed) {
                                 // Freehand is the one tool family that needs a drag: the stroke is
                                 // the gesture. Everything else is N taps, which is the only thing
@@ -1681,8 +1808,10 @@ fun CoineProChart(
                                 detectDragGestures(
                                     onDragStart = { position ->
                                         samples.clear()
+                                        strokePreview = emptyList()
                                         val held = currentDrawing.value ?: return@detectDragGestures
                                         val plot = frameOf(size.width.toFloat()).toPlot(position)
+                                        strokePreview = listOf(plot)
                                         lastView[0]?.let {
                                             samples += it.chartPointAt(plot, currentDisplay.value, held.magnetMode)
                                         }
@@ -1691,6 +1820,8 @@ fun CoineProChart(
                                         val held = currentDrawing.value ?: return@detectDragGestures
                                         change.consume()
                                         val plot = frameOf(size.width.toFloat()).toPlot(change.position)
+                                        // Live ink: the stroke is drawn as it is made, not on the lift.
+                                        strokePreview = strokePreview + plot
                                         lastView[0]?.let {
                                             samples += it.chartPointAt(plot, currentDisplay.value, held.magnetMode)
                                         }
@@ -1702,8 +1833,14 @@ fun CoineProChart(
                                             emit(DrawingActions.stroke(held, samples.toList()))
                                         }
                                         samples.clear()
+                                        strokePreview = emptyList()
+                                        strokePredictor.reset()
                                     },
-                                    onDragCancel = { samples.clear() },
+                                    onDragCancel = {
+                                        samples.clear()
+                                        strokePreview = emptyList()
+                                        strokePredictor.reset()
+                                    },
                                 )
                             }
                             .pointerInput(tolerancePx) {
@@ -2060,11 +2197,14 @@ fun CoineProChart(
                                             }
                                             editing -> lineMove = !lineMove
                                             else -> {
-                                                viewport = if (
+                                                // The price axis springs through the auto-scale
+                                                // range (`rangeLow`/`rangeHigh`); the time axis
+                                                // springs through `springTo`. Neither cuts.
+                                                if (
                                                     frameOf(size.width.toFloat())
                                                         .inGutter(position.x, GUTTER_REACH_DP.toPx())
                                                 ) {
-                                                    viewport.autoPriceScale()
+                                                    viewport = viewport.autoPriceScale()
                                                 } else {
                                                     // `atRest`, not `atOffset(0)`: "put the view
                                                     // back" has to land on the position the chart
@@ -2072,7 +2212,7 @@ fun CoineProChart(
                                                     // Returning to a glued edge would make the
                                                     // reset produce a picture the reader has never
                                                     // seen the chart in.
-                                                    viewport.atRest()
+                                                    springTo(viewport.atRest())
                                                 }
                                                 invalidate(Invalidation.FULL)
                                             }
@@ -2335,7 +2475,7 @@ fun CoineProChart(
                 null
             }
             val view = settled.copy(
-                pixelShift = pull,
+                pixelShift = pull + panShift,
                 priceRangeOverride = drawnRange?.takeIf { it != fitted },
             )
             lastView[0] = view
@@ -2386,6 +2526,29 @@ fun CoineProChart(
                     else -> type
                 }
 
+                val priceShown = ChartLegendTarget.Series !in hidden
+                // ---- The bottom layer: cached as a bitmap and blitted until its key changes.
+                // Everything from the grid to the markers is a function of the values in the key;
+                // the drawings, the panes and the axes below are drawn live. See `StaticLayerCache`.
+                val staticKey = StaticLayerKey(
+                    view = view,
+                    plotWidth = plotWidth,
+                    plotHeight = plotHeight,
+                    type = drawnType,
+                    palette = palette,
+                    decoration = decoration,
+                    shown = shown,
+                    hidden = hidden,
+                    comparisonsRebased = shownRebased,
+                    baseline = baseLevel,
+                    ticks = ticks,
+                    timeTicks = timeTicks,
+                    densityScale = density.density,
+                    conflateGap = conflateGap,
+                )
+                with(staticLayer) {
+                    drawCached(staticKey, density, layoutDirection, Offset(-frame.left, 0f)) {
+                        translate(left = frame.left) {
                 if (decoration.showAxes) drawGrid(view, plotWidth, palette, ticks, timeTicks)
                 // The setup goes *under* the price. It is context for the bars, and drawn over them
                 // it tints every candle it covers — which on a full-height risk band is most of them.
@@ -2402,7 +2565,6 @@ fun CoineProChart(
                 // label and leaves the candles standing is the defect, not the feature. The axes,
                 // the grid and the studies stay, which is the point of hiding it: reading two
                 // oscillators against each other without the bars in the way.
-                val priceShown = ChartLegendTarget.Series !in hidden
                 val volumeBand = priceShown && decoration.showVolume && series.hasVolume &&
                     drawnType != ChartType.FOOTPRINT && drawnType != ChartType.TPO
                 if (volumeBand) {
@@ -2492,6 +2654,9 @@ fun CoineProChart(
                     )
                     decoration.levels.forEach { drawLevel(view, it, plotWidth, measurer) }
                     decoration.markers.forEach { drawMarker(view, it, density.density) }
+                }
+                        }
+                    }
                 }
                 // The reader's own drawings go *over* the price — the opposite of the signal band.
                 // They are annotations on the bars, and an annotation the bars cover is not one.
@@ -2700,6 +2865,25 @@ fun CoineProChart(
             val mark = crosshairOverride ?: crosshair
             val timeAxis = if (decoration.showAxes && decoration.showTimeAxis) timeHeight else 0f
             translate(left = frame.left) {
+                // The freehand stroke as it is drawn, and the predictor's next point as a fainter
+                // reach beyond the last real one — the ink meets the tip rather than trailing it.
+                val ink = strokePreview
+                if (ink.size >= 2) {
+                    val path = Path().apply {
+                        moveTo(ink[0].x, ink[0].y)
+                        for (index in 1 until ink.size) lineTo(ink[index].x, ink[index].y)
+                    }
+                    drawPath(path, color = palette.crosshair, style = Stroke(width = FREEHAND_PREVIEW_WIDTH_DP.dp.toPx()))
+                    strokePredictor.predicted?.let { ahead ->
+                        val plotAhead = frame.toPlot(ahead)
+                        drawLine(
+                            color = palette.crosshair.copy(alpha = 0.5f),
+                            start = ink.last(),
+                            end = plotAhead,
+                            strokeWidth = FREEHAND_PREVIEW_WIDTH_DP.dp.toPx(),
+                        )
+                    }
+                }
                 // The eight directions the held constraint will accept, drawn from the anchor the
                 // next tap is measured against. See [drawConstraintSpokes]: without them the
                 // constraint is a mode with no tell, and a reader who armed it by accident has no
@@ -5868,6 +6052,18 @@ private val EDGE_PULL_MAX_DP = 40.dp
  * resistance is `o / (1 + o / (0.55 · w))`, and it returns on `spring(400, 0.85)`.
  */
 private const val OVERSCROLL_MAX_SHARE = 0.5f
+
+/** The spring that settles a sub-bar remainder onto a slot boundary: fast, and never past it. */
+private const val PAN_SNAP_STIFFNESS = 1_400f
+
+/** The spring a double-tap reset slides the picture home on. */
+private const val AXIS_RESET_STIFFNESS = 400f
+
+/** A reset from far away starts this many plot widths out rather than from where it was. */
+private const val SPRING_TRAVEL_CAP = 2f
+
+/** The live freehand stroke's width, before the drawing's own style takes over on the lift. */
+private const val FREEHAND_PREVIEW_WIDTH_DP = 2f
 private const val RUBBER_BAND_KNEE = 0.55f
 private const val OVERSCROLL_STIFFNESS = 400f
 private const val OVERSCROLL_DAMPING = 0.85f

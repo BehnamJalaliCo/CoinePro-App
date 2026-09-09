@@ -572,7 +572,13 @@ class KineticScroll(density: Float = 1f, private val curve: FlingCurve = FLING_C
         val FLING_CURVE: FlingCurve = FlingCurve.EXPONENTIAL
 
         /** 4.2 × 1.35, per second. See [FlingCurve.EXPONENTIAL]. */
-        private const val EXPONENTIAL_FRICTION = 4.2f * 1.35f
+        /**
+         * The friction of `exponentialDecay`: velocity × e^(−f·t). At 3.8 a hard flick of
+         * 4 000 px/s coasts to [MIN_VELOCITY] in ln(200)/3.8 ≈ 1.4 s and an ordinary one of
+         * 2 000 px/s in ≈ 1.2 s — the brief's «about 1.2 s». Compose's own multiplier of 1.35
+         * over 4.2 gave 0.9 s, which read as the chart stopping short.
+         */
+        private const val EXPONENTIAL_FRICTION = 3.8f
     }
 }
 
