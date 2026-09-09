@@ -16,7 +16,7 @@ while IFS= read -r file; do
   if ! grep -q "continuousMotionAllowed" "$file"; then
     violations+="$file"$'\n'
   fi
-done < <(git grep -lE 'rememberInfiniteTransition|infiniteRepeatable' -- 'app/**/*.kt' 'core/**/*.kt' 'feature/**/*.kt' || true)
+done < <(git grep -lE 'rememberInfiniteTransition|infiniteRepeatable' -- 'app/**/*.kt' 'core/**/*.kt' 'feature/**/*.kt' 'chart/**/*.kt' 'namascript/**/*.kt' || true)
 
 if [[ -n "$violations" ]]; then
   echo "$violations"
@@ -25,7 +25,7 @@ if [[ -n "$violations" ]]; then
 fi
 
 # git grep exits 1 on no matches, which pipefail would turn into a failed gate.
-guarded="$( { git grep -lE 'rememberInfiniteTransition|infiniteRepeatable' -- 'app/**/*.kt' 'core/**/*.kt' 'feature/**/*.kt' || true; } | wc -l | tr -d ' ')"
+guarded="$( { git grep -lE 'rememberInfiniteTransition|infiniteRepeatable' -- 'app/**/*.kt' 'core/**/*.kt' 'feature/**/*.kt' 'chart/**/*.kt' 'namascript/**/*.kt' || true; } | wc -l | tr -d ' ')"
 echo "Reduced-motion policy passed: ${guarded} file(s) use continuous motion, all guarded."
 
 # ── springs for everything that moves ────────────────────────────────────────────────────────
@@ -35,7 +35,7 @@ echo "Reduced-motion policy passed: ${guarded} file(s) use continuous motion, al
 # velocity it had; an *effect* — a fade, a colour, a progress bar — is a tween, because opacity
 # has no momentum. This is the grep the design brief asks for: a `tween(` on the same line as a
 # spatial transition is the violation.
-spatial_tween="$( { git grep -nE '(slideIn|slideOut|expandVertically|expandHorizontally|shrinkVertically|shrinkHorizontally|placementSpec|boundsTransform|slideIntoContainer|slideOutOfContainer)[^\n]*tween\(' -- 'app/**/*.kt' 'core/**/*.kt' 'feature/**/*.kt' || true; } )"
+spatial_tween="$( { git grep -nE '(slideIn|slideOut|expandVertically|expandHorizontally|shrinkVertically|shrinkHorizontally|placementSpec|boundsTransform|slideIntoContainer|slideOutOfContainer)[^\n]*tween\(' -- 'app/**/*.kt' 'core/**/*.kt' 'feature/**/*.kt' 'chart/**/*.kt' 'namascript/**/*.kt' || true; } )"
 if [[ -n "$spatial_tween" ]]; then
   echo "$spatial_tween"
   echo "::error::Something that moves is on a tween. Spatial motion springs — CoineProMotionSpecs.fastSpatial() / defaultSpatialFor(); a tween is for a fade, a colour or a progress bar."
@@ -58,7 +58,7 @@ echo "Spring policy passed: no tween on a slide, an expand, a placement or a sha
 # pass per frame, so a blurred panel behind a scrolling list is a measurable cost as well as a
 # design one.
 
-blur_hits="$( { git grep -nE '\.blur\(|BlurEffect|RenderEffect\.createBlur' -- 'app/**/*.kt' 'core/**/*.kt' 'feature/**/*.kt' || true; } )"
+blur_hits="$( { git grep -nE '\.blur\(|BlurEffect|RenderEffect\.createBlur' -- 'app/**/*.kt' 'core/**/*.kt' 'feature/**/*.kt' 'chart/**/*.kt' 'namascript/**/*.kt' || true; } )"
 if [[ -n "$blur_hits" ]]; then
   echo "$blur_hits"
   echo "::error::Blur is not part of this design system. Elevation is a hairline plus one soft shadow."
@@ -67,7 +67,7 @@ fi
 
 # A shadow is black at low alpha. `ambientColor`/`spotColor` set to anything else is a coloured
 # glow, which is the thing being banned.
-glow_hits="$( { git grep -nE 'ambientColor\s*=|spotColor\s*=' -- 'app/**/*.kt' 'core/**/*.kt' 'feature/**/*.kt' || true; } )"
+glow_hits="$( { git grep -nE 'ambientColor\s*=|spotColor\s*=' -- 'app/**/*.kt' 'core/**/*.kt' 'feature/**/*.kt' 'chart/**/*.kt' 'namascript/**/*.kt' || true; } )"
 if [[ -n "$glow_hits" ]]; then
   echo "$glow_hits"
   echo "::error::Coloured shadows are not allowed. Shadows are black at low alpha; colour goes in the fill or the border."
@@ -91,7 +91,7 @@ fi
 # `HomeScreen.kt`: the balance hero's wash, 18 % of the accent fading to nothing behind the
 # figure — the design brief's, and the one gradient a surface carries.
 gradient_allow='CoineProBrand.kt|CoineProSurfaces.kt|CoineProThinking.kt|CoineProMotionEffects.kt|EquityCurve.kt|CoineProChart.kt|ChartSeriesTypes.kt|HomeScreen.kt'
-gradient_hits="$( { git grep -lE 'Brush\.(vertical|horizontal|linear|radial|sweep)Gradient' -- 'app/**/*.kt' 'core/**/*.kt' 'feature/**/*.kt' || true; } | grep -vE "$gradient_allow" || true)"
+gradient_hits="$( { git grep -lE 'Brush\.(vertical|horizontal|linear|radial|sweep)Gradient' -- 'app/**/*.kt' 'core/**/*.kt' 'feature/**/*.kt' 'chart/**/*.kt' 'namascript/**/*.kt' || true; } | grep -vE "$gradient_allow" || true)"
 if [[ -n "$gradient_hits" ]]; then
   echo "$gradient_hits"
   echo "::error::Gradients belong to the brand mark, a busy indicator, or a chart's own fill — not to cards, headers or buttons. Add a file to the allow-list in this script only if it is genuinely one of those."

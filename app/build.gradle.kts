@@ -132,7 +132,7 @@ val productionFirebaseApplicationId = providers.gradleProperty("COINEPRO_PRODUCT
 val productionFirebaseApiKey = providers.gradleProperty("COINEPRO_PRODUCTION_FIREBASE_API_KEY").orElse("").get()
 val productionFirebaseSenderId = providers.gradleProperty("COINEPRO_PRODUCTION_FIREBASE_SENDER_ID").orElse("").get()
 
-// Where the full web terminal lives — the React app whose engine `core:chart` was ported from.
+// Where the full web terminal lives — the React app whose engine `:chart-core` was ported from.
 //
 // Empty by default and empty everywhere until somebody sets it, which hides the terminal entry
 // rather than pointing it at a guess. Two things have to be true of whatever address goes here and
@@ -544,7 +544,7 @@ dependencies {
     implementation(libs.play.integrity)
     implementation(project(":core:database"))
     implementation(project(":core:datastore"))
-    implementation(project(":core:chart"))
+    implementation(project(":chart-ui"))
     implementation(project(":core:help"))
     implementation(project(":core:marketdata"))
     implementation(project(":core:signals"))

@@ -189,7 +189,7 @@ def check_learned_surfaces() -> None:
         f"The chart toolbar's sheets drifted: {entries}\nExpected {expected_sheets}.",
     )
 
-    rail = read("core/chart/src/main/kotlin/com/coinepro/core/chart/Drawings.kt")
+    rail = read("chart/core/src/commonMain/kotlin/com/coinepro/core/chart/Drawings.kt")
     groups = re.findall(r'^\s{4}([A-Z_]+)\("', rail, flags=re.MULTILINE)
     expected_groups = [
         "MODES",

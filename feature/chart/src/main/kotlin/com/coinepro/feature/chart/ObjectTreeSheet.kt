@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.coinepro.core.chart.Drawing
+import com.coinepro.core.chart.drawableRes
 import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.chart.ObjectGroup
 import com.coinepro.core.chart.ObjectNode
@@ -314,7 +315,7 @@ private fun ObjectRow(
             )
             DrawingTools[node.toolId]?.let { tool ->
                 Icon(
-                    painter = painterResource(tool.icon),
+                    painter = painterResource(tool.icon.drawableRes()),
                     contentDescription = null,
                     tint = if (node.hidden) CoineProColors.TextDisabled else CoineProColors.TextMuted,
                     modifier = Modifier.size(GLYPH),

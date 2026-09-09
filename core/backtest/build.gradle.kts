@@ -13,7 +13,7 @@ android {
 }
 
 dependencies {
-    api(project(":core:chart"))
+    api(project(":chart-core"))
     api(libs.kotlinx.coroutines.core)
     implementation(project(":core:common"))
     implementation(project(":core:export"))

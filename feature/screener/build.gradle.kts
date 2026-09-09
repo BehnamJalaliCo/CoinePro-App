@@ -20,10 +20,10 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":core:common"))
     implementation(project(":core:symbols"))
-    // The indicator library, for [109]. Nothing of `core:chart`'s Compose surface is used and none
+    // The indicator library, for [109]. Nothing of the chart's Compose surface is used and none
     // of its types appear in this module's own API — the screener asks it for arithmetic over a
     // list of bars and hands back plain doubles, so a caller never has to know it is here.
-    implementation(project(":core:chart"))
+    implementation(project(":chart-core"))
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.androidx.lifecycle.runtime.compose)

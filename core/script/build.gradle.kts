@@ -14,7 +14,8 @@ android {
 
 dependencies {
     api(project(":core:common"))
-    api(project(":core:chart"))
+    // The language itself, re-exported: a screen that runs a script also reads its results.
+    api(project(":namascript"))
     api(project(":core:database"))
     implementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.junit)

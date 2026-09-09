@@ -16,7 +16,7 @@ android {
 
 dependencies {
     implementation(project(":core:aisignal"))
-    implementation(project(":core:chart"))
+    implementation(project(":chart-ui"))
     // The symbol picker searches the same universe the markets screen does; the classifier, the
     // ranking and the matcher live here rather than being reimplemented for one screen.
     implementation(project(":core:symbols"))

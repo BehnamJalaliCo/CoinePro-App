@@ -275,6 +275,9 @@ Runbook: `docs/PHASE17_INCIDENT_RUNBOOK.md`
 
 ```text
 app
+chart-core
+chart-ui
+namascript
 benchmark
 core:common
 core:model
@@ -288,7 +291,6 @@ core:marketdata
 core:orderbook
 core:webhook
 core:membership
-core:chart
 core:chartevents
 core:script
 core:help

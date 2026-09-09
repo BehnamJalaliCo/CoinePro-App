@@ -57,7 +57,7 @@ scale factor and no display profile between it and the truth. It does **not** be
 client on a question about the Android client — a phone app is entitled to override a library
 default, and the Charting Library is not the phone app.
 
-Class one is executable here: `core/chart/.../TradingViewSourceConstantsTest` holds this app's
+Class one is executable here: `chart/core/src/jvmTest/.../TradingViewSourceConstantsTest` holds this app's
 renderer against TradingView's published arithmetic — the 5/1, 9/3, 16/4 body-and-gap table, the
 28-pixel time axis at 12-point type, the price axis as fixed chrome plus label rounded to an even
 count, the five dash patterns, and the candle pair.

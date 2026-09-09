@@ -15,6 +15,50 @@ it is for.
 
 ---
 
+## [4.48.0] — 2026-09-09 — The chart engine and the language leave Android
+
+§1 of the Pro Chart plan: the code that decides what a chart shows is separated from the code
+that draws it, and the indicator language from the screen that runs it, so that the web terminal
+can take the first of each without the second. `docs/engineering/MODULES.md` is the record.
+
+### Changed
+- **`:chart-core`** — a Kotlin Multiplatform module (`jvm()` + Android) holding the engine:
+  scales, viewport, transforms, the four indicator files, the chain and templates, drawings
+  (state, geometry, controller, catalogue), candle patterns, structure, setup zones, replay, the
+  backtester, the object tree, comparison, the chart-type catalogue, the TradingView palette and
+  event marks. Thirty files, ~16 000 lines, moved as they were. The five things the engine needs
+  from a platform — a clock, a zone, two formatters, the device's zone — are `expect`
+  declarations in one file, `ChartPlatform.kt`, with one shared `actual` for both JVM-based
+  targets that does exactly what the code did before, so no label or ratio changed.
+- **`:chart-ui`** — the Compose layer, which is `:core:chart` renamed: `CoineProChart`, the
+  drawing renderer, the legend overlay, the tool rail, the pickers, the series-type painters. It
+  re-exports the engine, so nothing that used `:core:chart` had to change beyond the project path.
+  A catalogue entry's icon is now a `ChartIcon(name)` the engine can carry; `ChartIcons` in the
+  Compose layer is the one `when` that turns a name into a drawable, and `ChartIconsTest` fails
+  when the two lists drift.
+- **`:namascript`** — a multiplatform module holding the language: lexer, parser, interpreter,
+  built-ins, results, the reference, the lessons, the presets, the strategies. Fourteen files,
+  ~3 600 lines. `:core:script` keeps the controller (Room, coroutines) and re-exports the language.
+- Four modules that only ever wanted arithmetic now depend on `:chart-core` alone: backtest,
+  chart events, script, screener.
+
+### Added
+- **`ArchitectureTest`** in each multiplatform module: reads `commonMain` and fails, naming the
+  file and line, on any import of `android.`, `androidx.`, `java.`, `javax.` or an Android-only
+  module of the app. The JVM compiler catches the first two on its own; the test is for the
+  ones the compiler cannot. The engine's version also insists the only file with an `expect` in
+  it is `ChartPlatform.kt`.
+- The two multiplatform modules answer to `testDebugUnitTest` (an alias for `jvmTest`), so the
+  repository's gate command reaches them unchanged; `android-ci.yml` names them explicitly too.
+- The motion and style gates scan `chart/**` and `namascript/**`.
+
+### Not changed
+- Package names. Both halves of the chart are `com.coinepro.core.chart`, both halves of the
+  language `com.coinepro.core.script`. A split package is legal on every target, and it kept the
+  move to a move.
+- `ChartTextCache`, `ChartFrame` and `CoineProChart.kt`'s formatting helpers stay in the Compose
+  layer; `MODULES.md` says why and names them as the next cut.
+
 ## [4.47.0] — 2026-09-08 — The app stops talking about its servers, and stops explaining itself under every switch
 
 The first section of the owner's «Pro Chart — chart, NamaScript, tablet, web» plan: copy hygiene,

@@ -65,6 +65,7 @@ import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.designsystem.CoineProSkeleton
 import com.coinepro.core.script.ScriptController
+import com.coinepro.core.script.text
 import com.coinepro.core.script.ScriptFailure
 import com.coinepro.core.script.ScriptEditorState
 import com.coinepro.core.script.ScriptInput

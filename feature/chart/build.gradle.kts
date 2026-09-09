@@ -15,7 +15,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":core:chart"))
+    implementation(project(":chart-ui"))
     implementation(project(":core:chartevents"))
     implementation(project(":core:diagnostics"))
     implementation(project(":core:backtest"))

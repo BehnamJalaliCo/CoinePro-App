@@ -16,7 +16,7 @@ android {
 
 dependencies {
     implementation(project(":core:script"))
-    implementation(project(":core:chart"))
+    implementation(project(":chart-ui"))
     implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
     implementation(libs.androidx.lifecycle.runtime.compose)

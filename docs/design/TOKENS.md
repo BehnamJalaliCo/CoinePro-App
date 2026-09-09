@@ -11,7 +11,7 @@ that appears here and nowhere in the code is a value the app does not use.
 | Type | `CoineProType.kt` |
 | Motion | `CoineProMotionSpecs.kt` |
 | Press | `CoineProPress.kt` |
-| Chart | `core/chart/TradingViewPalette.kt`, `ChartViewport.BODY_RATIO`, `CoineProChart.kt` constants |
+| Chart | `chart/core/.../TradingViewPalette.kt`, `ChartViewport.BODY_RATIO`, `CoineProChart.kt` constants |
 
 ## Colour
 

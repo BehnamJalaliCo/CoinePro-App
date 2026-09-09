@@ -16,6 +16,15 @@ dependencyResolutionManagement {
 
 rootProject.name = "CoinePro-App"
 include(":app")
+// The chart, split by what it needs from its platform: the engine (nothing) and the Compose
+// layer (Android). Named by role rather than by tier so the web terminal can take the first
+// without the second — docs/engineering/MODULES.md.
+include(":chart-core")
+project(":chart-core").projectDir = file("chart/core")
+include(":chart-ui")
+project(":chart-ui").projectDir = file("chart/ui")
+// The indicator language, likewise platform-free; `:core:script` is its Android host.
+include(":namascript")
 include(":benchmark")
 include(":core:common")
 include(":core:model")
@@ -29,7 +38,6 @@ include(":core:marketdata")
 include(":core:orderbook")
 include(":core:webhook")
 include(":core:membership")
-include(":core:chart")
 include(":core:chartevents")
 include(":core:script")
 include(":core:help")
