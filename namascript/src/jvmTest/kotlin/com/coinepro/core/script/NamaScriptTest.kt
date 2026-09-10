@@ -452,6 +452,16 @@ class NamaScriptTest {
     }
 
     @Test
+    fun `the short Pine form names the direction in the id and takes the condition second`() {
+        val result = run("strategy.entry(\"long\", bar_index == 10)\nstrategy.entry(\"short\", bar_index == 20)\nstrategy.close(bar_index == 30)")
+        assertTrue(result.error?.messageEn ?: "", result.ok)
+        val report = assertNotNull(result.strategy)
+        assertEquals(2, report.closedCount)
+        assertTrue(report.trades[0].long && !report.trades[1].long)
+        assertEquals(31, report.trades[1].exitBar)
+    }
+
+    @Test
     fun `a position still open on the last bar is reported open and left out of the figures`() {
         val result = run("strategy.entry(\"L\", strategy.long, when = bar_index == 40)")
         val report = assertNotNull(result.strategy)

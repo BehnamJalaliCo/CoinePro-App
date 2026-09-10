@@ -492,14 +492,24 @@ internal object Builtins {
             }
             "strategy.entry" -> {
                 val id = arguments.text(0)
-                val direction = if (arguments.constant(1, "جهت", "The direction") >= 0) 1 else -1
-                val flags = orderFlags(interpreter, node, arguments, 2)
+                // Two forms: `("L", strategy.long, when = cond)`, and Pine's short
+                // `("long", cond)` where the id names the direction and the condition is second.
+                val second = if (arguments.size > 1) arguments.value(1) else null
+                val short = second != null && second !is Value.Num
+                val direction = when {
+                    short -> if (id.lowercase() in SHORT_IDS) -1 else 1
+                    second is Value.Num -> if (second.value >= 0) 1 else -1
+                    else -> if (id.lowercase() in SHORT_IDS) -1 else 1
+                }
+                val flags = if (short) interpreter.flagLine(second!!, node) else orderFlags(interpreter, node, arguments, 2)
                 interpreter.addOrder(StrategyOrder(id, direction, flags))
                 Value.Num((0 until interpreter.barCount).count { flags.flagAt(it) }.toDouble())
             }
             "strategy.close" -> {
-                val id = arguments.text(0)
-                val flags = orderFlags(interpreter, node, arguments, 1)
+                // `("L", when = cond)`, or Pine's `(cond)` which closes whatever is open.
+                val first = arguments.value(0)
+                val flags = if (first is Value.Text) orderFlags(interpreter, node, arguments, 1) else interpreter.flagLine(first, node)
+                val id = if (first is Value.Text) first.value else null
                 interpreter.addOrder(StrategyOrder(id, 0, flags))
                 Value.Num((0 until interpreter.barCount).count { flags.flagAt(it) }.toDouble())
             }
@@ -535,6 +545,9 @@ internal object Builtins {
 
     /** The text without the isolates `scriptNumberText` wraps a number in — what a reader counts. */
     private fun visibleText(text: String): String = text.filterNot { it == '\u2066' || it == '\u2069' }
+
+    /** Ids that mean «sell» in the short `strategy.entry("short", cond)` form. */
+    private val SHORT_IDS = setOf("short", "sell", "s")
 
     /** Gold, like a reader's own drawing: an object a script places is the reader's mark too. */
     private const val DEFAULT_OBJECT_COLOUR = 0xFFD8A848

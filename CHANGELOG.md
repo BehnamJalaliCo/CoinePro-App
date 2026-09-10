@@ -15,6 +15,25 @@ it is for.
 
 ---
 
+## [4.64.0] — 2026-09-10 — the help learns the new words
+
+Run C of the owner's plan: item 5, closed against its acceptance list.
+
+### Added
+- **Six help entries, fa + en**, one per new surface: `na`, `var`, `str`, `labelnew`, `linenew`,
+  `boxnew` — what it is, how to use it, tips, an example; the `strategy` entry rewritten to the
+  language as it actually is (both forms, next-open fills, the card, what the model leaves out).
+  `HelpCatalogTest` counts 244.
+- **Pine's short strategy form**: `strategy.entry("long" | "short", cond)` and
+  `strategy.close(cond)` are accepted beside the full form. `sem_strategy_pine_short_form`,
+  `NamaScriptTest`.
+- `gen_ta_t3` — the one `ta.*` function that had no conformance script; a test now holds every
+  `ta.*` in the reference to a script of its own (113 functions, 380 scripts).
+
+### Still the owner's
+- The Pixel 6a timings (compile < 50 ms, eval < 40 ms, realtime < 2 ms) need the phone; the JVM
+  figures are in the report.
+
 ## [4.63.0] — 2026-09-10 — the fling on Compose's own curve, and a menu under the thumb
 
 Run B of the owner's plan: item 4, finished to the audit an APK can pass.

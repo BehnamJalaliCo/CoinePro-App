@@ -206,6 +206,7 @@ places an object is re-run whole on every bar (§6).
 | `strategy.entry("id", strategy.long \| strategy.short, when = cond)` | an entry order on every bar the condition holds |
 | `strategy.close("id", when = cond)` | closes the open trade with that id |
 | `strategy.close_all(cond)` | closes whatever is open |
+| `strategy.entry("long" \| "short", cond)`, `strategy.close(cond)` | Pine's short form (4.64.0): the id names the direction, the condition is second; a bare condition to `close` closes whatever is open |
 
 The orders are replayed over the series after the script has run: one position at a time (no
 pyramiding), a market fill at the **open of the bar after** the signal, an entry in the opposite

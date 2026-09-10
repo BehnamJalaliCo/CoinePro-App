@@ -1,0 +1,5 @@
+// expect: ok
+// expect: trades 2
+strategy.entry("long", bar_index == 10)
+strategy.entry("short", bar_index == 20)
+strategy.close(bar_index == 30)

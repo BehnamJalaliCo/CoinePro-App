@@ -78,6 +78,21 @@ class ConformanceSuiteTest {
         assertEquals(files.size, generated + semantic)
     }
 
+    @Test
+    fun `every ta function in the reference has a script of its own`() {
+        val names = (ScriptReference.ALL_GROUPS.flatMap { it.functions })
+            .map { ScriptReferenceEn.nameOf(it.signature) }
+            .filter { it.startsWith("ta.") }
+            .toSet()
+        val files = scripts().map { it.name }
+        val missing = names.filter { name ->
+            val stem = name.replace('.', '_')
+            files.none { it.startsWith("gen_$stem") || it.startsWith("sem_$stem") }
+        }
+        assertTrue("ta functions with no conformance script: $missing", missing.isEmpty())
+        assertTrue("names=${names.size}", names.size >= 100)
+    }
+
     private fun check(name: String, expectation: String, result: ScriptResult): String? {
         val parts = expectation.split(Regex("\\s+"))
         return when (parts[0]) {

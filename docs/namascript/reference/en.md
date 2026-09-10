@@ -306,6 +306,7 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 | `strategy.entry("L", strategy.long, when = cond)` | An entry order on every bar the condition holds, filled at the next bar's open; an entry the other way closes the open trade. | number |
 | `strategy.close("L", when = cond)` | Closes the open trade with this id at the next bar's open. | number |
 | `strategy.close_all(cond)` | Closes whatever trade is open. | number |
+| `strategy.entry("long", cond)` | An entry order on every bar the condition holds, filled at the next bar's open; an entry the other way closes the open trade. | number |
 
 ## Colours
 

@@ -36,7 +36,10 @@ class HelpCatalogTest {
         // entries for indicators this app had written better entries for under its own ids, and
         // the pair of ids differed only in case. The export copies are gone and the old ids alias
         // to the entries that replaced them — see `HelpCatalog.ALIASES` and the test below.
-        assertEquals(177 - 4 + 9 + 55 + 1, catalog.size)
+        //
+        // Then six for the language's 4.61.0 surface — `na`, `var`, `str`, `labelnew`, `linenew`,
+        // `boxnew` — written in both languages, with no image for the same reason as the nine.
+        assertEquals(177 - 4 + 9 + 55 + 1 + 6, catalog.size)
     }
 
     @Test

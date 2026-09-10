@@ -1,0 +1,6 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 237 109.4390620
+// expect: plot 0 238 109.4630374
+// expect: plot 0 239 109.5214022
+plot(ta.t3(close, 10, 0.7))

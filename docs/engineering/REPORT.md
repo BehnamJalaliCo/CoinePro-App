@@ -475,6 +475,27 @@ The `-keepnames` rules keep only the names — nothing that R8 would otherwise r
 | 120 fps side-by-side recording vs TradingView | **needs a device** |
 | grep report | above |
 
+### RUN C — item 5 (4.64.0) — done to the acceptance list; the phone's numbers remain
+
+The acceptance list, row by row:
+
+| acceptance | state | proof |
+| --- | --- | --- |
+| `docs/namascript/SPEC.md` | §1–§10, with §5.5–§5.8 from 4.61.0 and the short strategy form from 4.64.0 | the file; `ScriptDiagnosticsTest` |
+| typed AST + compiled incremental evaluation | `TypeChecker` → `CompiledScript` → `IncrementalRunner` (4.56.0), the 4.61.0 surface typed and marked whole-run where it must be | `CompilerTest`, `NamaScriptTest` |
+| sandbox: CPU / memory budget, timeout | E401 nodes, **E407 memory (4.61.0)**, E406 time | `NamaScriptTest` «the memory budget refuses…» |
+| diagnostics with line/column and a fix hint in fa/en | 28 codes, every one with both languages and a hint | `ScriptDiagnosticsTest` |
+| full `input.*` with auto-generated settings UI | 4.56.0 | `sem_input_*` (7) |
+| `request.security` with lookahead rules | 4.56.0, confirmed mapping, E210 | `sem_security_*` (3) |
+| ≥ 100 conformance scripts, one per `ta.*` | **380** scripts; **113 `ta.*` functions, each with a script** — `gen_ta_t3` was the one missing and is recorded now; a test holds the rule | `ConformanceSuiteTest` «every ta function in the reference has a script of its own» |
+| editor: highlighting, autocomplete with signatures, squiggles, snippets, console | 4.56.0 + 4.61.0 | `NamaSyntaxTest`, `CodeFieldTest`, `StudioHelpersTest` |
+| split view code \| chart inside `chart_panel_script` | 4.56.0 / 4.58.0 | `panel-script-*` frames |
+| **`assets/help/content.json` for every new function (fa + en)** | **six new entries** — `na`, `var`, `str`, `labelnew`, `linenew`, `boxnew` — each with title, use case, what, how (steps), tips and an example in both languages; **`strategy` rewritten** to the shipped semantics (both call forms, next-open fills, one trade at a time, the card, what the model leaves out — its old text described `ref()` and a bar-by-bar engine that do not exist). Catalogue: 244 entries | `HelpCatalogTest` (count, both languages on every field, no case collisions) |
+| Pine's short strategy form | `strategy.entry("long" \| "short", cond)`, `strategy.close(cond)` accepted beside the full form, so the help's own examples run | `sem_strategy_pine_short_form`, `NamaScriptTest` «the short Pine form…» |
+| Pixel 6a: compile < 50 ms, eval < 40 ms, realtime < 2 ms | **needs the phone**; JVM, isolated: compile 1.4 ms, eval 168 ms, realtime 6.7 / 6.2 ms (item 5 table above) | `ScriptPerformanceTest` |
+
+Numbers: 244 help entries (6 new, 1 rewritten), 380 conformance scripts (2 new), 113 `ta.*` functions covered, 94 tests in `:namascript:jvmTest`.
+
 ## Definition of done — as it stands
 
 - [x] §0 copy hygiene done; lint enforced (`tools/i18n/lint_strings.py` through the consistency gate).

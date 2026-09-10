@@ -384,6 +384,7 @@ object ScriptReference {
                 ScriptFunction("strategy.entry(\"L\", strategy.long, when = cond)", "روی هر کندلی که شرط برقرار است سفارش ورود می‌گذارد؛ در بازِ کندل بعد پر می‌شود. ورود در جهت مخالف، معامله‌ی باز را می‌بندد.", "عدد"),
                 ScriptFunction("strategy.close(\"L\", when = cond)", "معامله‌ی باز با این نام را در بازِ کندل بعد می‌بندد.", "عدد"),
                 ScriptFunction("strategy.close_all(cond)", "هر معامله‌ی باز را می‌بندد.", "عدد"),
+                ScriptFunction("strategy.entry(\"long\", cond)", "شکل کوتاه پاین: نام جهت را می‌گوید (long/short) و شرط دومین آرگومان است؛ strategy.close(cond) هم پذیرفته است.", "عدد"),
             ),
         ),
     )
