@@ -13,6 +13,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performMouseInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.longClick
 import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.feature.chart.ChartScreen
 import kotlinx.coroutines.CoroutineScope
@@ -103,6 +105,33 @@ class ChartContextMenuTest {
         rule.waitForIdle()
         assertEquals(1, searches)
         rule.onNodeWithContentDescription("chart-menu-search").assertDoesNotExist()
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = TABLET)
+    fun `a long press that lifts where it landed opens the menu on touch`() {
+        compose()
+        rule.onNodeWithContentDescription("chart-menu-copy").assertDoesNotExist()
+        rule.onNodeWithTag("chart-plot").performTouchInput { longClick(Offset(width * 0.5f, height * 0.5f)) }
+        rule.waitForIdle()
+        rule.onNodeWithContentDescription("chart-menu-copy").assertIsDisplayed()
+        rule.onNodeWithContentDescription("chart-menu-alert").performClick()
+        rule.waitForIdle()
+        assertEquals(1, alerts.size)
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = TABLET)
+    fun `a long press that drags is the crosshair, not the menu`() {
+        compose()
+        rule.onNodeWithTag("chart-plot").performTouchInput {
+            down(Offset(width * 0.5f, height * 0.5f))
+            advanceEventTime(viewConfiguration.longPressTimeoutMillis + 100)
+            moveBy(Offset(120f, 0f))
+            up()
+        }
+        rule.waitForIdle()
+        rule.onNodeWithContentDescription("chart-menu-copy").assertDoesNotExist()
     }
 
     private companion object {

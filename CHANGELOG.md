@@ -15,6 +15,31 @@ it is for.
 
 ---
 
+## [4.63.0] — 2026-09-10 — the fling on Compose's own curve, and a menu under the thumb
+
+Run B of the owner's plan: item 4, finished to the audit an APK can pass.
+
+### Changed
+- **The fling runs on `exponentialDecay`**: `ChartFling` reads Compose's own decay spec
+  (friction 3.8 s⁻¹, cut-off 20 px/s) frame by frame; 2 000 px/s coasts 1.21 s, 4 000 px/s
+  1.39 s. `KineticScroll` stays in `:chart-core` as the JVM-tested statement of the same curve.
+  `ChartFlingTest`.
+- **The frame-rate hint calls the platform's frame-rate API on every release that has one**:
+  `View.setRequestedFrameRate` on Android 15+, `SurfaceControl.Transaction.setFrameRate` — the
+  same call as `Surface.setFrameRate` — on Android 12–14, through a child surface under the
+  window's `AttachedSurfaceControl`. `ChartFrameRate`.
+
+### Added
+- **Long-press menu on touch**: a long press that lifts where it landed keeps its crosshair and
+  opens the context menu at that reading (alert here, copy price, scale, search); one that drags is
+  the tracking gesture it always was. `ChartContextMenuTest` (two touch tests).
+- `-keepnames` for `CertificatePinner`, `MotionEventPredictor`, `ChartStrokePredictor`,
+  `ChartFling` and `ChartFrameRate`, so a grep of the release dex finds them by name; R8 had
+  renamed them (`MotionEventPredictor → j6.a`), which is what the audit of 4.62.0 read as absence.
+
+### Still the owner's
+- `ChartFlingBenchmark` p95 and the 120 fps recording against TradingView need a device with a GPU.
+
 ## [4.62.0] — 2026-09-10 — the pins, re-measured; the wires, provably off in release
 
 Item 6 of the 4.58 run, re-verified rather than re-built: nothing shipped in 4.57.0 needed to

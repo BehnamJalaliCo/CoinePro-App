@@ -18,8 +18,6 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.animation.core.animate
-import android.view.View
-import android.os.Build
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -40,7 +38,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.withFrameMillis
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -742,17 +740,14 @@ fun CoineProChart(
     /** Whether a finger, a stylus or a fling is moving the picture; drives the frame-rate hint. */
     var interacting by remember { mutableStateOf(false) }
 
-    /** Momentum after a flick. See [KineticScroll] for why it is touch-only. */
-    val kinetic = remember(density) { KineticScroll(density.density) }
+    /** Momentum after a flick, on Compose's `exponentialDecay` — see [ChartFling]. Touch only. */
+    val kinetic = remember { ChartFling() }
 
-    // The frame-rate hint: while a finger or a fling moves the picture the view asks the
-    // display for its highest rate (`View.setRequestedFrameRate`, Android 15+), and lets go
-    // when the chart is at rest, so a 120 Hz panel is spent on the gesture and not on the idle.
+    // The frame-rate hint: while a finger or a fling moves the picture the chart asks the display
+    // for its highest rate and lets go when it is at rest — `setRequestedFrameRate` on Android 15+,
+    // `SurfaceControl.Transaction.setFrameRate` on 12–14. See [ChartFrameRate].
     LaunchedEffect(interacting) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-            hostView.requestedFrameRate =
-                if (interacting) View.REQUESTED_FRAME_RATE_CATEGORY_HIGH else View.REQUESTED_FRAME_RATE_CATEGORY_NO_PREFERENCE
-        }
+        ChartFrameRate.request(hostView, interacting)
     }
     var flinging by remember { mutableStateOf(false) }
 
@@ -967,6 +962,9 @@ fun CoineProChart(
     val currentAlert = rememberUpdatedState(onRequestAlertAt)
     val currentAxisMenu = rememberUpdatedState(onPriceAxisMenu)
     val currentContextMenu = rememberUpdatedState(onContextMenu)
+
+    /** Whether the current long press has moved since it landed — the drag handler writes, the tap handler reads. */
+    val pressMoved = remember { BooleanArray(1) }
     val currentTradeRing = rememberUpdatedState(onTradeRing)
 
     fun invalidate(level: Invalidation) {
@@ -1070,7 +1068,7 @@ fun CoineProChart(
         var residue = 0f
         interacting = true
         while (kinetic.isRunning) {
-            val step = withFrameMillis { now -> kinetic.tick(now) }
+            val step = withFrameNanos { now -> kinetic.tick(now) }
             residue += step
             val width = drawn().barWidth
             if (width <= 0f) break
@@ -2176,13 +2174,60 @@ fun CoineProChart(
                                         invalidate(Invalidation.CURSOR)
                                     },
                                     // Nothing on release: the crosshair is the reading, and the
-                                    // reading is what the reader long-pressed to get.
+                                    // reading is what the reader long-pressed to get. The menu a
+                                    // still press opens is the tap handler's — see `onLongPress`.
                                     onDragEnd = {},
                                     onDragCancel = {},
                                 )
                             }
+                            .pointerInput(Unit) {
+                                // Whether the finger moved at all during a press: read on the
+                                // final pass so it sees the moves whichever handler consumed them.
+                                val slop = viewConfiguration.touchSlop
+                                var origin: Offset? = null
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        val event = awaitPointerEvent(PointerEventPass.Final)
+                                        val position = event.changes.firstOrNull()?.position
+                                        when (event.type) {
+                                            PointerEventType.Press -> {
+                                                origin = position
+                                                pressMoved[0] = false
+                                            }
+                                            PointerEventType.Move -> {
+                                                val from = origin
+                                                if (from != null && position != null && (position - from).getDistance() > slop) pressMoved[0] = true
+                                            }
+                                            else -> Unit
+                                        }
+                                    }
+                                }
+                            }
                             .pointerInput(tolerancePx) {
+                                // A long press that lifts where it landed — no drag — is the touch
+                                // form of the right button (item 4, 4.63.0): the crosshair the drag
+                                // handler placed stays, and the context menu opens at that reading
+                                // on the lift. `onPress` outlives the long press, so it is the one
+                                // that knows whether the finger came up still; the watcher above
+                                // says whether it moved on the way.
+                                var longPressedAt: Offset? = null
                                 detectTapGestures(
+                                    onPress = { _ ->
+                                        longPressedAt = null
+                                        val released = tryAwaitRelease()
+                                        val at = longPressedAt
+                                        if (released && at != null && tracking && !pressMoved[0]) {
+                                            val plot = frameOf(size.width.toFloat()).toPlot(at)
+                                            val frame = frameOf(size.width.toFloat())
+                                            if (frame.onPlot(at.x) && !frame.inGutter(at.x, 0f)) {
+                                                lastView[0]?.crosshairAt(plot)?.let { reading ->
+                                                    currentContextMenu.value?.invoke(reading.price, at)
+                                                }
+                                            }
+                                        }
+                                        longPressedAt = null
+                                    },
+                                    onLongPress = { position -> longPressedAt = position },
                                     onDoubleTap = { position ->
                                         val drawing = currentDrawing.value
                                         val onDrawing = currentOnDrawing.value

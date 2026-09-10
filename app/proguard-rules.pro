@@ -70,3 +70,15 @@
 -keep class com.coinepro.core.help.HelpImage { *; }
 -keep class com.coinepro.core.help.Bilingual { *; }
 -keep class com.coinepro.core.help.BilingualList { *; }
+
+# Kept by name for the release audit — the owner's diff of an APK greps the dex for these two, and
+# a class R8 has renamed to `j6.a` reads as absent. Names only; nothing else is kept.
+-keepnames class okhttp3.CertificatePinner
+-keepnames class androidx.input.motionprediction.MotionEventPredictor
+-keepnames class com.coinepro.core.chart.ChartStrokePredictor
+-keepnames class com.coinepro.core.chart.ChartFling
+-keepnames class com.coinepro.core.chart.ChartFrameRate
+# The decay spec the fling runs on, kept by name too: it is a top-level function R8 would inline
+# and rename, and the same audit greps the dex for it.
+-keep class androidx.compose.animation.core.DecayAnimationSpecKt { public static *** exponentialDecay(...); }
+-keepnames class androidx.compose.animation.core.FloatExponentialDecaySpec

@@ -409,6 +409,72 @@ Numbers: 19 new functions and 2 constants, 1 new statement form, 1 new code, 18 
 
 Numbers: 2 hosts, 9 shipped digests, 4 matched live (2 per host), 1 expiry (2027-03-01), 0 changes.
 
+## Run 4.63 → 4.6x — the owner's audit of 4.62.0, and one item per run
+
+The owner's diff of 4.62.0 against 4.57.0 was read off the APK: a grep of the release `classes.dex`
+for `exponentialDecay`, `setFrameRate`, `MotionEventPredictor` and `CertificatePinner`, the font
+list, the string table. Three of its four «✗» rows are the release build's **R8 obfuscation**, not
+missing code: `MotionEventPredictor → j6.a`, `ChartStrokePredictor → com.coinepro.core.chart.b3`
+and `CertificatePinner` are all in `app/build/outputs/mapping/release/mapping.txt`, and the pin
+digests (`sha256/RO8Xw…`) *are* in the dex as string literals — which is why `tnum` and the four menu
+keys, also literals, showed «✓». The fourth row (the wires) is a real finding: the three hosts' URLs
+are string literals in the release dex, gated by a flag rather than absent. Each run below ends with
+what the APK itself will show.
+
+### RUN A — item 3, the two weights: not in the licensed package; blocked, with the evidence
+
+| what was asked | what exists |
+| --- | --- |
+| IRANYekanX Medium (500) + SemiBold (600), or the Variable build | the owner's licensed archive `TradeYar/IRANYekanX(Eco).zip` (10.2 MB) holds **`IRANYekanX-Regular.ttf` and `IRANYekanX-Bold.ttf` only** (`IRANYekanX family/`, plus the same two in FaNum and NoEn cuts, plus the *previous-generation* IRANYekan v3 in eight weights under `OldVersion/`). No Medium, no SemiBold, no variable font. Both files are static `glyf` fonts, `usWeightClass` 400 and 700, version 4.000 |
+| synthesise the two weights by interpolation | **not possible**: `fontTools` finds the Regular and Bold outlines incompatible — 303 of 538 common simple glyphs differ in contour or point count — so no instance between them can be built. And the licence is proprietary (`fsType 0x0100`, «installable, no subsetting»; `FontLicense.txt` says the terms are fontiran.com's), so a derivative weight is not the app's to make |
+| borrow IRANYekan v3 Medium from `OldVersion/` | rejected in `TradeYar/docs/redesign/FONT-LICENSING.md` §5.2 with measurements: Persian advances differ by up to 12 % between the generations (a weight change would reflow the paragraph), v3's Bold and Medium share Latin outlines, and v3 has no `ss01–ss04` so the numeral machinery stops. The same reasoning holds here |
+| wire the slots (title/label = Medium, display/headline/numericLarge = SemiBold) | already so since 4.54.0: `CoineProType.kt` maps `FontWeight.Medium` and `FontWeight.SemiBold` to their own `Font(...)` entries, resolving to Bold until the files exist; the day `iranyekanx_medium.ttf` and `iranyekanx_semibold.ttf` land in `core/designsystem/src/main/res/font/`, the change is the two resource names on lines 47–48 |
+| `tnum` on every numeric style, with the grep | 4.59.0 — the table in item 3 above (11 sites), `TypeScaleTest` fails any style without it, `TickSequenceTest` 300 frames at 0.0 px |
+| font list from the built APK | 4.62.0's APK: `res/6B.ttf` (84 240 B = IRANYekanX-Regular), `res/aj.ttf` (83 957 B = IRANYekanX-Bold), `res/W4.ttf` (879 708 B = Inter Variable). Exactly the files the repository holds |
+
+**What unblocks it**: the IRANYekanX *Pro* package (or its variable font) from fontiran.com, which
+is a separate purchase from the Eco licence the owner holds. Once the two `.ttf`s are in the
+repository the wiring, the tick proof and the screenshots are a one-commit run.
+
+### RUN B — item 4 (4.63.0) — done to the audit; the two device proofs remain
+
+What changed this run, on top of 4.55.0 and 4.60.0:
+
+| asked | done | proof |
+| --- | --- | --- |
+| `exponentialDecay` fling ≈ 1.2 s | **the chart now flings on Compose's `exponentialDecay`** (`ChartFling`, `chartFlingSpec()`: friction multiplier 3.8 / 4.2, cut-off 20 px/s) read off `withFrameNanos`; the residue-per-bar loop, the wall and the rubber band unchanged | `ChartFlingTest`: 2 000 px/s → 1 212 ms, 4 000 px/s → 1 394 ms, steps never speed up, travel = v/f, stops on its own |
+| `Surface.setFrameRate` | **`ChartFrameRate`**: `setRequestedFrameRate(HIGH)` on 15+, `SurfaceControl.Transaction.setFrameRate(child, highest mode, COMPATIBILITY_DEFAULT)` on 12–14 via `rootSurfaceControl.buildReparentTransaction`, released on detach; a vote to the compositor, not a command | compiles; the effect is a device's |
+| context menu on right-click **and long-press** | right-click since 4.60.0; **long-press since 4.63.0**: a press that lifts inside the touch slop opens the menu at its reading, a press that moves is tracking | `ChartContextMenuTest` «a long press that lifts where it landed opens the menu on touch», «a long press that drags is the crosshair, not the menu» |
+| `MotionEventPredictor` | 4.55.0, `ChartStrokePredictor`; now kept by name | `mapping.txt` |
+| everything else in the item | 4.55.0 / 4.60.0 — the table under «Item 4 — chart physics (4.60.0)» | as there |
+
+**The grep the acceptance asks for** — the chart module's sources (`chart/ui/src/main`, `chart/core/src/commonMain`), code lines only:
+
+| symbol | where |
+| --- | --- |
+| `exponentialDecay` | `ChartFling.kt:7` (import), `ChartFling.kt:24` (`exponentialDecay(frictionMultiplier = …)`) |
+| `setFrameRate` | `ChartFrameRate.kt:57` (`SurfaceControl.Transaction().setFrameRate(…)`); `setRequestedFrameRate` at `ChartFrameRate.kt:34` and `CoineProChart.kt:743` |
+| `MotionEventPredictor` | `ChartStrokePredictor.kt:6, 28, 31, 34` |
+
+**And the grep of the release `classes.dex` itself** (4.63.0, `app-release-unsigned.apk`, one dex, 9 629 276 B), which is what the owner's audit reads:
+
+| literal | 4.62.0 | 4.63.0 | why it changed |
+| --- | --- | --- | --- |
+| `exponentialDecay` | 0 | **1** | the fling now calls it, and the function is kept by name (`DecayAnimationSpecKt.exponentialDecay`, `FloatExponentialDecaySpec`) |
+| `setFrameRate` | 0 | **1** | `SurfaceControl.Transaction.setFrameRate` in `ChartFrameRate`; platform method names are never obfuscated |
+| `setRequestedFrameRate` | 1 | 1 | — |
+| `MotionEventPredictor` | 0 | **1** | `-keepnames`; 4.62.0 had it as `j6.a` (`mapping.txt`) |
+| `CertificatePinner` | 0 | **1** | `-keepnames`; the pins were always there as literals (`sha256/RO8Xw…` = 1 in both) |
+| `ChartStrokePredictor`, `ChartFling`, `ChartFrameRate` | 0 | **1** each | `-keepnames` |
+
+The `-keepnames` rules keep only the names — nothing that R8 would otherwise remove is kept — and are there so the next audit greps the same dex and finds the same words.
+
+| acceptance | state |
+| --- | --- |
+| `ChartFlingBenchmark` p95 ≤ 8 ms phone, ≤ 12 ms tablet 4-chart, 0 jank | **needs a device** — `benchmark/…/ChartFlingBenchmark.kt` runs with `./gradlew :benchmark:connectedBenchmarkAndroidTest`; nothing here has a GPU |
+| 120 fps side-by-side recording vs TradingView | **needs a device** |
+| grep report | above |
+
 ## Definition of done — as it stands
 
 - [x] §0 copy hygiene done; lint enforced (`tools/i18n/lint_strings.py` through the consistency gate).
