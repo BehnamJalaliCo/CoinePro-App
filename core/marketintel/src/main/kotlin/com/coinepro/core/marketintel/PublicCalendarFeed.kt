@@ -44,7 +44,10 @@ internal object PublicCalendarFeed {
      * The week, not the day: a calendar that can only answer "today" cannot tell a reader on Friday
      * what Monday holds, and the whole use of an economic calendar is knowing what is coming.
      */
-    const val URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+    val URL: String? = ThirdPartyWires.CALENDAR_URL
+
+    /** What the calendar's provenance says when the file's own host is not in this build. */
+    const val ABSENT_ROUTE = "third-party calendar (not in this build)"
 
     /**
      * The same file, relayed by our own host.

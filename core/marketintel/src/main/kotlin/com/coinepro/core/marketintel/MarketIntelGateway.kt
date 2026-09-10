@@ -567,7 +567,7 @@ internal fun MarketIntelSnapshot.withPublicCalendar(
         calendarSource = CalendarSourceOutcome(
             events = published,
             received = published.size,
-            route = PublicCalendarFeed.URL,
+            route = PublicCalendarFeed.URL ?: PublicCalendarFeed.ABSENT_ROUTE,
         ),
     )
 }

@@ -15,6 +15,23 @@ it is for.
 
 ---
 
+## [4.65.0] — 2026-09-10 — no third party in the release, by construction
+
+Run D of the owner's plan: item 6, to the grep the acceptance names.
+
+### Changed
+- **The third-party hosts left the release build**: Investing.com, Cointelegraph and the
+  ForexFactory file now live in `ThirdPartyWires` under `core/marketintel/src/debug`; the
+  `release` twin names nothing. A grep of the release dex for `investing.com`,
+  `cointelegraph.com` or `faireconomy.media` finds zero literals — the flag from 4.57.0 kept the
+  calls off, this keeps the hosts out. A section our own routes answer empty stays empty and
+  says so (`news_empty`, `guest_news_empty`, `calendar_empty`).
+- `scripts/quality/check-release-surface.py` fails a release whose dex carries any of the
+  four hosts.
+
+### Verified
+- Pins: 4.62.0's live measurement stands; `CertificatePinner` is now greppable in the dex (4.63.0).
+
 ## [4.64.0] — 2026-09-10 — the help learns the new words
 
 Run C of the owner's plan: item 5, closed against its acceptance list.

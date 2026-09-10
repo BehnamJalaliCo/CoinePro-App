@@ -33,6 +33,7 @@ DEFAULT_APK = ROOT / "app/build/outputs/apk/release/app-release.apk"
 
 STRAY_SUFFIXES = (".orig", ".bak", ".rej", ".tmp")
 EMULATOR_ABIS = ("lib/x86/", "lib/x86_64/")
+THIRD_PARTY_HOSTS = ("investing.com", "cointelegraph.com", "faireconomy.media", "forexfactory.com")
 
 
 def aapt2() -> Path | None:
@@ -62,6 +63,15 @@ def main() -> int:
     if emulator:
         failures.append(f"emulator ABIs in a store build: {emulator}")
 
+    # Item 6: the release reads no third party. Not a flag that is off — the hosts are not in
+    # the build (`ThirdPartyWires` lives in `core/marketintel/src/debug` and its release twin
+    # names nothing), so their names must not appear anywhere in the dex.
+    with zipfile.ZipFile(apk) as archive:
+        dex = b"".join(archive.read(n) for n in names if re.fullmatch(r"classes\d*\.dex", n))
+    hosts = [h for h in THIRD_PARTY_HOSTS if h.encode() in dex]
+    if hosts:
+        failures.append(f"third-party hosts in the release dex: {hosts}")
+
     tool = aapt2()
     if tool is None:
         print("::warning::aapt2 not found under ANDROID_HOME; the admin-string check did not run")
@@ -78,7 +88,7 @@ def main() -> int:
         for failure in failures:
             print(f"::error::{failure}")
         return 1
-    print(f"Release surface is clean: no admin strings, no emulator ABIs, no stray files in {apk.name}.")
+    print(f"Release surface is clean: no admin strings, no emulator ABIs, no stray files, no third-party host in {apk.name}.")
     return 0
 
 

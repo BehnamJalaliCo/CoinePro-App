@@ -205,7 +205,8 @@ class PublicMarketIntel(
                 ?.let { return it }
         }
         if (!directFeeds) return emptyList()
-        return PublicCalendarFeed.parse(client.get(PublicCalendarFeed.URL), moment)
+        val url = PublicCalendarFeed.URL ?: return emptyList()
+        return PublicCalendarFeed.parse(client.get(url), moment)
     }
 
     private companion object {

@@ -51,16 +51,7 @@ internal object PublicNewsFeed {
      * Ordered by how quickly each publishes, because [merge] keeps the newest and a tie is broken by
      * position: the wire that is usually first stays first.
      */
-    fun feeds(platform: MarketPlatform): List<Feed> = when (platform) {
-        MarketPlatform.TRADEYAR -> listOf(
-            Feed("https://www.investing.com/rss/news_301.rss", "Investing.com"),
-            Feed("https://www.cointelegraph.com/rss", "Cointelegraph"),
-        )
-        MarketPlatform.COINEPRO_FX -> listOf(
-            Feed("https://www.investing.com/rss/news_1.rss", "Investing.com"),
-            Feed("https://www.investing.com/rss/news_11.rss", "Investing.com"),
-        )
-    }
+    fun feeds(platform: MarketPlatform): List<Feed> = ThirdPartyWires.news(platform)
 
     data class Feed(val url: String, val source: String)
 

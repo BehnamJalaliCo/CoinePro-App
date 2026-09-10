@@ -496,6 +496,14 @@ The acceptance list, row by row:
 
 Numbers: 244 help entries (6 new, 1 rewritten), 380 conformance scripts (2 new), 113 `ta.*` functions covered, 94 tests in `:namascript:jvmTest`.
 
+### RUN D — item 6 (4.65.0) — done; the release dex names no third party
+
+| acceptance | done | proof |
+| --- | --- | --- |
+| OkHttp `CertificatePinner` for `coineprofx.com` and the crypto host, primary + backup, `docs/security/PINNING.md` | 4.57.0, re-measured live 2026-09-10 (4.62.0): each host meets a primary and a backup on the chain it serves; the class is kept by name since 4.63.0 so the dex greps for it | `CertificatePinDefaultsTest`; `PINNING.md` §«Re-measured 2026-09-10»; dex: `CertificatePinner` 1, `sha256/RO8Xw…` 1 |
+| Investing / Cointelegraph / ForexFactory through the backend behind a flag, graceful unavailable state, **no direct calls in release** | **the hosts are not in the release build**: `ThirdPartyWires` in `core/marketintel/src/debug` names them, the `release` source set's twin returns no feed and no calendar URL; `PublicNewsFeed.feeds`, `PublicCalendarFeed.URL` and the calendar provenance read it. The 4.57.0 flag still gates a debug build. Empty sections say so: `news_empty`, `guest_news_empty`, `calendar_empty` | dex grep of 4.65.0's release `classes.dex`: `investing.com` 0, `cointelegraph.com` 0, `faireconomy.media` 0, `forexfactory` 0 (4.62.0: 1, 1, 1, 0); `check-release-surface.py` → «Release surface is clean: … no third-party host»; `PublicFeedTest` «with direct feeds off…» (debug, the flag) |
+| grep proof: zero `investing.com`, `cointelegraph.com`, `faireconomy.media` literals in the release dex | **0 / 0 / 0** — and `scripts/quality/check-release-surface.py` now fails a release whose dex carries any of the four hosts (`forexfactory.com` included) | the script's line on 4.65.0's APK, below |
+
 ## Definition of done — as it stands
 
 - [x] §0 copy hygiene done; lint enforced (`tools/i18n/lint_strings.py` through the consistency gate).
@@ -505,6 +513,13 @@ Numbers: 244 help entries (6 new, 1 rewritten), 380 conformance scripts (2 new),
 - [~] Tablet: adaptive layouts, rail, list-detail, side panels, multi-chart; parity matrix generated and honest (**not 100 %**: sheets, alerts, screener, terminal have phone renders only); input matrix written and its keyboard/pointer rows tested; soak test and device screenshots **need a device**.
 - [x] `pro-chart.com` in `BrandConfig`, App Links, legal; web plan documented.
 - [x] This report, with numbers per section and the open product decisions (`docs/web/PLAN.md` §6, plus the locale decision in §0).
+
+### The owner's plan A–D (4.63.0 → 4.65.0), in one line each
+
+- A. Fonts — **blocked, with the evidence**: the licensed Eco archive holds Regular and Bold only, the two are outline-incompatible, the licence is proprietary; the slots are wired for the day the files land.
+- B. Physics — done (4.63.0): the fling on `exponentialDecay`, `setFrameRate` on Android 12+, the long-press menu, every audited symbol greppable in the release dex; the benchmark and the recording need a device.
+- C. NamaScript — done (4.64.0): six help entries fa+en, the strategy entry rewritten, Pine's short strategy form, every `ta.*` under a conformance script; the Pixel 6a timings need the phone.
+- D. Network — done (4.65.0): no third-party host in the release dex, a gate that keeps it so; the pins measured live.
 
 ### The 4.58 run, in one line each
 

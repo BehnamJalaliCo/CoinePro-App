@@ -12,6 +12,11 @@ screens to fill.
 
 | Host | What | When it is asked |
 |---|---|---|
+> **Since 4.65.0 the release build carries none of these hosts.** They are named only in
+> `core/marketintel/src/debug/…/ThirdPartyWires.kt`; the release twin names nothing, and
+> `scripts/quality/check-release-surface.py` fails a release whose dex mentions them. The routes
+> below are therefore the *only* sources a store build has, which is the point of this contract.
+
 | `https://www.investing.com/rss/news_301.rss`, `news_1.rss`, `news_11.rss` | Forex / markets headlines (RSS) | Only when the platform's own newsroom answered **empty** (`api/v1/news/list` on TradeYar, `academy/bn/news` on CoinePro-FX). |
 | `https://www.cointelegraph.com/rss` | Crypto headlines (RSS) | Same rule. |
 | `https://nfs.faireconomy.media/ff_calendar_thisweek.json` | This week's economic calendar (ForexFactory's public file) | Only after **both** our own hosts answered empty: the TradeYar relay `api/v1/public/calendar/week` and CoinePro-FX's `academy/bn/calendar`. |
