@@ -136,6 +136,26 @@ RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=
 
 That match is what turned the recorded pins into shipped ones.
 
+### Re-measured 2026-09-10 (4.62.0)
+
+The same command, from the build environment, five days on. What each host served and which of
+the shipped pins it met:
+
+| host | certificate served | SPKI SHA-256 | shipped? |
+|---|---|---|---|
+| `tradeyar.trade-future.ir` | leaf `CN = tradeyar.trade-future.ir`, to 2026-11-06 | `RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=` | **yes — primary** |
+| | intermediate `Let's Encrypt YE2`, to 2028-09-02 | `s/tdAOmUzd8syaTuqfgGvFcn6DzA5Cmb+Vby1ST+U3Y=` | no (the root below covers it) |
+| | root `ISRG Root X2` (served as the chain's anchor) | `diGVwiVYbubAI3RW4hB9xU8e/CH2GnkuvVFZE8zmgzI=` | **yes — backup** |
+| `coineprofx.com` | leaf `CN = coineprofx.com` (Cloudflare edge), to 2026-10-28 | `BzsaTHtVVQzjFxj3927+cOfvV50/XNIy6QTY6E/3lWM=` | no, by decision (see above) |
+| | intermediate `GTS WE1`, to 2029-02-20 | `kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=` | **yes — primary** |
+| | root `GTS Root R4`, to 2028-01-28 | `mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=` | **yes — backup** |
+
+Both hosts meet a primary *and* a backup on the live chain, which is the condition the rotation
+procedure above relies on: either pin alone would carry a connection through the other's change.
+TradeYar's leaf is the one from 8 August; with `reuse_key = True` the October renewal keeps its
+key, and the offline backup `Q1JB2…` plus ISRG Root X2 are there if it does not. Nothing in the
+pin set or the expiry needed to move.
+
 ## Before 2027-03-01
 
 Re-run the measurement above from any network, confirm the two leaves and the intermediates,

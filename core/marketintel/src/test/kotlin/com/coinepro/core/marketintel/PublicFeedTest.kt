@@ -344,6 +344,31 @@ class PublicFeedTest {
     }
 
     @Test
+    fun `with direct feeds off, an empty section stays empty and no wire is asked`() = runTest {
+        // The release build's setting (`DIRECT_THIRD_PARTY_FEEDS = false`): our own routes answer
+        // nothing, and the phone still never reaches Investing.com, Cointelegraph or ForexFactory.
+        val asked = mutableListOf<String>()
+        val intel = PublicMarketIntel(
+            client = { url -> asked += url; null },
+            platform = MarketPlatform.TRADEYAR,
+            platformBaseUrl = "https://tradeyar.trade-future.ir",
+            calendarRelayBaseUrl = "https://tradeyar.trade-future.ir",
+            forexAcademyBaseUrl = "https://coineprofx.com",
+            directFeeds = false,
+            now = { now },
+        )
+        assertEquals(emptyList<MarketNewsItem>(), intel.news())
+        assertEquals(emptyList<EconomicEvent>(), intel.calendar())
+        assertTrue("asked our own hosts: $asked", asked.isNotEmpty())
+        val thirdParty = asked.filter { it.contains("investing.com") || it.contains("cointelegraph.com") || it.contains("forexfactory.com") }
+        assertEquals("a third party was asked with the flag off", emptyList<String>(), thirdParty)
+        // The same routes with the flag on do reach the wires — the flag is the only difference.
+        val askedOn = mutableListOf<String>()
+        PublicMarketIntel(client = { url -> askedOn += url; null }, platform = MarketPlatform.TRADEYAR, directFeeds = true, now = { now }).news()
+        assertTrue(askedOn.any { it.contains("investing.com") || it.contains("cointelegraph.com") })
+    }
+
+    @Test
     fun `every source down is an empty list rather than a crash`() = runTest {
         val intel = PublicMarketIntel(client = { null }, platform = MarketPlatform.COINEPRO_FX, now = { now })
         assertEquals(emptyList<MarketNewsItem>(), intel.news())

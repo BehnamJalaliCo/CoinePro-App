@@ -399,15 +399,33 @@ Compile is inside the target on this JVM by a wide margin; the whole evaluation 
 
 Numbers: 19 new functions and 2 constants, 1 new statement form, 1 new code, 18 conformance scripts, 8 unit tests, 3 studio tests, 93 tests in `:namascript:jvmTest`.
 
+### Item 6 — network (4.62.0) — verified live, nothing to move
+
+| asked | state | proof |
+| --- | --- | --- |
+| `CertificatePinner` for `coineprofx.com` and the crypto host, primary + backup | shipped in 4.57.0 (`DEFAULT_CERTIFICATE_PINS`, 4 + 5 digests, expiry 2027-03-01). **Re-measured 2026-09-10** through the build environment's proxy, which tunnels TLS: TradeYar serves leaf `RO8Xw…` (primary, matched) under Let's Encrypt YE2 → ISRG Root X2 (`diGVw…`, backup, matched); CoinePro-FX serves a Cloudflare leaf `BzsaT…` (unpinned by decision) under GTS WE1 (`kIdp6…`, primary, matched) → GTS Root R4 (`mEflZ…`, backup, matched). Both hosts meet two shipped pins on the live chain | `CertificatePinDefaultsTest` (from `BuildConfig`: two hosts, ≥ 2 pins each, expiry ahead); the measurement table in `docs/security/PINNING.md` |
+| rotation doc | `docs/security/PINNING.md` «Rotation» (add the new pin a release ahead, ship, rotate, drop the old) and «Before 2027-03-01»; the 2026-09-10 table added | the file |
+| Investing / Cointelegraph / ForexFactory via the backend behind a flag; no direct calls in release | `DIRECT_THIRD_PARTY_FEEDS` is `false` in the release variant unless `COINEPRO_DIRECT_THIRD_PARTY_FEEDS=true`; `PublicMarketIntel(directFeeds = false)` returns an empty section rather than a wire. **New test**: with the flag off and our own routes empty, no request leaves for any of the three hosts. The backend routes are still the contract in `docs/backend/FEEDS.md` | `app/build.gradle.kts` release block; `PublicFeedTest` «with direct feeds off, an empty section stays empty and no wire is asked» |
+
+Numbers: 2 hosts, 9 shipped digests, 4 matched live (2 per host), 1 expiry (2027-03-01), 0 changes.
+
 ## Definition of done — as it stands
 
 - [x] §0 copy hygiene done; lint enforced (`tools/i18n/lint_strings.py` through the consistency gate).
 - [x] Modules extracted; architecture tests green; JVM tests for the core modules run in CI.
 - [~] §2.2 series types and §2.4 drawing behaviours with goldens; multi-chart layouts; benchmarks. All series types render and 36 chart-type goldens exist; drawing behaviours are pinned by gesture tests, **not** by goldens; layouts 1–8 done; benchmarks need a device.
-- [~] NamaScript SPEC written; 351 conformance scripts pass; editor with autocomplete and diagnostics on phone and tablet; Pine paste helper works — **as a library**, not yet a button in the studio.
+- [~] NamaScript SPEC written; 378 conformance scripts pass; editor with autocomplete (with signatures), snippets, a console and diagnostics on phone and tablet; `na`, `var`, `str.*`, objects and `strategy.*` within the vectorised model; Pine paste helper works — **as a library**, not yet a button in the studio; a bar-by-bar VM is v2.
 - [~] Tablet: adaptive layouts, rail, list-detail, side panels, multi-chart; parity matrix generated and honest (**not 100 %**: sheets, alerts, screener, terminal have phone renders only); input matrix written and its keyboard/pointer rows tested; soak test and device screenshots **need a device**.
 - [x] `pro-chart.com` in `BrandConfig`, App Links, legal; web plan documented.
 - [x] This report, with numbers per section and the open product decisions (`docs/web/PLAN.md` §6, plus the locale decision in §0).
+
+### The 4.58 run, in one line each
+
+- FIX — done (4.58.0): «ترسیم‌ها», the lint, 56 tablet frames, the three scaffolds named.
+- 3. Numerals and fonts — done where the material exists (4.59.0): 300-frame tick proof at 0.0 px; the two weights are the owner's files.
+- 4. Chart physics — done (4.60.0): three counted layers, the right-click menu, Ctrl+Z/Y and `/`, every constant named; the fling benchmark and the 120 fps recording need a device.
+- 5. NamaScript — done within the model (4.61.0): `na`, `var`, `str.*`, objects, `strategy.*`, E407, an 8× faster evaluator, signatures, snippets, console; a bar-by-bar VM is v2.
+- 6. Network — verified (4.62.0): both hosts meet a primary and a backup live; the wires are provably off in release.
 
 ### The 4.52 run, in one line each
 
@@ -416,7 +434,7 @@ Numbers: 19 new functions and 2 constants, 1 new statement form, 1 new code, 18 
 3. Numerals and fonts — done where the material exists (4.54.0): `tnum` on every numeric style, glyph-shift proof; IRANYekanX Medium/SemiBold **await the owner's font files**.
 4. Chart physics — done (4.55.0, completed 4.60.0): pixel pan with snap-at-rest, decay fling, axis-reset spring, three cached layers with counted misses, right-click menu, Ctrl+Z/Y and `/`, stylus prediction, frame-rate hint; the benchmark still needs a device.
 5. NamaScript — done within the vectorised model (4.56.0, extended 4.61.0): typed pass, compiled script, incremental tail runs, `request.security`, full inputs, `na`, `var`, `str.*`, objects, `strategy.*`, the memory budget, a 8× faster evaluator, editor signatures/snippets/console; a bar-by-bar VM stays v2.
-6. Network — done (4.57.0): pins shipped for both hosts with expiry; release reads no third-party feed.
+6. Network — done (4.57.0, re-measured 4.62.0): pins shipped for both hosts with expiry; release reads no third-party feed.
 
 ### The deviation from the first plan, closed
 

@@ -15,6 +15,19 @@ it is for.
 
 ---
 
+## [4.62.0] — 2026-09-10 — the pins, re-measured; the wires, provably off in release
+
+Item 6 of the 4.58 run, re-verified rather than re-built: nothing shipped in 4.57.0 needed to
+move, and the two claims now have a live measurement and a test each.
+
+### Verified
+- **Pins**: both hosts measured again from the build environment on 2026-09-10; each meets a
+  primary and a backup on the chain it serves today (TradeYar: the leaf and ISRG Root X2;
+  CoinePro-FX: GTS WE1 and GTS Root R4). Recorded in `docs/security/PINNING.md`.
+- **Third-party feeds**: `PublicFeedTest` now proves that with the release flag off, a section our
+  own hosts answer empty stays empty and no request reaches Investing.com, Cointelegraph or
+  ForexFactory — the release build's default (`DIRECT_THIRD_PARTY_FEEDS = false`).
+
 ## [4.61.0] — 2026-09-10 — NamaScript says na, draws, and trades
 
 Item 5 of the 4.58 run: the language grows the surface the plan named, within the vectorised
