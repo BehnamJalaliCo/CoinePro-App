@@ -37,6 +37,12 @@ internal class Interpreter(
     private val overrides: Map<String, Double> = emptyMap(),
     /** The sandbox's clock budget; the default is what a phone gets, a benchmark may ask for more. */
     private val timeBudgetMillis: Long = MAX_MILLIS,
+    /**
+     * What `bar_index` counts from and what `n` reports — the whole chart's numbers when the
+     * [IncrementalRunner] evaluates only its tail, so a script cannot tell the two apart.
+     */
+    private val indexBase: Int = 0,
+    private val totalBars: Int = series.bars.size,
 ) {
     private val size = series.bars.size
     private val variables = HashMap<String, Value>()
@@ -106,7 +112,45 @@ internal class Interpreter(
             is Binary -> binary(expression)
             is Conditional -> conditional(expression)
             is Offset -> offset(expression)
-            is Call -> Builtins.call(this, expression)
+            is Call -> if (expression.qualified == "request.security") security(expression) else Builtins.call(this, expression)
+        }
+    }
+
+    /**
+     * `request.security(timeframe, expression)`: the expression evaluated over the chart's bars
+     * bucketed to a coarser timeframe, mapped back **confirmed** — see [Timeframes].
+     */
+    private fun security(node: Call): Value {
+        if (node.arguments.size < 2) {
+            throw ScriptError("«request.security» به تایم‌فریم و یک عبارت نیاز دارد", "“request.security” needs a timeframe and an expression", node.line, node.column, code = "E210")
+        }
+        val frame = evaluate(node.arguments[0].value)
+        val text = (frame as? Value.Text)?.value
+            ?: throw ScriptError("تایم‌فریم باید متن باشد: \"240\" یا \"H4\"", "The timeframe must be text: \"240\" or \"H4\"", node.line, node.column, code = "E210")
+        val wanted = Timeframes.seconds(text)
+            ?: throw ScriptError("تایم‌فریم «$text» شناخته نشد", "Timeframe “$text” is not recognised", node.line, node.column, code = "E210")
+        val base = Timeframes.baseSeconds(series)
+        val expression = node.arguments[1].value
+        if (base <= 0L || wanted == base) return evaluate(expression)
+        if (wanted < base || wanted % base != 0L) {
+            throw ScriptError(
+                "تایم‌فریم باید مضربی از تایم‌فریم چارت باشد و از آن درشت‌تر",
+                "The timeframe must be a whole multiple of the chart's, and coarser",
+                node.line, node.column, code = "E210",
+            )
+        }
+        val aggregation = Timeframes.aggregate(series, wanted)
+        val inner = Interpreter(aggregation.series, overrides, timeBudgetMillis)
+        val value = inner.evaluate(expression)
+        fun mapped(line: Line): Line = Line.of(size) { index ->
+            val bucket = aggregation.bucketOf[index]
+            val visible = if (aggregation.closesBucket[index]) bucket else bucket - 1
+            if (visible < 0) null else line[visible]
+        }
+        return when (value) {
+            is Value.NumberSeries -> Value.NumberSeries(mapped(value.line))
+            is Value.FlagSeries -> Value.FlagSeries(mapped(value.line))
+            else -> value
         }
     }
 
@@ -131,8 +175,8 @@ internal class Interpreter(
             Line.of(size) { (series.open[it] + series.high[it] + series.low[it] + series.close[it]) / 4 },
         )
         "time" -> Value.NumberSeries(Line.of(size) { series.bars[it].t.toDouble() })
-        "bar_index" -> Value.NumberSeries(Line.of(size) { it.toDouble() })
-        "n" -> Value.Num(size.toDouble())
+        "bar_index" -> Value.NumberSeries(Line.of(size) { (indexBase + it).toDouble() })
+        "n" -> Value.Num(totalBars.toDouble())
         // True on every bar whose values can no longer change, false on the last one.
         //
         // A series arrives here as a plain list of bars with nothing marking which of them is still

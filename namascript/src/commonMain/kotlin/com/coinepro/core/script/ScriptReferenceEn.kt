@@ -174,7 +174,12 @@ object ScriptReferenceEn {
         // Helpers, inputs, output.
         "iff" to "On each bar, a if the condition holds, otherwise b.",
         "nz" to "Puts the given number wherever a bar has no value.",
-        "input" to "A number the reader can change from the panel under the chart.",
+        "input" to "A number the reader can change from the panel under the chart; step sets the slider's step.",
+        "input.string" to "A choice among the options, shown as chips in the panel.",
+        "input.source" to "A choice of price series: close, open, high, low, hl2, hlc3, ohlc4 or volume.",
+        "input.color" to "A colour input, from the named colours.",
+        "input.timeframe" to "A timeframe choice, for request.security.",
+        "request.security" to "The expression computed on a coarser timeframe (a multiple of the chart's), each chart bar taking the last completed higher bar's value — no repainting.",
         "input.int" to "A number input rounded to a whole number.",
         "input.float" to "A decimal input; the same as input.",
         "input.bool" to "An on/off input.",

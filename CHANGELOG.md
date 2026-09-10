@@ -15,6 +15,32 @@ it is for.
 
 ---
 
+## [4.56.0] — 2026-09-10 — NamaScript compiles once, runs the tail, and knows its types
+
+Item 5 of the 4.52 run. The language is still the vectorising interpreter `docs/namascript/SPEC.md`
+describes; what changed is what happens before and around a run.
+
+### Added
+- **Typed pass.** `NamaScript.compile` lexes, parses and type-checks (`TypeChecker`) into a
+  `CompiledScript`; every name and function is resolved and every expression typed
+  (`ScriptType`) before anything runs, with the interpreter's own codes — E201–E204, E301–E304 —
+  on the keystroke instead of on the run. The checker never refuses a script that runs: the 351
+  conformance scripts pass through it unchanged.
+- **Incremental evaluation.** `IncrementalRunner` re-runs only the tail when the chart's series
+  is the previous one with bars appended or its last bar rewritten by a tick — a window of twelve
+  times the largest length the script names — and splices the new bars onto the previous result.
+  Scripts with cumulative functions or `request.security` are re-run whole. `ScriptController`
+  keeps the compiled script while the source is unchanged; the studio says when a run was a tail.
+- **`request.security(timeframe, expression)`** — the expression on a coarser timeframe built
+  from the chart's bars, mapped back *confirmed* (no repainting); E210 for a timeframe that is
+  not text, not recognised, finer than the chart's or not a multiple of it.
+- **The full input set**: `input.string` (options as chips), `input.source`, `input.color`
+  (swatches), `input.timeframe`, and `step` on numeric inputs; `ScriptInput` carries its kind.
+- **Editor**: syntax colouring and a red underline on the failing token (`NamaSyntax`), and on an
+  expanded window the code and the chart side by side, the chart the full height.
+- Nine conformance scripts (360 in the suite), `CompilerTest`, `NamaSyntaxTest`; the reference
+  gains an «Inputs and timeframes (4.56)» group in both languages.
+
 ## [4.55.0] — 2026-09-09 — the chart moves like glass
 
 Item 4 of the 4.52 run: §2.5's physics, on top of the rubber band, the focal pinch, the per-axis

@@ -22,42 +22,48 @@ object NamaScript {
      *  A stored value from an older revision of the script that no longer declares that input is
      *  ignored rather than being an error — a renamed input should not stop a script running.
      */
+    /**
+     * Lex, parse and type-check [source] once. The failure, if any, carries the same code the
+     * run would have raised, so the editor can show it before anything runs.
+     */
+    fun compile(source: String): Compilation = try {
+        if (source.length > MAX_SOURCE_LENGTH) {
+            throw ScriptError("اسکریپت از حد مجاز بلندتر است", "The script is longer than allowed", code = "E403")
+        }
+        val program = Parser(Lexer(source).scan()).parse()
+        val analysis = TypeChecker().check(program)
+        Compilation(CompiledScript(program, analysis), null)
+    } catch (error: ScriptError) {
+        Compilation(null, ScriptFailure(error.fa, error.en, error.line, error.column, error.code))
+    } catch (error: StackOverflowError) {
+        Compilation(null, ScriptFailure("اسکریپت بیش از حد تودرتو است", "The script is nested too deeply", 0, 0, "E405"))
+    }
+
+    /** The outcome of [compile]: exactly one of the two is set. */
+    class Compilation(val script: CompiledScript?, val failure: ScriptFailure?)
+
     fun run(
         source: String,
         series: CandleSeries,
         overrides: Map<String, Double> = emptyMap(),
-        /** Wall-clock budget for the run; see `docs/namascript/SPEC.md` §8. */
         timeBudgetMillis: Long = Interpreter.MAX_MILLIS,
-    ): ScriptResult = try {
-        if (source.length > MAX_SOURCE_LENGTH) {
-            throw ScriptError("اسکریپت از حد مجاز بلندتر است", "The script is longer than allowed", code = "E403")
-        }
-        if (series.bars.isEmpty()) {
-            throw ScriptError("برای اجرای اسکریپت، چارت باید کندل داشته باشد", "The chart needs bars before a script can run", code = "E404")
-        }
-        Interpreter(series, overrides, timeBudgetMillis).run(Parser(Lexer(source).scan()).parse())
+    ): ScriptResult {
+        val compiled = compile(source)
+        compiled.failure?.let { return ScriptResult(error = it) }
+        return compiled.script!!.run(series, overrides, timeBudgetMillis)
+    }
+
+    /** A syntax *or type* failure, with a position, or null when the script would run. */
+    fun check(source: String): ScriptFailure? = compile(source).failure
+
+    /** Turns the two failures a run can throw into a [ScriptResult]; shared with [CompiledScript]. */
+    internal inline fun guard(block: () -> ScriptResult): ScriptResult = try {
+        block()
     } catch (error: ScriptError) {
         ScriptResult(error = ScriptFailure(error.fa, error.en, error.line, error.column, error.code))
     } catch (error: StackOverflowError) {
         // A deeply nested expression can exhaust the stack before the node budget notices. Caught
         // by name rather than as Throwable, so a genuine bug in this package still surfaces as one.
         ScriptResult(error = ScriptFailure("اسکریپت بیش از حد تودرتو است", "The script is nested too deeply", 0, 0, "E405"))
-    }
-
-    /**
-     * Checks a script without running it.
-     *
-     * For the editor, which wants to underline a syntax error as it is typed and cannot afford to
-     * evaluate a whole series on every keystroke.
-     */
-    fun check(source: String): ScriptFailure? = try {
-        if (source.length > MAX_SOURCE_LENGTH) {
-            ScriptFailure("اسکریپت از حد مجاز بلندتر است", "The script is longer than allowed", 0, 0, "E403")
-        } else {
-            Parser(Lexer(source).scan()).parse()
-            null
-        }
-    } catch (error: ScriptError) {
-        ScriptFailure(error.fa, error.en, error.line, error.column, error.code)
     }
 }

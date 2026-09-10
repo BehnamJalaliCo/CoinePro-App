@@ -175,7 +175,7 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 
 | Call | What it gives | Returns |
 | --- | --- | --- |
-| `input(14, title = "طول", min = 2, max = 200)` | A number the reader can change from the panel under the chart. | number |
+| `input(14, title = "طول", min = 2, max = 200)` | A number the reader can change from the panel under the chart; step sets the slider's step. | number |
 
 ## خروجی روی نمودار
 
@@ -261,6 +261,17 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 | `plotchar(cond, title = "…")` | The same as marker. | number |
 | `bgcolor(cond, color.new(color.gold, 80))` | A background colour on every bar the condition holds. | number |
 | `alertcondition(cond, "نام")` | A named condition the alert centre can follow; true on the last bar if the condition holds there. | true/false |
+
+## Inputs and timeframes (4.56)
+
+| Call | What it gives | Returns |
+| --- | --- | --- |
+| `input(14, title = "طول", min = 1, max = 100, step = 1)` | A number the reader can change from the panel under the chart; step sets the slider's step. | number |
+| `input.string("ema", title = "نوع", options = "ema,sma,wma")` | A choice among the options, shown as chips in the panel. | رشته |
+| `input.source("close", title = "منبع")` | A choice of price series: close, open, high, low, hl2, hlc3, ohlc4 or volume. | number series |
+| `input.color(color.gold, title = "رنگ خط")` | A colour input, from the named colours. | colour |
+| `input.timeframe("240", title = "تایم‌فریم")` | A timeframe choice, for request.security. | رشته |
+| `request.security("240", close)` | The expression computed on a coarser timeframe (a multiple of the chart's), each chart bar taking the last completed higher bar's value — no repainting. | number or series |
 
 ## Colours
 

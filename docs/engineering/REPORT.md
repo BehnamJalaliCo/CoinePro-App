@@ -290,6 +290,20 @@ Not done: the home 12-column grid, DOM as a resizable table, journal/academy two
 | mouse wheel / hover crosshair / keyboard shortcuts | 4.49–4.51 | `ChartDeskPointerTest`, `ChartKeyboardTest` |
 | `ChartFlingBenchmark` P95 ≤ 8 ms phone, ≤ 12 ms tablet 4-chart, 0 jank | **needs a device**: `benchmark/…/ChartFlingBenchmark.kt` and `scripts/quality/check-benchmark-thresholds.py` exist; nothing here has a GPU to time | — |
 
+### Item 5 — NamaScript (4.56.0) — done, within the vectorised model
+
+| asked | done | proof |
+| --- | --- | --- |
+| `docs/namascript/SPEC.md` | written in 4.50.0; §5.3 (inputs), §5.3.1 (`request.security`), §6 (compile + incremental) and §7 (E210) extended | the file; `ScriptDiagnosticsTest` pins the code table to §7 |
+| typed AST + compiled evaluation with incremental bars | `TypeChecker` infers a `ScriptType` for every expression and resolves every name and function before a run, refusing with the interpreter's own codes; `CompiledScript` is parse-once/run-many; `IncrementalRunner` evaluates the last *window* bars and splices them — 12 × the largest length the script names, ≥ 120 — when the series is the previous one extended or ticked. A cumulative function or `request.security` makes the script whole-run. **Not a bar-by-bar VM**: `var`/`:=` across bars stays v2 (SPEC §10) | `CompilerTest`: the runner matches a whole run on every bar and every marker across 12 appended bars with ticks in between (≥ 10 tail runs), and a changed input forces one whole run; the 360-script conformance suite passes through the checker unchanged |
+| diagnostics with line/column in fa/en | every checker error carries line, column, both languages and the code; the editor underlines the failing token | `NamaSyntaxTest` («the failing token on the failing line is underlined») |
+| `input.*` full set with auto-generated settings UI | `input`(+`step`), `input.int`, `input.float`, `input.bool`, `input.string`(options), `input.source`, `input.color`, `input.timeframe`; `ScriptInput.kind/options/step`; the panel draws a slider, a switch, chips or swatches by kind | `CompilerTest` «the full input set records its kind and options»; `sem_input_*` scripts |
+| `request.security` MTF | on the chart's own bars bucketed to a coarser timeframe, mapped back confirmed | `CompilerTest` «request security reads the last completed higher bar and never the forming one», `sem_security_*` |
+| ≥ 100 conformance scripts | **360** (277 generated, 83 hand-written) | `ConformanceSuiteTest` |
+| editor: highlighting + autocomplete + squiggles, phone and tablet, split view on Expanded | `NamaSyntax` colours by token through a `VisualTransformation` (identity offsets); the completion strip from 4.50.0; the squiggle from the check or the run; on an expanded window the studio is code \| chart, the chart full-height | `NamaSyntaxTest`, `CodeFieldTest`; a golden of the split view is not recorded (the studio needs a controller with a database) |
+
+Numbers: 360 conformance scripts, 27 diagnostic codes, 5 new built-ins, 81 tests in `:namascript:jvmTest`.
+
 ## Definition of done — as it stands
 
 - [x] §0 copy hygiene done; lint enforced (`tools/i18n/lint_strings.py` through the consistency gate).

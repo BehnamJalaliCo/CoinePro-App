@@ -1,0 +1,5 @@
+// expect: ok
+// expect: plots 1
+c = input.color(color.gold, title = "colour")
+tf = input.timeframe("240", title = "tf")
+plot(request.security(tf, close), color = c)

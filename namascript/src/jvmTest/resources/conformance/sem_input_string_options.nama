@@ -1,0 +1,5 @@
+// expect: ok
+// expect: plots 1
+kind = input.string("ema", title = "kind", options = "ema,sma")
+line = kind == "ema" ? ta.ema(close, 10) : ta.sma(close, 10)
+plot(line)

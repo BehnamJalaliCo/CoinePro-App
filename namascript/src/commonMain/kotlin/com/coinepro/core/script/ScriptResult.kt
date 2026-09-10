@@ -62,11 +62,24 @@ data class ScriptSetup(
 }
 
 /** An `input(...)` the script declared, so the editor can offer it as a control. */
+/** How an input is set from the panel; what control the studio draws for it. */
+enum class ScriptInputKind { NUMBER, INTEGER, BOOL, TEXT, SOURCE, COLOUR, TIMEFRAME }
+
+/**
+ * One knob the script exposed.
+ *
+ * Every kind is carried as a `Double` [value] so the overrides the controller stores stay one
+ * map: a number is itself, a switch is 0/1, a choice (text, source, timeframe) is the index into
+ * [options], a colour is its ARGB as a whole number.
+ */
 data class ScriptInput(
     val name: String,
     val value: Double,
     val minimum: Double?,
     val maximum: Double?,
+    val kind: ScriptInputKind = ScriptInputKind.NUMBER,
+    val options: List<String> = emptyList(),
+    val step: Double? = null,
 )
 
 /**

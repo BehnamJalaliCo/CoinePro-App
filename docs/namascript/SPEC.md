@@ -133,10 +133,29 @@ number or, bar by bar, on a series. `clamp(x, lo, hi)` takes constant bounds.
 
 ### 5.3 Inputs
 
-`input(default, title = "…", min = …, max = …)` declares a number the reader can change from the
-panel under the chart; a value set there wins over the default, clamped to the range.
-`input.int` rounds; `input.float` is `input`; `input.bool(default, title = "…")` is a switch.
-Text and choice inputs are v2.
+`input(default, title = "…", min = …, max = …, step = …)` declares a number the reader can
+change from the panel under the chart; a value set there wins over the default, clamped to the
+range, and `step` sets the slider's step. `input.int` rounds; `input.float` is `input`;
+`input.bool(default, title = "…")` is a switch.
+
+Since 4.56.0 the set is complete: `input.string(default, title, options = "a,b,c")` is a choice
+drawn as chips and returns text; `input.source("close", title)` is a choice among the price series
+(`close open high low hl2 hlc3 ohlc4 volume`) and returns that series; `input.color(color.gold,
+title)` is a swatch row and returns a colour; `input.timeframe("240", title)` is a choice of
+timeframes for `request.security`. Every kind is stored as one number — a switch as 0/1, a choice
+as its index, a colour as its ARGB — so the studio keeps a single map of overrides
+(`ScriptInput.kind`, `options`, `step`).
+
+### 5.3.1 Other timeframes
+
+`request.security(timeframe, expression)` evaluates the expression over the chart's bars bucketed
+to a coarser timeframe — `"240"`, `"H4"`, `"4H"`, `"D"`, `"1W"` — and maps the result back to the
+chart's bars **confirmed**: a bar takes the value of the last *completed* higher bar, and only the
+bar that closes a higher bar sees that bar's own value, so history is drawn exactly as it would
+have been drawn live. The timeframe must be text, recognised, and a whole multiple of the chart's
+(E210 otherwise); the chart's own timeframe returns the expression unchanged. The expression is
+evaluated in the other context with the same built-ins and functions; a script variable is not
+visible inside it. A script that uses `request.security` is re-run whole on every bar (§6).
 
 ### 5.4 Output
 
@@ -163,6 +182,19 @@ arrives the program runs again over the longer series, which is the same as eval
 with full history, without lookahead — a script can never read a bar after the one it is on.
 `confirmed` is how a script keeps a signal off the forming bar.
 
+Since 4.56.0 the program is **compiled once and run many times**: `NamaScript.compile` lexes,
+parses and type-checks (`TypeChecker`) the source into a `CompiledScript`, refusing before any
+run what a run would refuse — with the same code — so the editor's squiggle arrives on the
+keystroke; the studio keeps the compiled script for as long as the source is unchanged. The
+`IncrementalRunner` then evaluates only the **tail**: handed the previous series with bars
+appended (or its last bar rewritten by a tick), it runs the script over the last *window* bars —
+twelve times the largest constant length or offset the checker found, at least 120 — and splices
+the bars the previous result could not know onto it. Nothing a script computes at bar *i* reads a
+bar after *i*, so every earlier value is final. A script that calls a cumulative function
+(`ta.cum`, `ta.obv`, `ta.ad`, `ta.pvt`, `ta.vwap`, `ta.barssince`, `ta.valuewhen`, `ta.psar`,
+`ta.supertrend`, `ta.vstop`, `ta.mcginley`, `ta.kama`) or `request.security` is re-run whole.
+Bar-by-bar state (`var`, `:=` across bars) remains v2 (§10).
+
 ## 7. Diagnostics
 
 Every refusal carries a position (line, column), a message in Persian and English, a stable
@@ -188,6 +220,7 @@ stops at the first error; there is no recovery in v1.1.
 | E207 | `plot` given a condition | `plot(close > open)` |
 | E208 | text wanted | `plot(close, title = 5)` |
 | E209 | a colour wanted | `plot(close, color = 5)` |
+| E210 | `request.security` given a timeframe that is not text, not recognised, finer than the chart's or not a multiple of it | `request.security("15", close)` on H1 |
 | E301 | a name not defined | `plot(closs)` |
 | E302 | a built-in name redefined | `close = 5` |
 | E303 | `:=` on a name never defined | `x := 5` |

@@ -1,0 +1,4 @@
+// expect: ok
+// expect: plot 0 10 0
+src = input.source("close", title = "src")
+plot(src - close)

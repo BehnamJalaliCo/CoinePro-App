@@ -262,6 +262,17 @@
 | `bgcolor(cond, color.new(color.gold, 80))` | رنگ پس‌زمینه روی هر کندلی که شرط برقرار است. | عدد |
 | `alertcondition(cond, "نام")` | شرطی نام‌دار که مرکز هشدار می‌تواند دنبال کند؛ روی کندل آخر درست است اگر شرط برقرار باشد. | درست/نادرست |
 
+## ورودی‌ها و تایم‌فریم (۴٫۵۶)
+
+| فراخوانی | چه می‌دهد | خروجی |
+| --- | --- | --- |
+| `input(14, title = "طول", min = 1, max = 100, step = 1)` | ورودی عددی؛ step گام لغزنده را تعیین می‌کند. | عدد |
+| `input.string("ema", title = "نوع", options = "ema,sma,wma")` | ورودی انتخابی از میان گزینه‌ها؛ در پنل به‌صورت تراشه نمایش داده می‌شود. | رشته |
+| `input.source("close", title = "منبع")` | انتخاب سری قیمت: close، open، high، low، hl2، hlc3، ohlc4 یا volume. | سری عددی |
+| `input.color(color.gold, title = "رنگ خط")` | ورودی رنگ از میان رنگ‌های نام‌دار. | رنگ |
+| `input.timeframe("240", title = "تایم‌فریم")` | انتخاب تایم‌فریم؛ برای request.security. | رشته |
+| `request.security("240", close)` | عبارت را روی تایم‌فریم درشت‌تر (مضربی از تایم‌فریم چارت) حساب می‌کند و مقدار کندلِ بسته‌شده‌ی آن را روی هر کندل چارت می‌گذارد — بدون بازترسیم. | عدد یا سری |
+
 ## رنگ‌ها
 
 `color.blue`, `color.buy`, `color.gold`, `color.green`, `color.grey`, `color.orange`, `color.purple`, `color.red`, `color.sell`, `color.silver`, `color.teal`, `color.white`

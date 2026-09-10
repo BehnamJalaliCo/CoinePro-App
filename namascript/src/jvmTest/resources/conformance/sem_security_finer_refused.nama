@@ -1,0 +1,2 @@
+// expect: error E210
+plot(request.security("15", close))

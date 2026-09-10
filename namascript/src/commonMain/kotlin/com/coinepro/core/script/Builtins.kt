@@ -33,6 +33,23 @@ import kotlin.math.sqrt
  */
 internal object Builtins {
 
+    /** What `input.source` offers: the built-in price series. */
+    val SOURCE_OPTIONS: List<String> = listOf("close", "open", "high", "low", "hl2", "hlc3", "ohlc4", "volume")
+
+    /** What `input.timeframe` offers when the script names no options. */
+    val TIMEFRAME_OPTIONS: List<String> = listOf("5", "15", "60", "240", "D", "W")
+
+    /**
+     * Every name [call] answers to, for the type checker: a call to anything else is E304 before
+     * the run. Derived from the reference, which `ReferenceDocsTest` keeps equal to the cases
+     * below, plus the two marker aliases the reference leaves out on purpose.
+     */
+    val NAMES: Set<String> by lazy {
+        (ScriptReference.ALL_GROUPS.flatMap { it.functions } + ScriptReference.SERIES)
+            .map { ScriptReferenceEn.nameOf(it.signature) }
+            .toSet() + setOf("up", "down")
+    }
+
     /**
      * How far a series may typically sit from the close, as a fraction of the price's own range,
      * and still be drawn over the candles.
@@ -358,8 +375,23 @@ internal object Builtins {
 
             /* ---------------------------------------------------------- since 4.50.0: inputs, plots, alerts */
             "input.int" -> {
-                val value = input(interpreter, node, arguments) as Value.Num
+                val value = input(interpreter, node, arguments, ScriptInputKind.INTEGER) as Value.Num
                 Value.Num(kotlin.math.round(value.value))
+            }
+            /* ---------------------------------------------------------- since 4.56.0: the full input set */
+            "input.string" -> Value.Text(choiceInput(interpreter, arguments, ScriptInputKind.TEXT, emptyList()))
+            "input.timeframe" -> Value.Text(choiceInput(interpreter, arguments, ScriptInputKind.TIMEFRAME, TIMEFRAME_OPTIONS))
+            "input.source" -> {
+                val name = choiceInput(interpreter, arguments, ScriptInputKind.SOURCE, SOURCE_OPTIONS)
+                interpreter.evaluateArgument(Identifier(name, node.line, node.column))
+            }
+            "input.color" -> {
+                val default = arguments.colourOf(arguments.value(0))
+                val title = if (arguments.has("title")) arguments.textOf(arguments.named("title")) else "رنگ"
+                val supplied = interpreter.override(title)?.toLong()
+                val effective = supplied ?: default
+                interpreter.addInput(ScriptInput(title, effective.toDouble(), null, null, ScriptInputKind.COLOUR, Interpreter.COLOURS.keys.sorted()))
+                Value.Colour(effective)
             }
             "input.float" -> input(interpreter, node, arguments)
             "input.bool" -> {
@@ -367,7 +399,7 @@ internal object Builtins {
                 val title = if (arguments.has("title")) arguments.textOf(arguments.named("title")) else "ورودی"
                 val supplied = interpreter.override(title)
                 val effective = if (supplied != null) supplied != 0.0 else default
-                interpreter.addInput(ScriptInput(title, if (effective) 1.0 else 0.0, 0.0, 1.0))
+                interpreter.addInput(ScriptInput(title, if (effective) 1.0 else 0.0, 0.0, 1.0, ScriptInputKind.BOOL))
                 Value.Flag(effective)
             }
             "color.new" -> {
@@ -690,11 +722,12 @@ internal object Builtins {
 
     /* ------------------------------------------------------------------ inputs and output */
 
-    private fun input(interpreter: Interpreter, node: Call, arguments: Arguments): Value {
+    private fun input(interpreter: Interpreter, node: Call, arguments: Arguments, kind: ScriptInputKind = ScriptInputKind.NUMBER): Value {
         val default = arguments.constant(0, "مقدار پیش‌فرض", "The default value")
         val title = if (arguments.has("title")) arguments.named("title").let { arguments.textOf(it) } else "ورودی"
         val minimum = if (arguments.has("min")) arguments.constantOf(arguments.named("min"), "کمینه", "The minimum") else null
         val maximum = if (arguments.has("max")) arguments.constantOf(arguments.named("max"), "بیشینه", "The maximum") else null
+        val step = if (arguments.has("step")) arguments.constantOf(arguments.named("step"), "گام", "The step") else null
 
         // A value the reader set in the panel wins over the default written in the script — that is
         // the whole point of declaring an input. Clamped to the declared range so a stored value
@@ -704,8 +737,27 @@ internal object Builtins {
             .let { if (minimum != null) max(it, minimum) else it }
             .let { if (maximum != null) min(it, maximum) else it }
 
-        interpreter.addInput(ScriptInput(title, effective, minimum, maximum))
+        interpreter.addInput(ScriptInput(title, effective, minimum, maximum, kind, emptyList(), step))
         return Value.Num(effective)
+    }
+
+    /**
+     * A choice input: the default and an `options = "a,b,c"` list; the override is the index of
+     * the chosen option, so the panel draws a row of chips rather than a text field.
+     */
+    private fun choiceInput(interpreter: Interpreter, arguments: Arguments, kind: ScriptInputKind, fallbackOptions: List<String>): String {
+        val default = arguments.text(0)
+        val title = if (arguments.has("title")) arguments.textOf(arguments.named("title")) else "ورودی"
+        val options = if (arguments.has("options")) {
+            arguments.textOf(arguments.named("options")).split(',').map { it.trim() }.filter { it.isNotEmpty() }
+        } else {
+            fallbackOptions
+        }
+        val all = if (default in options || options.isEmpty()) options.ifEmpty { listOf(default) } else listOf(default) + options
+        val supplied = interpreter.override(title)?.toInt()
+        val effective = if (supplied != null && supplied in all.indices) all[supplied] else default
+        interpreter.addInput(ScriptInput(title, all.indexOf(effective).coerceAtLeast(0).toDouble(), 0.0, (all.size - 1).toDouble(), kind, all))
+        return effective
     }
 
     private fun plot(interpreter: Interpreter, node: Call, arguments: Arguments): Value {

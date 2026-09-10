@@ -47,6 +47,8 @@ object ScriptDiagnostics {
         "E208" to ("این آرگومان متن می‌خواهد: title = \"نام\"" to "This argument wants text: title = \"name\""),
         "E209" to ("این آرگومان رنگ می‌خواهد: color = color.gold یا color.new(color.gold, 50)" to
             "This argument wants a colour: color = color.gold or color.new(color.gold, 50)"),
+        "E210" to ("request.security یک تایم‌فریم متنی می‌خواهد که مضرب درشت‌تری از تایم‌فریم چارت باشد: \"240\"، \"H4\"، \"D\"." to
+            "request.security wants a text timeframe that is a coarser multiple of the chart's: \"240\", \"H4\", \"D\"."),
         "E301" to ("نام را پیش از استفاده با «=» تعریف کنید، یا املای تابع را در مرجع ببینید." to
             "Define the name with “=” before using it, or check the function's spelling in the reference."),
         "E302" to ("نام‌های درون‌ساخته (close، volume، …) را نمی‌شود دوباره تعریف کرد؛ نام دیگری انتخاب کنید." to

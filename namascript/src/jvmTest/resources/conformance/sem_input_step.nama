@@ -1,0 +1,4 @@
+// expect: ok
+// expect: plots 1
+len = input.int(14, title = "len", min = 2, max = 50, step = 2)
+plot(ta.sma(close, len))

@@ -1,0 +1,5 @@
+// expect: ok
+// expect: plots 2
+h4 = request.security("240", close)
+plot(h4, title = "h4 close")
+plot(request.security("H4", ta.sma(close, 3)), title = "h4 sma")

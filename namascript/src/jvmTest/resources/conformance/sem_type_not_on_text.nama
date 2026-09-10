@@ -1,0 +1,2 @@
+// expect: error E201
+plot(iff(not "abc", 1, 0))

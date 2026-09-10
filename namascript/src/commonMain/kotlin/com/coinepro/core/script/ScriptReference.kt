@@ -335,8 +335,26 @@ object ScriptReference {
         ),
     )
 
+    /** The functions 4.56.0 added: the full input set and the other timeframes. */
+    val ADDED_4_56: List<ScriptReferenceGroup> = listOf(
+        ScriptReferenceGroup(
+            "ورودی‌ها و تایم‌فریم (۴٫۵۶)",
+            listOf(
+                ScriptFunction("input(14, title = \"طول\", min = 1, max = 100, step = 1)", "ورودی عددی؛ step گام لغزنده را تعیین می‌کند.", "عدد"),
+                ScriptFunction("input.string(\"ema\", title = \"نوع\", options = \"ema,sma,wma\")", "ورودی انتخابی از میان گزینه‌ها؛ در پنل به‌صورت تراشه نمایش داده می‌شود.", "رشته"),
+                ScriptFunction("input.source(\"close\", title = \"منبع\")", "انتخاب سری قیمت: close، open، high، low، hl2، hlc3، ohlc4 یا volume.", "سری عددی"),
+                ScriptFunction("input.color(color.gold, title = \"رنگ خط\")", "ورودی رنگ از میان رنگ‌های نام‌دار.", "رنگ"),
+                ScriptFunction("input.timeframe(\"240\", title = \"تایم‌فریم\")", "انتخاب تایم‌فریم؛ برای request.security.", "رشته"),
+                ScriptFunction("request.security(\"240\", close)", "عبارت را روی تایم‌فریم درشت‌تر (مضربی از تایم‌فریم چارت) حساب می‌کند و مقدار کندلِ بسته‌شده‌ی آن را روی هر کندل چارت می‌گذارد — بدون بازترسیم.", "عدد یا سری"),
+            ),
+        ),
+    )
+
     /** Every group, the original ones first. */
-    val ALL_GROUPS: List<ScriptReferenceGroup> get() = GROUPS + ADDED_4_50
+    val ALL_GROUPS: List<ScriptReferenceGroup> get() = GROUPS + ADDED_4_50 + ADDED_4_56
 
     val COLOUR_NAMES: List<String> = Interpreter.COLOURS.keys.sorted()
+
+    /** The ARGB of a named colour, for the studio's colour input. */
+    fun colourValue(name: String): Long? = Interpreter.COLOURS[name]
 }

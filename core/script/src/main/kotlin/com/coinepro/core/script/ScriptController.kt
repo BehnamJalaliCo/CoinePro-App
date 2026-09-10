@@ -33,6 +33,8 @@ data class ScriptEditorState(
     val syntax: ScriptFailure? = null,
     val dirty: Boolean = false,
     val running: Boolean = false,
+    /** Whether the last run re-used the previous result and evaluated only the tail. */
+    val incremental: Boolean = false,
 ) {
     /** Whether saving would write anything. A blank script is not worth a row. */
     val canSave: Boolean get() = source.isNotBlank()
@@ -64,6 +66,26 @@ class ScriptController(
     /** The series the editor runs against — whatever the chart behind it is showing. */
     private var series: CandleSeries = CandleSeries.EMPTY
 
+    /**
+     * The script as compiled for [compiledSource], and the runner that keeps its last result.
+     * A changed source recompiles; the same source with new bars runs only its tail — see
+     * `IncrementalRunner`.
+     */
+    private var compiledSource: String? = null
+    private var runner: IncrementalRunner? = null
+
+    private fun evaluate(source: String, overrides: Map<String, Double>): Pair<ScriptResult, Boolean> {
+        if (source != compiledSource) {
+            val compilation = NamaScript.compile(source)
+            compiledSource = source
+            runner = compilation.script?.let { IncrementalRunner(it) }
+            compilation.failure?.let { return ScriptResult(error = it) to false }
+        }
+        val active = runner ?: return ScriptResult(error = NamaScript.check(source)) to false
+        val result = active.run(series, overrides)
+        return result to active.lastRunWasIncremental
+    }
+
     fun setSeries(series: CandleSeries) {
         this.series = series
     }
@@ -93,12 +115,13 @@ class ScriptController(
         if (current.source.isBlank()) return
         _state.update { it.copy(running = true) }
         scope.launch {
-            val result = NamaScript.run(current.source, series, current.overrides)
+            val (result, incremental) = evaluate(current.source, current.overrides)
             _state.update { old ->
                 old.copy(
                     result = result,
                     running = false,
                     dirty = false,
+                    incremental = incremental,
                     syntax = null,
                     // Inputs the script no longer declares are dropped here rather than kept
                     // forever: a stale override is a value the reader cannot see and cannot change.

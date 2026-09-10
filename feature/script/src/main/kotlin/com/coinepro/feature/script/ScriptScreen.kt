@@ -71,6 +71,13 @@ import com.coinepro.core.script.ScriptController
 import com.coinepro.core.script.text
 import com.coinepro.core.script.ScriptFailure
 import com.coinepro.core.script.ScriptEditorState
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.material3.Switch
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.coinepro.core.script.ScriptInputKind
+import com.coinepro.core.designsystem.coineProWindowClass
 import com.coinepro.core.script.ScriptInput
 import com.coinepro.core.script.ScriptLesson
 import com.coinepro.core.script.ScriptLessons
@@ -235,20 +242,10 @@ private fun EditorTab(
         state.result?.toOverlay(series, state.name.ifBlank { "اسکریپت" })
     }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            start = CoineProSpacing.Gutter,
-            end = CoineProSpacing.Gutter,
-            bottom = CoineProSpacing.Six,
-        ),
-        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
-    ) {
-        item {
+    /** The chart the script draws on: a strip above the code on a phone, a column beside it on a tablet. */
+    val preview: @Composable (Modifier) -> Unit = { previewModifier ->
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(PREVIEW_HEIGHT)
+                modifier = previewModifier
                     .background(CoineProColors.Terminal, CoineProShapes.medium),
                 contentAlignment = Alignment.Center,
             ) {
@@ -279,9 +276,26 @@ private fun EditorTab(
                     )
                 }
             }
-        }
+    }
 
-        item { CodeField(source = state.source, onChange = controller::edit) }
+    // Item 5 of the 4.52 run: code | chart on an expanded window. The list is the same either
+    // way; only where the preview sits changes, and on a tablet it takes the whole height so a
+    // reader editing sees every plot move as they type.
+    val split = coineProWindowClass().showsTwoPanes
+    val editorItems: LazyListScope.() -> Unit = {
+        if (!split) item { preview(Modifier.fillMaxWidth().height(PREVIEW_HEIGHT)) }
+
+        item { CodeField(source = state.source, onChange = controller::edit, failure = state.failure) }
+
+        if (state.incremental) {
+            item {
+                Text(
+                    "فقط کندل‌های تازه دوباره حساب شد",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextMuted,
+                )
+            }
+        }
 
         state.failure?.let { failure ->
             item { FailureCard(failure = failure) }
@@ -359,6 +373,35 @@ private fun EditorTab(
             }
         }
     }
+
+    val padding = PaddingValues(
+        start = CoineProSpacing.Gutter,
+        end = CoineProSpacing.Gutter,
+        bottom = CoineProSpacing.Six,
+    )
+    if (split) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                contentPadding = padding,
+                verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+                content = editorItems,
+            )
+            preview(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(end = CoineProSpacing.Gutter, bottom = CoineProSpacing.Gutter),
+            )
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = padding,
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+            content = editorItems,
+        )
+    }
 }
 
 /**
@@ -373,13 +416,14 @@ private fun EditorTab(
  * a script that does not compile, and the reader is left looking at an error they did not type.
  */
 @Composable
-private fun CodeField(source: String, onChange: (String) -> Unit) {
+private fun CodeField(source: String, onChange: (String) -> Unit, failure: ScriptFailure? = null) {
     // The text with its cursor. The controller owns the string; this owns where the caret is,
     // which is what completion and bracket closing need and what a plain `String` cannot carry.
     var value by remember { mutableStateOf(TextFieldValue(source)) }
     if (value.text != source) value = value.copy(text = source, selection = TextRange(source.length.coerceAtMost(value.selection.end)))
 
     val completions = remember(value) { completionsFor(value) }
+    val squiggle = CoineProColors.Sell
     val lineCount = remember(source) { source.count { it == '\n' } + 1 }
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -407,6 +451,10 @@ private fun CodeField(source: String, onChange: (String) -> Unit) {
                     ),
                 ),
                 cursorBrush = SolidColor(CoineProColors.Gold),
+                // Colour by token and a red underline on the failing one — see `NamaSyntax`.
+                visualTransformation = remember(failure, squiggle) {
+                    NamaSyntaxTransformation(failure?.line, failure?.column, squiggle)
+                },
                 keyboardOptions = KeyboardOptions(
                     autoCorrectEnabled = false,
                     capitalization = KeyboardCapitalization.None,
@@ -623,31 +671,102 @@ private fun InputRow(input: ScriptInput, onChange: (Double) -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(input.name, style = MaterialTheme.typography.bodyMedium)
-            Text(
-                MarketNumberFormatter.priceAuto(input.value),
-                style = MaterialTheme.typography.bodyMedium,
-                color = CoineProColors.Gold,
-                fontWeight = FontWeight.Bold,
-            )
+            when (input.kind) {
+                ScriptInputKind.BOOL -> Switch(checked = input.value != 0.0, onCheckedChange = { onChange(if (it) 1.0 else 0.0) })
+                ScriptInputKind.TEXT, ScriptInputKind.SOURCE, ScriptInputKind.TIMEFRAME, ScriptInputKind.COLOUR -> Unit
+                else -> Text(
+                    MarketNumberFormatter.priceAuto(input.value),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CoineProColors.Gold,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
-        val low = input.minimum
-        val high = input.maximum
-        if (low != null && high != null && high > low) {
-            Slider(
-                value = input.value.toFloat().coerceIn(low.toFloat(), high.toFloat()),
-                onValueChange = { onChange(it.toDouble()) },
-                valueRange = low.toFloat()..high.toFloat(),
-                modifier = Modifier.fillMaxWidth(),
+        when (input.kind) {
+            ScriptInputKind.BOOL -> Unit
+            ScriptInputKind.TEXT, ScriptInputKind.SOURCE, ScriptInputKind.TIMEFRAME -> ChoiceChips(
+                options = input.options,
+                selected = input.value.toInt(),
+                onSelect = { onChange(it.toDouble()) },
             )
-        } else {
-            Text(
-                "این ورودی بازه‌ای اعلام نکرده؛ مقدارش را در خود کد تغییر دهید.",
-                style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.TextMuted,
+            ScriptInputKind.COLOUR -> ColourChips(selected = input.value.toLong(), onSelect = { onChange(it.toDouble()) })
+            ScriptInputKind.NUMBER, ScriptInputKind.INTEGER -> {
+                val low = input.minimum
+                val high = input.maximum
+                if (low != null && high != null && high > low) {
+                    val step = input.step ?: if (input.kind == ScriptInputKind.INTEGER) 1.0 else 0.0
+                    val steps = if (step > 0) ((high - low) / step).toInt() - 1 else 0
+                    Slider(
+                        value = input.value.toFloat().coerceIn(low.toFloat(), high.toFloat()),
+                        onValueChange = { onChange(if (step > 0) low + kotlin.math.round((it - low) / step) * step else it.toDouble()) },
+                        valueRange = low.toFloat()..high.toFloat(),
+                        steps = steps.coerceIn(0, 200),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    Text(
+                        "این ورودی بازه‌ای اعلام نکرده؛ مقدارش را در خود کد تغییر دهید.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CoineProColors.TextMuted,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** A row of options, the chosen one in gold. Text, source and timeframe inputs all draw this. */
+@Composable
+private fun ChoiceChips(options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
+    LtrDirection {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.Half),
+        ) {
+            itemsIndexed(options) { index, option ->
+                val chosen = index == selected
+                Box(
+                    modifier = Modifier
+                        .background(if (chosen) CoineProColors.SurfaceElevated else CoineProColors.Surface, CoineProShapes.small)
+                        .border(1.dp, if (chosen) CoineProColors.Gold else CoineProColors.Border, CoineProShapes.small)
+                        .clickable { onSelect(index) }
+                        .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half)
+                        .semantics { contentDescription = "input-option-$option" },
+                ) {
+                    Text(
+                        option,
+                        style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
+                        color = if (chosen) CoineProColors.Gold else CoineProColors.TextSecondary,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** The named colours as swatches; the chosen one ringed in gold. */
+@Composable
+private fun ColourChips(selected: Long, onSelect: (Long) -> Unit) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.Half),
+    ) {
+        items(ScriptReference.COLOUR_NAMES, key = { it }) { name ->
+            val argb = ScriptReference.colourValue(name) ?: return@items
+            val chosen = argb == selected
+            Box(
+                modifier = Modifier
+                    .size(SWATCH)
+                    .background(Color(argb), CoineProShapes.small)
+                    .border(if (chosen) 2.dp else 1.dp, if (chosen) CoineProColors.Gold else CoineProColors.Border, CoineProShapes.small)
+                    .clickable { onSelect(argb) }
+                    .semantics { contentDescription = "input-colour-$name" },
             )
         }
     }
 }
+
+private val SWATCH = 28.dp
 
 @Composable
 private fun SetupCard(
