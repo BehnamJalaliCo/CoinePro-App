@@ -504,6 +504,54 @@ Numbers: 244 help entries (6 new, 1 rewritten), 380 conformance scripts (2 new),
 | Investing / Cointelegraph / ForexFactory through the backend behind a flag, graceful unavailable state, **no direct calls in release** | **the hosts are not in the release build**: `ThirdPartyWires` in `core/marketintel/src/debug` names them, the `release` source set's twin returns no feed and no calendar URL; `PublicNewsFeed.feeds`, `PublicCalendarFeed.URL` and the calendar provenance read it. The 4.57.0 flag still gates a debug build. Empty sections say so: `news_empty`, `guest_news_empty`, `calendar_empty` | dex grep of 4.65.0's release `classes.dex`: `investing.com` 0, `cointelegraph.com` 0, `faireconomy.media` 0, `forexfactory` 0 (4.62.0: 1, 1, 1, 0); `check-release-surface.py` → «Release surface is clean: … no third-party host»; `PublicFeedTest` «with direct feeds off…» (debug, the flag) |
 | grep proof: zero `investing.com`, `cointelegraph.com`, `faireconomy.media` literals in the release dex | **0 / 0 / 0** — and `scripts/quality/check-release-surface.py` now fails a release whose dex carries any of the four hosts (`forexfactory.com` included) | the script's line on 4.65.0's APK, below |
 
+### The audit of 4.65.0, answered (4.66.0)
+
+**Run C, «not verifiable from the APK».** The auditor read a 660-byte dex growth from 4.62.0 to
+4.65.0 and asked for the editor to be shown rather than described. Three things:
+
+1. *Where the language landed.* The compiler, the checker, the incremental runner, the inputs UI
+   and the editor's colouring/squiggles/autocomplete shipped in **4.50.0 → 4.56.0**, and the
+   4.61.0 surface (`na`, `var`, `str.*`, objects, `strategy.*`, E407, the fast paths) shipped in
+   **4.62.0** — so 4.62.0 already carried all of it, and 4.63.0–4.65.0 added help JSON (an asset,
+   not dex), two functions' worth of parsing and the short strategy form: that is the 660 bytes.
+   The dex growth the auditor's own table shows for 4.57.0 → 4.62.0 (9.59 → 9.63 MB) is where the
+   4.61.0 language is. Source, `git diff --shortstat` over `namascript`, `feature/script`,
+   `core/script`: 4.50.0 → 4.57.0 **+1 358 / −141** lines; 4.57.0 → 4.65.0 **+1 012 / −60**. The
+   module today: `namascript/src/commonMain` 5 354 lines, the studio 1 441, the controller 280;
+   **121** classes under `com.coinepro.core.script` and **90** under `com.coinepro.feature.script`
+   in the release mapping; `namascript-jvm.jar` 312 249 B.
+2. *The screenshots.* `StudioProofTest` renders the studio at phone size in Persian and writes
+   `docs/qa/screenshots/4.66/` (half size; the full frames are in the zip sent with the APK):
+   `studio-autocomplete-fa` — the strip under the code field offering `ta.sma(close, 20)`,
+   `ta.smi(close, 20, 5, 5)`, … for the word `ta.sm`, and the E301 card for it at «خط ۲، ستون ۸»;
+   `studio-diagnostic-fa` — a `)` never closed, reported at «خط ۳، ستون ۱» with the fix hint and
+   the code E102, the failing token underlined; `studio-console-strategy-fa` — the strategy card
+   (net return, closed trades, win rate, profit factor, drawdown) and the console with the run's
+   milliseconds; `studio-inputs-fa` — the generated inputs (slider, chips, switch, swatches). Each
+   test asserts the thing it shows is in the semantics tree, so a broken studio cannot pose.
+3. *The list of scripts and the test output.* `docs/qa/NAMASCRIPT_CONFORMANCE.md` indexes all
+   **380** scripts (278 generated, 102 hand-written) with their expectations; `:namascript:jvmTest`
+   on 4.65.0: **92 tests, 0 failures, 10.2 s** (`ConformanceSuiteTest` 3 tests over the 380
+   scripts in 0.77 s; `ScriptPerformanceTest` 2 tests, 6.4 s).
+
+**Run D, the optional pin-set.** Done: `network_security_config.xml` now pins both hosts with the
+same nine digests and the same expiry (2027-03-01) as `DEFAULT_CERTIFICATE_PINS`, so the
+platform's trust manager enforces them for every TLS connection — the terminal's WebView
+included. `NetworkSecurityPinsTest` parses the XML and holds it equal to the build's list.
+
+**`tradeyar.trade-future.ir` as the crypto host**: stays until the backend moves; not the app's
+to decide.
+
+**Fonts (run A′).** Not done: the Vazirmatn download was declined in this session, and the face is
+a standing constraint (`CLAUDE.md`: IRANYekanX) that only the owner changes. The typography is
+wired by weight, so either the Pro files or another family is a one-file change when decided.
+
+**Device proofs.** `docs/qa/DEVICE_PROOFS.md` has the exact commands with this repository's class
+names and tasks (the benchmark is `com.coinepro.benchmark.ChartFlingBenchmark` under
+`:benchmark:connectedBenchmarkAndroidTest`, not the plan's guess), and
+`NamaScriptDevicePerfTest` — an instrumentation test in `app/src/androidTest` — measures compile,
+evaluate and realtime on the phone and writes `namascript-perf.json` beside a logcat line.
+
 ## Definition of done — as it stands
 
 - [x] §0 copy hygiene done; lint enforced (`tools/i18n/lint_strings.py` through the consistency gate).

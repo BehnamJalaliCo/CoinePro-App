@@ -1,8 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  The platform's own pinning beside OkHttp's (item 6, 4.66.0).
+
+  `NetworkFactory` has pinned the two API hosts through OkHttp's CertificatePinner since 4.57.0;
+  that covers every request the app makes itself and nothing a WebView makes. This pin-set is the
+  same nine digests with the same expiry, enforced by the platform's trust manager for every TLS
+  connection to these hosts — OkHttp's included, and the terminal's WebView too. The two lists
+  are held equal by `NetworkSecurityPinsTest`; `docs/security/PINNING.md` says where each digest
+  came from and how a rotation is done. After the expiration the platform stops enforcing them,
+  which is the same failure mode `DEFAULT_CERTIFICATE_PINS_UNTIL` chooses on purpose.
+-->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+    <domain-config>
+        <domain includeSubdomains="false">tradeyar.trade-future.ir</domain>
+        <pin-set expiration="2027-03-01">
+            <!-- the leaf the server team measured (primary) -->
+            <pin digest="SHA-256">RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=</pin>
+            <!-- their offline backup key -->
+            <pin digest="SHA-256">Q1JB2C45jMeyX4xQi8ZE83kmB+EfduUc2utHJ+H6YHI=</pin>
+            <!-- ISRG Root X1 -->
+            <pin digest="SHA-256">C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=</pin>
+            <!-- ISRG Root X2 -->
+            <pin digest="SHA-256">diGVwiVYbubAI3RW4hB9xU8e/CH2GnkuvVFZE8zmgzI=</pin>
+        </pin-set>
+    </domain-config>
+    <domain-config>
+        <domain includeSubdomains="true">coineprofx.com</domain>
+        <pin-set expiration="2027-03-01">
+            <!-- GTS WE1, the intermediate issuing today's edge certificate (primary) -->
+            <pin digest="SHA-256">kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=</pin>
+            <!-- GTS Root R4 -->
+            <pin digest="SHA-256">mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=</pin>
+            <!-- GTS Root R1 -->
+            <pin digest="SHA-256">hxqRlPTu1bMS/0DITB1SSu0vd4u/8l8TjPgfaAp63Gc=</pin>
+            <!-- ISRG Root X1 -->
+            <pin digest="SHA-256">C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=</pin>
+            <!-- ISRG Root X2 -->
+            <pin digest="SHA-256">diGVwiVYbubAI3RW4hB9xU8e/CH2GnkuvVFZE8zmgzI=</pin>
+        </pin-set>
+    </domain-config>
 </network-security-config>

@@ -435,7 +435,10 @@ private fun EditorTab(
 private fun CodeField(source: String, onChange: (String) -> Unit, failure: ScriptFailure? = null) {
     // The text with its cursor. The controller owns the string; this owns where the caret is,
     // which is what completion and bracket closing need and what a plain `String` cannot carry.
-    var value by remember { mutableStateOf(TextFieldValue(source)) }
+    // The caret starts at the end, where a reader continues a script: the completion strip
+    // reads the word before the caret, so a script that opens ending in «ta.sm» offers `ta.sma`
+    // at once rather than after a tap into the field.
+    var value by remember { mutableStateOf(TextFieldValue(source, TextRange(source.length))) }
     if (value.text != source) value = value.copy(text = source, selection = TextRange(source.length.coerceAtMost(value.selection.end)))
 
     val completions = remember(value) { completionsFor(value) }
