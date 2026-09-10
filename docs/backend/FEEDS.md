@@ -1,10 +1,12 @@
 # Feeds the app reads from third parties, and the routes that would take them off the device
 
-**Status:** the app still fetches these from the phone, as a *fallback only*, and
-`BuildConfig.DIRECT_THIRD_PARTY_FEEDS` (Gradle property `COINEPRO_DIRECT_THIRD_PARTY_FEEDS`,
-default `true`) is the switch that turns that off. It is `true` in every variant today because the
-routes below do not exist yet, and a `false` without them is an empty news screen for every reader.
-Flipping it is a one-line change in `local.properties` or the CI environment; nothing else moves.
+**Status (4.57.0):** a **release** build never reads a third party's feed from the device:
+`BuildConfig.DIRECT_THIRD_PARTY_FEEDS` is `false` in the release variant unless
+`COINEPRO_DIRECT_THIRD_PARTY_FEEDS=true` is set at build time, and `PublicMarketIntel` returns
+nothing for the direct sources when it is off — a section the backend answers empty stays empty
+and says so. Debug keeps the device-side fallback (`true` by default) so a developer without the
+routes still sees stories. The routes below are what the backend has to serve for the release
+screens to fill.
 
 ## What the app reads directly, and when
 

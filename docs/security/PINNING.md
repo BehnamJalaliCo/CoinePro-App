@@ -91,136 +91,53 @@ the next renewal was due around **7 October**: the failure this document was wri
 arriving from a cron job nobody was watching. `reuse_key = True` is now set and `--dry-run` passes.
 They accept the 30-day notice.
 
-### CoinePro-FX — **do not pin**, and they are right
+### CoinePro-FX — pinned at the CA, by the owner's decision (4.57.0)
 
-`coineprofx.com` is behind Cloudflare. The certificate a handset sees is Cloudflare's edge
-certificate, not the origin's:
+`coineprofx.com` is behind Cloudflare: the certificate a handset sees is Cloudflare's edge
+certificate, renewed with a **new key** and no notice, and Cloudflare has changed CA before
+(DigiCert → Let's Encrypt → Google Trust Services). A leaf pin there would be a dated lock-out.
+The server team's advice was not to pin; the owner's instruction for the 4.52 run was to pin both
+hosts with a primary and a backup. Both are honoured by pinning **the CA and not the leaf**:
 
-```
-subject = CN = coineprofx.com
-issuer  = C = US, O = Google Trust Services, CN = WE1     ← Cloudflare Universal SSL
-```
+| | SHA-256 SPKI | valid to |
+|---|---|---|
+| primary — GTS WE1, the intermediate issuing today's edge certificate | `kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=` | 2029-02-20 |
+| backup — GTS Root R4 | `mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=` | 2028-01-28 |
+| backup — GTS Root R1 | `hxqRlPTu1bMS/0DITB1SSu0vd4u/8l8TjPgfaAp63Gc=` | 2036 |
+| backup — ISRG Root X1 | `C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=` | 2035 |
+| backup — ISRG Root X2 | `diGVwiVYbubAI3RW4hB9xU8e/CH2GnkuvVFZE8zmgzI=` | 2040 |
 
-Cloudflare renews it with a **new key** and no notice, and has changed CA before (DigiCert →
-Let's Encrypt → Google Trust Services). The 30-day agreement this document asks for cannot be kept
-by a party that does not control the certificate, so a leaf pin there is a dated lock-out — every
-install, no remote fix, a Play release to recover. Their own recommendation is not to pin, and it
-stands: a public app with Certificate Transparency and a network security config gains little from
-pinning and risks everything.
+A renewal under any Google Trust Services or Let's Encrypt intermediate keeps matching; a move to
+a third CA (SSL.com, say) would not, and the expiry below bounds that. The root digests were
+computed from the CAs' own published certificates (`pki.goog/repo/certs/gtsr1.pem`, `gtsr4.pem`,
+`letsencrypt.org/certs/isrgrootx1.pem`, `isrg-root-x2.pem`) and cross-checked against the chain
+the host actually served.
 
-If pinning CoinePro-FX ever becomes a requirement, the route is a Cloudflare **Custom Certificate**
-whose key we hold — then the pins they generated (intermediate `GTS WE1`, root `GTS Root R4`, plus
-an offline RSA-4096 backup never used on a server) become meaningful and the 30-day agreement
-becomes enforceable.
+## What ships, and since when
 
-## Why the pins above are recorded and not switched on
+`app/build.gradle.kts` carries `DEFAULT_CERTIFICATE_PINS` and `DEFAULT_CERTIFICATE_PINS_UNTIL`
+(**2027-03-01**) since 4.57.0; `COINEPRO_CERTIFICATE_PINS` / `_UNTIL` override them. TradeYar
+ships the two pins the server team produced plus ISRG Root X1 and X2, so a renewal that lands on
+the other Let's Encrypt intermediate (their June and August certificates were issued by YE1 and
+YE2 respectively) still matches. `CertificatePinDefaultsTest` reads `BuildConfig` and fails the
+build when either host has fewer than two pins or the expiry has passed.
 
-`COINEPRO_CERTIFICATE_PINS` is still empty, and that is a deliberate hold rather than an oversight.
+### The verification that was pending, done
 
-A pin that does not match locks out every install of that build with no remote fix, so it must be
-verified **against the live host from an ordinary network** before it ships. It could not be here:
-this repository's builds run behind an egress proxy that terminates TLS, so `openssl s_client` from
-the build environment returns the proxy's certificate, not the server's — measured, and the reason
-this section exists instead of a wired-up pin.
-
-The one command that settles it, run from a normal network:
-
-```bash
-openssl s_client -connect tradeyar.trade-future.ir:443 -servername tradeyar.trade-future.ir < /dev/null 2>/dev/null \
-  | openssl x509 -pubkey -noout | openssl pkey -pubin -outform der \
-  | openssl dgst -sha256 -binary | base64
-# expect: RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=
-```
-
-When that matches, pinning is switched on for TradeYar alone — CoinePro-FX stays unpinned for the
-reason above — by building with:
+The earlier version of this document held the pins back because the build environment's egress
+proxy was believed to terminate TLS. Measured on 2026-09-09: it does not — `openssl s_client
+-proxy … -showcerts` returned the CA's chain (issuer `GTS WE1` for CoinePro-FX, `Let's Encrypt
+YE2` for TradeYar), and TradeYar's leaf digest was exactly the primary the server team had sent:
 
 ```
--PCOINEPRO_CERTIFICATE_PINS="tradeyar.trade-future.ir=sha256/RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=;tradeyar.trade-future.ir=sha256/Q1JB2C45jMeyX4xQi8ZE83kmB+EfduUc2utHJ+H6YHI="
+subject=CN = tradeyar.trade-future.ir issuer=C = US, O = Let's Encrypt, CN = YE2 notAfter=Nov  6 14:06:23 2026 GMT
+RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=
 ```
 
-Both pins together, never one: OkHttp accepts a chain matching **any** pin for the host, and the
-backup is what makes the next key rotation a non-event instead of an outage.
+That match is what turned the recorded pins into shipped ones.
 
----
+## Before 2027-03-01
 
-## The owner's measurement, and the chain it exposed — 2026-09-05
-
-Run from an ordinary network, the leaf matched TradeYar's answer exactly:
-
-```
-RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=   CN=tradeyar.trade-future.ir   (leaf)
-s/tdAOmUzd8syaTuqfgGvFcn6DzA5Cmb+Vby1ST+U3Y=   Let's Encrypt               (intermediate)
-sCkq5UWXjg+7mKu9lMhhYF5bGLsy7VI/UNW3tccdR7w=   ISRG Root                   (root)
-```
-
-So the pin is confirmed. The chain, though, raises the right question, and the answer is not the
-obvious one.
-
-### Why the backup pin must not be the root or the intermediate
-
-The instinct is sound — a Let's Encrypt leaf is short-lived, and pinning only a leaf whose key
-rotates is a dated lock-out. The proposed remedy is not, and the reason is a property of how OkHttp
-matches:
-
-> **`CertificatePinner` accepts a chain that matches *any* pin listed for that host.**
-
-Pin the leaf *and* the ISRG root, and every chain that reaches ISRG root passes — which is every
-certificate Let's Encrypt will ever issue for that name. The leaf pin then constrains nothing; it
-is present in the configuration and absent from the security. What is left is "trust Let's Encrypt
-for this host", and Let's Encrypt issues to whoever can answer an ACME challenge. An attacker who
-can take the domain for ten minutes — a DNS compromise, a BGP hijack, a registrar mistake — gets a
-certificate that satisfies the pin. That is the same bar the platform trust store already applies,
-with Certificate Transparency on top of it.
-
-So pinning the root buys approximately nothing over not pinning, while carrying all of pinning's
-operational cost. Pinning the intermediate is worse again: Let's Encrypt rotates intermediates on
-its own schedule, so it reintroduces the lock-out the root was meant to remove.
-
-**The backup pin has to be a key, held offline, that has never signed anything** — which is exactly
-what TradeYar produced (`Q1JB2C45jMeyX4xQi8ZE83kmB+EfduUc2utHJ+H6YHI=`). The day they need to
-rotate, they issue with that key and every installed app keeps working. That is the only backup
-that is both a real fallback and a real constraint.
-
-### And the leaf key is not, in fact, rotating
-
-`certbot` changes the key on every renewal **unless** `reuse_key` is set, and TradeYar found that
-fault and set it while producing these pins. So the leaf's SPKI stays put across renewals. That is
-a setting on a server, though, not a law: a `--force-renewal`, a rebuilt host or a lost config
-brings a third key that matches neither pin.
-
-## What this app does about a pin that goes wrong
-
-`COINEPRO_CERTIFICATE_PINS_UNTIL` — a `YYYY-MM-DD`, and **the build refuses to accept pins without
-it**:
-
-```
-> COINEPRO_CERTIFICATE_PINS is set without COINEPRO_CERTIFICATE_PINS_UNTIL. A pin with no end date
-  is an app that one unexpected certificate renewal takes off the network with no way back except
-  a Play release.
-```
-
-Past that date `NetworkFactory.okHttpClient` simply does not install the pinner and the platform
-trust store validates the chain — which is what every build of this app has done to date. It is
-HPKP's `max-age`, for the reason that header carried one: it converts the failure from *bricked
-until a release reaches everybody* into *unprotected from a date somebody chose*.
-
-That is what makes it safe to pin the leaf and its offline backup and nothing else. Pick a date you
-are willing to be wrong until — six months is a reasonable first answer — and move it forward with
-each release.
-
-## The settings, together
-
-| Variable | Value |
-|---|---|
-| `COINEPRO_CERTIFICATE_PINS` | `tradeyar.trade-future.ir=sha256/RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=;tradeyar.trade-future.ir=sha256/Q1JB2C45jMeyX4xQi8ZE83kmB+EfduUc2utHJ+H6YHI=` |
-| `COINEPRO_CERTIFICATE_PINS_UNTIL` | six months out, e.g. `2027-03-31` |
-
-`coineprofx.com` appears in neither, for the Cloudflare reason above.
-
-**Is it worth switching on at all?** It is a genuine judgement and not a foregone one. The gain
-over Certificate Transparency plus the platform trust store, for a consumer app, is modest; the
-cost is an operational commitment — the 30-day notice, the backup key, the date moved forward every
-release. With the expiry in place the downside is bounded, so the answer can be yes. Without it,
-the honest answer was no.
-
+Re-run the measurement above from any network, confirm the two leaves and the intermediates,
+and move `DEFAULT_CERTIFICATE_PINS_UNTIL` forward in a release that reaches readers before the
+date — or the app is simply unpinned from that day, which is the failure mode chosen on purpose.

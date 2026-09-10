@@ -15,6 +15,27 @@ it is for.
 
 ---
 
+## [4.57.0] — 2026-09-10 — pinned to both hosts, and the store build reads no third party
+
+Item 6 of the 4.52 run, the last.
+
+### Added
+- **Certificate pins ship by default.** `DEFAULT_CERTIFICATE_PINS` in `app/build.gradle.kts`:
+  TradeYar's leaf (the digest the server team sent, matched against the live host) and their
+  offline backup, plus Let's Encrypt's two roots; CoinePro-FX pinned at the CA — the GTS WE1
+  intermediate Cloudflare issues through today, GTS Root R4 and R1, and Let's Encrypt's two roots
+  for the day the edge moves. Every pin stops on **2027-03-01**; `COINEPRO_CERTIFICATE_PINS` and
+  `_UNTIL` still override. `CertificatePinDefaultsTest` reads the artefact's own list.
+- `docs/security/PINNING.md` records the measurement that turned recorded pins into shipped
+  ones — the build environment's proxy tunnels TLS rather than terminating it — and the renewal
+  duty; `docs/OWNER_ACTIONS.md` carries the date.
+
+### Unchanged, and now stated
+- A release build never reads Investing.com, Cointelegraph or the ForexFactory file from the
+  device: `DIRECT_THIRD_PARTY_FEEDS` is `false` in the release variant (since 4.47.0), the flag
+  `COINEPRO_DIRECT_THIRD_PARTY_FEEDS` is the only way to turn it on, and `PublicMarketIntel`
+  returns nothing for the direct sources when it is off. `docs/backend/FEEDS.md` says so at the top.
+
 ## [4.56.0] — 2026-09-10 — NamaScript compiles once, runs the tail, and knows its types
 
 Item 5 of the 4.52 run. The language is still the vectorising interpreter `docs/namascript/SPEC.md`

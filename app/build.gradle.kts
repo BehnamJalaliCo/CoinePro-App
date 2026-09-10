@@ -208,9 +208,42 @@ fun escapedBuildConfig(value: String): String = "\"${value.replace("\"", "\\\"")
  * same commit different artefacts and because the person who decides to pin is the person who
  * should decide, in writing, how long they are prepared to be wrong for.
  */
+/**
+ * The pins every build ships with unless a property overrides them — item 6 of the 4.52 run.
+ *
+ * Measured from this repository's own egress on 2026-09-09 (`openssl s_client -showcerts`
+ * through the proxy, which tunnels TLS rather than terminating it — the issuer seen was the
+ * CA's, not the proxy's, and TradeYar's leaf digest matched the one the server team sent):
+ *
+ * - `tradeyar.trade-future.ir`: the leaf's SPKI (primary, `reuse_key = True` on their certbot so
+ *   it survives renewal) and the offline backup key they generated; behind those, Let's Encrypt's
+ *   two roots (ISRG Root X1, ISRG Root X2) so a renewal that lands on the other intermediate still
+ *   matches.
+ * - `coineprofx.com` is behind Cloudflare and its edge certificate is renewed with a new key and
+ *   no notice, so the pins are the CA's: the intermediate that issues it today (GTS WE1, valid to
+ *   2029), its root (GTS Root R4), Google's other root (GTS Root R1), and Let's Encrypt's two roots
+ *   for the day Cloudflare moves it there. See docs/security/PINNING.md for the digests' provenance.
+ *
+ * Every pin stops being enforced on [DEFAULT_CERTIFICATE_PINS_UNTIL]; a release before that date
+ * has to re-measure and move the date. `COINEPRO_CERTIFICATE_PINS`/`_UNTIL` still override both.
+ */
+val DEFAULT_CERTIFICATE_PINS: String = listOf(
+    "tradeyar.trade-future.ir=sha256/RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=",
+    "tradeyar.trade-future.ir=sha256/Q1JB2C45jMeyX4xQi8ZE83kmB+EfduUc2utHJ+H6YHI=",
+    "tradeyar.trade-future.ir=sha256/C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=",
+    "tradeyar.trade-future.ir=sha256/diGVwiVYbubAI3RW4hB9xU8e/CH2GnkuvVFZE8zmgzI=",
+    "coineprofx.com=sha256/kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
+    "coineprofx.com=sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=",
+    "coineprofx.com=sha256/hxqRlPTu1bMS/0DITB1SSu0vd4u/8l8TjPgfaAp63Gc=",
+    "coineprofx.com=sha256/C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=",
+    "coineprofx.com=sha256/diGVwiVYbubAI3RW4hB9xU8e/CH2GnkuvVFZE8zmgzI=",
+).joinToString(";")
+
+val DEFAULT_CERTIFICATE_PINS_UNTIL = "2027-03-01"
+
 val certificatePinsUntilEpochMs: Long = run {
-    val pins = signingProperty("COINEPRO_CERTIFICATE_PINS")
-    val until = signingProperty("COINEPRO_CERTIFICATE_PINS_UNTIL")
+    val pins = signingProperty("COINEPRO_CERTIFICATE_PINS") ?: DEFAULT_CERTIFICATE_PINS
+    val until = signingProperty("COINEPRO_CERTIFICATE_PINS_UNTIL") ?: DEFAULT_CERTIFICATE_PINS_UNTIL
     require(pins == null || until != null) {
         "COINEPRO_CERTIFICATE_PINS is set without COINEPRO_CERTIFICATE_PINS_UNTIL. A pin with no " +
             "end date is an app that one unexpected certificate renewal takes off the network " +
@@ -242,14 +275,14 @@ android {
         versionName = configuredVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Certificate pins for the two API hosts, or empty for none. `host=sha256/…;host=sha256/…`,
-        // read by `NetworkFactory.parsePins`. Empty until the owner produces them from the live
-        // certificates — see docs/security/PINNING.md — because a wrong pin is an app that cannot
-        // reach its own server and cannot say why.
+        // Certificate pins for the two API hosts: `host=sha256/…;host=sha256/…`, read by
+        // `NetworkFactory.parsePins`. Since 4.57.0 they ship by default (`DEFAULT_CERTIFICATE_PINS`,
+        // measured from the live hosts) and the property is the override; the expiry below is
+        // what keeps a wrong pin from being an app that cannot reach its own server for ever.
         buildConfigField(
             "String",
             "CERTIFICATE_PINS",
-            escapedBuildConfig(signingProperty("COINEPRO_CERTIFICATE_PINS").orEmpty()),
+            escapedBuildConfig(signingProperty("COINEPRO_CERTIFICATE_PINS") ?: DEFAULT_CERTIFICATE_PINS),
         )
 
         // The date the pins above stop being enforced — `COINEPRO_CERTIFICATE_PINS_UNTIL`, as

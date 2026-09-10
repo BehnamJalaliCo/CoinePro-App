@@ -304,6 +304,13 @@ Not done: the home 12-column grid, DOM as a resizable table, journal/academy two
 
 Numbers: 360 conformance scripts, 27 diagnostic codes, 5 new built-ins, 81 tests in `:namascript:jvmTest`.
 
+### Item 6 — network (4.57.0) — done
+
+| asked | done | proof |
+| --- | --- | --- |
+| `CertificatePinner` for `coineprofx.com` and the crypto API host, primary + backup | `NetworkFactory.okHttpClient` has installed a `CertificatePinner` from `BuildConfig.CERTIFICATE_PINS` since 4.4x; the list was empty. 4.57.0 ships `DEFAULT_CERTIFICATE_PINS`: TradeYar leaf `RO8Xw…` (primary, matched live) + offline backup `Q1JB2…` + ISRG Root X1/X2; CoinePro-FX GTS WE1 `kIdp6…` (primary) + GTS Root R4 `mEflZ…` + GTS Root R1 + ISRG X1/X2 — CA pins, because Cloudflare rotates the leaf's key without notice. Expiry 2027-03-01 | `CertificatePinDefaultsTest` (both hosts ≥ 2 pins, expiry in the future, from the artefact's `BuildConfig`); `CertificatePinsTest` (format, expiry enforcement); the `openssl` measurement in `PINNING.md` |
+| route Investing / Cointelegraph / ForexFactory through the backend behind a flag; no direct calls in release | `DIRECT_THIRD_PARTY_FEEDS = false` in the release variant unless `COINEPRO_DIRECT_THIRD_PARTY_FEEDS=true`; `PublicMarketIntel` tries the platform routes (`api/v1/public/news`, `…/calendar/week`) first and returns nothing for the direct sources when the flag is off. **The backend routes do not exist yet** (`docs/backend/FEEDS.md` is the contract), so a release build's news section is what the two platforms' own newsrooms answer | `app/build.gradle.kts` release block; `PublicFeedTest` |
+
 ## Definition of done — as it stands
 
 - [x] §0 copy hygiene done; lint enforced (`tools/i18n/lint_strings.py` through the consistency gate).
@@ -314,9 +321,18 @@ Numbers: 360 conformance scripts, 27 diagnostic codes, 5 new built-ins, 81 tests
 - [x] `pro-chart.com` in `BrandConfig`, App Links, legal; web plan documented.
 - [x] This report, with numbers per section and the open product decisions (`docs/web/PLAN.md` §6, plus the locale decision in §0).
 
-### The one deviation from the plan, restated
+### The 4.52 run, in one line each
 
-The plan's §0 asked for the locales to be inverted (English in `values/`, Persian in `values-fa/`). The repository's working agreement says Persian is the default locale; that rule won, and every string key, note policy and golden in this run is on that basis.
+1. Locale inversion — done (4.52.0): `values/` English, `values-fa/` Persian, Gradle check, `aapt2` proof.
+2. Tablet — done (4.53.0): Material's adaptive scaffolds under the app's own bar, rail, list-detail and chart; docked panels; device goldens; generated parity matrix.
+3. Numerals and fonts — done where the material exists (4.54.0): `tnum` on every numeric style, glyph-shift proof; IRANYekanX Medium/SemiBold **await the owner's font files**.
+4. Chart physics — done (4.55.0): pixel pan with snap-at-rest, decay fling, axis-reset spring, cached bottom layer, stylus prediction, frame-rate hint; the benchmark still needs a device.
+5. NamaScript — done within the vectorised model (4.56.0): typed pass, compiled script, incremental tail runs, `request.security`, full inputs, editor colouring/squiggles/split view; a bar-by-bar VM stays v2.
+6. Network — done (4.57.0): pins shipped for both hosts with expiry; release reads no third-party feed.
+
+### The deviation from the first plan, closed
+
+The first run kept Persian in `values/` against the plan; the owner repeated the instruction and item 1 of this run inverted the folders. `CLAUDE.md` now says which set is which.
 
 ### What a device would settle, in one list
 

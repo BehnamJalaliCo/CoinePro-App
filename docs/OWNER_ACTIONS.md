@@ -108,86 +108,60 @@ SHA-1 همان نصب را نشان می‌دهد — همان دو مقدار �
 
 ---
 
-## ۳) پین TLS — یک اندازه‌گیری، بعد یک متغیر
+## ۳) پین TLS — از ۴.۵۶.۰ در خود build است؛ کار شما فقط تمدید تاریخ است
 
-**چرا خودم انجام ندادم:** build های این‌جا پشت یک proxy اجرا می‌شوند که TLS را باز و دوباره بسته
-می‌کند، پس `openssl` از این محیط گواهی proxy را برمی‌گرداند نه گواهی سرور شما. یعنی نمی‌توانم پینی
-را که تریدیار داده تأیید کنم، و **پین تأییدنشده اگر یک حرفش فرق کند، همهٔ نصب‌ها را قفل می‌کند** و
-تنها راه برگشت، انتشار یک نسخهٔ جدید در Play است.
+**چه شد:** اندازه‌گیری از همین محیط انجام شد و درست درآمد — proxy این‌جا TLS را باز نمی‌کند
+(صادرکننده‌ای که دیدیم خودِ Let's Encrypt و Google Trust Services بود، نه proxy). لیف تریدیار دقیقاً
+`RO8Xwx…` بود، همان که خودشان داده بودند. پس پین‌ها **به‌عنوان پیش‌فرض داخل `app/build.gradle.kts`**
+گذاشته شدند و هر build انتشار با آن‌ها ساخته می‌شود؛ متغیر `COINEPRO_CERTIFICATE_PINS` اگر ست شود
+پیش‌فرض را کنار می‌زند، اگر نه پیش‌فرض می‌رود.
 
-### ۳.۱ — اندازه بگیرید
+| میزبان | پین اصلی | پین پشتیبان |
+|---|---|---|
+| `tradeyar.trade-future.ir` | لیف: `RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=` (تا ۶ نوامبر ۲۰۲۶؛ با `reuse_key` همان کلید می‌ماند) | کلید آفلاین تریدیار: `Q1JB2C45jMeyX4xQi8ZE83kmB+EfduUc2utHJ+H6YHI=` |
+| `coineprofx.com` | intermediate «GTS WE1»: `kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=` (تا فوریه ۲۰۲۹) | ریشهٔ «GTS Root R4»: `mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=`، به‌علاوهٔ GTS Root R1 و ISRG Root X1/X2 برای روزی که Cloudflare صادرکننده را عوض کند |
 
-از یک شبکهٔ عادی (لپ‌تاپ خودتان، یا **سرور فارکس** — که یک شاهد مستقل هم هست):
+**تاریخ انقضای پین‌ها:** `2027-03-31`. بعد از آن اپ پینر را نصب نمی‌کند و به trust store برمی‌گردد.
+**هر انتشار این تاریخ را جلو ببرید** — یا با متغیر `COINEPRO_CERTIFICATE_PINS_UNTIL`، یا با تغییر
+`DEFAULT_CERTIFICATE_PINS_UNTIL` در `app/build.gradle.kts`.
 
-```bash
-openssl s_client -connect tradeyar.trade-future.ir:443 -servername tradeyar.trade-future.ir < /dev/null 2>/dev/null \
-  | openssl x509 -pubkey -noout \
-  | openssl pkey -pubin -outform der \
-  | openssl dgst -sha256 -binary | base64
-```
+### ۳.۱ — دربارهٔ `coineprofx.com`
 
-**باید دقیقاً این بیاید:**
+پشت Cloudflare است و لیف را بدون اطلاع عوض می‌کند، پس لیف پین نشده؛ پین روی intermediate و ریشهٔ
+Google Trust Services است — همان دو پینی که خود سرور فارکس تولید کرده بود. این یعنی «فقط گواهی‌ای
+که Google Trust Services (یا Let's Encrypt) برای این دامنه صادر کند»، که از «هر CA در trust store
+اندروید» تنگ‌تر است ولی از پین لیف گشادتر. شما خواستید پین شود؛ این تنگ‌ترین پینی است که با
+Cloudflare Universal SSL زنده می‌ماند. اگر روزی Cloudflare به CA سومی برود (SSL.com)، تا تاریخ بالا
+اپ به فارکس وصل نمی‌شود — تاریخ برای همین است. راه بهتر همان است که در `docs/security/PINNING.md`
+آمده: Custom Certificate در Cloudflare با کلید خودتان.
 
-```
-RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=
-```
+### ۳.۲ — تأیید بعد از نصب
 
-اگر چیز دیگری آمد، **متوقف شوید** و به تریدیار بگویید؛ یعنی گواهی از وقتی پین را داده‌اند عوض شده.
+اپ را نصب کنید، یک صفحهٔ کریپتو و یک صفحهٔ فارکس باز کنید. اگر قیمت‌ها می‌آیند، پین‌ها درست‌اند.
+اگر یکی جواب نداد، `COINEPRO_CERTIFICATE_PINS_UNTIL` را روی دیروز بگذارید و build بگیرید — همان
+build بدون پین می‌شود.
 
-> **انجام شد و درست درآمد** — لیف دقیقاً `RO8Xwx…` بود.
+## ۴) فونت — دو فایل IRANYekanX که فقط شما دارید
 
-### ۳.۲ — پین دوم را **ریشه نگذارید**
+اپ فقط `iranyekanx_regular.ttf` و `iranyekanx_bold.ttf` را دارد. وزن‌های Medium (500) و SemiBold (600)
+که برنامه در عنوان‌ها و ارقام می‌خواهد، فعلاً روی Bold می‌افتند (`CoineProType.kt`, عمداً — که یک
+عنوان بی‌صدا نازک نشود). فایل‌های `IRANYekanX-Medium.ttf` و `IRANYekanX-SemiBold.ttf` زیر مجوز
+شماست و در مخزن نیست؛ نمی‌توانم از جایی بیاورم.
 
-این مهم‌ترین نکتهٔ این بخش است. OkHttp زنجیره‌ای را که با **یکی** از پین‌های آن میزبان بخواند قبول
-می‌کند. یعنی اگر کنار پین لیف، پینِ **ISRG Root** را هم بگذارید، هر گواهی‌ای که به آن ریشه برسد
-قبول می‌شود — یعنی هر گواهی‌ای که Let's Encrypt تا ابد برای این دامنه صادر کند. آن‌وقت پین لیف
-دیگر هیچ چیزی را محدود نمی‌کند و در عمل نوشته‌اید «به Let's Encrypt اعتماد کن»، که همان کاری است
-که اندروید بدون هیچ پینی می‌کند. کسی که ده دقیقه دامنه را در اختیار بگیرد (DNS، BGP، خطای ثبت‌کننده)
-گواهی می‌گیرد و از پین رد می‌شود.
-
-پین intermediate هم بدتر است: خود Let's Encrypt intermediate ها را عوض می‌کند، پس همان قطعی که
-می‌خواستید از آن فرار کنید برمی‌گردد.
-
-**پین دوم باید یک کلید آفلاین باشد که هیچ‌وقت چیزی امضا نکرده** — و تریدیار دقیقاً همان را ساخته:
-`Q1JB2C45jMeyX4xQi8ZE83kmB+EfduUc2utHJ+H6YHI=`. روزی که مجبور شوند کلید عوض کنند، با همان صادر
-می‌کنند و هیچ نصبی قطع نمی‌شود.
-
-ضمناً نگرانی «هر ۶۰ روز کلید نو» را خودشان قبلاً بسته‌اند: `certbot` پیش‌فرض کلید را عوض می‌کند و
-آن‌ها `reuse_key = True` را ست کرده‌اند. آن یک تنظیم روی سرور است، نه یک قانون — برای همین قدم بعد.
-
-### ۳.۳ — تاریخ انقضا، که حالا **اجباری است**
-
-از ۴.۴۶.۰ اگر پین بگذارید و تاریخ نگذارید، **build شکست می‌خورد**:
-
-```
-COINEPRO_CERTIFICATE_PINS is set without COINEPRO_CERTIFICATE_PINS_UNTIL…
-```
-
-بعد از آن تاریخ، اپ پینر را اصلاً نصب نمی‌کند و به trust store اندروید برمی‌گردد — همان کاری که
-امروز می‌کند. یعنی بدترین حالتِ «پین غلط» از «همه قطع تا وقتی نسخهٔ جدید به همه برسد» تبدیل می‌شود
-به «از فلان تاریخ بی‌پین»، که یک اتفاق بد است نه یک فاجعه. همان `max-age` که HPKP داشت.
-
-### ۳.۴ — دو متغیر را با هم بگذارید
-
-| Name | Value |
-|---|---|
-| `COINEPRO_CERTIFICATE_PINS` | `tradeyar.trade-future.ir=sha256/RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=;tradeyar.trade-future.ir=sha256/Q1JB2C45jMeyX4xQi8ZE83kmB+EfduUc2utHJ+H6YHI=` |
-| `COINEPRO_CERTIFICATE_PINS_UNTIL` | شش ماه بعد، مثلاً `2027-03-31` |
-
-یک خط، بدون فاصله، دو پین با `;` جدا. تاریخ را هر انتشار جلو ببرید.
-
-### ۳.۳ — `coineprofx.com` را **پین نکنید**
-
-پشت Cloudflare است و کلید گواهی‌اش بدون اطلاع قبلی عوض می‌شود — خود سرور فارکس هم همین را نوشت و
-حق دارد. اسمش را در آن متغیر نیاورید.
-
-**تأیید:** بعد از اولین build با این متغیر، اپ را نصب کنید و یک صفحهٔ کریپتو را باز کنید. اگر
-قیمت‌ها می‌آیند، پین درست است. اگر هیچ درخواستی به تریدیار جواب نداد، **فوراً متغیر را پاک کنید و
-دوباره build بگیرید** — پین غلط بوده.
-
----
+**کار شما:** دو فایل را با نام‌های `iranyekanx_medium.ttf` و `iranyekanx_semibold.ttf` در
+`core/designsystem/src/main/res/font/` بگذارید. بعد از آن دو خط `Font(R.font.iranyekanx_bold,
+FontWeight.Medium)` و `…SemiBold)` در `CoineProType.kt` را به فایل‌های جدید اشاره دهید؛
+`check_tabular_digits` در gate هر فایل جدید را هم می‌سنجد که ارقام لاتینش هم‌عرض باشند.
 
 ## بعد از هر سه
 
 یک build بگیرید تا متغیرها وارد شوند: **Actions** ← workflow انتشار ← **Run workflow**.
 تا وقتی هیچ‌کدام از این متغیرها ست نشده باشند، build دقیقاً همان چیزی است که امروز هست.
+
+## Certificate pins expire on 2027-03-01 (4.57.0)
+
+The app ships pinned to both API hosts (`docs/security/PINNING.md`). Before 2027-03-01 a release
+must re-measure the two hosts and move `DEFAULT_CERTIFICATE_PINS_UNTIL` in `app/build.gradle.kts`,
+or the app goes unpinned from that date. TradeYar: keep `reuse_key = True` on certbot, or send the
+new key's digest a release ahead. CoinePro-FX: nothing to do unless Cloudflare moves the edge
+certificate to a CA other than Google Trust Services or Let's Encrypt.
