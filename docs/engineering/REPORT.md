@@ -331,6 +331,16 @@ Numbers: 360 conformance scripts, 27 diagnostic codes, 5 new built-ins, 81 tests
 
 Seen in the frames and left as is: the readings panel's three words (`متوسط`, `کم`, `خنثی`) are Persian literals under an English locale — copy in code, outside this run's scope, noted for the next copy pass.
 
+### Item 3 — numerals and fonts (4.59.0) — done where the material exists
+
+| asked | done | proof |
+| --- | --- | --- |
+| `FontFeatureSettings("tnum")` on every numeric style | on **every** style the design system defines — the base `coineProTextStyle` carries it, so prices, changes, PnL, axes, the DOM ladder, tables, calculators and the watchlist all inherit; the chart's canvas labels set it on their `Paint` | `grep -rn 'TABULAR_FIGURES\|"tnum"' core feature chart` → 11 sites: `core/designsystem/CoineProType.kt` (`const val TABULAR_FIGURES = "tnum"`, the base style, `numericTextStyle`, `TextStyle.numeric()`), `chart/ui` × 2 (axis and legend paints), `TypeScaleTest` (fails on any style without it) |
+| IRANYekanX Medium + SemiBold (or Variable) | **not in the repository** — `core/designsystem/src/main/res/font/` holds `iranyekanx_regular.ttf` and `iranyekanx_bold.ttf` only; Medium and SemiBold resolve to Bold. The files are licensed and the owner's to supply; the font map is ready for them (`Font(R.font.iranyekanx_medium, FontWeight.Medium)` is a one-line change per weight) | `ls core/designsystem/src/main/res/font` |
+| 5-second 60 fps tick recording, no glyph shift | **`TickSequenceTest`**: 300 frames (5 s at 60 fps) of a price ticking through every digit, the thousands rolling, under eight styles; the layout's width is asserted identical on every frame and every glyph's left edge compared frame to frame. Result: `max glyph shift per style: bodyMedium=0.0px, labelSmall=0.0px, titleMedium=0.0px, Numeric=0.0px, NumericLarge=0.0px, RowFigure=0.0px, TileFigure=0.0px, Balance=0.0px` | the test's output line; `TabularFiguresTest` (ten digits, six styles) |
+
+A device recording would show the same frames; what it would add is the display's own rendering, which Robolectric's Skia does not differ from at this level. The sign glyphs `+`/`-` have different advances in every font, so the app keeps the sign in its own column; the test fixes it for that reason.
+
 ## Definition of done — as it stands
 
 - [x] §0 copy hygiene done; lint enforced (`tools/i18n/lint_strings.py` through the consistency gate).

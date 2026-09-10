@@ -15,6 +15,20 @@ it is for.
 
 ---
 
+## [4.59.0] — 2026-09-10 — the tick, measured for five seconds
+
+Item 3 of the 4.58 run, re-listed with a stricter proof.
+
+### Added
+- **`TickSequenceTest`**: three hundred consecutive prices — five seconds at sixty frames — laid
+  out under eight styles; the width is identical on every frame and no glyph's left edge moves
+  (`max glyph shift … 0.0px` for every style). `tnum` has been on every style since 4.54.0; the
+  grep and the numbers are in `docs/engineering/REPORT.md`.
+
+### Still the owner's
+- IRANYekanX Medium and SemiBold (or the variable face) are not in the repository; Medium and
+  SemiBold resolve to Bold until the files arrive.
+
 ## [4.58.0] — 2026-09-10 — the objects panel says «ترسیم‌ها», and the tablet is photographed
 
 The fix that opens the 4.58 run.
