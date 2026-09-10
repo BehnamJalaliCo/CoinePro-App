@@ -341,6 +341,35 @@ Seen in the frames and left as is: the readings panel's three words (`متوسط
 
 A device recording would show the same frames; what it would add is the display's own rendering, which Robolectric's Skia does not differ from at this level. The sign glyphs `+`/`-` have different advances in every font, so the app keeps the sign in its own column; the test fixes it for that reason.
 
+### Item 4 — chart physics (4.60.0) — every mechanism named, tested where a JVM can test it
+
+Everything from 4.55.0 stands (the table above); this run adds the third layer, the desk's menu and
+history keys, and puts a number next to each mechanism. The constants are in `CoineProChart.kt`.
+
+| asked | where | number | proof |
+| --- | --- | --- | --- |
+| float coordinates, snap-at-rest | `pixelShift` carries the sub-bar remainder; `settlePan()` springs it to the slot on lift | — | `ChartDeskPointerTest`; goldens unchanged |
+| `exponentialDecay` fling ≈ 1.2 s | `KineticScroll` (`EXPONENTIAL`) | friction 3.8; 2 000 px/s → 1.2 s | `ChartPixelsTest` «an ordinary flick coasts about one point two seconds» |
+| right-edge overscroll ≤ 50 %, rubber band, `spring(400, 0.85)` | `stretchEdge` / `releaseEdge` | `OVERSCROLL_MAX_SHARE = 0.5`, `RUBBER_BAND_KNEE = 0.55`, `OVERSCROLL_STIFFNESS = 400`, `OVERSCROLL_DAMPING = 0.85` | the constants; `ChartPixelsTest` |
+| left edge loads history with scroll compensation | `withSeries` keeps the anchor bar and `offset` when older bars are prepended | — | `ChartPanRestoreTest` (prepend keeps the bar under the finger), `DeepSeriesViewportTest` |
+| pinch `barSpacing *= 1.0025^Δpx` at the focal x | the two-finger observer, `PINCH_BASE.pow(spanX − lastX)`, `zoomedBy(ratio, focal)` | `PINCH_BASE = 1.0025` | `ChartDeskPointerTest` «zooms in at the cursor» (same focal path) |
+| price-axis pinch/drag vertical only; time-axis drag time only | `axisSpan` splits the pinch by the axis it started on (`priceZoomedBy` reads Δy only, `zoomedBy` Δx only); the axis handlers read one coordinate | — | `ChartViewportTest` («zoom keeps the right edge fixed», «a zoom keeps a resting chart resting»); no gesture-level test of the axis strips |
+| double-tap axis reset with spring | `springTo(viewport.atRest())`, price axis through `rangeLow`/`rangeHigh` | spring 400, ≤ 2 plot widths | — |
+| auto-scale `spring(700, 1.0)` | `AUTO_SCALE_SPRING` | stiffness 700, damping 1.0 (≈ 180 ms) | the constant |
+| 150 ms tick animation | `LIVE_CLOSE_MS` | 150 (flash 200) | the constant |
+| draw-phase-only invalidation, three cached layers | **new**: series bitmap (`StaticLayerKey`), drawings bitmap (`OverlayLayerKey`: viewport position, marks, selection, palette — not the data), cursor `Canvas` live. `ChartLayerCounters` reads the misses per frame | 60 cursor frames → **0** series misses, **0** drawings misses; a tick → **1** series, **0** drawings; a new bar → **1** and **1** | `ChartLayerInvalidationTest`, `StaticLayerCacheTest`, 36 chart-type goldens unchanged |
+| zero allocations in the draw loop | the series pass reuses its `Path`s, `FloatArray`s and paints across frames; a cursor frame allocates the two blits' keys (two small data classes) and nothing per bar | JVM, warmed and interleaved: cursor frame p50 **46.20 ms** / p95 87.41, tick frame p50 **49.79 ms** / p95 85.91 — 1280×800 dp at xhdpi (2560×1600 px) rasterised in software, 400 bars, 3 drawings, 60 frames each. The software blit of two full-size bitmaps is most of both numbers, which is why the miss counts, not the milliseconds, are the proof here | `ChartLayerInvalidationTest`'s printed line; an allocation profile and a GPU frame time are device measurements |
+| `MotionEventPredictor` (API 33+) | `ChartStrokePredictor` on `input-motionprediction` 1.0.0, freehand tool | — | compiles; answers only on a device |
+| `Surface.setFrameRate` | `setRequestedFrameRate(HIGH)` during a gesture or fling, `NO_PREFERENCE` at rest (Android 15+) | — | — |
+| mouse wheel = time zoom at the cursor; Ctrl+wheel = price zoom; hover = crosshair | the desk branch of the pointer handler (`PointerType.Mouse` and `Stylus`) | — | `ChartDeskPointerTest` (4 tests) |
+| right-click menu | **new**: `onContextMenu(price, at)` from the chart's secondary press; `ChartScreen` draws a `DropdownMenu` at the pointer — alert here, copy price, scale, search — anchored absolute-left so the offset is the pointer's on either locale | 4 items, 4 strings | `ChartContextMenuTest` (2 tests) |
+| keyboard: ←/→, Alt+H/V, Ctrl+Z/Y, Esc, `/`, digits | `ChartShortcuts`: `←/→` step, `Alt+H`/`Alt+V` arm the lines, **new** `Ctrl+Z`/`Ctrl+Shift+Z`/`Ctrl+Y`, `Esc` cancels, **new** `/` opens the search, `1`–`6` timeframes, `+`/`−` zoom, space replay | — | `ChartKeyboardTest` («Ctrl with Z and Y walk the history like the bare keys, and slash opens the search») |
+| S Pen hover | a stylus hover is the same desk branch as a mouse hover — crosshair on hover, tracking on the button | — | `ChartDeskPointerTest` covers the branch with a mouse; the pen is a device |
+| `ChartFlingBenchmark` p95 ≤ 8 ms phone / ≤ 12 ms tablet 4-chart, 0 jank; 120 fps recording vs TradingView | `benchmark/…/ChartFlingBenchmark.kt`, `scripts/quality/check-benchmark-thresholds.py` | **needs a device** — no GPU here | — |
+
+Numbers: 3 layers, 13 physics constants named above, 4 menu items, 12 keyboard bindings, 4 new tests
+(`ChartLayerInvalidationTest` ×2, `ChartContextMenuTest` ×2) and 1 extended (`ChartKeyboardTest`).
+
 ## Definition of done — as it stands
 
 - [x] §0 copy hygiene done; lint enforced (`tools/i18n/lint_strings.py` through the consistency gate).
@@ -356,7 +385,7 @@ A device recording would show the same frames; what it would add is the display'
 1. Locale inversion — done (4.52.0): `values/` English, `values-fa/` Persian, Gradle check, `aapt2` proof.
 2. Tablet — done (4.53.0): Material's adaptive scaffolds under the app's own bar, rail, list-detail and chart; docked panels; device goldens; generated parity matrix.
 3. Numerals and fonts — done where the material exists (4.54.0): `tnum` on every numeric style, glyph-shift proof; IRANYekanX Medium/SemiBold **await the owner's font files**.
-4. Chart physics — done (4.55.0): pixel pan with snap-at-rest, decay fling, axis-reset spring, cached bottom layer, stylus prediction, frame-rate hint; the benchmark still needs a device.
+4. Chart physics — done (4.55.0, completed 4.60.0): pixel pan with snap-at-rest, decay fling, axis-reset spring, three cached layers with counted misses, right-click menu, Ctrl+Z/Y and `/`, stylus prediction, frame-rate hint; the benchmark still needs a device.
 5. NamaScript — done within the vectorised model (4.56.0): typed pass, compiled script, incremental tail runs, `request.security`, full inputs, editor colouring/squiggles/split view; a bar-by-bar VM stays v2.
 6. Network — done (4.57.0): pins shipped for both hosts with expiry; release reads no third-party feed.
 

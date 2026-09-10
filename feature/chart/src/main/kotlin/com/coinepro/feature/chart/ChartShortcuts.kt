@@ -4,6 +4,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
@@ -38,8 +39,18 @@ fun Modifier.chartShortcuts(
     onZoom: ((zoomIn: Boolean) -> Unit)? = null,
     /** Arm a drawing tool by its catalogue id. Alt+H is the horizontal line, Alt+V the vertical. */
     onArmTool: ((id: String) -> Unit)? = null,
+    /** `/` — the symbol search, as on every terminal keyboard. */
+    onSearch: (() -> Unit)? = null,
 ): Modifier = onKeyEvent { event ->
     if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+    // Ctrl+Z / Ctrl+Y for the hands that expect the desktop pair; the bare keys below stay.
+    if (event.isCtrlPressed) {
+        when (event.key) {
+            Key.Z -> { if (event.isShiftPressed) onRedo() else onUndoDrawing(); return@onKeyEvent true }
+            Key.Y -> { onRedo(); return@onKeyEvent true }
+            else -> Unit
+        }
+    }
     // The two line tools sit on Alt so that a bare H or V stays free for the future; TradingView
     // binds them the same way, and a hand that learned it there should find it here.
     if (event.isAltPressed && onArmTool != null) {
@@ -78,6 +89,9 @@ fun Modifier.chartShortcuts(
         Key.DirectionLeft -> { onStepBack(); true }
 
         Key.Escape -> { onCancelDrawing(); true }
+
+        // `/` opens the symbol search — the one key every terminal binds the same way.
+        Key.Slash -> { onSearch?.invoke() ?: return@onKeyEvent false; true }
 
         // Z takes a step back, Shift+Z puts it forward, and Y does the same as Shift+Z for the
         // hands that learned redo there. Deliberately *without* the control modifier: this chart

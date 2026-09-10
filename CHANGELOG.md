@@ -15,6 +15,29 @@ it is for.
 
 ---
 
+## [4.60.0] — 2026-09-10 — three layers, and a right button
+
+Item 4 of the 4.58 run: the frame is three cached layers, the desk gets its menu and its history
+keys, and every mechanism is listed with its number in `docs/engineering/REPORT.md`.
+
+### Added
+- **The drawings layer**: the reader's marks are a second bitmap, keyed on what positions them
+  (`OverlayLayerKey`) and nothing else. A tick that rewrites the last bar re-renders the bars and
+  blits the drawings; a cursor move blits both. `ChartLayerCounters` counts the misses per frame.
+- **`ChartLayerInvalidationTest`**: sixty cursor frames add no miss to either layer; a tick adds
+  one to the bars and none to the drawings; a new bar adds one to each. The second test times a
+  cursor frame and a tick frame on the JVM, warmed and interleaved, and prints both.
+- **Right-click menu on the plot** (mouse or S Pen button): alert at this price, copy the price,
+  the scale sheet, the symbol search — at the pointer, in left-to-right pixels on either locale.
+  `ChartContextMenuTest`.
+- **Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y** walk the drawing history like the bare keys; **`/`** opens the
+  symbol search (`onOpenSymbolSearch`, wired from the shell). `ChartKeyboardTest`.
+- Four strings: `chart_menu_alert_here`, `chart_menu_copy_price`, `chart_menu_scale`,
+  `chart_menu_search`, in both sets.
+
+### Still the owner's
+- `ChartFlingBenchmark` p95 and the 120 fps recording need a device with a GPU.
+
 ## [4.59.0] — 2026-09-10 — the tick, measured for five seconds
 
 Item 3 of the 4.58 run, re-listed with a stricter proof.

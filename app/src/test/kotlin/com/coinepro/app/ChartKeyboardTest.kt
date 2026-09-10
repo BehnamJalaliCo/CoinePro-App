@@ -63,6 +63,7 @@ class ChartKeyboardTest {
                         onRedo = { log += "redo" },
                         onZoom = { log += if (it) "zoom-in" else "zoom-out" },
                         onArmTool = { log += "arm:$it" },
+                        onSearch = { log += "search" },
                     )
                     .focusRequester(focus)
                     .focusable(),
@@ -115,6 +116,18 @@ class ChartKeyboardTest {
             pressKey(Key.Y)
         }
         assertEquals(listOf("step", "back", "replay", "cancel", "undo", "redo", "redo"), log)
+    }
+
+    @Test
+    fun `Ctrl with Z and Y walk the history like the bare keys, and slash opens the search`() {
+        compose()
+        rule.onNodeWithTag(TAG).performKeyInput {
+            withKeyDown(Key.CtrlLeft) { pressKey(Key.Z) }
+            withKeyDown(Key.CtrlLeft) { withKeyDown(Key.ShiftLeft) { pressKey(Key.Z) } }
+            withKeyDown(Key.CtrlLeft) { pressKey(Key.Y) }
+            pressKey(Key.Slash)
+        }
+        assertEquals(listOf("undo", "redo", "redo", "search"), log)
     }
 
     private companion object {

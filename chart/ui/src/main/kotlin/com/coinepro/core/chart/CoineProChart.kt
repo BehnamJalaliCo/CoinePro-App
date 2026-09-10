@@ -205,6 +205,14 @@ fun CoineProChart(
      */
     onPriceAxisMenu: (() -> Unit)? = null,
     /**
+     * A secondary press (right-click, a stylus's barrel button) on the plot: the price under the
+     * pointer and where it landed, for the screen to open its menu at. The reading is kept as
+     * well, as it always was; the menu is what a desk expects on top of it.
+     */
+    onContextMenu: ((price: Double, at: Offset) -> Unit)? = null,
+    /** Per-frame layer statistics, for the tests that prove a cursor move draws no bar. */
+    layerCounters: ChartLayerCounters? = null,
+    /**
      * What the price axis measures. See [PriceScaleMode].
      *
      * The four modes were on [ChartViewport] and reachable from the axis sheet, were saved per
@@ -935,6 +943,14 @@ fun CoineProChart(
     val dirty = remember { arrayOf(Invalidation.FULL) }
     /** The bottom layer's bitmap — see `StaticLayerCache`. */
     val staticLayer = remember { StaticLayerCache() }
+
+    /**
+     * The overlay layer — the drawings — cached the same way, keyed on what positions them: the
+     * window's first visible time, the zoom, the price range and the plot's size, plus the
+     * drawings themselves and the selection. A tick that rewrites the last bar leaves every one of
+     * those alone, so the drawings are blitted; a new bar or a pan moves the window and redraws.
+     */
+    val overlayLayer = remember { StaticLayerCache() }
     val layoutDirection = LocalLayoutDirection.current
 
     /** The last scale and its ticks, reused when only the cursor has moved. See [Invalidation]. */
@@ -950,6 +966,7 @@ fun CoineProChart(
     val currentLevels = rememberUpdatedState(decoration.levels)
     val currentAlert = rememberUpdatedState(onRequestAlertAt)
     val currentAxisMenu = rememberUpdatedState(onPriceAxisMenu)
+    val currentContextMenu = rememberUpdatedState(onContextMenu)
     val currentTradeRing = rememberUpdatedState(onTradeRing)
 
     fun invalidate(level: Invalidation) {
@@ -1775,8 +1792,10 @@ fun CoineProChart(
                                                 } else {
                                                     lastView[0]?.let { view ->
                                                         tracking = true
-                                                        crosshair = view.crosshairAt(plot)
+                                                        val reading = view.crosshairAt(plot)
+                                                        crosshair = reading
                                                         invalidate(Invalidation.CURSOR)
+                                                        reading?.let { currentContextMenu.value?.invoke(it.price, change.position) }
                                                     }
                                                 }
                                                 change.consume()
@@ -2672,24 +2691,48 @@ fun CoineProChart(
                 val marks = drawing?.visible ?: decoration.drawings
                 val highlighted = drawing?.selectedId ?: decoration.selectedDrawingId
                 if (marks.isNotEmpty()) {
-                    clipRect(0f, 0f, plotWidth, plotHeight) {
-                        marks.forEach { mark ->
-                            drawDrawing(
-                                drawing = mark,
-                                view = view,
-                                measurer = measurer,
-                                selected = mark.id == highlighted,
-                                // So a Fibonacci price over a red candle is a figure rather than a
-                                // smudge. The renderer has no palette of its own; this is the one
-                                // colour it needs from ours.
-                                plate = palette.stage,
-                                grabbed = paintedHandle,
-                                // Read here, inside the draw, so the grab animation repaints the
-                                // canvas without recomposing a composable with nine gesture
-                                // handlers hanging off it.
-                                grabProgress = grabGrow.value,
-                            )
+                    val overlayKey = OverlayLayerKey(
+                        firstVisibleTime = view.series.time.getOrNull(view.firstVisible) ?: 0L,
+                        barsPerView = view.barsPerView,
+                        offset = view.offset,
+                        pixelShift = view.pixelShift,
+                        priceZoom = view.priceZoom,
+                        priceRange = view.priceRange,
+                        plotWidth = plotWidth,
+                        plotHeight = plotHeight,
+                        marks = marks,
+                        highlighted = highlighted,
+                        grabbed = paintedHandle,
+                        grabProgress = grabGrow.value,
+                        palette = palette,
+                        densityScale = density.density,
+                    )
+                    with(overlayLayer) {
+                        drawCached(overlayKey, density, layoutDirection, Offset(-frame.left, 0f)) {
+                            translate(left = frame.left) {
+                                clipRect(0f, 0f, plotWidth, plotHeight) {
+                                    marks.forEach { mark ->
+                                        drawDrawing(
+                                            drawing = mark,
+                                            view = view,
+                                            measurer = measurer,
+                                            selected = mark.id == highlighted,
+                                            // So a Fibonacci price over a red candle is a figure
+                                            // rather than a smudge. The renderer has no palette of
+                                            // its own; this is the one colour it needs from ours.
+                                            plate = palette.stage,
+                                            grabbed = paintedHandle,
+                                            // Read here, inside the draw, so the grab animation
+                                            // repaints the canvas without recomposing a composable
+                                            // with nine gesture handlers hanging off it.
+                                            grabProgress = grabGrow.value,
+                                        )
+                                    }
+                                }
+                            }
                         }
+                    }
+                    clipRect(0f, 0f, plotWidth, plotHeight) {
                         // The placement pulse: a ring that grows from the handle's size to three
                         // times it and fades as it goes, over the 120 ms after a tap.
                         val pulse = placePulse.value
@@ -2705,6 +2748,8 @@ fun CoineProChart(
                         }
                     }
                 }
+                // Both bitmaps have been served by now; the counters read what each cost.
+                layerCounters?.record(staticLayer, overlayLayer)
                 // Each pane's own scale, resolved once and *published* — the crosshair layer above
                 // reads it so that a pointer inside a strip reports what the strip measures rather
                 // than a price the price axis would have had to invent. See [PaneBand].

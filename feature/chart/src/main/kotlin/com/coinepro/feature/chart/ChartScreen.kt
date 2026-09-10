@@ -85,10 +85,22 @@ import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -337,6 +349,8 @@ fun ChartScreen(
      * them to do the app's arithmetic.
      */
     onCreateAlert: ((symbol: String, price: Double) -> Unit)? = null,
+    /** The symbol search, for the `/` key and the desk's menu; null on a screen without one. */
+    onOpenSymbolSearch: (() -> Unit)? = null,
     /** Saved layouts. Null leaves the button off — a build with no store has nothing to offer. */
     layouts: List<ChartLayout>? = null,
     onSaveLayout: ((ChartLayout) -> Unit)? = null,
@@ -479,6 +493,8 @@ fun ChartScreen(
         }
     }
     var sheet by remember { mutableStateOf<ChartSheet?>(null) }
+    // The desk's right-click menu: the price it landed on and where, or null while closed.
+    var contextMenu by remember { mutableStateOf<ChartContextMenu?>(null) }
     /** Which drawing's own settings are open, or null. Opened from the object tree's row. */
     var styling by remember { mutableStateOf<Long?>(null) }
     /** Which indicator's settings sheet is open, by id, or null. Opened from the legend's gear. */
@@ -889,10 +905,11 @@ fun ChartScreen(
                 // نمی‌کند» is what that looks like from the other side of the screen.
                 state.series.isEmpty && state.interval is ChartInterval.Seconds ->
                     SecondsWarmingUp(state.interval)
-                else -> CoineProChart(
+                else -> {
+                CoineProChart(
                     series = state.visibleSeries,
                     // Read in the layer, so the fade repaints without recomposing the chart.
-                    modifier = Modifier.fillMaxSize().graphicsLayer { alpha = symbolFade.value },
+                    modifier = Modifier.fillMaxSize().graphicsLayer { alpha = symbolFade.value }.testTag("chart-plot"),
                     type = state.chartType,
                     // The legend's first line, as TradingView's phone sets it: the mark and the
                     // instrument's name — «Bitcoin / TetherUS» — not the ticker.
@@ -974,6 +991,7 @@ fun ChartScreen(
                     // every terminal puts them and the one gesture on this chart a reader is
                     // likely to try by accident and be pleased to find.
                     onPriceAxisMenu = { sheet = ChartSheet.SCALE },
+                    onContextMenu = { price, at -> contextMenu = ChartContextMenu(price, at) },
                     // A tick when the magnet takes a point, and a tick when the crosshair crosses a
                     // level — a stop, a target, an indicator line. The reader feels the line under
                     // the finger without looking away from the price they are dragging towards.
@@ -1072,6 +1090,52 @@ fun ChartScreen(
                         }
                     },
                 )
+                // The right-click (or S Pen button) menu at the pointer. Anchored at the plot's
+                // absolute top-left and offset in left-to-right pixels, because the position came
+                // from the pointer and the time axis reads left to right on every locale; the
+                // items themselves take the screen's direction back.
+                contextMenu?.let { menu ->
+                    val direction = LocalLayoutDirection.current
+                    val density = LocalDensity.current
+                    val clipboard = LocalClipboardManager.current
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        Box(Modifier.align(AbsoluteAlignment.TopLeft)) {
+                            DropdownMenu(
+                                expanded = true,
+                                onDismissRequest = { contextMenu = null },
+                                offset = with(density) { DpOffset(menu.at.x.toDp(), menu.at.y.toDp()) },
+                            ) {
+                                CompositionLocalProvider(LocalLayoutDirection provides direction) {
+                                    if (onCreateAlert != null) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.chart_menu_alert_here, MarketNumberFormatter.priceAuto(menu.price))) },
+                                            onClick = { onCreateAlert(state.symbol, menu.price); contextMenu = null },
+                                            modifier = Modifier.semantics { contentDescription = "chart-menu-alert" },
+                                        )
+                                    }
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.chart_menu_copy_price)) },
+                                        onClick = { clipboard.setText(AnnotatedString(MarketNumberFormatter.priceAuto(menu.price))); contextMenu = null },
+                                        modifier = Modifier.semantics { contentDescription = "chart-menu-copy" },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.chart_menu_scale)) },
+                                        onClick = { sheet = ChartSheet.SCALE; contextMenu = null },
+                                        modifier = Modifier.semantics { contentDescription = "chart-menu-scale" },
+                                    )
+                                    if (onOpenSymbolSearch != null) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.chart_menu_search)) },
+                                            onClick = { onOpenSymbolSearch(); contextMenu = null },
+                                            modifier = Modifier.semantics { contentDescription = "chart-menu-search" },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                }
             }
             // Older bars arriving: a shimmer down the left edge, where they will land, rather
             // than a spinner in the corner. The viewport is anchored at the newest bar, so the
@@ -1309,6 +1373,7 @@ fun ChartScreen(
                 onRedo = controller::redo,
                 onZoom = { zoomIn -> zoomBy(if (zoomIn) ChartZoomNudge.STEP else 1f / ChartZoomNudge.STEP) },
                 onArmTool = { id -> DrawingTools.ALL.firstOrNull { it.id == id }?.let(controller::arm) },
+                onSearch = onOpenSymbolSearch,
             ),
     ) {
         // No header. TradingView's phone chart starts at the top of the screen: the instrument's
@@ -4043,3 +4108,6 @@ private fun barClock(epochSeconds: Long): String = runCatching {
         .atZone(java.time.ZoneId.systemDefault())
         .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm", java.util.Locale.US))
 }.getOrDefault("")
+
+/** What a secondary press on the plot asked about: the price under it, and where on screen. */
+internal data class ChartContextMenu(val price: Double, val at: Offset)

@@ -183,4 +183,9 @@
     <string name="chart_panel_depth">Depth of market</string>
     <string name="chart_panel_alerts">Alerts</string>
     <string name="chart_panel_script">NamaScript</string>
+    <!-- The desk's right-click menu on the plot. -->
+    <string name="chart_menu_alert_here">Alert at %1$s</string>
+    <string name="chart_menu_copy_price">Copy price</string>
+    <string name="chart_menu_scale">Price scale…</string>
+    <string name="chart_menu_search">Search symbol</string>
 </resources>

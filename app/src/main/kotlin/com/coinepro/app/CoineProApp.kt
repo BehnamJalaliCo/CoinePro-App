@@ -2539,6 +2539,7 @@ private fun MainShell(
             )
             ChartScreen(
                 sidePanels = sidePanels,
+                onOpenSymbolSearch = { navController.navigate(MARKET_SEARCH_ROUTE) },
                 position = openPosition,
                 layouts = chartLayouts,
                 onSaveLayout = onSaveLayoutAnnounced,
