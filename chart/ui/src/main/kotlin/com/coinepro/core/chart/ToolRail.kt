@@ -396,7 +396,7 @@ private fun modeTiles(
         )
     }
     onRemoveAll?.let { clear ->
-        tiles += ModeTile(DesignR.drawable.tv_trash2, "حذف همه‌ی اشیا", on = false, onClick = clear)
+        tiles += ModeTile(DesignR.drawable.tv_trash2, "حذف همه‌ی ترسیم‌ها", on = false, onClick = clear)
     }
     onZoomIn?.let { zoom ->
         tiles += ModeTile(DesignR.drawable.tv_zoom_in, "بزرگ‌نمایی", on = false, onClick = zoom)

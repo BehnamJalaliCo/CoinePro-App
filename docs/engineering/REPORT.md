@@ -311,6 +311,26 @@ Numbers: 360 conformance scripts, 27 diagnostic codes, 5 new built-ins, 81 tests
 | `CertificatePinner` for `coineprofx.com` and the crypto API host, primary + backup | `NetworkFactory.okHttpClient` has installed a `CertificatePinner` from `BuildConfig.CERTIFICATE_PINS` since 4.4x; the list was empty. 4.57.0 ships `DEFAULT_CERTIFICATE_PINS`: TradeYar leaf `RO8Xw…` (primary, matched live) + offline backup `Q1JB2…` + ISRG Root X1/X2; CoinePro-FX GTS WE1 `kIdp6…` (primary) + GTS Root R4 `mEflZ…` + GTS Root R1 + ISRG X1/X2 — CA pins, because Cloudflare rotates the leaf's key without notice. Expiry 2027-03-01 | `CertificatePinDefaultsTest` (both hosts ≥ 2 pins, expiry in the future, from the artefact's `BuildConfig`); `CertificatePinsTest` (format, expiry enforcement); the `openssl` measurement in `PINNING.md` |
 | route Investing / Cointelegraph / ForexFactory through the backend behind a flag; no direct calls in release | `DIRECT_THIRD_PARTY_FEEDS = false` in the release variant unless `COINEPRO_DIRECT_THIRD_PARTY_FEEDS=true`; `PublicMarketIntel` tries the platform routes (`api/v1/public/news`, `…/calendar/week`) first and returns nothing for the direct sources when the flag is off. **The backend routes do not exist yet** (`docs/backend/FEEDS.md` is the contract), so a release build's news section is what the two platforms' own newsrooms answer | `app/build.gradle.kts` release block; `PublicFeedTest` |
 
+## Run 4.58 → 4.6x — the fix and the four re-listed items
+
+### FIX (4.58.0) — done
+
+| asked | done | proof |
+| --- | --- | --- |
+| `chart_panel_objects` = «ترسیم‌ها» | the key, and the tool rail's tile that said «اشیا» in a Kotlin literal | `values-fa/strings.xml`, `ToolRail.kt` |
+| lint forbids «اشیا» | `FORBIDDEN_VARIANTS` (`شیءها\|اشیا` → «ترسیم‌ها») and `KOTLIN_RETIRED` for `src/main` literals in `tools/i18n/lint_strings.py`; `>اشیا<` in the gate's `FORBIDDEN_UI_WORDS` | `lint_strings: 42 module(s) clean` after the fix; a probe string fails it |
+| tablet screenshots | **56 frames** in `docs/qa/screenshots/4.58/` (`<scene>-<device>-<locale>-<theme>.jpg`, half size; the full-size PNGs are in the run's `build/proof/` and the zip sent with the APK): `list-detail`, `panel-objects`, `panel-watchlist`, `panel-depth`, `panel-alerts`, `panel-script`, `panes-4` × Pixel Tablet (1280×800 dp) and Galaxy Tab S9 Ultra (1973×1232 dp) × dark/light × fa/en | `TabletProofTest` |
+
+**Which Material scaffolds are actually in use** (`grep` on `src/main`, call sites):
+
+| scaffold | where | frames that show it |
+| --- | --- | --- |
+| `ListDetailPaneScaffold` | `core/designsystem/.../CoineProListDetail.kt` — every list ⇄ detail page (markets, screener, ideas, news) with the drag divider | `list-detail-*` |
+| `SupportingPaneScaffold` | `feature/chart/.../ChartSidePanels.kt` — the chart's docked panel beside the plot | `panel-*` |
+| `NavigationSuiteScaffoldLayout` | `app/.../CoineProApp.kt` — the shell places the bar (compact) or the rail (medium, expanded) | not in these frames (the proofs render screens, not the shell); `ScreenshotRenderTest.tabletShell` |
+
+Seen in the frames and left as is: the readings panel's three words (`متوسط`, `کم`, `خنثی`) are Persian literals under an English locale — copy in code, outside this run's scope, noted for the next copy pass.
+
 ## Definition of done — as it stands
 
 - [x] §0 copy hygiene done; lint enforced (`tools/i18n/lint_strings.py` through the consistency gate).

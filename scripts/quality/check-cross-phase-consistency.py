@@ -313,7 +313,7 @@ FORBIDDEN_BRAND_SPELLINGS = ("Pro CHart", "Pro-Chart", "پروچارت", "ProCha
 # Words a reader never uses for the thing they are looking at. The glossary in docs/audit names the
 # replacement for each; a new occurrence in a user-facing string is a regression.
 FORBIDDEN_UI_WORDS = {
-    "values-fa/strings.xml": ("شیءها", "واگرد", "ازنو", "بازپخش نوار", "دیدبان<", "نما اسکریپت", "نقشهٔ حرارتی"),
+    "values-fa/strings.xml": ("شیءها", ">اشیا<", "واگرد", "ازنو", "بازپخش نوار", "دیدبان<", "نما اسکریپت", "نقشهٔ حرارتی"),
     "values/strings.xml": (">Studies<", ">Bar length<", "Connected surfaces", "Provider truth", ">STALE<", "server-side setting", "this build is pointed"),
 }
 

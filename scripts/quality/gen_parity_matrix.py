@@ -38,6 +38,7 @@ TEST_FILES = [
     ROOT / "app/src/test/kotlin/com/coinepro/app/FoldMetricsTest.kt",
     ROOT / "app/src/test/kotlin/com/coinepro/app/TouchTargetTest.kt",
     ROOT / "app/src/test/kotlin/com/coinepro/app/SheetShapeTest.kt",
+    ROOT / "app/src/test/kotlin/com/coinepro/app/TabletProofTest.kt",
 ]
 
 # Pure-JVM tests that pin a window decision without rendering it.
@@ -64,6 +65,8 @@ SCREENS = [
     ("menu / profile", ("menu", "profile", "avatar", "delete")),
     ("shell: bar and rail", ("bottom-bar", "bottombar", "shell", "navigation", "rail")),
     ("sheets and dialogs", ("sheet", "dialog", "picker")),
+    ("chart panels", ("panel-",)),
+    ("chart layouts", ("panes-",)),
     ("alerts", ("alert",)),
     ("screener", ("screener",)),
     ("terminal / trade", ("terminal", "trade", "order", "dom", "ladder")),

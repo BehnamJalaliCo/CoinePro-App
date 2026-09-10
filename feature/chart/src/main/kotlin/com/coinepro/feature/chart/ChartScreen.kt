@@ -311,6 +311,8 @@ fun ChartScreen(
     drawingTemplates: DrawingTemplateStore? = null,
     /** Panels the shell can dock beside the plot on a wide window — see [ChartSidePanel]. */
     sidePanels: List<ChartSidePanel> = emptyList(),
+    /** The side panel open when the screen first composes — `"objects"` or a shell panel's id. */
+    initialSidePanel: String? = null,
     /** Takes the drawn setup as a paper trade. See [SetupSheetBody]. */
     onPaperTrade: (
         (
@@ -1276,6 +1278,7 @@ fun ChartScreen(
     ChartWorkbench(
         modifier = Modifier.fillMaxSize(),
         sidePanels = listOf(objectTreePanel) + sidePanels,
+        initialSidePanel = initialSidePanel,
         tools = { railModifier ->
             ChartToolColumn(
                 state = state,

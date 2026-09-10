@@ -15,6 +15,23 @@ it is for.
 
 ---
 
+## [4.58.0] — 2026-09-10 — the objects panel says «ترسیم‌ها», and the tablet is photographed
+
+The fix that opens the 4.58 run.
+
+### Changed
+- `chart_panel_objects` is «ترسیم‌ها», the word `chart_band_objects` already used; the tool
+  rail's «حذف همه‌ی اشیا» tile says «ترسیم‌ها» too. The string lint retires «اشیا» (with «شیءها»)
+  in `values-fa/` and in Kotlin literals under `src/main/`; the consistency gate refuses `>اشیا<`.
+- `ChartScreen.initialSidePanel` / `ChartWorkbench.initialSidePanel`: which docked panel is open
+  at first composition, for a render or a restored workspace.
+
+### Added
+- **`TabletProofTest`**: fifty-six frames — watchlist ⇄ chart list-detail, the chart with each
+  of its five docked panels open, the four-chart layout — on the Pixel Tablet and the Galaxy Tab
+  S9 Ultra, dark and light, Persian and English, written to `build/proof/` and kept at half size
+  under `docs/qa/screenshots/4.58/`.
+
 ## [4.57.0] — 2026-09-10 — pinned to both hosts, and the store build reads no third party
 
 Item 6 of the 4.52 run, the last.

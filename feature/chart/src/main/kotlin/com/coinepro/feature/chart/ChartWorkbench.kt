@@ -114,11 +114,13 @@ internal fun ChartWorkbench(
      * Ignored where they do not fit, which is every phone and a tablet held upright.
      */
     sidePanels: List<ChartSidePanel> = emptyList(),
+    /** The side panel open at first composition, by id, or none. */
+    initialSidePanel: String? = null,
     page: @Composable (Modifier, ChartWorkbenchColumns) -> Unit,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         if (sidePanels.isNotEmpty() && sidePanelsFit(maxWidth.value)) {
-            ChartSidePanelHost(panels = sidePanels, modifier = Modifier.fillMaxSize()) { hostModifier ->
+            ChartSidePanelHost(panels = sidePanels, modifier = Modifier.fillMaxSize(), initialOpenId = initialSidePanel) { hostModifier ->
                 ChartWorkbenchColumns(hostModifier, tools, readings, page)
             }
         } else {

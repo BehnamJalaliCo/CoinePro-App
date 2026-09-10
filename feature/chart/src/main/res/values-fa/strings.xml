@@ -201,7 +201,7 @@
     <!-- The panels a wide window docks beside the chart, and the rail that opens them. -->
     <string name="chart_side_rail">پنل‌های چارت</string>
     <string name="chart_panel_watchlist">دیده‌بان</string>
-    <string name="chart_panel_objects">اشیا</string>
+    <string name="chart_panel_objects">ترسیم‌ها</string>
     <string name="chart_panel_depth">عمق بازار</string>
     <string name="chart_panel_alerts">هشدارها</string>
     <string name="chart_panel_script">نمااسکریپت</string>

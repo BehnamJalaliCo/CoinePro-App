@@ -77,7 +77,7 @@ FORBIDDEN_VARIANTS = (
     ("en", r"Pro CHart|Pro-Chart|ProChart", "Pro Chart"),
     ("fa", r"دیدبان", "دیده‌بان"),
     ("fa", r"نما اسکریپت|نما‌اسکریپت", "نمااسکریپت"),
-    ("fa", r"شیءها|اشیاء", "ترسیم‌ها"),
+    ("fa", r"شیءها|اشیا", "ترسیم‌ها"),
     ("fa", r"واگرد", "برگرداندن"),
     ("fa", r"ازنو", "انجام دوباره"),
     ("fa", r"بازپخش نوار", "ریپلی"),
@@ -93,6 +93,9 @@ FORBIDDEN_VARIANTS = (
     ("en", r"\bSTALE\b", "Stale"),
     ("en", r"\bInterval\b(?! [a-z])", "Timeframe"),
 )
+
+# The glossary's retired words that also appear in Kotlin literals (the tool rail's tiles, say).
+KOTLIN_RETIRED = re.compile(r"شیءها|اشیا")
 
 # «نمودار» is retired from the interface in favour of «چارت». It survives only where the word
 # means a diagram that is not the price chart — an equity curve, a histogram in a lesson.
@@ -317,6 +320,8 @@ class Lint:
             for number, line in enumerate(text.splitlines(), start=1):
                 if HAMZA_ON_HEH.search(line):
                     self.fail(path, f"line {number}", "hamza-on-heh ezafe in a Kotlin literal — write «ه‌ی»")
+                if "/src/main/" in posix and KOTLIN_RETIRED.search(line):
+                    self.fail(path, f"line {number}", "retired word in a Kotlin literal — a drawing is «ترسیم», never «شیء/اشیا»")
 
     # -- note policy --------------------------------------------------------------------------
 

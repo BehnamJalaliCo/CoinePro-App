@@ -86,9 +86,11 @@ internal fun sidePanelsFit(widthDp: Float): Boolean =
 internal fun ChartSidePanelHost(
     panels: List<ChartSidePanel>,
     modifier: Modifier = Modifier,
+    /** The panel open when the host first composes — a render's, or a restored workspace's. */
+    initialOpenId: String? = null,
     main: @Composable (Modifier) -> Unit,
 ) {
-    var openId by rememberSaveable { mutableStateOf<String?>(null) }
+    var openId by rememberSaveable { mutableStateOf(initialOpenId) }
     val open = panels.firstOrNull { it.id == openId }
     Row(modifier = modifier.fillMaxSize()) {
         val partitions = if (open != null) 2 else 1
