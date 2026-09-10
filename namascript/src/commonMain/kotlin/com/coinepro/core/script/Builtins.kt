@@ -439,6 +439,76 @@ internal object Builtins {
                 series(interpreter, Line.of(interpreter.barCount) { source[it] ?: replacement })
             }
 
+            /* ---------------------------------------------------------- since 4.61.0: na, text, objects, strategy */
+            "na" -> {
+                val line = arguments.source(0)
+                Value.FlagSeries(Line.of(interpreter.barCount) { if (line.isPresent(it)) 0.0 else 1.0 })
+            }
+            "str.tostring" -> Value.Text(interpreter.asText(arguments.value(0), node))
+            "str.length" -> Value.Num(visibleText(arguments.text(0)).length.toDouble())
+            "str.upper" -> Value.Text(arguments.text(0).uppercase())
+            "str.lower" -> Value.Text(arguments.text(0).lowercase())
+            "str.contains" -> Value.Flag(arguments.text(0).contains(arguments.text(1)))
+            "str.startswith" -> Value.Flag(arguments.text(0).startsWith(arguments.text(1)))
+            "str.endswith" -> Value.Flag(arguments.text(0).endsWith(arguments.text(1)))
+            "str.replace_all" -> Value.Text(arguments.text(0).replace(arguments.text(1), arguments.text(2)))
+            "str.format" -> {
+                // `{0}`, `{1}`… replaced by the arguments after the pattern, each in the price style.
+                var out = arguments.text(0)
+                for (index in 1 until arguments.size) out = out.replace("{${index - 1}}", interpreter.asText(arguments.value(index), node))
+                Value.Text(out)
+            }
+            "label.new" -> {
+                val bar = interpreter.barOf(arguments.namedOrPositional("x", 0), node)
+                val price = interpreter.scalarOrLast(arguments.namedOrPositional("y", 1), node)
+                    ?: throw ScriptError("قیمت برچسب مشخص نیست", "The label's price is absent", node.line, node.column, code = "E203")
+                val text = if (arguments.has("text")) arguments.textOf(arguments.named("text")) else if (arguments.size > 2) arguments.text(2) else ""
+                val colour = if (arguments.has("color")) arguments.colourOf(arguments.named("color")) else DEFAULT_OBJECT_COLOUR
+                val textColour = if (arguments.has("textcolor")) arguments.colourOf(arguments.named("textcolor")) else null
+                interpreter.addDrawing(ScriptDrawing(ScriptDrawingKind.LABEL, listOf(bar), listOf(price), text, colour, textColour))
+                Value.Num(bar.toDouble())
+            }
+            "line.new" -> {
+                val first = interpreter.barOf(arguments.namedOrPositional("x1", 0), node)
+                val second = interpreter.barOf(arguments.namedOrPositional("x2", 2), node)
+                val y1 = interpreter.scalarOrLast(arguments.namedOrPositional("y1", 1), node)
+                val y2 = interpreter.scalarOrLast(arguments.namedOrPositional("y2", 3), node)
+                if (y1 == null || y2 == null) throw ScriptError("قیمت خط مشخص نیست", "The line's price is absent", node.line, node.column, code = "E203")
+                val colour = if (arguments.has("color")) arguments.colourOf(arguments.named("color")) else DEFAULT_OBJECT_COLOUR
+                val width = if (arguments.has("width")) arguments.constantOf(arguments.named("width"), "ضخامت", "The width").toFloat().coerceIn(0.5f, 6f) else 1.6f
+                interpreter.addDrawing(ScriptDrawing(ScriptDrawingKind.LINE, listOf(first, second), listOf(y1, y2), null, colour, null, width))
+                Value.Num(first.toDouble())
+            }
+            "box.new" -> {
+                val left = interpreter.barOf(arguments.namedOrPositional("left", 0), node)
+                val right = interpreter.barOf(arguments.namedOrPositional("right", 2), node)
+                val top = interpreter.scalarOrLast(arguments.namedOrPositional("top", 1), node)
+                val bottom = interpreter.scalarOrLast(arguments.namedOrPositional("bottom", 3), node)
+                if (top == null || bottom == null) throw ScriptError("قیمت جعبه مشخص نیست", "The box's price is absent", node.line, node.column, code = "E203")
+                val colour = if (arguments.has("color")) arguments.colourOf(arguments.named("color")) else DEFAULT_OBJECT_COLOUR
+                val text = if (arguments.has("text")) arguments.textOf(arguments.named("text")) else null
+                interpreter.addDrawing(ScriptDrawing(ScriptDrawingKind.BOX, listOf(left, right), listOf(max(top, bottom), min(top, bottom)), text, colour, null))
+                Value.Num(left.toDouble())
+            }
+            "strategy.entry" -> {
+                val id = arguments.text(0)
+                val direction = if (arguments.constant(1, "جهت", "The direction") >= 0) 1 else -1
+                val flags = orderFlags(interpreter, node, arguments, 2)
+                interpreter.addOrder(StrategyOrder(id, direction, flags))
+                Value.Num((0 until interpreter.barCount).count { flags.flagAt(it) }.toDouble())
+            }
+            "strategy.close" -> {
+                val id = arguments.text(0)
+                val flags = orderFlags(interpreter, node, arguments, 1)
+                interpreter.addOrder(StrategyOrder(id, 0, flags))
+                Value.Num((0 until interpreter.barCount).count { flags.flagAt(it) }.toDouble())
+            }
+            "strategy.close_all" -> {
+                val flags = orderFlags(interpreter, node, arguments, 0)
+                interpreter.addOrder(StrategyOrder(null, 0, flags))
+                Value.Num((0 until interpreter.barCount).count { flags.flagAt(it) }.toDouble())
+            }
+
             /* ---------------------------------------------------------- inputs */
             "input" -> input(interpreter, node, arguments)
 
@@ -455,6 +525,19 @@ internal object Builtins {
             else -> throw ScriptError("تابع «${node.qualified}» وجود ندارد", "There is no function “${node.qualified}”", node.line, node.column, code = "E304")
         }
     }
+
+    /** The `when =` of an order: named, or positional at [index], or every bar when neither is given. */
+    private fun orderFlags(interpreter: Interpreter, node: Call, arguments: Arguments, index: Int): Line = when {
+        arguments.has("when") -> interpreter.flagLine(arguments.named("when"), node)
+        arguments.size > index -> interpreter.flagLine(arguments.value(index), node)
+        else -> constantLine(interpreter.barCount, 1.0)
+    }
+
+    /** The text without the isolates `scriptNumberText` wraps a number in — what a reader counts. */
+    private fun visibleText(text: String): String = text.filterNot { it == '\u2066' || it == '\u2069' }
+
+    /** Gold, like a reader's own drawing: an object a script places is the reader's mark too. */
+    private const val DEFAULT_OBJECT_COLOUR = 0xFFD8A848
 
     /* ------------------------------------------------------------------ groups */
 
@@ -953,6 +1036,8 @@ internal class Arguments(private val interpreter: Interpreter, private val node:
         is Value.Text -> value.value
         is Value.Num -> scriptNumberText(value.value)
         is Value.Flag -> if (value.value) "درست" else "نادرست"
+        // A series where a title is wanted is a mistake worth naming; `str.tostring` is the way to
+        // read one as its last bar on purpose — see `Interpreter.asText`.
         else -> throw ScriptError("اینجا متن لازم است، نه ${value.typeName}", "Text is needed here, not ${value.typeNameEn}", node.line, node.column, code = "E208")
     }
 

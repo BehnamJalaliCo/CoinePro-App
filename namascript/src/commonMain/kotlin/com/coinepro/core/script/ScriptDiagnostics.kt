@@ -65,6 +65,8 @@ object ScriptDiagnostics {
             "Nest fewer parentheses, or split the expression across variables."),
         "E406" to ("اسکریپت در دو ثانیه تمام نشد؛ طول دوره‌ها یا تعداد محاسبه‌ها را کم کنید." to
             "The script did not finish in two seconds; reduce the lengths or the number of computations."),
+        "E407" to ("اسکریپت سری‌های زیادی نگه می‌دارد؛ متغیرهای میانی را کمتر کنید یا نتیجه‌ها را در یک متغیر جمع کنید." to
+            "The script holds too many series; keep fewer intermediate variables or fold results into one."),
     )
 
     fun hint(code: String): String = CODES[code]?.first.orEmpty()

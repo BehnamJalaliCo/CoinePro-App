@@ -1,0 +1,2 @@
+// expect: error E203
+t = "x" + color.gold

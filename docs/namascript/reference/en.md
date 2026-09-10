@@ -18,6 +18,7 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 | `bar_index` | The bar's number, from zero. | number series |
 | `n` | How many bars the chart holds. | number |
 | `confirmed` | True on every closed bar and false on the last; end a signal with «and confirmed» so its mark never sits on the bar still forming. | condition series |
+| `na` | Absent on every bar; nz(na, 0) fills it and no comparison with it is ever decided. | number series |
 
 ## Averages
 
@@ -272,6 +273,39 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 | `input.color(color.gold, title = "رنگ خط")` | A colour input, from the named colours. | colour |
 | `input.timeframe("240", title = "تایم‌فریم")` | A timeframe choice, for request.security. | رشته |
 | `request.security("240", close)` | The expression computed on a coarser timeframe (a multiple of the chart's), each chart bar taking the last completed higher bar's value — no repainting. | number or series |
+
+## Text and absence (4.61)
+
+| Call | What it gives | Returns |
+| --- | --- | --- |
+| `na(x)` | Absent on every bar; nz(na, 0) fills it and no comparison with it is ever decided. | condition series |
+| `str.tostring(x)` | The number as price-style text; a series by its last bar. | رشته |
+| `str.length("abc")` | How many characters the text has. | number |
+| `str.upper("abc")` | The text in upper case. | رشته |
+| `str.lower("ABC")` | The text in lower case. | رشته |
+| `str.contains("abc", "b")` | True when the second text occurs inside the first. | true/false |
+| `str.startswith("abc", "a")` | True when the text starts with the part given. | true/false |
+| `str.endswith("abc", "c")` | True when the text ends with the part given. | true/false |
+| `str.replace_all("a-b", "-", "+")` | Every occurrence of the second text replaced by the third. | رشته |
+| `str.format("{0} / {1}", close, open)` | Fills {0}, {1}, … with the arguments that follow the pattern. | رشته |
+
+## Drawing on the chart (4.61)
+
+| Call | What it gives | Returns |
+| --- | --- | --- |
+| `label.new(bar_index, high, "متن", color = color.gold)` | A label at the bar and price given; a series is read at its last bar. | number |
+| `line.new(bar_index - 20, low, bar_index, high, color = color.blue, width = 2)` | A line from (x1, y1) to (x2, y2); x is a bar number. | number |
+| `box.new(bar_index - 10, high, bar_index, low, color = color.grey)` | A box from the left bar to the right one, between two prices. | number |
+
+## Strategy (4.61)
+
+| Call | What it gives | Returns |
+| --- | --- | --- |
+| `strategy.long` | The long direction for strategy.entry. | number |
+| `strategy.short` | The short direction for strategy.entry. | number |
+| `strategy.entry("L", strategy.long, when = cond)` | An entry order on every bar the condition holds, filled at the next bar's open; an entry the other way closes the open trade. | number |
+| `strategy.close("L", when = cond)` | Closes the open trade with this id at the next bar's open. | number |
+| `strategy.close_all(cond)` | Closes whatever trade is open. | number |
 
 ## Colours
 

@@ -1,0 +1,4 @@
+// expect: ok
+// expect: plot 0 239 7
+varip x = 7
+plot(x)

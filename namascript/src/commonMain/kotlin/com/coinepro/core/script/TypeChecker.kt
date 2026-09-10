@@ -95,6 +95,7 @@ internal class TypeChecker {
             in Interpreter.BUILTIN_SERIES -> return ScriptType.NUM_SERIES
         }
         if (node.name in Interpreter.COLOURS) return ScriptType.COLOUR
+        if (node.name in Interpreter.CONSTANTS) return ScriptType.NUM
         throw ScriptError("«${node.name}» تعریف نشده است", "“${node.name}” is not defined", node.line, node.column, code = "E301")
     }
 
@@ -120,6 +121,13 @@ internal class TypeChecker {
     private fun binary(node: Binary): ScriptType {
         val left = typeOf(node.left)
         val right = typeOf(node.right)
+        // `"text" + x`: words joined to a number, a flag or more words (SPEC §3).
+        if (node.operator == TokenType.PLUS && (left == ScriptType.TEXT || right == ScriptType.TEXT)) {
+            for (side in listOf(left, right)) {
+                if (side == ScriptType.COLOUR) throw ScriptError("رنگ را نمی‌شود به متن چسباند", "A colour cannot be joined to text", node.line, node.column, code = "E203")
+            }
+            return ScriptType.TEXT
+        }
         return when (node.operator) {
             TokenType.PLUS, TokenType.MINUS, TokenType.STAR, TokenType.SLASH, TokenType.PERCENT -> {
                 if (left == ScriptType.NUM && right == ScriptType.NUM) return ScriptType.NUM
@@ -188,7 +196,7 @@ internal class TypeChecker {
         if (name !in Builtins.NAMES) {
             throw ScriptError("تابع «$name» وجود ندارد", "There is no function “$name”", node.line, node.column, code = "E304")
         }
-        if (name in CUMULATIVE) incremental = false
+        if (name in CUMULATIVE || name in WHOLE_RUN) incremental = false
         for (argument in node.arguments) {
             val value = argument.value
             typeOf(value)
@@ -231,7 +239,20 @@ internal class TypeChecker {
             "plot" to ScriptType.NUM, "hline" to ScriptType.NUM, "marker" to ScriptType.NUM, "plotshape" to ScriptType.NUM,
             "plotchar" to ScriptType.NUM, "bgcolor" to ScriptType.NUM, "signal" to ScriptType.NUM, "log" to ScriptType.FLAG,
             "alertcondition" to ScriptType.FLAG, "nz" to ScriptType.ANY, "iff" to ScriptType.ANY,
+            // 4.61.0
+            "na" to ScriptType.FLAG_SERIES,
+            "str.tostring" to ScriptType.TEXT, "str.upper" to ScriptType.TEXT, "str.lower" to ScriptType.TEXT,
+            "str.replace_all" to ScriptType.TEXT, "str.format" to ScriptType.TEXT, "str.length" to ScriptType.NUM,
+            "str.contains" to ScriptType.FLAG, "str.startswith" to ScriptType.FLAG, "str.endswith" to ScriptType.FLAG,
+            "label.new" to ScriptType.NUM, "line.new" to ScriptType.NUM, "box.new" to ScriptType.NUM,
+            "strategy.entry" to ScriptType.NUM, "strategy.close" to ScriptType.NUM, "strategy.close_all" to ScriptType.NUM,
         )
+
+        /**
+         * Functions whose output is placed by absolute bar or replayed over every bar: an object at
+         * bar 10 or a trade list cannot be spliced from a tail, so the script is re-run whole.
+         */
+        val WHOLE_RUN = setOf("label.new", "line.new", "box.new", "strategy.entry", "strategy.close", "strategy.close_all")
 
         /** A length larger than this is not a lookback anybody meant; it is left to the runtime's E206. */
         const val MAX_TRACKED_LOOKBACK = 5_000

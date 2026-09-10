@@ -1,0 +1,4 @@
+// expect: ok
+// expect: plot 0 239 5
+t = "ab" + "cde"
+plot(str.length(t) + 0 * close)

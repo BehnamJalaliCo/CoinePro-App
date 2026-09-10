@@ -1,0 +1,5 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 0 5
+// expect: plot 0 239 5
+plot(nz(na, 5))

@@ -44,7 +44,7 @@ class CompilerTest {
 
     @Test
     fun `a type error is found without running`() {
-        val failure = NamaScript.check("x = \"abc\" + 1\nplot(x)")
+        val failure = NamaScript.check("x = \"abc\" * 1\nplot(x)")
         assertNotNull(failure)
         assertEquals("E203", failure!!.code)
         assertEquals(1, failure.line)

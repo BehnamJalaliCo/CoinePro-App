@@ -37,6 +37,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import com.coinepro.core.script.ScriptStrategyReport
+import com.coinepro.core.designsystem.CoineProTextStyles
 import androidx.compose.ui.text.TextStyle
 import com.coinepro.core.script.ScriptReferenceEn
 import androidx.compose.ui.text.TextRange
@@ -269,6 +274,8 @@ private fun EditorTab(
                             markers = overlay?.markers.orEmpty(),
                             panes = listOfNotNull(overlay?.pane),
                             signal = overlay?.signal,
+                            // The script's labels, lines and boxes, as the reader's own drawings.
+                            drawings = overlay?.drawings.orEmpty(),
                             // The volume pane would compete with the script's own for the little
                             // height a preview has, and a script that wanted volume plotted it.
                             showVolume = false,
@@ -287,15 +294,8 @@ private fun EditorTab(
 
         item { CodeField(source = state.source, onChange = controller::edit, failure = state.failure) }
 
-        if (state.incremental) {
-            item {
-                Text(
-                    "فقط کندل‌های تازه دوباره حساب شد",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = CoineProColors.TextMuted,
-                )
-            }
-        }
+        // Snippets: a working script in one tap, for a reader who has the idea and not the syntax.
+        item { SnippetRow(onInsert = { snippet -> controller.edit((state.source.trimEnd() + "\n\n" + snippet).trimStart()) }) }
 
         state.failure?.let { failure ->
             item { FailureCard(failure = failure) }
@@ -351,13 +351,29 @@ private fun EditorTab(
             item { SetupCard(buy = setup.buy, entry = setup.entry, stop = setup.stop, target = setup.target, riskReward = setup.riskReward) }
         }
 
+        val strategy = state.result?.strategy
+        if (strategy != null) {
+            item { StrategyCard(report = strategy) }
+        }
+
+        // The console: what the script printed, and what the run cost. The timing line is there
+        // on every successful run, so a reader watching a script slow down sees it slow down.
         val log = state.result?.log.orEmpty()
-        if (log.isNotEmpty()) {
-            item { SectionTitle("خروجی", null) }
+        val result = state.result
+        if (log.isNotEmpty() || (result != null && result.ok)) {
+            item { SectionTitle("کنسول", null) }
             item {
                 CoineProCard(modifier = Modifier.fillMaxWidth()) {
                     log.forEach {
                         Text(it, style = MaterialTheme.typography.bodySmall, color = CoineProColors.TextSecondary)
+                    }
+                    if (result != null && result.ok) {
+                        Text(
+                            consoleTiming(result.elapsedMillis, state.incremental, series.size),
+                            style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                            color = CoineProColors.TextMuted,
+                            modifier = Modifier.semantics { contentDescription = "script-console-timing" },
+                        )
                     }
                 }
             }
@@ -491,6 +507,9 @@ private fun CodeField(source: String, onChange: (String) -> Unit, failure: Scrip
                     modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.Half),
                 ) {
                     items(completions, key = { it }) { name ->
+                        // The name in gold and, for a function, its arguments beside it in the
+                        // muted tone: the signature is the reason to pick one chip over the next.
+                        val signature = signatureFor(name)
                         Box(
                             modifier = Modifier
                                 .background(CoineProColors.Surface, CoineProShapes.small)
@@ -503,9 +522,13 @@ private fun CodeField(source: String, onChange: (String) -> Unit, failure: Scrip
                                 .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half),
                         ) {
                             Text(
-                                name,
+                                buildAnnotatedString {
+                                    withStyle(SpanStyle(color = CoineProColors.Gold)) { append(name) }
+                                    val rest = signature.removePrefix(name)
+                                    if (rest.isNotEmpty()) withStyle(SpanStyle(color = CoineProColors.TextMuted)) { append(rest) }
+                                },
                                 style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
-                                color = CoineProColors.Gold,
+                                maxLines = 1,
                             )
                         }
                     }
@@ -575,6 +598,114 @@ private val COMPLETION_NAMES: List<String> = (
     ).distinct().sorted()
 
 private const val COMPLETION_LIMIT = 8
+
+/** The reference's signature for a completion — `ta.sma(close, 20)` for `ta.sma` — or the name itself. */
+internal fun signatureFor(name: String): String = SIGNATURES[name] ?: name
+
+private val SIGNATURES: Map<String, String> = (ScriptReference.SERIES + ScriptReference.ALL_GROUPS.flatMap { it.functions })
+    .associate { it.signature.substringBefore('(').trim() to it.signature }
+
+/** A working script per idea; tapped in when the reader has the idea and not yet the syntax. */
+internal data class ScriptSnippet(val title: String, val source: String)
+
+internal val SNIPPETS: List<ScriptSnippet> = listOf(
+    ScriptSnippet(
+        "تقاطع دو میانگین",
+        "fast = ta.ema(close, input.int(12, title = \"تند\"))\n" +
+            "slow = ta.ema(close, input.int(26, title = \"کند\"))\n" +
+            "plot(fast, title = \"تند\", color = color.gold)\n" +
+            "plot(slow, title = \"کند\", color = color.blue)\n" +
+            "marker(ta.crossover(fast, slow) and confirmed, title = \"خرید\", style = \"up\")\n" +
+            "marker(ta.crossunder(fast, slow) and confirmed, title = \"فروش\", style = \"down\")",
+    ),
+    ScriptSnippet(
+        "RSI با نواحی",
+        "r = ta.rsi(close, input.int(14, title = \"طول\"))\n" +
+            "plot(r, title = \"RSI\", pane = \"own\")\n" +
+            "hline(70, pane = \"own\")\n" +
+            "hline(30, pane = \"own\")\n" +
+            "bgcolor(r > 70, color.new(color.sell, 85))\n" +
+            "bgcolor(r < 30, color.new(color.buy, 85))",
+    ),
+    ScriptSnippet(
+        "برچسب روی آخرین کندل",
+        "label.new(bar_index, high, \"close \" + str.tostring(close), color = color.gold)\n" +
+            "line.new(bar_index - 20, ta.lowest(low, 20), bar_index, ta.lowest(low, 20), color = color.blue)",
+    ),
+    ScriptSnippet(
+        "استراتژی ساده",
+        "fast = ta.ema(close, 9)\n" +
+            "slow = ta.ema(close, 21)\n" +
+            "strategy.entry(\"L\", strategy.long, when = ta.crossover(fast, slow))\n" +
+            "strategy.entry(\"S\", strategy.short, when = ta.crossunder(fast, slow))",
+    ),
+)
+
+/** «اجرا در ۱۲ ms · ۲٬۰۰۰ کندل · فقط دنباله» — Latin digits for the milliseconds, a count in Persian for the bars. */
+internal fun consoleTiming(elapsedMillis: Long, incremental: Boolean, bars: Int): String =
+    "اجرا در $elapsedMillis ms · ${bars.toPersianDigits()} کندل" + if (incremental) " · فقط دنباله" else ""
+
+@Composable
+private fun SnippetRow(onInsert: (String) -> Unit) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        items(SNIPPETS, key = { it.title }) { snippet ->
+            Box(
+                modifier = Modifier
+                    .background(CoineProColors.Surface, CoineProShapes.small)
+                    .border(1.dp, CoineProColors.Border, CoineProShapes.small)
+                    .clickable { onInsert(snippet.source) }
+                    .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half)
+                    .semantics { contentDescription = "script-snippet-${snippet.title}" },
+            ) {
+                Text(snippet.title, style = MaterialTheme.typography.labelMedium, color = CoineProColors.TextSecondary)
+            }
+        }
+    }
+}
+
+/** The strategy's figures: what the orders came to over the chart. */
+@Composable
+private fun StrategyCard(report: ScriptStrategyReport) {
+    val positive = report.netPercent >= 0
+    CoineProCard(
+        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "script-strategy-report" },
+        accent = if (positive) CoineProColors.Buy else CoineProColors.Sell,
+    ) {
+        Text("استراتژی", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        StrategyRow("بازده خالص", (if (positive) "+" else "") + MarketNumberFormatter.price(report.netPercent, 2) + "%", if (positive) CoineProColors.Buy else CoineProColors.Sell)
+        StrategyRow("معامله‌های بسته", report.closedCount.toPersianDigits(), CoineProColors.TextPrimary)
+        StrategyRow("نرخ برد", MarketNumberFormatter.price(report.winRate * 100, 1) + "%", CoineProColors.TextPrimary)
+        StrategyRow("ضریب سود", report.profitFactor?.let { MarketNumberFormatter.price(it, 2) } ?: "—", CoineProColors.TextPrimary)
+        StrategyRow("بیشترین افت", MarketNumberFormatter.price(report.maxDrawdownPercent, 2) + "%", CoineProColors.Sell)
+        if (report.trades.any { it.open }) {
+            Text(
+                "یک معامله هنوز باز است و در ارقام بالا نیامده.",
+                style = MaterialTheme.typography.bodySmall,
+                color = CoineProColors.TextMuted,
+            )
+        }
+        Text(
+            "پر شدن در بازِ کندل بعد، بدون کارمزد و لغزش؛ یک معامله در هر زمان.",
+            style = MaterialTheme.typography.bodySmall,
+            color = CoineProColors.TextSecondary,
+        )
+    }
+}
+
+@Composable
+private fun StrategyRow(label: String, value: String, colour: androidx.compose.ui.graphics.Color) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = CoineProColors.TextSecondary)
+        Text(value, style = CoineProTextStyles.Numeric, color = colour, fontWeight = FontWeight.Bold)
+    }
+}
 
 @Composable
 private fun NameField(name: String, onChange: (String) -> Unit) {

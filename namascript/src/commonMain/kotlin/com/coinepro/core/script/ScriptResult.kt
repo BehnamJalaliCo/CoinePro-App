@@ -82,6 +82,56 @@ data class ScriptInput(
     val step: Double? = null,
 )
 
+/** What a script drew with `label.new`, `line.new` or `box.new`; bar indices and prices, in the chart's vocabulary once `toOverlay` runs. */
+enum class ScriptDrawingKind { LABEL, LINE, BOX }
+
+data class ScriptDrawing(
+    val kind: ScriptDrawingKind,
+    /** One bar for a label, two for a line (first, second) and a box (left, right). */
+    val bars: List<Int>,
+    /** One price for a label, two for a line (at each bar) and a box (top, bottom). */
+    val prices: List<Double>,
+    val text: String? = null,
+    val colour: Long,
+    val textColour: Long? = null,
+    val widthDp: Float = 1.6f,
+)
+
+/**
+ * One round trip the strategy simulator closed, or the position still open on the last bar.
+ *
+ * Fills are at the **open of the bar after** the signal, the way Pine fills a market order: a
+ * signal computed on a bar's close cannot be acted on at that close.
+ */
+data class ScriptTrade(
+    val id: String,
+    val long: Boolean,
+    val entryBar: Int,
+    val exitBar: Int,
+    val entryPrice: Double,
+    val exitPrice: Double,
+    /** True for the position the run ended inside; [exitPrice] is then the last close. */
+    val open: Boolean = false,
+) {
+    /** The trade's return on its entry price, in percent, signed by direction. */
+    val returnPercent: Double
+        get() = if (entryPrice == 0.0) 0.0 else (if (long) 1.0 else -1.0) * (exitPrice - entryPrice) / entryPrice * 100.0
+}
+
+/** What `strategy.entry` / `strategy.close` produced, simulated over the whole series. */
+data class ScriptStrategyReport(
+    val trades: List<ScriptTrade>,
+    /** The sum of every closed trade's return, in percent — simple, not compounded. */
+    val netPercent: Double,
+    val winRate: Double,
+    /** Gross wins over gross losses; null when nothing was lost. */
+    val profitFactor: Double?,
+    /** The deepest fall of the cumulative return from its high, in percent points. */
+    val maxDrawdownPercent: Double,
+) {
+    val closedCount: Int get() = trades.count { !it.open }
+}
+
 /**
  * Everything one run produced.
  *
@@ -101,12 +151,19 @@ data class ScriptResult(
     val backgrounds: List<ScriptBackground> = emptyList(),
     /** The conditions `alertcondition(...)` named, with the bars they held on. */
     val alerts: List<ScriptAlert> = emptyList(),
+    /** Labels, lines and boxes the script placed (4.61.0). */
+    val drawings: List<ScriptDrawing> = emptyList(),
+    /** The strategy simulation, when the script placed an order (4.61.0). */
+    val strategy: ScriptStrategyReport? = null,
+    /** How long the run took, in milliseconds, read by the studio's console. */
+    val elapsedMillis: Long = 0,
 ) {
     val ok: Boolean get() = error == null
 
     /** Whether anything at all would be drawn. A script that runs and draws nothing is worth saying so. */
     val isEmpty: Boolean
-        get() = plots.isEmpty() && levels.isEmpty() && markers.isEmpty() && setup == null && backgrounds.isEmpty()
+        get() = plots.isEmpty() && levels.isEmpty() && markers.isEmpty() && setup == null && backgrounds.isEmpty() &&
+            drawings.isEmpty() && strategy == null
 }
 
 /**

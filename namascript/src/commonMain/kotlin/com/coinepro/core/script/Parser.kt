@@ -37,6 +37,17 @@ internal class Parser(private val tokens: List<Token>) {
 
     private fun statement(): Statement {
         val token = peek()
+        // `var x = expr` / `varip x = expr`: a declaration that holds its first value (SPEC §5.8).
+        // Only when the shape is exactly keyword, name, «=» — a variable called `var` on its own
+        // would still be refused by the type checker, but `var(…)` is left to it too.
+        if (token.type == TokenType.IDENT && (token.text == "var" || token.text == "varip") && position + 2 < tokens.size &&
+            tokens[position + 1].type == TokenType.IDENT && tokens[position + 2].type == TokenType.ASSIGN
+        ) {
+            advance()
+            val name = advance()
+            advance()
+            return Assignment(name.text, declare = true, value = expression(), line = token.line, column = token.column, persistent = true)
+        }
         if (token.type == TokenType.IDENT && position + 1 < tokens.size) {
             val next = tokens[position + 1].type
             if (next == TokenType.ASSIGN || next == TokenType.REASSIGN) {

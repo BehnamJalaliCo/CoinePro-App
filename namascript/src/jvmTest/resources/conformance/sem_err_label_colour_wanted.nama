@@ -1,0 +1,2 @@
+// expect: error E209
+label.new(10, 100, "hi", color = 5)

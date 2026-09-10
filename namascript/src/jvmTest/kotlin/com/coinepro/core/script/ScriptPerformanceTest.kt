@@ -55,9 +55,73 @@ class ScriptPerformanceTest {
         repeat(runs) { NamaScript.run(source, series, timeBudgetMillis = BENCH_BUDGET_MS) }
         val runMs = (System.nanoTime() - runStart) / runs / 1_000_000.0
 
-        println("namascript performance (JVM): parse ${"%.1f".format(parseMs)} ms, evaluate ${"%.1f".format(runMs)} ms for ${source.lines().size} lines over ${series.bars.size} bars")
+        println(String.format(java.util.Locale.ROOT, "namascript performance (JVM): parse %.1f ms, evaluate %.1f ms for %d lines over %d bars", parseMs, runMs, source.lines().size, series.bars.size))
         assertTrue("parse took $parseMs ms", parseMs < 500.0)
         assertTrue("evaluate took $runMs ms", runMs < 4_000.0)
+    }
+
+    /**
+     * The realtime figure: the same script, one bar appended and one bar ticked, through the
+     * `IncrementalRunner` that the studio uses — the tail is evaluated and spliced, the history is
+     * not re-summed. The plan's target is < 2 ms on a Pixel 6a; this is the JVM's number.
+     */
+    @Test
+    fun `an appended bar and a tick re-run the tail only`() {
+        val series = walk(20_000)
+        val source = buildString {
+            appendLine("fast = ta.ema(close, 12)")
+            appendLine("slow = ta.ema(close, 26)")
+            appendLine("r = ta.rsi(close, 14)")
+            appendLine("a = ta.atr(14)")
+            appendLine("bbu = ta.bb_upper(close, 20, 2)")
+            appendLine("bbl = ta.bb_lower(close, 20, 2)")
+            appendLine("k = ta.stoch_k(14, 3)")
+            appendLine("adx = ta.adx(14)")
+            appendLine("m = ta.macd(close, 12, 26, 9)")
+            appendLine("h = ta.highest(high, 50)")
+            for (index in 0 until 280) {
+                appendLine("x$index = (fast - slow) * ${index % 7 + 1} + r / 100 - a * ${index % 3} + (bbu - bbl) / 2")
+            }
+            appendLine("marker(ta.crossover(fast, slow) and r < 70 and k > 20 and adx > 15, title=\"go\", style=\"up\")")
+            appendLine("plot(x279 + m * 0 + h * 0, title=\"sum\", pane=\"own\")")
+        }
+        val compiled = NamaScript.compile(source).script!!
+        val runner = IncrementalRunner(compiled)
+        runner.run(series, timeBudgetMillis = BENCH_BUDGET_MS).also { assertTrue(it.error?.messageEn ?: "", it.ok) }
+
+        var current = series
+        val appendTimes = LongArray(20)
+        val tickTimes = LongArray(20)
+        for (round in appendTimes.indices) {
+            val last = current.bars.last()
+            current = CandleSeries(current.bars + Candle(last.t + 60L, last.c, last.c * 1.001, last.c * 0.999, last.c * 1.0005, last.v))
+            val appendStart = System.nanoTime()
+            runner.run(current, timeBudgetMillis = BENCH_BUDGET_MS)
+            appendTimes[round] = System.nanoTime() - appendStart
+            assertTrue("append $round was not incremental", runner.lastRunWasIncremental)
+            val bars = current.bars.toMutableList()
+            val forming = bars.last()
+            bars[bars.size - 1] = forming.copy(c = forming.c * 1.0003, h = maxOf(forming.h, forming.c * 1.0003))
+            current = CandleSeries(bars)
+            val tickStart = System.nanoTime()
+            runner.run(current, timeBudgetMillis = BENCH_BUDGET_MS)
+            tickTimes[round] = System.nanoTime() - tickStart
+            assertTrue("tick $round was not incremental", runner.lastRunWasIncremental)
+        }
+        appendTimes.sort()
+        tickTimes.sort()
+        val appendMs = appendTimes[appendTimes.size / 2] / 1_000_000.0
+        val tickMs = tickTimes[tickTimes.size / 2] / 1_000_000.0
+        println(
+            String.format(
+                java.util.Locale.ROOT,
+                "namascript realtime (JVM): append %.2f ms, tick %.2f ms (median of %d) for %d lines over %d bars, window %d bars",
+                appendMs, tickMs, appendTimes.size, source.lines().size, current.bars.size,
+                maxOf(IncrementalRunner.MIN_WINDOW, compiled.analysis.maxLookback * IncrementalRunner.WINDOW_FACTOR + 32),
+            ),
+        )
+        assertTrue("append took $appendMs ms", appendMs < 500.0)
+        assertTrue("tick took $tickMs ms", tickMs < 500.0)
     }
 
     private companion object {

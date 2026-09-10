@@ -1,0 +1,3 @@
+// expect: ok
+// expect: markers 0 0
+marker(close > na, title = "never")

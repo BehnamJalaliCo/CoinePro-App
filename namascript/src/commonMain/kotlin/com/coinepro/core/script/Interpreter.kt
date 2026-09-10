@@ -54,8 +54,18 @@ internal class Interpreter(
     private var setup: ScriptSetup? = null
     private val backgrounds = mutableListOf<ScriptBackground>()
     private val alerts = mutableListOf<ScriptAlert>()
+    private val drawings = mutableListOf<ScriptDrawing>()
+    private val orders = mutableListOf<StrategyOrder>()
     private var budget = MAX_NODES
     private val startedAt = currentTimeMillis()
+
+    /**
+     * The memory budget: how many bar-cells the script's variables and plots hold at once. A
+     * series is one cell per bar; a script that keeps three hundred of them over twenty thousand
+     * bars holds six million, which is fine, and one that keeps three thousand does not — see
+     * [MAX_RETAINED_CELLS] and E407.
+     */
+    private var retainedCells = 0L
 
     fun run(program: Program): ScriptResult {
         for (statement in program.statements) {
@@ -75,7 +85,9 @@ internal class Interpreter(
                             statement.line,
                             statement.column, code = "E302")
                     }
-                    variables[statement.name] = evaluate(statement.value)
+                    val value = evaluate(statement.value)
+                    variables[statement.name] = if (statement.persistent) held(value) else value
+                    retain(value, statement)
                 }
                 is ExpressionStatement -> evaluate(statement.expression)
             }
@@ -89,6 +101,101 @@ internal class Interpreter(
             log = log.toList(),
             backgrounds = backgrounds.toList(),
             alerts = alerts.toList(),
+            drawings = drawings.toList(),
+            strategy = simulate(),
+            elapsedMillis = currentTimeMillis() - startedAt,
+        )
+    }
+
+    /**
+     * `var x = expr`: the value on the first bar where the expression is present, held on every
+     * bar. A scalar is already the same on every bar and is left alone.
+     */
+    private fun held(value: Value): Value {
+        fun first(line: Line): Line {
+            for (index in 0 until size) if (line.isPresent(index)) return constantLine(size, line.raw(index))
+            return Line(DoubleArray(size), BooleanArray(size))
+        }
+        return when (value) {
+            is Value.NumberSeries -> Value.NumberSeries(first(value.line))
+            is Value.FlagSeries -> Value.FlagSeries(first(value.line))
+            else -> value
+        }
+    }
+
+    private fun retain(value: Value, node: Node) {
+        if (value is Value.NumberSeries || value is Value.FlagSeries) retainedCells += size
+        if (retainedCells > MAX_RETAINED_CELLS) {
+            throw ScriptError("اسکریپت سری‌های زیادی نگه می‌دارد", "The script holds too many series", node.line, node.column, code = "E407")
+        }
+    }
+
+    /* ------------------------------------------------------------------ strategy */
+
+    /**
+     * The orders, replayed bar by bar.
+     *
+     * One position at a time (Pine's default of no pyramiding). A signal on bar *i* fills at the
+     * open of bar *i + 1*; an entry in the opposite direction closes the position and opens the
+     * new one on the same open; a close order for the open position's id — or `close_all` —
+     * closes it. Whatever is still open on the last bar is reported open, marked at the last
+     * close, and kept out of the closed-trade figures.
+     */
+    private fun simulate(): ScriptStrategyReport? {
+        if (orders.isEmpty()) return null
+        val trades = mutableListOf<ScriptTrade>()
+        var openId: String? = null
+        var openDirection = 0
+        var entryBar = -1
+        var entryPrice = 0.0
+        for (bar in 1 until size) {
+            val signalBar = bar - 1
+            var closeNow = false
+            var newDirection = 0
+            var newId: String? = null
+            for (order in orders) {
+                if (!order.flags.flagAt(signalBar)) continue
+                if (order.direction == 0) {
+                    if (order.id == null || order.id == openId) closeNow = true
+                } else {
+                    newDirection = order.direction
+                    newId = order.id
+                }
+            }
+            val fill = series.open[bar]
+            if (openDirection != 0 && (closeNow || (newDirection != 0 && newDirection != openDirection))) {
+                trades += ScriptTrade(openId.orEmpty(), openDirection > 0, entryBar, bar, entryPrice, fill)
+                openDirection = 0
+            }
+            if (newDirection != 0 && openDirection == 0) {
+                openDirection = newDirection
+                openId = newId
+                entryBar = bar
+                entryPrice = fill
+            }
+        }
+        if (openDirection != 0) {
+            trades += ScriptTrade(openId.orEmpty(), openDirection > 0, entryBar, size - 1, entryPrice, series.close[size - 1], open = true)
+        }
+        val closed = trades.filter { !it.open }
+        var net = 0.0
+        var peak = 0.0
+        var drawdown = 0.0
+        var grossWin = 0.0
+        var grossLoss = 0.0
+        for (trade in closed) {
+            val r = trade.returnPercent
+            net += r
+            if (r >= 0) grossWin += r else grossLoss -= r
+            if (net > peak) peak = net
+            if (peak - net > drawdown) drawdown = peak - net
+        }
+        return ScriptStrategyReport(
+            trades = trades,
+            netPercent = net,
+            winRate = if (closed.isEmpty()) 0.0 else closed.count { it.returnPercent > 0 }.toDouble() / closed.size,
+            profitFactor = if (grossLoss > 0) grossWin / grossLoss else null,
+            maxDrawdownPercent = drawdown,
         )
     }
 
@@ -158,39 +265,42 @@ internal class Interpreter(
         variables[node.name]?.let { return it }
         builtinSeries(node.name)?.let { return it }
         COLOURS[node.name]?.let { return Value.Colour(it) }
+        CONSTANTS[node.name]?.let { return Value.Num(it) }
         throw ScriptError("«${node.name}» تعریف نشده است", "“${node.name}” is not defined", node.line, node.column, code = "E301")
     }
 
-    private fun builtinSeries(name: String): Value? = when (name) {
-        "open" -> Value.NumberSeries(Line.of(size) { series.open[it] })
-        "high" -> Value.NumberSeries(Line.of(size) { series.high[it] })
-        "low" -> Value.NumberSeries(Line.of(size) { series.low[it] })
-        "close" -> Value.NumberSeries(Line.of(size) { series.close[it] })
-        // Absent rather than zero where the feed does not report volume. A volume study drawn from
-        // fabricated zeros looks like a market nobody traded.
-        "volume" -> Value.NumberSeries(Line.of(size) { series.bars[it].v })
-        "hl2" -> Value.NumberSeries(Line.of(size) { series.bars[it].mid })
-        "hlc3" -> Value.NumberSeries(Line.of(size) { series.bars[it].typical })
-        "ohlc4" -> Value.NumberSeries(
-            Line.of(size) { (series.open[it] + series.high[it] + series.low[it] + series.close[it]) / 4 },
-        )
-        "time" -> Value.NumberSeries(Line.of(size) { series.bars[it].t.toDouble() })
-        "bar_index" -> Value.NumberSeries(Line.of(size) { (indexBase + it).toDouble() })
-        "n" -> Value.Num(totalBars.toDouble())
-        // True on every bar whose values can no longer change, false on the last one.
-        //
-        // A series arrives here as a plain list of bars with nothing marking which of them is still
-        // forming, and the last bar of a live chart is the one being traded right now: its close is
-        // the current price and its high and low are still moving. Any condition read off it is a
-        // guess that will be revised, and an arrow drawn from that guess appears, moves and
-        // disappears while the reader watches — which is the single worst thing a signal can do,
-        // because a reader who scrolls back sees only the arrows that survived and concludes the
-        // study was right every time.
-        //
-        // So the last bar is treated as unconfirmed unconditionally. It costs one bar of lateness
-        // and buys the guarantee that a mark, once drawn, is permanent.
-        "confirmed" -> Value.FlagSeries(Line.of(size) { index -> if (index < size - 1) 1.0 else 0.0 })
-        else -> null
+    /** The built-in series, built once per run: `close` read forty times is one array, not forty. */
+    private val builtinCache = HashMap<String, Value>()
+
+    private fun builtinSeries(name: String): Value? {
+        builtinCache[name]?.let { return it }
+        val value: Value = when (name) {
+            "open" -> Value.NumberSeries(rawLine(series.open))
+            "high" -> Value.NumberSeries(rawLine(series.high))
+            "low" -> Value.NumberSeries(rawLine(series.low))
+            "close" -> Value.NumberSeries(rawLine(series.close))
+            "volume" -> Value.NumberSeries(Line.of(size) { series.bars[it].v })
+            "hl2" -> Value.NumberSeries(Line.of(size) { series.bars[it].mid })
+            "hlc3" -> Value.NumberSeries(Line.of(size) { series.bars[it].typical })
+            "ohlc4" -> Value.NumberSeries(
+                Line.of(size) { (series.open[it] + series.high[it] + series.low[it] + series.close[it]) / 4 },
+            )
+            "time" -> Value.NumberSeries(Line.of(size) { series.bars[it].t.toDouble() })
+            "bar_index" -> Value.NumberSeries(Line.of(size) { (indexBase + it).toDouble() })
+            "n" -> Value.Num(totalBars.toDouble())
+            "confirmed" -> Value.FlagSeries(Line.of(size) { index -> if (index < size - 1) 1.0 else 0.0 })
+            // Absent on every bar: what `nz(na, 0)` fills and what a comparison with it never decides.
+            "na" -> Value.NumberSeries(Line(DoubleArray(size), BooleanArray(size)))
+            else -> return null
+        }
+        builtinCache[name] = value
+        return value
+    }
+
+    private fun rawLine(source: DoubleArray): Line {
+        val present = BooleanArray(size)
+        for (index in 0 until size) present[index] = source[index].isFinite()
+        return Line(source.copyOf(), present)
     }
 
     private fun unary(node: Unary): Value {
@@ -213,6 +323,10 @@ internal class Interpreter(
     private fun binary(node: Binary): Value {
         val left = evaluate(node.left)
         val right = evaluate(node.right)
+        // `"text" + x` joins: a label's words and the number beside them (SPEC §3).
+        if (node.operator == TokenType.PLUS && (left is Value.Text || right is Value.Text)) {
+            return Value.Text(asText(left, node) + asText(right, node))
+        }
         return when (node.operator) {
             TokenType.PLUS -> arithmetic(left, right, node) { a, b -> a + b }
             TokenType.MINUS -> arithmetic(left, right, node) { a, b -> a - b }
@@ -308,6 +422,37 @@ internal class Interpreter(
 
     /* ------------------------------------------------------------------ coercion */
 
+    /** A value as words: text as it is, a number in the price style, a series by its last bar. */
+    fun asText(value: Value, node: Node): String = when (value) {
+        is Value.Text -> value.value
+        is Value.Num -> scriptNumberText(value.value)
+        is Value.Flag -> if (value.value) "درست" else "نادرست"
+        is Value.NumberSeries -> lastPresent(value.line)?.let(::scriptNumberText) ?: "na"
+        is Value.FlagSeries -> lastPresent(value.line)?.let { if (it != 0.0) "درست" else "نادرست" } ?: "na"
+        else -> throw ScriptError("اینجا متن لازم است، نه ${value.typeName}", "Text is needed here, not ${value.typeNameEn}", node.line, node.column, code = "E208")
+    }
+
+    /** The last bar's value, or the last present one before it — what a series means as a single number. */
+    fun lastPresent(line: Line): Double? {
+        for (index in size - 1 downTo 0) if (line.isPresent(index)) return line.raw(index)
+        return null
+    }
+
+    /** A number where one is wanted and a series was allowed: a constant as itself, a series by its last bar. */
+    fun scalarOrLast(value: Value, node: Node): Double? = when (value) {
+        is Value.Num -> value.value
+        is Value.Flag -> if (value.value) 1.0 else 0.0
+        is Value.NumberSeries -> lastPresent(value.line)
+        is Value.FlagSeries -> lastPresent(value.line)
+        else -> throw ScriptError("اینجا عدد لازم است، نه ${value.typeName}", "A number is needed here, not ${value.typeNameEn}", node.line, node.column, code = "E203")
+    }
+
+    /** A bar index the chart holds, from a script's number: rounded, `bar_index`-based, clamped to the series. */
+    fun barOf(value: Value, node: Node): Int {
+        val number = scalarOrLast(value, node) ?: return size - 1
+        return (number.roundToLong().toInt() - indexBase).coerceIn(0, size - 1)
+    }
+
     fun numberLine(value: Value, node: Node): Line = when (value) {
         is Value.Num -> constantLine(size, value.value)
         is Value.NumberSeries -> value.line
@@ -343,15 +488,43 @@ internal class Interpreter(
 
     /* ------------------------------------------------------------------ helpers */
 
-    private inline fun map(line: Line, crossinline operation: (Double) -> Double): Line =
-        Line.of(size) { index -> line[index]?.let(operation)?.takeIf(Double::isFinite) }
-
-    private inline fun zip(a: Line, b: Line, crossinline operation: (Double, Double) -> Double): Line =
-        Line.of(size) { index ->
-            val left = a[index] ?: return@of null
-            val right = b[index] ?: return@of null
-            operation(left, right).takeIf(Double::isFinite)
+    /*
+     * The two loops every arithmetic line runs through, on the raw arrays.
+     *
+     * `Line.of` takes a `(Int) -> Double?` and boxes a Double per bar; over the plan's benchmark —
+     * three hundred lines, twenty thousand bars — that was six million boxes per run and the
+     * reason evaluation took a second. These read presence and value straight from the line and
+     * write two arrays, and the constructor takes them as they are.
+     */
+    private inline fun map(line: Line, crossinline operation: (Double) -> Double): Line {
+        val values = DoubleArray(size)
+        val present = BooleanArray(size)
+        for (index in 0 until size) {
+            if (line.isPresent(index)) {
+                val value = operation(line.raw(index))
+                if (value.isFinite()) {
+                    values[index] = value
+                    present[index] = true
+                }
+            }
         }
+        return Line(values, present)
+    }
+
+    private inline fun zip(a: Line, b: Line, crossinline operation: (Double, Double) -> Double): Line {
+        val values = DoubleArray(size)
+        val present = BooleanArray(size)
+        for (index in 0 until size) {
+            if (a.isPresent(index) && b.isPresent(index)) {
+                val value = operation(a.raw(index), b.raw(index))
+                if (value.isFinite()) {
+                    values[index] = value
+                    present[index] = true
+                }
+            }
+        }
+        return Line(values, present)
+    }
 
     /* ------------------------------------------------------------------ output */
 
@@ -363,6 +536,16 @@ internal class Interpreter(
             throw ScriptError("بیش از $MAX_PLOTS خط قابل رسم نیست", "No more than $MAX_PLOTS lines can be plotted", node.line, node.column, code = "E402")
         }
         plots += plot
+        retain(Value.NumberSeries(plot.values), node)
+    }
+
+    /** A label, line or box. Past [MAX_OBJECTS] the rest are dropped rather than refused, like levels. */
+    fun addDrawing(drawing: ScriptDrawing) {
+        if (drawings.size < MAX_OBJECTS) drawings += drawing
+    }
+
+    fun addOrder(order: StrategyOrder) {
+        if (orders.size < MAX_OBJECTS) orders += order
     }
 
     fun addLevel(level: ScriptLevel) {
@@ -410,9 +593,21 @@ internal class Interpreter(
         const val CLOCK_MASK = 0x3FF
         const val MAX_LOG_LINES = 40
 
+        /** Labels, lines, boxes and orders a run may place; the rest are dropped silently. */
+        const val MAX_OBJECTS = 40
+
+        /** Bar-cells the variables and plots of one run may hold at once: 8 M ≈ 72 MB. E407 past it. */
+        const val MAX_RETAINED_CELLS = 8_000_000L
+
         val BUILTIN_SERIES = setOf(
             "open", "high", "low", "close", "volume",
-            "hl2", "hlc3", "ohlc4", "time", "bar_index", "n", "confirmed",
+            "hl2", "hlc3", "ohlc4", "time", "bar_index", "n", "confirmed", "na",
+        )
+
+        /** Named numbers: the two directions `strategy.entry` takes. */
+        val CONSTANTS = mapOf(
+            "strategy.long" to 1.0,
+            "strategy.short" to -1.0,
         )
 
         /**
@@ -442,3 +637,11 @@ internal class Interpreter(
         )
     }
 }
+
+/**
+ * One `strategy.entry` or `strategy.close` call: which bars it fires on, and what it does.
+ *
+ * [direction] is 1 for a long entry, −1 for a short, 0 for a close; a close with a null [id] is
+ * `strategy.close_all`.
+ */
+internal class StrategyOrder(val id: String?, val direction: Int, val flags: Line)

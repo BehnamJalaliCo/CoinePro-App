@@ -1,0 +1,4 @@
+// expect: ok
+// expect: plot 0 239 7
+t = "x=" + 12.5
+plot(str.length(t) + 0 * close)

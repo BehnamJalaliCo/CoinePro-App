@@ -1,0 +1,5 @@
+// expect: ok
+// expect: drawings 3
+label.new(10, 100, "hi")
+line.new(0, 1, 5, 2, color = color.blue, width = 2)
+box.new(1, 3, 4, 1)

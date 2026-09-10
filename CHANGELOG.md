@@ -15,6 +15,32 @@ it is for.
 
 ---
 
+## [4.61.0] — 2026-09-10 — NamaScript says na, draws, and trades
+
+Item 5 of the 4.58 run: the language grows the surface the plan named, within the vectorised
+model, and the studio gets a console, signatures and snippets.
+
+### Added
+- **`na`** as a name (absent on every bar) and **`na(x)`** (true where `x` is absent).
+- **`var x = expr` / `varip`**: the first present value, held on every bar (SPEC §5.8).
+- **Text joins**: `"close " + close`; **`str.*`** — `tostring length upper lower contains
+  startswith endswith replace_all format` (SPEC §5.5).
+- **Objects on the chart**: `label.new`, `line.new`, `box.new` reach the chart as the reader's own
+  `text`, `trend` and `rect` drawings (`ScriptOverlay.drawings`, SPEC §5.6).
+- **`strategy.entry` / `strategy.close` / `strategy.close_all`** with `strategy.long` /
+  `strategy.short`: replayed after the run with next-open fills into `ScriptResult.strategy` —
+  trades, net return, win rate, profit factor, max drawdown — drawn as entry and exit marks and
+  shown in the studio's strategy card (SPEC §5.7).
+- **E407**, the memory budget: more than 8 000 000 retained bar-cells refuses the run (SPEC §8).
+- **Interpreter fast paths**: the arithmetic runs on the lines' raw arrays; the 303-line, 20 000-bar
+  benchmark went from ~1.4 s to 0.17 s on the JVM. `ScriptPerformanceTest` now also times the
+  realtime case through the `IncrementalRunner` (one bar appended, one ticked).
+- **Studio**: completion chips show the reference's signature; a snippet row (EMA cross, RSI with
+  zones, a label on the last bar, a simple strategy); the console prints the run's milliseconds and
+  bar count on every run; the strategy card. `ScriptResult.elapsedMillis`.
+- 18 hand-written conformance scripts (378 in all), 8 unit tests, 3 studio tests; the reference
+  (fa/en) regenerated with three new groups.
+
 ## [4.60.0] — 2026-09-10 — three layers, and a right button
 
 Item 4 of the 4.58 run: the frame is three cached layers, the desk gets its menu and its history

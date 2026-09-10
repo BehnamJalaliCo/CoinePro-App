@@ -107,6 +107,9 @@ class ReferenceDocsTest {
             "ریاضی (۴٫۵۰)" to "Math (4.50)",
             "ورودی، خروجی، هشدار (۴٫۵۰)" to "Input, output, alerts (4.50)",
             "ورودی‌ها و تایم‌فریم (۴٫۵۶)" to "Inputs and timeframes (4.56)",
+            "متن و غیبت (۴٫۶۱)" to "Text and absence (4.61)",
+            "ترسیم روی چارت (۴٫۶۱)" to "Drawing on the chart (4.61)",
+            "استراتژی (۴٫۶۱)" to "Strategy (4.61)",
         )
 
         /** Bound names that are aliases of a documented one, or internal. */

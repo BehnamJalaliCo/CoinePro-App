@@ -18,6 +18,8 @@ import kotlin.math.abs
  * // expect: plot <index> <bar> <value>      -- a plotted value, to 1e-6
  * // expect: plots <count>                    -- how many lines were plotted
  * // expect: markers <index> <count>          -- how many bars a marker set holds
+ * // expect: drawings <count>                 -- how many labels, lines and boxes were placed
+ * // expect: trades <count>                   -- how many trades the strategy closed
  * // expect: error <code>                     -- the script must refuse with this code
  * // expect: ok                               -- it must run, whatever it draws
  * ```
@@ -92,6 +94,8 @@ class ConformanceSuiteTest {
             }
             "backgrounds" -> if (result.backgrounds.getOrNull(parts[1].toInt())?.bars?.size == parts[2].toInt()) null else "$name: expected background ${parts[1]} on ${parts[2]} bars"
             "alerts" -> if (result.alerts.getOrNull(parts[1].toInt())?.bars?.size == parts[2].toInt()) null else "$name: expected alert ${parts[1]} on ${parts[2]} bars"
+            "drawings" -> if (result.ok && result.drawings.size == parts[1].toInt()) null else "$name: expected ${parts[1]} drawings, got ${result.error?.code ?: result.drawings.size}"
+            "trades" -> if (result.ok && (result.strategy?.closedCount ?: 0) == parts[1].toInt()) null else "$name: expected ${parts[1]} closed trades, got ${result.error?.code ?: result.strategy?.closedCount}"
             "plot" -> {
                 if (!result.ok) return "$name: expected a plot, refused ${result.error!!.code} ${result.error.messageEn}"
                 val plot = result.plots.getOrNull(parts[1].toInt()) ?: return "$name: no plot ${parts[1]}"

@@ -370,6 +370,35 @@ history keys, and puts a number next to each mechanism. The constants are in `Co
 Numbers: 3 layers, 13 physics constants named above, 4 menu items, 12 keyboard bindings, 4 new tests
 (`ChartLayerInvalidationTest` ×2, `ChartContextMenuTest` ×2) and 1 extended (`ChartKeyboardTest`).
 
+### Item 5 — NamaScript (4.61.0) — the surface named in the plan, within the vectorised model
+
+| asked | done | proof |
+| --- | --- | --- |
+| SPEC: types, series, `na`, `[]`, `var`/`varip`, `ta.*`/`math.*`/`str.*`/`input.*`/`request.security`/`strategy.*`/plot family/`label`/`line`/`box` | `docs/namascript/SPEC.md` §3 (text joins), §3.1 (`na`, `na(x)`), §4 (`na`, `strategy.long/short`), **new §5.5 `str.*`**, **§5.6 objects**, **§5.7 `strategy.*`**, **§5.8 `var`/`varip`**, §6 (what is whole-run), §7 (E407), §8 (memory), §9 (numbers), §10 (the table, updated). Not there and said so: UDTs, `array.*`, `map.*`, `table.*`, functions, loops, per-bar `:=` — a bar-by-bar VM, v2 | the file; `ScriptDiagnosticsTest` pins §7 to the code table |
+| typed AST + compiled incremental evaluation | as 4.56.0; the checker now types text joins, `na`, the constants and the 19 new functions, and marks objects and orders whole-run (`WHOLE_RUN`) | `NamaScriptTest` «objects and orders make a script whole-run, text and na do not» |
+| sandbox: CPU/memory budget, timeout | CPU: 250 000 nodes (E401); time: 2 000 ms (E406); **memory, new: 8 000 000 retained bar-cells (E407)** — every variable and plot counts, ≈ 72 MB at most | `NamaScriptTest` «the memory budget refuses a script that holds too many series» (450 series × 20 000 bars → E407; the same script over 200 bars runs) |
+| diagnostics fa/en | 28 codes, each with a message and a one-line fix in both languages | `ScriptDiagnosticsTest` |
+| full `input.*` with generated UI | 4.56.0 | `sem_input_*` (7 scripts) |
+| `request.security` with lookahead rules | 4.56.0: confirmed mapping, E210 | `sem_security_*` |
+| ≥ 100 conformance scripts | **378** (277 generated, 101 hand-written; 18 new: `sem_na_*`, `sem_var_*`, `sem_varip_*`, `sem_str_*`, `sem_label_*`, `sem_strategy_*`, `sem_text_plus_*`, two refusals) | `ConformanceSuiteTest`, with two new expectation kinds (`drawings`, `trades`) |
+| editor: highlighting, autocomplete with signatures, squiggles, snippets, console | colouring and the squiggle from 4.56.0; **signatures**: each completion chip shows the reference's signature after the name (`ta.sma(close, 20)`); **snippets**: a row of four working scripts (EMA cross, RSI with zones, a label on the last bar, a simple strategy), each checked to compile; **console**: the log plus «اجرا در 12 ms · ۲٬۰۰۰ کندل · فقط دنباله» on every run (`ScriptResult.elapsedMillis`); the strategy card | `StudioHelpersTest` (3 tests), `NamaSyntaxTest`, `CodeFieldTest` |
+| split view in `chart_panel_script` | 4.56.0 (code \| chart on an expanded window); the panel from 4.58.0 | `TabletProofTest` `panel-script-*` frames |
+| `label`/`line`/`box` on the chart | `ScriptOverlay.drawings`: `text`, `trend`, `rect` drawings with ids above 10⁹, drawn by the same renderer as the reader's marks; the studio's preview passes them to `ChartDecoration.drawings` | `NamaScriptTest` «objects are placed at the bar and price given, and become drawings» |
+| `strategy.*` | entry / close / close_all, one position, next-open fills, opposite entry reverses, open position reported open; net %, win rate, profit factor, max drawdown; two marks per trade | `NamaScriptTest` «a strategy fills at the next open, reverses on an opposite entry, and reports its figures» (bars 11→21 long at 110.5→120.5, then short, PF > 1, DD = the short's loss) |
+
+**Performance** (`ScriptPerformanceTest`, JVM, 303 lines with ten `ta.` calls over 20 000 bars; the interpreter's arithmetic now on raw arrays):
+
+| figure | isolated run | under the full suite | plan's Pixel 6a target |
+| --- | --- | --- | --- |
+| compile (lex + parse + type-check) | **1.4 ms** | 3.3 ms | < 50 ms |
+| whole evaluation | **168 ms** (was ~1 400 ms in 4.56.0) | 279 ms | < 40 ms |
+| realtime, one bar appended (`IncrementalRunner`, 632-bar window) | **6.7 ms** | 12.3 ms | < 2 ms |
+| realtime, last bar ticked | **6.2 ms** | 10.8 ms | < 2 ms |
+
+Compile is inside the target on this JVM by a wide margin; the whole evaluation is not, and the realtime figure is three times the target — a 632-bar window through ten indicators and 290 arithmetic lines. The next step for both is the bar-by-bar VM (v2), which would make a tick cost one bar rather than a window. A phone's numbers need a phone.
+
+Numbers: 19 new functions and 2 constants, 1 new statement form, 1 new code, 18 conformance scripts, 8 unit tests, 3 studio tests, 93 tests in `:namascript:jvmTest`.
+
 ## Definition of done — as it stands
 
 - [x] §0 copy hygiene done; lint enforced (`tools/i18n/lint_strings.py` through the consistency gate).
@@ -386,7 +415,7 @@ Numbers: 3 layers, 13 physics constants named above, 4 menu items, 12 keyboard b
 2. Tablet — done (4.53.0): Material's adaptive scaffolds under the app's own bar, rail, list-detail and chart; docked panels; device goldens; generated parity matrix.
 3. Numerals and fonts — done where the material exists (4.54.0): `tnum` on every numeric style, glyph-shift proof; IRANYekanX Medium/SemiBold **await the owner's font files**.
 4. Chart physics — done (4.55.0, completed 4.60.0): pixel pan with snap-at-rest, decay fling, axis-reset spring, three cached layers with counted misses, right-click menu, Ctrl+Z/Y and `/`, stylus prediction, frame-rate hint; the benchmark still needs a device.
-5. NamaScript — done within the vectorised model (4.56.0): typed pass, compiled script, incremental tail runs, `request.security`, full inputs, editor colouring/squiggles/split view; a bar-by-bar VM stays v2.
+5. NamaScript — done within the vectorised model (4.56.0, extended 4.61.0): typed pass, compiled script, incremental tail runs, `request.security`, full inputs, `na`, `var`, `str.*`, objects, `strategy.*`, the memory budget, a 8× faster evaluator, editor signatures/snippets/console; a bar-by-bar VM stays v2.
 6. Network — done (4.57.0): pins shipped for both hosts with expiry; release reads no third-party feed.
 
 ### The deviation from the first plan, closed
@@ -395,4 +424,4 @@ The first run kept Persian in `values/` against the plan; the owner repeated the
 
 ### What a device would settle, in one list
 
-Tablet soak (30 min Monkey/Espresso), tablet benchmark thresholds, the 60-second recording, the Pixel 6a NamaScript timings (< 50 ms compile / < 40 ms evaluate; measured here on the JVM at 2.6 ms / ~1.4 s for 300 lines × 20 000 bars, which is the vectorised interpreter's known cost — v2's VM is the fix), S Pen pressure and palm rejection, the hinge's real dp on a Fold, TalkBack order on the rail, Galaxy Tab S9 Ultra goldens.
+Tablet soak (30 min Monkey/Espresso), tablet benchmark thresholds, the 60-second recording, the Pixel 6a NamaScript timings (< 50 ms compile / < 40 ms evaluate / < 2 ms realtime; measured here on the JVM at 1.4 ms / 168 ms / 6.7 ms for 300 lines × 20 000 bars after the 4.61.0 fast paths — v2's VM is the next step), S Pen pressure and palm rejection, the hinge's real dp on a Fold, TalkBack order on the rail, Galaxy Tab S9 Ultra goldens.

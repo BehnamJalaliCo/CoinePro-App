@@ -43,6 +43,7 @@ object ScriptReference {
             "روی هر کندلی که بسته شده درست است و روی آخرین کندل نادرست. شرط سیگنال را با «and confirmed» ببندید تا نشانه روی کندلِ در حال شکل‌گیری ننشیند و بعداً جابه‌جا نشود.",
             "سری شرطی",
         ),
+        ScriptFunction("na", "مقدار غایب روی هر کندل؛ با nz(na, 0) پر می‌شود و هر مقایسه با آن تصمیم‌ناپذیر است.", "سری عددی"),
     )
 
     val GROUPS: List<ScriptReferenceGroup> = listOf(
@@ -350,8 +351,45 @@ object ScriptReference {
         ),
     )
 
+    /** The functions 4.61.0 added: `na`, text, objects on the chart and the strategy orders. */
+    val ADDED_4_61: List<ScriptReferenceGroup> = listOf(
+        ScriptReferenceGroup(
+            "متن و غیبت (۴٫۶۱)",
+            listOf(
+                ScriptFunction("na(x)", "روی هر کندلی که x غایب است درست.", "سری شرطی"),
+                ScriptFunction("str.tostring(x)", "عدد را به متن قیمت‌گونه تبدیل می‌کند؛ یک سری با مقدار آخرین کندلش.", "رشته"),
+                ScriptFunction("str.length(\"abc\")", "تعداد نویسه‌های متن.", "عدد"),
+                ScriptFunction("str.upper(\"abc\")", "متن با حروف بزرگ.", "رشته"),
+                ScriptFunction("str.lower(\"ABC\")", "متن با حروف کوچک.", "رشته"),
+                ScriptFunction("str.contains(\"abc\", \"b\")", "درست اگر متن دوم داخل اولی باشد.", "درست/نادرست"),
+                ScriptFunction("str.startswith(\"abc\", \"a\")", "درست اگر متن با بخش داده‌شده آغاز شود.", "درست/نادرست"),
+                ScriptFunction("str.endswith(\"abc\", \"c\")", "درست اگر متن با بخش داده‌شده پایان یابد.", "درست/نادرست"),
+                ScriptFunction("str.replace_all(\"a-b\", \"-\", \"+\")", "هر تکرار بخش دوم را با سومی جایگزین می‌کند.", "رشته"),
+                ScriptFunction("str.format(\"{0} / {1}\", close, open)", "جای {0}، {1}، … را با آرگومان‌های بعدی پر می‌کند.", "رشته"),
+            ),
+        ),
+        ScriptReferenceGroup(
+            "ترسیم روی چارت (۴٫۶۱)",
+            listOf(
+                ScriptFunction("label.new(bar_index, high, \"متن\", color = color.gold)", "برچسبی روی کندل داده‌شده در قیمت داده‌شده؛ یک سری با مقدار آخرین کندلش خوانده می‌شود.", "عدد"),
+                ScriptFunction("line.new(bar_index - 20, low, bar_index, high, color = color.blue, width = 2)", "خطی از (x1, y1) تا (x2, y2)؛ x شماره‌ی کندل است.", "عدد"),
+                ScriptFunction("box.new(bar_index - 10, high, bar_index, low, color = color.grey)", "مستطیلی از کندل چپ تا راست، بین دو قیمت.", "عدد"),
+            ),
+        ),
+        ScriptReferenceGroup(
+            "استراتژی (۴٫۶۱)",
+            listOf(
+                ScriptFunction("strategy.long", "جهت خرید برای strategy.entry.", "عدد"),
+                ScriptFunction("strategy.short", "جهت فروش برای strategy.entry.", "عدد"),
+                ScriptFunction("strategy.entry(\"L\", strategy.long, when = cond)", "روی هر کندلی که شرط برقرار است سفارش ورود می‌گذارد؛ در بازِ کندل بعد پر می‌شود. ورود در جهت مخالف، معامله‌ی باز را می‌بندد.", "عدد"),
+                ScriptFunction("strategy.close(\"L\", when = cond)", "معامله‌ی باز با این نام را در بازِ کندل بعد می‌بندد.", "عدد"),
+                ScriptFunction("strategy.close_all(cond)", "هر معامله‌ی باز را می‌بندد.", "عدد"),
+            ),
+        ),
+    )
+
     /** Every group, the original ones first. */
-    val ALL_GROUPS: List<ScriptReferenceGroup> get() = GROUPS + ADDED_4_50 + ADDED_4_56
+    val ALL_GROUPS: List<ScriptReferenceGroup> get() = GROUPS + ADDED_4_50 + ADDED_4_56 + ADDED_4_61
 
     val COLOUR_NAMES: List<String> = Interpreter.COLOURS.keys.sorted()
 

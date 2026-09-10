@@ -1,0 +1,3 @@
+// expect: ok
+// expect: plot 0 239 5
+plot(str.length(str.tostring(12)) + 0 * close)

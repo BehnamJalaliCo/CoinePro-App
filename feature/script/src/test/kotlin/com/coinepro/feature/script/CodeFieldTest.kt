@@ -56,3 +56,30 @@ class CodeFieldTest {
         assertEquals(deleted, autoClose(before, deleted))
     }
 }
+
+/** The completion strip's signatures, the console's timing line and the snippets — 4.61.0. */
+class StudioHelpersTest {
+
+    @Test
+    fun `a completion carries the reference's signature`() {
+        assertEquals("ta.sma(close, 20)", signatureFor("ta.sma"))
+        assertEquals("close", signatureFor("close"))
+        assertEquals("label.new(bar_index, high, \"متن\", color = color.gold)", signatureFor("label.new"))
+        assertEquals("nothing", signatureFor("nothing"))
+    }
+
+    @Test
+    fun `every snippet compiles`() {
+        for (snippet in SNIPPETS) {
+            val failure = com.coinepro.core.script.NamaScript.check(snippet.source)
+            assertEquals("${snippet.title}: ${failure?.messageEn}", null, failure)
+        }
+        assertTrue(SNIPPETS.size >= 4)
+    }
+
+    @Test
+    fun `the timing line has Latin milliseconds and a Persian bar count`() {
+        assertEquals("اجرا در 12 ms · ۲۰۰۰ کندل · فقط دنباله", consoleTiming(12, incremental = true, bars = 2_000))
+        assertEquals("اجرا در 3 ms · ۲۴۰ کندل", consoleTiming(3, incremental = false, bars = 240))
+    }
+}

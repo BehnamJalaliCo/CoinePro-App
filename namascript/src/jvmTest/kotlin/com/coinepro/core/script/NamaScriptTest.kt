@@ -380,6 +380,105 @@ class NamaScriptTest {
         assertEquals(1, values.toList().count { it != null })
     }
 
+    /* ---------------------------------------------------------------- 4.61.0 */
+
+    @Test
+    fun `var holds the first present value on every bar`() {
+        val result = run("var first = ta.sma(close, 3)\nplot(first)")
+        assertTrue(result.error?.messageEn ?: "", result.ok)
+        val values = result.plots.single().values
+        // The average is first present on bar 2, at 101; `var` holds that on every bar, bar 0 included.
+        assertEquals(101.0, values[2]!!, 1e-9)
+        assertEquals(101.0, values[59]!!, 1e-9)
+        assertEquals(101.0, values[0]!!, 1e-9)
+    }
+
+    @Test
+    fun `na is absent everywhere and na of x marks the warm-up`() {
+        val result = run("plot(nz(na, 4))\nmarker(na(ta.sma(close, 5)), title = \"warm\")")
+        assertTrue(result.error?.messageEn ?: "", result.ok)
+        assertEquals(4.0, result.plots.single().values[10]!!, 1e-9)
+        assertEquals(listOf(0, 1, 2, 3), result.markers.single().bars)
+    }
+
+    @Test
+    fun `text joins a number and str functions read it`() {
+        val result = run("t = \"p=\" + str.tostring(close)\nlog(t)\nplot(str.length(str.upper(\"ab\")) + 0 * close)")
+        assertTrue(result.error?.messageEn ?: "", result.ok)
+        assertTrue(result.log.single(), result.log.single().startsWith("p=") && result.log.single().contains("159.00"))
+        assertEquals(2.0, result.plots.single().values[5]!!, 1e-9)
+    }
+
+    @Test
+    fun `objects are placed at the bar and price given, and become drawings`() {
+        val result = run("label.new(10, 111, \"hi\")\nline.new(0, 100, 5, 105, width = 2)\nbox.new(bar_index - 3, high, bar_index, low)")
+        assertTrue(result.error?.messageEn ?: "", result.ok)
+        assertEquals(3, result.drawings.size)
+        assertEquals(ScriptDrawingKind.LABEL, result.drawings[0].kind)
+        assertEquals(listOf(10), result.drawings[0].bars)
+        assertEquals(111.0, result.drawings[0].prices[0], 1e-9)
+        assertEquals(listOf(56, 59), result.drawings[2].bars)
+        val overlay = result.toOverlay(bars(), "t")
+        assertEquals(listOf("text", "trend", "rect"), overlay.drawings.map { it.toolId })
+        assertEquals("hi", overlay.drawings[0].text)
+        assertEquals(2, overlay.drawings[1].points.size)
+    }
+
+    @Test
+    fun `a strategy fills at the next open, reverses on an opposite entry, and reports its figures`() {
+        val result = run(
+            "strategy.entry(\"L\", strategy.long, when = bar_index == 10)\n" +
+                "strategy.entry(\"S\", strategy.short, when = bar_index == 20)\n" +
+                "strategy.close_all(bar_index == 30)",
+        )
+        assertTrue(result.error?.messageEn ?: "", result.ok)
+        val report = assertNotNull(result.strategy)
+        assertEquals(2, report.closedCount)
+        val long = report.trades[0]
+        assertEquals(11, long.entryBar)
+        assertEquals(21, long.exitBar)
+        assertTrue(long.long)
+        // The fixture rises one point a bar from 100 at bar 0: open is close − 0.5 → 110.5 in, 120.5 out.
+        assertEquals(10.0 / 110.5 * 100, long.returnPercent, 1e-9)
+        val short = report.trades[1]
+        assertTrue(!short.long && short.entryBar == 21 && short.exitBar == 31)
+        assertTrue(short.returnPercent < 0)
+        assertEquals(0.5, report.winRate, 1e-9)
+        assertEquals(long.returnPercent + short.returnPercent, report.netPercent, 1e-9)
+        assertEquals(-short.returnPercent, report.maxDrawdownPercent, 1e-9)
+        assertTrue(assertNotNull(report.profitFactor) > 1.0)
+        val overlay = result.toOverlay(bars(), "t")
+        assertEquals(4, overlay.markers.size)
+    }
+
+    @Test
+    fun `a position still open on the last bar is reported open and left out of the figures`() {
+        val result = run("strategy.entry(\"L\", strategy.long, when = bar_index == 40)")
+        val report = assertNotNull(result.strategy)
+        assertEquals(1, report.trades.size)
+        assertTrue(report.trades[0].open)
+        assertEquals(0, report.closedCount)
+        assertEquals(0.0, report.netPercent, 0.0)
+    }
+
+    @Test
+    fun `objects and orders make a script whole-run, text and na do not`() {
+        assertFalse(NamaScript.compile("label.new(1, 1, \"x\")").script!!.analysis.incremental)
+        assertFalse(NamaScript.compile("strategy.entry(\"L\", strategy.long, when = close > open)").script!!.analysis.incremental)
+        assertTrue(NamaScript.compile("t = \"a\" + 1\nplot(nz(na, 1))").script!!.analysis.incremental)
+    }
+
+    @Test
+    fun `the memory budget refuses a script that holds too many series`() {
+        val series = bars(20_000)
+        val source = buildString { for (index in 0 until 450) appendLine("x$index = close * $index") }
+        val result = NamaScript.run(source, series)
+        assertEquals("E407", result.error?.code)
+        assertTrue(result.error!!.hint(english = true).contains("series"))
+        // The same script over a chart small enough to hold runs.
+        assertTrue(NamaScript.run(source, bars(200)).ok)
+    }
+
     private fun <T> assertNotNull(value: T?): T {
         org.junit.Assert.assertNotNull(value)
         return value!!

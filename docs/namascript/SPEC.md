@@ -77,8 +77,10 @@ right-associative in its branches. Named arguments may follow positional ones in
 
 There are no arrays, matrices, maps, user types or functions in v1.1 (§10). A value's type is
 decided when it is computed; a mismatch is a diagnostic (`E2xx`), never a coercion — except the
-three the reader expects: a number used where a series is wanted broadcasts to every bar, a
-condition used as a number is 1 or 0, and a number used as a condition is "not zero".
+four the reader expects: a number used where a series is wanted broadcasts to every bar, a
+condition used as a number is 1 or 0, a number used as a condition is "not zero", and (since
+4.61.0) `+` with text on either side **joins**: `"close " + close` is text, the number in the
+price style and a series by its last bar. A colour cannot be joined (E203).
 
 ### 3.1 Absence (`na`)
 
@@ -87,7 +89,8 @@ chart begins, a division by zero, anything not finite. Absence propagates: an ar
 comparison with an absent operand is absent on that bar; `and` / `or` with an absent side are
 absent; a conditional whose condition is absent is absent. `nz(x, 0)` replaces absence with a
 number. `plot` draws nothing on an absent bar; `marker` and `bgcolor` treat an absent condition
-as false. There is no `na` literal in v1.1: absence is produced, not written.
+as false. Since 4.61.0 the name `na` is a series absent on every bar — `nz(na, 0)` is 0, `close >
+na` is never decided — and `na(x)` is the condition series that is true where `x` is absent.
 
 ### 3.2 History (`[]`)
 
@@ -97,11 +100,12 @@ non-negative number (`E202`). A constant indexed is itself.
 
 ## 4. Built-in series and names
 
-`open high low close volume hl2 hlc3 ohlc4 time bar_index n confirmed`. `volume` is absent on
+`open high low close volume hl2 hlc3 ohlc4 time bar_index n confirmed na`. `volume` is absent on
 every bar of a feed that sends none; `time` is Unix seconds; `bar_index` counts from zero; `n`
 is the bar count (a number); `confirmed` is true on every closed bar and false on the last — a
 signal written `… and confirmed` never sits on the bar still forming. These names cannot be
 redefined (`E302`). Colours: `color.gold silver buy sell green red blue grey white orange purple teal`.
+Named numbers: `strategy.long` (1) and `strategy.short` (−1), for `strategy.entry`.
 
 ## 5. Functions
 
@@ -172,6 +176,55 @@ visible inside it. A script that uses `request.security` is re-run whole on ever
 
 `iff(cond, a, b)` and `cond ? a : b` are the same thing; `nz(x, v)` is §3.1.
 
+### 5.5 `str.*` (4.61.0)
+
+Text is constant — a title, a label — so these are functions of constants: `str.tostring(x)` (a
+number in the price style; a series by its last bar), `str.length`, `str.upper`, `str.lower`,
+`str.contains`, `str.startswith`, `str.endswith`, `str.replace_all(s, from, to)` and
+`str.format("{0} / {1}", a, b)`, which fills `{0}`, `{1}`… with the arguments after the pattern.
+`str.length` counts the characters a reader sees, not the direction marks a number carries.
+
+### 5.6 Objects on the chart (4.61.0)
+
+| Call | Draws |
+| --- | --- |
+| `label.new(x, y, "text", color=, textcolor=)` | a text mark at bar `x`, price `y` |
+| `line.new(x1, y1, x2, y2, color=, width=)` | a line between two (bar, price) points |
+| `box.new(left, top, right, bottom, color=, text=)` | a filled box between two bars and two prices |
+
+`x` is a bar number as `bar_index` counts it; a series given for `x` or `y` is read **at its last
+present bar**, so `label.new(bar_index, high, "…")` marks the newest bar, the way it does in Pine.
+A number outside the chart is clamped to its edges. The objects reach the chart as the reader's
+own drawing types (`text`, `trend`, `rect` — `ScriptOverlay.drawings`), so they draw, select and
+style like a hand-placed mark. At most 40 objects per run; the rest are dropped. A script that
+places an object is re-run whole on every bar (§6).
+
+### 5.7 `strategy.*` (4.61.0)
+
+| Call | Does |
+| --- | --- |
+| `strategy.entry("id", strategy.long \| strategy.short, when = cond)` | an entry order on every bar the condition holds |
+| `strategy.close("id", when = cond)` | closes the open trade with that id |
+| `strategy.close_all(cond)` | closes whatever is open |
+
+The orders are replayed over the series after the script has run: one position at a time (no
+pyramiding), a market fill at the **open of the bar after** the signal, an entry in the opposite
+direction closing the open trade on the same open, and whatever is still open on the last bar
+reported open at the last close and left out of the figures. The report (`ScriptResult.strategy`)
+carries the trades, the net return (the sum of each closed trade's return on its entry, in percent,
+not compounded), the win rate, the profit factor and the deepest drawdown of the cumulative return.
+Each trade is two marks on the chart: the entry pointing its way, the exit with its return. There
+is no commission, slippage, position sizing or stop order in this model; `docs/qa` says which of
+those the strategy tester's presets have.
+
+### 5.8 `var` and `varip` (4.61.0)
+
+`var x = expr` (and `varip`, which is the same here) declares `x` as the value `expr` has on the
+**first bar where it is present**, held on every bar. That is what Pine's «initialise once» means
+in a model where every value is a whole series: a name that never changes is a constant line.
+`x := expr` afterwards replaces the whole series, as it always did; per-bar mutation (`x := x + 1`
+meaning «one more than the last bar») is still v2 (§10).
+
 ## 6. Execution model
 
 A program runs top to bottom once per evaluation, over the whole series the chart holds. Each
@@ -192,8 +245,10 @@ twelve times the largest constant length or offset the checker found, at least 1
 the bars the previous result could not know onto it. Nothing a script computes at bar *i* reads a
 bar after *i*, so every earlier value is final. A script that calls a cumulative function
 (`ta.cum`, `ta.obv`, `ta.ad`, `ta.pvt`, `ta.vwap`, `ta.barssince`, `ta.valuewhen`, `ta.psar`,
-`ta.supertrend`, `ta.vstop`, `ta.mcginley`, `ta.kama`) or `request.security` is re-run whole.
-Bar-by-bar state (`var`, `:=` across bars) remains v2 (§10).
+`ta.supertrend`, `ta.vstop`, `ta.mcginley`, `ta.kama`), `request.security`, an object
+(`label.new`, `line.new`, `box.new`) or an order (`strategy.*`) is re-run whole, because those are
+placed by absolute bar or replayed over every bar and cannot be spliced from a tail. Per-bar
+mutation (`:=` reading the previous bar's own value) remains v2 (§10); `var` is §5.8.
 
 ## 7. Diagnostics
 
@@ -231,22 +286,28 @@ stops at the first error; there is no recovery in v1.1.
 | E404 | the chart has no bars | — |
 | E405 | nesting exhausts the stack | `((((…))))` |
 | E406 | more than 2 s of wall clock | — |
+| E407 | the variables and plots hold more than 8 000 000 bar-cells at once | 450 series over 20 000 bars |
 
 ## 8. The sandbox
 
 A script can touch only the series it is given. There is no I/O, no network, no file, no clock
 beyond the sandbox's own; the language has no construct that reaches outside the interpreter.
 Limits: 20 000 characters, 250 000 evaluated nodes, 2 000 ms wall clock (read every 1024 nodes),
-12 plots / levels / markers / backgrounds / alerts, 40 log lines, a stack-overflow guard. All are
-diagnostics with codes, never crashes.
+8 000 000 retained bar-cells (a series is one cell per bar; every variable and plot counts, so the
+memory a run can hold is bounded at about 72 MB — E407, since 4.61.0), 12 plots / levels /
+markers / backgrounds / alerts, 40 objects and orders, 40 log lines, a stack-overflow guard. All
+are diagnostics with codes, never crashes.
 
 ## 9. Performance
 
 Whole-series evaluation makes the cost of a script the cost of its indicators, which are the
 chart's own and are measured with it. `ScriptPerformanceTest` runs a 300-line script with ten
-`ta.` calls over 20 000 bars on the JVM and records the figure in `docs/engineering/REPORT.md`;
-the Pixel 6a targets in the plan (compile < 50 ms, evaluate < 40 ms, realtime < 2 ms) need a
-device and are open.
+`ta.` calls over 20 000 bars on the JVM — compile (lex, parse, type-check), a whole evaluation,
+and the realtime case through the `IncrementalRunner` (one bar appended, one bar ticked) — and
+records the figures in `docs/engineering/REPORT.md`. Since 4.61.0 the arithmetic runs on the
+lines' raw arrays rather than through a boxed `Double?` per bar, which took the whole evaluation
+from about 1.4 s to under 0.2 s on the JVM. The Pixel 6a targets in the plan (compile < 50 ms,
+evaluate < 40 ms, realtime < 2 ms) need a device and are open.
 
 ## 10. v2 — the Pine-v5-class language, and where v1.1 stands
 
@@ -262,11 +323,14 @@ VM) rather than a vectorising interpreter. It is not in 4.50.0. What is:
 | `math.*`, `color.*`, `input.*` | the sets in §5 |
 | plot family | `plot hline marker plotshape plotchar bgcolor`; `fill`, `plotcandle`, `barcolor` open |
 | `alertcondition`, `alert()` | `alertcondition` produces `ScriptResult.alerts`; wiring to the alert centre open |
-| `strategy.*` | `signal(...)` — one setup with R:R; the backtester runs `ScriptStrategies` presets, not arbitrary scripts |
-| `[]`, `na` semantics | as §3 |
+| `strategy.*` | since 4.61.0: `strategy.entry` / `strategy.close` / `strategy.close_all` with `strategy.long` / `strategy.short`, replayed with next-open fills into a report (§5.7); `signal(...)` still gives one setup with R:R. No `strategy.exit`, sizing, commission or pyramiding |
+| `[]`, `na` semantics | as §3; the `na` name and `na(x)` since 4.61.0 |
 | `? :`, `iff` | yes; `if`/`switch` expressions open |
-| `var`, `:=` | `:=` reassigns a series; per-bar `var` state has no meaning in a vectorised model |
-| functions, loops, collections, UDTs, libraries, `request.*`, drawing objects | open |
+| `var`, `varip`, `:=` | since 4.61.0 `var`/`varip` hold the first present value (§5.8); `:=` reassigns a series; per-bar mutation stays open |
+| `str.*` | since 4.61.0: the nine in §5.5; text joins with `+` |
+| drawing objects | since 4.61.0: `label.new`, `line.new`, `box.new` (§5.6) as the reader's own drawing types; `table.*` open |
+| `request.security` | since 4.56.0 (§5.3.1) |
+| functions, loops, collections, UDTs, libraries | open |
 | diagnostics with codes and hints, both languages | yes (§7) |
 | sandbox: CPU, time, size, output | yes (§8); memory cap open |
 | repainting / lookahead warnings | no lookahead is possible in v1.1 (§6); warnings open |

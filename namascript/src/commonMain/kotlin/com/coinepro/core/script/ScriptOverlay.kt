@@ -4,9 +4,12 @@ import com.coinepro.core.chart.CandleSeries
 import com.coinepro.core.chart.ChartLine
 import com.coinepro.core.chart.ChartMarker
 import com.coinepro.core.chart.ChartPane
+import com.coinepro.core.chart.ChartPoint
+import com.coinepro.core.chart.Drawing
 import com.coinepro.core.chart.MarkerGlyph
 import com.coinepro.core.chart.PriceLevel
 import com.coinepro.core.chart.SignalOverlay
+import com.coinepro.core.chart.formatFixed
 
 /**
  * What a script draws, in the chart's own vocabulary.
@@ -23,10 +26,12 @@ data class ScriptOverlay(
     val markers: List<ChartMarker> = emptyList(),
     val pane: ChartPane? = null,
     val signal: SignalOverlay? = null,
+    /** The script's labels, lines and boxes as the reader's own drawing types (4.61.0). */
+    val drawings: List<Drawing> = emptyList(),
 ) {
     val isEmpty: Boolean
         get() = overlays.isEmpty() && levels.isEmpty() && markers.isEmpty() &&
-            pane == null && signal == null
+            pane == null && signal == null && drawings.isEmpty()
 }
 
 /**
@@ -84,10 +89,64 @@ fun ScriptResult.toOverlay(series: CandleSeries, title: String): ScriptOverlay {
         }
     }
 
+    // A trade is two marks: the entry, pointing the way it went, and the exit with its return.
+    val tradeMarkers = strategy?.trades.orEmpty().flatMap { trade ->
+        val entry = series.bars.getOrNull(trade.entryBar) ?: return@flatMap emptyList()
+        val exit = series.bars.getOrNull(trade.exitBar) ?: return@flatMap emptyList()
+        listOfNotNull(
+            ChartMarker(
+                time = entry.t,
+                price = if (trade.long) entry.l else entry.h,
+                above = !trade.long,
+                colour = if (trade.long) 0xFF00B15C else 0xFFF6465D,
+                glyph = if (trade.long) MarkerGlyph.ARROW_UP else MarkerGlyph.ARROW_DOWN,
+                text = trade.id,
+            ),
+            if (trade.open) null else ChartMarker(
+                time = exit.t,
+                price = if (trade.long) exit.h else exit.l,
+                above = trade.long,
+                colour = if (trade.returnPercent >= 0) 0xFF00B15C else 0xFFF6465D,
+                glyph = MarkerGlyph.CIRCLE,
+                text = (if (trade.returnPercent >= 0) "+" else "") + formatFixed(trade.returnPercent, 1) + "%",
+            ),
+        )
+    }
+
+    val marks = drawings.mapIndexedNotNull { index, drawing ->
+        val times = drawing.bars.map { series.bars.getOrNull(it)?.t ?: return@mapIndexedNotNull null }
+        when (drawing.kind) {
+            ScriptDrawingKind.LABEL -> Drawing(
+                id = SCRIPT_DRAWING_ID_BASE + index,
+                toolId = "text",
+                points = listOf(ChartPoint(times[0], drawing.prices[0])),
+                colour = drawing.colour,
+                textColour = drawing.textColour,
+                text = drawing.text,
+            )
+            ScriptDrawingKind.LINE -> Drawing(
+                id = SCRIPT_DRAWING_ID_BASE + index,
+                toolId = "trend",
+                points = listOf(ChartPoint(times[0], drawing.prices[0]), ChartPoint(times[1], drawing.prices[1])),
+                colour = drawing.colour,
+                widthDp = drawing.widthDp,
+            )
+            ScriptDrawingKind.BOX -> Drawing(
+                id = SCRIPT_DRAWING_ID_BASE + index,
+                toolId = "rect",
+                points = listOf(ChartPoint(times[0], drawing.prices[0]), ChartPoint(times[1], drawing.prices[1])),
+                colour = drawing.colour,
+                fillColour = drawing.colour,
+                text = drawing.text,
+            )
+        }
+    }
+
     return ScriptOverlay(
         overlays = overlays,
         levels = priceLevels,
-        markers = markers,
+        markers = markers + tradeMarkers,
+        drawings = marks,
         pane = if (paneLines.isEmpty() && paneLevels.isEmpty()) {
             null
         } else {
@@ -107,6 +166,9 @@ fun ScriptResult.toOverlay(series: CandleSeries, title: String): ScriptOverlay {
         },
     )
 }
+
+/** Ids a script's objects carry, far above anything a reader's own drawings are numbered. */
+private const val SCRIPT_DRAWING_ID_BASE = 1_000_000_000L
 
 private fun ScriptLevel.toPriceLevel(): PriceLevel =
     PriceLevel(price = price, colour = colour, label = title)

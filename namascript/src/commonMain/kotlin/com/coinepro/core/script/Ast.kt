@@ -68,13 +68,20 @@ internal data class Call(
 
 internal sealed interface Statement : Node
 
-/** `x = expr` introduces a name; `x := expr` replaces one that already exists. */
+/**
+ * `x = expr` introduces a name; `x := expr` replaces one that already exists.
+ *
+ * [persistent] is `var x = expr` (or `varip`): the name takes the expression's value on the first
+ * bar it is present and **holds** it on every later bar — Pine's «initialise once» read in a
+ * vectorised model, where a series that never changes is a constant line. See SPEC §5.8.
+ */
 internal data class Assignment(
     val name: String,
     val declare: Boolean,
     val value: Expr,
     override val line: Int,
     override val column: Int,
+    val persistent: Boolean = false,
 ) : Statement
 
 /** A call evaluated for its effect — `plot(...)`, `hline(...)`, `signal(...)`. */

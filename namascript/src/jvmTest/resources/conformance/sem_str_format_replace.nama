@@ -1,0 +1,4 @@
+// expect: ok
+// expect: plot 0 239 3
+t = str.replace_all(str.format("{0}-{1}", "a", "b"), "-", "")
+plot(str.length(t) + 1 + 0 * close)

@@ -1,0 +1,6 @@
+// expect: ok
+// expect: plots 1
+// expect: plot 0 0 3
+// expect: plot 0 239 3
+var first = bar_index + 3
+plot(first)
