@@ -348,6 +348,73 @@ class ChartPixelsTest {
         assertEquals(0, separateLabels(FloatArray(0), 14f, 0f, 400f).size)
     }
 
+    // ------------------------------------------------------------------ placeTagRows
+
+    @Test
+    fun `a tag that lands on a reserved row is dropped rather than moved`() {
+        // The owner's defect, as arithmetic: «۲٬۷۰۰٫۰» from the ladder and «۲٬۷۰۱٫۶» from an EMA
+        // two pixels apart printed one damaged number. The gridline is reserved, so the tag goes.
+        val placed = placeTagRows(
+            centres = floatArrayOf(200f, 260f),
+            tagHeight = 18f,
+            plotHeight = 400f,
+            reserved = floatArrayOf(191f),
+        )
+        assertTrue("the tag on the ladder's row is dropped", placed[0].isNaN())
+        assertEquals(251f, placed[1], 1e-3f)
+    }
+
+    @Test
+    fun `the live price wins every collision`() {
+        // Reserved is the live price first, so nothing can take its row — and a tag is never nudged
+        // off its own price to make room, because a tag beside the wrong number is worse than none.
+        val live = 300f
+        val placed = placeTagRows(
+            centres = floatArrayOf(306f, 312f, 100f),
+            tagHeight = 20f,
+            plotHeight = 600f,
+            reserved = floatArrayOf(live),
+        )
+        assertTrue("neither tag crowds the live price", placed[0].isNaN() && placed[1].isNaN())
+        assertEquals("and a clear one still gets its exact row", 90f, placed[2], 1e-3f)
+    }
+
+    @Test
+    fun `two tags a hair apart keep only the first, which is the ranked one`() {
+        val placed = placeTagRows(
+            centres = floatArrayOf(150f, 154f, 158f),
+            tagHeight = 16f,
+            plotHeight = 400f,
+        )
+        assertEquals(142f, placed[0], 1e-3f)
+        assertTrue("the two behind it are dropped", placed[1].isNaN() && placed[2].isNaN())
+    }
+
+    @Test
+    fun `a tag off the plot is never placed, and one at the edge is pulled inside it`() {
+        val placed = placeTagRows(
+            centres = floatArrayOf(-5f, 405f, 2f, 398f),
+            tagHeight = 20f,
+            plotHeight = 400f,
+        )
+        assertTrue("above the plot", placed[0].isNaN())
+        assertTrue("below the plot", placed[1].isNaN())
+        assertEquals("clamped to the top", 0f, placed[2], 1e-3f)
+        assertEquals("clamped to the bottom", 380f, placed[3], 1e-3f)
+    }
+
+    @Test
+    fun `no two placed tags ever overlap, whatever comes in`() {
+        val centres = FloatArray(40) { (it * 37 % 400).toFloat() }
+        val placed = placeTagRows(centres, tagHeight = 18f, plotHeight = 400f)
+        val kept = placed.filter { !it.isNaN() }.sorted()
+        kept.zipWithNext().forEach { (above, below) ->
+            assertTrue("two tags overlap: $kept", below - above >= 18f - 1e-3f)
+        }
+        assertEquals(0, placeTagRows(FloatArray(0), 18f, 400f).size)
+        assertTrue("a zero-height tag is never placed", placeTagRows(floatArrayOf(10f), 0f, 400f)[0].isNaN())
+    }
+
     // ------------------------------------------------------------------ KineticScroll
 
     @Test

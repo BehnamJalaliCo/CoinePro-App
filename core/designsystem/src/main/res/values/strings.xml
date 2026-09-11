@@ -153,4 +153,19 @@
       default, and the moment the reader renames the list their own name is what shows.
     -->
     <string name="watchlist_default_name">Watchlist</string>
+
+    <!--
+      The chart legend's own controls, named for a screen reader and for the English tablet.
+
+      They were Kotlin constants in `ChartLegendOverlay` — the module has no resources of its own —
+      so «کنترل‌های اندیکاتورها» was read out on an English device and, being a content description,
+      it was also what the tablet i18n test caught. They live here because `chart-ui` draws them and
+      already depends on this module.
+    -->
+    <string name="legend_hide">Hide</string>
+    <string name="legend_show">Show</string>
+    <string name="legend_settings">Settings</string>
+    <string name="legend_remove">Remove</string>
+    <string name="legend_controls_open">Indicator controls</string>
+    <string name="legend_controls_close">Close the controls</string>
 </resources>

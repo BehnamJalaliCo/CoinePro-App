@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.chart.ToolRail
 import com.coinepro.core.designsystem.proseDigits
+import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.datastore.DrawingTemplate
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -101,8 +102,14 @@ internal fun ChartWorkbench(
     modifier: Modifier = Modifier,
     /** The drawing palette. Null on a caller that has no tools to offer. */
     tools: (@Composable (Modifier) -> Unit)? = null,
-    /** The readings, the drawn setup, the studio entry — everything that belongs beside the plot. */
-    readings: (@Composable (Modifier) -> Unit)? = null,
+    /**
+     * The readings, the drawn setup, the studio entry — docked as a **panel** since 4.72.0.
+     *
+     * It used to be a 320 dp column that was always open, which is one of the two things that left
+     * the tablet's plot at about half the window. It is now the first entry on the side rail: one
+     * tap, the same content, and the plot keeps the glass until somebody asks for it.
+     */
+    readings: (@Composable () -> Unit)? = null,
     /**
      * The page itself, told which columns were taken out of it.
      *
@@ -118,13 +125,31 @@ internal fun ChartWorkbench(
     initialSidePanel: String? = null,
     page: @Composable (Modifier, ChartWorkbenchColumns) -> Unit,
 ) {
+    // The readings' own glyph on the rail. `icon_info` rather than a chart glyph: the panel answers
+    // «what is this market doing», which is the one thing on the rail that is a *reading* rather
+    // than an object the reader can touch.
+    val readingsPanel = readings?.let {
+        ChartSidePanel(
+            id = READINGS_PANEL_ID,
+            labelRes = R.string.chart_readings_disclosure,
+            icon = DesignR.drawable.icon_info,
+            content = it,
+        )
+    }
+    val panels = listOfNotNull(readingsPanel) + sidePanels
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        if (sidePanels.isNotEmpty() && sidePanelsFit(maxWidth.value)) {
-            ChartSidePanelHost(panels = sidePanels, modifier = Modifier.fillMaxSize(), initialOpenId = initialSidePanel) { hostModifier ->
-                ChartWorkbenchColumns(hostModifier, tools, readings, page)
+        if (panels.isNotEmpty() && sidePanelsFit(maxWidth.value)) {
+            ChartSidePanelHost(panels = panels, modifier = Modifier.fillMaxSize(), initialOpenId = initialSidePanel) { hostModifier ->
+                // `docked = true` is decided **here**, against the whole window, and handed down.
+                // Deriving it again inside the host would ask the wrong question: the columns there
+                // measure the main pane, which is the window minus the panel and the rails, so a
+                // 1280-point tablet came out "too narrow to dock a panel" while a panel was open —
+                // and the page then drew the readings disclosure under a chart whose readings were
+                // already a tap away on the rail.
+                ChartWorkbenchColumns(hostModifier, tools, docked = readings != null, page = page)
             }
         } else {
-            ChartWorkbenchColumns(Modifier.fillMaxSize(), tools, readings, page)
+            ChartWorkbenchColumns(Modifier.fillMaxSize(), tools, docked = false, page = page)
         }
     }
 }
@@ -134,14 +159,15 @@ internal fun ChartWorkbench(
 private fun ChartWorkbenchColumns(
     modifier: Modifier,
     tools: (@Composable (Modifier) -> Unit)?,
-    readings: (@Composable (Modifier) -> Unit)?,
+    /** Whether the readings are docked on the rail, and so must not be drawn in the page. */
+    docked: Boolean,
     page: @Composable (Modifier, ChartWorkbenchColumns) -> Unit,
 ) {
     BoxWithConstraints(modifier = modifier) {
         val columns = columnsFor(
             width = maxWidth,
             hasTools = tools != null,
-            hasReadings = readings != null,
+            docked = docked,
         )
         if (columns == ChartWorkbenchColumns.NONE) {
             page(Modifier.fillMaxSize(), columns)
@@ -149,15 +175,14 @@ private fun ChartWorkbenchColumns(
         }
         Row(modifier = Modifier.fillMaxSize()) {
             if (columns.hasTools && tools != null) {
-                tools(Modifier.width(CHART_TOOL_COLUMN).fillMaxHeight())
+                // The slot sizes itself: the rail is `CHART_TOOL_RAIL` wide and grows by the
+                // flyout's width while a group is open. Pinning the width here would clip the
+                // flyout to 48 points, which is a list nobody can read.
+                tools(Modifier.fillMaxHeight())
                 VerticalDivider(color = CoineProColors.Border)
             }
             Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
                 page(Modifier.fillMaxSize(), columns)
-            }
-            if (columns.hasReadings && readings != null) {
-                VerticalDivider(color = CoineProColors.Border)
-                readings(Modifier.width(CHART_READINGS_COLUMN).fillMaxHeight())
             }
         }
     }
@@ -174,16 +199,17 @@ private fun ChartWorkbenchColumns(
 internal fun columnsFor(
     width: Dp,
     hasTools: Boolean,
-    hasReadings: Boolean,
+    /** Whether the readings are docked as a panel beside this column. */
+    docked: Boolean,
 ): ChartWorkbenchColumns {
-    val both = CHART_TOOL_COLUMN + CHART_READINGS_COLUMN + CHART_MIN_PLOT_WIDTH
+    // The rail is cheap — 48 points — so the only question left is whether the plot still clears
+    // its floor after it. The readings no longer buy a column at all: they are a panel on the side
+    // rail, and `hasReadings` now means «they are drawn somewhere other than in the page», which is
+    // true exactly when this window is wide enough to dock a panel.
     return when {
-        hasTools && hasReadings && width >= both -> ChartWorkbenchColumns.TOOLS_AND_READINGS
-        hasTools && width >= CHART_TOOL_COLUMN + CHART_MIN_PLOT_WIDTH -> ChartWorkbenchColumns.TOOLS
-        // Readings without tools is reachable only from a caller that offers no palette — the
-        // studio, say. It still earns its column at the same price the tools would have paid.
-        !hasTools && hasReadings && width >= CHART_READINGS_COLUMN + CHART_MIN_PLOT_WIDTH ->
-            ChartWorkbenchColumns.READINGS
+        hasTools && width >= CHART_TOOL_RAIL + CHART_MIN_PLOT_WIDTH ->
+            if (docked) ChartWorkbenchColumns.TOOLS_AND_READINGS else ChartWorkbenchColumns.TOOLS
+        docked -> ChartWorkbenchColumns.READINGS
         else -> ChartWorkbenchColumns.NONE
     }
 }
@@ -348,15 +374,22 @@ internal fun ChartReadingsColumn(
 }
 
 /**
- * How wide the permanent tool column is.
+ * How wide the permanent tool rail is — **48 dp** since 4.72.0.
  *
- * `ToolRail` lays its cells out four across at a fixed height, so this is the width at which four
- * of them are square-ish rather than four slivers. Narrower and the glyph and its label stop
- * fitting in one cell, which is the point at which a palette becomes a puzzle.
+ * It was a 280 dp palette, and the owner measured what that cost: «پنل ابزارهای ترسیم ۳۰۰dp پهنا و
+ * همیشه باز — چارت را به ~۴۵–۵۰٪ عرض می‌رساند». Forty-eight is TradingView's desktop rail and it is
+ * also a comfortable touch target: one glyph per *group*, the group's tools in a flyout, the whole
+ * grid one tap further in «all tools». See [ChartToolRailColumn].
  */
-internal val CHART_TOOL_COLUMN = 280.dp
+internal val CHART_TOOL_RAIL = 48.dp
 
-/** The readings panel is three columns with a meter under each; 320 is the width it was drawn at. */
+/**
+ * The readings, on a wide window, are a **docked panel** rather than a column.
+ *
+ * The number is kept because the panel host still measures against it, but nothing spends it
+ * permanently any more: the trend reading is read once a visit and a column that is always open for
+ * it is a column the plot pays for on every visit. See [ChartWorkbench].
+ */
 internal val CHART_READINGS_COLUMN = 320.dp
 
 /**
@@ -368,3 +401,12 @@ internal val CHART_READINGS_COLUMN = 320.dp
  * thing they came to the screen for.
  */
 internal val CHART_MIN_PLOT_WIDTH = 440.dp
+
+/**
+ * The id the readings panel is remembered under.
+ *
+ * Named rather than spelled at the two places that use it, because it is also what a restored
+ * workspace stores: a reader who left the readings open finds them open, and a typo here would
+ * simply open nothing with no error anywhere.
+ */
+internal const val READINGS_PANEL_ID = "readings"

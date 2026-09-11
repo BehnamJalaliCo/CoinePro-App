@@ -24,6 +24,16 @@ data class DrawingTool(
     val id: String,
     val label: String,
     /**
+     * The same tool in English (4.72.0).
+     *
+     * A tool's name lived only in Persian, in this table, because `chart-core` is plain Kotlin with
+     * no Android resources — so the English tablet drew «همه · حالت · خط‌ها · اندازه‌گیری · پاک‌کن»
+     * down the side of an otherwise English screen. Both names are here for the reason the symbol
+     * names are in `SymbolNames`: this is a catalogue keyed by id, and a second table in
+     * `strings.xml` keyed by the same ids is a second place to forget a row.
+     */
+    val englishLabel: String,
+    /**
      * The «؟» entry id, or null for the two rail entries that are modes rather than drawings.
      *
      * Checked against the shipped catalogue by `DrawingToolsTest`.
@@ -32,22 +42,25 @@ data class DrawingTool(
     val points: Int,
     val group: ToolGroup,
     val icon: ChartIcon,
-)
+) {
+    /** The tool's name in the language the screen is in. */
+    fun label(english: Boolean): String = if (english) englishLabel else label
+}
 
-enum class ToolGroup(val label: String) {
+enum class ToolGroup(val label: String, val englishLabel: String) {
     /** Not drawings: the pointer and the selection mode. They lead the rail because they are how a
      * reader gets *out* of a drawing tool, and a rail with no way back is a trap. */
-    MODES("حالت"),
-    LINES("خط‌ها"),
-    CHANNELS("کانال‌ها"),
-    FIBONACCI("فیبوناچی"),
-    GANN("گن"),
-    ELLIOTT("الیوت"),
-    PATTERNS("الگوها"),
-    SHAPES("شکل‌ها"),
-    ANNOTATION("یادداشت"),
-    MEASURE("اندازه‌گیری"),
-    POSITION("موقعیت معاملاتی"),
+    MODES("حالت", "Modes"),
+    LINES("خط‌ها", "Lines"),
+    CHANNELS("کانال‌ها", "Channels"),
+    FIBONACCI("فیبوناچی", "Fibonacci"),
+    GANN("گن", "Gann"),
+    ELLIOTT("الیوت", "Elliott"),
+    PATTERNS("الگوها", "Patterns"),
+    SHAPES("شکل‌ها", "Shapes"),
+    ANNOTATION("یادداشت", "Annotation"),
+    MEASURE("اندازه‌گیری", "Measure"),
+    POSITION("موقعیت معاملاتی", "Position"),
 
     /**
      * The three tools that read volume rather than price.
@@ -57,7 +70,11 @@ enum class ToolGroup(val label: String) {
      * a feed without a volume column — the MT5 forex feed reports none — so grouping them makes the
      * rail honest when that group is hidden.
      */
-    VOLUME("حجم"),
+    VOLUME("حجم", "Volume"),
+    ;
+
+    /** The group's name in the language the screen is in. See `DrawingTool.englishLabel`. */
+    fun label(english: Boolean): String = if (english) englishLabel else label
 }
 
 /**
@@ -256,144 +273,144 @@ object DrawingTools {
 
     val ALL: List<DrawingTool> = listOf(
         // ── Modes ───────────────────────────────────────────────────────────────────
-        tool("cursor", "نشانگر", 0, ToolGroup.MODES, ChartIcon("tv_tool_cursor")),
-        tool("select", "انتخاب", 0, ToolGroup.MODES, ChartIcon("tv_tool_select")),
-        tool("arrowcursor", "نشانگر پیکانی", 0, ToolGroup.MODES, ChartIcon("tv_tool_cursor")),
-        tool("dot", "نشانگر نقطه‌ای", 0, ToolGroup.MODES, ChartIcon("tv_tool_dot")),
-        tool("magnet", "آهنربا", 0, ToolGroup.MODES, ChartIcon("tv_magnet")),
-        tool("eraser", "پاک‌کن", 0, ToolGroup.MODES, ChartIcon("tv_tool_eraser")),
+        tool("cursor", "نشانگر", "Cursor", 0, ToolGroup.MODES, ChartIcon("tv_tool_cursor")),
+        tool("select", "انتخاب", "Select", 0, ToolGroup.MODES, ChartIcon("tv_tool_select")),
+        tool("arrowcursor", "نشانگر پیکانی", "Arrow cursor", 0, ToolGroup.MODES, ChartIcon("tv_tool_cursor")),
+        tool("dot", "نشانگر نقطه‌ای", "Dot cursor", 0, ToolGroup.MODES, ChartIcon("tv_tool_dot")),
+        tool("magnet", "آهنربا", "Magnet", 0, ToolGroup.MODES, ChartIcon("tv_magnet")),
+        tool("eraser", "پاک‌کن", "Eraser", 0, ToolGroup.MODES, ChartIcon("tv_tool_eraser")),
         // The one mode that is not about what a tap does but about how long what it draws lasts.
         // It carries no «؟» yet: the shipped help catalogue has no entry keyed `demonstration`, and
         // pointing at a neighbouring one would open a page about a different thing.
-        tool(DEMONSTRATION_TOOL, "نمایش موقت", 0, ToolGroup.MODES, ChartIcon("tv_tool_projection")),
+        tool(DEMONSTRATION_TOOL, "نمایش موقت", "Demonstration", 0, ToolGroup.MODES, ChartIcon("tv_tool_projection")),
 
         // ── Lines ───────────────────────────────────────────────────────────────────
-        tool("trend", "خط روند", 2, ToolGroup.LINES, ChartIcon("tv_tool_trend")),
-        tool("ray", "نیم‌خط", 2, ToolGroup.LINES, ChartIcon("tv_tool_ray")),
-        tool("extline", "خط امتدادیافته", 2, ToolGroup.LINES, ChartIcon("tv_tool_extline")),
-        tool("hray", "نیم‌خط افقی", 1, ToolGroup.LINES, ChartIcon("tv_tool_hray")),
-        tool("hline", "خط افقی", 1, ToolGroup.LINES, ChartIcon("tv_tool_hline")),
-        tool("vline", "خط عمودی", 1, ToolGroup.LINES, ChartIcon("tv_tool_vline")),
-        tool("crossline", "خط متقاطع", 1, ToolGroup.LINES, ChartIcon("tv_tool_crossline")),
-        tool("angle", "زاویه", 2, ToolGroup.LINES, ChartIcon("tv_tool_angle")),
-        tool("infoline", "خط اطلاعات", 2, ToolGroup.LINES, ChartIcon("tv_tool_infoline")),
+        tool("trend", "خط روند", "Trend line", 2, ToolGroup.LINES, ChartIcon("tv_tool_trend")),
+        tool("ray", "نیم‌خط", "Ray", 2, ToolGroup.LINES, ChartIcon("tv_tool_ray")),
+        tool("extline", "خط امتدادیافته", "Extended line", 2, ToolGroup.LINES, ChartIcon("tv_tool_extline")),
+        tool("hray", "نیم‌خط افقی", "Horizontal ray", 1, ToolGroup.LINES, ChartIcon("tv_tool_hray")),
+        tool("hline", "خط افقی", "Horizontal line", 1, ToolGroup.LINES, ChartIcon("tv_tool_hline")),
+        tool("vline", "خط عمودی", "Vertical line", 1, ToolGroup.LINES, ChartIcon("tv_tool_vline")),
+        tool("crossline", "خط متقاطع", "Cross line", 1, ToolGroup.LINES, ChartIcon("tv_tool_crossline")),
+        tool("angle", "زاویه", "Trend angle", 2, ToolGroup.LINES, ChartIcon("tv_tool_angle")),
+        tool("infoline", "خط اطلاعات", "Info line", 2, ToolGroup.LINES, ChartIcon("tv_tool_infoline")),
 
         // ── Channels ────────────────────────────────────────────────────────────────
-        tool("channel", "کانال موازی", 3, ToolGroup.CHANNELS, ChartIcon("tv_tool_channel")),
-        tool("regression", "کانال رگرسیون", 2, ToolGroup.CHANNELS, ChartIcon("tv_tool_regchannel")),
-        tool("flattop", "سقف/کف تخت", 3, ToolGroup.CHANNELS, ChartIcon("tv_tool_flatchannel")),
-        tool("disjoint", "کانال گسسته", 4, ToolGroup.CHANNELS, ChartIcon("tv_tool_disjointchannel")),
+        tool("channel", "کانال موازی", "Parallel channel", 3, ToolGroup.CHANNELS, ChartIcon("tv_tool_channel")),
+        tool("regression", "کانال رگرسیون", "Regression trend", 2, ToolGroup.CHANNELS, ChartIcon("tv_tool_regchannel")),
+        tool("flattop", "سقف/کف تخت", "Flat top/bottom", 3, ToolGroup.CHANNELS, ChartIcon("tv_tool_flatchannel")),
+        tool("disjoint", "کانال گسسته", "Disjoint channel", 4, ToolGroup.CHANNELS, ChartIcon("tv_tool_disjointchannel")),
         // The four forks differ only in where the handle starts, and that is the entire reason to
         // ship four rather than one: classic anchors on the pivot itself, Schiff halves the price
         // toward the base's midpoint, modified Schiff halves both axes, inside takes the midpoint
         // of the first leg. Each «؟» states its own origin, because a rail of four identical
         // glyphs with four identical descriptions would be worse than offering only the classic.
-        tool("pitchfork", "چنگال اندروز", 3, ToolGroup.CHANNELS, ChartIcon("tv_tool_pitchfork")),
-        tool("pitchfork_inside", "چنگال داخلی", 3, ToolGroup.CHANNELS, ChartIcon("tv_tool_insidepitchfork")),
-        tool("pitchfork_schiff", "چنگال شیف", 3, ToolGroup.CHANNELS, ChartIcon("tv_tool_schiff")),
-        tool("pitchfork_schiffmod", "چنگال شیف اصلاح‌شده", 3, ToolGroup.CHANNELS, ChartIcon("tv_tool_modschiff")),
-        tool("pitchfan", "بادبزن چنگال", 3, ToolGroup.CHANNELS, ChartIcon("tv_tool_pitchfan")),
+        tool("pitchfork", "چنگال اندروز", "Andrews' pitchfork", 3, ToolGroup.CHANNELS, ChartIcon("tv_tool_pitchfork")),
+        tool("pitchfork_inside", "چنگال داخلی", "Inside pitchfork", 3, ToolGroup.CHANNELS, ChartIcon("tv_tool_insidepitchfork")),
+        tool("pitchfork_schiff", "چنگال شیف", "Schiff pitchfork", 3, ToolGroup.CHANNELS, ChartIcon("tv_tool_schiff")),
+        tool("pitchfork_schiffmod", "چنگال شیف اصلاح‌شده", "Modified Schiff pitchfork", 3, ToolGroup.CHANNELS, ChartIcon("tv_tool_modschiff")),
+        tool("pitchfan", "بادبزن چنگال", "Pitchfan", 3, ToolGroup.CHANNELS, ChartIcon("tv_tool_pitchfan")),
 
         // ── Fibonacci ───────────────────────────────────────────────────────────────
-        tool("fib", "بازگشت فیبوناچی", 2, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fib")),
-        tool("fibext", "گسترش فیبوناچی", 2, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fibext")),
-        tool("fib3", "فیبوناچی سه‌نقطه‌ای", 3, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fib3")),
-        tool("fibfan", "بادبزن فیبوناچی", 2, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fibfan")),
-        tool("fibtime", "منطقه‌ی زمانی فیبوناچی", 2, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fibtime")),
-        tool("fibtimeext", "گسترش زمانی فیبوناچی", 3, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fibtimeext")),
-        tool("fibchannel", "کانال فیبوناچی", 3, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fibchannel")),
-        tool("fibcircles", "دایره‌ی فیبوناچی", 2, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fibcircles")),
-        tool("fibarcs", "کمان فیبوناچی", 2, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fibarcs")),
-        tool("fibspiral", "مارپیچ فیبوناچی", 2, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fibspiral")),
-        tool("fibwedge", "گوه فیبوناچی", 3, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fibwedge")),
+        tool("fib", "بازگشت فیبوناچی", "Fib retracement", 2, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fib")),
+        tool("fibext", "گسترش فیبوناچی", "Fib extension", 2, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fibext")),
+        tool("fib3", "فیبوناچی سه‌نقطه‌ای", "Trend-based fib extension", 3, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fib3")),
+        tool("fibfan", "بادبزن فیبوناچی", "Fib speed fan", 2, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fibfan")),
+        tool("fibtime", "منطقه‌ی زمانی فیبوناچی", "Fib time zone", 2, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fibtime")),
+        tool("fibtimeext", "گسترش زمانی فیبوناچی", "Trend-based fib time", 3, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fibtimeext")),
+        tool("fibchannel", "کانال فیبوناچی", "Fib channel", 3, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fibchannel")),
+        tool("fibcircles", "دایره‌ی فیبوناچی", "Fib circles", 2, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fibcircles")),
+        tool("fibarcs", "کمان فیبوناچی", "Fib arcs", 2, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fibarcs")),
+        tool("fibspiral", "مارپیچ فیبوناچی", "Fib spiral", 2, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fibspiral")),
+        tool("fibwedge", "گوه فیبوناچی", "Fib wedge", 3, ToolGroup.FIBONACCI, ChartIcon("tv_tool_fibwedge")),
 
         // ── Gann ────────────────────────────────────────────────────────────────────
-        tool("gannbox", "جعبه‌ی گن", 2, ToolGroup.GANN, ChartIcon("tv_tool_gannbox")),
-        tool("gannfan", "بادبزن گن", 2, ToolGroup.GANN, ChartIcon("tv_tool_gannfan")),
-        tool("gannsquare", "مربع گن", 2, ToolGroup.GANN, ChartIcon("tv_tool_gannsquare")),
-        tool("gannsquarefixed", "مربع گن ثابت", 1, ToolGroup.GANN, ChartIcon("tv_tool_gannfixed")),
+        tool("gannbox", "جعبه‌ی گن", "Gann box", 2, ToolGroup.GANN, ChartIcon("tv_tool_gannbox")),
+        tool("gannfan", "بادبزن گن", "Gann fan", 2, ToolGroup.GANN, ChartIcon("tv_tool_gannfan")),
+        tool("gannsquare", "مربع گن", "Gann square", 2, ToolGroup.GANN, ChartIcon("tv_tool_gannsquare")),
+        tool("gannsquarefixed", "مربع گن ثابت", "Gann square fixed", 1, ToolGroup.GANN, ChartIcon("tv_tool_gannfixed")),
 
         // ── Patterns ────────────────────────────────────────────────────────────────
-        tool("xabcd", "الگوی XABCD", 5, ToolGroup.PATTERNS, ChartIcon("tv_tool_xabcd")),
-        tool("abcd", "الگوی ABCD", 4, ToolGroup.PATTERNS, ChartIcon("tv_tool_abcd")),
-        tool("cypher", "الگوی سایفر", 5, ToolGroup.PATTERNS, ChartIcon("tv_tool_cypher")),
-        tool("tripattern", "الگوی مثلثی", 3, ToolGroup.PATTERNS, ChartIcon("tv_tool_tripattern")),
-        tool("hns", "سر و شانه", 5, ToolGroup.PATTERNS, ChartIcon("tv_tool_hns")),
-        tool("threedrives", "سه رانش", 5, ToolGroup.PATTERNS, ChartIcon("tv_tool_threedrives")),
+        tool("xabcd", "الگوی XABCD", "XABCD pattern", 5, ToolGroup.PATTERNS, ChartIcon("tv_tool_xabcd")),
+        tool("abcd", "الگوی ABCD", "ABCD pattern", 4, ToolGroup.PATTERNS, ChartIcon("tv_tool_abcd")),
+        tool("cypher", "الگوی سایفر", "Cypher pattern", 5, ToolGroup.PATTERNS, ChartIcon("tv_tool_cypher")),
+        tool("tripattern", "الگوی مثلثی", "Triangle pattern", 3, ToolGroup.PATTERNS, ChartIcon("tv_tool_tripattern")),
+        tool("hns", "سر و شانه", "Head and shoulders", 5, ToolGroup.PATTERNS, ChartIcon("tv_tool_hns")),
+        tool("threedrives", "سه رانش", "Three drives", 5, ToolGroup.PATTERNS, ChartIcon("tv_tool_threedrives")),
 
         // ── Elliott ─────────────────────────────────────────────────────────────────
-        tool("ell_impulse", "موج ایمپالس", 6, ToolGroup.ELLIOTT, ChartIcon("tv_tool_ell_impulse")),
-        tool("ell_abc", "اصلاح ABC", 4, ToolGroup.ELLIOTT, ChartIcon("tv_tool_ell_abc")),
-        tool("ell_triangle", "مثلث الیوت", 5, ToolGroup.ELLIOTT, ChartIcon("tv_tool_ell_triangle")),
-        tool("ell_double", "ترکیب دوگانه", 5, ToolGroup.ELLIOTT, ChartIcon("tv_tool_ell_wxy")),
-        tool("ell_triple", "ترکیب سه‌گانه", 7, ToolGroup.ELLIOTT, ChartIcon("tv_tool_ell_wxyxz")),
+        tool("ell_impulse", "موج ایمپالس", "Elliott impulse wave", 6, ToolGroup.ELLIOTT, ChartIcon("tv_tool_ell_impulse")),
+        tool("ell_abc", "اصلاح ABC", "Elliott correction wave", 4, ToolGroup.ELLIOTT, ChartIcon("tv_tool_ell_abc")),
+        tool("ell_triangle", "مثلث الیوت", "Elliott triangle wave", 5, ToolGroup.ELLIOTT, ChartIcon("tv_tool_ell_triangle")),
+        tool("ell_double", "ترکیب دوگانه", "Elliott double combo", 5, ToolGroup.ELLIOTT, ChartIcon("tv_tool_ell_wxy")),
+        tool("ell_triple", "ترکیب سه‌گانه", "Elliott triple combo", 7, ToolGroup.ELLIOTT, ChartIcon("tv_tool_ell_wxyxz")),
 
         // ── Shapes ──────────────────────────────────────────────────────────────────
-        tool("triangle", "مثلث", 3, ToolGroup.SHAPES, ChartIcon("tv_tool_triangle")),
-        tool("rect", "مستطیل", 2, ToolGroup.SHAPES, ChartIcon("tv_tool_rect")),
-        tool("rotrect", "مستطیل چرخان", 3, ToolGroup.SHAPES, ChartIcon("tv_tool_rotrect")),
-        tool("circle", "دایره", 2, ToolGroup.SHAPES, ChartIcon("tv_tool_circle")),
-        tool("ellipse", "بیضی", 2, ToolGroup.SHAPES, ChartIcon("tv_tool_ellipse")),
-        tool("sine", "موج سینوسی", 2, ToolGroup.SHAPES, ChartIcon("tv_tool_sine")),
-        tool("brush", "قلم‌مو", 0, ToolGroup.SHAPES, ChartIcon("tv_tool_brush")),
-        tool("highlighter", "هایلایتر", 0, ToolGroup.SHAPES, ChartIcon("tv_tool_highlighter")),
-        tool("path", "مسیر", 0, ToolGroup.SHAPES, ChartIcon("tv_tool_path")),
-        tool("polyline", "خط شکسته", 0, ToolGroup.SHAPES, ChartIcon("tv_tool_polyline")),
-        tool("arc", "کمان", 3, ToolGroup.SHAPES, ChartIcon("tv_tool_arc")),
-        tool("curve", "منحنی", 3, ToolGroup.SHAPES, ChartIcon("tv_tool_curve")),
-        tool("doublecurve", "منحنی دوگانه", 4, ToolGroup.SHAPES, ChartIcon("tv_tool_doublecurve")),
-        tool("sector", "قطاع", 3, ToolGroup.SHAPES, ChartIcon("tv_tool_sector")),
+        tool("triangle", "مثلث", "Triangle", 3, ToolGroup.SHAPES, ChartIcon("tv_tool_triangle")),
+        tool("rect", "مستطیل", "Rectangle", 2, ToolGroup.SHAPES, ChartIcon("tv_tool_rect")),
+        tool("rotrect", "مستطیل چرخان", "Rotated rectangle", 3, ToolGroup.SHAPES, ChartIcon("tv_tool_rotrect")),
+        tool("circle", "دایره", "Circle", 2, ToolGroup.SHAPES, ChartIcon("tv_tool_circle")),
+        tool("ellipse", "بیضی", "Ellipse", 2, ToolGroup.SHAPES, ChartIcon("tv_tool_ellipse")),
+        tool("sine", "موج سینوسی", "Sine line", 2, ToolGroup.SHAPES, ChartIcon("tv_tool_sine")),
+        tool("brush", "قلم‌مو", "Brush", 0, ToolGroup.SHAPES, ChartIcon("tv_tool_brush")),
+        tool("highlighter", "هایلایتر", "Highlighter", 0, ToolGroup.SHAPES, ChartIcon("tv_tool_highlighter")),
+        tool("path", "مسیر", "Path", 0, ToolGroup.SHAPES, ChartIcon("tv_tool_path")),
+        tool("polyline", "خط شکسته", "Polyline", 0, ToolGroup.SHAPES, ChartIcon("tv_tool_polyline")),
+        tool("arc", "کمان", "Arc", 3, ToolGroup.SHAPES, ChartIcon("tv_tool_arc")),
+        tool("curve", "منحنی", "Curve", 3, ToolGroup.SHAPES, ChartIcon("tv_tool_curve")),
+        tool("doublecurve", "منحنی دوگانه", "Double curve", 4, ToolGroup.SHAPES, ChartIcon("tv_tool_doublecurve")),
+        tool("sector", "قطاع", "Pie sector", 3, ToolGroup.SHAPES, ChartIcon("tv_tool_sector")),
 
         // ── Position ────────────────────────────────────────────────────────────────
-        tool("longshort", "موقعیت خرید/فروش", 2, ToolGroup.POSITION, ChartIcon("tv_tool_longshort")),
+        tool("longshort", "موقعیت خرید/فروش", "Long/short position", 2, ToolGroup.POSITION, ChartIcon("tv_tool_longshort")),
 
         // ── Measure ─────────────────────────────────────────────────────────────────
-        tool("pricerange", "دامنه‌ی قیمت", 2, ToolGroup.MEASURE, ChartIcon("tv_tool_pricerange")),
-        tool("daterange", "دامنه‌ی زمان", 2, ToolGroup.MEASURE, ChartIcon("tv_tool_daterange")),
-        tool("dprange", "دامنه‌ی قیمت و زمان", 2, ToolGroup.MEASURE, ChartIcon("tv_tool_dprange")),
-        tool("forecast", "پیش‌بینی", 2, ToolGroup.MEASURE, ChartIcon("tv_tool_forecast")),
-        tool("ruler", "خط‌کش", 2, ToolGroup.MEASURE, ChartIcon("tv_tool_ruler")),
-        tool("cyclic", "خطوط دوره‌ای", 2, ToolGroup.MEASURE, ChartIcon("tv_tool_cyclic")),
-        tool("timecycles", "چرخه‌های زمانی", 2, ToolGroup.MEASURE, ChartIcon("tv_tool_timecycles")),
-        tool("barspattern", "الگوی کندل‌ها", 2, ToolGroup.MEASURE, ChartIcon("tv_tool_barspattern")),
-        tool("ghostfeed", "فید شبح", 2, ToolGroup.MEASURE, ChartIcon("tv_tool_ghostfeed")),
+        tool("pricerange", "دامنه‌ی قیمت", "Price range", 2, ToolGroup.MEASURE, ChartIcon("tv_tool_pricerange")),
+        tool("daterange", "دامنه‌ی زمان", "Date range", 2, ToolGroup.MEASURE, ChartIcon("tv_tool_daterange")),
+        tool("dprange", "دامنه‌ی قیمت و زمان", "Date and price range", 2, ToolGroup.MEASURE, ChartIcon("tv_tool_dprange")),
+        tool("forecast", "پیش‌بینی", "Forecast", 2, ToolGroup.MEASURE, ChartIcon("tv_tool_forecast")),
+        tool("ruler", "خط‌کش", "Ruler", 2, ToolGroup.MEASURE, ChartIcon("tv_tool_ruler")),
+        tool("cyclic", "خطوط دوره‌ای", "Cyclic lines", 2, ToolGroup.MEASURE, ChartIcon("tv_tool_cyclic")),
+        tool("timecycles", "چرخه‌های زمانی", "Time cycles", 2, ToolGroup.MEASURE, ChartIcon("tv_tool_timecycles")),
+        tool("barspattern", "الگوی کندل‌ها", "Bars pattern", 2, ToolGroup.MEASURE, ChartIcon("tv_tool_barspattern")),
+        tool("ghostfeed", "فید شبح", "Ghost feed", 2, ToolGroup.MEASURE, ChartIcon("tv_tool_ghostfeed")),
 
         // ── Annotation ──────────────────────────────────────────────────────────────
-        tool("arrow", "پیکان", 2, ToolGroup.ANNOTATION, ChartIcon("tv_tool_arrow")),
+        tool("arrow", "پیکان", "Arrow", 2, ToolGroup.ANNOTATION, ChartIcon("tv_tool_arrow")),
         // Two taps for a one-point marker, and the second tap is the whole feature: it is not
         // another anchor, it is which way the arrow faces. `Drawing.direction` was stored,
         // persisted and rendered from the day the tool shipped and **nothing set it**, so every
         // «پیکان جهت‌دار» on every chart pointed up. `DrawingActions` collapses the pair back to
         // one point on commit, so what is stored is still a single marker.
-        tool("arrowdir", "پیکان جهت‌دار", 2, ToolGroup.ANNOTATION, ChartIcon("tv_tool_arrowdir")),
-        tool("text", "متن", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_text")),
-        tool("callout", "بالن متن", 2, ToolGroup.ANNOTATION, ChartIcon("tv_tool_callout")),
-        tool("pricelabel", "برچسب قیمت", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_pricelabel")),
-        tool("note", "یادداشت", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_note")),
+        tool("arrowdir", "پیکان جهت‌دار", "Arrow marker", 2, ToolGroup.ANNOTATION, ChartIcon("tv_tool_arrowdir")),
+        tool("text", "متن", "Text", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_text")),
+        tool("callout", "بالن متن", "Callout", 2, ToolGroup.ANNOTATION, ChartIcon("tv_tool_callout")),
+        tool("pricelabel", "برچسب قیمت", "Price label", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_pricelabel")),
+        tool("note", "یادداشت", "Note", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_note")),
         // Zero here means "the reader says when", the same as `path` and `polyline` — see
         // `DrawingActions.isVariablePoint`. It used to mean nothing at all: the registry said zero,
         // the tap handler refuses a zero-point tool, and `DrawingGeometryB.arrowMarks` needs two
         // anchors before it returns a single mark, so arming this tool and tapping placed nothing
         // and reported nothing.
-        tool("arrowmarks", "علامت پیکانی", 0, ToolGroup.ANNOTATION, ChartIcon("tv_tool_arrowmarks")),
-        tool("pricenote", "یادداشت قیمت", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_pricenote")),
-        tool("pin", "سنجاق", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_note")),
+        tool("arrowmarks", "علامت پیکانی", "Arrow mark", 0, ToolGroup.ANNOTATION, ChartIcon("tv_tool_arrowmarks")),
+        tool("pricenote", "یادداشت قیمت", "Price note", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_pricenote")),
+        tool("pin", "سنجاق", "Pin", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_note")),
         // `tabledraw`, not `table`: the shipped help catalogue already keys `table` to the
         // scripting language's `table.new` primitive, which is a different thing entirely. A tool
         // pointing at that entry would open a page about writing a script.
-        tool("tabledraw", "جدول", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_table")),
-        tool("comment", "دیدگاه", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_callout")),
-        tool("signpost", "تابلو", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_signpost")),
-        tool("icon", "آیکن", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_icon")),
+        tool("tabledraw", "جدول", "Table", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_table")),
+        tool("comment", "دیدگاه", "Comment", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_callout")),
+        tool("signpost", "تابلو", "Signpost", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_signpost")),
+        tool("icon", "آیکن", "Icon", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_icon")),
         // Two anchors, not one. It was one while the tool drew a fixed frame with nothing in it;
         // now that a picture goes inside, the reader drags the box they want it in — which is the
         // difference between placing an image and being handed one at a size somebody guessed.
-        tool("image", "تصویر", 2, ToolGroup.ANNOTATION, ChartIcon("tv_tool_image")),
+        tool("image", "تصویر", "Image", 2, ToolGroup.ANNOTATION, ChartIcon("tv_tool_image")),
 
         // ── Volume ──────────────────────────────────────────────────────────────────
-        tool("avwap", "VWAP لنگرانداخته", 1, ToolGroup.VOLUME, ChartIcon("tv_tool_avwap")),
-        tool("volumeprofile", "پروفایل حجم", 2, ToolGroup.VOLUME, ChartIcon("tv_tool_volumeprofile")),
-        tool("avolumeprofile", "پروفایل حجم لنگرانداخته", 1, ToolGroup.VOLUME, ChartIcon("tv_tool_avolumeprofile")),
+        tool("avwap", "VWAP لنگرانداخته", "Anchored VWAP", 1, ToolGroup.VOLUME, ChartIcon("tv_tool_avwap")),
+        tool("volumeprofile", "پروفایل حجم", "Volume profile", 2, ToolGroup.VOLUME, ChartIcon("tv_tool_volumeprofile")),
+        tool("avolumeprofile", "پروفایل حجم لنگرانداخته", "Anchored volume profile", 1, ToolGroup.VOLUME, ChartIcon("tv_tool_avolumeprofile")),
     )
 
     private val BY_ID: Map<String, DrawingTool> = ALL.associateBy { it.id }
@@ -445,12 +462,14 @@ object DrawingTools {
     private fun tool(
         id: String,
         label: String,
+        english: String,
         points: Int,
         group: ToolGroup,
         icon: ChartIcon,
     ) = DrawingTool(
         id = id,
         label = label,
+        englishLabel = english,
         helpId = id.takeUnless { it in MODES_WITHOUT_HELP },
         points = points,
         group = group,

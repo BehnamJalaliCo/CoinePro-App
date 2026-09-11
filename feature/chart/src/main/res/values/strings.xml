@@ -74,6 +74,10 @@
 
     <string name="chart_tools_column_title">Drawing tools</string>
     <string name="chart_tools_column_count">%1$s tools</string>
+    <!-- The last cell of the tablet tool rail: the full grid, in a sheet. -->
+    <string name="chart_tools_all">All tools</string>
+    <!-- How many bars the chart is drawing. A prose count, so its digits follow the language. -->
+    <string name="chart_bar_count">%1$s bars</string>
 
     <string name="chart_state_open">Open</string>
     <string name="chart_state_closed">Closed</string>

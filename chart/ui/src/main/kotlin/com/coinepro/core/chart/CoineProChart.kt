@@ -2951,12 +2951,21 @@ fun CoineProChart(
                 } else {
                     0f
                 }
+                // Where the ladder will print, before a single tag is placed. Run H's rule: the
+                // scale is never covered by a reading taken against it, and the live price is the
+                // only tag allowed to win a row from it.
+                val ladderRows = if (decoration.showAxes) {
+                    priceLabelRows(view, ticks, measurer, palette, textCache)
+                } else {
+                    emptyList()
+                }
                 val levelTags = if (decoration.showAxes) {
                     placeLevelTags(
                         view = view,
                         levels = decoration.levels,
                         tagHeight = tagHeight,
                         lastPriceTop = lastPriceY,
+                        ladderRows = ladderRows,
                     )
                 } else {
                     emptyList()
@@ -2979,14 +2988,16 @@ fun CoineProChart(
                     val taken = buildList {
                         lastPriceY?.let { add(it) }
                         levelTags.forEach { add(it.second) }
+                        // The ladder too, minus whatever the live price already took from it.
+                        addAll(ladderRows.filter { row -> lastPriceY == null || abs(row - lastPriceY) >= tagHeight })
                     }
                     top.takeIf { candidate -> taken.none { abs(candidate - it) < tagHeight } }
                 }
-                val claimed = buildList {
-                    lastPriceY?.let { add(it) }
-                    levelTags.forEach { add(it.second) }
-                    previousCloseTop?.let { add(it) }
-                }
+                // **Only the live price.** Run H inverts the rest of the rule: a level tag, an
+                // indicator tag and the day's reference all had to find a row the ladder was not
+                // using, so by the time the ladder is drawn there is nothing left to step around
+                // except the one tag that is allowed to win — the number the reader is watching.
+                val claimed = listOfNotNull(lastPriceY)
                 if (decoration.showAxes) {
                     // The ladder goes in every gutter the reader asked for; the tags go in one of
                     // them. Two live-price tags saying the same number is not two readings, and the
@@ -4396,23 +4407,64 @@ private fun timeAxisTicks(
  * The tops it returns are what the ladder is then told to step around, so a gridline label is
  * suppressed under *every* tag the gutter carries rather than under the live one alone.
  */
+/**
+ * The rows the price ladder will print on, top of each label, in plot space.
+ *
+ * Computed before anything is drawn so the **tags** can step around the ladder rather than the
+ * other way round — which is the owner's rule and the reverse of what shipped in 4.71.0: «برچسب
+ * محور «2,700.0» هنوز زیر برچسب اندیکاتور «2,698.3» گم می‌شود». A gridline label is the scale; an
+ * indicator's tag is a reading *on* that scale, and a reading that hides the scale it is measured
+ * against is the wrong one of the two to keep.
+ *
+ * The one exception is the live price, which wins everything — see [drawPriceAxis].
+ */
+private fun DrawScope.priceLabelRows(
+    view: ChartViewport,
+    ticks: PriceTicks,
+    measurer: TextMeasurer,
+    palette: ChartPalette,
+    cache: TextWidthCache<TextLayoutResult>,
+): List<Float> {
+    if (ticks.isEmpty()) return emptyList()
+    val probe = axisStyle(palette.text)
+    val height = cache.measure(TAG_HEIGHT_PROBE to probe) { measurer.measure(TAG_HEIGHT_PROBE, probe) }
+        .size.height.toFloat()
+    val placed = separateLabels(
+        centres = FloatArray(ticks.size) { view.yOf(ticks[it]) },
+        height = height + LABEL_SEPARATION_DP.toPx(),
+        top = 0f,
+        bottom = view.plotHeight,
+    )
+    return placed.map { it - height / 2 }
+}
+
 private fun DrawScope.placeLevelTags(
     view: ChartViewport,
     levels: List<PriceLevel>,
     tagHeight: Float,
     lastPriceTop: Float?,
+    /** Where the ladder prints. A tag may not take one of these rows. */
+    ladderRows: List<Float>,
 ): List<Pair<PriceLevel, Float>> {
     if (levels.isEmpty() || tagHeight <= 0f) return emptyList()
-    val taken = ArrayList<Float>(levels.size + 1)
-    lastPriceTop?.let { taken += it }
+    // The live price first, then the ladder's rows: both are spoken for before any tag is placed,
+    // and the rule that decides the rest is [placeTagRows], which is where it can be tested.
+    val reserved = FloatArray(1 + ladderRows.size)
+    var count = 0
+    lastPriceTop?.let { reserved[count++] = it }
+    for (row in ladderRows) {
+        if (lastPriceTop == null || abs(row - lastPriceTop) >= tagHeight) reserved[count++] = row
+    }
+    val tops = placeTagRows(
+        centres = FloatArray(levels.size) { view.yOf(levels[it].price) },
+        tagHeight = tagHeight,
+        plotHeight = view.plotHeight,
+        reserved = reserved.copyOf(count),
+    )
     val placed = ArrayList<Pair<PriceLevel, Float>>(levels.size)
-    for (level in levels) {
-        val y = view.yOf(level.price)
-        if (y < 0f || y > view.plotHeight) continue
-        val top = (y - tagHeight / 2).coerceIn(0f, max(0f, view.plotHeight - tagHeight))
-        if (taken.any { abs(top - it) < tagHeight }) continue
-        taken += top
-        placed += level to top
+    for (index in levels.indices) {
+        val top = tops[index]
+        if (!top.isNaN()) placed += levels[index] to top
     }
     return placed
 }

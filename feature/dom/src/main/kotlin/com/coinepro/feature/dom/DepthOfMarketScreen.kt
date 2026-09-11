@@ -117,6 +117,15 @@ fun DepthOfMarketScreen(
      * that forgets them when it is left. See [DepthLadderPreferences] for why it is optional.
      */
     preferences: DepthLadderPreferences? = null,
+    /**
+     * Whether the screen names itself.
+     *
+     * True as a route, where the app bar above it is bare and this row is the only place the ladder
+     * says what it is. **False when docked**: the side panel already writes the panel's name above
+     * the content, and the 4.71.0 tablet frames carried «Depth of market» twice, one line apart.
+     * The instrument and the venue stay either way — those are what the row is actually for.
+     */
+    showTitle: Boolean = true,
 ) {
     LaunchedEffect(controller, symbol) { controller.start(symbol) }
     // Stopped when the screen leaves, so a ladder nobody is looking at is not polling a venue once
@@ -132,6 +141,7 @@ fun DepthOfMarketScreen(
         modifier = modifier,
         levels = levels,
         preferences = preferences,
+        showTitle = showTitle,
     )
 }
 
@@ -151,6 +161,15 @@ fun DepthOfMarketBody(
     modifier: Modifier = Modifier,
     levels: Int = OrderBookGateway.VISIBLE_LEVELS,
     preferences: DepthLadderPreferences? = null,
+    /**
+     * Whether the screen names itself.
+     *
+     * True as a route, where the app bar above it is bare and this row is the only place the ladder
+     * says what it is. **False when docked**: the side panel already writes the panel's name above
+     * the content, and the 4.71.0 tablet frames carried «Depth of market» twice, one line apart.
+     * The instrument and the venue stay either way — those are what the row is actually for.
+     */
+    showTitle: Boolean = true,
 ) {
     val book = state.book
     val unavailable = state.unavailable
@@ -189,7 +208,7 @@ fun DepthOfMarketBody(
             .background(CoineProColors.Terminal)
             .verticalScroll(rememberScrollState()),
     ) {
-        DepthHeader(state)
+        DepthHeader(state, showTitle)
         when {
             unavailable != null -> DepthUnavailable(unavailable)
             state.failed -> CoineProEmptyState(
@@ -323,7 +342,7 @@ private fun failureHint(outage: DepthOutageReason?): Int = when (outage) {
  * under it, which names the band.
  */
 @Composable
-private fun DepthHeader(state: OrderBookState) {
+private fun DepthHeader(state: OrderBookState, showTitle: Boolean) {
     val book = state.book
     val unavailable = state.unavailable
     Column(
@@ -344,11 +363,13 @@ private fun DepthHeader(state: OrderBookState) {
                 horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = stringResource(R.string.dom_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = CoineProColors.TextPrimary,
-                )
+                if (showTitle) {
+                    Text(
+                        text = stringResource(R.string.dom_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = CoineProColors.TextPrimary,
+                    )
+                }
                 if (state.symbol.isNotBlank()) {
                     Text(
                         // A ticker is an identifier, not prose: Latin, isolated so an RTL row

@@ -472,7 +472,10 @@ private fun ChartPane(
                 }
             }
             Text(
-                text = state.interval.label,
+                // `H1`, not «۱ ساعت» — run F's rule, which the multi-chart header had missed:
+                // the timeframe is a code everywhere the app names one, and prose only inside a
+                // sentence. Four charts side by side are four codes to compare at a glance.
+                text = state.interval.code,
                 style = MaterialTheme.typography.labelSmall,
                 color = if (dense) CoineProColors.TextSecondary else CoineProColors.TextMuted,
                 fontWeight = FontWeight.Normal,

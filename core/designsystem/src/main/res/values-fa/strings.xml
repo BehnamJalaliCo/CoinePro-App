@@ -154,4 +154,11 @@
     <string name="feature_script_body">اندیکاتور خودتان را بنویسید و ببینید</string>
 
     <string name="watchlist_default_name">دیده‌بان</string>
+
+    <string name="legend_hide">پنهان کردن</string>
+    <string name="legend_show">نمایش دادن</string>
+    <string name="legend_settings">تنظیمات</string>
+    <string name="legend_remove">حذف</string>
+    <string name="legend_controls_open">کنترل‌های اندیکاتورها</string>
+    <string name="legend_controls_close">بستن کنترل‌ها</string>
 </resources>

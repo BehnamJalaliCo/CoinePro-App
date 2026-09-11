@@ -320,6 +320,8 @@ FORBIDDEN_BRAND_SPELLINGS = ("Pro CHart", "Pro-Chart", "پروچارت", "ProCha
 # needs no exception list.
 FORBIDDEN_UI_WORDS = {
     "values-fa/strings.xml": ("شیءها", ">اشیا<", "واگرد", "ازنو", "بازپخش نوار", "دیدبان<", "نما اسکریپت", "نقشهٔ حرارتی", "مطالعه"),
+    # The tool names and the reading values are Kotlin tables rather than resources — see
+    # `check_tool_names_are_bilingual` — so the vocabulary list above cannot reach them.
     "values/strings.xml": (">Studies<", ">Bar length<", "Connected surfaces", "Provider truth", ">STALE<", "server-side setting", "this build is pointed", "study", "studies", "Study", "Studies"),
 }
 
@@ -655,11 +657,52 @@ def check_parity_matrix() -> None:
     require(result.returncode == 0, "parity matrix stale:\n" + result.stdout + result.stderr)
 
 
+def check_tool_names_are_bilingual() -> None:
+    """Every drawing tool, every tool group and every market-reading value has an English name.
+
+    These three are Kotlin tables in `:chart-core` — a module with no Android resources — so
+    `strings.xml`, and therefore every other check in this file, cannot reach them. That is exactly
+    how ninety-two Persian tool names survived into the English tablet through run G: there was no
+    resource to be missing. So the rule is checked where the names live.
+
+    A tool added without its English name fails here rather than at review; a name pasted from the
+    column beside it fails too, because the two have to be different words.
+    """
+    source = read("chart/core/src/commonMain/kotlin/com/coinepro/core/chart/Drawings.kt")
+    # `id, "persian", "english"` — the id is a literal for all but one tool, which uses a constant.
+    calls = re.findall(r'\btool\((?:"([^"]+)"|([A-Z_]+)),\s*"([^"]+)",\s*"([^"]+)"', source)
+    calls = [(a or b, persian, english) for a, b, persian, english in calls]
+    require(len(calls) >= 90, f"the tool catalogue reads as {len(calls)} tools, which is not it")
+    for tool_id, persian, english in calls:
+        require(bool(english.strip()), f"tool {tool_id} has no English name")
+        require(
+            not ARABIC_SCRIPT.search(english),
+            f"tool {tool_id}'s English name is in Persian: {english}",
+        )
+        require(english != persian, f"tool {tool_id}'s two names are the same word: {english}")
+
+    groups = re.findall(r'^    [A-Z_]+\("([^"]+)",\s*"([^"]+)"\)', source, re.M)
+    require(len(groups) >= 12, f"the tool groups read as {len(groups)}, which is not all of them")
+    for persian, english in groups:
+        require(
+            english.strip() and not ARABIC_SCRIPT.search(english) and english != persian,
+            f"a tool group has no English name of its own: {persian} / {english}",
+        )
+
+    reading = read("chart/core/src/commonMain/kotlin/com/coinepro/core/chart/ChartReading.kt")
+    for name in ("strengthLabel", "volatilityLabel", "biasLabel"):
+        require(
+            re.search(rf"fun {name}\(\s*english", reading) is not None,
+            f"ChartReading.{name} must take the screen's language, or the tablet reads Persian",
+        )
+
+
 def main() -> None:
     check_module_map()
     check_parity_matrix()
     check_brand_spelling()
     check_ui_vocabulary()
+    check_tool_names_are_bilingual()
     check_english_locale_is_english()
     check_persian_locale_is_persian()
     check_string_lint()

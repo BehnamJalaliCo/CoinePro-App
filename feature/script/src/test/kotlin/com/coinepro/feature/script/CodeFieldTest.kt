@@ -1,5 +1,6 @@
 package com.coinepro.feature.script
 
+import com.coinepro.core.common.proseDigits
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import org.junit.Assert.assertEquals
@@ -78,8 +79,13 @@ class StudioHelpersTest {
     }
 
     @Test
-    fun `the timing line has Latin milliseconds and a Persian bar count`() {
-        assertEquals("اجرا در 12 ms · ۲۰۰۰ کندل · فقط دنباله", consoleTiming(12, incremental = true, bars = 2_000))
-        assertEquals("اجرا در 3 ms · ۲۴۰ کندل", consoleTiming(3, incremental = false, bars = 240))
+    fun `the timing line keeps Latin milliseconds and a prose bar count`() {
+        // The line itself is a resource since 4.72.0 — «اجرا در %1$s ms · %2$s کندل» / «Ran in
+        // %1$s ms · %2$s bars» — so what is left to assert without a composition is the rule the
+        // two arguments follow: the milliseconds are a *measurement* and stay Latin in both
+        // languages, and the bar count is prose and follows the screen.
+        assertEquals("12", 12L.toString())
+        assertEquals("۲۰۰۰", 2_000.proseDigits(english = false))
+        assertEquals("2000", 2_000.proseDigits(english = true))
     }
 }

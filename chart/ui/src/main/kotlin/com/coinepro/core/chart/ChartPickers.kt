@@ -41,6 +41,7 @@ import androidx.compose.ui.semantics.semantics
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import androidx.compose.ui.unit.dp
+import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProColors

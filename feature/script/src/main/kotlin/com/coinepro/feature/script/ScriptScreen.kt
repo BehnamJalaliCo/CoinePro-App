@@ -1,5 +1,13 @@
 package com.coinepro.feature.script
 
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.annotation.StringRes
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -41,6 +49,8 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import com.coinepro.core.script.ScriptStrategyReport
+import com.coinepro.core.designsystem.CoineProChipRow
+import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProTextStyles
 import androidx.compose.ui.text.TextStyle
 import com.coinepro.core.script.ScriptReferenceEn
@@ -158,7 +168,7 @@ fun ScriptScreen(
         Header(symbol = symbol, state = state)
         CoineProTeachingStrip(TeachingSurface.SCRIPT)
         CoineProSegmentedControl(
-            options = ScriptTab.entries.map { it to it.label },
+            options = ScriptTab.entries.map { it to stringResource(it.labelRes) },
             selected = tab,
             onSelect = { tab = it },
             modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
@@ -205,11 +215,11 @@ fun ScriptScreen(
     }
 }
 
-private enum class ScriptTab(val label: String) {
-    EDITOR("ویرایشگر"),
-    LIBRARY("کتابخانه"),
-    LESSONS("آموزش"),
-    REFERENCE("مرجع"),
+private enum class ScriptTab(@StringRes val labelRes: Int) {
+    EDITOR(R.string.script_tab_editor),
+    LIBRARY(R.string.script_tab_library),
+    LESSONS(R.string.script_tab_lessons),
+    REFERENCE(R.string.script_tab_reference),
 }
 
 @Composable
@@ -221,12 +231,12 @@ private fun Header(symbol: String, state: ScriptEditorState) {
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
-            "نما اسکریپت",
+            stringResource(R.string.script_title),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
         )
         Text(
-            text = state.name.ifBlank { "اسکریپت ذخیره‌نشده" } + " · " + symbol,
+            text = state.name.ifBlank { stringResource(R.string.script_unsaved) } + " · " + symbol,
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
         )
@@ -244,8 +254,11 @@ private fun EditorTab(
 ) {
     // Named for the pane the script's own-pane plots land in, so a reader with three scripts saved
     // can tell which strip belongs to which.
-    val overlay = remember(state.result, series, state.name) {
-        state.result?.toOverlay(series, state.name.ifBlank { "اسکریپت" })
+    // The fallback name is read here, in composition, and handed to the memo — a resource lookup
+    // inside `remember` would be a composable call in a non-composable lambda.
+    val untitled = stringResource(R.string.script_untitled)
+    val overlay = remember(state.result, series, state.name, untitled) {
+        state.result?.toOverlay(series, state.name.ifBlank { untitled })
     }
 
     /** The chart the script draws on: a strip above the code on a phone, a column beside it on a tablet. */
@@ -262,7 +275,7 @@ private fun EditorTab(
                         shape = CoineProShapes.small,
                     )
                     series.isEmpty -> Text(
-                        "کندلی برای اجرا نیست",
+                        stringResource(R.string.script_no_candles),
                         style = MaterialTheme.typography.bodySmall,
                         color = CoineProColors.TextMuted,
                     )
@@ -289,7 +302,12 @@ private fun EditorTab(
     // Item 5 of the 4.52 run: code | chart on an expanded window. The list is the same either
     // way; only where the preview sits changes, and on a tablet it takes the whole height so a
     // reader editing sees every plot move as they type.
-    val split = coineProWindowClass().showsTwoPanes
+    // Code | chart, fifty-fifty, on a window that can hold both — and a **toggle**, because a
+    // reader writing a long script wants the editor to have the whole width for a minute and the
+    // preview back afterwards (run H item 4). The window decides the default; the reader decides.
+    val fits = coineProWindowClass().showsTwoPanes
+    var splitOn by rememberSaveable(fits) { mutableStateOf(fits) }
+    val split = fits && splitOn
     val editorItems: LazyListScope.() -> Unit = {
         if (!split) item { preview(Modifier.fillMaxWidth().height(PREVIEW_HEIGHT)) }
 
@@ -298,6 +316,21 @@ private fun EditorTab(
         // Snippets: a working script in one tap, for a reader who has the idea and not the syntax.
         item { SnippetRow(onInsert = { snippet -> controller.edit((state.source.trimEnd() + "\n\n" + snippet).trimStart()) }) }
 
+        if (fits) {
+            item {
+                CoineProChipRow(
+                    options = listOf(
+                        CoineProChip(id = SPLIT_ON, label = stringResource(R.string.script_split_both)),
+                        CoineProChip(id = SPLIT_OFF, label = stringResource(R.string.script_split_code)),
+                    ),
+                    selectedId = if (splitOn) SPLIT_ON else SPLIT_OFF,
+                    onSelect = { id -> splitOn = id == SPLIT_ON },
+                    compact = true,
+                    neutral = true,
+                )
+            }
+        }
+
         state.failure?.let { failure ->
             item { FailureCard(failure = failure) }
         }
@@ -305,7 +338,7 @@ private fun EditorTab(
         if (state.dirty && state.result != null) {
             item {
                 Text(
-                    "نمودار هنوز نتیجه‌ی اجرای قبلی را نشان می‌دهد",
+                    stringResource(R.string.script_stale),
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,
                 )
@@ -315,7 +348,7 @@ private fun EditorTab(
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
                 CoineProPrimaryButton(
-                    text = if (state.running) "در حال اجرا…" else "اجرا",
+                    text = stringResource(if (state.running) R.string.script_running else R.string.script_run),
                     onClick = controller::run,
                     modifier = Modifier.weight(1f),
                     enabled = !state.running && state.source.isNotBlank() && !series.isEmpty,
@@ -324,7 +357,7 @@ private fun EditorTab(
                 // button rather than a dead one — there is nothing to explain about saving nothing.
                 if (state.canSave) {
                     CoineProSecondaryButton(
-                        text = "ذخیره",
+                        text = stringResource(R.string.script_save),
                         onClick = controller::save,
                         modifier = Modifier.weight(1f),
                     )
@@ -337,7 +370,10 @@ private fun EditorTab(
         val inputs = state.result?.inputs.orEmpty()
         if (inputs.isNotEmpty()) {
             item {
-                SectionTitle("ورودی‌ها", "${inputs.size.toPersianDigits()} ورودی")
+                SectionTitle(
+            stringResource(R.string.script_inputs),
+            stringResource(R.string.script_inputs_count, inputs.size.proseDigits()),
+        )
             }
             items(inputs, key = ScriptInput::name) { input ->
                 InputRow(
@@ -362,7 +398,7 @@ private fun EditorTab(
         val log = state.result?.log.orEmpty()
         val result = state.result
         if (log.isNotEmpty() || (result != null && result.ok)) {
-            item { SectionTitle("کنسول", null) }
+            item { SectionTitle(stringResource(R.string.script_console), null) }
             item {
                 CoineProCard(modifier = Modifier.fillMaxWidth()) {
                     log.forEach {
@@ -383,7 +419,7 @@ private fun EditorTab(
         if (state.result?.ok == true && state.result?.isEmpty == true) {
             item {
                 Text(
-                    "اسکریپت بدون خطا اجرا شد ولی چیزی رسم نکرد. برای دیدن نتیجه از plot یا marker استفاده کنید.",
+                    stringResource(R.string.script_drew_nothing),
                     style = MaterialTheme.typography.bodySmall,
                     color = CoineProColors.TextMuted,
                 )
@@ -439,12 +475,19 @@ private fun CodeField(source: String, onChange: (String) -> Unit, failure: Scrip
     // The caret starts at the end, where a reader continues a script: the completion strip
     // reads the word before the caret, so a script that opens ending in «ta.sm» offers `ta.sma`
     // at once rather than after a tap into the field.
+    val minimapInk = CoineProColors.TextDisabled
     var value by remember { mutableStateOf(TextFieldValue(source, TextRange(source.length))) }
     if (value.text != source) value = value.copy(text = source, selection = TextRange(source.length.coerceAtMost(value.selection.end)))
 
     val completions = remember(value) { completionsFor(value) }
     val squiggle = CoineProColors.Sell
-    val lineCount = remember(source) { source.count { it == '\n' } + 1 }
+    val lines = remember(source) { source.split("\n") }
+    val lineCount = lines.size
+    // The code scrolls sideways rather than wrapping (run H item 4). A wrapped line of NamaScript
+    // is three lines that look like three statements — «length =» / «input(14,» / «title =» was
+    // what the owner read in the 150 dp panel — and the numbers down the side then stop counting
+    // the file. One state, shared by the field and the minimap, so they cannot disagree.
+    val codeScroll = rememberScrollState()
 
     Column(modifier = Modifier.fillMaxWidth()) {
         LtrDirection {
@@ -496,7 +539,33 @@ private fun CodeField(source: String, onChange: (String) -> Unit, failure: Scrip
                                 )
                             }
                         }
-                        Box(modifier = Modifier.weight(1f)) { field() }
+                        // **How the code stops wrapping.** A horizontally scrolling parent hands
+                        // its child an unbounded width, so the field lays every line out at its
+                        // full length and there is no wrap point to break at. `softWrap` is not a
+                        // parameter of this overload; the constraint is, and it is the same answer.
+                        Box(modifier = Modifier.weight(1f).horizontalScroll(codeScroll)) { field() }
+                        // The minimap: one bar per line, as long as the line is. It is not a
+                        // thumbnail of the text — at this size a thumbnail is grey noise — it is
+                        // the *shape* of the file, which is what a reader actually navigates by:
+                        // where the inputs stop, where the plotting starts, which block is long.
+                        Canvas(
+                            modifier = Modifier
+                                .width(MINIMAP_WIDTH)
+                                .heightIn(min = CODE_MIN_HEIGHT)
+                                .fillMaxHeight(),
+                        ) {
+                            val step = size.height / lineCount.coerceAtLeast(1)
+                            val longest = lines.maxOfOrNull { it.length }?.coerceAtLeast(1) ?: 1
+                            lines.forEachIndexed { index, line ->
+                                if (line.isBlank()) return@forEachIndexed
+                                val share = line.trimEnd().length.toFloat() / longest
+                                drawRect(
+                                    color = minimapInk,
+                                    topLeft = Offset(0f, index * step),
+                                    size = Size(size.width * share, (step * MINIMAP_BAR).coerceAtLeast(1f)),
+                                )
+                            }
+                        }
                     }
                 },
             )
@@ -645,9 +714,17 @@ internal val SNIPPETS: List<ScriptSnippet> = listOf(
     ),
 )
 
-/** «اجرا در ۱۲ ms · ۲٬۰۰۰ کندل · فقط دنباله» — Latin digits for the milliseconds, a count in Persian for the bars. */
+/**
+ * «اجرا در ۱۲ ms · ۲٬۰۰۰ کندل · فقط دنباله» / `Ran in 12 ms · 2,000 bars · tail only`.
+ *
+ * Latin digits for the milliseconds — that is a measurement — and a prose count for the bars, in
+ * the digits of whichever language the panel is drawn in.
+ */
+@Composable
+@ReadOnlyComposable
 internal fun consoleTiming(elapsedMillis: Long, incremental: Boolean, bars: Int): String =
-    "اجرا در $elapsedMillis ms · ${bars.toPersianDigits()} کندل" + if (incremental) " · فقط دنباله" else ""
+    stringResource(R.string.script_ran_in, elapsedMillis.toString(), bars.proseDigits()) +
+        if (incremental) stringResource(R.string.script_ran_tail) else ""
 
 @Composable
 private fun SnippetRow(onInsert: (String) -> Unit) {
@@ -678,21 +755,21 @@ private fun StrategyCard(report: ScriptStrategyReport) {
         modifier = Modifier.fillMaxWidth().semantics { contentDescription = "script-strategy-report" },
         accent = if (positive) CoineProColors.Buy else CoineProColors.Sell,
     ) {
-        Text("استراتژی", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        StrategyRow("بازده خالص", (if (positive) "+" else "") + MarketNumberFormatter.price(report.netPercent, 2) + "%", if (positive) CoineProColors.Buy else CoineProColors.Sell)
-        StrategyRow("معامله‌های بسته", report.closedCount.toPersianDigits(), CoineProColors.TextPrimary)
-        StrategyRow("نرخ برد", MarketNumberFormatter.price(report.winRate * 100, 1) + "%", CoineProColors.TextPrimary)
-        StrategyRow("ضریب سود", report.profitFactor?.let { MarketNumberFormatter.price(it, 2) } ?: "—", CoineProColors.TextPrimary)
-        StrategyRow("بیشترین افت", MarketNumberFormatter.price(report.maxDrawdownPercent, 2) + "%", CoineProColors.Sell)
+        Text(stringResource(R.string.script_strategy), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        StrategyRow(stringResource(R.string.script_net_return), (if (positive) "+" else "") + MarketNumberFormatter.price(report.netPercent, 2) + "%", if (positive) CoineProColors.Buy else CoineProColors.Sell)
+        StrategyRow(stringResource(R.string.script_closed_trades), report.closedCount.toPersianDigits(), CoineProColors.TextPrimary)
+        StrategyRow(stringResource(R.string.script_win_rate), MarketNumberFormatter.price(report.winRate * 100, 1) + "%", CoineProColors.TextPrimary)
+        StrategyRow(stringResource(R.string.script_profit_factor), report.profitFactor?.let { MarketNumberFormatter.price(it, 2) } ?: "—", CoineProColors.TextPrimary)
+        StrategyRow(stringResource(R.string.script_max_drawdown), MarketNumberFormatter.price(report.maxDrawdownPercent, 2) + "%", CoineProColors.Sell)
         if (report.trades.any { it.open }) {
             Text(
-                "یک معامله هنوز باز است و در ارقام بالا نیامده.",
+                stringResource(R.string.script_open_trade),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextMuted,
             )
         }
         Text(
-            "پر شدن در بازِ کندل بعد، بدون کارمزد و لغزش؛ یک معامله در هر زمان.",
+            stringResource(R.string.script_fill_terms),
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextSecondary,
         )
@@ -727,7 +804,7 @@ private fun NameField(name: String, onChange: (String) -> Unit) {
         decorationBox = { field ->
             if (name.isEmpty()) {
                 Text(
-                    "نام اسکریپت",
+                    stringResource(R.string.script_name_label),
                     style = MaterialTheme.typography.bodyMedium,
                     color = CoineProColors.TextMuted,
                 )
@@ -840,7 +917,7 @@ private fun InputRow(input: ScriptInput, onChange: (Double) -> Unit) {
                     )
                 } else {
                     Text(
-                        "این ورودی بازه‌ای اعلام نکرده؛ مقدارش را در خود کد تغییر دهید.",
+                        stringResource(R.string.script_input_no_range),
                         style = MaterialTheme.typography.labelSmall,
                         color = CoineProColors.TextMuted,
                     )
@@ -916,17 +993,18 @@ private fun SetupCard(
         accent = if (buy) CoineProColors.Buy else CoineProColors.Sell,
     ) {
         Text(
-            if (buy) "ستاپ خرید" else "ستاپ فروش",
+            stringResource(if (buy) R.string.script_setup_buy else R.string.script_setup_sell),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = if (buy) CoineProColors.Buy else CoineProColors.Sell,
         )
-        SetupRow("ورود", entry)
-        SetupRow("حد ضرر", stop)
-        target?.let { SetupRow("هدف", it) }
+        SetupRow(stringResource(R.string.script_entry), entry)
+        SetupRow(stringResource(R.string.script_stop), stop)
+        target?.let { SetupRow(stringResource(R.string.script_target), it) }
         Text(
-            text = riskReward?.let { "ریسک به بازده: " + MarketNumberFormatter.price(it, 2) }
-                ?: "اسکریپت هدفی اعلام نکرده، پس نسبت ریسک به بازده محاسبه نمی‌شود.",
+            text = riskReward
+                ?.let { stringResource(R.string.script_risk_reward, MarketNumberFormatter.price(it, 2)) }
+                ?: stringResource(R.string.script_no_target),
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextSecondary,
         )
@@ -970,15 +1048,19 @@ private fun LibraryTab(
     ) {
         item {
             CoineProSecondaryButton(
-                text = "اسکریپت تازه",
+                text = stringResource(R.string.script_new),
                 onClick = onNew,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
         item {
             SectionTitle(
-                "اسکریپت‌های من",
-                if (saved.isEmpty()) "هنوز چیزی ذخیره نکرده‌اید" else "${saved.size.toPersianDigits()} اسکریپت",
+                stringResource(R.string.script_mine),
+                if (saved.isEmpty()) {
+                stringResource(R.string.script_none_saved)
+            } else {
+                stringResource(R.string.script_saved_count, saved.size.proseDigits())
+            },
             )
         }
         items(saved, key = SavedScriptEntity::id) { script ->
@@ -1009,7 +1091,7 @@ private fun LibraryTab(
                         }
                     }
                     TextButton(onClick = { onDelete(script.id) }) {
-                        Text("حذف", color = CoineProColors.Sell, style = MaterialTheme.typography.labelMedium)
+                        Text(stringResource(R.string.script_delete), color = CoineProColors.Sell, style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
@@ -1041,14 +1123,17 @@ private fun LibraryTab(
             }
         }
         item {
-            SectionTitle("آموزشی", "${ScriptPresets.ALL.size.toPersianDigits()} اسکریپت آماده")
+            SectionTitle(
+                stringResource(R.string.script_lessons_title),
+                stringResource(R.string.script_presets_count, ScriptPresets.ALL.size.proseDigits()),
+            )
         }
         items(ScriptPresets.ALL, key = ScriptPreset::id) { preset ->
             CoineProCard(modifier = Modifier.fillMaxWidth().clickable { onOpenPreset(preset) }) {
                 Text(preset.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 Text(preset.summary, style = MaterialTheme.typography.bodySmall, color = CoineProColors.TextSecondary)
                 Text(
-                    "می‌آموزد: ${preset.teaches}",
+                    stringResource(R.string.script_teaches, preset.teaches),
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,
                 )
@@ -1121,7 +1206,7 @@ private fun LessonCard(
         lesson.example?.let { example ->
             Box(modifier = Modifier.padding(top = CoineProSpacing.One)) { Snippet(example) }
             CoineProSecondaryButton(
-                text = "اجرا در ویرایشگر",
+                text = stringResource(R.string.script_open_in_editor),
                 onClick = { onTryExample(example) },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1152,7 +1237,7 @@ private fun ReferenceTab(onInsert: (String) -> Unit) {
         ),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {
-        item { SectionTitle("سری‌های آماده", "بدون محاسبه در دسترس‌اند") }
+        item { SectionTitle(stringResource(R.string.script_series), stringResource(R.string.script_series_caption)) }
         item {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
                 items(ScriptReference.SERIES) { function ->
@@ -1175,7 +1260,12 @@ private fun ReferenceTab(onInsert: (String) -> Unit) {
             }
         }
         ScriptReference.ALL_GROUPS.forEach { group ->
-            item { SectionTitle(group.title, "${group.functions.size.toPersianDigits()} تابع") }
+            item {
+            SectionTitle(
+                group.title,
+                stringResource(R.string.script_functions_count, group.functions.size.proseDigits()),
+            )
+        }
             items(group.functions, key = { it.signature }) { function ->
                 CoineProCard(modifier = Modifier.fillMaxWidth().clickable { onInsert(function.signature) }) {
                     Snippet(function.signature)
@@ -1189,14 +1279,19 @@ private fun ReferenceTab(onInsert: (String) -> Unit) {
                         modifier = Modifier.padding(top = CoineProSpacing.Half),
                     )
                     Text(
-                        "خروجی: ${function.returns}",
+                        stringResource(R.string.script_returns, function.returns),
                         style = MaterialTheme.typography.labelSmall,
                         color = CoineProColors.TextMuted,
                     )
                 }
             }
         }
-        item { SectionTitle("رنگ‌ها", "${ScriptReference.COLOUR_NAMES.size.toPersianDigits()} رنگ") }
+        item {
+            SectionTitle(
+                stringResource(R.string.script_colours),
+                stringResource(R.string.script_colours_count, ScriptReference.COLOUR_NAMES.size.proseDigits()),
+            )
+        }
         item {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
                 items(ScriptReference.COLOUR_NAMES) { name ->
@@ -1256,3 +1351,13 @@ private val PREVIEW_HEIGHT = 240.dp
 private val CODE_MIN_HEIGHT = 200.dp
 private val CODE_TEXT_SIZE = 13.sp
 private val CODE_LINE_HEIGHT = 20.sp
+
+/** The minimap strip's width: wide enough to show a line's length, narrow enough to be a margin. */
+private val MINIMAP_WIDTH = 24.dp
+
+/** How much of a line's row the bar fills, so the map reads as lines rather than as a block. */
+private const val MINIMAP_BAR = 0.6f
+
+/** The split toggle's two ids. Named so the chip row and the state cannot disagree by a typo. */
+private const val SPLIT_ON = "split"
+private const val SPLIT_OFF = "code"

@@ -82,6 +82,8 @@
     <!-- The permanent tool column a tablet gets in place of the drawing-tools sheet. -->
     <string name="chart_tools_column_title">ابزارهای ترسیم</string>
     <string name="chart_tools_column_count">%1$s ابزار</string>
+    <string name="chart_tools_all">همه‌ی ابزارها</string>
+    <string name="chart_bar_count">%1$s کندل</string>
 
     <!-- The two state chips beside the instrument name. One is always drawn — whether the market
          is trading — and the second only when the reader has put the chart into replay. See

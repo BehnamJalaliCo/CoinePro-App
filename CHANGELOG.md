@@ -15,6 +15,56 @@ it is for.
 
 ---
 
+## [4.72.0] — 2026-09-11 — the tablet, reviewed as a tablet
+
+Run H: the owner's first review of the tablet screens. Ten problems under one shape — the page was a
+phone's page with columns bolted to it, and the chart it exists to show was 45 % of the glass.
+
+### Changed
+- **The drawing tools are a rail, not a palette.** Forty-eight points of group glyphs down the start
+  edge, each opening a 216-point flyout beside it; the reader's favourites pinned under a rule; the
+  full three-column grid one tap away behind «all tools». The 280-point column is gone. The flyout
+  is a column in the layout rather than a popup window, which is why it appears in a screenshot and
+  why a test can hit it.
+- **The chart fills the column.** On a window with rails beside it the page stops scrolling and the
+  canvas takes the weight, so the plot is every point the legend and the toolbar did not — instead
+  of a fraction of the *screen* with a quarter of the page left blank beneath it.
+- **The market reading is a side-panel tab.** It was a disclosure that floated over the candles on a
+  screen wide enough to put it beside them. It is now a panel on the icon rail like depth and
+  alerts, and the chart page no longer draws one of its own.
+- **The side panel is drag-resizable, between 320 and 480 points** — and never wider than leaves the
+  plot 65 % of the space between the two rails, whichever of the two binds first.
+- **The NamaScript editor does not wrap.** The code field scrolls horizontally, which is what a
+  language with 90-character indicator calls needs; the split view toggles code|chart at 50/50; a
+  24-point minimap sits beside the line numbers. The tabs stay.
+- **Multi-chart headers carry the timeframe code** — «H1», not «۱ ساعت» — which is what the pane
+  legend has room for and what the toolbar below says.
+
+### Fixed
+- **The tools, the tool groups and the market reading speak English.** They are catalogues in
+  `:chart-core`, a module with no Android resources, so `strings.xml` could never reach them and the
+  English tablet drew ninety-two Persian tool names. `DrawingTool` and `ToolGroup` carry an English
+  name beside the Persian one, name for name, and `ChartReading` does the same for «متوسط · کم ·
+  خنثی» — publishing `TRENDING_FLOOR` so the colour rule compares the number rather than the word.
+- **The NamaScript panel and the chart legend's controls came out of the source.** Fifty-seven
+  editor literals and six legend controls are resources now, in both languages.
+- **The docked depth ladder writes its name once.** The panel drew a title inside a panel that
+  already had one.
+- **A price-axis tag is dropped rather than drawn over a number.** The rule is a pure function now
+  (`placeTagRows`): the live price is reserved first and wins every collision, the ladder's rows are
+  reserved next, and a tag with no free row goes — its rule is still on the plot with its name at
+  the left end, and a tag nudged off its own price would be pointing at the wrong one.
+
+### Added
+- `TabletEnglishTest` — renders the tablet chart and watchlist in `en-rUS-w1280dp` and fails on any
+  Arabic-script character, content descriptions included. A leak with no resource behind it cannot
+  be found by the resource gates; it can be found by reading what the screen actually drew.
+- `RunHProofTest` — fourteen frames with an assertion beside each: the rail measured at 48 points
+  from its own bounds, the flyout listing its group's tools, four panes with four markets, the
+  ladder's title counted once, and the two phone frames for the axis and its margin.
+
+---
+
 ## [4.71.0] — 2026-09-11 — a market has two names
 
 Run G: the leaks eighteen screenshots of the English app turned up, and the rest of run F's list.

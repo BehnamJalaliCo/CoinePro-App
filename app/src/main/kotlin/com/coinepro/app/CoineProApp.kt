@@ -2523,6 +2523,9 @@ private fun MainShell(
                         symbol = activeChartSymbol,
                         preferences = depthPreferences,
                         onPickPrice = { price -> alertFromChart = activeChartSymbol to price },
+                        // The panel writes the name above the content; the ladder would write it
+                        // again one line below.
+                        showTitle = false,
                     )
                 },
                 ChartSidePanel("alerts", ChartR.string.chart_panel_alerts, DesignR.drawable.icon_bell) {

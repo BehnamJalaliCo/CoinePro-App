@@ -580,7 +580,7 @@ fun ChartStudioScreen(
             onOpenScript?.let { open ->
                 item {
                     ActionRow(
-                        title = "نما اسکریپت",
+                        title = "نمااسکریپت",
                         body = "اندیکاتور خودتان را بنویسید و همین‌جا روی این نماد ببینید. ده اسکریپت آماده و یک دوره‌ی کوتاه همراهش است.",
                         action = "نوشتن",
                         icon = DesignR.drawable.tv_code2,

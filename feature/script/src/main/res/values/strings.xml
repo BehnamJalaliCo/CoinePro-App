@@ -39,4 +39,61 @@
     <string name="script_strategy_directional_strength_description">A +DI and −DI cross taken only while the ADX says a trend is present. The ADX lags: by the time it clears its threshold, part of the move has already happened.</string>
     <string name="script_failure_at">Line %1$s, column %2$s</string>
     <string name="script_failure">Error</string>
+
+    <!--
+      The NamaScript panel's own words (4.72.0). Every one of them was a Kotlin literal, so the
+      English tablet drew the whole panel in Persian — «ویرایشگر · کتابخانه · ورودی‌ها · کنسول».
+    -->
+    <string name="script_tab_editor">Editor</string>
+    <string name="script_tab_library">Library</string>
+    <string name="script_tab_lessons">Lessons</string>
+    <string name="script_tab_reference">Reference</string>
+    <string name="script_title">NamaScript</string>
+    <string name="script_unsaved">Unsaved script</string>
+    <string name="script_untitled">Script</string>
+    <string name="script_no_candles">No candles to run on</string>
+    <string name="script_split_both">Code | chart</string>
+    <string name="script_split_code">Code only</string>
+    <string name="script_stale">The chart still shows the previous run</string>
+    <string name="script_running">Running…</string>
+    <string name="script_run">Run</string>
+    <string name="script_save">Save</string>
+    <string name="script_inputs">Inputs</string>
+    <string name="script_inputs_count">%1$s inputs</string>
+    <string name="script_console">Console</string>
+    <string name="script_drew_nothing">The script ran without an error and drew nothing. Use plot or marker to see a result.</string>
+    <string name="script_ran_in">Ran in %1$s ms · %2$s bars</string>
+    <string name="script_ran_tail"> · tail only</string>
+    <string name="script_strategy">Strategy</string>
+    <string name="script_net_return">Net return</string>
+    <string name="script_closed_trades">Closed trades</string>
+    <string name="script_win_rate">Win rate</string>
+    <string name="script_profit_factor">Profit factor</string>
+    <string name="script_max_drawdown">Max drawdown</string>
+    <string name="script_open_trade">One trade is still open and is not in the figures above.</string>
+    <string name="script_fill_terms">Filled at the next bar\'s open, with no fee and no slippage; one trade at a time.</string>
+    <string name="script_name_label">Script name</string>
+    <string name="script_input_no_range">This input declares no range; change its value in the code.</string>
+    <string name="script_setup_buy">Long setup</string>
+    <string name="script_setup_sell">Short setup</string>
+    <string name="script_entry">Entry</string>
+    <string name="script_stop">Stop</string>
+    <string name="script_target">Target</string>
+    <string name="script_risk_reward">Risk/reward: %1$s</string>
+    <string name="script_no_target">The script declares no target, so no risk/reward is worked out.</string>
+    <string name="script_new">New script</string>
+    <string name="script_mine">My scripts</string>
+    <string name="script_none_saved">Nothing saved yet</string>
+    <string name="script_saved_count">%1$s scripts</string>
+    <string name="script_delete">Delete</string>
+    <string name="script_lessons_title">Lessons</string>
+    <string name="script_presets_count">%1$s ready-made scripts</string>
+    <string name="script_teaches">Teaches: %1$s</string>
+    <string name="script_open_in_editor">Open in the editor</string>
+    <string name="script_series">Built-in series</string>
+    <string name="script_series_caption">Available without a calculation</string>
+    <string name="script_functions_count">%1$s functions</string>
+    <string name="script_returns">Returns: %1$s</string>
+    <string name="script_colours">Colours</string>
+    <string name="script_colours_count">%1$s colours</string>
 </resources>

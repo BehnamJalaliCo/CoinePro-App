@@ -1390,7 +1390,7 @@ fun ChartScreen(
         sidePanels = listOf(objectTreePanel) + sidePanels,
         initialSidePanel = initialSidePanel,
         tools = { railModifier ->
-            ChartToolColumn(
+            ChartToolRailColumn(
                 state = state,
                 controller = controller,
                 templates = armedTemplates,
@@ -1399,14 +1399,21 @@ fun ChartScreen(
                 modifier = railModifier,
             )
         },
-        readings = { columnModifier ->
-            ChartReadingsColumn(modifier = columnModifier) { analysisBlocks() }
-        },
+        readings = { ChartReadingsColumn { analysisBlocks() } },
     ) { workbenchModifier, columns ->
+    // **The plot fills the column on a tablet** (run H item 2).
+    //
+    // The page is a scrolling column on a phone, where the six bands under the plot are the page.
+    // On a window with the rails beside it there is nothing left to scroll to — the tools and the
+    // readings are panels now — and a scrolling column there meant the chart took its fraction of
+    // the *screen* and left the rest of the column blank: «چارت ارتفاع صفحه را پر نمی‌کند — پایین
+    // نوار ابزار ۲۵–۳۵٪ فضای خالی». So on a roomy window the column does not scroll and the plot
+    // takes every point the bands above and below it did not.
+    val fills = columns != ChartWorkbenchColumns.NONE
     Column(
         modifier = workbenchModifier
             .background(CoineProColors.Stage)
-            .verticalScroll(rememberScrollState())
+            .then(if (fills) Modifier else Modifier.verticalScroll(rememberScrollState()))
             .focusRequester(focusRequester)
             .focusable()
             .chartShortcuts(
@@ -1447,7 +1454,7 @@ fun ChartScreen(
         canvas(
             Modifier
                 .fillMaxWidth()
-                .height(plotHeight)
+                .then(if (fills) Modifier.weight(1f) else Modifier.height(plotHeight))
                 .background(CoineProColors.Terminal)
                 // The chart alone, recorded into a layer. Sharing the whole screen would hand
                 // over the header and the toolbar; sharing this hands over the chart.
@@ -2643,7 +2650,7 @@ private fun FavouriteToolStrip(favourites: Set<String>, onArm: (DrawingTool) -> 
             ) {
                 Icon(
                     painter = painterResource(tool.icon.drawableRes()),
-                    contentDescription = tool.label,
+                    contentDescription = tool.label(inEnglish()),
                     tint = CoineProColors.Gold,
                     modifier = Modifier.size(FAVOURITE_STRIP_GLYPH),
                 )
@@ -4029,7 +4036,9 @@ private fun SetupFigure(label: String, price: Double, tone: Color, modifier: Mod
 /** Trend strength reads in the direction's own colour once there is a direction to read. */
 @Composable
 internal fun ChartReading.strengthColour(): Color = when {
-    strengthLabel == "بدون روند" -> CoineProColors.TextMuted
+    // The *threshold*, not the word: the label is bilingual since 4.72.0 and a colour rule that
+    // compares it against one language's string would leave the English screen with no grey.
+    strength < ChartReading.TRENDING_FLOOR -> CoineProColors.TextMuted
     isUp -> CoineProColors.Buy
     isDown -> CoineProColors.Sell
     else -> CoineProColors.TextPrimary
@@ -4048,7 +4057,7 @@ internal fun studioSummary(indicators: Int, drawings: Int): String {
         if (indicators > 0) add(indicators.toPersianDigits() + " اندیکاتور")
         if (drawings > 0) add(drawings.toPersianDigits() + " ترسیم")
     }
-    return if (parts.isEmpty()) "اندیکاتور، ابزار، بازپخش، بک‌تست و نما اسکریپت" else parts.joinToString(" · ")
+    return if (parts.isEmpty()) "اندیکاتور، ابزار، بازپخش، بک‌تست و نمااسکریپت" else parts.joinToString(" · ")
 }
 
 @Composable

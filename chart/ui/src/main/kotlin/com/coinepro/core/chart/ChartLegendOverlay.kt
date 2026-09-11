@@ -1,5 +1,7 @@
 package com.coinepro.core.chart
 
+import com.coinepro.core.designsystem.R as DesignR
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -911,14 +913,14 @@ private fun LegendRow(
             Spacer(modifier = Modifier.width(LEGEND_ACTIONS_GAP_DP))
             LegendButton(
                 glyph = if (dimmed) GLYPH_HIDDEN else GLYPH_VISIBLE,
-                description = if (dimmed) SHOW_LABEL else HIDE_LABEL,
+                description = stringResource(if (dimmed) DesignR.string.legend_show else DesignR.string.legend_hide),
                 colour = palette.text,
                 fontSize = fontSize,
             ) { onToggleVisibility(row.target) }
             onOpenSettings?.let { settings ->
                 LegendButton(
                     glyph = GLYPH_SETTINGS,
-                    description = SETTINGS_LABEL,
+                    description = stringResource(DesignR.string.legend_settings),
                     colour = palette.text,
                     fontSize = fontSize,
                 ) { settings(row.target) }
@@ -926,7 +928,7 @@ private fun LegendRow(
             onRemove?.let { remove ->
                 LegendButton(
                     glyph = GLYPH_REMOVE,
-                    description = REMOVE_LABEL,
+                    description = stringResource(DesignR.string.legend_remove),
                     colour = palette.text,
                     fontSize = fontSize,
                 ) { remove(row.target) }
@@ -942,7 +944,7 @@ private fun LegendRow(
             if (!row.primary || slots == 0) Spacer(modifier = Modifier.width(LEGEND_ACTIONS_GAP_DP))
             LegendButton(
                 glyph = if (disclosed) GLYPH_COLLAPSE else GLYPH_EXPAND,
-                description = if (disclosed) COLLAPSE_LABEL else EXPAND_LABEL,
+                description = stringResource(if (disclosed) DesignR.string.legend_controls_close else DesignR.string.legend_controls_open),
                 colour = palette.text,
                 fontSize = fontSize,
                 onClick = toggle,
@@ -1097,7 +1099,7 @@ private fun LegendHead(
         Spacer(modifier = Modifier.width(LEGEND_ACTIONS_GAP_DP))
         LegendButton(
             glyph = if (disclosed) GLYPH_COLLAPSE else GLYPH_EXPAND,
-            description = if (disclosed) COLLAPSE_LABEL else EXPAND_LABEL,
+            description = stringResource(if (disclosed) DesignR.string.legend_controls_close else DesignR.string.legend_controls_open),
             colour = palette.text,
             fontSize = fontSize,
             onClick = disclosure,
@@ -1214,9 +1216,6 @@ private const val SEPARATOR_ALPHA = 0.55f
  */
 private const val OVERFLOW_MARK = "▸ "
 
-private const val HIDE_LABEL = "پنهان کردن"
-private const val SHOW_LABEL = "نمایش دادن"
-private const val SETTINGS_LABEL = "تنظیمات"
-private const val REMOVE_LABEL = "حذف"
-private const val EXPAND_LABEL = "کنترل‌های اندیکاتورها"
-private const val COLLAPSE_LABEL = "بستن کنترل‌ها"
+// The legend's controls are named from resources since 4.72.0 — see `legend_hide` and its
+// neighbours in the design system. They were Kotlin constants, in Persian, and a content
+// description is text: an English device read them out and the tablet i18n test caught them.

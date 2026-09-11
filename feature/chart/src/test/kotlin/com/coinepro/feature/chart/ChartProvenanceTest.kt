@@ -1,5 +1,6 @@
 package com.coinepro.feature.chart
 
+import com.coinepro.core.common.proseDigits
 import com.coinepro.core.chart.Candle
 import com.coinepro.core.chart.CandleSeries
 import com.coinepro.core.chart.ReplayState
@@ -98,9 +99,11 @@ class ChartProvenanceTest {
     }
 
     @Test
-    fun `the bar count is prose and therefore in Persian digits`() {
-        val line = barCountLine(120)
-        assertTrue("bar count leaked Latin digits into prose", line.none { it in '0'..'9' })
-        assertTrue(line.contains("کندل"))
+    fun `the bar count is prose, so both its digits and its noun follow the screen`() {
+        // It was `barCount.toPersianDigits() + " کندل"` — a concatenation, so «۲۰۰ کندل» was drawn
+        // on the English tablet. It is a resource now and its argument is a prose count, which is
+        // what this asserts without a composition: the two halves that used to be hardcoded.
+        assertTrue("a prose count is Persian digits in Persian", 120.proseDigits(english = false).none { it in '0'..'9' })
+        assertTrue("and Latin digits in English", 120.proseDigits(english = true).all { it in '0'..'9' })
     }
 }

@@ -678,6 +678,42 @@ it alone could still print over a gridline label. It is in the same pass now, an
 counts against an explicitly passed `AppLanguage`; the mechanical rewrite would have had its Persian
 branch return Latin digits. It is back on the literal conversion, which is what that branch means.
 
+### RUN H — the tablet, reviewed as a tablet (4.72.0)
+
+The owner's first review of the tablet screens, scored 6/10. The finding under all ten was one
+shape: **the page was a phone's page with columns bolted to it.** A 280-point tool palette, a
+360-point side panel and a plot that took its fraction of the *screen* rather than the column left
+the chart about 45 % of a Pixel Tablet's glass, with a band of empty page under the toolbar — and
+the drawing tools, the market reading and the editor were all in Persian whatever language the app
+was in, because none of them is a string resource.
+
+| # | asked | done | proof |
+| --- | --- | --- | --- |
+| 1 | A 48 dp vertical rail of group icons with flyouts; the full grid only in «all tools»; favourites pinned; the wide panel out of the default layout | **done**: `ChartToolRailColumn` is one 48-point column — twelve group glyphs in the catalogue's own order, the reader's favourites under a rule, and «all tools» at the foot. A group opens a 216-point **flyout beside the rail**, not a popup: a `DropdownMenu` is its own window, which is absent from a screenshot and awkward under a test, and a column is both hit-testable and photographable. Arming a tool closes it. `CHART_TOOL_COLUMN = 280.dp` is gone; the palette it drew is now what the sheet behind «all tools» shows, so every one of the 92 tools is reachable from the rail by construction | `RunHProofTest.theRailAndAFlyout` — the rail is on the page, **measured from its own semantics bounds at 48 dp**, and tapping «Lines» lists «Trend line»; `run-h-rail-flyout-en-dark`, `run-h-rail-flyout-open-en-dark` |
+| 2 | The chart fills the column height on every tablet layout; «market reading & tools» into a side-panel tab, never over the candles | **done**: the page's column stops scrolling once there are rails beside it (`fills = columns != NONE`) and the canvas takes `weight(1f)`, so the plot is every point the legend and the toolbar did not take. The readings are no longer a column or a disclosure at all — `ChartWorkbench` turns the `readings` slot into a `ChartSidePanel(READINGS_PANEL_ID)` and prepends it to the side rail, so they are a **tab** like depth and alerts | `run-h-chart-depth-*` (three devices/themes) — the plot runs from the header to the time axis with no blank band; `ChartWorkbenchTest.a tablet with a docked panel reports both, so the page draws no readings of its own` |
+| 3 | Expanded budget: rail 48 · plot ≥ 65 % of what is left · panel 360–480 drag-resizable, floor 320 · icon rail 56. List-detail: 320–400 + chart | **done** as arithmetic rather than as constants: `panelWidthFor(windowDp, draggedDp)` clamps the panel to `[320, 480]` **and** to whatever keeps the plot at `CHART_PLOT_SHARE = 0.65` of the space between the two rails. The grip is a 6-point draggable strip with `contentDescription = "side-panel-grip"`; the dragged width is remembered per window | `ChartWorkbenchTest.a docked panel never takes the plot below its share` (1024, 1280, 1480, 1600 dp) and `a drag is clamped to the panel's own range`; `no rail is ever opened at the cost of the plot's floor` walks every width from 300 to 2400 in 4-point steps |
+| 4 | NamaScript on Expanded: editor ≥ 400, code\|chart 50/50 toggle, no soft wrap, line numbers, minimap, keep the tabs | **done**: the panel's own floor is the 400 the editor needs. The code field sits in a `horizontalScroll`, which gives it unbounded width and so **stops it wrapping** — `softWrap = false` is not on the `TextFieldValue` overload, and a wrapped line in a language with 90-character `ta.*` calls is an editor you cannot read a stack trace against. Line numbers were already there; the minimap is a 24-point `Canvas` drawing one bar per line at 60 % of its length; the split toggle is two chips and remembers its state per window | `run-h-chart-script-en-dark`, `run-h-chart-script-fa-dark`; `CodeFieldTest` |
+| 5 | Tool names, tool groups, market-reading values and every panel label from `values/`+`values-fa/`; a UI test that walks the tablet in `en` and fails on Arabic script | **done**, and the leak was bigger than the review: the tools are a catalogue in `:chart-core`, a module with **no Android resources**, so `strings.xml` could not reach them. `DrawingTool` and `ToolGroup` carry an `englishLabel` beside the Persian one — 92 tools and 12 groups, name for name — and `label(english)` chooses. `ChartReading` does the same for «متوسط · کم · خنثی», and publishes `TRENDING_FLOOR` so the colour rule compares the **number** rather than the word it used to match on. The editor's own 57 literals and the legend's six controls became resources | `TabletEnglishTest`: renders the tablet chart and the tablet watchlist in `en-rUS-w1280dp` and fails on any `[؀-ۿ]` **including content descriptions**, plus `everyToolAndGroupHasAnEnglishName`, which also fails a row copied from the column beside it |
+| 6 | The timeframe **code** in multi-chart headers; the ladder bound to the active chart's symbol; one «Depth of market» title; «نمااسکریپت» spelling only | **done**: `ChartPanesScreen` writes `state.interval.code` («H1»), not the prose name. The ladder was already bound to `activeChartSymbol` in the app — the BTCUSDT-beside-XAUUSD frame was a **fixture** defect, and the fixture is seeded per symbol now. `DepthOfMarketScreen`/`DepthOfMarketBody` take `showTitle`, so the docked copy draws the name once and the rail's tab draws the other | `fourChartsEachWithItsOwnMarket` — four symbols, «H1» present, «۱ ساعت» absent; `theDockedLadderNamesItselfOnce` counts the title in **drawn text only**, since the rail glyph carries it as a description |
+| 7 | Volume at 18 % of the plot and 50 % opacity on every size class | **already true, now stated**: `VOLUME_INLINE = 0.18f` and `VOLUME_ALPHA = 0.5f` are two constants with no size-class branch anywhere. What made the tablet's band look like a quarter of the plot was item 2 — a short plot with a band scaled to it — and the frames after the fix measure the tallest bar at 18 % of a full-height plot | `run-h-chart-depth-en-dark` and the constants, which a branch would have to be added beside |
+| 8 | The phone leftovers: a 10 % right offset, and axis labels never hidden by a tag | **done**: the offset is `RIGHT_MARGIN_SHARE = 0.10f`, measured from the newest bar's **right edge** to the axis rather than asserted from the constant. The collision rule is now a pure function, `placeTagRows`, so it can be tested away from a canvas: the live price is reserved first and wins everything, the ladder's rows are reserved next, and a tag that finds no free row is **dropped rather than nudged** — a tag beside the wrong price is worse than no tag, and its rule is still on the plot with its name at the left end | `ChartPixelsTest`: five cases including «the live price wins every collision» and «no two placed tags ever overlap, whatever comes in»; `ChartViewportTest` for the margin; `run-h-phone-levels-fa-dark` and `run-h-phone-levels-en-light`, six overlays deep |
+
+**The frames.** `docs/qa/screenshots/4.72/` — the rail closed and with a flyout open, the chart with
+the ladder docked (Pixel Tablet dark and light, Tab S9 Ultra), the chart with the NamaScript split
+in both languages, the list-detail in both, the four-chart layout with four markets, and the two
+phone frames for item 8. Every one is rendered by `RunHProofTest`, which asserts what it shows.
+
+**What the rail cost and what it returned.** On a 1280-point Pixel Tablet the 4.71.0 page spent
+280 points on the palette and 360 on the panel and left the plot 45 % of the window. The same page
+spends 48 and, at the panel's ceiling, keeps the plot at 65 % — 764 points against 476, which is
+**288 points of chart** bought with one tap between a group and its tools.
+
+**One thing this run did not do.** The phone's page still leaves a band of empty page below the
+collapsed readings row, for the same reason the tablet did: under a `verticalScroll` a plot cannot
+take a `weight`. On a tablet that band was the defect item 2 names; on a phone the six bands under
+the plot *are* the page, and the fix there is a measured layout rather than a flag, so it is not
+smuggled into this run.
+
 ## Definition of done — as it stands
 
 - [x] §0 copy hygiene done; lint enforced (`tools/i18n/lint_strings.py` through the consistency gate).
@@ -696,6 +732,10 @@ branch return Latin digits. It is back on the literal conversion, which is what 
 - D. Network — done (4.65.0): no third-party host in the release dex, a gate that keeps it so; the pins measured live.
 - E. Tools and tablet — done (4.67.0): panes arranged, the toolbar over the selection with a magnifier under the finger, the rail led by the last tool with a favourites strip on the plot, 54 knobs on 28 studies, the parity matrix full; the four devices' frames, the soak log and the recording need the devices.
 - G. The i18n leaks — done (4.71.0): a symbol has two names and every screen asks for the one it is drawn in, every prose count follows the screen's language, the composite pill and the base list's name come from resources, the legend reads name · value with its count at the end, the readings panel opens on a drag and stays where it is left, and «study» is a word this repository no longer contains.
+- H. The tablet — done (4.72.0): the tools are a 48-point rail with flyouts, the plot fills the
+  column and keeps 65 % of it, the panel is drag-resizable between 320 and 480, the readings are a
+  tab rather than a sheet over the candles, the editor is 400 points wide and does not wrap, and
+  the tools, the groups and the market reading have English names for the first time.
 - F. Chart pixels and the explainers — done (4.70.0): round time labels on the boundary they stand on, a one-line legend, level price tags, 70 bars with a tenth of air, one ground and one pair of market colours, the teaching sentence floated off the page, and a lint that keeps Persian digits out of a price column.
 
 ### The 4.58 run, in one line each

@@ -27,26 +27,32 @@ data class ChartReading(
     val bias: Double,
 ) {
 
-    val strengthLabel: String
-        get() = when {
-            strength >= STRONG -> "قوی"
-            strength >= TRENDING -> "متوسط"
-            else -> "بدون روند"
-        }
+    /**
+     * The three readings, in words, in the language the screen is in (4.72.0).
+     *
+     * They were Persian only, from this table, and this module has no resources — so the English
+     * tablet read «Trend strength: متوسط · Volatility: کم · Bias: خنثی». Both languages are here for
+     * the reason the tool names are in `DrawingTools`: the *threshold* and the word belong together,
+     * and a second table keyed by the same thresholds in `strings.xml` is a second place to get the
+     * boundary wrong.
+     */
+    fun strengthLabel(english: Boolean = false): String = when {
+        strength >= STRONG -> if (english) "Strong" else "قوی"
+        strength >= TRENDING -> if (english) "Moderate" else "متوسط"
+        else -> if (english) "No trend" else "بدون روند"
+    }
 
-    val volatilityLabel: String
-        get() = when {
-            volatility >= HIGH_VOL -> "زیاد"
-            volatility >= MID_VOL -> "متوسط"
-            else -> "کم"
-        }
+    fun volatilityLabel(english: Boolean = false): String = when {
+        volatility >= HIGH_VOL -> if (english) "High" else "زیاد"
+        volatility >= MID_VOL -> if (english) "Medium" else "متوسط"
+        else -> if (english) "Low" else "کم"
+    }
 
-    val biasLabel: String
-        get() = when {
-            bias > BIAS_EDGE -> "صعودی"
-            bias < -BIAS_EDGE -> "نزولی"
-            else -> "خنثی"
-        }
+    fun biasLabel(english: Boolean = false): String = when {
+        bias > BIAS_EDGE -> if (english) "Bullish" else "صعودی"
+        bias < -BIAS_EDGE -> if (english) "Bearish" else "نزولی"
+        else -> if (english) "Neutral" else "خنثی"
+    }
 
     val isUp: Boolean get() = bias > BIAS_EDGE
     val isDown: Boolean get() = bias < -BIAS_EDGE
@@ -54,6 +60,13 @@ data class ChartReading(
     companion object {
         /** Wilder's own threshold for "there is a trend here at all". */
         private const val TRENDING = 20.0
+
+        /**
+         * The same threshold, published, so a caller can colour by the *number* rather than by the
+         * word. Before 4.72.0 the chart's tint compared `strengthLabel` against «بدون روند», which
+         * stopped meaning anything the moment the label could also be `No trend`.
+         */
+        const val TRENDING_FLOOR = TRENDING
         private const val STRONG = 30.0
 
         private const val MID_VOL = 0.35

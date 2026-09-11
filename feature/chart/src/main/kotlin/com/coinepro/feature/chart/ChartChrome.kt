@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.LtrDirection
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.VerticalDivider
@@ -508,7 +509,7 @@ internal fun ChartReadingsPanel(
         ) {
             ReadingColumn(
                 label = stringResource(R.string.chart_reading_strength),
-                value = reading.strengthLabel,
+                value = reading.strengthLabel(inEnglish()),
                 // ADX runs 0..100 in theory and 0..50 in practice; fifty is the top of the scale a
                 // reader ever sees, so it is what the bar is measured against.
                 fraction = (reading.strength / ADX_FULL_SCALE).toFloat(),
@@ -518,7 +519,7 @@ internal fun ChartReadingsPanel(
             )
             ReadingColumn(
                 label = stringResource(R.string.chart_reading_volatility),
-                value = reading.volatilityLabel,
+                value = reading.volatilityLabel(inEnglish()),
                 fraction = reading.volatility.toFloat(),
                 tone = CoineProColors.TextPrimary,
                 why = stringResource(
@@ -529,7 +530,7 @@ internal fun ChartReadingsPanel(
             )
             ReadingColumn(
                 label = stringResource(R.string.chart_reading_bias),
-                value = reading.biasLabel,
+                value = reading.biasLabel(inEnglish()),
                 // Half a percent of price is a wide separation between a twenty and a fifty
                 // average; past it the bar is simply full and the word has already said so.
                 fraction = (abs(reading.bias) / BIAS_FULL_SCALE).toFloat(),

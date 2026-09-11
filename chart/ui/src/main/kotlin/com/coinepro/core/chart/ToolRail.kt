@@ -52,6 +52,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProShapes
@@ -219,7 +220,7 @@ fun ToolRail(
         if (grouped) {
             heading?.let { current ->
                 Text(
-                    text = current.label,
+                    text = current.label(inEnglish()),
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextSecondary,
                     modifier = Modifier
@@ -257,7 +258,7 @@ fun ToolRail(
                         span = { GridItemSpan(TOOLS_ACROSS) },
                     ) {
                         Text(
-                            text = row.group.label,
+                            text = row.group.label(inEnglish()),
                             style = MaterialTheme.typography.labelSmall,
                             color = CoineProColors.TextMuted,
                             modifier = Modifier.padding(
@@ -572,7 +573,7 @@ private fun RailTabs(groups: List<ToolGroup>, selected: ToolGroup?, onSelect: (T
         }
         items(groups.size, key = { groups[it].name }) { index ->
             val candidate = groups[index]
-            RailTab(label = candidate.label, selected = candidate == selected) { onSelect(candidate) }
+            RailTab(label = candidate.label(inEnglish()), selected = candidate == selected) { onSelect(candidate) }
         }
     }
 }
@@ -657,7 +658,7 @@ private fun FavouritesRow(
                     ) {
                         Icon(
                             painter = painterResource(tool.icon.drawableRes()),
-                            contentDescription = tool.label,
+                            contentDescription = tool.label(inEnglish()),
                             modifier = Modifier.size(20.dp),
                             tint = CoineProColors.TextSecondary,
                         )
@@ -731,7 +732,7 @@ private fun ToolCell(
         )
         Spacer(Modifier.height(CoineProSpacing.Half))
         Text(
-            text = tool.label,
+            text = tool.label(inEnglish()),
             style = MaterialTheme.typography.labelSmall,
             color = if (selected) CoineProColors.Stage else CoineProColors.TextPrimary,
             textAlign = TextAlign.Center,
@@ -801,7 +802,7 @@ fun ActiveToolBar(
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = tool.label,
+                text = tool.label(inEnglish()),
                 style = MaterialTheme.typography.bodyMedium,
                 color = CoineProColors.TextPrimary,
             )
@@ -971,7 +972,7 @@ fun DrawingList(
                         )
                     }
                     Text(
-                        text = tool?.label ?: drawing.toolId,
+                        text = tool?.label(inEnglish()) ?: drawing.toolId,
                         style = MaterialTheme.typography.bodyMedium,
                         color = CoineProColors.TextSecondary,
                         modifier = Modifier.weight(1f),

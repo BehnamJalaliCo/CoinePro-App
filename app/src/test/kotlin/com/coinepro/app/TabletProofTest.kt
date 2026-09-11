@@ -384,13 +384,23 @@ class TabletProofTest {
                 )
             },
             ChartSidePanel("depth", com.coinepro.feature.chart.R.string.chart_panel_depth, com.coinepro.core.designsystem.R.drawable.tv_chart_columns) {
+                // **The ladder is the chart's own market** (run H item 6). It was a bitcoin book
+                // beside a gold chart — a fixture, but a fixture that photographs as a bug, and
+                // the owner read it as one. The app already binds the panel to `activeChartSymbol`;
+                // this is the proof catching up with the app.
                 val book = OrderBook.of(
-                    symbol = "BTCUSDT",
-                    bids = listOf(68_420.0 to 3.4, 68_410.0 to 11.2, 68_400.0 to 6.1, 68_390.0 to 1.8).map { (p, q) -> DepthLevel(p, q) },
-                    asks = listOf(68_450.0 to 2.2, 68_460.0 to 8.7, 68_470.0 to 4.0, 68_480.0 to 12.9).map { (p, q) -> DepthLevel(p, q) },
+                    symbol = "XAUUSD",
+                    bids = listOf(2_704.6 to 3.4, 2_704.4 to 11.2, 2_704.2 to 6.1, 2_704.0 to 1.8).map { (p, q) -> DepthLevel(p, q) },
+                    asks = listOf(2_705.0 to 2.2, 2_705.2 to 8.7, 2_705.4 to 4.0, 2_705.6 to 12.9).map { (p, q) -> DepthLevel(p, q) },
                     at = 1_772_000_000_000L,
                 )
-                DepthOfMarketBody(state = OrderBookState(symbol = "BTCUSDT", book = book, sourceName = "LBank Futures"), onPickPrice = {}, onRetry = {})
+                DepthOfMarketBody(
+                    state = OrderBookState(symbol = "XAUUSD", book = book, sourceName = "LBank Futures"),
+                    onPickPrice = {},
+                    onRetry = {},
+                    // The panel writes «Depth of market» above the content already.
+                    showTitle = false,
+                )
             },
             ChartSidePanel("alerts", com.coinepro.feature.chart.R.string.chart_panel_alerts, com.coinepro.core.designsystem.R.drawable.icon_bell) {
                 AlertCenterScreen(

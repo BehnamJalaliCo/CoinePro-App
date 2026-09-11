@@ -1186,7 +1186,7 @@ object ScreenshotFixtures {
         scope: kotlinx.coroutines.CoroutineScope,
         symbol: String = "XAUUSD",
     ): com.coinepro.feature.chart.ChartController {
-        val series = chartSeries()
+        val series = chartSeries(symbol = symbol, start = startingPriceFor(symbol))
         val gateway = object : com.coinepro.core.marketdata.CandleGateway {
             override suspend fun load(
                 symbol: String,
@@ -1205,8 +1205,21 @@ object ScreenshotFixtures {
         return com.coinepro.feature.chart.ChartController(symbol, gateway, scope).also { it.start() }
     }
 
-    fun chartSeries(bars: Int = 200, start: Double = 2_600.0): CandleSeries {
-        var seed = 20_260_826L
+    /** Where each fixture instrument starts, so a gold chart is not priced like a silver one. */
+    private fun startingPriceFor(symbol: String): Double = when (symbol.uppercase()) {
+        "BTCUSDT" -> 91_248.0
+        "ETHUSDT" -> 3_147.0
+        "SOLUSDT" -> 172.0
+        "XAGUSD" -> 31.4
+        "EURUSD" -> 1.0842
+        else -> 2_600.0
+    }
+
+    fun chartSeries(bars: Int = 200, start: Double = 2_600.0, symbol: String? = null): CandleSeries {
+        // Seeded by the instrument when there is one (run H item 10): the four-chart layout drew
+        // four identical pictures, which proves the layout and disproves nothing about the data —
+        // «چهار چارت با دیتای یکسان». One walk per symbol, still deterministic, so the goldens hold.
+        var seed = 20_260_826L + (symbol?.fold(0L) { acc, ch -> acc * 31 + ch.code } ?: 0L)
         fun random(): Double {
             seed = (seed * 1103515245 + 12345) and 0x7FFFFFFF
             return seed.toDouble() / 0x7FFFFFFF

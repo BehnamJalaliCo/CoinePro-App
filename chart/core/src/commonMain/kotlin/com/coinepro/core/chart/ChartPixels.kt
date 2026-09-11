@@ -428,6 +428,51 @@ fun separateLabels(
 }
 
 /**
+ * Which price-gutter tags get a row, and where — the other half of the axis's collision rule.
+ *
+ * ### Why these are dropped where the ladder's labels are moved
+ *
+ * [separateLabels] nudges gridline labels apart because a gridline with no number against it is
+ * unreadable. A level tag is the opposite case: it is a *reading* — an EMA's value, a ladder price,
+ * a previous close — and it is bound to the exact row its rule is drawn on. Nudged, it points at a
+ * price that is not its own, which is worse than absent: the rule is still on the plot with its
+ * name at the left end, so nothing about the level is lost when its tag goes.
+ *
+ * ### The order
+ *
+ * [reserved] is spoken for first — the live price, then the rows the ladder will print on, in that
+ * order at the call site. **The live price always wins**: it is the number a reader is watching and
+ * the one that is moving. Then each centre in turn takes its row if the rows already taken leave a
+ * tag's height around it, and is dropped if they do not — first come, which is the order the
+ * decoration ranked them in.
+ *
+ * The result is one entry per centre, in the same order: the tag's **top** in plot space, or
+ * [Float.NaN] where it was dropped.
+ */
+fun placeTagRows(
+    centres: FloatArray,
+    tagHeight: Float,
+    plotHeight: Float,
+    reserved: FloatArray = FloatArray(0),
+): FloatArray {
+    if (centres.isEmpty()) return FloatArray(0)
+    val placed = FloatArray(centres.size) { Float.NaN }
+    if (tagHeight <= 0f) return placed
+    val taken = ArrayList<Float>(centres.size + reserved.size)
+    reserved.forEach { if (!it.isNaN()) taken += it }
+    val floor = max(0f, plotHeight - tagHeight)
+    for (index in centres.indices) {
+        val centre = centres[index]
+        if (centre < 0f || centre > plotHeight) continue
+        val top = (centre - tagHeight / 2).coerceIn(0f, floor)
+        if (taken.any { abs(top - it) < tagHeight }) continue
+        taken += top
+        placed[index] = top
+    }
+    return placed
+}
+
+/**
  * Momentum after the finger lifts.
  *
  * ### Why it is touch only

@@ -1,5 +1,8 @@
 package com.coinepro.feature.chart
 
+import androidx.compose.ui.res.stringResource
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.Composable
 import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.proseDigits
@@ -122,7 +125,11 @@ fun exclusionsLine(exclusions: List<String>): String =
  * How many bars the chart is currently drawing, as prose.
  *
  * Beside the exclusions because it is the same kind of fact and the same question: a reader who
- * pans back and finds the chart stops wants to know whether that is all there is. A prose count,
- * so Persian digits.
+ * pans back and finds the chart stops wants to know whether that is all there is. A prose count, so
+ * its digits follow the screen's language — and so does the noun, which is why this went from a
+ * concatenation to a resource in 4.72.0: «۲۰۰ کندل» was being drawn on the English tablet.
  */
-fun barCountLine(barCount: Int): String = barCount.toPersianDigits() + " کندل"
+@Composable
+@ReadOnlyComposable
+fun barCountLine(barCount: Int): String =
+    stringResource(R.string.chart_bar_count, barCount.proseDigits())
