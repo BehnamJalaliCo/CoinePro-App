@@ -15,6 +15,27 @@ it is for.
 
 ---
 
+## [4.69.0] — 2026-09-11 — one typeface
+
+The owner's rule after the Pro package: nothing in the project but IRANYekanX Eco and Pro.
+
+### Changed
+- **Every figure is set in IRANYekanX now.** Inter Variable is gone from the build (880 KB
+  off the APK's resources); `CoineProLatinFontFamily` resolves to the family itself, and the
+  family's equal-width Latin digits keep every column of prices aligned — `TickSequenceTest`
+  and `TabularFiguresTest` pass unchanged. 115 goldens re-recorded.
+- **The design mockups set their type in the Pro package's webfonts** (`design/canvas/fonts/`,
+  Regular / Medium / Bold `.woff2`) instead of Vazirmatn from Google Fonts; the font-service
+  links are gone. The README banner names IRANYekanX.
+
+### Removed
+- `inter_variable.ttf`, `docs/design/fonts/INTER-OFL.txt`, every Vazirmatn and Google Fonts
+  reference in tracked files.
+
+### Gate
+- `check_single_typeface`: any font file not named IRANYekanX, or any tracked file that pulls
+  a face from `fonts.googleapis.com` / `fonts.gstatic.com`, fails the consistency gate.
+
 ## [4.68.0] — 2026-09-11 — the four weights
 
 Run A of the owner's plan, closed by the IRANYekanX Pro package.

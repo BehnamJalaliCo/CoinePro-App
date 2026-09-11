@@ -73,7 +73,7 @@ a 3 s fling, pinch cycles, drags and a long press; `check-benchmark-thresholds.p
   scrim the chart at 40 %. `check_grid` in `check-cross-phase-consistency.py` refuses any
   `padding(`/`spacedBy(` literal off the four-point grid (one-dp hairlines allowed); 49 files were
   snapped to make it pass.
-- **A2 typography.** Inter (variable, OFL; `docs/design/fonts/INTER-OFL.txt`) is the Latin and
+- **A2 typography.** Inter (variable, OFL — removed in 4.69.0; the figures are IRANYekanX's since, licence in `core/designsystem/FONT_LICENSE_IRANYekanX.txt`) is the Latin and
   numeral face in both locales, with `fontFeatureSettings = "tnum"`. `numericTextStyle` / `.numeric()`
   and the `Balance` 36/46, `RowFigure` 16/21, `TileFigure` 18/24, `NumericLarge` 22/28 styles carry
   the home balance, the watchlist figures, the DOM ladder, the calculators and the chart axis

@@ -92,3 +92,5 @@ curl 'https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.sit
 ## آنچه از شما می‌خواهیم
 
 فقط مورد ۱. بقیه اطلاع‌رسانی است.
+
+> **به‌روزرسانی 4.69.0:** بستهٔ IRANYekanX Pro خریداری شد و وب‌فونت دارد؛ تصمیم مالک این است که جز IRANYekanX (Eco/Pro) هیچ فونتی در پروژه نباشد — پیشنهاد Vazirmatn بالا دیگر معتبر نیست.

@@ -519,6 +519,27 @@ def check_tabular_digits() -> None:
         )
 
 
+def check_single_typeface() -> None:
+    """IRANYekanX is the only typeface in the project (owner's rule, 4.69.0).
+
+    Every font file under the repository is one of the family's, and no tracked text file pulls a
+    face from a font service. A second face — Inter for the figures until 4.69.0, Vazirmatn in the
+    mockups — is exactly what this exists to refuse: the owner licensed one family and wants one.
+    """
+    allowed = re.compile(r"^iranyekanx[-_]", re.IGNORECASE)
+    for path in ROOT.rglob("*"):
+        if not path.is_file() or "build" in path.parts or ".git" in path.parts or ".gradle" in path.parts:
+            continue
+        if path.resolve() == Path(__file__).resolve():
+            continue
+        if path.suffix.lower() in {".ttf", ".otf", ".woff", ".woff2"}:
+            require(bool(allowed.match(path.name)), f"{path.relative_to(ROOT)}: a font that is not IRANYekanX")
+        if path.suffix.lower() in {".html", ".css", ".kt", ".kts", ".xml", ".py", ".svg", ".json"}:
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            require("fonts.googleapis.com" not in text, f"{path.relative_to(ROOT)}: pulls a face from a font service")
+            require("fonts.gstatic.com" not in text, f"{path.relative_to(ROOT)}: pulls a face from a font service")
+
+
 MATERIAL_ICON_IMPORT = re.compile(r"^import androidx\.compose\.material\.icons\.", re.MULTILINE)
 STOCK_ICON_USE = re.compile(r"\bIcons\.(Filled|Default|Outlined|Rounded|Sharp|TwoTone)\.")
 
@@ -598,6 +619,7 @@ def main() -> None:
     check_no_secret_logging()
     check_assets_clean()
     check_tabular_digits()
+    check_single_typeface()
     check_every_screen_is_rendered()
     check_bottom_navigation()
     check_learned_surfaces()

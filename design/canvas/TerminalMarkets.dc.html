@@ -7,12 +7,15 @@
 <body>
 <x-dc>
 <helmet>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap">
+  <style>
+    @font-face { font-family: "IRANYekanX"; font-weight: 400; src: url("fonts/IRANYekanX-Regular.woff2") format("woff2"); }
+    @font-face { font-family: "IRANYekanX"; font-weight: 500; src: url("fonts/IRANYekanX-Medium.woff2") format("woff2"); }
+    @font-face { font-family: "IRANYekanX"; font-weight: 700; src: url("fonts/IRANYekanX-Bold.woff2") format("woff2"); }
+  </style>
   <style>
     body { margin: 0; }
     a { color: #D8A848; } a:hover { color: #F0CC60; }
-    .f { font-family: Vazirmatn, "IRANYekanX", "Noto Sans Arabic", system-ui, sans-serif; }
+    .f { font-family: "IRANYekanX", "Noto Sans Arabic", system-ui, sans-serif; }
     .n { direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
 
   </style>

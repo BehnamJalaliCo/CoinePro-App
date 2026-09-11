@@ -98,7 +98,7 @@ def svg() -> str:
     .line {{ fill: none; stroke: #D8A848; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }}
     .name {{ font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-weight: 700; letter-spacing: -1px; }}
     .sub {{ font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; fill: #848E9C; }}
-    .fa {{ font-family: 'Vazirmatn', 'Segoe UI', Tahoma, sans-serif; fill: #6E7784; }}
+    .fa {{ font-family: 'IRANYekanX', 'Segoe UI', Tahoma, sans-serif; fill: #6E7784; }}
 
     .draw {{ stroke-dasharray: 620; stroke-dashoffset: 620; animation: draw 2.4s cubic-bezier(.2,0,0,1) forwards; }}
     .rise {{ transform-box: fill-box; transform-origin: bottom; animation: rise .45s cubic-bezier(.2,0,0,1) backwards; }}

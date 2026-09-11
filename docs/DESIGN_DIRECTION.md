@@ -45,7 +45,7 @@ Rules:
 
 ## Typography
 
-- Persian/UI: Vazirmatn family where bundled/approved.
+- Persian, Latin and every figure: IRANYekanX Pro (Regular / Medium / DemiBold / Bold) — the one typeface in the project; no second face, no web font service.
 - Financial values: tabular numerals + LTR isolation.
 - Prices must render correctly from first frame; no count-up animation.
 - Use an em dash (—) for unavailable data; never confuse missing data with zero.

@@ -132,3 +132,5 @@ curl 'https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.sit
 | ۶ | دو تأیید ✅ | `sentiment` همان `null` بماند — موافقیم |
 
 هیچ چیزی از شما بلوکر نیست.
+
+> **به‌روزرسانی 4.69.0:** بستهٔ IRANYekanX Pro خریداری شد و وب‌فونت دارد؛ تصمیم مالک این است که جز IRANYekanX (Eco/Pro) هیچ فونتی در پروژه نباشد — پیشنهاد Vazirmatn بالا دیگر معتبر نیست.

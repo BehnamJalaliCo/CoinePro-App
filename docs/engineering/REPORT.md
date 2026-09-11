@@ -453,6 +453,34 @@ and `TabularFiguresTest` pass unchanged (the figures are Inter's and did not mov
 APK's font list is the acceptance's: four IRANYekanX files (84 240 / 84 836 / 84 836 / 83 957 B)
 and Inter Variable (879 708 B).
 
+### One typeface (4.69.0) — Inter and Vazirmatn out; IRANYekanX Eco/Pro is all there is
+
+The owner's instruction after the Pro package landed: *nothing in the project but IRANYekanX
+Eco and Pro.* Done, and gated.
+
+| was | is | where |
+| --- | --- | --- |
+| Inter Variable (879 708 B) set every figure — prices, changes, axes, tickers — through `CoineProLatinFontFamily` | **removed.** `CoineProLatinFontFamily` is now IRANYekanX itself (the name kept so the numeric styles read as what they are); the figures sit in the same face as the words, with the family's equal-width Latin digits (562 / 565 / 569 / 572 units per weight) doing what `tnum` did | `CoineProType.kt`; the release APK carries four `.ttf` files, all IRANYekanX (84 240 / 84 836 / 84 836 / 83 957 B) — the 880 KB of Inter is gone |
+| Vazirmatn from Google Fonts stood in for IRANYekanX in the six design mockups (`design/canvas/*.dc.html`), with `preconnect` links to the font service | **the Pro package's own webfonts**: Regular, Medium and Bold `.woff2` (84 KB) under `design/canvas/fonts/` with the package's `FontLicense.txt` beside them, `@font-face` in each mockup, no font service | `design/canvas/`, its README |
+| `'Vazirmatn'` in the README banner's SVG | `'IRANYekanX'` | `design/readme/banner.svg`, `scripts/design/build-readme-banner.py` |
+| `docs/design/fonts/INTER-OFL.txt` | **removed**; the only font licence in the repository is fontiran's, `core/designsystem/FONT_LICENSE_IRANYekanX.txt` (and the copy beside the webfonts) | — |
+| `docs/DESIGN_DIRECTION.md` «Vazirmatn where bundled/approved» | «IRANYekanX Pro — the one typeface in the project» | — |
+
+**The gate.** `check_single_typeface` in `check-cross-phase-consistency.py` walks the repository:
+every `.ttf` / `.otf` / `.woff` / `.woff2` must be named `IRANYekanX…`, and no tracked `.html`,
+`.css`, `.kt`, `.kts`, `.xml`, `.py`, `.svg` or `.json` may reference `fonts.googleapis.com` or
+`fonts.gstatic.com`. It failed on the first run (the mockups' `preconnect` lines) and passes now.
+
+**What moved on screen.** Every figure — the watchlist prices, the balance, the chart's axes and
+legends, the DOM ladder, the calculators — changed face, so 115 goldens were
+re-recorded; `TickSequenceTest` (300 frames, 0.0 px shift) and `TabularFiguresTest` pass on the
+new face without a change, which is the equal-width digits doing their job. IRANYekanX's Latin digits
+are narrower than Inter's at the same size (562 against 631 units per em on a digit), so every
+column of prices gained a little room; nothing in the 540-test run changed its layout.
+
+**Still the owner's:** the six-digit licence code in `FONT_LICENSE_IRANYekanX.txt` (`(.....)`
+is still the placeholder in both copies).
+
 ### RUN B — item 4 (4.63.0) — done to the audit; the two device proofs remain
 
 What changed this run, on top of 4.55.0 and 4.60.0:

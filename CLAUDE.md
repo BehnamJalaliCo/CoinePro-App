@@ -29,7 +29,7 @@ In practice that means:
 - Secrets in the two backend repositories are **not this app's business** — the owner will
   rotate them. Never raise them again. Only ever print variable *names*, never values.
 - The legal and IP position on the vendored icons is the owner's, settled. Do not re-raise it.
-- Font is IRANYekanX Pro (Regular / Medium / DemiBold / Bold, `core/designsystem/src/main/res/font/`). Persian is the product's default language (`AppLanguage.Default`).
+- **One typeface: IRANYekanX (Eco/Pro — Regular / Medium / DemiBold / Bold, `core/designsystem/src/main/res/font/`) for Persian, Latin and every figure.** Nothing else — no Inter, no Vazirmatn, no font service; `check_single_typeface` in the consistency gate fails on any other font file or a `fonts.googleapis.com` link. Persian is the product's default language (`AppLanguage.Default`).
   **Resources: `values/` is English, `values-fa/` is Persian** (owner's decision, 4.52.0); the
   Gradle task `checkDefaultLocaleIsEnglish` fails a build with Arabic script in `values/`.
 - **Latin digits for market figures; Persian digits for prose counts.**

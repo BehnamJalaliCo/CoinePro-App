@@ -16,13 +16,13 @@ the notes that state each direction's axis and its cost.
 These are **mockups, not the app**. Every colour in them is lifted from
 `core/designsystem`'s real palette — `#0B0E11` stage, `#070A0F` terminal,
 `#D8A848` gold, `#00B15C` / `#F6465D` — so a direction that looks right here
-looks the same when it is built. Two substitutions are deliberate and are the
-only places the mockups differ from the product:
+looks the same when it is built. One substitution is deliberate and is the
+only place the mockups differ from the product:
 
-- **Vazirmatn** stands in for IRANYekanX. The shipping face is licensed as a
-  desktop and app font and has no web build, and a mockup in a face nobody
-  recognises would be judging the wrong thing. Vazirmatn is the closest Persian
-  grotesque with the same skeleton.
+- **The face is the product's own.** The IRANYekanX Pro package carries webfonts,
+  and three of them (Regular, Medium, Bold, `fonts/*.woff2`) are what the mockups
+  set their type in — the same skeleton, the same weights, no stand-in. (Until
+  4.69.0 Vazirmatn stood in, because the Eco package had no web build.)
 - **Lettered discs** stand in for the vendored asset logos, which live as Android
   vector drawables and do not render in a browser.
 

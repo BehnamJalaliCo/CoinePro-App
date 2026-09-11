@@ -5512,7 +5512,7 @@ internal fun axisStyle(
     color = colour,
     fontSize = sizeSp.sp,
     fontWeight = if (bold) FontWeight.SemiBold else FontWeight.Normal,
-    // Inter with tabular figures: the axis is a column of numbers, and a column of numbers has
+    // The figure face with tabular figures: the axis is a column of numbers, and a column has
     // to line up — and a price label that changes from 2,574.9 to 2,575.0 must not move.
     fontFamily = CoineProLatinFontFamily,
     fontFeatureSettings = TABULAR_FIGURES,

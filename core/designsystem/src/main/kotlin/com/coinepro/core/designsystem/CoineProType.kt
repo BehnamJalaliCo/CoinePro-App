@@ -1,11 +1,9 @@
 package com.coinepro.core.designsystem
 
 import androidx.compose.material3.Typography
-import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextDirection
@@ -53,22 +51,14 @@ val CoineProFontFamily = FontFamily(
 )
 
 /**
- * Inter, for Latin and for every numeral in both locales.
- *
- * One variable file carries all four weights. It is the face for a figure — a price, a change, a
- * quantity, a balance, an axis label, a ticker — because a market figure is compared down a
- * column and against another app, and Inter's tabular figures (`tnum`, set on every numeric
- * style below) line up to the pixel where a Persian text face's Latin digits merely nearly do.
- * Persian prose stays on IRANYekanX; the two faces share x-height closely enough to sit on one
- * line.
+ * The face for a figure — a price, a change, a quantity, an axis label, a ticker — and it is
+ * the same face: IRANYekanX, whose Latin digits are equal-width in every weight (562 / 565 /
+ * 569 / 572 units), so a column of prices lines up and a ticking price does not move its
+ * neighbours. Until 4.69.0 this was Inter Variable; the owner's rule since is one typeface in
+ * the whole project, IRANYekanX and nothing else, and the consistency gate holds the font
+ * directory to it. The name stays so the numeric styles read as what they are.
  */
-@OptIn(ExperimentalTextApi::class)
-val CoineProLatinFontFamily = FontFamily(
-    Font(R.font.inter_variable, FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
-    Font(R.font.inter_variable, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
-    Font(R.font.inter_variable, FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
-    Font(R.font.inter_variable, FontWeight.Bold, variationSettings = FontVariation.Settings(FontVariation.weight(700))),
-)
+val CoineProLatinFontFamily: FontFamily get() = CoineProFontFamily
 
 /** Tabular figures, so a column of prices lines up and a ticking price does not shift its neighbours. */
 const val TABULAR_FIGURES = "tnum"
@@ -180,7 +170,7 @@ val CoineProTypography = Typography(
 
 /** Styles that carry a specific job rather than a place on the Material scale. */
 /**
- * A figure style: Inter, tabular, left-to-right.
+ * A figure style: the figure face, tabular, left-to-right.
  *
  * Every price, quantity, percentage, balance and axis label goes through one of these or through
  * [TextStyle.numeric]. The direction is pinned because a figure is Latin whatever the paragraph
@@ -203,7 +193,7 @@ private fun numericTextStyle(
 )
 
 /**
- * The same style, as a figure: Inter's face, tabular digits, left-to-right. Size, weight and line
+ * The same style, as a figure: tabular digits, left-to-right. Size, weight and line
  * height are kept, so `MaterialTheme.typography.labelSmall.numeric()` is the small label with the
  * digits that line up.
  */
