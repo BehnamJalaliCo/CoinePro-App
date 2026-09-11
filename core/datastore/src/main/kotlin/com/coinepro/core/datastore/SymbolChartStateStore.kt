@@ -165,6 +165,17 @@ data class SymbolChartState(
     val indicatorColours: Map<String, Long> = emptyMap(),
     /** The stroke width the reader gave an indicator, by id, in dp. Sparse, like the colours. */
     val indicatorWidths: Map<String, Float> = emptyMap(),
+    /**
+     * Whether the reading-and-tools panel under the plot was left open (run G).
+     *
+     * False is the shipped default and the reason this field exists: the panel opened itself on
+     * every arrival and took about a quarter of the chart screen, so the plot — the thing the page
+     * is for — started a quarter short whether or not anybody had asked for the readings. It is
+     * remembered rather than reset because a reader who drags it open has said what they want, and
+     * per symbol like everything else here: somebody reads the trend panel on gold and wants the
+     * whole glass on the index.
+     */
+    val readingsOpen: Boolean = false,
 )
 
 /**
@@ -342,6 +353,8 @@ class SymbolChartStateStore(private val dataStore: DataStore<Preferences>) {
                     .filterValues { it > 0 }
                     .flatMap { (timeframe, bars) -> listOf(timeframe, bars.toString()) }
                     .joinToString(UNIT),
+                // Twenty-three: the readings panel's fold.
+                if (state.readingsOpen) "1" else "0",
             ).joinToString(RECORD)
         }
 
@@ -400,6 +413,9 @@ class SymbolChartStateStore(private val dataStore: DataStore<Preferences>) {
                 paneMerges = pairs(parts.getOrNull(20)) { it.takeIf(String::isNotBlank) },
                 separatedIndicators = parts.getOrNull(21).orEmpty().split(UNIT).filter(String::isNotBlank),
                 zoom = pairs(parts.getOrNull(22)) { it.toIntOrNull()?.takeIf { bars -> bars > 0 } },
+                // A row from a build before run G is short here, and short means closed — which is
+                // the new default and is what a reader who has never touched the panel should get.
+                readingsOpen = parts.getOrNull(23) == "1",
             )
         }
 

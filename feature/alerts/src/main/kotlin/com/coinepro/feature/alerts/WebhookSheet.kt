@@ -15,6 +15,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,7 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.BidiText
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPrimaryButton
@@ -312,10 +313,13 @@ internal fun WebhookAttempt.summary(): String = buildList {
 /**
  * How many deliveries an alert's history is summarising.
  *
- * A prose count, so Persian digits — the rule this app follows everywhere: how many things there
- * are is prose, and a status code or a latency is a market-side figure and stays Latin.
+ * A prose count, so the digits of the language the screen is in — the rule this app follows
+ * everywhere: how many things there are is prose, and a status code or a latency is a market-side
+ * figure and stays Latin in both.
  */
-internal fun deliveryCount(count: Int): String = count.toPersianDigits()
+@Composable
+@ReadOnlyComposable
+internal fun deliveryCount(count: Int): String = count.proseDigits()
 
 /** A small neutral pill. The same one the editor sheet uses; the sheet's one gold object is save. */
 @Composable

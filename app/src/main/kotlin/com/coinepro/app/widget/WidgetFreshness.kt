@@ -2,7 +2,7 @@ package com.coinepro.app.widget
 
 import android.content.Context
 import com.coinepro.app.R
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.common.proseDigits
 
 /**
  * How old the widget's prices are, in words.
@@ -45,11 +45,11 @@ object WidgetFreshness {
             age < JUST_NOW_MILLIS -> context.getString(R.string.widget_now)
             age < HOUR_MILLIS -> context.getString(
                 R.string.widget_minutes,
-                (age / MINUTE_MILLIS).toInt().toPersianDigits(),
+                (age / MINUTE_MILLIS).toInt().proseDigits(),
             )
             age < DAY_MILLIS -> context.getString(
                 R.string.widget_hours,
-                (age / HOUR_MILLIS).toInt().toPersianDigits(),
+                (age / HOUR_MILLIS).toInt().proseDigits(),
             )
             else -> context.getString(R.string.widget_old)
         }

@@ -55,7 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.community.CommunityCategory
 import com.coinepro.core.community.CommunityController
 import com.coinepro.core.community.CommunityError
@@ -308,7 +308,7 @@ fun CommunityScreen(
                     icon = CoineProIcons.Warning,
                     message = stringResource(
                         R.string.community_unreadable,
-                        state.unreadable.toPersianDigits(),
+                        state.unreadable.proseDigits(),
                     ),
                     hint = stringResource(R.string.community_unreadable_hint),
                     modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
@@ -366,8 +366,8 @@ fun CommunityScreen(
                 table.myRank?.let { rank ->
                     stringResource(
                         R.string.community_leaderboard_rank,
-                        rank.toPersianDigits(),
-                        table.totalStudents.toPersianDigits(),
+                        rank.proseDigits(),
+                        table.totalStudents.proseDigits(),
                     )
                 }
             },
@@ -422,7 +422,7 @@ private fun LeaderboardBody(state: CommunityUiState) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = leader.rank.toPersianDigits(),
+                        text = leader.rank.proseDigits(),
                         style = MaterialTheme.typography.labelLarge,
                         color = if (leader.isMe) CoineProColors.pageAccentInk else CoineProColors.TextMuted,
                     )
@@ -437,7 +437,7 @@ private fun LeaderboardBody(state: CommunityUiState) {
                     Text(
                         text = stringResource(
                             R.string.community_leaderboard_posts,
-                            leader.completed.toPersianDigits(),
+                            leader.completed.proseDigits(),
                         ),
                         style = MaterialTheme.typography.labelSmall,
                         color = CoineProColors.TextMuted,
@@ -445,7 +445,7 @@ private fun LeaderboardBody(state: CommunityUiState) {
                     Text(
                         text = stringResource(
                             R.string.community_leaderboard_points,
-                            leader.xp.toPersianDigits(),
+                            leader.xp.proseDigits(),
                         ),
                         style = MaterialTheme.typography.labelMedium,
                         color = CoineProColors.TextSecondary,
@@ -609,8 +609,8 @@ private fun NameCard(
                 isError = state.nameError != null,
                 supporting = state.nameError ?: stringResource(
                     R.string.community_name_rule,
-                    min.toPersianDigits(),
-                    max.toPersianDigits(),
+                    min.proseDigits(),
+                    max.proseDigits(),
                 ),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 modifier = Modifier.fillMaxWidth(),
@@ -738,12 +738,12 @@ private fun Composer(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = if (trimmed.isEmpty()) {
-                            stringResource(R.string.community_compose_hint, MIN_POST.toPersianDigits())
+                            stringResource(R.string.community_compose_hint, MIN_POST.proseDigits())
                         } else {
                             stringResource(
                                 R.string.community_compose_count,
-                                trimmed.length.toPersianDigits(),
-                                MAX_POST.toPersianDigits(),
+                                trimmed.length.proseDigits(),
+                                MAX_POST.proseDigits(),
                             )
                         },
                         style = MaterialTheme.typography.labelSmall,

@@ -41,7 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -328,7 +328,7 @@ private fun NumberedStep(number: Int, text: String, persian: Boolean) {
             Text(
                 // A step number is a prose count, so it is written in Persian digits — unlike a
                 // price, which stays Latin everywhere in this app.
-                text = if (persian) number.toPersianDigits() else number.toString(),
+                text = if (persian) number.proseDigits() else number.toString(),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.Accent,
                 fontWeight = FontWeight.Bold,

@@ -35,6 +35,7 @@ import com.coinepro.core.chart.DrawingState
 import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.chart.LineStyleKind
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.datastore.DrawingTemplate
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.pageAccentInk

@@ -141,7 +141,7 @@ private fun SuggestionRow(meta: SymbolMeta, onClick: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
             )
             Text(
-                text = meta.listDescription,
+                text = meta.localRowName(),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextMuted,
                 textAlign = TextAlign.Right,

@@ -48,7 +48,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.AppLanguage
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.datastore.Watchlist
 import com.coinepro.core.datastore.WatchlistColumn
 import com.coinepro.core.datastore.WatchlistFlag
@@ -450,7 +450,7 @@ private fun Controls(
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
         CoineProChipRow(
-            options = lists.map { CoineProChip(id = it.id, label = it.name, count = it.symbols.size) },
+            options = lists.map { CoineProChip(id = it.id, label = it.localName(), count = it.symbols.size) },
             selectedId = activeId,
             onSelect = { id -> id?.let(onSelectList) },
             modifier = Modifier.weight(1f, fill = false),
@@ -459,7 +459,7 @@ private fun Controls(
         )
         Text(
             // A prose count, so Persian digits — unlike every figure in the table below it.
-            text = stringResource(R.string.watchlist_symbol_count, count.toPersianDigits()),
+            text = stringResource(R.string.watchlist_symbol_count, count.proseDigits()),
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextMuted,
             maxLines = 1,

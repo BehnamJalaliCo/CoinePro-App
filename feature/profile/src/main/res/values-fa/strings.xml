@@ -98,7 +98,7 @@
     <string name="profile_record_closed">معامله‌های بسته‌شده</string>
     <string name="profile_record_academy">آکادمی</string>
     <string name="profile_record_win_rate">نرخ برد %1$s</string>
-    <string name="profile_record_academy_detail">%1$s روز پیاپی مطالعه</string>
+    <string name="profile_record_academy_detail">%1$s روز پیاپی یادگیری</string>
 
     <string name="profile_library_watchlists">فهرست‌های دیده‌بانی</string>
     <string name="profile_library_layouts">چیدمان‌های چارت</string>

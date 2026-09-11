@@ -3,6 +3,7 @@ package com.coinepro.app
 import android.content.Context
 import android.content.res.Configuration
 import com.coinepro.core.common.AppLanguage
+import com.coinepro.core.common.AppLocale
 import java.util.Locale
 
 /**
@@ -22,6 +23,10 @@ object AppLanguageStore {
 
     fun set(context: Context, language: AppLanguage) {
         preferences(context).edit().putString(KEY_TAG, language.tag).apply()
+        // The process-wide answer for code that runs with no screen to ask — the widget worker and
+        // the notification builder format their counts from it. Set here as well as in [apply],
+        // because the reader who switches language does not restart the process.
+        AppLocale.language = language
     }
 
     /**
@@ -32,7 +37,9 @@ object AppLanguageStore {
      * WebView used by Telegram sign-in.
      */
     fun apply(context: Context): Context {
-        val locale = Locale.forLanguageTag(current(context).tag)
+        val language = current(context)
+        AppLocale.language = language
+        val locale = Locale.forLanguageTag(language.tag)
         Locale.setDefault(locale)
         val configuration = Configuration(context.resources.configuration).apply {
             setLocale(locale)

@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProBrandButton
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -315,7 +315,7 @@ private fun StepRow(
             val glyph = state.glyph().takeIf { showState }
             if (glyph == null) {
                 Text(
-                    text = number.toPersianDigits(),
+                    text = number.proseDigits(),
                     style = MaterialTheme.typography.labelMedium,
                     color = colour,
                 )
@@ -541,8 +541,8 @@ private fun TrackRecordCard(record: GuestTrackRecord) {
                 Text(
                     text = stringResource(
                         R.string.membership_record_summary,
-                        record.wins.toPersianDigits(),
-                        record.entries.size.toPersianDigits(),
+                        record.wins.proseDigits(),
+                        record.entries.size.proseDigits(),
                         // See the same line on the guest home: the sign is part of the run.
                         BidiText.percent(MarketNumberFormatter.price(rate, 1)),
                     ),
@@ -622,7 +622,7 @@ private fun UidForm(
         when (submission) {
             is UidSubmission.Refused -> Text(
                 text = submission.retryAfterSeconds?.let {
-                    stringResource(R.string.membership_uid_retry_after, it.toPersianDigits())
+                    stringResource(R.string.membership_uid_retry_after, it.proseDigits())
                 } ?: submission.message ?: stringResource(R.string.membership_uid_refused),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.Sell,

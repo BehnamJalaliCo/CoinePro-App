@@ -61,7 +61,7 @@ import com.coinepro.core.chart.CoineProChart
 import com.coinepro.core.chart.decimalsFor
 import com.coinepro.core.chart.formatPrice
 import com.coinepro.core.common.BidiText
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.designsystem.CoineProAssetLogo
@@ -776,7 +776,7 @@ private fun PanesHeader(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     // Persian digits: this is a count in a sentence, not a market figure.
-                    text = stringResource(R.string.panes_title, count.toPersianDigits()),
+                    text = stringResource(R.string.panes_title, count.proseDigits()),
                     style = MaterialTheme.typography.titleSmall,
                     color = CoineProColors.TextPrimary,
                 )

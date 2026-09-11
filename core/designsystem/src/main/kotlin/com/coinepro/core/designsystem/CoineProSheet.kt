@@ -49,7 +49,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.Dialog
-import com.coinepro.core.common.toPersianDigits
 
 /**
  * The app's bottom sheet.
@@ -401,7 +400,7 @@ fun CoineProToggleChip(
             Text(
                 // A prose count, so Persian digits — unlike a price, which stays Latin. The chip
                 // said «9» beside a subtitle that said «۵۲» until this line existed.
-                text = count.toPersianDigits(),
+                text = count.proseDigits(),
                 style = MaterialTheme.typography.labelSmall,
                 color = if (selected) ink.copy(alpha = 0.7f) else CoineProColors.TextMuted,
             )

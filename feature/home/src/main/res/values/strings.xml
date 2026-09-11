@@ -16,6 +16,14 @@
 
     <!-- Both values arrive already isolated as left-to-right runs. -->
     <string name="home_change_amount_and_percent">%1$s (%2$s)</string>
+    <!--
+      The whole change phrase in one resource: amount, percentage and the period word together.
+      It was assembled in code as «amount · percent» with the period appended, which put an
+      untranslated «امروز» at the end of an English pill. Word order differs between the two
+      languages, so the separator and the period belong to the sentence, not to the layout.
+      Both figures arrive already isolated as left-to-right runs.
+    -->
+    <string name="home_change_today">%1$s · %2$s today</string>
 
     <string name="home_age_moments">just now</string>
     <string name="home_age_minutes">%1$d minutes ago</string>

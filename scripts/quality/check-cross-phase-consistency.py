@@ -312,9 +312,15 @@ FORBIDDEN_BRAND_SPELLINGS = ("Pro CHart", "Pro-Chart", "پروچارت", "ProCha
 
 # Words a reader never uses for the thing they are looking at. The glossary in docs/audit names the
 # replacement for each; a new occurrence in a user-facing string is a regression.
+# «study» and «مطالعه» join the list in 4.71.0. TradingView's own word for an indicator is a study
+# and it leaked back into `indicator_settings_arrangement_note` in both languages — «این مطالعه کجا
+# کشیده شود» is besides a literal translation of a term of art, which reads as *reading a book*. The
+# app calls it an indicator / «اندیکاتور» everywhere else and now everywhere. The academy's reading
+# streak was the one honest use of the word and is now a learning streak, so the ban is absolute and
+# needs no exception list.
 FORBIDDEN_UI_WORDS = {
-    "values-fa/strings.xml": ("شیءها", ">اشیا<", "واگرد", "ازنو", "بازپخش نوار", "دیدبان<", "نما اسکریپت", "نقشهٔ حرارتی"),
-    "values/strings.xml": (">Studies<", ">Bar length<", "Connected surfaces", "Provider truth", ">STALE<", "server-side setting", "this build is pointed"),
+    "values-fa/strings.xml": ("شیءها", ">اشیا<", "واگرد", "ازنو", "بازپخش نوار", "دیدبان<", "نما اسکریپت", "نقشهٔ حرارتی", "مطالعه"),
+    "values/strings.xml": (">Studies<", ">Bar length<", "Connected surfaces", "Provider truth", ">STALE<", "server-side setting", "this build is pointed", "study", "studies", "Study", "Studies"),
 }
 
 STRAY_ASSET_SUFFIXES = (".orig", ".bak", ".rej", ".tmp")

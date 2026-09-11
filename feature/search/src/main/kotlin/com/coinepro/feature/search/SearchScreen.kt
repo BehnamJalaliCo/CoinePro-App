@@ -44,6 +44,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.inEnglish
+import com.coinepro.core.designsystem.localName
+import com.coinepro.core.designsystem.localRowName
 import com.coinepro.core.designsystem.CoineProSkeletonRows
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProMarketRow
@@ -293,6 +296,7 @@ fun SearchScreen(
                     line = lines[row.meta.symbol.uppercase()].orEmpty(),
                     starred = row.meta.symbol in watchlist,
                     status = MarketHours.statusOf(row.meta),
+                    english = inEnglish(),
                 ),
                 onDismiss = { preview = null },
                 onOpenChart = {
@@ -385,17 +389,25 @@ private fun MarketRow(
         title = highlighted(
             text = BidiText.isolateLtr(row.meta.pretty),
             range = row.highlight
-                .takeIf { row.field != MatchField.DESCRIPTION }
+                .takeIf { row.field !in NameFields }
                 ?.intoPretty(row.meta.base?.length),
         ),
         // The long description only when the reader's own words are *in* it — the highlight range
         // is an offset into that exact string, so the short form would put the mark on the wrong
         // letters. Everywhere else the row shows what every other list shows: «بیت‌کوین/تتر» rather
         // than «بیت‌کوین (BTC)», whose parenthesis repeats the ticker on the line above it.
-        subtitle = if (row.field == MatchField.DESCRIPTION) {
-            highlighted(text = row.meta.description, range = row.highlight)
+        //
+        // A market carries two names since 4.71.0 and the catalogue is searched by both, so the
+        // name that matched is not always the name this screen is drawing: a reader with the app in
+        // English who types «طلا» hits the Persian name and reads `Gold / US Dollar`. The range
+        // belongs to one exact string — [MatchField.DESCRIPTION_EN] versus [MatchField.DESCRIPTION]
+        // is which one — so the long name is shown when the hit is in *this* language, and the hit
+        // in the other language falls through to the short name with no mark rather than a mark on
+        // the wrong letters.
+        subtitle = if (row.field == if (inEnglish()) MatchField.DESCRIPTION_EN else MatchField.DESCRIPTION) {
+            highlighted(text = row.meta.localName(), range = row.highlight)
         } else {
-            highlighted(text = row.meta.listDescription, range = null)
+            highlighted(text = row.meta.localRowName(), range = null)
         },
         price = quote?.let { MarketNumberFormatter.price(it.price, it.decimals()) },
         changePercent = quote?.changePercent?.takeIf { status.open },
@@ -414,6 +426,15 @@ private fun MarketRow(
         onLongClick = onLongClick,
     )
 }
+
+/**
+ * The two fields whose range indexes a *name* rather than the ticker.
+ *
+ * A hit in either one means the mark belongs on the row's second line, so the ticker on the first
+ * line is drawn plain — it was the Persian description alone before the English names landed, and
+ * a set is how the two stay one idea in both places that ask.
+ */
+private val NameFields = setOf(MatchField.DESCRIPTION, MatchField.DESCRIPTION_EN)
 
 /**
  * One of the app's own sections, in the same list as the markets and deliberately not in their

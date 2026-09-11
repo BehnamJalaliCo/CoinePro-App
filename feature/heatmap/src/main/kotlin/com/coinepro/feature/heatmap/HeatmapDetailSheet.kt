@@ -15,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.localName
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -58,7 +59,7 @@ fun HeatmapDetailSheet(
         // place on the screen with room for `BTC/USDT`, and the tile above it only had room for
         // `BTC`.
         title = asset.meta.pretty,
-        subtitle = asset.meta.description,
+        subtitle = asset.meta.localName(),
         onDismiss = onDismiss,
         modifier = modifier,
     ) {

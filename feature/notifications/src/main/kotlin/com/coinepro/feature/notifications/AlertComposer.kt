@@ -19,7 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.foldDigitsToLatin
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProColors
@@ -138,7 +138,7 @@ fun AlertComposerBody(
             Text(
                 text = stringResource(
                     R.string.alert_new_full,
-                    LocalPriceAlert.MAX_ALERTS.toPersianDigits(),
+                    LocalPriceAlert.MAX_ALERTS.proseDigits(),
                 ),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.Warning,

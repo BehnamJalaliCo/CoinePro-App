@@ -60,6 +60,7 @@ import com.coinepro.core.chart.CoineProChart
 import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.database.SavedScriptEntity
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -750,7 +751,7 @@ private fun FailureCard(failure: ScriptFailure) {
     val position = if (language == AppLanguage.ENGLISH) {
         failure.line.toString() to failure.column.toString()
     } else {
-        failure.line.toPersianDigits() to failure.column.toPersianDigits()
+        failure.line.proseDigits() to failure.column.proseDigits()
     }
     CoineProCard(modifier = Modifier.fillMaxWidth(), accent = CoineProColors.Sell) {
         Text(
@@ -1016,7 +1017,7 @@ private fun LibraryTab(
         item {
             SectionTitle(
                 stringResource(R.string.script_strategies_title),
-                stringResource(R.string.script_strategies_count, ScriptStrategies.ALL.size.toPersianDigits()),
+                stringResource(R.string.script_strategies_count, ScriptStrategies.ALL.size.proseDigits()),
             )
         }
         item {
@@ -1095,7 +1096,7 @@ private fun LessonCard(
 ) {
     CoineProCard(modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle)) {
         Text(
-            "${(index + 1).toPersianDigits()}. ${lesson.title}",
+            "${(index + 1).proseDigits()}. ${lesson.title}",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.fillMaxWidth(),

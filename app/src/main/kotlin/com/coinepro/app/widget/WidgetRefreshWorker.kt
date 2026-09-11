@@ -11,6 +11,8 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.coinepro.app.AppLanguageStore
+import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.common.AppResult
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.toPersianDigits
@@ -27,6 +29,7 @@ import com.coinepro.core.marketdata.MarketDataSymbols
 import com.coinepro.core.symbols.SymbolClassifier
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
@@ -134,6 +137,7 @@ class WidgetRefreshWorker @AssistedInject constructor(
  * market, instead of waiting a quarter of an hour to see it appear.
  */
 class WidgetRefreshEngine @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val guest: GuestGateway,
     private val watchlist: WatchlistStore,
     private val store: WidgetSnapshotStore,
@@ -152,7 +156,12 @@ class WidgetRefreshEngine @Inject constructor(
                 val quotes = result.value.quotes.associateBy { it.symbol.uppercase() }
                 // Ordered by the watchlist rather than by the response: the reader put their most
                 // important market first and the server has no idea which that is.
-                val markets = symbols.mapNotNull { symbol -> quotes[symbol]?.toWidgetMarket() }
+                // The widget is drawn outside any activity, so there is no composition to read the
+                // language from — `AppLanguageStore` is the same preference `attachBaseContext`
+                // reads, and it is the one place that knows the reader chose English while the
+                // phone itself is in Persian, or the other way round.
+                val english = AppLanguageStore.current(context) == AppLanguage.ENGLISH
+                val markets = symbols.mapNotNull { symbol -> quotes[symbol]?.toWidgetMarket(english) }
                 store.write(
                     WidgetSnapshot(
                         markets = markets,
@@ -209,12 +218,12 @@ class WidgetRefreshEngine @Inject constructor(
  * builder cannot reach. Formatting at write time means the widget and the app spell the same
  * number the same way, which they would not if this were re-implemented in the provider.
  */
-private fun GuestQuote.toWidgetMarket(): WidgetMarket {
+private fun GuestQuote.toWidgetMarket(english: Boolean): WidgetMarket {
     val meta = SymbolClassifier.classify(symbol)
     val change = changePercent24h
     return WidgetMarket(
         symbol = meta.pretty,
-        name = meta.description,
+        name = meta.description(english),
         priceText = MarketNumberFormatter.priceAuto(price),
         // The sign is carried explicitly and the minus is U+2212, not a hyphen — the app's rule
         // everywhere a signed figure appears. An empty string where the feed sent nothing, because

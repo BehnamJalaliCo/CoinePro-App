@@ -29,7 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.PersianDateTime
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.community.CommunityController
 import com.coinepro.core.community.CommunityError
 import com.coinepro.core.community.CommunityReply
@@ -183,7 +183,7 @@ fun CommunityThreadScreen(
                         // A prose count, so Persian digits.
                         text = stringResource(
                             R.string.community_replies_heading,
-                            thread.replies.size.toPersianDigits(),
+                            thread.replies.size.proseDigits(),
                         ),
                         style = MaterialTheme.typography.labelMedium,
                         color = CoineProColors.TextMuted,

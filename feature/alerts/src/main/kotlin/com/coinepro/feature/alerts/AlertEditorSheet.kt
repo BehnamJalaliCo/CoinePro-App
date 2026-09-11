@@ -31,9 +31,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.BidiText
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
+import com.coinepro.core.datastore.Watchlist
 import com.coinepro.core.designsystem.CoineProAssetLogo
+import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.CoineProChip
+import com.coinepro.core.designsystem.localRowName
 import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProNote
@@ -158,7 +161,7 @@ private fun SymbolPicker(
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Text(
-                            text = meta.listDescription,
+                            text = meta.localRowName(),
                             style = MaterialTheme.typography.labelSmall,
                             color = CoineProColors.TextMuted,
                             textAlign = TextAlign.Right,
@@ -297,7 +300,7 @@ private fun ConditionBlock(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = (index + 1).toPersianDigits(),
+                    text = (index + 1).proseDigits(),
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,
                     modifier = Modifier.weight(1f),
@@ -526,7 +529,7 @@ private fun AddConditionRow(draft: AlertDraft, onAdd: () -> Unit) {
         Text(
             text = stringResource(
                 R.string.alerts_condition_cap,
-                AlertTrigger.MultiCondition.MAX_CONDITIONS.toPersianDigits(),
+                AlertTrigger.MultiCondition.MAX_CONDITIONS.proseDigits(),
             ),
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextMuted,
@@ -566,8 +569,15 @@ private fun ScopeRow(draft: AlertDraft, onSelect: (String?) -> Unit) {
                         id = list.id,
                         label = stringResource(
                             R.string.alerts_scope_list,
-                            list.name,
-                            list.count.toPersianDigits(),
+                            // The base list's stored name is Persian and is user data — see
+                            // `Watchlist.DEFAULT_LIST_NAME`. Until the reader renames it, the word
+                            // drawn is the one in their own language.
+                            if (list.id == Watchlist.DEFAULT_LIST_ID && list.name == Watchlist.DEFAULT_LIST_NAME) {
+                                stringResource(DesignR.string.watchlist_default_name)
+                            } else {
+                                list.name
+                            },
+                            list.count.proseDigits(),
                         ),
                     ),
                 )

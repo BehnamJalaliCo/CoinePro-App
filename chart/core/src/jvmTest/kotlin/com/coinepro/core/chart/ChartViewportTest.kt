@@ -231,6 +231,30 @@ class ChartEdgeMarginTest {
     }
 
     @Test
+    fun `the resting margin is a tenth of the plot, measured`() {
+        // The owner measured the shipped 4.70.0 frame at «حاشیه‌ی راست ~۵٪» and asked for ten, so
+        // this is the number rather than the constant: the distance from the newest bar's right
+        // edge to the price axis, as a share of the plot the chart is drawn in.
+        //
+        // The bar's *edge*, not its centre — the centre is half a slot short of it and half a slot
+        // at seventy bars is 0.7 % of the plot, which is most of the difference between a
+        // measurement that reads five and one that reads ten.
+        val rested = viewport().atRest()
+        val edge = rested.xOf(rested.lastVisible) + rested.bodyWidth / 2
+        val share = (360f - edge) / 360f
+        assertTrue(
+            "the margin must be about a tenth of the plot, measured $share",
+            share > 0.085f && share < 0.115f,
+        )
+        // And it is the share the constant claims, at the zoom the chart opens on.
+        assertEquals(
+            ChartViewport.RIGHT_MARGIN_SHARE,
+            rested.blankSlots.toFloat() / ChartViewport.DEFAULT_BARS_PER_VIEW,
+            0.005f,
+        )
+    }
+
+    @Test
     fun `the margin is a share of the window rather than a fixed count of bars`() {
         // Six bars is a comfortable margin at eighty a screen and a third of the plot at fourteen.
         // What has to stay the same across zooms is the *picture*, so the share is what is pinned.

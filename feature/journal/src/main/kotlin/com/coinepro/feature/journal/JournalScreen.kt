@@ -42,7 +42,7 @@ import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.common.countedLabel
 import com.coinepro.core.common.foldDigitsToLatin
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.database.JournalEntryEntity
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -343,15 +343,15 @@ private fun StatsCard(stats: JournalStats, shown: Int, total: Int, everything: B
             Line(
                 label = stringResource(R.string.journal_stat_entries),
                 value = if (everything) {
-                    shown.toPersianDigits()
+                    shown.proseDigits()
                 } else {
-                    stringResource(R.string.journal_stat_shown, shown.toPersianDigits(), total.toPersianDigits())
+                    stringResource(R.string.journal_stat_shown, shown.proseDigits(), total.proseDigits())
                 },
             )
             // Said out loud rather than hidden: the reader can see that four of their twelve rows
             // carry no number, which is the only way the percentages below are honest.
             if (stats.graded != shown) {
-                Line(stringResource(R.string.journal_stat_graded), stats.graded.toPersianDigits())
+                Line(stringResource(R.string.journal_stat_graded), stats.graded.proseDigits())
             }
             stats.winRate?.let {
                 Line(

@@ -26,7 +26,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
@@ -130,7 +130,7 @@ internal fun AdminLockScreen(gate: AdminGateState, actions: HubActions, nowMilli
             // One message, and which of the three it is decides what an operator does next.
             when {
                 locked -> Warning(
-                    stringResource(R.string.admin_lock_locked, lockedMinutes.toPersianDigits()),
+                    stringResource(R.string.admin_lock_locked, lockedMinutes.proseDigits()),
                 )
                 !gate.provisioned && gate.refused ->
                     Warning(stringResource(R.string.admin_lock_unprovisioned))

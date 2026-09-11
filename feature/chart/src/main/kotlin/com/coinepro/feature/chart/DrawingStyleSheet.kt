@@ -19,7 +19,7 @@ import com.coinepro.core.chart.LineStyleKind
 import com.coinepro.core.common.NumberStyle
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.common.foldDigitsToLatin
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSegmentedControl
 import com.coinepro.core.designsystem.SHEET_PREVIEW_SCRIM_ALPHA
@@ -523,7 +523,7 @@ private fun CoordinatesTab(
         }
         Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
             // A prose count, so Persian digits.
-            StyleLabel(stringResource(R.string.drawing_settings_point, (index + 1).toPersianDigits()))
+            StyleLabel(stringResource(R.string.drawing_settings_point, (index + 1).proseDigits()))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,

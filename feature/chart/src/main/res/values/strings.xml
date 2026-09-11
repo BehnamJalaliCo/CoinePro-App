@@ -14,7 +14,7 @@
     <string name="chart_interval_other">Other</string>
 
     <string name="chart_band_draw">Draw</string>
-    <string name="chart_band_studies">Indicators</string>
+    <string name="chart_band_indicators">Indicators</string>
     <string name="chart_band_type">Type</string>
     <string name="chart_band_objects">Objects</string>
     <string name="chart_band_fullscreen">Full screen</string>
@@ -176,7 +176,7 @@
     <string name="indicator_settings_show">Show on chart</string>
     <string name="indicator_settings_show_note">Turning this off hides the indicator and keeps its settings.</string>
     <string name="indicator_settings_arrangement">Pane</string>
-    <string name="indicator_settings_arrangement_note">Where this study is drawn: its place in the stack, inside another pane, or as a pane of its own.</string>
+    <string name="indicator_settings_arrangement_note">Where this indicator is drawn: its place in the stack, inside another pane, or as a pane of its own.</string>
     <string name="indicator_settings_move_up">Up</string>
     <string name="indicator_settings_move_down">Down</string>
     <string name="indicator_settings_merge_up">Merge into the pane above</string>

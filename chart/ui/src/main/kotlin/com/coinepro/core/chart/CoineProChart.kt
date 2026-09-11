@@ -2941,6 +2941,30 @@ fun CoineProChart(
                     } else {
                         null
                     }
+                // Where every tag in the gutter will sit, worked out **before** the ladder is
+                // drawn, so the ladder can step around all of them rather than around the live
+                // price alone (run G). The live price is in the list first and so wins every
+                // collision; the levels take what rows are left, in their own order; and the day's
+                // reference, drawn below, is refused a row that any of them already holds.
+                val tagHeight = if (decoration.showAxes && frame.tagGutterWidth > 0f) {
+                    axisTagHeight(measurer, textCache)
+                } else {
+                    0f
+                }
+                val levelTags = if (decoration.showAxes) {
+                    placeLevelTags(
+                        view = view,
+                        levels = decoration.levels,
+                        tagHeight = tagHeight,
+                        lastPriceTop = lastPriceY,
+                    )
+                } else {
+                    emptyList()
+                }
+                val claimed = buildList {
+                    lastPriceY?.let { add(it) }
+                    levelTags.forEach { add(it.second) }
+                }
                 if (decoration.showAxes) {
                     // The ladder goes in every gutter the reader asked for; the tags go in one of
                     // them. Two live-price tags saying the same number is not two readings, and the
@@ -2952,7 +2976,7 @@ fun CoineProChart(
                             gutterWidth = frame.rightGutter,
                             palette = palette,
                             measurer = measurer,
-                            suppressNear = if (frame.tagsOnRight) lastPriceY else null,
+                            suppress = if (frame.tagsOnRight) claimed else emptyList(),
                             ticks = ticks,
                             cache = textCache,
                         )
@@ -2964,7 +2988,7 @@ fun CoineProChart(
                             gutterWidth = frame.leftGutter,
                             palette = palette,
                             measurer = measurer,
-                            suppressNear = if (frame.tagsOnRight) null else lastPriceY,
+                            suppress = if (frame.tagsOnRight) emptyList() else claimed,
                             ticks = ticks,
                             cache = textCache,
                         )
@@ -2981,20 +3005,21 @@ fun CoineProChart(
                     // Drawn after the ladder so the tag covers the gridline label it lands on, and
                     // before the live-price tag so that one wins where they overlap: the live price
                     // is the number a reader is watching.
-                    if (frame.tagGutterWidth > 0f) {
-                        for (level in decoration.levels) {
-                            val levelY = view.yOf(level.price)
-                            if (levelY < 0f || levelY > plotHeight) continue
-                            drawAxisTag(
-                                text = view.axisText(level.price),
-                                y = levelY,
-                                frame = frame,
-                                fill = Color(level.colour.toInt()),
-                                textColour = TAG_INK,
-                                measurer = measurer,
-                                plotHeight = plotHeight,
-                            )
-                        }
+                    //
+                    // Only the levels [placeLevelTags] found a row for: one that would have landed
+                    // on the live price, or on a level already tagged, is not drawn at all rather
+                    // than drawn over. Its rule is still on the plot with its name at the left end,
+                    // so nothing about the level is lost — what goes is a second copy of a price
+                    // the gutter is already showing within a line's height.
+                    for ((level, top) in levelTags) {
+                        drawAxisChip(frame, top, tagHeight, Color(level.colour.toInt()))
+                        val label = measurer.measure(view.axisText(level.price), axisStyle(TAG_INK))
+                        val room = frame.tagGutterWidth - label.size.width - 1f
+                        val x = frame.tagGutterX + AXIS_PADDING_DP.toPx().coerceIn(1f, max(1f, room))
+                        drawText(
+                            textLayoutResult = label,
+                            topLeft = Offset(x, top + TAG_PADDING_DP.toPx()),
+                        )
                     }
                     if (decoration.showTimeAxis) {
                         drawTimeAxis(
@@ -3043,7 +3068,7 @@ fun CoineProChart(
                             palette = palette,
                             measurer = measurer,
                             withAxis = decoration.showAxes,
-                            suppressNear = lastPriceY,
+                            suppress = claimed,
                         )
                     }
                 }
@@ -4330,6 +4355,64 @@ private fun timeAxisTicks(
  * **The live-price tag wins.** A gridline label under it is a number half-covered by another
  * number, and the covered one is the one a reader can infer from its neighbours.
  */
+/**
+ * Which level tags the gutter can actually carry this frame, and where each one sits.
+ *
+ * ### The defect
+ *
+ * Every level drew its price against the axis unconditionally, and the ladder behind them stepped
+ * around the **live price alone**. So «2,700.0» from the ladder came out under «2,701.6» from an
+ * EMA's level, and two levels within a line of each other printed on top of one another: the owner
+ * read one damaged number where the chart meant to say two — «هم‌پوشانی برچسب‌ها روی محور قیمت».
+ *
+ * ### The rule, in one order
+ *
+ * **The live price always wins.** It is the number a reader is watching and it is the one that is
+ * moving; anything that lands on it is dropped, not nudged, because a tag nudged off its own price
+ * is a tag pointing at the wrong row. Then each level in turn takes its row if the rows already
+ * taken leave space for it, and is dropped if they do not — first come, which is the order the
+ * decoration lists them in and so the order the feature module ranked them in.
+ *
+ * The tops it returns are what the ladder is then told to step around, so a gridline label is
+ * suppressed under *every* tag the gutter carries rather than under the live one alone.
+ */
+private fun DrawScope.placeLevelTags(
+    view: ChartViewport,
+    levels: List<PriceLevel>,
+    tagHeight: Float,
+    lastPriceTop: Float?,
+): List<Pair<PriceLevel, Float>> {
+    if (levels.isEmpty() || tagHeight <= 0f) return emptyList()
+    val taken = ArrayList<Float>(levels.size + 1)
+    lastPriceTop?.let { taken += it }
+    val placed = ArrayList<Pair<PriceLevel, Float>>(levels.size)
+    for (level in levels) {
+        val y = view.yOf(level.price)
+        if (y < 0f || y > view.plotHeight) continue
+        val top = (y - tagHeight / 2).coerceIn(0f, max(0f, view.plotHeight - tagHeight))
+        if (taken.any { abs(top - it) < tagHeight }) continue
+        taken += top
+        placed += level to top
+    }
+    return placed
+}
+
+/**
+ * The height of a one-line tag in the price gutter — the axis line height plus its padding.
+ *
+ * Measured from one digit through the cache, the way [lastPriceTagY] measures it, because every
+ * string these tags hold is digits and the height never changes with the number.
+ */
+private fun DrawScope.axisTagHeight(
+    measurer: TextMeasurer,
+    cache: TextWidthCache<TextLayoutResult>,
+): Float {
+    val probe = axisStyle(Color.White)
+    val line = cache.measure(TAG_HEIGHT_PROBE to probe) { measurer.measure(TAG_HEIGHT_PROBE, probe) }
+        .size.height
+    return line + TAG_PADDING_DP.toPx() * 2
+}
+
 private fun DrawScope.drawPriceAxis(
     view: ChartViewport,
     /** The gutter's left edge in plot space — past the plot on the right, negative on the left. */
@@ -4337,7 +4420,13 @@ private fun DrawScope.drawPriceAxis(
     gutterWidth: Float,
     palette: ChartPalette,
     measurer: TextMeasurer,
-    suppressNear: Float?,
+    /**
+     * The tops of the tags the gutter already carries — the live price, and every level tag that
+     * won a row. A gridline label that lands on one of them is not drawn: it would be a number
+     * half-covered by another number, and the covered one is the one a reader can infer from its
+     * neighbours. Empty where the tags are in the other gutter.
+     */
+    suppress: List<Float>,
     ticks: PriceTicks,
     cache: TextWidthCache<TextLayoutResult>,
 ) {
@@ -4382,9 +4471,7 @@ private fun DrawScope.drawPriceAxis(
         labels.forEachIndexed { index, label ->
             val top = placed[index] - label.size.height / 2
             if (top + label.size.height < 0f || top > view.plotHeight) return@forEachIndexed
-            if (suppressNear != null && abs(top - suppressNear) < label.size.height * 1.4f) {
-                return@forEachIndexed
-            }
+            if (suppress.any { abs(top - it) < label.size.height * 1.4f }) return@forEachIndexed
             drawText(
                 textLayoutResult = label,
                 topLeft = Offset(gutterX + AXIS_PADDING_DP.toPx(), top),
@@ -4688,7 +4775,8 @@ private fun DrawScope.drawPreviousClose(
     palette: ChartPalette,
     measurer: TextMeasurer,
     withAxis: Boolean,
-    suppressNear: Float?,
+    /** The rows the gutter's other tags already hold — the live price and every level tag. */
+    suppress: List<Float>,
 ) {
     val y = view.yOf(price)
     if (y < 0f || y > view.plotHeight) return
@@ -4704,7 +4792,7 @@ private fun DrawScope.drawPreviousClose(
     val label = measurer.measure(view.axisText(price), axisStyle(palette.text))
     val height = label.size.height + TAG_PADDING_DP.toPx() * 2
     val top = (y - height / 2).coerceIn(0f, max(0f, view.plotHeight - height))
-    if (suppressNear != null && abs(top - suppressNear) < height) return
+    if (suppress.any { abs(top - it) < height }) return
     drawAxisChip(frame, top, height, palette.stage)
     drawText(
         textLayoutResult = label,

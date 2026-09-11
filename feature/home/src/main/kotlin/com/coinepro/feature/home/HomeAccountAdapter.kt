@@ -85,7 +85,19 @@ private fun AccountPortfolio.changeLabel(): String {
     val amount = change.amount?.let { MarketNumberFormatter.money(it, symbol, signed = true) }
     val percent = change.percent?.let(MarketNumberFormatter::signedPercent)
 
+    // The period word is part of the sentence, not something appended to it.
+    //
+    // The pill used to be assembled as «amount · percent» with the period stuck on the end, and the
+    // end was the server's word or a literal — so an English reader's balance read
+    // «+$261.40 · +2.14% امروز»: two Latin figures and a Persian adverb in one phrase. A day is the
+    // only period this pill has ever carried, so it is one resource with both figures in it, and
+    // the word order is the resource's to decide rather than this function's.
+    val today = change.period == null || change.period.equals("day", ignoreCase = true) ||
+        change.period.equals("today", ignoreCase = true) || change.period.equals("24h", ignoreCase = true)
+
     return when {
+        amount != null && percent != null && today ->
+            stringResource(R.string.home_change_today, amount, percent)
         amount != null && percent != null ->
             stringResource(R.string.home_change_amount_and_percent, amount, percent)
         amount != null -> amount

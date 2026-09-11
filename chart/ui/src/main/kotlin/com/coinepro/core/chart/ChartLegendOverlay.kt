@@ -704,19 +704,22 @@ internal fun ChartLegendOverlay(
                         onRemove = null,
                     )
                 }
-                // Collapsed, the whole study list is the first study with the count of the rest
-                // carried on its own name — «EMA 20  +6» — so the plate is three lines however
-                // many studies are on the chart. Open, it is every row with its eye, gear and ×.
+                // Collapsed, the whole indicator list is the first indicator with the count of the
+                // rest carried at the **end** of its row — «EMA 20 · 2,699.6 ▸ +6» — so the plate
+                // is three lines however many indicators are on the chart. Open, it is every row
+                // with its eye, gear and ×.
+                //
+                // The count used to be appended to the *name*, which read «EMA 20 +1 2,699.6»:
+                // «قالب گیج‌کننده است — «+N» بین نام و مقدار نشسته». A name, then a separator, then
+                // the reading, then what is not being shown — in that order, because that is the
+                // order the row is read in and the count belongs to the plate, not to the EMA.
                 val printed = if (collapsed) shown.take(1) else shown
                 val hiddenCount = body.size - printed.size
                 printed.forEachIndexed { position, row ->
-                    val labelled = if (collapsed && position == 0 && hiddenCount > 0) {
-                        row.copy(label = row.label + "  +" + hiddenCount.toString())
-                    } else {
-                        row
-                    }
                     LegendRow(
-                        row = labelled,
+                        row = row,
+                        overflowChip = (OVERFLOW_MARK + "+" + hiddenCount.toString())
+                            .takeIf { collapsed && position == 0 && hiddenCount > 0 },
                         colour = row.colour?.let { Color(opaqueArgb(it)) } ?: palette.text,
                         palette = palette,
                         measurer = measurer,
@@ -786,6 +789,14 @@ private fun LegendRow(
     disclosure: (() -> Unit)? = null,
     /** Whether [disclosure] is currently showing the controls, which is what the glyph says. */
     disclosed: Boolean = false,
+    /**
+     * What the collapsed plate is not showing, drawn at the end of the row — «▸ +6».
+     *
+     * Null on every row but the first of a collapsed legend. It is a *chip*: the mark and the count
+     * are one token in the muted ink, so it reads as a control on the plate rather than as part of
+     * the indicator's reading, and it comes after the value for the same reason.
+     */
+    overflowChip: String? = null,
 ) {
     val faded = if (dimmed) colour.copy(alpha = HIDDEN_ROW_ALPHA) else colour
     // The line box, pinned to the letters rather than to the font's own metrics.
@@ -832,6 +843,18 @@ private fun LegendRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        // «NAME PARAMS · VALUE», which is how TradingView sets a legend row and what the owner
+        // asked for in run G. The dot is the muted ink and never the row's colour: it separates,
+        // it is not part of either side, and a coloured one read as a decimal point on a legend
+        // whose readings are all numbers. Only where both halves are there to separate.
+        if (row.label.isNotBlank() && row.alternatives.any { it.isNotBlank() }) {
+            Text(
+                text = LEGEND_SEPARATOR,
+                color = palette.text.copy(alpha = SEPARATOR_ALPHA),
+                fontSize = fontSize,
+                maxLines = 1,
+            )
+        }
         // The alternative is chosen **here**, against the width this text is actually handed.
         //
         // It used to be picked one level up, by measuring the label and the buttons and subtracting
@@ -870,6 +893,15 @@ private fun LegendRow(
                     textAlign = TextAlign.Right,
                 )
             }
+        }
+        // What the plate is not showing, at the end of the row rather than inside the name.
+        overflowChip?.let { chip ->
+            Text(
+                text = chip,
+                color = palette.text,
+                fontSize = fontSize,
+                maxLines = 1,
+            )
         }
         // `slots == 0` is the closed legend, and it means *no controls at all* rather than controls
         // with no width reserved for them. Reserving zero columns and then drawing three buttons
@@ -1160,6 +1192,27 @@ private const val GLYPH_REMOVE = "✕"
  */
 private const val GLYPH_EXPAND = "⋯"
 private const val GLYPH_COLLAPSE = "⌃"
+
+/**
+ * Between an indicator's name and its reading — «EMA 20 · 2,699.6».
+ *
+ * U+00B7 MIDDLE DOT, which is the separator this app already uses between two facts on one line and
+ * the one TradingView sets its legend with. Not a hyphen (a minus sign in a row of figures) and not
+ * a slash (a currency pair).
+ */
+private const val LEGEND_SEPARATOR = "·"
+
+/** The dot is a mark between two readings, not a third reading: it sits back from both. */
+private const val SEPARATOR_ALPHA = 0.55f
+
+/**
+ * What the count at the end of a collapsed row is marked with — «▸ +6».
+ *
+ * A small right-pointing triangle: the shape a reader reads as «there is more this way», and the
+ * one the owner named. It is drawn with the count as a single token so the pair cannot break across
+ * the end of the row.
+ */
+private const val OVERFLOW_MARK = "▸ "
 
 private const val HIDE_LABEL = "پنهان کردن"
 private const val SHOW_LABEL = "نمایش دادن"

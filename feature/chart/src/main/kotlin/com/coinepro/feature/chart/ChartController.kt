@@ -191,6 +191,14 @@ data class ChartUiState(
      */
     val zoom: Map<String, Int> = emptyMap(),
     /**
+     * Whether the reading-and-tools panel under the plot is open (run G).
+     *
+     * Closed on arrival and on a chart nobody has opened it on. It used to open itself every time
+     * and take about a quarter of the screen from the plot; now it is a drag away and it stays
+     * however the reader last left it, per symbol.
+     */
+    val readingsOpen: Boolean = false,
+    /**
      * The colour and the stroke the reader gave an indicator, by id — the settings sheet's Style
      * tab. Sparse, like the periods: absent means the catalogue's own. Applied where the lines are
      * read, so a study's every line that was drawn in the catalogue colour takes the new one and
@@ -1327,6 +1335,7 @@ class ChartController(
                 paneMerges = saved.paneMerges.filter { (guest, host) -> ChartCatalog.INDICATORS.any { it.id == guest } && ChartCatalog.INDICATORS.any { it.id == host } },
                 separated = saved.separatedIndicators.filter { id -> ChartCatalog.INDICATORS.any { it.id == id && it.pane == IndicatorPane.PRICE } }.toSet(),
                 zoom = saved.zoom.filterValues { it in ChartViewport.MIN_BARS_PER_VIEW..ChartViewport.MAX_BARS_PER_VIEW },
+                readingsOpen = saved.readingsOpen,
                 indicatorColours = saved.indicatorColours.filterKeys { id -> ChartCatalog.INDICATORS.any { it.id == id } },
                 indicatorWidths = saved.indicatorWidths.filterKeys { id -> ChartCatalog.INDICATORS.any { it.id == id } },
                 scaleMode = mode ?: current.scaleMode,
@@ -1431,6 +1440,7 @@ class ChartController(
             paneMerges = current.paneMerges,
             separatedIndicators = current.separated.toList(),
             zoom = current.zoom,
+            readingsOpen = current.readingsOpen,
             patterns = current.patterns.toList(),
             chainSources = current.chainSources.mapValues { (_, source) -> encodeChainSource(source) },
         )
@@ -2019,6 +2029,19 @@ class ChartController(
         val code = _state.value.interval.wire
         if (_state.value.zoom[code] == barsPerView) return
         _state.update { it.copy(zoom = it.zoom + (code to barsPerView)) }
+        persistSymbolState()
+    }
+
+    /**
+     * Open or close the reading-and-tools panel, and remember which (run G).
+     *
+     * Written without [record] for the reason [setZoom] is: folding a panel is not a step somebody
+     * undoes, and putting it in the undo stack would mean «undo» after opening the readings threw
+     * away the indicator added before them.
+     */
+    fun setReadingsOpen(open: Boolean) {
+        if (_state.value.readingsOpen == open) return
+        _state.update { it.copy(readingsOpen = open) }
         persistSymbolState()
     }
 

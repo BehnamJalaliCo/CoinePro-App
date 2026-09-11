@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.PersianDateTime
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -256,8 +256,8 @@ private fun AlertsUiState.subtitleText(): String {
         ?: 0
     return stringResource(
         R.string.alerts_centre_subtitle,
-        armed.toPersianDigits(),
-        total.toPersianDigits(),
+        armed.proseDigits(),
+        total.proseDigits(),
     )
 }
 
@@ -294,7 +294,7 @@ private fun SectionHeader(kind: AlertSectionKind, count: Int) {
             color = kind.ink(),
         )
         Text(
-            text = count.toPersianDigits(),
+            text = count.proseDigits(),
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextMuted,
         )

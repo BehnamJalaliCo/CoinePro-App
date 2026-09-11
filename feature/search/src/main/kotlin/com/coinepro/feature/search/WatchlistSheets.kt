@@ -37,7 +37,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.datastore.Watchlist
 import com.coinepro.core.datastore.WatchlistColumn
 import com.coinepro.core.datastore.WatchlistFlag
@@ -189,10 +189,14 @@ private fun ListsSheet(store: WatchlistStore, lists: List<Watchlist>, onDismiss:
                 } else {
                     // Null rather than a disabled control on the default list: see the sheet note.
                     val onDelete: (() -> Unit)? = if (list.isDefault) null else { { deleting = list } }
+                    // Read here rather than in the click: a rename box pre-filled with the stored
+                    // Persian default in an English app would have the reader deleting a word they
+                    // never typed.
+                    val shown = list.localName()
                     ListRow(
                         list = list,
                         onRename = {
-                            renamed = list.name
+                            renamed = shown
                             renaming = list.id
                         },
                         onDelete = onDelete,
@@ -204,10 +208,10 @@ private fun ListsSheet(store: WatchlistStore, lists: List<Watchlist>, onDismiss:
 
     deleting?.let { list ->
         CoineProConfirmDialog(
-            title = stringResource(R.string.watchlist_delete_title, list.name),
+            title = stringResource(R.string.watchlist_delete_title, list.localName()),
             message = stringResource(
                 R.string.watchlist_delete_message,
-                list.symbols.size.toPersianDigits(),
+                list.symbols.size.proseDigits(),
             ),
             confirmLabel = stringResource(R.string.watchlist_delete_confirm),
             dismissLabel = stringResource(R.string.watchlist_cancel),
@@ -235,7 +239,7 @@ private fun ListRow(list: Watchlist, onRename: () -> Unit, onDelete: (() -> Unit
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = list.name,
+                text = list.localName(),
                 style = MaterialTheme.typography.labelMedium,
                 color = CoineProColors.TextPrimary,
             )
@@ -243,7 +247,7 @@ private fun ListRow(list: Watchlist, onRename: () -> Unit, onDelete: (() -> Unit
                 text = if (list.isDefault) {
                     stringResource(R.string.watchlist_default_locked)
                 } else {
-                    stringResource(R.string.watchlist_symbol_count, list.symbols.size.toPersianDigits())
+                    stringResource(R.string.watchlist_symbol_count, list.symbols.size.proseDigits())
                 },
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextMuted,
@@ -459,7 +463,7 @@ private fun TransferSheet(store: WatchlistStore, listId: String, onDismiss: () -
                 Text(
                     text = stringResource(
                         R.string.watchlist_import_added,
-                        outcome.symbols.size.toPersianDigits(),
+                        outcome.symbols.size.proseDigits(),
                     ),
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.Buy,
@@ -468,7 +472,7 @@ private fun TransferSheet(store: WatchlistStore, listId: String, onDismiss: () -
                     Text(
                         text = stringResource(
                             R.string.watchlist_import_rejected,
-                            outcome.rejected.size.toPersianDigits(),
+                            outcome.rejected.size.proseDigits(),
                         ) + "\n" + outcome.rejected.take(REJECTED_SHOWN).joinToString("\n"),
                         style = MaterialTheme.typography.labelSmall,
                         color = CoineProColors.Warning,

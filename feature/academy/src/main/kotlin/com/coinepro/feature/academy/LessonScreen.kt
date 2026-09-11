@@ -1,7 +1,7 @@
 package com.coinepro.feature.academy
 
 import com.coinepro.core.common.BidiText
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -89,7 +89,7 @@ fun LessonScreen(
                     eyebrow = stringResource(R.string.academy_eyebrow),
                     subtitle = stringResource(
                         R.string.academy_reading_time,
-                        (lesson.readingTimeMinutes).toPersianDigits(),
+                        (lesson.readingTimeMinutes).proseDigits(),
                     ),
                     modifier = Modifier.padding(horizontal = 0.dp),
                 )
@@ -165,7 +165,7 @@ private fun QuizSection(
             )
             quiz.lastScore?.let {
                 Text(
-                    text = stringResource(R.string.academy_quiz_last_score, (it).toPersianDigits()),
+                    text = stringResource(R.string.academy_quiz_last_score, (it).proseDigits()),
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,
                     fontWeight = FontWeight.Normal,
@@ -195,7 +195,7 @@ private fun QuizSection(
         } else {
             CoineProCard(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = stringResource(R.string.academy_quiz_score, (result.score).toPersianDigits()),
+                    text = stringResource(R.string.academy_quiz_score, (result.score).proseDigits()),
                     style = MaterialTheme.typography.titleMedium,
                     color = if (result.passed) CoineProColors.Buy else CoineProColors.Sell,
                 )
@@ -223,7 +223,7 @@ private fun QuestionCard(
         Text(
             // The question is the server's prose, so a ratio in it — «با اهرم ۱:۱۰۰» — needs its
             // own direction or the paragraph reverses it into the opposite leverage.
-            text = (index + 1).toPersianDigits() + ". " + BidiText.isolateNumericRuns(question.question),
+            text = (index + 1).proseDigits() + ". " + BidiText.isolateNumericRuns(question.question),
             style = MaterialTheme.typography.bodyMedium,
             color = CoineProColors.TextPrimary,
         )

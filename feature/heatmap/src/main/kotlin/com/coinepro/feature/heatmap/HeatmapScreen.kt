@@ -48,7 +48,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProDarkPalette
 import com.coinepro.core.designsystem.CoineProEmptyState
@@ -212,8 +212,8 @@ fun HeatmapScreen(
                 // a market figure anybody holds against another terminal.
                 subtitle = stringResource(
                     R.string.heatmap_subtitle,
-                    drawn.size.toPersianDigits(),
-                    assets.size.toPersianDigits(),
+                    drawn.size.proseDigits(),
+                    assets.size.proseDigits(),
                 ),
                 actions = {
                     if (focus != null) {
@@ -334,8 +334,8 @@ private fun CoverageLine(
         known >= total -> return
         else -> stringResource(
             R.string.heatmap_coverage,
-            known.toPersianDigits(),
-            total.toPersianDigits(),
+            known.proseDigits(),
+            total.proseDigits(),
         )
     }
     Text(

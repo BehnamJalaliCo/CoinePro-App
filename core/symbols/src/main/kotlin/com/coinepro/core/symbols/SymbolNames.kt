@@ -213,16 +213,223 @@ internal object SymbolNames {
         "CAKE" to "پنکیک‌سواپ",
     )
 
+
+    /**
+     * The same twenty-one, in English.
+     *
+     * The app ships in two languages and until 4.71.0 a symbol had one name: a reader with the
+     * app in English read «طلا / دلار آمریکا» in the chart header. A name table is not a string
+     * resource — it is keyed by an ISO code and read outside composition, by the widget worker and
+     * by search — so the second language lives here beside the first rather than in `strings.xml`.
+     */
+    val CURRENCY_EN: Map<String, String> = mapOf(
+        "USD" to "US Dollar",
+        "EUR" to "Euro",
+        "GBP" to "British Pound",
+        "JPY" to "Japanese Yen",
+        "CHF" to "Swiss Franc",
+        "CAD" to "Canadian Dollar",
+        "AUD" to "Australian Dollar",
+        "NZD" to "New Zealand Dollar",
+        "TRY" to "Turkish Lira",
+        "SEK" to "Swedish Krona",
+        "NOK" to "Norwegian Krone",
+        "DKK" to "Danish Krone",
+        "ZAR" to "South African Rand",
+        "MXN" to "Mexican Peso",
+        "SGD" to "Singapore Dollar",
+        "HKD" to "Hong Kong Dollar",
+        "CNH" to "Chinese Yuan",
+        "CNY" to "Chinese Yuan",
+        "PLN" to "Polish Zloty",
+        "CZK" to "Czech Koruna",
+        "HUF" to "Hungarian Forint",
+    )
+
+    /** The short forms, for a list row. Same rule as the Persian pair: the country alone
+     * where the word «Dollar» would otherwise repeat down the column. */
+    val CURRENCY_SHORT_EN: Map<String, String> = mapOf(
+        "USD" to "Dollar",
+        "EUR" to "Euro",
+        "GBP" to "Pound",
+        "JPY" to "Yen",
+        "CHF" to "Franc",
+        "CAD" to "Canada",
+        "AUD" to "Australia",
+        "NZD" to "New Zealand",
+        "TRY" to "Lira",
+        "SEK" to "Krona",
+        "NOK" to "Krone",
+        "DKK" to "Krone",
+        "ZAR" to "Rand",
+        "MXN" to "Peso",
+        "SGD" to "Singapore",
+        "HKD" to "Hong Kong",
+        "CNH" to "Yuan",
+        "CNY" to "Yuan",
+        "PLN" to "Zloty",
+        "CZK" to "Koruna",
+        "HUF" to "Forint",
+    )
+
+    /** The four metals, in English. */
+    val METAL_EN: Map<String, String> = mapOf(
+        "XAU" to "Gold",
+        "XAG" to "Silver",
+        "XPT" to "Platinum",
+        "XPD" to "Palladium",
+    )
+
+    /** The indices under the names their own exchanges use. */
+    val INDEX_EN: Map<String, String> = mapOf(
+        "US30" to "Dow Jones 30",
+        "US500" to "S&P 500",
+        "US100" to "Nasdaq 100",
+        "UK100" to "FTSE 100",
+        "GER40" to "DAX 40",
+        "JPN225" to "Nikkei 225",
+        "FRA40" to "CAC 40",
+        "HK50" to "Hang Seng",
+        "AUS200" to "ASX 200",
+        "EU50" to "Euro Stoxx 50",
+    )
+
+    /** The energy contracts, in English. */
+    val ENERGY_EN: Map<String, String> = mapOf(
+        "USOIL" to "US Crude Oil (WTI)",
+        "UKOIL" to "Brent Crude Oil",
+        "NATGAS" to "Natural Gas",
+    )
+
+    /**
+     * The coins, by the name their own project uses.
+     *
+     * Not a transliteration of the Persian: «بیت‌تنسور» is Bittensor and «فچ» is the
+     * Artificial Superintelligence Alliance, and a reader in English expects the project's own
+     * spelling, down to `dogwifhat` and `yearn.finance` being lower case.
+     */
+    val CRYPTO_EN: Map<String, String> = mapOf(
+        "BTC" to "Bitcoin",
+        "ETH" to "Ethereum",
+        "USDT" to "Tether",
+        "USDC" to "USD Coin",
+        "DAI" to "Dai",
+        "BNB" to "BNB",
+        "SOL" to "Solana",
+        "XRP" to "XRP",
+        "ADA" to "Cardano",
+        "DOGE" to "Dogecoin",
+        "TRX" to "TRON",
+        "AVAX" to "Avalanche",
+        "SHIB" to "Shiba Inu",
+        "DOT" to "Polkadot",
+        "LINK" to "Chainlink",
+        "BCH" to "Bitcoin Cash",
+        "NEAR" to "NEAR Protocol",
+        "POL" to "Polygon",
+        "MATIC" to "Polygon",
+        "LTC" to "Litecoin",
+        "UNI" to "Uniswap",
+        "ICP" to "Internet Computer",
+        "ETC" to "Ethereum Classic",
+        "APT" to "Aptos",
+        "XLM" to "Stellar",
+        "RENDER" to "Render",
+        "RNDR" to "Render",
+        "ATOM" to "Cosmos",
+        "XMR" to "Monero",
+        "FIL" to "Filecoin",
+        "HBAR" to "Hedera",
+        "ARB" to "Arbitrum",
+        "VET" to "VeChain",
+        "MKR" to "Maker",
+        "INJ" to "Injective",
+        "OP" to "Optimism",
+        "IMX" to "Immutable",
+        "GRT" to "The Graph",
+        "AAVE" to "Aave",
+        "STX" to "Stacks",
+        "TAO" to "Bittensor",
+        "RUNE" to "THORChain",
+        "FTM" to "Fantom",
+        "SEI" to "Sei",
+        "THETA" to "Theta Network",
+        "FLOW" to "Flow",
+        "LDO" to "Lido DAO",
+        "TIA" to "Celestia",
+        "SUI" to "Sui",
+        "ALGO" to "Algorand",
+        "EGLD" to "MultiversX",
+        "QNT" to "Quant",
+        "GALA" to "Gala",
+        "JUP" to "Jupiter",
+        "PYTH" to "Pyth Network",
+        "ORDI" to "ORDI",
+        "WIF" to "dogwifhat",
+        "BONK" to "Bonk",
+        "PEPE" to "Pepe",
+        "FLOKI" to "Floki",
+        "AXS" to "Axie Infinity",
+        "SAND" to "The Sandbox",
+        "MANA" to "Decentraland",
+        "CHZ" to "Chiliz",
+        "EOS" to "EOS",
+        "XTZ" to "Tezos",
+        "NEO" to "Neo",
+        "KAVA" to "Kava",
+        "MINA" to "Mina",
+        "IOTA" to "IOTA",
+        "GMX" to "GMX",
+        "ENS" to "Ethereum Name Service",
+        "DYDX" to "dYdX",
+        "ONDO" to "Ondo",
+        "WLD" to "Worldcoin",
+        "ENA" to "Ethena",
+        "BLUR" to "Blur",
+        "1INCH" to "1inch",
+        "COMP" to "Compound",
+        "CRV" to "Curve DAO",
+        "SNX" to "Synthetix",
+        "SUSHI" to "SushiSwap",
+        "YFI" to "yearn.finance",
+        "ZEC" to "Zcash",
+        "DASH" to "Dash",
+        "BAT" to "Basic Attention",
+        "TON" to "Toncoin",
+        "KAS" to "Kaspa",
+        "FET" to "Artificial Superintelligence",
+        "AR" to "Arweave",
+        "CAKE" to "PancakeSwap",
+    )
+
     /**
      * A currency or metal code as the app names it, or the code itself where it has no name.
      *
      * The code is a real answer rather than a fallback: an exotic leg an MT5 broker quotes and this
      * app has never named is still better shown as «HKD» than as nothing.
      */
-    fun displayOf(code: String): String =
-        CURRENCY[code] ?: METAL[code] ?: code
+    fun displayOf(code: String, english: Boolean = false): String =
+        if (english) CURRENCY_EN[code] ?: METAL_EN[code] ?: code
+        else CURRENCY[code] ?: METAL[code] ?: code
 
     /** The same, in the short form a list row can hold. A metal's name is already short. */
-    fun shortDisplayOf(code: String): String =
-        CURRENCY_SHORT[code] ?: CURRENCY[code] ?: METAL[code] ?: code
+    fun shortDisplayOf(code: String, english: Boolean = false): String =
+        if (english) CURRENCY_SHORT_EN[code] ?: CURRENCY_EN[code] ?: METAL_EN[code] ?: code
+        else CURRENCY_SHORT[code] ?: CURRENCY[code] ?: METAL[code] ?: code
+
+    /** A coin's name in the language asked for, or null where this app has never named it. */
+    fun cryptoOf(code: String, english: Boolean = false): String? =
+        if (english) CRYPTO_EN[code] else CRYPTO[code]
+
+    /** An index's name, or null. */
+    fun indexOf(code: String, english: Boolean = false): String? =
+        if (english) INDEX_EN[code] else INDEX[code]
+
+    /** An energy contract's name, or null. */
+    fun energyOf(code: String, english: Boolean = false): String? =
+        if (english) ENERGY_EN[code] else ENERGY[code]
+
+    /** A metal's name, or null. */
+    fun metalOf(code: String, english: Boolean = false): String? =
+        if (english) METAL_EN[code] else METAL[code]
 }

@@ -63,3 +63,56 @@ fun Long.toPersianGroupedDigits(): String {
         if (character in '0'..'9') '۰' + (character - '0') else character
     }.joinToString("")
 }
+
+/**
+ * The language the *app* is in, for the code that runs where there is no composition to ask.
+ *
+ * ### Why this exists
+ *
+ * A count in prose takes Persian digits — «۴ نماد» — and the same count in English prose takes
+ * Latin ones. Until 4.71.0 every prose count in this app was Persian whatever language the screen
+ * was in, so the English watchlist read «۴ symbols»: four in Persian, the noun in English, in one
+ * phrase. A screen can ask its own configuration what language it is in (`inEnglish()` in the
+ * design system, which is what composable code uses and what a render test can override). A widget
+ * worker, a notification builder and a timeframe label cannot — they run with no activity and no
+ * composition — and this is what they read instead.
+ *
+ * It is set in `AppLanguageStore`, beside `Locale.setDefault`, on the same two paths: the activity
+ * being based on the stored language, and the reader choosing a new one. [AppLanguage.Default]
+ * until then, which is the language the app opens in.
+ */
+object AppLocale {
+    @Volatile
+    var language: AppLanguage = AppLanguage.Default
+
+    val english: Boolean get() = language == AppLanguage.ENGLISH
+}
+
+/**
+ * A prose count in the app's own language: «۴» in Persian, `4` in English.
+ *
+ * This is the one every screen should call. [Int.toPersianDigits] is the unconditional conversion
+ * underneath it and stays for the two callers that mean it literally — a Persian date, a Persian
+ * numeral written into Persian copy — but a count that sits in a sentence follows the sentence.
+ *
+ * The prohibition is unchanged and is the reason the market rule is stated separately: **a price, a
+ * quantity, a percentage or an axis figure never comes through here in either language.** Those are
+ * [MarketNumberFormatter]'s, pinned to `Locale.US`, so a figure on this screen can be compared
+ * against MetaTrader or TradingView without being read twice.
+ *
+ * @param english pass the screen's own answer where there is one — composable code has
+ *   `Int.proseDigits()` in the design system, which reads the configuration the screen is drawn
+ *   with. The default is [AppLocale], for the code that runs outside a screen.
+ */
+fun Int.proseDigits(english: Boolean = AppLocale.english): String =
+    if (english) toString() else toPersianDigits()
+
+/** A grouped prose count in the app's own language — «۵۲٬۳۴۰ عضو», `52,340 members`. */
+fun Long.proseGroupedDigits(english: Boolean = AppLocale.english): String =
+    if (english) {
+        val digits = toString().removePrefix("-")
+        val grouped = digits.reversed().chunked(3).joinToString(",").reversed()
+        if (this < 0) "−$grouped" else grouped
+    } else {
+        toPersianGroupedDigits()
+    }

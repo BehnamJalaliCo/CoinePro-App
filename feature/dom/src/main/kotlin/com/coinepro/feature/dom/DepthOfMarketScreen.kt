@@ -52,7 +52,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.PersianDateTime
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.numeric
@@ -441,7 +441,7 @@ private fun DepthSummary(book: OrderBook) {
         // The band is printed with the meter and not left implied. A bid share over twenty
         // levels and one over the hundred loaded are different claims about the market wearing
         // the same percent sign, and neither the figure nor the bar can say which it is.
-        CoineProNote(R.string.dom_imbalance_note, OrderBookGateway.IMBALANCE_LEVELS.toPersianDigits())
+        CoineProNote(R.string.dom_imbalance_note, OrderBookGateway.IMBALANCE_LEVELS.proseDigits())
     }
 }
 
@@ -1022,7 +1022,7 @@ private fun DepthFootnotes(showOrdersNote: Boolean, showStepNote: Boolean) {
             CoineProNote(R.string.dom_step_note)
         }
         if (showOrdersNote) {
-            CoineProNote(R.string.dom_orders_note, STACKED_ORDERS_THRESHOLD.toPersianDigits())
+            CoineProNote(R.string.dom_orders_note, STACKED_ORDERS_THRESHOLD.proseDigits())
         }
         CoineProNote(R.string.dom_data_note)
     }

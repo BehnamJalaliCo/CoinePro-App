@@ -2,6 +2,7 @@ package com.coinepro.feature.chart
 
 import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.marketdata.resolveCandleRequest
 
 /**

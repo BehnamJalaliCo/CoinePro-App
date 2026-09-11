@@ -32,7 +32,7 @@ import com.coinepro.core.academy.Achievements
 import com.coinepro.core.academy.GlossaryTerm
 import com.coinepro.core.academy.Leaderboard
 import com.coinepro.core.common.BidiText
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProSheetSearch
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -60,8 +60,8 @@ internal fun AchievementsBody(achievements: Achievements) {
             Text(
                 text = stringResource(
                     R.string.academy_achievements_count,
-                    (achievements.earnedCount).toPersianDigits(),
-                    (achievements.total).toPersianDigits(),
+                    (achievements.earnedCount).proseDigits(),
+                    (achievements.total).proseDigits(),
                 ),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextMuted,
@@ -130,8 +130,8 @@ internal fun LeaderboardBody(leaderboard: Leaderboard) {
                 text = leaderboard.myRank?.let {
                     stringResource(
                         R.string.academy_leaderboard_rank,
-                        (it).toPersianDigits(),
-                        (leaderboard.totalStudents).toPersianDigits(),
+                        (it).proseDigits(),
+                        (leaderboard.totalStudents).proseDigits(),
                     )
                 } ?: stringResource(R.string.academy_leaderboard_unranked),
                 style = MaterialTheme.typography.bodySmall,
@@ -158,7 +158,7 @@ internal fun LeaderboardBody(leaderboard: Leaderboard) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = (row.rank).toPersianDigits(),
+                    text = (row.rank).proseDigits(),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (row.isMe) CoineProColors.Gold else CoineProColors.TextMuted,
                     modifier = Modifier.width(28.dp),
@@ -170,7 +170,7 @@ internal fun LeaderboardBody(leaderboard: Leaderboard) {
                     modifier = Modifier.weight(1f),
                 )
                 Text(
-                    text = (row.xp).toPersianDigits(),
+                    text = (row.xp).proseDigits(),
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (row.isMe) CoineProColors.Gold else CoineProColors.TextSecondary,
                 )

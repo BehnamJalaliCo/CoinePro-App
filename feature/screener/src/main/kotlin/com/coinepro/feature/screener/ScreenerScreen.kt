@@ -45,8 +45,9 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProChip
+import com.coinepro.core.designsystem.localRowName
 import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProColors
@@ -293,7 +294,7 @@ private fun ResultCount(state: ScreenerState) {
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
-            text = stringResource(R.string.screener_count, state.matchCount.toPersianDigits()),
+            text = stringResource(R.string.screener_count, state.matchCount.proseDigits()),
             style = MaterialTheme.typography.labelMedium,
             color = CoineProColors.TextSecondary,
         )
@@ -301,8 +302,8 @@ private fun ResultCount(state: ScreenerState) {
             Text(
                 text = stringResource(
                     R.string.screener_progress,
-                    state.resolvedCount.toPersianDigits(),
-                    state.universeSize.toPersianDigits(),
+                    state.resolvedCount.proseDigits(),
+                    state.universeSize.proseDigits(),
                 ),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextMuted,
@@ -311,7 +312,7 @@ private fun ResultCount(state: ScreenerState) {
         }
         if (state.unknownCount > 0) {
             Text(
-                text = stringResource(R.string.screener_unknown, state.unknownCount.toPersianDigits()),
+                text = stringResource(R.string.screener_unknown, state.unknownCount.proseDigits()),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextMuted,
                 fontWeight = FontWeight.Normal,
@@ -464,7 +465,7 @@ private fun ScreenerTableRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = row.meta.listDescription,
+                text = row.meta.localRowName(),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextMuted,
                 fontWeight = FontWeight.Normal,

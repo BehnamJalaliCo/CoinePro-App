@@ -577,11 +577,33 @@ fun CoineProSparkline(
      */
     fill: Boolean = false,
 ) {
+    val density = LocalDensity.current.density
+    // **Nothing to draw is drawn as nothing happening, not as an empty cell** (run G).
+    //
+    // A row whose line has not arrived — a symbol this platform does not quote, a fetch that
+    // failed, a list scrolled faster than the store could answer — used to leave a hole the width
+    // of the column, so a watchlist looked half-broken while it was merely half-loaded. A flat
+    // rule in the disabled ink says «no shape for this one» in the language the column is already
+    // speaking, and it can never be mistaken for a market that did not move: it is grey, where
+    // every real line is the instrument's own colour.
+    //
+    // What it must never be is a *curve*. An invented shape under somebody's money is the one
+    // thing this component is forbidden to draw, which is also why the store drops a one-point
+    // answer rather than making a line out of it.
     if (values.size < 2) {
-        Box(modifier = modifier)
+        val absent = CoineProColors.TextDisabled
+        Canvas(modifier = modifier) {
+            val middle = size.height / 2f
+            drawLine(
+                color = absent,
+                start = Offset(0f, middle),
+                end = Offset(size.width, middle),
+                strokeWidth = widthDp * density,
+                cap = StrokeCap.Round,
+            )
+        }
         return
     }
-    val density = LocalDensity.current.density
     Canvas(modifier = modifier) {
         val low = values.min()
         val high = values.max()

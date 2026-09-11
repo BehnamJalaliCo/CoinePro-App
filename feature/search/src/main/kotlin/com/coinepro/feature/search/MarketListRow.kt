@@ -38,6 +38,7 @@ import com.coinepro.core.datastore.WatchlistColumnUnit
 import com.coinepro.core.datastore.WatchlistFlag
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.SharedKeys
+import com.coinepro.core.designsystem.localRowName
 import com.coinepro.core.designsystem.sharedElement
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.numeric
@@ -191,7 +192,7 @@ internal fun MarketListRow(
                 modifier = Modifier.sharedElement(SharedKeys.ticker(row.meta.symbol)),
             )
             Text(
-                text = row.meta.listDescription,
+                text = row.meta.localRowName(),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextMuted,
                 fontWeight = FontWeight.Normal,

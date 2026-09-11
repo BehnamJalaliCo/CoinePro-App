@@ -8,6 +8,16 @@ enum class MatchField {
     /** The Persian description, e.g. «بیت‌کوین (BTC)». */
     DESCRIPTION,
 
+    /**
+     * The English description, e.g. `Bitcoin (BTC)`.
+     *
+     * Separate from [DESCRIPTION] and not a flag on it, because a caller draws the *range* over one
+     * exact string: the two names have different letters in different places, so a row that marks a
+     * Persian hit on an English name marks the wrong letters. The field says which name the range
+     * belongs to, and a row shows the mark only when that name is the one it is drawing.
+     */
+    DESCRIPTION_EN,
+
     /** The base alone, e.g. `BTC` — which is what most people type. */
     BASE,
 
@@ -78,7 +88,7 @@ object SymbolSearch {
             )
     }
 
-    /** The best of the three texts a market can be found by, or null when none of them match. */
+    /** The best of the four texts a market can be found by, or null when none of them match. */
     fun match(meta: SymbolMeta, query: String): SymbolMatch? {
         val needle = query.trim()
         if (needle.isEmpty()) return SymbolMatch(meta, 0, MatchField.NONE, null)
@@ -87,6 +97,13 @@ object SymbolSearch {
             TextRanking.score(meta.symbol, needle)?.let { MatchField.SYMBOL to it },
             meta.base?.let { base -> TextRanking.score(base, needle)?.let { MatchField.BASE to it } },
             TextRanking.score(meta.description, needle)?.let { MatchField.DESCRIPTION to it },
+            // Both names, always, whatever language the screen is in: a catalogue is searched by
+            // what the reader knows a market as, and that is «طلا» for one reader and `Gold` for the
+            // next one on the same build. Skipped where the two names are the same string, so a
+            // market with one name scores once and keeps the plain `DESCRIPTION` field.
+            meta.descriptionEn.takeIf { it != meta.description }?.let { english ->
+                TextRanking.score(english, needle)?.let { MatchField.DESCRIPTION_EN to it }
+            },
         )
         val (field, hit) = candidates.maxByOrNull { it.second.score } ?: return null
         return SymbolMatch(

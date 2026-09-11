@@ -48,7 +48,7 @@ import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.common.parseWireInstant
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.pageAccent
@@ -177,7 +177,7 @@ fun ActivityScreen(
                                 )
                             }
                             Text(
-                                text = notificationState.alerts.size.toPersianDigits(),
+                                text = notificationState.alerts.size.proseDigits(),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = CoineProColors.Accent,
                             )
@@ -405,17 +405,17 @@ private fun ActivityHeader(
                 value = if (expectedSignals > loadedSignals) {
                     stringResource(
                         R.string.activity_signals_loaded_partial,
-                        loadedSignals.toPersianDigits(),
-                        expectedSignals.toPersianDigits(),
+                        loadedSignals.proseDigits(),
+                        expectedSignals.proseDigits(),
                     )
                 } else {
-                    loadedSignals.toPersianDigits()
+                    loadedSignals.proseDigits()
                 },
                 label = stringResource(R.string.activity_signals_loaded),
                 accent = CoineProColors.Gold,
                 modifier = Modifier.weight(1f),
             )
-            HeaderMetric(executionCount.toPersianDigits(), stringResource(R.string.activity_metric_executions), CoineProColors.Silver, Modifier.weight(1f))
+            HeaderMetric(executionCount.proseDigits(), stringResource(R.string.activity_metric_executions), CoineProColors.Silver, Modifier.weight(1f))
             HeaderMetric(stringResource(R.string.activity_server), stringResource(R.string.activity_truth_source), CoineProColors.Buy, Modifier.weight(1f))
         }
     }
@@ -790,7 +790,7 @@ private fun percentOrMissing(value: Double?): String =
 
 @Composable
 private fun denominatorLabel(value: Int): String =
-    if (value == 0) stringResource(R.string.activity_no_evidence) else stringResource(R.string.activity_sample_size, value.toPersianDigits())
+    if (value == 0) stringResource(R.string.activity_no_evidence) else stringResource(R.string.activity_sample_size, value.proseDigits())
 
 @Composable
 private fun resultLabel(value: PerformanceResultFilter): String = when (value) {

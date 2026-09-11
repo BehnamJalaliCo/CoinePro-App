@@ -55,7 +55,7 @@ import com.coinepro.core.chart.ChartReading
 import com.coinepro.core.chartevents.ChartEventNotice
 import com.coinepro.core.chartevents.reasonRes
 import com.coinepro.core.common.BidiText
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
@@ -211,7 +211,7 @@ internal fun ChartCommandBand(
             }
             ToolbarButton(
                 icon = DesignR.drawable.icon_sliders_horizontal,
-                label = stringResource(R.string.chart_band_studies),
+                label = stringResource(R.string.chart_band_indicators),
                 active = indicators > 0,
                 count = indicators,
                 onClick = { onOpen(ChartSheet.INDICATORS) },
@@ -301,7 +301,7 @@ private fun ToolbarButton(
             ) {
                 Text(
                     // A count of things, so Persian digits — see `NumberStyle`.
-                    text = count.coerceAtMost(TOOLBAR_BADGE_MAX).toPersianDigits(),
+                    text = count.coerceAtMost(TOOLBAR_BADGE_MAX).proseDigits(),
                     style = MaterialTheme.typography.labelSmall.copy(fontSize = TOOLBAR_BADGE_TEXT),
                     color = CoineProColors.onPageAccent,
                     maxLines = 1,
@@ -787,7 +787,7 @@ internal fun ChartMoreSheetBody(
         HubGrid(columns = HUB_TOOLS_COLUMNS, outlined = false) {
             HubTile(
                 icon = DesignR.drawable.icon_sliders_horizontal,
-                label = stringResource(R.string.chart_band_studies),
+                label = stringResource(R.string.chart_band_indicators),
                 onClick = { onOpen(ChartSheet.INDICATORS) },
             )
             HubTile(
@@ -1039,7 +1039,7 @@ private fun HubScope.HubTile(
                 )
                 if (count > 0) {
                     Text(
-                        text = count.toPersianDigits(),
+                        text = count.proseDigits(),
                         style = MaterialTheme.typography.labelMedium,
                         color = ink,
                     )

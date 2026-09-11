@@ -40,7 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.PersianDateTime
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.community.CommunityPost
 import com.coinepro.core.community.CommunityReactions
 import com.coinepro.core.designsystem.CoineProAvatar
@@ -218,7 +218,7 @@ internal fun CommunityPostCard(
                 // nothing to press — but at zero they say only what pressing them does.
                 CountPill(
                     label = if (post.likes > 0) {
-                        stringResource(R.string.community_likes, post.likes.toPersianDigits())
+                        stringResource(R.string.community_likes, post.likes.proseDigits())
                     } else {
                         stringResource(R.string.community_like)
                     },
@@ -227,7 +227,7 @@ internal fun CommunityPostCard(
                 )
                 CountPill(
                     label = if (post.replyCount > 0) {
-                        stringResource(R.string.community_replies, post.replyCount.toPersianDigits())
+                        stringResource(R.string.community_replies, post.replyCount.proseDigits())
                     } else {
                         stringResource(R.string.community_reply)
                     },
@@ -388,7 +388,7 @@ private fun ReactionRow(post: CommunityPost, onReact: ((String) -> Unit)?) {
                 // The count is a prose count, so Persian digits — and it is omitted entirely at
                 // zero rather than drawn as «۰», which reads as a reaction nobody left rather than
                 // as one nobody has left yet.
-                text = if (count > 0) emoji + " " + count.toPersianDigits() else emoji,
+                text = if (count > 0) emoji + " " + count.proseDigits() else emoji,
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextSecondary,
                 modifier = Modifier

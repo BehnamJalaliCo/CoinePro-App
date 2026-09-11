@@ -95,7 +95,7 @@
     <string name="profile_record_closed">Closed trades</string>
     <string name="profile_record_academy">Academy</string>
     <string name="profile_record_win_rate">Win rate %1$s</string>
-    <string name="profile_record_academy_detail">%1$s-day study streak</string>
+    <string name="profile_record_academy_detail">%1$s-day learning streak</string>
 
     <string name="profile_library_watchlists">Watchlists</string>
     <string name="profile_library_layouts">Chart layouts</string>

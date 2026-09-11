@@ -1,6 +1,6 @@
 package com.coinepro.feature.academy
 
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -212,21 +212,21 @@ private fun ProfileHeader(profile: AcademyProfile) {
                 Text(
                     text = stringResource(
                         R.string.academy_progress,
-                        (profile.completed).toPersianDigits(),
-                        (profile.totalLessons).toPersianDigits(),
+                        (profile.completed).proseDigits(),
+                        (profile.totalLessons).proseDigits(),
                     ),
                     style = MaterialTheme.typography.titleMedium,
                     color = CoineProColors.TextPrimary,
                 )
                 Text(
-                    text = (profile.xp).toPersianDigits() + " " + stringResource(R.string.academy_xp),
+                    text = (profile.xp).proseDigits() + " " + stringResource(R.string.academy_xp),
                     style = MaterialTheme.typography.bodySmall,
                     color = CoineProColors.TextMuted,
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "🔥 " + (profile.streak.current).toPersianDigits(),
+                    text = "🔥 " + (profile.streak.current).proseDigits(),
                     style = MaterialTheme.typography.titleMedium,
                     color = if (profile.streak.todayDone) CoineProColors.Gold else CoineProColors.TextSecondary,
                 )
@@ -293,8 +293,8 @@ private fun LevelHeader(level: AcademyLevel) {
             // the progress card at the top of this screen already uses.
             text = stringResource(
                 R.string.academy_level_progress,
-                level.completed.toPersianDigits(),
-                level.lessons.size.toPersianDigits(),
+                level.completed.proseDigits(),
+                level.lessons.size.proseDigits(),
             ),
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextMuted,
@@ -373,7 +373,7 @@ private fun Disc(lesson: LessonSummary) {
             text = when {
                 done -> "✓"
                 lesson.locked -> "🔒"
-                else -> (lesson.order).toPersianDigits()
+                else -> (lesson.order).proseDigits()
             },
             style = MaterialTheme.typography.labelMedium,
             color = when {

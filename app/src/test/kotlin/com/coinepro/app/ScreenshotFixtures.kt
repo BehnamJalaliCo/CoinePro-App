@@ -112,6 +112,7 @@ import com.coinepro.feature.heatmap.HeatmapBarSource
 import com.coinepro.feature.home.HomeBriefing
 import com.coinepro.feature.home.HomeHolding
 import com.coinepro.feature.home.HomePortfolio
+import com.coinepro.feature.home.toHomePortfolio
 import com.coinepro.feature.home.HomeSignal
 import java.time.Instant
 
@@ -195,6 +196,60 @@ object ScreenshotFixtures {
             ),
         ),
     )
+
+    /**
+     * The same portfolio, built the way the app builds it: through the real adapter (run G).
+     *
+     * [homePortfolio] above is a hand-written `HomePortfolio` and its change label is a *literal* —
+     * «… · … امروز» — which is how an untranslated period word survived into the English frames the
+     * owner reviewed. A fixture that spells the answer cannot photograph the defect or its fix.
+     *
+     * This one hands the adapter what the server sends (`AccountPortfolio`) and lets
+     * `toHomePortfolio()` compose the phrase from `home_change_today` in whichever language the
+     * frame is being drawn in. The equity curve is carried over from the literal fixture, because
+     * that comes from closed trades rather than from this payload.
+     */
+    @androidx.compose.runtime.Composable
+    fun homePortfolioFromAccount(): HomePortfolio {
+        val state = com.coinepro.core.account.PortfolioState.Ready(
+            com.coinepro.core.account.AccountPortfolio(
+                total = com.coinepro.core.account.Money(12_480.35, "USD"),
+                change = com.coinepro.core.account.PortfolioChange(
+                    amount = 261.40,
+                    percent = 2.14,
+                    period = "day",
+                ),
+                holdings = listOf(
+                    com.coinepro.core.account.AccountHolding(
+                        symbol = "BTCUSDT",
+                        displayName = "Bitcoin",
+                        quantity = 0.1482,
+                        quantityUnit = "BTC",
+                        value = 9_516.00,
+                        changePercent = 1.82,
+                    ),
+                    com.coinepro.core.account.AccountHolding(
+                        symbol = "ETHUSDT",
+                        displayName = "Ethereum",
+                        quantity = 0.7400,
+                        quantityUnit = "ETH",
+                        value = 2_329.67,
+                        changePercent = -0.64,
+                    ),
+                    com.coinepro.core.account.AccountHolding(
+                        symbol = "SOLUSDT",
+                        displayName = "Solana",
+                        quantity = 3.6800,
+                        quantityUnit = "SOL",
+                        value = 634.58,
+                        changePercent = 4.10,
+                    ),
+                ),
+            ),
+        )
+        val adapted = state.toHomePortfolio() ?: homePortfolio
+        return adapted.copy(equity = homePortfolio.equity)
+    }
 
     /** Crypto only, to match the crypto renders — a forex setup here would be the mixed screen. */
     val homeSignals: List<HomeSignal> = listOf(
@@ -1011,12 +1066,27 @@ object ScreenshotFixtures {
                 limit: Int,
                 before: Long?,
             ): com.coinepro.core.marketdata.CandlePage {
-                // Seeded off the ticker, so two rows never draw the same line.
-                val seed = symbol.sumOf { it.code }
+                // A walk, not a wave (run G).
+                //
+                // This used to be the sum of two sines, which is a *smooth* function: forty-eight
+                // samples of it draw four or five clean arcs, and that is what the owner read off
+                // the shipped watchlist as «منحنی‌های صاف … شبیه دیتای ساختگی». Nothing was
+                // smoothing the line — the data itself had no noise in it, so a proof frame could
+                // not show whether the renderer draws a real day or rounds one off.
+                //
+                // A seeded random walk with a small drift has the shape a market has: every close
+                // is the last one plus a shock, so consecutive points disagree and the polyline's
+                // vertices are visible. The generator is a plain LCG keyed off the ticker, so the
+                // line is different per symbol and identical on every run — a golden frame cannot
+                // be recorded against anything else.
+                var state = symbol.fold(0x2F6E2B1L) { acc, ch -> acc * 31 + ch.code }
+                fun shock(): Double {
+                    state = (state * 6_364_136_223_846_793_005L + 1_442_695_040_888_963_407L)
+                    return ((state ushr 11).toDouble() / (1L shl 53).toDouble()) - 0.5
+                }
+                var close = 100.0
                 val bars = (0 until limit).map { index ->
-                    val wave = kotlin.math.sin((index + seed) / 5.0) * 3 +
-                        kotlin.math.sin((index + seed) / 17.0) * 6 + index * 0.05
-                    val close = 100.0 + wave
+                    close += shock() * 1.6 + 0.03
                     com.coinepro.core.marketdata.OhlcBar(
                         t = 1_700_000_000L + index * 3_600L,
                         o = close - 0.2,

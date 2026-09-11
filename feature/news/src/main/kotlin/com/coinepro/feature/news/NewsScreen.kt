@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.announcements.AnnouncementsController
 import com.coinepro.core.common.PersianDateTime
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProMotionSpecs
@@ -320,7 +320,7 @@ fun NewsScreen(
                 subtitle = if (savedOnly) {
                     // A prose count, so Persian digits — the app's rule, and the opposite of what the
                     // figures on a market row take.
-                    stringResource(R.string.news_saved_count, savedArticles.size.toPersianDigits())
+                    stringResource(R.string.news_saved_count, savedArticles.size.proseDigits())
                 } else {
                     stringResource(R.string.news_subtitle)
                 },
@@ -437,7 +437,7 @@ fun NewsScreen(
                         icon = CoineProIcons.News,
                         message = stringResource(
                             R.string.news_none_readable,
-                            (state.newsSource?.received ?: 0).toPersianDigits(),
+                            (state.newsSource?.received ?: 0).proseDigits(),
                         ),
                         hint = stringResource(R.string.news_none_readable_hint),
                         action = stringResource(R.string.news_refresh),
@@ -697,8 +697,8 @@ private fun FreshnessStrip(
         // bigger fact about this feed than the age of the half that arrived.
         kept != null && received != null -> stringResource(
             R.string.news_partly_readable,
-            kept.toPersianDigits(),
-            received.toPersianDigits(),
+            kept.proseDigits(),
+            received.proseDigits(),
         )
         newest != null -> stringResource(R.string.news_newest, PersianDateTime.moment(newest))
         else -> stringResource(R.string.news_timestamp_note)

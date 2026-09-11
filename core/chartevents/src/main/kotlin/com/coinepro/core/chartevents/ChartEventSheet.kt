@@ -25,7 +25,7 @@ import com.coinepro.core.chart.importanceColour
 import com.coinepro.core.chart.EventMark
 import com.coinepro.core.chart.Importance
 import com.coinepro.core.common.PersianDateTime
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProSheet
@@ -66,7 +66,7 @@ fun ChartEventSheet(
         title = stringResource(R.string.chart_events_sheet_title),
         subtitle = if (mark.isCluster) {
             // A prose count, so Persian digits — «۱۰ رویداد», never «10 رویداد».
-            stringResource(R.string.chart_events_sheet_many, mark.events.size.toPersianDigits())
+            stringResource(R.string.chart_events_sheet_many, mark.events.size.proseDigits())
         } else {
             stringResource(R.string.chart_events_sheet_one)
         },

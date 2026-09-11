@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.chart.ToolRail
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.datastore.DrawingTemplate
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -304,7 +304,7 @@ internal fun ChartToolColumn(
                 // Persian digits: a tool count is prose, not a market figure.
                 text = stringResource(
                     R.string.chart_tools_column_count,
-                    DrawingTools.ALL.size.toPersianDigits(),
+                    DrawingTools.ALL.size.proseDigits(),
                 ),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextMuted,

@@ -35,7 +35,7 @@ import com.coinepro.core.announcements.AnnouncementsState
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.ErrorKind
 import com.coinepro.core.common.PersianDateTime
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProEmptyState
@@ -120,7 +120,7 @@ fun AnnouncementsScreen(
             } else {
                 // A prose count, so Persian digits — the app's rule, and the opposite of what a
                 // price on a market row takes.
-                stringResource(R.string.announcements_count, state.announcements.size.toPersianDigits())
+                stringResource(R.string.announcements_count, state.announcements.size.proseDigits())
             },
             modifier = Modifier.padding(horizontal = 0.dp),
             actions = {

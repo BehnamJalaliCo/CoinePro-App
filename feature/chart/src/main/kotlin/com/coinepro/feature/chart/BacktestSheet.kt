@@ -64,6 +64,7 @@ import com.coinepro.core.chart.CandleSeries
 import com.coinepro.core.chart.Trade as EngineTrade
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProNote
@@ -363,7 +364,7 @@ private fun ReplaySessionCard(report: ReplayReport) {
                 MutedNote(
                     stringResource(
                         R.string.replay_report_open_note,
-                        report.openPositions.toPersianDigits(),
+                        report.openPositions.proseDigits(),
                     ),
                 )
             }
@@ -991,8 +992,8 @@ private fun SampleWarning(trades: Int, guarded: Boolean = false) {
         text = if (guarded) {
             stringResource(
                 R.string.replay_report_sample,
-                trades.toPersianDigits(),
-                CONFIDENT_TRADES.toPersianDigits(),
+                trades.proseDigits(),
+                CONFIDENT_TRADES.proseDigits(),
             )
         } else {
             "فقط ${trades.toPersianDigits()} معامله بسته شد. زیر ${CONFIDENT_TRADES.toPersianDigits()} معامله، این عددها حکایت‌اند نه نتیجه."

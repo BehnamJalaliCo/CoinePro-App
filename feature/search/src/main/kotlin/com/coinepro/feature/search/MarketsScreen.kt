@@ -47,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.CoineProSkeletonRows
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
@@ -434,6 +435,7 @@ fun MarketsScreen(
                     // The same source the row behind the sheet drew its pill from.
                     changePercent = tickerState.tickerFor(row)?.changePercent24h
                         ?: row.quote?.changePercent,
+                    english = inEnglish(),
                 ),
                 onDismiss = { preview = null },
                 onOpenChart = {

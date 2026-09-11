@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.PersianDateTime
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProAgentOrb
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProAssetToken
@@ -511,7 +511,7 @@ private fun BalanceBlock(
                 Text(
                     text = stringResource(
                         R.string.home_holdings_count,
-                        portfolio.holdings.size.toPersianDigits(),
+                        portfolio.holdings.size.proseDigits(),
                     ),
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextSecondary,
@@ -623,7 +623,7 @@ private fun MarketCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = stringResource(R.string.home_market_more, more.toPersianDigits()),
+                    text = stringResource(R.string.home_market_more, more.proseDigits()),
                     style = MaterialTheme.typography.labelMedium,
                     color = CoineProColors.TextSecondary,
                 )

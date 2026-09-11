@@ -49,7 +49,7 @@ import com.coinepro.core.aisignal.AiTradeStyle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.foldDigitsToLatin
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProNote
@@ -428,8 +428,8 @@ private fun AiHeader(quota: AiSignalQuota?) {
                 quota.exhausted -> stringResource(R.string.ai_quota_empty)
                 else -> stringResource(
                     R.string.ai_quota,
-                    quota.remaining.toPersianDigits(),
-                    quota.limit.toPersianDigits(),
+                    quota.remaining.proseDigits(),
+                    quota.limit.proseDigits(),
                 )
             },
             style = MaterialTheme.typography.bodySmall,

@@ -31,7 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.BidiText
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -188,7 +188,7 @@ fun MenuScreen(
                             // it is not a figure anybody compares against an exchange.
                             value = watchlistCount
                                 .takeIf { item.entry.id == "watchlist" && it > 0 }
-                                ?.toPersianDigits(),
+                                ?.proseDigits(),
                             onClick = {
                                 // A locked row leads to the one thing that would unlock it. Where
                                 // there is no sign-in to offer, it does nothing rather than

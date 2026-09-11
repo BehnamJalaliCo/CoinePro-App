@@ -55,7 +55,7 @@ import com.coinepro.core.chart.SignalOverlay
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.JalaliDate
 import com.coinepro.core.common.foldDigitsToLatin
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProNote
@@ -129,7 +129,7 @@ internal fun ReplayBar(
                 // Which bar of how many. The count is a prose figure, so Persian numerals, and it
                 // is isolated as one run so the slash does not migrate across the pair in RTL.
                 text = BidiText.isolateLtr(
-                    "${(state.cursor + 1).toPersianDigits()} / ${state.bars.size.toPersianDigits()}",
+                    "${(state.cursor + 1).proseDigits()} / ${state.bars.size.proseDigits()}",
                 ),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextMuted,
@@ -535,8 +535,8 @@ private fun ReplayLedgerPanel(state: ReplayState, onSetupOverlay: (SignalOverlay
                         stringResource(R.string.replay_wins),
                         stringResource(
                             R.string.replay_wins_of,
-                            summary.winningTrades.toPersianDigits(),
-                            summary.totalTrades.toPersianDigits(),
+                            summary.winningTrades.proseDigits(),
+                            summary.totalTrades.proseDigits(),
                         ),
                     )
                 }

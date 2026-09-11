@@ -15,6 +15,53 @@ it is for.
 
 ---
 
+## [4.71.0] — 2026-09-11 — a market has two names
+
+Run G: the leaks eighteen screenshots of the English app turned up, and the rest of run F's list.
+
+### Fixed
+- **A symbol is named in the language of the screen.** Its name is keyed by an ISO code rather
+  than by a resource id, so it was the one part of the interface `strings.xml` could not reach:
+  an English reader opened the chart on «طلا / دلار آمریکا» and a watchlist of «بیت‌کوین/تتر».
+  `SymbolNames` now carries an English table beside each Persian one — 129 keys, key for key —
+  and every header, row, wheel, search result and notification asks for the one it is drawn in.
+  The catalogue is searched by **both**, so typing «طلا» in the English app still finds gold.
+- **Prose counts follow the screen, not a fixed table.** The English watchlist said «۴ symbols»:
+  four in Persian, the noun in English, in one phrase. Every prose count now goes through
+  `proseDigits`, which reads the composition's own language — and off composition, the app's
+  stored one. Market figures are untouched and stay Latin in both languages, as they must.
+- **The change pill is one translated sentence.** `home_change_today` carries the amount, the
+  percentage and the period word together, instead of «+$261.40 · +2.14%» with «امروز» appended
+  in code.
+- **The base watchlist is named in the reader's language.** Its stored name stays exactly as it
+  is — it is user data from the first launch — and `watchlist_default_name` stands in for it
+  until somebody renames the list.
+- **Nothing on the price axis prints over anything else.** The ladder used to step around the
+  live price alone, so a gridline label came out under an indicator's tag. Every tag's row is now
+  assigned before the ladder is drawn: the live price wins every collision, each level takes a
+  row only if one is free, and the day's reference is refused a row the others hold.
+- **A row with no line draws a flat grey rule** rather than a hole the width of the column — and
+  never an invented curve.
+
+### Changed
+- **The legend reads `NAME PARAMS · VALUE`**, with what it is not showing as a chip at the end —
+  «EMA 20 · 2,699.6 ▸ +9». The count used to sit between the name and the value.
+- **The reading-and-tools panel opens on a drag and stays where it is left.** It opened itself on
+  every arrival and took about a quarter of the chart screen. It is now closed until asked for,
+  remembered per symbol (`SymbolChartState` field 23), and the handle takes a pull as well as a tap.
+- **An instrument's mark in a list is 32 dp**, which is where two flags stay two flags. The dense
+  watchlist table keeps its 28 dp one: that row has four figure columns to fit on a phone.
+- **«study» is a word this repository no longer contains** — «indicator» / «اندیکاتور» in both
+  languages, the `chart_band_studies` key renamed with it, and both words added to the lint.
+
+### Added
+- `RunGProofTest` — thirteen assertions over the frames in `docs/qa/screenshots/4.71/`, among them
+  a scan of every string a symbol header draws for a code point in U+1F000–U+1FAFF.
+- `ChartEdgeMarginTest` measures the resting right margin at a tenth of the plot rather than
+  trusting the constant.
+
+---
+
 ## [4.70.0] — 2026-09-11 — the chart in pixels, and the explaining stops
 
 Run F of the owner's plan: the twelve things his first look at the shipped frames turned up.

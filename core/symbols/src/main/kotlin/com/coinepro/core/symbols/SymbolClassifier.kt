@@ -37,6 +37,7 @@ object SymbolClassifier {
             base = null,
             quote = null,
             description = clean,
+            descriptionEn = clean,
             popular = popular,
         )
     }
@@ -68,6 +69,7 @@ object SymbolClassifier {
         val base = SymbolNames.METAL.keys.firstOrNull { canonical.startsWith(it) } ?: return null
         val quote = canonical.drop(base.length).take(3).ifEmpty { "USD" }
         val quoteName = SymbolNames.CURRENCY[quote]
+        val quoteNameEn = SymbolNames.CURRENCY_EN[quote]
         return SymbolMeta(
             symbol = clean,
             canonical = canonical,
@@ -75,6 +77,7 @@ object SymbolClassifier {
             base = base,
             quote = quote,
             description = SymbolNames.METAL.getValue(base) + if (quoteName != null) " / $quoteName" else "",
+            descriptionEn = SymbolNames.METAL_EN.getValue(base) + if (quoteNameEn != null) " / $quoteNameEn" else "",
             popular = popular,
         )
     }
@@ -88,6 +91,7 @@ object SymbolClassifier {
             base = null,
             quote = null,
             description = name,
+            descriptionEn = SymbolNames.ENERGY_EN[canonical] ?: name,
             popular = popular,
         )
     }
@@ -101,6 +105,7 @@ object SymbolClassifier {
             base = null,
             quote = null,
             description = name,
+            descriptionEn = SymbolNames.INDEX_EN[canonical] ?: name,
             popular = popular,
         )
     }
@@ -118,6 +123,7 @@ object SymbolClassifier {
             base = base,
             quote = quote,
             description = "$baseName / $quoteName",
+            descriptionEn = (SymbolNames.CURRENCY_EN[base] ?: base) + " / " + (SymbolNames.CURRENCY_EN[quote] ?: quote),
             popular = popular,
         )
     }
@@ -141,6 +147,7 @@ object SymbolClassifier {
         // showing both must say so — but ranks and reads as the asset it wraps.
         val asset = SymbolAliases.canonicalBase(base)
         val name = SymbolNames.CRYPTO[asset]
+        val nameEn = SymbolNames.CRYPTO_EN[asset]
         return SymbolMeta(
             symbol = clean,
             canonical = asset + quote,
@@ -148,6 +155,7 @@ object SymbolClassifier {
             base = base,
             quote = quote,
             description = if (name != null) "$name ($base)" else base,
+            descriptionEn = if (nameEn != null) "$nameEn ($base)" else base,
             popular = popular,
         )
     }

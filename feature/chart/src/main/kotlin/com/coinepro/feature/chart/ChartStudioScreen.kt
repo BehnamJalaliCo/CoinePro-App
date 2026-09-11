@@ -66,6 +66,7 @@ import com.coinepro.core.chart.Replay
 import com.coinepro.core.chart.ToolRail
 import com.coinepro.core.backtest.Backtest
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProColors

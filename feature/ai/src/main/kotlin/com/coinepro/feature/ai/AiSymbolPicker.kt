@@ -27,9 +27,10 @@ import androidx.compose.ui.unit.dp
 import com.coinepro.core.aisignal.AiSymbolOrigin
 import com.coinepro.core.aisignal.AiSymbolUniverse
 import com.coinepro.core.common.BidiText
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.localRowName
 import com.coinepro.core.designsystem.pageAccent
 import com.coinepro.core.designsystem.pageAccentInk
 import com.coinepro.core.designsystem.CoineProSheet
@@ -116,7 +117,7 @@ internal fun AiSymbolPickerSheet(
                     AiSymbolRow(
                         symbol = match.meta.symbol,
                         title = match.meta.pretty,
-                        description = match.meta.listDescription,
+                        description = match.meta.localRowName(),
                         selected = match.meta.symbol == selected,
                         onClick = { onSelect(match.meta.symbol) },
                     )
@@ -170,7 +171,7 @@ private fun AiSymbolRow(
 @Composable
 internal fun AiSymbolUniverse.originLine(): String {
     if (loading && markets.isEmpty()) return stringResource(R.string.ai_symbol_loading)
-    val count = size.toPersianDigits()
+    val count = size.proseDigits()
     return when (origin) {
         AiSymbolOrigin.SERVER -> stringResource(R.string.ai_symbol_source_server, count)
         AiSymbolOrigin.CATALOGUE -> stringResource(R.string.ai_symbol_source_catalogue, count)

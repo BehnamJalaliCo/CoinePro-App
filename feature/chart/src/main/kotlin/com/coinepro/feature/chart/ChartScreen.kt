@@ -19,6 +19,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +31,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import com.coinepro.core.designsystem.CoineProFold
+import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.CoineProSkeleton
 import com.coinepro.core.designsystem.coineProFold
 import com.coinepro.core.designsystem.CoineProTeachingStrip
@@ -153,6 +157,7 @@ import com.coinepro.core.chartevents.ChartEventState
 import com.coinepro.core.chartevents.SERVED_EVENT_KINDS
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.datastore.ChartColourTemplate
 import com.coinepro.core.datastore.ChartLayout
 import com.coinepro.core.datastore.ChartEventPrefsStore
@@ -927,7 +932,7 @@ fun ChartScreen(
                     type = state.chartType,
                     // The legend's first line, as TradingView's phone sets it: the mark and the
                     // instrument's name — «Bitcoin / TetherUS» — not the ticker.
-                    seriesLabel = SymbolClassifier.classify(state.symbol).description,
+                    seriesLabel = SymbolClassifier.classify(state.symbol).description(inEnglish()),
                     legendLogo = state.symbol,
                     decoration = ChartDecoration(
                         overlays = state.overlays,
@@ -1585,7 +1590,10 @@ fun ChartScreen(
         // a reader who came to look at candles never spends a point of glass on them. On a large
         // window the question does not arise — they are a column beside the plot, always open.
         if (!columns.hasReadings) {
-            ChartReadingsDisclosure(hasSetup = state.setup != null) {
+            ChartReadingsDisclosure(
+                open = state.readingsOpen,
+                onOpenChange = controller::setReadingsOpen,
+            ) {
                 ChartUnderline(
                     state = state,
                     source = controller.sourceName,
@@ -1684,7 +1692,7 @@ fun ChartScreen(
             title = stringResource(R.string.chart_tools_column_title),
             subtitle = stringResource(
                 R.string.chart_tools_column_count,
-                DrawingTools.ALL.size.toPersianDigits(),
+                DrawingTools.ALL.size.proseDigits(),
             ),
             onDismiss = { sheet = null },
         ) {
@@ -1961,7 +1969,7 @@ fun ChartScreen(
             subtitle = stringResource(
                 R.string.chart_events_subtitle,
                 // A prose count, so Persian digits — unlike every figure on the chart above.
-                eventState.visibility.kinds.count { it in SERVED_EVENT_KINDS }.toPersianDigits(),
+                eventState.visibility.kinds.count { it in SERVED_EVENT_KINDS }.proseDigits(),
             ),
             onDismiss = { sheet = null },
         ) {
@@ -3708,34 +3716,65 @@ private val ComparisonRefusal.persianMessage: String
  *
  * The plot needed the glass and these blocks were what it was spending it on — but none of them is
  * wrong, and two of them are the reason somebody stays on the page after they have looked at the
- * candles. So they are still here, one tap down, with the tap costing a single 44-point row.
+ * candles. So they are still here, one drag down, with the handle costing a single 44-point row.
  *
- * ### Why it opens itself when there is a setup on the chart
+ * ### Closed on arrival, and remembered per symbol (run G)
  *
- * A setup is the one thing in here that is *news*. A reader with an open position drawn on their
- * chart has a reason to see its numbers without hunting for them, and a fold that hid a live
- * position behind a chevron would be hiding the very thing the page is about. Everything else —
- * the trend reading, the studio row — is reference, and reference waits to be asked for.
+ * It opened itself on every visit and took about a quarter of the chart screen: «پنل خوانش بازار و
+ * ابزارها به‌صورت پیش‌فرض باز و ~۲۵٪ صفحه‌ی چارت را می‌گیرد». The page is the plot, so the plot gets
+ * the glass until somebody asks otherwise — and when they do ask, the answer is kept. [open] is the
+ * controller's, stored against the symbol, so a reader who drags the readings open on gold finds
+ * them open on gold tomorrow and finds the index at full height.
  *
- * The state is remembered for the composition rather than persisted. A reader who opens it, scrolls
- * and comes back finds it as they left it; a reader who returns tomorrow gets the plot back at full
- * height, which is the state that is right nine visits out of ten.
+ * ### Why a drag and not only a tap
+ *
+ * Because the panel is a *height*, and a height is grabbed rather than pressed — the same gesture
+ * that opens a sheet anywhere else in the system. The tap is kept beside it: the row is a 44-point
+ * target either way, and a reader who taps a chevron has done nothing wrong. The threshold is a
+ * fifth of a row's height so a deliberate pull opens it and a thumb sliding down the page does not.
  */
 @Composable
-private fun ChartReadingsDisclosure(hasSetup: Boolean, content: @Composable () -> Unit) {
-    // Open, always, on arrival — item 5 of the owner's list. The fold stays so a reader who wants
-    // the plot at full height can still have it, but the readings are what this page is for and a
-    // panel that has to be discovered behind a chevron was reported as a panel that was not there.
-    var open by rememberSaveable(hasSetup) { mutableStateOf(true) }
+private fun ChartReadingsDisclosure(
+    open: Boolean,
+    onOpenChange: (Boolean) -> Unit,
+    content: @Composable () -> Unit,
+) {
     val haptics = rememberCoineProHaptics()
+    // The drag's running total, reset at the end of every gesture. A vertical drag that passes the
+    // threshold flips the panel once and then ignores the rest of the gesture, so a long pull opens
+    // the panel rather than opening and closing it a dozen times on the way down.
+    var dragged by remember { mutableFloatStateOf(0f) }
+    var settled by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxWidth()) {
         HorizontalDivider(color = CoineProColors.Border)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .draggable(
+                    orientation = Orientation.Vertical,
+                    state = rememberDraggableState { delta ->
+                        if (settled) return@rememberDraggableState
+                        dragged += delta
+                        // Down opens, up closes — the direction the panel itself moves.
+                        val wanted = when {
+                            dragged >= READINGS_DRAG_THRESHOLD -> true
+                            dragged <= -READINGS_DRAG_THRESHOLD -> false
+                            else -> return@rememberDraggableState
+                        }
+                        settled = true
+                        if (wanted != open) {
+                            haptics.select()
+                            onOpenChange(wanted)
+                        }
+                    },
+                    onDragStopped = {
+                        dragged = 0f
+                        settled = false
+                    },
+                )
                 .clickable {
                     haptics.select()
-                    open = !open
+                    onOpenChange(!open)
                 }
                 .padding(
                     horizontal = CoineProSpacing.Gutter,
@@ -3763,6 +3802,15 @@ private fun ChartReadingsDisclosure(hasSetup: Boolean, content: @Composable () -
         }
     }
 }
+
+/**
+ * How far the readings handle has to be pulled before the panel flips, in pixels.
+ *
+ * A fifth of the 44-point row it sits in, at the three-times density this is read at: far enough
+ * that a thumb travelling down the page past the handle does not open it, short enough that a
+ * deliberate pull opens it before the finger has left the row.
+ */
+private const val READINGS_DRAG_THRESHOLD = 26f
 
 @Composable
 private fun ChartUnderline(

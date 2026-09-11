@@ -152,4 +152,6 @@
     <string name="feature_notifications_body">هر دسته جدا، با ساعت سکوت</string>
     <string name="feature_profile_body">پوسته، زبان، رنگ بازار، قفل اپ و حساب</string>
     <string name="feature_script_body">اندیکاتور خودتان را بنویسید و ببینید</string>
+
+    <string name="watchlist_default_name">دیده‌بان</string>
 </resources>

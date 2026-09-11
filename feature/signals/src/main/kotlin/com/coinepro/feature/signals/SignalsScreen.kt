@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -239,7 +239,7 @@ fun SignalsScreen(
                                 Text(
                                     text = stringResource(
                                         R.string.signals_not_shown,
-                                        state.notShown.toPersianDigits(),
+                                        state.notShown.proseDigits(),
                                     ),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = CoineProColors.TextMuted,
@@ -398,7 +398,7 @@ private fun LevelFigure(labelRes: Int, value: Double?, symbol: String, colour: a
 /** «۴ سیگنال» — a count in prose, so Persian digits. */
 @Composable
 private fun pluralCount(count: Int): String =
-    stringResource(R.string.signals_count, count.toPersianDigits())
+    stringResource(R.string.signals_count, count.proseDigits())
 
 /**
  * Where an empty, failed or loading list puts its one piece of content.

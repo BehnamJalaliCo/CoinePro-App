@@ -54,7 +54,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.coinepro.core.common.BidiText
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProMotionSpecs
@@ -324,8 +324,8 @@ private fun CurrentCell(symbol: String, position: Int, total: Int) {
             Text(
                 text = stringResource(
                     R.string.chart_wheel_position,
-                    position.toPersianDigits(),
-                    total.toPersianDigits(),
+                    position.proseDigits(),
+                    total.proseDigits(),
                 ),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextDisabled,
@@ -412,7 +412,7 @@ internal fun SymbolScrollWheel(
     val stepPixels = with(LocalDensity.current) { WHEEL_SCROLL_ROW.toPx() }
     // Read in composition, not inside the semantics lambda: `stringResource` is a composable and
     // the semantics block is not one.
-    val wheelLabel = stringResource(R.string.chart_wheel_scroll, current, ring.total.toPersianDigits())
+    val wheelLabel = stringResource(R.string.chart_wheel_scroll, current, ring.total.proseDigits())
 
     // **The wheel moves with the finger, and it did not before.**
     //

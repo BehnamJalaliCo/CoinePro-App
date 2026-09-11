@@ -41,7 +41,7 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.annotation.StringRes
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.R as DesignR
@@ -202,7 +202,7 @@ private fun ToolkitHeader(expanded: ToolId?, onQuickOpen: (ToolId) -> Unit) {
             style = MaterialTheme.typography.bodyMedium,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricPill(8.toPersianDigits(), stringResource(R.string.tools_f_calculators), CoineProColors.Gold, Modifier.weight(1f))
+            MetricPill(8.proseDigits(), stringResource(R.string.tools_f_calculators), CoineProColors.Gold, Modifier.weight(1f))
             // «هیچ», not «۰». The Persian zero is a small circle, and one of them alone at tile
             // size reads as a status dot rather than as a number — the tile said nothing where it
             // was meant to say the strongest thing on the screen: no order ever leaves here. It is

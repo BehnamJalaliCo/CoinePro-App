@@ -143,4 +143,14 @@
     <string name="feature_notifications_body">Per category, with quiet hours</string>
     <string name="feature_profile_body">Theme, language, colours, app lock, account</string>
     <string name="feature_script_body">Write an indicator, see it charted</string>
+
+    <!--
+      What the list that always exists is called on screen.
+
+      Its name is stored user data from the first launch — the reader can rename it — and what is
+      stored is a Persian word, so the English watchlist was headed «دیده‌بان». The stored name is
+      left exactly as it is; this is the word drawn in its place while it is still the untouched
+      default, and the moment the reader renames the list their own name is what shows.
+    -->
+    <string name="watchlist_default_name">Watchlist</string>
 </resources>

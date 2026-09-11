@@ -7,7 +7,7 @@ import com.coinepro.core.account.KycState
 import com.coinepro.core.account.KycStatus
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.PersianDateTime
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.membership.MembershipJourney
 import com.coinepro.core.membership.MembershipStatus
 import java.text.DecimalFormat
@@ -98,7 +98,7 @@ fun verificationFact(
         }
         KycState.APPROVED -> status.level
             .takeIf { it > 0 }
-            ?.let { stringResource(R.string.profile_standing_verification_level, it.toPersianDigits()) }
+            ?.let { stringResource(R.string.profile_standing_verification_level, it.proseDigits()) }
         else -> null
     },
     onOpen = onOpen,
@@ -137,7 +137,7 @@ fun planFact(
         expiresLabel != null && daysRemaining != null -> stringResource(
             R.string.profile_standing_plan_expires_in,
             expiresLabel,
-            daysRemaining.toPersianDigits(),
+            daysRemaining.proseDigits(),
         )
         expiresLabel != null -> stringResource(R.string.profile_standing_plan_expires, expiresLabel)
         else -> null

@@ -24,6 +24,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,7 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.BidiText
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPillShape
@@ -66,8 +67,10 @@ import com.coinepro.core.model.MarketPlatform
 /** A machine figure: Latin, isolated, safe to sit in the middle of a right-to-left line. */
 internal fun figure(value: Any): String = BidiText.isolateLtr(value.toString())
 
-/** A count in prose: Persian digits, because this one is being read as a word not compared. */
-internal fun count(value: Int): String = value.toPersianDigits()
+/** A count in prose: the screen's own digits, because this one is read as a word not compared. */
+@Composable
+@ReadOnlyComposable
+internal fun count(value: Int): String = value.proseDigits()
 
 @Composable
 internal fun CardHead(@DrawableRes icon: Int, @StringRes title: Int) {

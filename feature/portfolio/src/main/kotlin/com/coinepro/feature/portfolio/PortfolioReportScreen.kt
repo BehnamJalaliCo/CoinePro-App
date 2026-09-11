@@ -46,7 +46,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.JalaliDate
 import com.coinepro.core.common.MarketNumberFormatter
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProNote
@@ -277,7 +277,7 @@ private fun MetricsCard(metrics: TradeMetrics) {
                 stringResource(
                     if (run.recovered) R.string.portfolio_report_drawdown_recovered
                     else R.string.portfolio_report_drawdown_open,
-                    run.trades.toPersianDigits(),
+                    run.trades.proseDigits(),
                 ),
             )
         }
@@ -301,8 +301,8 @@ private fun MetricsCard(metrics: TradeMetrics) {
             MetricNote(
                 stringResource(
                     R.string.portfolio_report_holding_sample,
-                    metrics.holdingSample.toPersianDigits(),
-                    metrics.trades.toPersianDigits(),
+                    metrics.holdingSample.proseDigits(),
+                    metrics.trades.proseDigits(),
                 ),
             )
         }
@@ -728,19 +728,19 @@ private fun jalaliShort(epochSeconds: Long, zone: ZoneId): String =
 private fun durationLabel(parts: DurationParts): String = when {
     parts.days > 0 -> stringResource(
         R.string.portfolio_duration_day_hour,
-        parts.days.toInt().toPersianDigits(),
-        parts.hours.toInt().toPersianDigits(),
+        parts.days.toInt().proseDigits(),
+        parts.hours.toInt().proseDigits(),
     )
     parts.hours > 0 -> stringResource(
         R.string.portfolio_duration_hour_minute,
-        parts.hours.toInt().toPersianDigits(),
-        parts.minutes.toInt().toPersianDigits(),
+        parts.hours.toInt().proseDigits(),
+        parts.minutes.toInt().proseDigits(),
     )
     parts.minutes > 0 -> stringResource(
         R.string.portfolio_duration_minute,
-        parts.minutes.toInt().toPersianDigits(),
+        parts.minutes.toInt().proseDigits(),
     )
-    else -> stringResource(R.string.portfolio_duration_second, parts.seconds.toInt().toPersianDigits())
+    else -> stringResource(R.string.portfolio_duration_second, parts.seconds.toInt().proseDigits())
 }
 
 /**

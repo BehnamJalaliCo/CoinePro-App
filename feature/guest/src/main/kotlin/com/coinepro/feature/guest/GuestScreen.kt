@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -288,7 +288,7 @@ private fun PricesHeader(state: GuestPricesState) {
             // smaller product than the one the feed actually carries.
             else -> state.prices.universeSize?.let { total ->
                 Text(
-                    text = stringResource(R.string.guest_market_count, total.toPersianDigits()),
+                    text = stringResource(R.string.guest_market_count, total.proseDigits()),
                     style = MaterialTheme.typography.bodySmall,
                     color = CoineProColors.TextMuted,
                 )
@@ -347,8 +347,8 @@ fun TrackRecordSummary(record: GuestTrackRecord, modifier: Modifier = Modifier) 
                 Text(
                     text = stringResource(
                         R.string.guest_record_summary,
-                        record.wins.toPersianDigits(),
-                        record.entries.size.toPersianDigits(),
+                        record.wins.proseDigits(),
+                        record.entries.size.proseDigits(),
                         // The sign travels with the figure. Left in the resource as `%3$s٪` it is a
                         // neutral character after a Latin run, which a Persian paragraph then puts
                         // on the far side of it: «نرخ برد ٪66.7», with the sentence's full stop in

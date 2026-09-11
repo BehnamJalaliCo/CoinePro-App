@@ -35,7 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.coinepro.app.R
 import com.coinepro.core.common.AppLanguage
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.datastore.Watchlist
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.datastore.WidgetSnapshotStore
@@ -171,7 +171,7 @@ private fun ListRow(list: Watchlist, selected: Boolean, onSelect: () -> Unit) {
             )
             // A prose count: Persian digits in Persian, Latin in English.
             val english = AppLanguage.fromTag(LocalConfiguration.current.locales[0].language) == AppLanguage.ENGLISH
-            val count = if (english) list.symbols.size.toString() else list.symbols.size.toPersianDigits()
+            val count = if (english) list.symbols.size.toString() else list.symbols.size.proseDigits()
             Text(
                 text = stringResource(R.string.widget_configure_count, count),
                 style = MaterialTheme.typography.bodySmall,

@@ -343,7 +343,10 @@ fun CoineProMarketRow(
                 tint = if (starred) CoineProColors.Accent else CoineProColors.TextDisabled,
             )
         }
-        CoineProAssetLogo(symbol = symbol, size = 30.dp)
+        // Thirty-two, which is the size the owner set for an instrument mark in a list (run G).
+        // On a pair it is what makes the two flags readable as two flags rather than as one
+        // coloured smudge: the front disc lands at about 24 points and the quote behind it at 16.
+        CoineProAssetLogo(symbol = symbol, size = LIST_LOGO_DP)
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(
                 text = title,
@@ -470,3 +473,17 @@ private val FIGURE_COLUMN = 152.dp
 /** The sparkline cell: the reference's 24dp line, at the width this row has to spare. */
 private val SPARKLINE_WIDTH = 52.dp
 private val SPARKLINE_HEIGHT = 24.dp
+
+/**
+ * The instrument mark in a list row — 32 dp, the owner's number for it (run G).
+ *
+ * The chart header's pair sits at 20 and a list row's at 32, which is the pairing the reference
+ * apps use: the header names one instrument the reader already chose, a list is scanned, and a pair
+ * of flags has to survive being scanned. On `CoineProPairLogo`'s proportions that is a front disc
+ * of about 24 points over a quote of 16, which is where two flags stay two flags.
+ *
+ * The dense watchlist table keeps its own, smaller mark — see `LogoSize` in `feature:search`. That
+ * row carries a flag rail, a drag grip, a star, the ticker, the name and up to four figure columns
+ * on a 393-point phone, and four points there is four points the last column does not have.
+ */
+private val LIST_LOGO_DP = 32.dp

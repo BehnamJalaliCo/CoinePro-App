@@ -107,10 +107,18 @@ internal fun previewOf(
      * shows +5.2% is the same number disagreeing with itself one layer apart.
      */
     changePercent: Double? = row.quote?.changePercent,
+    /**
+     * Whether the sheet is being drawn in English, so the instrument is named in English.
+     *
+     * A parameter rather than a read of the composition, because this is a *mapping* and its test
+     * is a plain JUnit one with no composition to read. The caller is a composable and has the
+     * answer (`inEnglish()`); the default is the app's own default language.
+     */
+    english: Boolean = false,
 ): MarketPreviewState = MarketPreviewState(
     symbol = row.meta.symbol,
     pretty = BidiText.isolateLtr(row.meta.pretty),
-    name = row.meta.description,
+    name = row.meta.description(english),
     // An em dash, not a zero and not a blank: the feed has not quoted this market, and both of the
     // other two would be read as a price.
     price = row.quote?.price?.let(MarketNumberFormatter::priceAuto) ?: EM_DASH,

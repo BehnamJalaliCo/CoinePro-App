@@ -75,7 +75,7 @@ import com.coinepro.core.auth.sessionForShell
 import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.BrandConfig
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.chartevents.ChartEventController
 import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.datastore.ActivePlatformStore
@@ -2882,7 +2882,7 @@ private fun MainShell(
                     readings = listOf(
                         CoineProReading(
                             label = stringResource(R.string.profile_reading_watchlist),
-                            value = watchlist.size.toPersianDigits(),
+                            value = watchlist.size.proseDigits(),
                         ),
                     ),
                     onEditAvatar = { composing = true },

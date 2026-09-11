@@ -1,12 +1,13 @@
 package com.coinepro.feature.papertrade
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.PersianDateTime
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.papertrade.PaperCloseReason
 import com.coinepro.core.papertrade.PaperOrderType
@@ -49,8 +50,10 @@ object PaperFormat {
 
     fun size(value: Double): String = MarketNumberFormatter.price(value, decimalsFor(value))
 
-    /** A count in prose. Persian digits, because it is being read as a word. */
-    fun count(value: Int): String = value.toPersianDigits()
+    /** A count in prose: the digits of the language the screen is in, because it is read as a word. */
+    @Composable
+    @ReadOnlyComposable
+    fun count(value: Int): String = value.proseDigits()
 
     fun moment(epochMillis: Long, zone: ZoneId): String = when {
         epochMillis <= 0L -> ABSENT

@@ -35,6 +35,7 @@ import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.chart.IndicatorChain
 import com.coinepro.core.chart.IndicatorSource
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.datastore.IndicatorTemplate
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPillShape

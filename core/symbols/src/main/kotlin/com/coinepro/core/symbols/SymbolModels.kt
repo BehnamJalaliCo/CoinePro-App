@@ -41,8 +41,21 @@ data class SymbolMeta(
     val base: String?,
     val quote: String?,
     val description: String,
+    /**
+     * The same, in English — «Gold / US Dollar», «Bitcoin (BTC)» (run G).
+     *
+     * A second field rather than a lookup at the call site, because the *shape* of the name is
+     * per-category — a metal is «base / quote», a coin is «name (ticker)» — and that shape is the
+     * classifier's knowledge, not the screen's. Defaulted to the Persian one so a caller
+     * constructing a meta by hand (a test, a fixture, a feed that names its own instruments) gets
+     * something true rather than an empty string.
+     */
+    val descriptionEn: String = description,
     val popular: Boolean,
 ) {
+
+    /** The instrument's name in the language the screen is in. See [descriptionEn]. */
+    fun description(english: Boolean): String = if (english) descriptionEn else description
     /**
      * The symbol written the way a terminal writes it — `EUR/USD`, `BTC/USDT`, `XAU/USD`.
      *
@@ -95,27 +108,33 @@ data class SymbolMeta(
      * and would not if the long name had been dropped from the thing being searched rather than
      * from the thing being drawn.
      */
-    val listDescription: String get() = when (category) {
+    val listDescription: String get() = listDescription(english = false)
+
+    /** The row's subtitle in the language the screen is in. See [listDescription]. */
+    fun listDescription(english: Boolean): String = when (category) {
         SymbolCategory.FOREX, SymbolCategory.METAL -> {
-            val first = base?.let(SymbolNames::shortDisplayOf)
-            val second = quote?.let(SymbolNames::shortDisplayOf)
+            val first = base?.let { SymbolNames.shortDisplayOf(it, english) }
+            val second = quote?.let { SymbolNames.shortDisplayOf(it, english) }
             when {
                 first != null && second != null && first != second -> "$first/$second"
                 first != null -> first
-                else -> description
+                else -> description(english)
             }
         }
         SymbolCategory.CRYPTO -> {
-            val first = base?.let { SymbolNames.CRYPTO[it] }
-            val second = quote?.let { SymbolNames.CRYPTO[it] ?: SymbolNames.CURRENCY_SHORT[it] }
+            val first = base?.let { SymbolNames.cryptoOf(it, english) }
+            val second = quote?.let {
+                SymbolNames.cryptoOf(it, english)
+                    ?: if (english) SymbolNames.CURRENCY_SHORT_EN[it] else SymbolNames.CURRENCY_SHORT[it]
+            }
             when {
                 first != null && second != null && first != second -> "$first/$second"
-                // No Persian name for the coin — a listing this app has never heard of — so the
-                // classifier's own answer stands rather than half a pair.
-                else -> description
+                // No name for the coin in this language — a listing this app has never heard of —
+                // so the classifier's own answer stands rather than half a pair.
+                else -> description(english)
             }
         }
-        else -> description
+        else -> description(english)
     }
 }
 

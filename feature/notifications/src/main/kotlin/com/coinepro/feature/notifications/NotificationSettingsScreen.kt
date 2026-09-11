@@ -30,7 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProNote
@@ -348,7 +348,7 @@ private fun HourRow(label: String, minuteOfDay: Int, onChange: (Int) -> Unit) {
         ) {
             Stepper(label = "−") { onChange(((hour + 23) % 24) * 60) }
             Text(
-                text = stringRes(R.string.notifications_quiet_hour, hour.toPersianDigits()),
+                text = stringRes(R.string.notifications_quiet_hour, hour.proseDigits()),
                 style = MaterialTheme.typography.bodyMedium,
                 color = CoineProColors.TextPrimary,
             )
@@ -425,8 +425,8 @@ private fun LocalAlertsCard(
                 Text(
                     text = stringRes(
                         R.string.notifications_alerts_count,
-                        alerts.size.toPersianDigits(),
-                        LocalPriceAlert.MAX_ALERTS.toPersianDigits(),
+                        alerts.size.proseDigits(),
+                        LocalPriceAlert.MAX_ALERTS.proseDigits(),
                     ),
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,

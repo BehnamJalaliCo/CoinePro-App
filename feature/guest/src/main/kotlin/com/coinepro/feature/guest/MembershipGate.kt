@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.coinepro.core.common.MarketNumberFormatter
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.guest.MembershipTerms
 import com.coinepro.core.designsystem.CoineProBrandButton
 import com.coinepro.core.designsystem.CoineProCard
@@ -92,7 +92,7 @@ fun MembershipGate(
                     // counter paints at a fixed left offset, which is the wrong side in RTL. The
                     // numeral is Persian because this is a prose count, not a market figure — the
                     // rule the whole app follows, and the one a hand-written "1." quietly breaks.
-                    text = (index + 1).toPersianDigits() + ". " + line,
+                    text = (index + 1).proseDigits() + ". " + line,
                     style = MaterialTheme.typography.bodyMedium,
                     color = CoineProColors.TextSecondary,
                 )

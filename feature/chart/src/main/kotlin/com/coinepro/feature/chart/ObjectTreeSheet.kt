@@ -45,6 +45,7 @@ import com.coinepro.core.chart.ObjectGroup
 import com.coinepro.core.chart.ObjectNode
 import com.coinepro.core.common.countedLabel
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSheetEmpty
