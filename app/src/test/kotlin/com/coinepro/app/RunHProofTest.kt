@@ -131,13 +131,33 @@ class RunHProofTest {
     @Config(sdk = [34], qualifiers = EN_S9U)
     fun chartAndScriptEnDark() {
         proof("run-h-chart-script-en-dark") { ChartAndScript() }
-        assertTrue("the editor's own words are English", texts().any { it == "Editor" })
-        assertTrue("and so is the console", texts().any { it == "Console" })
+        val shown = texts()
+        assertTrue("the editor's own words are English", shown.any { it == "Editor" })
+        assertTrue("and the panel's tabs are still there", shown.any { it == "Reference" })
+        // A docked panel is 400–480 points wide, which is one editor, not two columns. So the
+        // split is **not offered** here: halving it would leave the editor 200 points and
+        // `plot(rsi, ti` on a line, which is the thing item 4 is against.
+        assertTrue("no split toggle in a panel too narrow for one", shown.none { it == "Code | chart" })
     }
 
     @Test
     @Config(sdk = [34], qualifiers = FA_S9U)
     fun chartAndScriptFaDark() = proof("run-h-chart-script-fa-dark") { ChartAndScript() }
+
+    /**
+     * And the split itself, where there is room for it: the editor screen at full tablet width.
+     *
+     * Two columns of 400 points or nothing — so on the 1478-point Tab S9 Ultra the toggle is there
+     * and on by default, and the frame is the code beside a chart that redraws as the reader types.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = EN_S9U)
+    fun theScriptScreenSplitsWhereThereIsRoom() {
+        proof("run-h-script-split-en-dark") { FullScript() }
+        val shown = texts()
+        assertTrue("the split is offered at this width", shown.any { it == "Code | chart" })
+        assertTrue("and the other half of the toggle with it", shown.any { it == "Code only" })
+    }
 
     // ── the list-detail and the four charts ──────────────────────────────────────────────────
 
@@ -261,6 +281,20 @@ class RunHProofTest {
             }
         }
         ChartScreen(controller = controller)
+    }
+
+    /** The editor screen on its own, with the whole tablet to lay out in. */
+    @Composable
+    private fun FullScript() {
+        val series = ScreenshotFixtures.chartSeries(symbol = "XAUUSD")
+        val controller = remember {
+            ScreenshotFixtures.scriptController(scope).also {
+                it.setSeries(series)
+                it.openPreset(com.coinepro.core.script.ScriptPresets.byId("rsi-zones")!!)
+                it.run()
+            }
+        }
+        ScriptScreen(controller = controller, symbol = "XAUUSD", series = series)
     }
 
     @Composable

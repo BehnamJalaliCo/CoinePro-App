@@ -35,8 +35,10 @@ phone's page with columns bolted to it, and the chart it exists to show was 45 %
 - **The side panel is drag-resizable, between 320 and 480 points** — and never wider than leaves the
   plot 65 % of the space between the two rails, whichever of the two binds first.
 - **The NamaScript editor does not wrap.** The code field scrolls horizontally, which is what a
-  language with 90-character indicator calls needs; the split view toggles code|chart at 50/50; a
-  24-point minimap sits beside the line numbers. The tabs stay.
+  language with 90-character indicator calls needs; a 24-point minimap sits beside the line
+  numbers. The code|chart split is decided by the pane's own width rather than the window's — two
+  columns of 400 points or it is not offered — so the full editor screen splits and the docked
+  panel gives the editor all 480 of its points. The tabs stay.
 - **Multi-chart headers carry the timeframe code** — «H1», not «۱ ساعت» — which is what the pane
   legend has room for and what the toolbar below says.
 

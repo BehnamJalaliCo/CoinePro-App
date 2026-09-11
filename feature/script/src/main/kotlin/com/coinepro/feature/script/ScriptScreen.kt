@@ -13,6 +13,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -93,7 +94,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.coinepro.core.script.ScriptInputKind
-import com.coinepro.core.designsystem.coineProWindowClass
 import com.coinepro.core.script.ScriptInput
 import com.coinepro.core.script.ScriptLesson
 import com.coinepro.core.script.ScriptLessons
@@ -251,7 +251,7 @@ private fun EditorTab(
     state: ScriptEditorState,
     series: CandleSeries,
     loading: Boolean,
-) {
+) = BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
     // Named for the pane the script's own-pane plots land in, so a reader with three scripts saved
     // can tell which strip belongs to which.
     // The fallback name is read here, in composition, and handed to the memo — a resource lookup
@@ -299,13 +299,18 @@ private fun EditorTab(
             }
     }
 
-    // Item 5 of the 4.52 run: code | chart on an expanded window. The list is the same either
-    // way; only where the preview sits changes, and on a tablet it takes the whole height so a
-    // reader editing sees every plot move as they type.
-    // Code | chart, fifty-fifty, on a window that can hold both — and a **toggle**, because a
-    // reader writing a long script wants the editor to have the whole width for a minute and the
-    // preview back afterwards (run H item 4). The window decides the default; the reader decides.
-    val fits = coineProWindowClass().showsTwoPanes
+    // **Code | chart, fifty-fifty — and a toggle, decided by the pane's own width.**
+    //
+    // The preview is the same component either way; only where it sits changes. What changed in
+    // 4.72.0 is who decides: it used to ask `showsTwoPanes`, which is a question about the
+    // *screen*, and this screen is often a 400-point side panel on a tablet — where a fifty-fifty
+    // split leaves the editor two hundred points and `plot(rsi, ti` on a line. The floor is
+    // [EDITOR_MIN]; a split needs two of those with the gutter between them, and where that does
+    // not fit the split is not offered at all rather than offered and ruinous.
+    //
+    // Above the floor it is the reader's: somebody writing a long script wants the whole width for
+    // a minute and the preview back afterwards (run H item 4).
+    val fits = maxWidth >= EDITOR_MIN * 2 + CoineProSpacing.Gutter
     var splitOn by rememberSaveable(fits) { mutableStateOf(fits) }
     val split = fits && splitOn
     val editorItems: LazyListScope.() -> Unit = {
@@ -1357,6 +1362,14 @@ private val MINIMAP_WIDTH = 24.dp
 
 /** How much of a line's row the bar fills, so the map reads as lines rather than as a block. */
 private const val MINIMAP_BAR = 0.6f
+
+/**
+ * The narrowest an editor column may be: **400 points**, the owner's number for run H item 4.
+ *
+ * It is where a NamaScript line — `rsi = ta.rsi(close, length)` at the field's own size — stops
+ * wrapping. Below it the editor is not cramped, it is a different tool.
+ */
+internal val EDITOR_MIN = 400.dp
 
 /** The split toggle's two ids. Named so the chip row and the state cannot disagree by a typo. */
 private const val SPLIT_ON = "split"
