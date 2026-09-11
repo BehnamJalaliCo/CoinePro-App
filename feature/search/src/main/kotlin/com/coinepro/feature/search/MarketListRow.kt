@@ -38,6 +38,7 @@ import com.coinepro.core.datastore.WatchlistColumnUnit
 import com.coinepro.core.datastore.WatchlistFlag
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.SharedKeys
+import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.localRowName
 import com.coinepro.core.designsystem.sharedElement
 import com.coinepro.core.designsystem.CoineProColors
@@ -356,7 +357,7 @@ internal fun WatchlistColumnHeading(
     modifier: Modifier = Modifier,
 ) {
     Text(
-        text = column.persianLabel + when {
+        text = column.label(inEnglish()) + when {
             !sorted -> ""
             descending -> " ↓"
             else -> " ↑"

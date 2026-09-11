@@ -160,6 +160,16 @@ enum class WatchlistColumnUnit {
 enum class WatchlistColumn(
     val id: String,
     val persianLabel: String,
+    /**
+     * The same heading in English (4.71.0).
+     *
+     * The headings were Persian only, so the English watchlist was headed «آخرین · ٪ تغییر · روند»
+     * over four English rows. They are here beside the Persian ones rather than in `strings.xml`
+     * for the reason the Persian ones are: the column set is *stored user data* and this module
+     * has no resources, so a caller that needs a heading would otherwise have to keep a second
+     * table keyed by the same ids.
+     */
+    val englishLabel: String,
     val unit: WatchlistColumnUnit,
 ) {
     /**
@@ -171,35 +181,38 @@ enum class WatchlistColumn(
      * a colour the reader put on a symbol, which is a label. The stored [id] stays `flag`, because
      * renaming a word on screen is not a reason to make every device re-derive its column set.
      */
-    FLAG("flag", "برچسب", WatchlistColumnUnit.NONE),
+    FLAG("flag", "برچسب", "Label", WatchlistColumnUnit.NONE),
 
     /** The last traded price. The one column no watchlist is useful without. */
-    LAST_PRICE("last", "آخرین", WatchlistColumnUnit.PRICE),
+    LAST_PRICE("last", "آخرین", "Last", WatchlistColumnUnit.PRICE),
 
     /** The move since the session open, in price. */
-    CHANGE("change", "تغییر", WatchlistColumnUnit.SIGNED_PRICE),
+    CHANGE("change", "تغییر", "Change", WatchlistColumnUnit.SIGNED_PRICE),
 
     /** The same move in percent, which is what a list is actually scanned for. */
-    CHANGE_PERCENT("change_percent", "تغییر ٪", WatchlistColumnUnit.PERCENT),
+    CHANGE_PERCENT("change_percent", "تغییر ٪", "Change %", WatchlistColumnUnit.PERCENT),
 
     /** The session high. */
-    DAY_HIGH("day_high", "بیشترین", WatchlistColumnUnit.PRICE),
+    DAY_HIGH("day_high", "بیشترین", "High", WatchlistColumnUnit.PRICE),
 
     /** The session low. */
-    DAY_LOW("day_low", "کمترین", WatchlistColumnUnit.PRICE),
+    DAY_LOW("day_low", "کمترین", "Low", WatchlistColumnUnit.PRICE),
 
     /** Traded quantity in the base asset over the session. */
-    VOLUME("volume", "حجم", WatchlistColumnUnit.BASE_AMOUNT),
+    VOLUME("volume", "حجم", "Volume", WatchlistColumnUnit.BASE_AMOUNT),
 
     /** Traded value in the quote asset over the session — comparable across instruments. */
-    QUOTE_VOLUME("quote_volume", "ارزش معاملات", WatchlistColumnUnit.QUOTE_AMOUNT),
+    QUOTE_VOLUME("quote_volume", "ارزش معاملات", "Turnover", WatchlistColumnUnit.QUOTE_AMOUNT),
 
     /** The day's line, 64×24, in the change's colour. Not a figure: nothing to sort by. */
-    SPARKLINE("sparkline", "روند", WatchlistColumnUnit.NONE),
+    SPARKLINE("sparkline", "روند", "Trend", WatchlistColumnUnit.NONE),
     ;
 
     /** Whether this column holds a market figure, and so is rendered in Latin digits, right-aligned. */
     val isFigure: Boolean get() = unit != WatchlistColumnUnit.NONE
+
+    /** The heading in the language the screen is in. */
+    fun label(english: Boolean): String = if (english) englishLabel else persianLabel
 
     companion object {
         /**

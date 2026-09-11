@@ -45,6 +45,7 @@ import com.coinepro.core.datastore.WatchlistImport
 import com.coinepro.core.datastore.WatchlistSettings
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.CoineProConfirmDialog
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPillShape
@@ -334,7 +335,7 @@ private fun ColumnsSheet(
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = column.persianLabel,
+                            text = column.label(inEnglish()),
                             style = MaterialTheme.typography.labelMedium,
                             color = CoineProColors.TextPrimary,
                         )

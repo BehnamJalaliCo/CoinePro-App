@@ -40,6 +40,9 @@ Run G: the leaks eighteen screenshots of the English app turned up, and the rest
   live price alone, so a gridline label came out under an indicator's tag. Every tag's row is now
   assigned before the ladder is drawn: the live price wins every collision, each level takes a
   row only if one is free, and the day's reference is refused a row the others hold.
+- **The watchlist's column headings follow the screen's language.** «آخرین · ٪ تغییر · روند»
+  stood over four English rows: the headings live beside the stored column set rather than in
+  `strings.xml`, so they had only ever been written once.
 - **A row with no line draws a flat grey rule** rather than a hole the width of the column — and
   never an invented curve.
 

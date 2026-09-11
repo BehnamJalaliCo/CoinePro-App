@@ -130,6 +130,11 @@ class RunGProofTest {
             shown.any { it.contains("Gold") && it.contains("Dollar") },
         )
         assertTrue("no Persian instrument name survives", shown.none { it.contains("بیت‌کوین") })
+        // And the columns over those rows are headed in English too: the table's headings are
+        // stored beside the column set rather than in `strings.xml`, so they were Persian-only.
+        assertTrue("«Last» rather than «آخرین»", shown.any { it.contains("Last") })
+        assertTrue("«Trend» rather than «روند»", shown.any { it.contains("Trend") })
+        assertTrue("no Persian heading over an English column", shown.none { it.contains("آخرین") })
     }
 
     // ── B and C. counts, the list's own name, and the composite ──────────────────────────────

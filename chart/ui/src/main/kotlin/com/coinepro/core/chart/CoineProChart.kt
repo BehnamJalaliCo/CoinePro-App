@@ -2961,9 +2961,31 @@ fun CoineProChart(
                 } else {
                     emptyList()
                 }
+                // The day's reference is a tag in the same gutter and takes its row in the same
+                // pass. It is last in the order, so it gives way to the live price and to every
+                // level — «the tag that wins a collision is the one that is moving» — and once it
+                // has a row, the ladder steps around it too. Before run G it was decided *after*
+                // the axis was drawn, which is why «2,700.0» came out under «2,698.3».
+                val previousClose = if (decoration.showPreviousClose && decoration.showLastPrice && priceShown) {
+                    previousSessionClose(view.series, view.lastVisible, zone)
+                } else {
+                    null
+                }
+                val previousCloseTop = previousClose?.let { price ->
+                    if (tagHeight <= 0f) return@let null
+                    val y = view.yOf(price)
+                    if (y < 0f || y > plotHeight) return@let null
+                    val top = (y - tagHeight / 2).coerceIn(0f, max(0f, plotHeight - tagHeight))
+                    val taken = buildList {
+                        lastPriceY?.let { add(it) }
+                        levelTags.forEach { add(it.second) }
+                    }
+                    top.takeIf { candidate -> taken.none { abs(candidate - it) < tagHeight } }
+                }
                 val claimed = buildList {
                     lastPriceY?.let { add(it) }
                     levelTags.forEach { add(it.second) }
+                    previousCloseTop?.let { add(it) }
                 }
                 if (decoration.showAxes) {
                     // The ladder goes in every gutter the reader asked for; the tags go in one of
@@ -3056,21 +3078,19 @@ fun CoineProChart(
                         palette = palette,
                     )
                 }
-                // The day's reference goes under the live price, so the tag that wins a collision
-                // is the one that is moving. See [previousSessionClose] for why it is intraday-only.
-                if (decoration.showPreviousClose && decoration.showLastPrice && priceShown) {
-                    previousSessionClose(view.series, view.lastVisible, zone)?.let { reference ->
-                        drawPreviousClose(
-                            view = view,
-                            price = reference,
-                            plotWidth = plotWidth,
-                            frame = frame,
-                            palette = palette,
-                            measurer = measurer,
-                            withAxis = decoration.showAxes,
-                            suppress = claimed,
-                        )
-                    }
+                // The rule is drawn whatever happens to its tag: the reference line is where the
+                // day opened and that is true even where the gutter has no row to print it in.
+                previousClose?.let { reference ->
+                    drawPreviousClose(
+                        view = view,
+                        price = reference,
+                        plotWidth = plotWidth,
+                        frame = frame,
+                        palette = palette,
+                        measurer = measurer,
+                        withAxis = decoration.showAxes,
+                        tagTop = previousCloseTop,
+                    )
                 }
                 if (decoration.showLastPrice && priceShown) {
                     drawLastPrice(
@@ -4775,8 +4795,13 @@ private fun DrawScope.drawPreviousClose(
     palette: ChartPalette,
     measurer: TextMeasurer,
     withAxis: Boolean,
-    /** The rows the gutter's other tags already hold — the live price and every level tag. */
-    suppress: List<Float>,
+    /**
+     * The row the tag was given in the frame's own tag pass, or null where no row was free.
+     *
+     * Decided by the caller rather than here, because the price ladder is drawn *before* this and
+     * has to know which rows are spoken for. Null draws the rule and no tag.
+     */
+    tagTop: Float?,
 ) {
     val y = view.yOf(price)
     if (y < 0f || y > view.plotHeight) return
@@ -4789,10 +4814,9 @@ private fun DrawScope.drawPreviousClose(
         pathEffect = dashEffect(LineStyleKind.DOTTED, HAIRLINE_DP.toPx()),
     )
     if (!withAxis || frame.tagGutterWidth <= 0f) return
+    val top = tagTop ?: return
     val label = measurer.measure(view.axisText(price), axisStyle(palette.text))
     val height = label.size.height + TAG_PADDING_DP.toPx() * 2
-    val top = (y - height / 2).coerceIn(0f, max(0f, view.plotHeight - height))
-    if (suppress.any { abs(top - it) < height }) return
     drawAxisChip(frame, top, height, palette.stage)
     drawText(
         textLayoutResult = label,
