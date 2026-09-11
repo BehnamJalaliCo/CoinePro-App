@@ -519,6 +519,49 @@ def check_tabular_digits() -> None:
         )
 
 
+NUMERIC_STYLE = re.compile(r"\.numeric\(\)|numericTextStyle|CoineProType\.Numeric|typography\.numeric")
+PERSIAN_DIGITS_CALL = re.compile(r"toPersianDigits\(")
+
+
+def check_numeric_styles_are_latin() -> None:
+    """A numeric text style is never handed Persian digits (run F).
+
+    The standing rule — market figures in Latin digits, prose counts in Persian — is a technical
+    requirement rather than a preference, and IRANYekanX is why: its Latin digits all advance the
+    same width (562 units in Regular) and its Persian digits do not (۱ at 238 against ۳ at 655).
+    A column of prices in Persian numerals cannot be made to line up in this face, and a price
+    that ticks between ۱ and ۳ moves every glyph beside it.
+
+    So the two must never meet: a `Text` whose style is one of the numeric ones — `.numeric()`,
+    `numericTextStyle`, the `Numeric` scale entries — must not be handed a `toPersianDigits()`
+    string. The scan is deliberately local: one `Text(` call's own lines, not a file-wide grep,
+    because a screen legitimately holds both kinds of number a few lines apart.
+    """
+    offences: list[str] = []
+    for path in sorted(ROOT.rglob("*.kt")):
+        if "build" in path.parts or "/test/" in str(path) or "Test.kt" in path.name:
+            continue
+        lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+        for index, line in enumerate(lines):
+            if not NUMERIC_STYLE.search(line):
+                continue
+            # The call this style belongs to: back to the opening `Text(` and forward to the line
+            # whose indentation returns to it. A window rather than a parser, and it is enough —
+            # these calls are formatted one argument per line by ktlint.
+            start = index
+            while start > 0 and "Text(" not in lines[start] and index - start < 12:
+                start -= 1
+            end = min(len(lines), index + 12)
+            block = "\n".join(lines[start:end])
+            if PERSIAN_DIGITS_CALL.search(block):
+                offences.append(f"{path.relative_to(ROOT)}:{index + 1}")
+    require(
+        not offences,
+        "a numeric text style was handed Persian digits — IRANYekanX's Persian digits are "
+        "proportional, so the column cannot line up: " + ", ".join(offences[:8]),
+    )
+
+
 def check_single_typeface() -> None:
     """IRANYekanX is the only typeface in the project (owner's rule, 4.69.0).
 
@@ -620,6 +663,7 @@ def main() -> None:
     check_assets_clean()
     check_tabular_digits()
     check_single_typeface()
+    check_numeric_styles_are_latin()
     check_every_screen_is_rendered()
     check_bottom_navigation()
     check_learned_surfaces()

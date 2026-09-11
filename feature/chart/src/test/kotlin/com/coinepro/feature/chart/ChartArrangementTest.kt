@@ -129,6 +129,41 @@ class ChartArrangementTest {
     }
 
     @Test
+    fun `the zoom is remembered per timeframe and restored onto the same one`() = runTest {
+        val states = SymbolChartStateStore(FakePreferences())
+        val first = controller(TestScope(StandardTestDispatcher(testScheduler)), states)
+        first.start()
+        advanceUntilIdle()
+
+        first.setZoom(40)
+        first.setTimeframe(Timeframe.D1)
+        advanceUntilIdle()
+        first.setZoom(200)
+        advanceUntilIdle()
+
+        val saved = states.state("BTCUSDT").first()!!
+        assertEquals(mapOf("H1" to 40, "D1" to 200), saved.zoom)
+
+        // Out of the bounds this build draws at: dropped rather than clamped, so a row written by
+        // a build with a wider range cannot move this reader's chart on their behalf.
+        first.setZoom(99_999)
+        advanceUntilIdle()
+        assertEquals(200, states.state("BTCUSDT").first()!!.zoom["D1"])
+
+        val second = controller(TestScope(StandardTestDispatcher(testScheduler)), states)
+        second.start()
+        advanceUntilIdle()
+        // Opens on D1 — the timeframe the reader left it on — and therefore on D1's own zoom.
+        assertEquals(200, second.state.value.barsPerView)
+        second.setTimeframe(Timeframe.H1)
+        advanceUntilIdle()
+        assertEquals(40, second.state.value.barsPerView)
+        second.setTimeframe(Timeframe.H4)
+        advanceUntilIdle()
+        assertNull("a timeframe never zoomed opens on the default", second.state.value.barsPerView)
+    }
+
+    @Test
     fun `the arrangement, the parameters and the rail's memory are written back and restored`() = runTest {
         val states = SymbolChartStateStore(FakePreferences())
         val first = controller(TestScope(StandardTestDispatcher(testScheduler)), states)

@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -340,6 +341,15 @@ fun CoineProChart(
     /** Where the reader is looking, every time it changes. The other half of pane sync. */
     onViewportChange: ((ChartViewport) -> Unit)? = null,
     /**
+     * How far zoomed in this reader last was on this symbol and timeframe, or null for neither.
+     *
+     * `rememberSaveable` already carries the zoom across a rotation and a process death, and that
+     * is the *composition's* memory: it cannot tell one symbol from another, and it is gone when
+     * the app is. This is the stored one — see `SymbolChartState.zoom` — and it wins on the frame
+     * the chart is seeded, which is the only frame either of them is read on.
+     */
+    savedBarsPerView: Int? = null,
+    /**
      * A window donated by another pane: how far zoomed in, how far panned back, how stretched.
      *
      * Those three numbers and not the whole viewport, because the other pane is a different
@@ -417,7 +427,13 @@ fun CoineProChart(
      * reclaims the process, and the chart comes back at the default hundred and twenty bars on the
      * live edge with the work thrown away.
      */
-    var savedZoom by rememberSaveable { mutableIntStateOf(ChartViewport.DEFAULT_BARS_PER_VIEW) }
+    var savedZoom by rememberSaveable { mutableIntStateOf(savedBarsPerView ?: ChartViewport.DEFAULT_BARS_PER_VIEW) }
+    // A stored zoom that arrives after the first composition — the row is read off disk a beat
+    // later, or the reader switched timeframe — is adopted for the *next* seeding rather than
+    // applied to the view under their hands. `seeded` below is what decides which frame that is.
+    LaunchedEffect(savedBarsPerView) {
+        savedBarsPerView?.let { savedZoom = it }
+    }
 
     /**
      * And how far panned back, or [UNSET_OFFSET] on a chart nobody has panned yet.
@@ -1162,6 +1178,35 @@ fun CoineProChart(
      */
     val jalaliDates =
         LocalConfiguration.current.locales[0]?.language == AppLanguage.PERSIAN.tag
+
+    /**
+     * The time axis' labels, and the fade that carries them in and out as the zoom changes.
+     *
+     * The ladder's *density* already follows the zoom — the collision gap is measured in pixels, so
+     * pinching in earns more labels and pinching out spends them. What it did without this was
+     * swap them: a pinch, and a label the reader was reading is replaced by a different one in the
+     * same frame, which is the one moment an axis can look like it is being recomputed rather than
+     * laid out. A hundred and twenty milliseconds is long enough to read as a dissolve and short
+     * enough that a reader still mid-pinch is never waiting for it.
+     *
+     * The set is published *from* the draw pass, where the ladder is computed against the settled
+     * viewport, and chased by the effect below — the same arrangement the auto-scale spring uses a
+     * few hundred lines down, and for the same reason: the value is a function of geometry that
+     * only the draw knows. Nothing fades on the **first** ladder: a chart opening should have an
+     * axis, not an axis arriving, and a single-frame render — a screenshot test, a thumbnail —
+     * would otherwise photograph an empty one.
+     */
+    var axisTicks by remember { mutableStateOf<List<TimeTick>>(emptyList()) }
+    var axisEntering by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var axisLeaving by remember { mutableStateOf<List<TimeTick>>(emptyList()) }
+    val axisFade = remember { Animatable(1f) }
+    LaunchedEffect(axisTicks) {
+        if (axisEntering.isEmpty() && axisLeaving.isEmpty()) return@LaunchedEffect
+        axisFade.snapTo(0f)
+        axisFade.animateTo(1f, tween(durationMillis = AXIS_FADE_MS, easing = LinearEasing))
+        axisEntering = emptySet()
+        axisLeaving = emptyList()
+    }
 
     /**
      * Which legend rows the reader has switched off.
@@ -2549,6 +2594,19 @@ fun CoineProChart(
             scaleCache.view = settled
             scaleCache.ticks = ticks
             scaleCache.timeTicks = timeTicks
+            // Published for the fade above. Only a *change* to an existing ladder animates, and the
+            // comparison is by bar index because that is what the label is placed on: the same
+            // boundary keeps its label through a pan, and only a zoom adds or spends one.
+            if (timeTicks !== axisTicks && timeTicks != axisTicks) {
+                val before = axisTicks
+                if (before.isNotEmpty()) {
+                    val now = timeTicks.mapTo(HashSet(timeTicks.size)) { it.index }
+                    val was = before.mapTo(HashSet(before.size)) { it.index }
+                    axisEntering = now - was
+                    axisLeaving = before.filterNot { it.index in now }
+                }
+                axisTicks = timeTicks
+            }
 
             // The rubber band, and the one place it enters the picture.
             //
@@ -2911,6 +2969,33 @@ fun CoineProChart(
                             cache = textCache,
                         )
                     }
+                    // Every level the chart drew gets its price in the gutter, in its own colour.
+                    //
+                    // A pivot, a support, an alert or a signal's stop is a line **at a price**, and
+                    // until this the price was the one thing it did not say: the reader had a
+                    // dashed rule with a name at its left end and had to read the ladder behind it
+                    // to find out what number it was sitting on. Every terminal tags them, and the
+                    // gutter is where a price belongs on this chart — the ladder, the crosshair and
+                    // the live price are all already there.
+                    //
+                    // Drawn after the ladder so the tag covers the gridline label it lands on, and
+                    // before the live-price tag so that one wins where they overlap: the live price
+                    // is the number a reader is watching.
+                    if (frame.tagGutterWidth > 0f) {
+                        for (level in decoration.levels) {
+                            val levelY = view.yOf(level.price)
+                            if (levelY < 0f || levelY > plotHeight) continue
+                            drawAxisTag(
+                                text = view.axisText(level.price),
+                                y = levelY,
+                                frame = frame,
+                                fill = Color(level.colour.toInt()),
+                                textColour = TAG_INK,
+                                measurer = measurer,
+                                plotHeight = plotHeight,
+                            )
+                        }
+                    }
                     if (decoration.showTimeAxis) {
                         drawTimeAxis(
                             view = view,
@@ -2923,6 +3008,9 @@ fun CoineProChart(
                             ticks = timeTicks,
                             jalali = jalaliDates,
                             cache = textCache,
+                            entering = axisEntering,
+                            leaving = axisLeaving,
+                            fade = axisFade.value,
                         )
                         drawEventMarks(view, decoration.events, plotHeight + paneHeight, eventColours)
                     }
@@ -4786,6 +4874,12 @@ private fun DrawScope.drawTimeAxis(
      * [TextWidthCache] was written for and the argument its own KDoc makes about the price gutter.
      */
     cache: TextWidthCache<TextLayoutResult>,
+    /** The bar indices whose label is new since the last ladder; they fade in. */
+    entering: Set<Int> = emptySet(),
+    /** The labels the last ladder had and this one does not; they fade out in place. */
+    leaving: List<TimeTick> = emptyList(),
+    /** How far through the [AXIS_FADE_MS] crossfade the ladder is: 0 at the swap, 1 at rest. */
+    fade: Float = 1f,
 ) {
     // How much time the plot is showing, which is what decides how much of a date a month label
     // needs. Taken from the visible window rather than the timeframe: the same daily chart zoomed
@@ -4805,6 +4899,20 @@ private fun DrawScope.drawTimeAxis(
     // layout carries the colour it was measured with, so a palette change has to miss.
     val plain = axisStyle(palette.text, axisFontSizeSp(isPriceAxis = false), bold = false)
     val heavy = axisStyle(palette.text, axisFontSizeSp(isPriceAxis = false), bold = true)
+    // The labels on their way out first, and deliberately without reserving room: they are already
+    // dissolving, and a ghost that pushed a surviving label aside would make the row *move* during
+    // a fade, which is the one thing the fade exists to stop.
+    if (fade < 1f) {
+        for (tick in leaving) {
+            val text =
+                if (type.isTimeBased) formatTimeTick(tick, span, zone, jalali) else "#${tick.index + 1}"
+            val style = if (tick.isBoundary()) heavy else plain
+            val label = cache.measure(text to style) { measurer.measure(text, style) }
+            val limit = max(0f, min(plotWidth, barArea) - label.size.width)
+            val x = (view.xOf(tick.index) - label.size.width / 2).coerceIn(0f, limit)
+            drawText(label, topLeft = Offset(x, top + AXIS_PADDING_DP.toPx()), alpha = 1f - fade)
+        }
+    }
     for (tick in ticks) {
         // A price-driven type has no clock, so its axis is numbered by bar. Printing a date there
         // would be a fabricated one — Renko bars carry synthetic timestamps.
@@ -4815,7 +4923,10 @@ private fun DrawScope.drawTimeAxis(
         val limit = max(0f, min(plotWidth, barArea) - label.size.width)
         val x = (view.xOf(tick.index) - label.size.width / 2).coerceIn(0f, limit)
         if (x < occupiedUntil) continue
-        drawText(label, topLeft = Offset(x, top + AXIS_PADDING_DP.toPx()))
+        // A label the last ladder already carried is drawn at full ink whatever the fade is doing:
+        // only what changed animates.
+        val alpha = if (tick.index in entering) fade else 1f
+        drawText(label, topLeft = Offset(x, top + AXIS_PADDING_DP.toPx()), alpha = alpha)
         occupiedUntil = x + label.size.width + LABEL_GAP
     }
 }
@@ -5679,7 +5790,11 @@ internal fun formatTimeTick(
      */
     jalali: Boolean = false,
 ): String {
-    if (jalali) return persianTimeTick(tick, spanSeconds, zone)
+    // The boundary the tick stands on rather than the bar's own stamp — see [TimeTick.boundaryTime].
+    // On an aligned feed the two are one number; on any other, this is the difference between an
+    // axis that reads «00:00 06:00 12:00» and one that reads «11:23» under every day.
+    val at = tick.boundaryTime(zone.asChartZone())
+    if (jalali) return persianTimeTick(tick, at, spanSeconds, zone)
     val pattern = when (tick.unit) {
         TimeTickUnit.YEAR -> "yyyy"
         TimeTickUnit.MONTH -> if (spanSeconds >= SPAN_MULTI_YEAR) "MMM yy" else "MMM"
@@ -5689,7 +5804,7 @@ internal fun formatTimeTick(
     }
     // `Locale.US` for the same reason [formatTime] uses it: a Gregorian month name rendered in
     // Persian script reads as a Jalali date and is wrong by eleven days.
-    return Instant.ofEpochSecond(tick.time)
+    return Instant.ofEpochSecond(at)
         .atZone(zone)
         .format(DateTimeFormatter.ofPattern(pattern, Locale.US))
 }
@@ -5706,8 +5821,8 @@ internal fun formatTimeTick(
  * is a dead frame and then a dead app, and a synthetic timestamp on a Renko bar is exactly the kind
  * of value that reaches it. The axis prints an em dash for that one label and carries on.
  */
-private fun persianTimeTick(tick: TimeTick, spanSeconds: Long, zone: ZoneId): String {
-    val moment = Instant.ofEpochSecond(tick.time)
+private fun persianTimeTick(tick: TimeTick, at: Long, spanSeconds: Long, zone: ZoneId): String {
+    val moment = Instant.ofEpochSecond(at)
     val date = moment.atZone(zone).toLocalDate()
     val day = JalaliDate.fromGregorianOrNull(date) ?: return PersianDateTime.UNREPRESENTABLE
     return when (tick.unit) {
@@ -6120,6 +6235,15 @@ private const val GRID_ALPHA = 1f
 private const val FRAME_ALPHA = 0.9f
 // TradingView's volume histogram: the candle colour at half strength, measured #1A5A54 on #0F0F0F.
 private const val VOLUME_ALPHA = 0.5f
+
+/**
+ * How long a time-axis label takes to dissolve in or out when the zoom changes the ladder.
+ *
+ * A hundred and twenty milliseconds — two frames longer than the app's shortest transition and
+ * well under the quarter-second at which a reader starts *waiting* for a control. Long enough that
+ * the swap reads as one label becoming another rather than as the axis being renumbered.
+ */
+private const val AXIS_FADE_MS = 120
 private const val ZONE_ALPHA = 0.12f
 
 /** How opaque the plate behind an in-plot level label is. See [drawLevelLabel]. */

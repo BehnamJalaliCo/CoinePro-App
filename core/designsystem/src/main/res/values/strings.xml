@@ -39,6 +39,7 @@
     <!-- Teaching banners. See CoineProTeaching.kt; the Persian in values/ is the source. -->
     <string name="teaching_dismiss">Close this explanation</string>
     <string name="teaching_what_is_this">What is this screen?</string>
+    <string name="teaching_got_it">Got it</string>
 
     <string name="teaching_home_lead">Your account and the market summarised on one screen: balance, a few symbols, open signals.</string>
     <string name="teaching_home_pitfall">Everything here is a summary; each section\'s full figures are on its own screen.</string>

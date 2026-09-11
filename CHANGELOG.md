@@ -15,6 +15,48 @@ it is for.
 
 ---
 
+## [4.70.0] — 2026-09-11 — the chart in pixels, and the explaining stops
+
+Run F of the owner's plan: the twelve things his first look at the shipped frames turned up.
+
+### Changed
+- **The time axis names round hours.** An intraday ladder is labelled at the hours that divide
+  the day — 00:00, 06:00, 12:00, 18:00 — instead of whichever hour survived the collision gap,
+  and a label names the **boundary its bar opens** rather than the bar's own stamp, so a feed
+  whose bars open at 23 past still reads `12:00`. Labels dissolve over 120 ms when a zoom changes
+  the ladder; nothing fades on the first one.
+- **The legend is one line at rest**: the head, the price and change, and the first study with
+  «+N» for the rest. A tap opens it to every row with its eye, gear and ×; a crosshair opens it
+  by itself. The state is remembered.
+- **Every level line carries its price in the gutter**, in its own colour — pivots, support and
+  resistance, a signal's stop, an alert.
+- **One `surface0`**: the chart's ground is the app's ground, in both themes. **One green and one
+  red** for every market figure: the sparkline, the change pill and the buy/sell ink are now the
+  candle's own green, and the red is three points lighter than the candle for the contrast a
+  13 sp figure needs.
+- **A chart opens on 70 bars with a tenth of the plot as air** at the live edge, and the reader's
+  zoom is kept **per symbol and timeframe**.
+- **The timeframe is named by its code** — `H1`, `M15`, `D1` — on the toolbar, the H/L row, the
+  reading panel and the studio header. Latin digits, as every market figure is.
+- **Home's quick actions are a 4×2 grid of round glyphs** on the raised surface with no borders,
+  the signal keeping the accent, and **every market row carries the day's line**. The watchlist's
+  sparklines are drawn from 48 half-hourly closes instead of 24 hourly ones, and its header
+  action is a bare 24 dp icon.
+
+### Removed
+- **The explainer cards.** The teaching sentence is the same and its dismissal is still permanent;
+  it is now a **coach-mark floating at the foot of the screen** for six seconds on first run,
+  taking none of the page's height, hosted once at the root of the app. `ExplainerRemovedTest`
+  fails the build if any of Home, Watchlist or Chart draws teaching text after the first run.
+
+### Gate
+- `check_numeric_styles_are_latin`: a numeric text style handed `toPersianDigits()` fails the
+  build. IRANYekanX's Persian digits are proportional, so a column of them cannot line up.
+
+### Needs a device
+- The 10-second recording of the countdown ticking and the tick flash, and the four-device
+  screenshot matrix. `docs/qa/DEVICE_PROOFS.md` §3, §5.
+
 ## [4.69.0] — 2026-09-11 — one typeface
 
 The owner's rule after the Pro package: nothing in the project but IRANYekanX Eco and Pro.

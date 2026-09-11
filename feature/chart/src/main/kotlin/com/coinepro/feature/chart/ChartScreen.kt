@@ -1033,7 +1033,10 @@ fun ChartScreen(
                     // visible-range volume profile — and until this existed it was computed once
                     // against the whole series and never followed a pan, which is a "visible range"
                     // study that ignores the visible range.
+                    // The reader's own zoom on this symbol and this timeframe, restored and kept.
+                    savedBarsPerView = state.barsPerView,
                     onViewportChange = { view ->
+                        controller.setZoom(view.barsPerView)
                         // The plot's width, for the overlays placed against the chart's frame.
                         // Written here rather than measured because only the renderer knows how
                         // wide the price labels made the gutter. See [gutterWidth].
@@ -3821,8 +3824,8 @@ private fun ChartUnderline(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = state.range?.let { span -> state.interval.label + "  ·  " + span.label }
-                        ?: state.interval.label,
+                    text = state.range?.let { span -> state.interval.code + "  ·  " + span.label }
+                        ?: state.interval.code,
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextSecondary,
                     fontWeight = FontWeight.Normal,

@@ -841,10 +841,16 @@ data class ChartViewport(
          * screen: a grey haze with wicks in it. That is a chart a reader zooms *in* on before they
          * can use it, every time they open one, which is the wrong default to hand somebody.
          *
-         * The reader can still see more — [MAX_BARS_PER_VIEW] is 600 — and their zoom is saved.
-         * This is only where a chart *starts*.
+         * **Seventy since 4.70.0**, and the ten bars are the owner's measurement against the
+         * reference rather than a change of mind: eighty bars *plus* the wider resting margin below
+         * left each body at 3dp on the 393dp phone, and TradingView's own phone chart opens on
+         * sixty to eighty with a visibly looser weave. Seventy puts the body back over 3dp with the
+         * margin spent, which is the number both halves of the geometry were reasoned from.
+         *
+         * The reader can still see more — [MAX_BARS_PER_VIEW] is 2400 — and their zoom is saved per
+         * symbol and timeframe. This is only where a chart *starts*.
          */
-        const val DEFAULT_BARS_PER_VIEW = 80
+        const val DEFAULT_BARS_PER_VIEW = 70
 
         /** Below this the chart stops being a chart and becomes a few coloured rectangles. */
         const val MIN_BARS_PER_VIEW = 14
@@ -858,13 +864,17 @@ data class ChartViewport(
         /**
          * How much of the window is air between the newest bar and the price axis, at rest.
          *
-         * Six percent. On the 393dp phone this app is built for that is about twenty points of
-         * plot: wide enough that the live-price tag and the countdown are not pressed against the
-         * candle they describe, wide enough for a projection to say something, and narrow enough
-         * that it never reads as the feed having stopped. Ten percent was tried and reads as a
-         * gap; three is not distinguishable from none.
+         * **Ten percent**, which is the reference's own and the owner's instruction (run F). On the
+         * 393dp phone that is about thirty-three points of plot: seven slots at the default zoom.
+         *
+         * Six was tried first and the note here argued for it — that ten "reads as a gap". Held
+         * against TradingView's phone chart side by side it does not: what reads as a gap is ten
+         * per cent of a *chart that opens on eighty bars*, where the margin is eight slots of
+         * hairline-thin candles. With the default at seventy the same share is the room the
+         * live-price tag, the countdown and a projection actually need, and the newest candle stops
+         * sitting under the tag that describes it.
          */
-        const val RIGHT_MARGIN_SHARE = 0.06f
+        const val RIGHT_MARGIN_SHARE = 0.10f
 
         /** Below two slots the margin rounds away entirely at the tightest zoom. */
         const val MIN_RIGHT_SLOTS = 2

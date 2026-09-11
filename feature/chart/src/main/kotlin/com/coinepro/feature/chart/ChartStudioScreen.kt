@@ -246,7 +246,7 @@ fun ChartStudioScreen(
     }
 
     Column(modifier = modifier.fillMaxSize().background(CoineProColors.Stage)) {
-        StudioHeader(symbol = state.symbol, timeframe = state.interval.label, onBackToChart = onBackToChart)
+        StudioHeader(symbol = state.symbol, timeframe = state.interval.code, onBackToChart = onBackToChart)
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),

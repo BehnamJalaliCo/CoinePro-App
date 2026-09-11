@@ -139,7 +139,7 @@ object TimeScale {
         }
         if (candidates.isEmpty()) return evenly(times, first, last, maxTicks)
 
-        val usable = roundMinutesOnly(candidates, maxTicks)
+        val usable = roundHoursOnly(roundMinutesOnly(candidates, maxTicks), maxTicks)
 
         // Coarsest first, and within one unit oldest first so that a chart spanning three years
         // labels all three rather than whichever two the sort happened to reach.
@@ -189,14 +189,48 @@ object TimeScale {
         }
     }
 
+    /**
+     * The same rule one unit up: thin the hour boundaries down to round hours of the day.
+     *
+     * On an hourly chart *every bar* opens an hour, so the ladder filled with whichever hours
+     * happened to survive the collision gap — `03:00 09:00 16:00` on one screen and `04:00 11:00
+     * 17:00` after a pan of one bar. True times, and the reader cannot navigate by them. Every
+     * terminal labels an intraday axis at the session's round hours — 00:00, 06:00, 12:00, 18:00 —
+     * and this is that rule: the coarsest step of the day that still leaves enough labels wins.
+     *
+     * The steps divide 24 exactly, so the ladder is the same every day and a label that was at
+     * midday is at midday tomorrow. A window too short to hold [MIN_ROUND_HOURS] of any step is
+     * left alone rather than emptied: three unround hours beat no hours at all.
+     */
+    private fun roundHoursOnly(candidates: List<Candidate>, maxTicks: Int): List<Candidate> {
+        val hours = candidates.filter { it.tick.unit == TimeTickUnit.HOUR }
+        if (hours.size <= 1) return candidates
+        val wanted = minOf(maxTicks, MIN_ROUND_HOURS)
+        val step = HOUR_STEPS.firstOrNull { step ->
+            hours.count { hourOf(it.local) % step == 0L } >= wanted
+        } ?: return candidates
+        return candidates.filter {
+            it.tick.unit != TimeTickUnit.HOUR || hourOf(it.local) % step == 0L
+        }
+    }
+
     /** The minute past the hour a local moment falls on. */
     private fun minuteOf(local: Long): Long = local.floorDiv(SECONDS_PER_MINUTE) % 60
+
+    /** The hour of the local day a moment falls in. */
+    private fun hourOf(local: Long): Long = local.floorDiv(SECONDS_PER_HOUR).mod(24L)
 
     /** The round minutes, coarsest first. Anything finer than five is not a round time. */
     private val MINUTE_STEPS = longArrayOf(30, 15, 10, 5).toList()
 
+    /** The round hours, coarsest first. Every one divides the day, so the ladder repeats. */
+    private val HOUR_STEPS = longArrayOf(12, 6, 4, 3, 2).toList()
+
     /** How many round minutes a step has to offer before it is worth thinning down to it. */
     private const val MIN_ROUND_MINUTES = 3
+
+    /** The same floor for hours: below three labels the axis has lost more than it gained. */
+    private const val MIN_ROUND_HOURS = 3
 
     /**
      * The old behaviour, kept for the two cases that genuinely have no calendar: a price-driven
@@ -264,3 +298,35 @@ object TimeScale {
  */
 fun TimeTick.isBoundary(): Boolean =
     unit == TimeTickUnit.MONTH || unit == TimeTickUnit.YEAR
+
+/**
+ * The moment a label names, which is the **boundary the bar opens** and not the bar's own stamp.
+ *
+ * A time axis is a calendar. A tick that stands where a new hour began says «12:00», and that is
+ * true of the hour whether or not the venue's bar for it is stamped at 12:00:00 — a feed that
+ * opens its hourly bars at seven minutes past, a synthetic series built from ticks, or a session
+ * that opens at 09:23 all print the bar's own time otherwise, and the axis then reads `11:23
+ * 11:23 11:23` down a week of days: five true stamps that no reader would ever say out loud, and
+ * the exact arbitrary-label failure [TimeScale] exists to end.
+ *
+ * So the stamp is floored to the unit the tick stands for, in the reader's own zone. Nothing is
+ * invented: the bar is still the bar, the crosshair still reads its exact time, and on every
+ * aligned feed — which is every exchange feed — the two are the same number.
+ */
+fun TimeTick.boundaryTime(zone: ChartZone): Long {
+    val unit = unit ?: return time
+    val offset = zone.offsetSeconds(time)
+    val local = time + offset
+    val floored = when (unit) {
+        TimeTickUnit.MINUTE -> local.floorDiv(SECONDS_IN_MINUTE) * SECONDS_IN_MINUTE
+        TimeTickUnit.HOUR -> local.floorDiv(SECONDS_IN_HOUR) * SECONDS_IN_HOUR
+        // A day and everything coarser is labelled with a date, and a date is the day it names
+        // whatever o'clock the session happened to open at.
+        else -> local.floorDiv(SECONDS_IN_DAY) * SECONDS_IN_DAY
+    }
+    return floored - offset
+}
+
+private const val SECONDS_IN_MINUTE = 60L
+private const val SECONDS_IN_HOUR = 3_600L
+private const val SECONDS_IN_DAY = 86_400L

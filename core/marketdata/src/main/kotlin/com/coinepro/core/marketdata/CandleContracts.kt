@@ -204,6 +204,17 @@ sealed interface ChartInterval {
     /** The caption, Persian digits either way, because a caption is prose. */
     val label: String
 
+    /**
+     * The trader's own name for the length — `H1`, `M15`, `D1`, `30S` — in Latin, always (run F).
+     *
+     * [label] is a sentence fragment («۱ ساعت») and reads correctly inside one. It reads wrongly
+     * on a *control*: the toolbar says `H1`, the picker's pills say `H1`, and the panel above the
+     * readings said «۱ ساعت», so the same chart named its own timeframe two ways on one screen —
+     * and one of those ways had a Persian numeral in it, which this app reserves for prose counts.
+     * Every chip, header and row caption takes this; a sentence still takes [label].
+     */
+    val code: String get() = wire
+
     /** The open time of the bar containing [epochSeconds]; see [Timeframe.bucketStart] for the rules. */
     fun bucketStart(epochSeconds: Long, zone: ZoneId = CHART_TIME_ZONE): Long
 

@@ -33,8 +33,8 @@ import kotlinx.coroutines.sync.withPermit
 class SparklineStore(
     private val gateway: CandleGateway,
     private val scope: CoroutineScope,
-    /** The window each line covers. A day of hourly bars is the shape a reader means by "today". */
-    private val timeframe: Timeframe = Timeframe.H1,
+    /** The window each line covers. A day, at the resolution the line is actually drawn at. */
+    private val timeframe: Timeframe = Timeframe.M30,
     private val bars: Int = DEFAULT_BARS,
 ) {
 
@@ -81,12 +81,19 @@ class SparklineStore(
 
     private companion object {
         /**
-         * Twenty-four hourly closes.
+         * Forty-eight half-hourly closes — still a day, at twice the resolution (run F).
          *
-         * A day, and small enough that the whole page is a couple of kilobytes. More points in a
-         * 56dp-wide line is detail nobody can see.
+         * Twenty-four was the old number and the argument for it was that «more points in a
+         * 56dp-wide line is detail nobody can see». That is true of the *line* and false of its
+         * shape: at 24 points a 56dp line has a vertex every 2.3dp, and a day of real market noise
+         * drawn at that spacing comes out as four or five smooth arcs — which is what the owner
+         * read off the shipped watchlist as «منحنی‌های صاف Bezier با ۳ نقطه … شبیه دیتای ساختگی».
+         * There is no smoothing in [CoineProSparkline] and there never was; the curve was the
+         * sampling. Forty-eight puts a vertex every 1.2dp, which is where a day looks like a day.
+         *
+         * Still small: forty-eight doubles round a page of watchlist rows is a few kilobytes.
          */
-        const val DEFAULT_BARS = 24
+        const val DEFAULT_BARS = 48
 
         /** How many lines may be in flight at once. */
         const val CONCURRENCY = 4

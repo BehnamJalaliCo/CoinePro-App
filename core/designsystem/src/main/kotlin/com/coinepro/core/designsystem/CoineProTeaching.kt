@@ -22,6 +22,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -159,38 +164,158 @@ fun CoineProTeachingStrip(
      */
     restorable: Boolean = true,
 ) {
-    val dismissals = LocalTeachingDismissals.current
-    val showing = dismissals.ready && surface.key !in dismissals.dismissed
-    val padded = if (gutter) {
-        modifier.padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.Half)
-    } else {
-        modifier.padding(vertical = CoineProSpacing.Half)
-    }
-    if (showing) {
-        CoineProTeachingBanner(
-            surface = surface,
-            visible = true,
-            onDismiss = { dismissals.dismiss(surface.key) },
-            modifier = padded,
-        )
-        return
-    }
-    // Nothing at all until the disk read lands, for the reason the ordinary overload gives: a strip
-    // that appeared and then changed shape a frame later is a flicker on every cold start.
-    if (!dismissals.ready) return
-    if (!restorable) return
-    Box(modifier = padded.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-        Text(
-            text = stringResource(R.string.teaching_what_is_this),
-            style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.TextMuted,
-            modifier = Modifier
-                .clip(CoineProShapes.small)
-                .clickable { dismissals.restore(surface.key) }
-                .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half),
-        )
+    @Suppress("UNUSED_PARAMETER") // see the note below: both are kept for the call sites.
+    val unused = gutter to restorable
+    val host = LocalTeachingHost.current ?: return
+    // Registration, and nothing drawn here at all. A screen keeps its one line; what that line now
+    // does is ask the host at the root of the app to float this surface's coach-mark over the
+    // content, which is where the whole change lives. See [CoineProTeachingHost].
+    DisposableEffect(surface, host) {
+        host.request(surface)
+        onDispose { host.release(surface) }
     }
 }
+
+/**
+ * The coach-mark host: every teaching sentence in the app, floated over the screen that asked.
+ *
+ * ### Why the banner stopped being a banner (4.70.0)
+ *
+ * It was a card in the page's own layout, above the first row of whatever the reader came to read,
+ * until they closed it. That is a defensible design and it is not the one this product wants: the
+ * owner's review of the shipped screens is blunt about it — «TradingView/Binance هرگز صفحه را برای
+ * کاربر توضیح نمی‌دهند» — and on the chart, the screen with the least room to give away, it was
+ * printed over the top of the plot.
+ *
+ * So the sentence is the same, the dismissal is the same (permanent, in `TeachingStore`), and the
+ * *surface* changes: it floats at the foot of the screen, over the content, taking none of the
+ * page's height, and it goes away by itself after [COACH_MARK_MS] if the reader does not tap it.
+ * A reader who looks up and never reads it loses nothing; a reader who reads it gets it once.
+ *
+ * ### One host, at the root
+ *
+ * Screens register through [CoineProTeachingStrip] rather than each hosting an overlay, so the
+ * card is laid out once, above the bottom bar, in one place, and two screens in a back stack
+ * cannot both draw one. The most recent registration wins: a sheet opened over a screen teaches
+ * about the sheet.
+ */
+@Composable
+fun CoineProTeachingHost(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val dismissals = LocalTeachingDismissals.current
+    val host = remember { TeachingHost() }
+    Box(modifier = modifier) {
+        CompositionLocalProvider(LocalTeachingHost provides host) { content() }
+        val surface = host.current
+        val showing = surface != null && dismissals.ready && surface.key !in dismissals.dismissed
+        if (showing && surface != null) {
+            // Dismissed by the clock as well as by the reader, and the clock is the point: a
+            // coach-mark that waits for a tap is a modal with extra steps.
+            LaunchedEffect(surface) {
+                delay(COACH_MARK_MS)
+                dismissals.dismiss(surface.key)
+            }
+            CoineProCoachMark(
+                surface = surface,
+                onDismiss = { dismissals.dismiss(surface.key) },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
+    }
+}
+
+/** The floating card itself. Separated so a preview and a screenshot can place one directly. */
+@Composable
+fun CoineProCoachMark(
+    surface: TeachingSurface,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = true,
+        modifier = modifier,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically(),
+    ) {
+        val shape = MaterialTheme.shapes.medium
+        val haptics = rememberCoineProHaptics()
+        Row(
+            modifier = Modifier
+                .padding(horizontal = CoineProSpacing.Gutter)
+                .padding(bottom = COACH_MARK_LIFT)
+                .fillMaxWidth()
+                .background(CoineProColors.SurfaceRaised, shape)
+                .border(1.dp, CoineProColors.Border, shape)
+                .clip(shape)
+                .clickable {
+                    haptics.select()
+                    onDismiss()
+                }
+                .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        ) {
+            Icon(
+                painter = painterResource(CoineProIcons.Info),
+                contentDescription = null,
+                tint = CoineProColors.TextMuted,
+                modifier = Modifier.padding(top = GLYPH_NUDGE).size(GLYPH),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(TWO),
+            ) {
+                Text(
+                    text = stringResource(surface.lead),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CoineProColors.TextPrimary,
+                )
+                surface.pitfall?.let { pitfall ->
+                    Text(
+                        text = stringResource(pitfall),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CoineProColors.TextMuted,
+                    )
+                }
+            }
+            Text(
+                text = stringResource(R.string.teaching_got_it),
+                style = MaterialTheme.typography.labelMedium,
+                color = CoineProColors.pageAccentInk,
+            )
+        }
+    }
+}
+
+/** Which surface is asking to be taught, newest first. See [CoineProTeachingHost]. */
+@Stable
+class TeachingHost internal constructor() {
+
+    private val stack = mutableStateListOf<TeachingSurface>()
+
+    /** The surface whose coach-mark should be on screen, or null when nothing registered. */
+    val current: TeachingSurface? get() = stack.lastOrNull()
+
+    internal fun request(surface: TeachingSurface) {
+        stack.remove(surface)
+        stack.add(surface)
+    }
+
+    internal fun release(surface: TeachingSurface) {
+        stack.remove(surface)
+    }
+}
+
+/** Where a screen's registration lands. Null outside a host, and then nothing is taught. */
+val LocalTeachingHost = staticCompositionLocalOf<TeachingHost?> { null }
+
+/** How long a coach-mark waits before putting itself away for good. */
+private const val COACH_MARK_MS = 6_000L
+
+/** Above the bottom bar, so the card floats over the content rather than over the navigation. */
+private val COACH_MARK_LIFT = 76.dp
 
 /**
  * The banner with its state passed in, for a preview, a test, or a screen that owns the decision

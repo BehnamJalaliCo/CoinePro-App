@@ -614,6 +614,35 @@ Five items, one run. What each one is now, what pins it, and what only a device 
 
 **Two choices to know about.** Reorder and merge are sheet buttons, not a legend drag (above). The magnifier uses the platform's `Magnifier` through Compose's modifier rather than a hand-drawn bubble, so it renders the real pixels under the finger on Android 9+ and is simply absent below.
 
+### RUN F — the chart in pixels, and the explaining stops (4.70.0)
+
+The owner's first review of the shipped frames, item by item. Where an item was already true the
+row says so and names the proof rather than claiming a change.
+
+| # | asked | done | proof |
+| --- | --- | --- | --- |
+| 1 | Volume at 18 % height, 50 % alpha, behind price and studies | **already so** — `VOLUME_INLINE = 0.18f`, `VOLUME_ALPHA = 0.5f`, and `drawVolume` runs before the series and before every overlay in the same clip. What made it look taller in the reviewed frame is that 18 % of a *tall* single-pane plot is a tall band | `CoineProChart.kt`; the frames below |
+| 2 | Collapsible one-line pane legend, 8 dp top margin, tap to open, remembered | **done**: at rest the study list is one row — the first study, its value and «+N» — and the head keeps the disclosure that opens every row with its eye, gear and ×. A crosshair opens it by itself, because a crosshair is the reader asking what the studies read. `rememberSaveable`, so it survives rotation and navigation. The plate's inset was already 9 dp | `run-f-chart-legend-collapsed` (ten studies, «+9» on one line); `ExplainerRemovedTest` renders prove the plate is three lines |
+| 3 | Ticks at round time boundaries, density with zoom, 120 ms fade, date on day change | **done**, and it was two defects wearing one symptom. `TimeScale.roundHoursOnly` thins the hour candidates to a step that divides the day (12/6/4/3/2), exactly as `roundMinutesOnly` already did for minutes — so an H1 chart reads 00:00 · 06:00 · 12:00 · 18:00. And `TimeTick.boundaryTime` floors the stamp to the unit the tick stands for, so a feed whose bars open at 23 minutes past prints `12:00` rather than `11:23` under every day. The fade is a 120 ms linear crossfade over the labels that changed, driven from the draw pass; the first ladder never fades | `RoundTimeAxisTest` (5); `run-f-chart-zoom-30/70/300` |
+| 4 | Countdown (mm:ss) under the last price, 200 ms flash on tick | **already so** — `countdownLabel` + `drawLastPrice(secondLine = …)`, and `TICK_FLASH_MIX` lifts the tag towards white for 200 ms. It was absent from the reviewed frame because that fixture's last bar closed in October: a countdown to a bar that has already closed is correctly nothing | `run-f-chart-countdown` — `51:35` under `2,704.8` on a fixture whose last bar is the hour now running |
+| 5 | One timeframe name everywhere, in Latin | **done**: `ChartInterval.code` (`H1`, `M15`, `D1`, `30S`) on the toolbar, the H/L row, the reading panel and the studio header. `label` («۱ ساعت») survives only inside sentences, which is where a prose count belongs | `grep -rn "interval.label"` → the two warming sentences and the custom-range menu item |
+| 6 | Vector pair icons, no emoji in the symbol header | **already so** — `CoineProPairLogo` draws two overlapped vector circles from `ARTWORK`, and `SymbolArtwork.covers` keeps a symbol without artwork out of every list. There is no emoji anywhere in the chart header: `grep -rn` over the sources finds none | the frames; `CoineProPairLogo.kt` |
+| 7 | A price tag on the axis for every level line | **done**: each `PriceLevel` now draws an axis tag in its own colour, between the ladder and the live-price tag so the live price still wins | `run-f-chart-levels` — R1 at `2,625.5` red, P at `2,611.6` gold, S1 at `2,597.6` green |
+| 8 | ~70 bars with a 10 % right offset, zoom kept per symbol/TF | **done**: `DEFAULT_BARS_PER_VIEW` 80 → **70**, `RIGHT_MARGIN_SHARE` 6 % → **10 %**, and the zoom is stored per timeframe in `SymbolChartState.zoom` (field 22) rather than only in the composition | `ChartArrangementTest` «the zoom is remembered per timeframe and restored onto the same one» |
+| 9 | One `surface0`; one up green, one down red | **done**: `terminal` is now `stage` in both themes, and `buy`/`social` take the market green. The red is the one place the two cannot be identical: TradingView's `#F23645` measures **4.44:1** as ink on the elevated card and a change pill sets 13 sp, so every red **figure** is `#F6465D` (4.89:1) while the *candles* keep the reference's red, which is a fill and carries no text | `SurfaceLadderTest`; the palette's own note |
+| 10 | Explainer cards out; first-run coach-mark instead; a UI test | **done**: `CoineProTeachingStrip` now *registers* with `CoineProTeachingHost` at the root of the app, which floats the sentence at the foot of the screen for six seconds on first run and dismisses it for good. No page gives up a row for it, and the «این صفحه چیست؟» line a dismissed strip used to leave behind is gone with it | `ExplainerRemovedTest`: four tests — Home, Watchlist and Chart draw no teaching text after the first run, and on the first run the chart's coach-mark's top edge is in the bottom third of the window |
+| 11 | Home: 4×2 icon grid, no borders, signal keeps the accent, sparklines on the rows; watchlist: real 24 h lines ≥ 48 points, bare header icons | **done**: six round glyphs on the raised surface laid out four and two, the signal in gold; `CoineProMarketRow` gained a sparkline column and Home passes the same store the watchlist uses; `SparklineStore` now fetches **48 half-hourly** closes instead of 24 hourly ones — the "Bezier" the review saw was the sampling, since the renderer has never smoothed; the watchlist's search action is a bare 24 dp glyph | `run-f-home-*`, `run-f-watchlist-*` |
+| 12 | Lint: a numeric style with Persian digits fails the build | **done**: `check_numeric_styles_are_latin` in the consistency gate reads every `Text` whose style is `.numeric()`/`numericTextStyle`/`Numeric` and fails if `toPersianDigits()` is inside the same call. Verified against a planted violation, which it caught, and the repository is clean | the gate |
+
+**The frames.** `docs/qa/screenshots/4.70/` — Home, Watchlist and Chart in dark and light, Persian
+and English (12), plus the collapsed legend with ten studies, the three zoom levels, the level
+tags and the countdown. The 4.69.0 set beside it is the "before". Every frame is rendered by
+`RunFProofTest`, which asserts what each one shows.
+
+**What a device would still add** (unchanged from run E, plus one): the 10-second recording of the
+countdown ticking and the tick flash — both are per-frame animations, and a still frame can only
+show the state, not the movement.
+
 ## Definition of done — as it stands
 
 - [x] §0 copy hygiene done; lint enforced (`tools/i18n/lint_strings.py` through the consistency gate).
@@ -631,6 +660,7 @@ Five items, one run. What each one is now, what pins it, and what only a device 
 - C. NamaScript — done (4.64.0): six help entries fa+en, the strategy entry rewritten, Pine's short strategy form, every `ta.*` under a conformance script; the Pixel 6a timings need the phone.
 - D. Network — done (4.65.0): no third-party host in the release dex, a gate that keeps it so; the pins measured live.
 - E. Tools and tablet — done (4.67.0): panes arranged, the toolbar over the selection with a magnifier under the finger, the rail led by the last tool with a favourites strip on the plot, 54 knobs on 28 studies, the parity matrix full; the four devices' frames, the soak log and the recording need the devices.
+- F. Chart pixels and the explainers — done (4.70.0): round time labels on the boundary they stand on, a one-line legend, level price tags, 70 bars with a tenth of air, one ground and one pair of market colours, the teaching sentence floated off the page, and a lint that keeps Persian digits out of a price column.
 
 ### The 4.58 run, in one line each
 

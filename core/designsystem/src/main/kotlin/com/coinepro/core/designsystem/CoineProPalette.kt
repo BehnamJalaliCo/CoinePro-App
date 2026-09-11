@@ -141,7 +141,11 @@ data class CoineProPalette(
  */
 val CoineProDarkPalette = CoineProPalette(
     stage = Color(0xFF0B0E11),
-    terminal = Color(0xFF070A0F),
+    // **The same ground as the stage since 4.70.0.** The chart used to sit four units darker, and
+    // the argument for it was that a chart wants a ground of its own. Held against the app — Home
+    // at `#0B0E11`, the chart at `#070A0F`, one tap apart — it read as two different apps, which
+    // is the owner's own reading of the two screenshots side by side (run F). One `surface0`.
+    terminal = Color(0xFF0B0E11),
     surface = Color(0xFF10141B),
     surfaceElevated = Color(0xFF171C24),
     surfaceRaised = Color(0xFF222831),
@@ -167,13 +171,30 @@ val CoineProDarkPalette = CoineProPalette(
     accentFill = Color(0xFFD8A848),
     onAccent = Color(0xFF0B0E11),
     analysis = Color(0xFF2962FF),
-    social = Color(0xFF00B15C),
+    // One green and one red in the whole theme (run F).
+    //
+    // There were three greens on one screen: `#089981` on the candles, `#00B15C` on a sparkline
+    // and the same again on a change pill. Every one of them meant "up", and a reader cannot be
+    // asked to learn that the green of a rising candle and the green of a rising sparkline are the
+    // same fact in two shades. The distinction this file used to draw — [buy] as an *order* and
+    // [marketUp] as a *market* — survives in the field names and in where each is used; it no
+    // longer survives as a difference in hue, because on screen there was no way to read it.
+    social = Color(0xFF089981),
     premium = Color(0xFFD4AF37),
-    buy = Color(0xFF00B15C),
-    sell = Color(0xFFF6465D),
-    // The reference's own, exactly: TradingView's up and down on a dark terminal.
-    marketUp = Color(0xFF089981),
-    marketDown = Color(0xFFF23645),
+    buy = Color(0xFF089981),
+    // **One green, and a red three points off the candle's.**
+    //
+    // The green is TradingView's own `#089981` and it reads 4.85:1 as ink on the elevated card,
+    // so the candle colour and the figure colour are one value with nothing given up.
+    //
+    // The red cannot be. TradingView's `#F23645` measures **4.44:1** on that same card, and a
+    // change pill sets 13sp — not large text, so 4.5 is the bar this file has held itself to
+    // twice already. Three points lighter clears it at 4.89:1 and is indistinguishable beside it.
+    // So the *candles* keep the reference's red — it is a fill, drawn from `TradingViewPalette`,
+    // and no figure is set on it — and every red **figure** in the app is this one.
+    sell = Color(0xFFF6465D), // 4.89:1 on the elevated card
+    marketUp = Color(0xFF089981), // 4.85:1
+    marketDown = Color(0xFFF6465D),
     warning = Color(0xFFF0B90B),
     assetInkShift = 0f,
     isDark = true,
@@ -191,9 +212,10 @@ val CoineProDarkPalette = CoineProPalette(
  */
 val CoineProLightPalette = CoineProPalette(
     stage = Color(0xFFF7F8FA),
-    // Pulled off the surface it used to share a value with. A chart ground identical to a card is
-    // a chart with no ground.
-    terminal = Color(0xFFF1F3F7),
+    // The stage's own value since 4.70.0, for the reason the dark theme gives: one `surface0` for
+    // the whole app. The chart still reads as a region — its plot is drawn inside a frame with its
+    // own hairline — without the page changing colour under it.
+    terminal = Color(0xFFF7F8FA),
     // **#F1F2F6, and the four points it moved are the difference between a card and a region.**
     //
     // It was #F6F7FA. Against a white stage that is a difference of 4.5 units of luminance and
@@ -240,12 +262,15 @@ val CoineProLightPalette = CoineProPalette(
     accentFill = Color(0xFFD8A848),
     onAccent = Color(0xFF111318),
     analysis = Color(0xFF1B4ACC),
-    social = Color(0xFF0E8A4C),
+    // One green and one red here too — see the dark theme's note. The pair kept is the *market*
+    // pair below, which is the reference's hue darkened until it clears 4.5:1 on white: white on
+    // `#057A66` measures 5.34:1 and on `#D01427` 5.54:1, so a filled buy button is as legible as
+    // the darker green it replaces while a rising candle, a sparkline and a percent pill are
+    // finally one colour.
+    social = Color(0xFF057A66),
     premium = Color(0xFF8A6318),
-    // The two semantic inks, at the sizes they are actually used: a percent pill sets 13sp, which
-    // is not large text, so 4.5 is the bar and 4.12 was under it.
-    buy = Color(0xFF08703C), // 5.78:1
-    sell = Color(0xFFC9203A),
+    buy = Color(0xFF057A66), // 5.34:1 under white
+    sell = Color(0xFFD01427), // 5.54:1 under white
     // **The one deviation from the reference's hex, and it is deliberate.**
     //
     // TradingView sets `#089981` on white too. Against this palette's white stage that is 3.3:1,

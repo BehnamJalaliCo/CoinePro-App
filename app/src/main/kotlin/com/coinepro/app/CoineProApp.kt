@@ -2749,6 +2749,7 @@ private fun MainShell(
                 val equityState by portfolioController.state.collectAsStateWithLifecycle()
 
                 HomeScreen(
+                    sparklines = sparklineStore,
                     state = marketState,
                     // The reader's own name if they chose one, the server's otherwise. Without this
                     // the greeting row does not render at all — and with it goes the avatar, which

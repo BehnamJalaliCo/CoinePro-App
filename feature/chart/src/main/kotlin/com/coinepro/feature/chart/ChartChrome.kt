@@ -489,7 +489,7 @@ internal fun ChartReadingsPanel(
             // values on a timeframe change; a label that snapped while they travelled would be the
             // one part of the panel not taking part in the same movement.
             AnimatedContent(
-                targetState = interval.label,
+                targetState = interval.code,
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
                 label = "reading-interval",
             ) { name ->

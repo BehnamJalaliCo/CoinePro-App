@@ -238,10 +238,17 @@ class FoldMetricsTest {
          * What the watchlist's chrome measures today, and is meant to keep measuring.
          *
          * 117 until Sprint A1 put every padding on the four-point grid; the header, the tab row
-         * and the column headings each grew by a step and the chrome now sits exactly on the
-         * owner's budget. It may not grow past it.
+         * and the column headings each grew by a step and the chrome sat exactly on the owner's
+         * budget.
+         *
+         * **119 since 4.70.0**, and the six points came *back* (run F). The header action was a
+         * 17dp icon on a 34dp grey plate; it is now the app's own 24dp glyph with no fill, and it
+         * reaches 44dp without occupying it — `headerTarget` in `WatchlistScreen` measures the
+         * child at the target and reports the footprint, the same trick the chart legend's buttons
+         * use. So the control got a legal thumb target, the plate went away, and the fold moved
+         * *down* rather than up: six more points of the first row on every phone.
          */
-        val CHROME_TARGET = 125.dp
+        val CHROME_TARGET = 119.dp
         const val CHROME_DRIFT_DP = 1.0f
 
         /** «Watchlist pre-row chrome <= 125dp», from the owner's own list. */

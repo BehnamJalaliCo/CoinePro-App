@@ -231,6 +231,14 @@ fun CoineProMarketRow(
      */
     starred: Boolean? = null,
     onToggleStar: (() -> Unit)? = null,
+    /**
+     * The day's closes, oldest first, for a line between the name and the price (run F).
+     *
+     * Null on a list that has none to draw — and null rather than an empty list, so a row whose
+     * line has not arrived yet lays out exactly as one on a screen that never shows lines. The
+     * colour follows [changePercent], because the line and the pill are the same fact.
+     */
+    sparkline: List<Double>? = null,
     onClick: (() -> Unit)? = null,
     /**
      * The row's preview, opened by holding it. Null on a list that has nothing to preview.
@@ -355,6 +363,22 @@ fun CoineProMarketRow(
                 maxLines = 1,
             )
         }
+        // The shape of the day, between the name and the figure — where every terminal puts it,
+        // and where the watchlist already had one. A row on the home screen without it, beside a
+        // watchlist row with it, was the same instrument drawn two ways one tab apart.
+        if (sparkline != null && sparkline.size >= 2) {
+            CoineProSparkline(
+                values = sparkline,
+                modifier = Modifier
+                    .padding(horizontal = CoineProSpacing.One)
+                    .size(width = SPARKLINE_WIDTH, height = SPARKLINE_HEIGHT),
+                colour = when {
+                    changePercent == null -> CoineProColors.TextMuted
+                    changePercent >= 0.0 -> CoineProColors.MarketUp
+                    else -> CoineProColors.MarketDown
+                },
+            )
+        }
         Column(
             // A fixed width, and this is the single refinement that separates a terminal from a
             // list of numbers. Free-width, the column aligned on its *first* digit: `1.08`,
@@ -442,3 +466,7 @@ private val ROW_MIN_HEIGHT = 56.dp
 // Wide enough for the price **and** the move on one line: `105,432.10` plus a gap plus the pill.
 // It was 98 when the two were stacked.
 private val FIGURE_COLUMN = 152.dp
+
+/** The sparkline cell: the reference's 24dp line, at the width this row has to spare. */
+private val SPARKLINE_WIDTH = 52.dp
+private val SPARKLINE_HEIGHT = 24.dp

@@ -84,8 +84,14 @@ class ToolsProofTest {
         val state = controller.state.value
         assertEquals(listOf("atr", "macd", "bollinger"), state.paneOwnersShown)
         assertTrue(state.panes[1].title, state.panes[1].title.contains(" · RSI"))
-        // The legend names the joint pane by both studies; its eye, gear and × open on a tap.
-        assertTrue(composeRule.onAllNodesWithText("· RSI 14", substring = true).fetchSemanticsNodes().isNotEmpty())
+        // The pane titles themselves are drawn on the canvas; what the legend prints at rest is
+        // one line — the first study and «+N» for the rest — since run F collapsed it. The
+        // arrangement above is what this frame is about; the count is what proves the legend is
+        // folded rather than truncated.
+        assertTrue(
+            "the collapsed legend must carry its count",
+            composeRule.onAllNodesWithText("+", substring = true).fetchSemanticsNodes().isNotEmpty(),
+        )
     }
 
     // ── 2. The floating toolbar above the selected drawing ────────────────────────────────────

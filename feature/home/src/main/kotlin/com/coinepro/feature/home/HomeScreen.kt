@@ -6,6 +6,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -22,6 +24,9 @@ import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -73,6 +78,8 @@ import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.marketdata.MarketConnectionState
 import com.coinepro.core.marketdata.MarketDataOrigin
 import com.coinepro.core.marketdata.MarketDataState
+import kotlinx.coroutines.flow.MutableStateFlow
+import com.coinepro.core.marketdata.SparklineStore
 import com.coinepro.core.model.AvatarSpec
 import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketQuote
@@ -96,6 +103,13 @@ import java.time.ZoneId
 fun HomeScreen(
     state: MarketDataState,
     onRetry: () -> Unit,
+    /**
+     * The day's line for each market row, or null on a host that has no store to lend (run F).
+     *
+     * The same store the watchlist and the markets tab draw from, so the line under a reader's
+     * eye is the same line on all three screens rather than three fetches of the same day.
+     */
+    sparklines: SparklineStore? = null,
     displayName: String? = null,
     briefing: HomeBriefing = HomeBriefing.Resting,
     portfolio: HomePortfolio? = null,
@@ -248,44 +262,14 @@ fun HomeScreen(
             }
 
             item {
-                // Three pills whose only difference used to be a word. A reader choosing among
-                // them had to read all three every time; with the glyphs the choice is a
-                // recognition, and the one-word labels stop carrying the whole burden.
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    CoineProPrimaryButton(
-                        text = stringResource(R.string.home_action_signal),
-                        onClick = onGenerateSignal,
-                        modifier = Modifier.weight(1f),
-                        // The sparkle, not the candlesticks. This pill opens the AI studio — that
-                        // is what generating a signal means here — and the signals glyph is a pair
-                        // of candles, which is what the pill beside it already shows. Two of three
-                        // buttons carrying the same picture is worse than none of them carrying
-                        // one: it tells the reader they are the same action.
-                        icon = CoineProIcons.Ai,
-                    )
-                    CoineProSecondaryButton(
-                        text = stringResource(R.string.home_action_chart),
-                        onClick = onSendChart,
-                        modifier = Modifier.weight(1f),
-                        icon = CoineProIcons.Chart,
-                    )
-                    CoineProSecondaryButton(
-                        text = stringResource(R.string.home_action_market),
-                        onClick = onOpenMarket,
-                        modifier = Modifier.weight(1f),
-                        icon = CoineProIcons.Markets,
-                    )
-                }
-            }
-
-            if (onOpenTools != null || onOpenActivity != null || onOpenNews != null) {
-                item {
-                    ShortcutRow(
-                        onOpenTools = onOpenTools,
-                        onOpenActivity = onOpenActivity,
-                        onOpenNews = onOpenNews,
-                    )
-                }
+                QuickActions(
+                    onGenerateSignal = onGenerateSignal,
+                    onSendChart = onSendChart,
+                    onOpenMarket = onOpenMarket,
+                    onOpenTools = onOpenTools,
+                    onOpenActivity = onOpenActivity,
+                    onOpenNews = onOpenNews,
+                )
             }
 
             // **Below the account, not above it**, and the order of this screen was wrong.
@@ -326,6 +310,7 @@ fun HomeScreen(
                         onToggleWatch = onToggleWatch,
                         more = (watched.size + rest.size - HOME_MARKET_ROWS).takeIf { it > 0 },
                         onOpenMarket = onOpenMarket,
+                        sparklines = sparklines,
                     )
                 }
             }
@@ -607,12 +592,19 @@ private fun MarketCard(
     /** How many markets are not on this card. Null when the card is showing all of them. */
     more: Int? = null,
     onOpenMarket: (() -> Unit)? = null,
+    sparklines: SparklineStore? = null,
 ) {
+    // Asked for once per row, from the row, which is where the watchlist asks too: the store
+    // drops a symbol it has already fetched, so a card recomposing on every tick costs nothing.
+    val lines by (sparklines?.lines ?: remember { MutableStateFlow(emptyMap<String, List<Double>>()) })
+        .collectAsStateWithLifecycle()
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         CardLabel(stringResource(titleRes))
         quotes.forEachIndexed { index, quote ->
             if (index > 0) RowDivider()
-            QuoteRow(quote, onOpenSymbol, watchlist, onToggleWatch)
+            val ticker = quote.instrument.symbol.uppercase()
+            LaunchedEffect(ticker, sparklines) { sparklines?.request(ticker) }
+            QuoteRow(quote, onOpenSymbol, watchlist, onToggleWatch, sparkline = lines[ticker])
         }
         // The way out, and it states the number rather than saying «بیشتر». A card that is showing
         // six of two hundred markets and does not say so reads as a card showing the market.
@@ -661,6 +653,7 @@ private fun QuoteRow(
     onOpenSymbol: ((String) -> Unit)?,
     watchlist: List<String>,
     onToggleWatch: ((String) -> Unit)?,
+    sparkline: List<Double>? = null,
 ) {
     val stale = stringResource(R.string.home_quote_stale)
     CoineProMarketRow(
@@ -675,6 +668,7 @@ private fun QuoteRow(
         // says so, because a stale quote drawn like a live one is the failure that costs money.
         trailingNote = stale.takeIf { quote.changePercent == null && quote.isStale },
         trailingNoteColor = CoineProColors.Warning,
+        sparkline = sparkline,
         onClick = onOpenSymbol?.let { open -> { open(quote.instrument.symbol) } },
     )
 }
@@ -938,84 +932,108 @@ private fun marketRank(quote: MarketQuote): Int = when (quote.instrument.symbol)
 }
 
 /**
- * The two destinations that lost their tab.
+ * Everywhere this screen can send the reader, as one grid of glyphs (run F).
  *
- * A pair of wide, plainly-labelled rows rather than icons: they are visited rarely enough that a
- * glyph alone would not be recognised, and often enough that burying them in the overflow menu
- * would be hiding them.
+ * ### What this replaces, and why
+ *
+ * Three filled pills and three bordered rows: six controls, six borders, two visual languages,
+ * and — the owner's word for it — «شبیه فرم است». The apps this one is measured against do not
+ * put a form on the home screen; they put a row of round glyphs with a word under each, no
+ * outline, and the one action they want pressed carries the accent. That is exactly this.
+ *
+ * Four across, so a six-item set lays out four and two rather than three and three: a full first
+ * row reads as a strip of destinations, and a half-empty one reads as a broken grid. Every cell
+ * is [CELL] wide, which is the 48dp target the rest of the app holds itself to with its label
+ * hanging under the disc rather than inside it.
+ *
+ * The **signal** action keeps the accent because it is the one action on this screen that is a
+ * product rather than a place: everything else is navigation, and gold on all six would say
+ * nothing at all.
  */
 @Composable
-private fun ShortcutRow(
+private fun QuickActions(
+    onGenerateSignal: () -> Unit,
+    onSendChart: () -> Unit,
+    onOpenMarket: () -> Unit,
     onOpenTools: (() -> Unit)?,
     onOpenActivity: (() -> Unit)?,
     onOpenNews: (() -> Unit)?,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        onOpenTools?.let {
-            Shortcut(
-                label = stringResource(R.string.home_shortcut_tools),
-                icon = DesignR.drawable.nav_tools,
-                onClick = it,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        onOpenActivity?.let {
-            Shortcut(
-                label = stringResource(R.string.home_shortcut_activity),
-                icon = DesignR.drawable.nav_activity,
-                onClick = it,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        // The third slot, and the reason it exists: news had exactly one entry point in the whole
-        // app — the fourth card down a toolkit screen that is itself three thousand points long —
-        // while the guest home printed twelve headlines in full at the bottom of a page nobody
-        // scrolled to. One is now a place you go, from here.
-        onOpenNews?.let {
-            Shortcut(
-                label = stringResource(R.string.home_shortcut_news),
-                icon = CoineProIcons.News,
-                onClick = it,
-                modifier = Modifier.weight(1f),
-            )
+    val actions = buildList {
+        add(Triple(stringResource(R.string.home_action_signal), CoineProIcons.Ai, onGenerateSignal))
+        add(Triple(stringResource(R.string.home_action_chart), CoineProIcons.Chart, onSendChart))
+        add(Triple(stringResource(R.string.home_action_market), CoineProIcons.Markets, onOpenMarket))
+        onOpenTools?.let { add(Triple(stringResource(R.string.home_shortcut_tools), DesignR.drawable.nav_tools, it)) }
+        onOpenActivity?.let { add(Triple(stringResource(R.string.home_shortcut_activity), DesignR.drawable.nav_activity, it)) }
+        onOpenNews?.let { add(Triple(stringResource(R.string.home_shortcut_news), CoineProIcons.News, it)) }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf)) {
+        actions.chunked(ACROSS).forEach { row ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
+                row.forEach { (label, icon, click) ->
+                    QuickAction(
+                        label = label,
+                        icon = icon,
+                        accent = label == actions.first().first,
+                        onClick = click,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                // The short row keeps the first row's column widths rather than stretching two
+                // cells across the page: a grid whose second row is laid out differently from its
+                // first is two rows, not a grid.
+                repeat(ACROSS - row.size) { Spacer(modifier = Modifier.weight(1f)) }
+            }
         }
     }
 }
 
 @Composable
-private fun Shortcut(label: String, icon: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Row(
+private fun QuickAction(
+    label: String,
+    icon: Int,
+    accent: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
         modifier = modifier
-            // Twelve of vertical padding around an 18dp glyph draws a 42dp row, and this is a
-            // control on the first screen the app opens on.
-            .minimumInteractiveComponentSize()
             .clip(CoineProShapes.small)
-            // Elevated with a hairline, not `Surface` with nothing.
-            //
-            // These three sit directly on the page rather than inside a card, and `Surface` on the
-            // stage measures 1.07:1 in the dark theme and 1.04:1 in the light — a fill that is
-            // there in the file and not on the panel. With no border either, the row read as three
-            // labels floating on the page rather than three things to press.
-            .background(CoineProColors.SurfaceElevated)
-            .border(1.dp, CoineProColors.BorderSubtle, CoineProShapes.small)
             .clickable(onClick = onClick)
-            .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.OneHalf),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+            .padding(vertical = CoineProSpacing.Half),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = null,
-            tint = CoineProColors.TextSecondary,
-            modifier = Modifier.size(18.dp),
-        )
+        Box(
+            modifier = Modifier
+                .size(CELL)
+                .clip(CircleShape)
+                .background(if (accent) CoineProColors.AccentFill else CoineProColors.SurfaceRaised),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = if (accent) CoineProColors.OnAccent else CoineProColors.TextPrimary,
+                modifier = Modifier.size(GLYPH),
+            )
+        }
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = CoineProColors.TextPrimary,
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
+
+/** Four per row — see [QuickActions]. */
+private const val ACROSS = 4
+
+/** The disc, and the glyph inside it. 48 is the target; 22 is what reads at that size. */
+private val CELL = 48.dp
+private val GLYPH = 22.dp
 
 /**
  * The shortest history worth drawing as a line.

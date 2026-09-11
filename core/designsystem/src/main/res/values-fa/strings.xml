@@ -48,6 +48,7 @@
          See CoineProTeaching.kt for the rules these were written to. -->
     <string name="teaching_dismiss">بستن این توضیح</string>
     <string name="teaching_what_is_this">این صفحه چیست؟</string>
+    <string name="teaching_got_it">متوجه شدم</string>
 
     <string name="teaching_home_lead">خلاصه‌ی حساب و بازار در یک صفحه: موجودی، چند نماد و سیگنال‌های باز.</string>
     <string name="teaching_home_pitfall">هرچه اینجاست خلاصه است؛ رقم کامل هر بخش داخل صفحه‌ی خودش است.</string>

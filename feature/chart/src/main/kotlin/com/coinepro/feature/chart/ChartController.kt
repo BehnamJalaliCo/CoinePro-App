@@ -20,6 +20,7 @@ import com.coinepro.core.chart.ChartOrder
 import com.coinepro.core.chart.ChartPane
 import com.coinepro.core.chart.ChartPoint
 import com.coinepro.core.chart.ChartType
+import com.coinepro.core.chart.ChartViewport
 import com.coinepro.core.chart.ComparisonBasis
 import com.coinepro.core.chart.ComparisonSeries
 import com.coinepro.core.chart.Drawing
@@ -182,6 +183,13 @@ data class ChartUiState(
     val paneOrder: List<String> = emptyList(),
     val paneMerges: Map<String, String> = emptyMap(),
     val separated: Set<String> = emptySet(),
+    /**
+     * How many bars the reader last had on screen, per timeframe code (run F).
+     *
+     * Per timeframe because zoom is not one fact — see `SymbolChartState.zoom`. The chart reads
+     * [barsPerView] rather than this map; an absent entry means the chart opens on the default.
+     */
+    val zoom: Map<String, Int> = emptyMap(),
     /**
      * The colour and the stroke the reader gave an indicator, by id — the settings sheet's Style
      * tab. Sparse, like the periods: absent means the catalogue's own. Applied where the lines are
@@ -630,6 +638,9 @@ data class ChartUiState(
 
     /** The pane indicators front to back as drawn — the first owner of each pane. */
     val paneOwnersShown: List<String> get() = arrangedPanes.map { it.first.first() }
+
+    /** The remembered zoom for the timeframe on screen, or null where the reader never set one. */
+    val barsPerView: Int? get() = zoom[interval.wire]
 
     /** [ChartDerived.overlays] with the reader's colours and widths on them; the list itself when there are none. */
     private val styledOverlays: List<ChartLine>
@@ -1315,6 +1326,7 @@ class ChartController(
                 paneOrder = saved.paneOrder.filter { id -> ChartCatalog.INDICATORS.any { it.id == id } },
                 paneMerges = saved.paneMerges.filter { (guest, host) -> ChartCatalog.INDICATORS.any { it.id == guest } && ChartCatalog.INDICATORS.any { it.id == host } },
                 separated = saved.separatedIndicators.filter { id -> ChartCatalog.INDICATORS.any { it.id == id && it.pane == IndicatorPane.PRICE } }.toSet(),
+                zoom = saved.zoom.filterValues { it in ChartViewport.MIN_BARS_PER_VIEW..ChartViewport.MAX_BARS_PER_VIEW },
                 indicatorColours = saved.indicatorColours.filterKeys { id -> ChartCatalog.INDICATORS.any { it.id == id } },
                 indicatorWidths = saved.indicatorWidths.filterKeys { id -> ChartCatalog.INDICATORS.any { it.id == id } },
                 scaleMode = mode ?: current.scaleMode,
@@ -1418,6 +1430,7 @@ class ChartController(
             paneOrder = current.paneOrder,
             paneMerges = current.paneMerges,
             separatedIndicators = current.separated.toList(),
+            zoom = current.zoom,
             patterns = current.patterns.toList(),
             chainSources = current.chainSources.mapValues { (_, source) -> encodeChainSource(source) },
         )
@@ -1992,6 +2005,23 @@ class ChartController(
      * one gesture that needs it most. Forcing `current.derived` here is not extra work: it is the
      * computation the very next frame was going to do anyway, done once and handed forward.
      */
+    /**
+     * Remember how far zoomed in the reader is, for this symbol on this timeframe (run F).
+     *
+     * Called from the chart's own viewport report, so it lands on every pinch and every zoom
+     * button — and it is written *without* [record], because a zoom is not an undo step: a reader
+     * pressing «undo» after pinching means the study they added, not the pixels they are looking
+     * at. Out-of-range values are dropped rather than clamped: they can only come from a build
+     * whose bounds differ, and adopting one would move the reader's chart on their behalf.
+     */
+    fun setZoom(barsPerView: Int) {
+        if (barsPerView !in ChartViewport.MIN_BARS_PER_VIEW..ChartViewport.MAX_BARS_PER_VIEW) return
+        val code = _state.value.interval.wire
+        if (_state.value.zoom[code] == barsPerView) return
+        _state.update { it.copy(zoom = it.zoom + (code to barsPerView)) }
+        persistSymbolState()
+    }
+
     fun setVisibleWindow(window: BarWindow) {
         lastWindow = window
         _state.update { current ->

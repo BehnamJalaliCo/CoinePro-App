@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
@@ -559,7 +560,17 @@ internal fun ChartLegendOverlay(
              * It resets on the study list, so removing the last indicator closes the panel it was
              * removed from rather than leaving three buttons hanging beside the price.
              */
-            var expanded by remember(body.size) { mutableStateOf(false) }
+            var expanded by rememberSaveable { mutableStateOf(false) }
+            // At rest the studies are **one line**: the first of them, its value, and «+N» for the
+            // rest. Run F, and the complaint behind it is exact — a legend five rows deep prints
+            // over the candles at the left of the plot, which is the part of the chart a reader
+            // pans *towards*. TradingView's phone legend is one line for the same reason and opens
+            // on a tap.
+            //
+            // Under a crosshair it opens by itself, because a crosshair is the reader asking what
+            // every study reads at that bar; that is what the legend is for and hiding it there
+            // would be hiding the answer to the question being asked.
+            val collapsed = !expanded && !tracking
             val budget = maxHeight * if (tracking) TRACKING_LEGEND_BUDGET else LEGEND_BUDGET
             // How many buttons the widest row will carry. Every primary row reserves all of them,
             // including the price row, which has no remove — so the eyes line up in a column
@@ -693,9 +704,19 @@ internal fun ChartLegendOverlay(
                         onRemove = null,
                     )
                 }
-                shown.forEach { row ->
+                // Collapsed, the whole study list is the first study with the count of the rest
+                // carried on its own name — «EMA 20  +6» — so the plate is three lines however
+                // many studies are on the chart. Open, it is every row with its eye, gear and ×.
+                val printed = if (collapsed) shown.take(1) else shown
+                val hiddenCount = body.size - printed.size
+                printed.forEachIndexed { position, row ->
+                    val labelled = if (collapsed && position == 0 && hiddenCount > 0) {
+                        row.copy(label = row.label + "  +" + hiddenCount.toString())
+                    } else {
+                        row
+                    }
                     LegendRow(
-                        row = row,
+                        row = labelled,
                         colour = row.colour?.let { Color(opaqueArgb(it)) } ?: palette.text,
                         palette = palette,
                         measurer = measurer,
@@ -707,7 +728,9 @@ internal fun ChartLegendOverlay(
                         onRemove = onRemove,
                     )
                 }
-                if (overflow > 0) {
+                // Open and still truncated by the height budget: the «+N» keeps its own line, as
+                // it always has. Collapsed, the count is already on the first row's name.
+                if (!collapsed && overflow > 0) {
                     Text(
                         text = "+" + overflow.toString(),
                         color = palette.text,

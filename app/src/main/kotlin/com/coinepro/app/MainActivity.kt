@@ -57,6 +57,7 @@ import com.coinepro.core.datastore.TimeZonePrefStore
 import com.coinepro.core.datastore.IndicatorFavouritesStore
 import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.TeachingStore
+import com.coinepro.core.designsystem.CoineProTeachingHost
 import com.coinepro.core.designsystem.LocalTeachingDismissals
 import com.coinepro.feature.chart.ChartWorkspaceStore
 import com.coinepro.feature.alerts.AlertsController
@@ -255,6 +256,9 @@ class MainActivity : FragmentActivity() {
                 // The hinge, for the chart and the parity report. See `CoineProFold`.
                 LocalCoineProFold provides rememberFoldPosture(),
             ) {
+            // Every screen's teaching sentence, floated over the app rather than laid out inside
+            // it — one host for the whole back stack. See `CoineProTeachingHost`.
+            CoineProTeachingHost {
             CoineProApp(
                 sessionController = sessionController,
                 emailAuthController = emailAuthController,
@@ -336,6 +340,7 @@ class MainActivity : FragmentActivity() {
                 onOpenNotificationSettings = ::openNotificationSettings,
                 onSendFeedback = ::sendFeedback,
             )
+            }
             }
             if (!launched) LaunchSplash(onFinished = { launched = true })
             }

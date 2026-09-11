@@ -3,6 +3,7 @@ package com.coinepro.feature.search
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -23,6 +24,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.datastore.WatchlistStore
@@ -172,12 +176,20 @@ private fun WatchlistHeader(onOpenSearch: (() -> Unit)?) {
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f),
         )
+        // A bare glyph, not a plate (run F). A header action on a terminal screen is a 24dp icon
+        // with a touch target around it — TradingView's, Binance's, and now this one's: the grey
+        // square this used to sit on read as a button on a screen whose every other control is an
+        // icon, and the plate is what the owner picked out of the shipped frame. The target is
+        // still 44: what went away is the fill, not the reach.
         if (onOpenSearch != null) {
             Box(
                 modifier = Modifier
-                    .size(34.dp)
-                    .clip(CoineProShapes.small)
-                    .background(CoineProColors.SurfaceElevated)
+                    // The reach is 44 and the *room* is 24: a header action that occupied its own
+                    // target would push the first row down by ten points, and on this screen the
+                    // fold is the product — `FoldMetricsTest` holds the chrome to a budget for
+                    // exactly that reason. The same trick the chart legend's buttons use.
+                    .headerTarget(footprint = HEADER_GLYPH, target = HEADER_TOUCH)
+                    .clip(CircleShape)
                     .clickable(onClick = onOpenSearch),
                 contentAlignment = Alignment.Center,
             ) {
@@ -185,12 +197,30 @@ private fun WatchlistHeader(onOpenSearch: (() -> Unit)?) {
                     painter = painterResource(DesignR.drawable.icon_magnifying_glass),
                     contentDescription = stringResource(R.string.search_title),
                     tint = CoineProColors.TextSecondary,
-                    modifier = Modifier.size(17.dp),
+                    modifier = Modifier.size(HEADER_GLYPH),
                 )
             }
         }
     }
 }
+
+/**
+ * A control that reaches further than the room it takes.
+ *
+ * The child is measured at [target] and the parent is told [footprint], so a thumb lands on 44
+ * points of glass while the row is laid out around 24. Without it the only way to a legal target
+ * is to spend the height, and on a list screen height above the fold is rows.
+ */
+private fun Modifier.headerTarget(footprint: Dp, target: Dp): Modifier = layout { measurable, _ ->
+    val reach = target.roundToPx()
+    val box = footprint.roundToPx()
+    val placeable = measurable.measure(Constraints.fixed(reach, reach))
+    layout(box, box) { placeable.place((box - reach) / 2, (box - reach) / 2) }
+}
+
+/** A header action's reach and its glyph — see [WatchlistHeader]. */
+private val HEADER_TOUCH = 44.dp
+private val HEADER_GLYPH = 24.dp
 
 /**
  * What is left of the column, for the two states that are one sentence.

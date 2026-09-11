@@ -203,3 +203,84 @@ class TimeScaleTest {
         assertTrue(ticks.size >= 3)
     }
 }
+
+/**
+ * Run F's two rules for the axis: the hours it names are round ones, and the label names the
+ * **boundary** the bar opens rather than the bar's own stamp.
+ *
+ * The complaint behind both, from the owner's read of a shipped frame: «۱۰:۲۳ زیر هر روز تکرار
+ * می‌شود ← تیک‌ها روی فاصله‌ی ثابت کندل گذاشته شده‌اند نه روی زمان‌های رند». Two separate
+ * defects wearing one symptom — an hour ladder that took whichever hours survived the collision
+ * gap, and a label printing a stamp that is only round on a feed whose bars are aligned.
+ */
+class RoundTimeAxisTest {
+
+    private val tehran = CHART_ZONE
+    private val zone = tehran.asChartZone()
+
+    /** Hourly bars from midnight Tehran, offset into the hour by [pastTheHour] seconds. */
+    private fun hourly(hours: Int, pastTheHour: Long = 0L): LongArray {
+        val midnight = ZonedDateTime.of(2026, 3, 2, 0, 0, 0, 0, tehran).toEpochSecond()
+        return LongArray(hours) { midnight + it * 3_600L + pastTheHour }
+    }
+
+    private fun hourOf(seconds: Long): Int =
+        java.time.Instant.ofEpochSecond(seconds).atZone(tehran).hour
+
+    @Test
+    fun `an hourly chart is labelled at round hours of the day`() {
+        val times = hourly(hours = 72)
+        val ticks = TimeScale.ticks(times, 0, times.lastIndex, zone, minGapBars = 4, maxTicks = 8)
+        val hours = ticks.filter { it.unit == TimeTickUnit.HOUR }.map { hourOf(it.boundaryTime(zone)) }
+        assertTrue("the axis must name some hours: $ticks", hours.isNotEmpty())
+        // Whatever step survived — six on this window — every hour named divides the day by it,
+        // so the ladder repeats tomorrow instead of being re-chosen.
+        val step = hours.toSet().minOf { if (it == 0) 24 else it }
+        hours.forEach { hour ->
+            assertEquals("«$hour:00» is not a round hour on a step of $step", 0, hour % step)
+        }
+    }
+
+    @Test
+    fun `a feed whose bars open past the hour is still labelled on the hour`() {
+        // The screenshot's own case: bars stamped at 23 minutes and 20 seconds past. The bar is
+        // where it is; the label is the hour it opened, which is what an axis is for.
+        val times = hourly(hours = 72, pastTheHour = 23 * 60L + 20L)
+        val ticks = TimeScale.ticks(times, 0, times.lastIndex, zone, minGapBars = 4, maxTicks = 8)
+        ticks.filter { it.unit == TimeTickUnit.HOUR }.forEach { tick ->
+            val at = java.time.Instant.ofEpochSecond(tick.boundaryTime(zone)).atZone(tehran)
+            assertEquals("minutes must be zeroed, was $at", 0, at.minute)
+            assertEquals("seconds must be zeroed, was $at", 0, at.second)
+            // And it is still the *bar's own* hour: nothing is moved, only truncated.
+            assertEquals(hourOf(tick.time), at.hour)
+        }
+    }
+
+    @Test
+    fun `a day boundary names the day it opens, whatever o'clock the session started`() {
+        val times = hourly(hours = 96, pastTheHour = 23 * 60L + 20L)
+        val ticks = TimeScale.ticks(times, 0, times.lastIndex, zone, minGapBars = 4, maxTicks = 8)
+        ticks.filter { it.unit == TimeTickUnit.DAY || it.unit == TimeTickUnit.WEEK }.forEach { tick ->
+            val at = java.time.Instant.ofEpochSecond(tick.boundaryTime(zone)).atZone(tehran)
+            assertEquals("a date label stands on midnight, was $at", 0, at.hour)
+            assertEquals(0, at.minute)
+        }
+    }
+
+    @Test
+    fun `a window too short for a round ladder keeps the hours it has`() {
+        // Four hourly bars: there is no step of the day that leaves three labels, and an axis with
+        // no labels is worse than one with unround ones. Nothing is thinned away.
+        val times = hourly(hours = 4)
+        val ticks = TimeScale.ticks(times, 0, times.lastIndex, zone, minGapBars = 1, maxTicks = 6)
+        assertTrue("the short window must keep its labels: $ticks", ticks.size >= 3)
+    }
+
+    @Test
+    fun `a tick with no calendar under it reports its own time`() {
+        // A Renko bar's stamp is synthetic and the even spread gives `unit = null`; there is no
+        // boundary to floor to and inventing one would print a date the series does not have.
+        val tick = TimeTick(index = 3, time = 1_760_000_123L, unit = null)
+        assertEquals(1_760_000_123L, tick.boundaryTime(zone))
+    }
+}

@@ -549,6 +549,13 @@ val expectedSigners = (releaseSignerFingerprints() + extraExpectedSigners.split(
                 // OutOfMemoryError loading the SDK jar, 4.67.0), which reads as a failing test
                 // that has nothing to do with the test. Two gigabytes is what the suite needs.
                 it.maxHeapSize = "2g"
+                // And a fresh JVM every forty classes. Robolectric holds a sandbox — a class
+                // loader, an SDK jar, a parsed resource table — per configuration, and this module
+                // renders at eleven different qualifiers: the heap does not leak so much as fill
+                // up with sandboxes nobody will ask for again. Two gigabytes plus a restart is
+                // what keeps the whole suite inside the container's memory; with neither, the
+                // Gradle daemon is killed somewhere around the four hundredth render.
+                it.setForkEvery(40L)
                 it.systemProperty(
                     "coinepro.golden.record",
                     System.getProperty("coinepro.golden.record") ?: "false",

@@ -112,6 +112,15 @@ data class SymbolChartState(
     /** Price overlays drawn in a pane of their own. */
     val separatedIndicators: List<String> = emptyList(),
     /**
+     * How many bars the reader last had on screen, per timeframe (run F).
+     *
+     * Keyed by the timeframe's wire code rather than held as one number, because zoom is not one
+     * fact: a reader reads gold on H1 at forty bars and on D1 at two hundred, and restoring the
+     * hourly zoom onto the daily chart is the same defect as not restoring anything. An absent
+     * entry means «never zoomed here» and the chart opens on `ChartViewport.DEFAULT_BARS_PER_VIEW`.
+     */
+    val zoom: Map<String, Int> = emptyMap(),
+    /**
      * The candlestick patterns switched on for this symbol, by pattern id.
      *
      * Stored rather than recomputed from a global setting, because pattern detection is noisy on
@@ -327,6 +336,12 @@ class SymbolChartStateStore(private val dataStore: DataStore<Preferences>) {
                     .flatMap { (guest, host) -> listOf(guest, host) }
                     .joinToString(UNIT),
                 state.separatedIndicators.filterNot { hasSeparator(it) }.joinToString(UNIT),
+                // Twenty-two: the zoom per timeframe, code and bar count alternating.
+                state.zoom
+                    .filterKeys { !hasSeparator(it) }
+                    .filterValues { it > 0 }
+                    .flatMap { (timeframe, bars) -> listOf(timeframe, bars.toString()) }
+                    .joinToString(UNIT),
             ).joinToString(RECORD)
         }
 
@@ -384,6 +399,7 @@ class SymbolChartStateStore(private val dataStore: DataStore<Preferences>) {
                 paneOrder = parts.getOrNull(19).orEmpty().split(UNIT).filter(String::isNotBlank),
                 paneMerges = pairs(parts.getOrNull(20)) { it.takeIf(String::isNotBlank) },
                 separatedIndicators = parts.getOrNull(21).orEmpty().split(UNIT).filter(String::isNotBlank),
+                zoom = pairs(parts.getOrNull(22)) { it.toIntOrNull()?.takeIf { bars -> bars > 0 } },
             )
         }
 
