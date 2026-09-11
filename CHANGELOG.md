@@ -15,6 +15,19 @@ it is for.
 
 ---
 
+## [4.72.1] — 2026-09-11 — the licence code
+
+### Fixed
+- **The font licence is complete.** IRANYekanX Pro ships with a `FontLicense.txt` that asks for the
+  buyer's six-digit code to be written into the marked place and the file kept beside the fonts.
+  The owner's code is now in both slots of both copies — the English line and the Persian block, in
+  `core/designsystem/FONT_LICENSE_IRANYekanX.txt` and `design/canvas/fonts/FontLicense.txt`. The
+  `(.....)` that is left sits inside the sentence telling you where to write it, which is the
+  package's own wording rather than a slot. Nothing about the build changes; this was the last
+  thing the font package asked for, and `docs/OWNER_ACTIONS.md` §4 is closed.
+
+---
+
 ## [4.72.0] — 2026-09-11 — the tablet, reviewed as a tablet
 
 Run H: the owner's first review of the tablet screens. Ten problems under one shape — the page was a

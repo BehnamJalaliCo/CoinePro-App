@@ -435,7 +435,7 @@ the licence). What was taken from it and why:
 | `IRANYekanX-Bold.ttf` | kept the repository's copy | the package's Bold is 84 041 B against the shipped 83 957 B (the archive's copy was re-saved in 2026-09); identical `usWeightClass`, glyph count, digit advances and features. Nothing on screen would change; nothing was swapped |
 | `Variable Font/IRANYekanXVF.ttf` (254 KB, `wght` 100–1000, `dots` 0–4) | **no** | different metrics from the statics — Latin digit 547 units against 562–572, Persian digits 10–20 % narrower — so switching to it would reflow every screen; and it offers no weight the four statics do not already give. It would also replace 337 KB of statics with 254 KB, which is not worth a reflow |
 | `Farsi numerals/`, `NonEnglish/` cuts | **no** | market figures are Latin by the standing rule and set in Inter; a face with Persian default digits or no Latin would fight both |
-| `FontLicense.txt` | copied to `core/designsystem/FONT_LICENSE_IRANYekanX.txt` | the package asks for the six-digit licence code to be written in it beside the fonts. **The code is the owner's** — the placeholder is still `(.....)`; `docs/OWNER_ACTIONS.md` §4 |
+| `FontLicense.txt` | copied to `core/designsystem/FONT_LICENSE_IRANYekanX.txt`, **with the licence code written in** (4.72.1) | the package asks for the six-digit code to be written in the marked place and the file kept beside the fonts. The owner's code is in both slots of both copies — the English line and the Persian block — in `core/designsystem/FONT_LICENSE_IRANYekanX.txt` and `design/canvas/fonts/FontLicense.txt`. The `(.....)` that remains is inside the sentence *telling* you where to write it, which is the package's own wording |
 
 **Wiring.** `CoineProFontFamily` maps 400 / 500 / 600 / 700 to four files (`CoineProType.kt`);
 no other line changed — the typography has been defined by weight since 4.54.0, exactly so that
@@ -478,8 +478,10 @@ new face without a change, which is the equal-width digits doing their job. IRAN
 are narrower than Inter's at the same size (562 against 631 units per em on a digit), so every
 column of prices gained a little room; nothing in the 540-test run changed its layout.
 
-**Still the owner's:** the six-digit licence code in `FONT_LICENSE_IRANYekanX.txt` (`(.....)`
-is still the placeholder in both copies).
+**Closed in 4.72.1:** the six-digit licence code is written into both copies of
+`FontLicense.txt`, which is the last thing the font package asked for. Nothing about the build
+changes — the file is documentation that has to travel beside the fonts, and it now does so
+complete.
 
 ### RUN B — item 4 (4.63.0) — done to the audit; the two device proofs remain
 
@@ -726,7 +728,7 @@ smuggled into this run.
 
 ### The owner's plan A–E (4.63.0 → 4.67.0), in one line each
 
-- A. Fonts — done (4.68.0): the Pro package arrived; Medium and DemiBold shipped as their own files, the four weights proven distinct; the licence code is the owner's to write in.
+- A. Fonts — done (4.68.0, closed 4.72.1): the Pro package arrived; Medium and DemiBold shipped as their own files, the four weights proven distinct; the owner's licence code is written into both copies of `FontLicense.txt`.
 - B. Physics — done (4.63.0): the fling on `exponentialDecay`, `setFrameRate` on Android 12+, the long-press menu, every audited symbol greppable in the release dex; the benchmark and the recording need a device.
 - C. NamaScript — done (4.64.0): six help entries fa+en, the strategy entry rewritten, Pine's short strategy form, every `ta.*` under a conformance script; the Pixel 6a timings need the phone.
 - D. Network — done (4.65.0): no third-party host in the release dex, a gate that keeps it so; the pins measured live.

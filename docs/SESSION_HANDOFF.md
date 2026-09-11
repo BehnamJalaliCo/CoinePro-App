@@ -231,8 +231,9 @@ Found in a full review of `main`; none are fixed yet. Roughly by severity.
 
 ## 8. Assets and third-party material
 
-- **Font**: IRANYekanX (Eco), Regular and Bold only. Proprietary; licence code is recorded in
-  `core/designsystem/FONT_LICENSE.txt`. The Latin-numeral variant is installed on purpose.
+- **Font**: IRANYekanX (Pro), four weights. Proprietary; the licence code is recorded in
+  `core/designsystem/FONT_LICENSE_IRANYekanX.txt` and in the copy beside the canvas fonts. The
+  Latin-numeral variant is installed on purpose.
 - **Logo**: the owner supplied a proper transparent master (1672×941 RGBA, mark and wordmark on
   one canvas). It is kept at `core/designsystem/brand/` and **every brand raster is generated from
   it** — the five densities of `coinepro_mark` and `coinepro_wordmark`, and the adaptive launcher
