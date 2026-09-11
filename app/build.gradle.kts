@@ -544,6 +544,11 @@ val expectedSigners = (releaseSignerFingerprints() + extraExpectedSigners.split(
             // without this the recording switch is silently ignored and every re-record is a run
             // that writes nothing. See `GoldenScreenshot`.
             all {
+                // Four hundred Robolectric renders, a hundred of them tablet-sized, in one worker:
+                // the JVM's default half-gigabyte ran out at the four-hundredth (an
+                // OutOfMemoryError loading the SDK jar, 4.67.0), which reads as a failing test
+                // that has nothing to do with the test. Two gigabytes is what the suite needs.
+                it.maxHeapSize = "2g"
                 it.systemProperty(
                     "coinepro.golden.record",
                     System.getProperty("coinepro.golden.record") ?: "false",

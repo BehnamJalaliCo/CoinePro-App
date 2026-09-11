@@ -37,6 +37,7 @@ internal data class ChartStep(
     val chartType: ChartType,
     val indicators: Set<String>,
     val indicatorPeriods: Map<String, Int>,
+    val indicatorParams: Map<String, Map<String, Double>> = emptyMap(),
     val drawing: DrawingState,
 )
 

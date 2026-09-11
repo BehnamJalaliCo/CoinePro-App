@@ -100,6 +100,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.geometry.Rect
+import com.coinepro.core.chart.IndicatorPane
+import kotlin.math.roundToInt
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -121,6 +126,8 @@ import com.coinepro.core.chart.ChartTypePicker
 import com.coinepro.core.chart.CoineProChart
 import com.coinepro.core.chart.DrawingImages
 import com.coinepro.core.chart.DrawingTools
+import com.coinepro.core.chart.DrawingTool
+import com.coinepro.core.chart.drawableRes
 import com.coinepro.core.chart.EventMark
 import com.coinepro.core.chart.IndicatorPicker
 import com.coinepro.core.chart.ObjectTree
@@ -813,6 +820,10 @@ fun ChartScreen(
     // is worth saving across a process death — the next layout pass sets them again before anything
     // is drawn — and a `rememberSaveable` here would restore a width measured on a different screen.
     var canvasWidthPx by remember { mutableFloatStateOf(0f) }
+    var canvasHeightPx by remember { mutableStateOf(0) }
+    /** The selected drawing's box on the canvas, in pixels, or null while nothing is selected. */
+    var selectionBounds by remember { mutableStateOf<Rect?>(null) }
+    val density = LocalDensity.current
     var plotWidthPx by remember { mutableFloatStateOf(0f) }
 
     // Whether a finger is on the toolbar's symbol wheel. While it is, the big picker is drawn over
@@ -843,7 +854,10 @@ fun ChartScreen(
                 // How wide the canvas actually is, which with the plot's own width is the only way
                 // anything drawn *over* the chart can know where the price gutter starts. See
                 // [gutterWidth].
-                .onSizeChanged { canvasWidthPx = it.width.toFloat() },
+                .onSizeChanged {
+                    canvasWidthPx = it.width.toFloat()
+                    canvasHeightPx = it.height
+                },
         ) {
             val gutter = with(LocalDensity.current) {
                 gutterWidth(canvasWidthPx, plotWidthPx).toDp()
@@ -992,6 +1006,9 @@ fun ChartScreen(
                     // likely to try by accident and be pleased to find.
                     onPriceAxisMenu = { sheet = ChartSheet.SCALE },
                     onContextMenu = { price, at -> contextMenu = ChartContextMenu(price, at) },
+                    // Where the selected drawing lies on the canvas, so the floating toolbar can
+                    // sit just above it rather than at the top of the plot (run E).
+                    onSelectionBounds = { bounds -> selectionBounds = bounds },
                     // A tick when the magnet takes a point, and a tick when the crosshair crosses a
                     // level — a stop, a target, an indicator line. The reader feels the line under
                     // the finger without looking away from the price they are dragging towards.
@@ -1207,8 +1224,29 @@ fun ChartScreen(
                 onDismiss = controller::clearSelection,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(CoineProSpacing.Half),
+                    .padding(CoineProSpacing.Half)
+                    // Above the selected drawing when its top leaves room for the bar, otherwise
+                    // at the top of the plot as before; the horizontal stays centred so the bar
+                    // never runs off a phone's edge. Clamped to the canvas, so a drawing scrolled
+                    // half off the bottom still has its toolbar on the glass.
+                    .offset {
+                        val top = selectionBounds?.top ?: 0f
+                        val bar = with(density) { SELECTION_TOOLBAR_HEIGHT.roundToPx() }
+                        val y = (top - bar).roundToInt().coerceIn(0, (canvasHeightPx - bar).coerceAtLeast(0))
+                        IntOffset(0, y)
+                    },
             )
+            // The reader's pinned tools along the plot's leading edge, one tap from armed (run E).
+            // Only when there are some: a strip with nothing on it is a strip in the way.
+            if (state.drawing.favourites.isNotEmpty() && state.drawing.tool == null) {
+                FavouriteToolStrip(
+                    favourites = state.drawing.favourites,
+                    onArm = controller::arm,
+                    modifier = Modifier
+                        .align(AbsoluteAlignment.CenterLeft)
+                        .padding(start = CoineProSpacing.Half),
+                )
+            }
         }
     }
 
@@ -2040,7 +2078,30 @@ fun ChartScreen(
         if (option == null || id !in state.activeIndicators) {
             indicatorSettings = null
         } else {
+            val owners = state.paneOwnersShown
+            val at = owners.indexOf(id)
+            val overlay = option.pane == IndicatorPane.PRICE
+            val hostAbove = if (at > 0) owners[at - 1] else null
+            val arrangement = IndicatorArrangement(
+                overlayByDefault = overlay,
+                separated = id in state.separated,
+                merged = state.paneMerges[id] != null,
+                canMoveUp = at > 0,
+                canMoveDown = at in 0 until owners.lastIndex,
+                canMergeUp = hostAbove != null && state.paneMerges[hostAbove] == null,
+            )
             IndicatorSettingsSheet(
+                arrangement = arrangement,
+                onArrange = { action ->
+                    when (action) {
+                        IndicatorArrangement.Action.SEPARATE -> controller.separateOverlay(id, true)
+                        IndicatorArrangement.Action.JOIN_PRICE -> controller.separateOverlay(id, false)
+                        IndicatorArrangement.Action.MOVE_UP -> controller.movePane(id, up = true)
+                        IndicatorArrangement.Action.MOVE_DOWN -> controller.movePane(id, up = false)
+                        IndicatorArrangement.Action.MERGE_UP -> controller.mergePane(id, hostAbove)
+                        IndicatorArrangement.Action.UNMERGE -> controller.mergePane(id, null)
+                    }
+                },
                 option = option,
                 period = state.indicatorPeriods[id],
                 colour = state.indicatorColours[id],
@@ -2048,6 +2109,8 @@ fun ChartScreen(
                 hidden = id in state.hiddenIndicators,
                 onDismiss = { indicatorSettings = null },
                 onSetPeriod = { period -> controller.setIndicatorPeriod(id, period) },
+                params = state.indicatorParams[id].orEmpty(),
+                onSetParam = { key, value -> controller.setIndicatorParam(id, key, value) },
                 onSetColour = { colour -> controller.setIndicatorColour(id, colour) },
                 onSetWidth = { width -> controller.setIndicatorWidth(id, width) },
                 onToggleHidden = { controller.toggleIndicatorHidden(id) },
@@ -2544,6 +2607,46 @@ internal fun IntervalRow(
  * negative inset would push the thing being placed off the other side of the chart. An overlay in
  * the corner is the right answer while the gutter is unknown; one shoved off the canvas is not.
  */
+/**
+ * The reader's pinned tools down the plot's leading edge (run E): the rail's favourites row,
+ * without opening the rail. One glyph per tool, a tap arms it, and the strip steps aside the
+ * moment a tool is armed so it never sits under the first point of a drawing.
+ */
+@Composable
+private fun FavouriteToolStrip(favourites: Set<String>, onArm: (DrawingTool) -> Unit, modifier: Modifier = Modifier) {
+    val tools = remember(favourites) { DrawingTools.ALL.filter { it.id in favourites }.take(FAVOURITE_STRIP_MAX) }
+    if (tools.isEmpty()) return
+    Column(
+        modifier = modifier
+            .clip(CoineProShapes.large)
+            .background(CoineProColors.SurfaceElevated)
+            .border(1.dp, CoineProColors.Border, CoineProShapes.large)
+            .padding(CoineProSpacing.Half)
+            .semantics { contentDescription = "favourite-tool-strip" },
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        tools.forEach { tool ->
+            IconButton(
+                onClick = { onArm(tool) },
+                modifier = Modifier.size(FAVOURITE_STRIP_CELL).semantics { contentDescription = "favourite-tool-${tool.id}" },
+            ) {
+                Icon(
+                    painter = painterResource(tool.icon.drawableRes()),
+                    contentDescription = tool.label,
+                    tint = CoineProColors.Gold,
+                    modifier = Modifier.size(FAVOURITE_STRIP_GLYPH),
+                )
+            }
+        }
+    }
+}
+
+/** The floating toolbar's plate height, as `SelectionToolbar` lays it out: one row of 40 dp cells and its padding. */
+private val SELECTION_TOOLBAR_HEIGHT: Dp = 56.dp
+private const val FAVOURITE_STRIP_MAX = 8
+private val FAVOURITE_STRIP_CELL: Dp = 36.dp
+private val FAVOURITE_STRIP_GLYPH: Dp = 20.dp
+
 private fun gutterWidth(canvasWidthPx: Float, plotWidthPx: Float): Float =
     (canvasWidthPx - plotWidthPx).coerceIn(0f, canvasWidthPx.coerceAtLeast(0f))
 

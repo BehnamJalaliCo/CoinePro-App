@@ -60,6 +60,8 @@ data class IndicatorTemplate(
      * before it gained a period reads back as.
      */
     val periods: Map<String, Int> = emptyMap(),
+    /** The other knobs, by indicator id and parameter key — see `SymbolChartState.indicatorParams`. */
+    val params: Map<String, Map<String, Double>> = emptyMap(),
     /**
      * What each indicator is computed on, keyed by indicator id — an opaque string. See the class
      * note: this module stores the chaining and deliberately does not understand it.
@@ -231,6 +233,8 @@ class IndicatorTemplateStore(private val dataStore: DataStore<Preferences>) {
                 periods.joinToString(UNIT),
                 sources.joinToString(UNIT),
                 template.createdAt.toString(),
+                // Six: the parameters, «id/key» and value pairs.
+                ChartParamsCodec.encode(template.params),
             ).joinToString(RECORD)
         }
 
@@ -257,6 +261,7 @@ class IndicatorTemplateStore(private val dataStore: DataStore<Preferences>) {
                     .toMap(),
                 sources = pairs(parts.getOrNull(4)).toMap(),
                 createdAt = parts.getOrNull(5)?.toLongOrNull() ?: 0L,
+                params = ChartParamsCodec.decode(parts.getOrNull(6)),
             )
         }
 

@@ -175,6 +175,13 @@
     <string name="indicator_settings_width">Line width</string>
     <string name="indicator_settings_show">Show on chart</string>
     <string name="indicator_settings_show_note">Turning this off hides the indicator and keeps its settings.</string>
+    <string name="indicator_settings_arrangement">Pane</string>
+    <string name="indicator_settings_arrangement_note">Where this study is drawn: its place in the stack, inside another pane, or as a pane of its own.</string>
+    <string name="indicator_settings_move_up">Up</string>
+    <string name="indicator_settings_move_down">Down</string>
+    <string name="indicator_settings_merge_up">Merge into the pane above</string>
+    <string name="indicator_settings_unmerge">Its own pane</string>
+    <string name="indicator_settings_separate">In a pane of its own</string>
     <string name="indicator_settings_remove">Remove from chart</string>
     <!-- The panels a wide window docks beside the chart, and the rail that opens them. -->
     <string name="chart_side_rail">Chart panels</string>

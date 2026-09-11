@@ -29,9 +29,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.chart.IndicatorOption
+import com.coinepro.core.chart.IndicatorParameterStepper
+import com.coinepro.core.common.AppLanguage
+import androidx.compose.ui.platform.LocalConfiguration
 import com.coinepro.core.chart.IndicatorPeriodStepper
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProNote
@@ -45,7 +50,7 @@ import com.coinepro.core.designsystem.SHEET_PREVIEW_SCRIM_ALPHA
 import com.coinepro.core.designsystem.numeric
 
 /** The three pages of an indicator's settings, as the reference names them. */
-internal enum class IndicatorSettingsTab { INPUTS, STYLE, VISIBILITY }
+enum class IndicatorSettingsTab { INPUTS, STYLE, VISIBILITY }
 
 /**
  * One switched-on indicator's settings, opened from its legend row's gear.
@@ -73,6 +78,12 @@ internal fun IndicatorSettingsSheet(
     onDismiss: () -> Unit,
     onSetPeriod: (Int?) -> Unit,
     onSetColour: (Long?) -> Unit,
+    /** The reader's other knobs for this indicator, by key — see `ChartCatalog.parametersOf`. */
+    params: Map<String, Double> = emptyMap(),
+    onSetParam: (String, Double?) -> Unit = { _, _ -> },
+    /** Where the study sits among the panes and what may be done about it; null hides the section. */
+    arrangement: IndicatorArrangement? = null,
+    onArrange: (IndicatorArrangement.Action) -> Unit = {},
     onSetWidth: (Float?) -> Unit,
     onToggleHidden: () -> Unit,
     onRemove: () -> Unit,
@@ -91,6 +102,10 @@ internal fun IndicatorSettingsSheet(
             hidden = hidden,
             onSetPeriod = onSetPeriod,
             onSetColour = onSetColour,
+            params = params,
+            onSetParam = onSetParam,
+            arrangement = arrangement,
+            onArrange = onArrange,
             onSetWidth = onSetWidth,
             onToggleHidden = onToggleHidden,
             onRemove = onRemove,
@@ -99,7 +114,7 @@ internal fun IndicatorSettingsSheet(
 }
 
 @Composable
-internal fun IndicatorSettingsBody(
+fun IndicatorSettingsBody(
     option: IndicatorOption,
     period: Int?,
     colour: Long?,
@@ -111,6 +126,10 @@ internal fun IndicatorSettingsBody(
     onToggleHidden: () -> Unit,
     onRemove: () -> Unit,
     initialTab: IndicatorSettingsTab = IndicatorSettingsTab.INPUTS,
+    params: Map<String, Double> = emptyMap(),
+    onSetParam: (String, Double?) -> Unit = { _, _ -> },
+    arrangement: IndicatorArrangement? = null,
+    onArrange: (IndicatorArrangement.Action) -> Unit = {},
 ) {
     var tab by rememberSaveable(option.id) { mutableStateOf(initialTab) }
     val accent = Color(option.colour.toULong() shl COLOUR_SHIFT)
@@ -133,30 +152,46 @@ internal fun IndicatorSettingsBody(
         )
         when (tab) {
             IndicatorSettingsTab.INPUTS -> {
+                // Every knob the catalogue names for this study — the length first, then MACD's
+                // fast/slow/signal, a band's deviation, Ichimoku's three spans (run E). The chart
+                // behind the twenty-per-cent scrim redraws on each step.
                 val bounds = ChartCatalog.periodOf(option.id)
-                if (bounds == null) {
+                val parameters = ChartCatalog.parametersOf(option.id)
+                val english = AppLanguage.fromTag(LocalConfiguration.current.locales[0].language) == AppLanguage.ENGLISH
+                if (parameters.isEmpty()) {
                     Text(
                         text = stringResource(R.string.indicator_settings_no_inputs),
                         style = MaterialTheme.typography.bodySmall,
                         color = CoineProColors.TextMuted,
                     )
                 } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            text = stringResource(R.string.indicator_settings_length),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = CoineProColors.TextPrimary,
-                        )
-                        IndicatorPeriodStepper(
-                            value = period ?: bounds.default,
-                            bounds = bounds,
-                            accent = accent,
-                            onChange = { next -> onSetPeriod(next) },
-                        )
+                    for (spec in parameters) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                text = if (spec.key == ChartCatalog.LENGTH) stringResource(R.string.indicator_settings_length) else if (english) spec.labelEn else spec.label,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = CoineProColors.TextPrimary,
+                            )
+                            if (spec.key == ChartCatalog.LENGTH && bounds != null) {
+                                IndicatorPeriodStepper(
+                                    value = period ?: bounds.default,
+                                    bounds = bounds,
+                                    accent = accent,
+                                    onChange = { next -> onSetPeriod(next) },
+                                )
+                            } else {
+                                IndicatorParameterStepper(
+                                    value = params[spec.key] ?: spec.default,
+                                    spec = spec,
+                                    accent = accent,
+                                    onChange = { next -> onSetParam(spec.key, next) },
+                                )
+                            }
+                        }
                     }
                     CoineProNote(R.string.indicator_settings_length_note, style = MaterialTheme.typography.bodySmall)
                 }
@@ -241,6 +276,73 @@ internal fun IndicatorSettingsBody(
                         ),
                     )
                 }
+                arrangement?.let { where ->
+                    HorizontalDivider(color = CoineProColors.Border)
+                    Text(
+                        text = stringResource(R.string.indicator_settings_arrangement),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = CoineProColors.TextPrimary,
+                    )
+                    CoineProNote(R.string.indicator_settings_arrangement_note, style = MaterialTheme.typography.bodySmall)
+                    if (where.overlayByDefault) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.indicator_settings_separate),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = CoineProColors.TextPrimary,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Switch(
+                                checked = where.separated,
+                                onCheckedChange = { on ->
+                                    onArrange(if (on) IndicatorArrangement.Action.SEPARATE else IndicatorArrangement.Action.JOIN_PRICE)
+                                },
+                                modifier = Modifier.semantics { contentDescription = "indicator-separate" },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = CoineProColors.OnAccent,
+                                    checkedTrackColor = CoineProColors.AccentFill,
+                                    uncheckedThumbColor = CoineProColors.TextMuted,
+                                    uncheckedTrackColor = CoineProColors.SurfaceElevated,
+                                ),
+                            )
+                        }
+                    }
+                    if (where.hasPane) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+                            ArrangementPill(
+                                text = stringResource(R.string.indicator_settings_move_up),
+                                enabled = where.canMoveUp,
+                                tag = "indicator-move-up",
+                                accent = accent,
+                            ) { onArrange(IndicatorArrangement.Action.MOVE_UP) }
+                            ArrangementPill(
+                                text = stringResource(R.string.indicator_settings_move_down),
+                                enabled = where.canMoveDown,
+                                tag = "indicator-move-down",
+                                accent = accent,
+                            ) { onArrange(IndicatorArrangement.Action.MOVE_DOWN) }
+                            if (where.merged) {
+                                ArrangementPill(
+                                    text = stringResource(R.string.indicator_settings_unmerge),
+                                    enabled = true,
+                                    tag = "indicator-unmerge",
+                                    accent = accent,
+                                ) { onArrange(IndicatorArrangement.Action.UNMERGE) }
+                            } else {
+                                ArrangementPill(
+                                    text = stringResource(R.string.indicator_settings_merge_up),
+                                    enabled = where.canMergeUp,
+                                    tag = "indicator-merge-up",
+                                    accent = accent,
+                                ) { onArrange(IndicatorArrangement.Action.MERGE_UP) }
+                            }
+                        }
+                    }
+                }
                 HorizontalDivider(color = CoineProColors.Border)
                 CoineProSecondaryButton(
                     text = stringResource(R.string.indicator_settings_remove),
@@ -249,6 +351,49 @@ internal fun IndicatorSettingsBody(
                 )
             }
         }
+    }
+}
+
+/**
+ * Where one study sits among the panes, as the settings sheet's «Pane» section reads it (run E).
+ *
+ * A pane is moved, merged into the one above it, or set apart with the sheet's own buttons rather
+ * than by dragging its legend, because a drag on the plot already belongs to the pan and to the
+ * drawings: a third claimant on the same finger would win some of the time, and a reorder that
+ * happens by accident is worse than one that takes a tap more.
+ */
+data class IndicatorArrangement(
+    /** The catalogue draws this study over the candles, so «a pane of its own» is a choice. */
+    val overlayByDefault: Boolean,
+    /** Set apart from the price pane by the reader. Meaningful only for an overlay. */
+    val separated: Boolean,
+    /** Drawn inside another study's pane. */
+    val merged: Boolean,
+    val canMoveUp: Boolean,
+    val canMoveDown: Boolean,
+    val canMergeUp: Boolean,
+) {
+    /** Whether the study occupies a pane at all — a pane study, or an overlay set apart. */
+    val hasPane: Boolean get() = !overlayByDefault || separated
+
+    enum class Action { SEPARATE, JOIN_PRICE, MOVE_UP, MOVE_DOWN, MERGE_UP, UNMERGE }
+}
+
+@Composable
+private fun ArrangementPill(text: String, enabled: Boolean, tag: String, accent: Color, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(CoineProPillShape)
+            .border(1.dp, if (enabled) CoineProTint.edge(accent) else CoineProColors.Border, CoineProPillShape)
+            .clickable(enabled = enabled, onClick = onClick)
+            .semantics { contentDescription = tag }
+            .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (enabled) accent else CoineProColors.TextMuted,
+        )
     }
 }
 

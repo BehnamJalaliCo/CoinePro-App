@@ -57,6 +57,12 @@ data class SymbolChartState(
      * off and back on and should come back with the period the reader set rather than the default.
      */
     val indicatorPeriods: Map<String, Int> = emptyMap(),
+    /**
+     * The other knobs each indicator was configured with — MACD's fast/slow/signal, a band's
+     * deviation — keyed by indicator id and then by the parameter's key (4.67.0). Sparse like the
+     * periods: absent means the catalogue's default.
+     */
+    val indicatorParams: Map<String, Map<String, Double>> = emptyMap(),
     /** The price-scale mode id — automatic, fitted, percentage — or null for the app default. */
     val scaleMode: String? = null,
     /** Whether the price axis was logarithmic. */
@@ -97,6 +103,14 @@ data class SymbolChartState(
      * so a tool this build no longer ships is ignored rather than crashing a reader who downgraded.
      */
     val toolFavourites: List<String> = emptyList(),
+    /** The tool last armed in each rail group, by group name (run E); the rail promotes it. */
+    val toolLastUsed: Map<String, String> = emptyMap(),
+    /** The pane indicators front to back, as the reader arranged them (run E). */
+    val paneOrder: List<String> = emptyList(),
+    /** Panes drawn inside another: guest id to host id. */
+    val paneMerges: Map<String, String> = emptyMap(),
+    /** Price overlays drawn in a pane of their own. */
+    val separatedIndicators: List<String> = emptyList(),
     /**
      * The candlestick patterns switched on for this symbol, by pattern id.
      *
@@ -297,6 +311,22 @@ class SymbolChartStateStore(private val dataStore: DataStore<Preferences>) {
                     .filterKeys { !hasSeparator(it) }
                     .flatMap { (id, width) -> listOf(id, width.toString()) }
                     .joinToString(UNIT),
+                // Seventeen: the parameters, flattened to «id/key» and value pairs.
+                ChartParamsCodec.encode(state.indicatorParams),
+                // Eighteen: the last-used tool per group, group and id alternating.
+                state.toolLastUsed
+                    .filterKeys { !hasSeparator(it) }
+                    .filterValues { !hasSeparator(it) }
+                    .flatMap { (group, id) -> listOf(group, id) }
+                    .joinToString(UNIT),
+                // Nineteen to twenty-one: the pane arrangement.
+                state.paneOrder.filterNot { hasSeparator(it) }.joinToString(UNIT),
+                state.paneMerges
+                    .filterKeys { !hasSeparator(it) }
+                    .filterValues { !hasSeparator(it) }
+                    .flatMap { (guest, host) -> listOf(guest, host) }
+                    .joinToString(UNIT),
+                state.separatedIndicators.filterNot { hasSeparator(it) }.joinToString(UNIT),
             ).joinToString(RECORD)
         }
 
@@ -349,6 +379,11 @@ class SymbolChartStateStore(private val dataStore: DataStore<Preferences>) {
                 domFigure = parts.getOrNull(14)?.takeIf(String::isNotBlank),
                 indicatorColours = pairs(parts.getOrNull(15)) { it.toLongOrNull() },
                 indicatorWidths = pairs(parts.getOrNull(16)) { it.toFloatOrNull()?.takeIf { w -> w > 0f } },
+                indicatorParams = ChartParamsCodec.decode(parts.getOrNull(17)),
+                toolLastUsed = pairs(parts.getOrNull(18)) { it.takeIf(String::isNotBlank) },
+                paneOrder = parts.getOrNull(19).orEmpty().split(UNIT).filter(String::isNotBlank),
+                paneMerges = pairs(parts.getOrNull(20)) { it.takeIf(String::isNotBlank) },
+                separatedIndicators = parts.getOrNull(21).orEmpty().split(UNIT).filter(String::isNotBlank),
             )
         }
 

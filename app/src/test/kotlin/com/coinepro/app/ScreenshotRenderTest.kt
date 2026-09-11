@@ -2807,6 +2807,159 @@ class ScreenshotRenderTest {
         }
     }
 
+    // ── Parity: the cells the matrix had no render for (run E) ─────────────────────────────
+    //
+    // One render per screen per window the plan names, so `docs/qa/PARITY_MATRIX.md` reads a
+    // number in every cell. The bodies are the ones above; only the window changes.
+
+    @Test @Config(sdk = [34], qualifiers = TAB_S9_ULTRA)
+    fun shellBarTabS9Ultra() = capture("123-shell-bar-tab-s9-ultra-fa") { BarInEveryState() }
+
+    @Test @Config(sdk = [34], qualifiers = FOLD_OPEN)
+    fun shellBarFoldOpen() = capture("124-shell-bar-fold-open-fa") { BarInEveryState() }
+
+    @Test @Config(sdk = [34], qualifiers = FOLD_CLOSED)
+    fun shellBarFoldClosed() = capture("125-shell-bar-fold-closed-fa") { BarInEveryState() }
+
+    @Test @Config(sdk = [34], qualifiers = TABLET_LANDSCAPE)
+    fun indicatorPickerPixelTablet() = capture("38-indicator-picker-sheet-pixel-tablet-fa") { IndicatorSheetBody() }
+
+    @Test @Config(sdk = [34], qualifiers = TAB_S9_ULTRA)
+    fun indicatorPickerTabS9Ultra() = capture("38-indicator-picker-sheet-tab-s9-ultra-fa") { IndicatorSheetBody() }
+
+    @Test @Config(sdk = [34], qualifiers = FOLD_OPEN)
+    fun indicatorPickerFoldOpen() = capture("38-indicator-picker-sheet-fold-open-fa") { IndicatorSheetBody() }
+
+    @Test @Config(sdk = [34], qualifiers = FOLD_CLOSED)
+    fun indicatorPickerFoldClosed() = capture("38-indicator-picker-sheet-fold-closed-fa") { IndicatorSheetBody() }
+
+    @Test @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun chartPanesPhoneLayout() = capture("73-panes-phone-fa") { FourPanes() }
+
+    @Test @Config(sdk = [34], qualifiers = TABLET_PORTRAIT)
+    fun chartPanesTabletPortrait() = capture("73-panes-tablet-portrait-fa") { FourPanes() }
+
+    @Test @Config(sdk = [34], qualifiers = TAB_S9_ULTRA)
+    fun chartPanesTabS9Ultra() = capture("73-panes-tab-s9-ultra-fa") { FourPanes() }
+
+    @Test @Config(sdk = [34], qualifiers = FOLD_OPEN)
+    fun chartPanesFoldOpen() = capture("73-panes-fold-open-fa") { FourPanes() }
+
+    @Test @Config(sdk = [34], qualifiers = FOLD_CLOSED)
+    fun chartPanesFoldClosed() = capture("73-panes-fold-closed-fa") { FourPanes() }
+
+    @Test @Config(sdk = [34], qualifiers = TABLET_PORTRAIT)
+    fun alertsTabletPortrait() = capture("82-alerts-tablet-portrait-fa") { AlertCentre() }
+
+    @Test @Config(sdk = [34], qualifiers = FOLD_OPEN)
+    fun alertsFoldOpen() = capture("82-alerts-fold-open-fa") { AlertCentre() }
+
+    @Test @Config(sdk = [34], qualifiers = FOLD_CLOSED)
+    fun alertsFoldClosed() = capture("82-alerts-fold-closed-fa") { AlertCentre() }
+
+    @Test @Config(sdk = [34], qualifiers = TABLET_PORTRAIT)
+    fun screenerTabletPortrait() = capture("35-screener-tablet-portrait-fa") { Screener() }
+
+    @Test @Config(sdk = [34], qualifiers = TABLET_LANDSCAPE)
+    fun screenerPixelTablet() = capture("35-screener-pixel-tablet-fa") { Screener() }
+
+    @Test @Config(sdk = [34], qualifiers = TAB_S9_ULTRA)
+    fun screenerTabS9Ultra() = capture("35-screener-tab-s9-ultra-fa") { Screener() }
+
+    @Test @Config(sdk = [34], qualifiers = FOLD_OPEN)
+    fun screenerFoldOpen() = capture("35-screener-fold-open-fa") { Screener() }
+
+    @Test @Config(sdk = [34], qualifiers = FOLD_CLOSED)
+    fun screenerFoldClosed() = capture("35-screener-fold-closed-fa") { Screener() }
+
+    @Test @Config(sdk = [34], qualifiers = TABLET_PORTRAIT)
+    fun terminalTabletPortrait() = capture("79-markets-terminal-tablet-portrait-fa") { MarketsTerminal() }
+
+    @Test @Config(sdk = [34], qualifiers = TABLET_LANDSCAPE)
+    fun terminalPixelTablet() = capture("79-markets-terminal-pixel-tablet-fa") { MarketsTerminal() }
+
+    @Test @Config(sdk = [34], qualifiers = TAB_S9_ULTRA)
+    fun terminalTabS9Ultra() = capture("79-markets-terminal-tab-s9-ultra-fa") { MarketsTerminal() }
+
+    @Test @Config(sdk = [34], qualifiers = FOLD_OPEN)
+    fun terminalFoldOpen() = capture("79-markets-terminal-fold-open-fa") { MarketsTerminal() }
+
+    @Test @Config(sdk = [34], qualifiers = FOLD_CLOSED)
+    fun terminalFoldClosed() = capture("79-markets-terminal-fold-closed-fa") { MarketsTerminal() }
+
+    @Test @Config(sdk = [34], qualifiers = TABLET_PORTRAIT)
+    fun paperTradeTabletPortrait() = capture("81-paper-trade-tablet-portrait-fa") { PaperTrade() }
+
+    @Test @Config(sdk = [34], qualifiers = TABLET_LANDSCAPE)
+    fun paperTradePixelTablet() = capture("81-paper-trade-pixel-tablet-fa") { PaperTrade() }
+
+    @Test @Config(sdk = [34], qualifiers = TAB_S9_ULTRA)
+    fun paperTradeTabS9Ultra() = capture("81-paper-trade-tab-s9-ultra-fa") { PaperTrade() }
+
+    @Test @Config(sdk = [34], qualifiers = FOLD_OPEN)
+    fun paperTradeFoldOpen() = capture("81-paper-trade-fold-open-fa") { PaperTrade() }
+
+    @Test @Config(sdk = [34], qualifiers = FOLD_CLOSED)
+    fun paperTradeFoldClosed() = capture("81-paper-trade-fold-closed-fa") { PaperTrade() }
+
+    @Composable
+    private fun IndicatorSheetBody() {
+        CoineProSheetBody(
+            title = "اندیکاتورها",
+            subtitle = "${(ChartCatalog.INDICATORS.size).toPersianDigits()} اندیکاتور — برای راهنما «؟» را بزن",
+        ) {
+            IndicatorPicker(active = setOf("ema", "bollinger", "rsi"), onToggle = {}, onHelp = {}, modifier = Modifier.fillMaxSize())
+        }
+    }
+
+    @Composable
+    private fun FourPanes() {
+        val controller = remember {
+            ScreenshotFixtures.chartController(scope).also { listOf("ema", "rsi", "macd", "atr").forEach(it::toggleIndicator) }
+        }
+        ChartScreen(controller = controller)
+    }
+
+    @Composable
+    private fun AlertCentre() {
+        AlertCenterScreen(
+            controller = remember {
+                AlertsController(
+                    store = LocalAlertStore(FakeScreenshotPreferences()),
+                    audit = AlertAuditStore(FakeScreenshotPreferences()),
+                    catalogOf = { ScreenshotFixtures.alertSymbols() },
+                    scope = scope,
+                )
+            },
+        )
+    }
+
+    @Composable
+    private fun Screener() {
+        val controller = remember { ScreenerController(gateway = ScreenshotFixtures.searchCatalog(), scope = scope).also { it.start() } }
+        ScreenerScreen(controller = controller, onOpenSymbol = {})
+    }
+
+    @Composable
+    private fun MarketsTerminal() {
+        MarketsScreen(
+            controller = remember { MarketSearchController(ScreenshotFixtures.searchCatalog(), scope).also { it.start() } },
+            sparklines = ScreenshotFixtures.sparklineStore(scope),
+            watchlist = listOf("BTCUSDT", "XAUUSD"),
+            onOpenSymbol = {},
+            onOpenSearch = {},
+            openSignals = MarketsSignalStrip(count = 2, summary = "BTCUSDT خرید · XAUUSD خرید", onClick = {}),
+        )
+    }
+
+    @Composable
+    private fun PaperTrade() {
+        PaperTradeScreen(
+            controller = remember { ScreenshotFixtures.paperTradeController(scope) },
+            priceFor = { symbol -> if (symbol == "XAUUSD") 2_671.4 else null },
+        )
+    }
+
     private companion object {
         val OUTPUT_DIR = File("build/screenshots")
 
@@ -2825,6 +2978,11 @@ class ScreenshotRenderTest {
          */
         const val TABLET_LANDSCAPE = "fa-rIR-ldrtl-sw800dp-w1280dp-h800dp-xhdpi"
         const val TABLET_PORTRAIT = "fa-rIR-ldrtl-sw800dp-w800dp-h1280dp-xhdpi"
+
+        /** The plan's other three devices, the same dp the tablet proofs use. See `docs/qa/PARITY_MATRIX.md`. */
+        const val TAB_S9_ULTRA = "fa-rIR-ldrtl-sw1232dp-w1973dp-h1232dp-hdpi"
+        const val FOLD_OPEN = "fa-rIR-ldrtl-sw775dp-w930dp-h775dp-xhdpi"
+        const val FOLD_CLOSED = "fa-rIR-ldrtl-w411dp-h797dp-xxhdpi"
     }
 }
 

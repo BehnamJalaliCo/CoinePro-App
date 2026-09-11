@@ -1,5 +1,7 @@
 package com.coinepro.feature.chart
 
+import kotlin.math.roundToInt
+
 import com.coinepro.core.chart.ArrowDirection
 import com.coinepro.core.chart.BarField
 import com.coinepro.core.chart.BarWindow
@@ -28,6 +30,7 @@ import com.coinepro.core.chart.DrawingState
 import com.coinepro.core.chart.DrawingSync
 import com.coinepro.core.chart.DrawingTool
 import com.coinepro.core.chart.DrawingTools
+import com.coinepro.core.chart.ToolGroup
 import com.coinepro.core.chart.IndicatorChain
 import com.coinepro.core.chart.IndicatorPane
 import com.coinepro.core.chart.IndicatorSource
@@ -164,6 +167,21 @@ data class ChartUiState(
      * changed is not a moving average a trader can use — the length *is* the tool.
      */
     val indicatorPeriods: Map<String, Int> = emptyMap(),
+    /**
+     * Every other knob the reader set, by indicator id and then by the parameter's key — MACD's
+     * fast/slow/signal, a band's deviation, Ichimoku's spans (run E, 4.67.0). Sparse like the
+     * periods; `ChartCatalog.parametersOf` says what keys an indicator has and their bounds.
+     */
+    val indicatorParams: Map<String, Map<String, Double>> = emptyMap(),
+    /**
+     * The reader's arrangement of the panes (run E): [paneOrder] is the pane indicators front to
+     * back (ids absent from it follow, in catalogue order); [paneMerges] draws a pane's lines
+     * inside another's, guest id to host id; [separated] draws a price overlay in a pane of its
+     * own. All three are sparse: a chart nobody has arranged stores nothing.
+     */
+    val paneOrder: List<String> = emptyList(),
+    val paneMerges: Map<String, String> = emptyMap(),
+    val separated: Set<String> = emptySet(),
     /**
      * The colour and the stroke the reader gave an indicator, by id — the settings sheet's Style
      * tab. Sparse, like the periods: absent means the catalogue's own. Applied where the lines are
@@ -468,10 +486,10 @@ data class ChartUiState(
         // with no window-scoped study on it — which is every chart in this app until somebody
         // switches the profile on — reuses the carried value whole.
         val reusable = carried?.takeIf {
-            it.matchesApartFromWindow(visibleSeries, activeIndicators, indicatorPeriods, partner, chained)
+            it.matchesApartFromWindow(visibleSeries, activeIndicators, indicatorPeriods, partner, chained, indicatorParams)
         }
-        reusable?.rewindowed(visibleSeries, activeIndicators, indicatorPeriods, chained, window)
-            ?: ChartDerived.of(visibleSeries, activeIndicators, indicatorPeriods, partner, window, chained)
+        reusable?.rewindowed(visibleSeries, activeIndicators, indicatorPeriods, chained, window, indicatorParams)
+            ?: ChartDerived.of(visibleSeries, activeIndicators, indicatorPeriods, partner, window, chained, indicatorParams)
     }
 
     /**
@@ -560,7 +578,58 @@ data class ChartUiState(
         // memoisation test caught by identity. Chained indicators are the rare case; an ordinary
         // chart reads this on every frame of a drag.
         get() = if (indicatorsHidden) emptyList()
-        else chainPlot.priceLines.ifEmpty { return styledOverlays }.let { styledOverlays + it }
+        else chainPlot.priceLines.ifEmpty { return shownOverlays }.let { shownOverlays + it }
+
+    /** [styledOverlays] less the studies the reader moved to a pane of their own — the list itself when none were. */
+    private val shownOverlays: List<ChartLine>
+        get() {
+            if (separated.isEmpty()) return styledOverlays
+            val lines = styledOverlays
+            return lines.filterIndexed { index, _ -> derived.overlayOwners.getOrNull(index) !in separated }
+        }
+
+    /** [ChartDerived.overlayOwners] aligned with [overlays]. */
+    val shownOverlayOwners: List<String>
+        get() = if (separated.isEmpty()) derived.overlayOwners else derived.overlayOwners.filter { it !in separated }
+
+    /**
+     * The panes as the reader arranged them: separated overlays become panes, the order is
+     * [paneOrder]'s, and a merged guest's lines and levels ride inside its host under a joint
+     * title. Each entry carries its owners, host first, so the legend's row resolves to a study.
+     */
+    internal val arrangedPanes: List<Pair<List<String>, ChartPane>>
+        get() {
+            val own = styledPanes.mapIndexed { index, pane -> (derived.paneOwners.getOrNull(index) ?: "") to pane }
+            val moved = separated.mapNotNull { id ->
+                val option = ChartCatalog.INDICATORS.firstOrNull { it.id == id } ?: return@mapNotNull null
+                val lines = styledOverlays.filterIndexed { index, _ -> derived.overlayOwners.getOrNull(index) == id }
+                if (lines.isEmpty()) null else id to ChartPane(title = lines.firstOrNull()?.label ?: option.label, lines = lines)
+            }
+            val all = own + moved
+            if (paneOrder.isEmpty() && paneMerges.isEmpty() && moved.isEmpty()) return all.map { listOf(it.first) to it.second }
+            val ordered = all.sortedBy { (owner, _) -> paneOrder.indexOf(owner).let { if (it < 0) Int.MAX_VALUE else it } }
+            val present = ordered.map { it.first }.toSet()
+            val hosts = LinkedHashMap<String, Pair<MutableList<String>, ChartPane>>()
+            for ((owner, pane) in ordered) {
+                val host = paneMerges[owner]?.takeIf { it != owner && it in present && paneMerges[it] == null }
+                if (host == null) hosts[owner] = mutableListOf(owner) to pane
+            }
+            for ((owner, pane) in ordered) {
+                val host = paneMerges[owner]?.takeIf { it != owner && it in present && paneMerges[it] == null } ?: continue
+                val (owners, hostPane) = hosts[host] ?: continue
+                owners += owner
+                hosts[host] = owners to hostPane.copy(
+                    title = hostPane.title + " · " + pane.title,
+                    lines = hostPane.lines + pane.lines,
+                    levels = hostPane.levels + pane.levels,
+                    histogram = hostPane.histogram ?: pane.histogram,
+                )
+            }
+            return hosts.values.map { (owners, pane) -> owners.toList() to pane }
+        }
+
+    /** The pane indicators front to back as drawn — the first owner of each pane. */
+    val paneOwnersShown: List<String> get() = arrangedPanes.map { it.first.first() }
 
     /** [ChartDerived.overlays] with the reader's colours and widths on them; the list itself when there are none. */
     private val styledOverlays: List<ChartLine>
@@ -610,10 +679,10 @@ data class ChartUiState(
         get() {
             if (hiddenIndicators.isEmpty()) return emptySet()
             val targets = LinkedHashSet<ChartLegendTarget>()
-            derived.overlayOwners.forEachIndexed { index, owner ->
+            shownOverlayOwners.forEachIndexed { index, owner ->
                 if (owner in hiddenIndicators) targets += ChartLegendTarget.Overlay(index)
             }
-            derived.paneOwners.forEachIndexed { index, owner ->
+            paneOwnersShown.forEachIndexed { index, owner ->
                 if (owner in hiddenIndicators) targets += ChartLegendTarget.Pane(index)
             }
             return targets
@@ -631,8 +700,8 @@ data class ChartUiState(
      * whichever study happens to sit at that index.
      */
     fun indicatorFor(target: ChartLegendTarget): String? = when (target) {
-        is ChartLegendTarget.Overlay -> derived.overlayOwners.getOrNull(target.index)
-        is ChartLegendTarget.Pane -> derived.paneOwners.getOrNull(target.index)
+        is ChartLegendTarget.Overlay -> shownOverlayOwners.getOrNull(target.index)
+        is ChartLegendTarget.Pane -> paneOwnersShown.getOrNull(target.index)
         else -> null
     }
 
@@ -674,7 +743,10 @@ data class ChartUiState(
     val panes: List<ChartPane>
         /** The same identity-preserving empty case as [overlays], for the same reason. */
         get() = if (indicatorsHidden) emptyList()
-        else chainPlot.panes.ifEmpty { return styledPanes }.let { styledPanes + it }
+        else {
+            val arranged = if (paneOrder.isEmpty() && paneMerges.isEmpty() && separated.isEmpty()) styledPanes else arrangedPanes.map { it.second }
+            chainPlot.panes.ifEmpty { return arranged }.let { arranged + it }
+        }
 
     /**
      * What the chart may draw.
@@ -833,6 +905,7 @@ internal fun ChartUiState.toLayout(
     chartType = chartType.name,
     indicators = activeIndicators.toList(),
     indicatorPeriods = indicatorPeriods,
+    indicatorParams = indicatorParams,
     scaleMode = scaleMode.name,
     // Null where the chart is on the theme's own palette, which is not the same as being on the
     // dark built-in: a reader who never opened the colour picker should get whatever the theme
@@ -1238,6 +1311,10 @@ class ChartController(
                     .filter { id -> ChartCatalog.INDICATORS.any { it.id == id } }
                     .toSet(),
                 indicatorPeriods = saved.indicatorPeriods.filterKeys { ChartCatalog.periodOf(it) != null },
+                indicatorParams = knownParams(saved.indicatorParams),
+                paneOrder = saved.paneOrder.filter { id -> ChartCatalog.INDICATORS.any { it.id == id } },
+                paneMerges = saved.paneMerges.filter { (guest, host) -> ChartCatalog.INDICATORS.any { it.id == guest } && ChartCatalog.INDICATORS.any { it.id == host } },
+                separated = saved.separatedIndicators.filter { id -> ChartCatalog.INDICATORS.any { it.id == id && it.pane == IndicatorPane.PRICE } }.toSet(),
                 indicatorColours = saved.indicatorColours.filterKeys { id -> ChartCatalog.INDICATORS.any { it.id == id } },
                 indicatorWidths = saved.indicatorWidths.filterKeys { id -> ChartCatalog.INDICATORS.any { it.id == id } },
                 scaleMode = mode ?: current.scaleMode,
@@ -1260,6 +1337,12 @@ class ChartController(
                     favourites = saved.toolFavourites
                         .filter { id -> DrawingTools.ALL.any { it.id == id } }
                         .toSet(),
+                    lastUsed = saved.toolLastUsed
+                        .mapNotNull { (group, id) ->
+                            val known = ToolGroup.entries.firstOrNull { it.name == group } ?: return@mapNotNull null
+                            if (DrawingTools.ALL.any { it.id == id }) known to id else null
+                        }
+                        .toMap(),
                 ),
             )
         }
@@ -1322,6 +1405,7 @@ class ChartController(
             chartType = current.chartType.name,
             indicators = current.activeIndicators.toList(),
             indicatorPeriods = current.indicatorPeriods,
+            indicatorParams = current.indicatorParams,
             indicatorColours = current.indicatorColours,
             indicatorWidths = current.indicatorWidths,
             scaleMode = current.scaleMode.name,
@@ -1330,6 +1414,10 @@ class ChartController(
             magnetMode = current.drawing.magnetMode.name,
             keepDrawing = current.drawing.keepDrawing,
             toolFavourites = current.drawing.favourites.toList(),
+            toolLastUsed = current.drawing.lastUsed.mapKeys { (group, _) -> group.name },
+            paneOrder = current.paneOrder,
+            paneMerges = current.paneMerges,
+            separatedIndicators = current.separated.toList(),
             patterns = current.patterns.toList(),
             chainSources = current.chainSources.mapValues { (_, source) -> encodeChainSource(source) },
         )
@@ -1484,6 +1572,74 @@ class ChartController(
     }
 
     /**
+     * One of an indicator's other knobs — see `ChartCatalog.parametersOf`. Null, or the default,
+     * drops the entry so a chart nobody has touched stores nothing; anything else is clamped to
+     * the parameter's bounds. The length itself goes through [setIndicatorPeriod].
+     */
+    fun setIndicatorParam(id: String, key: String, value: Double?) {
+        val spec = ChartCatalog.parametersOf(id).firstOrNull { it.key == key } ?: return
+        if (key == ChartCatalog.LENGTH) {
+            setIndicatorPeriod(id, value?.roundToInt())
+            return
+        }
+        record()
+        _state.update { old ->
+            val current = old.indicatorParams[id].orEmpty()
+            val next = if (value == null || !value.isFinite() || value == spec.default) {
+                current - key
+            } else {
+                current + (key to value.coerceIn(spec.min, spec.max))
+            }
+            old.copy(
+                indicatorParams = if (next.isEmpty()) old.indicatorParams - id else old.indicatorParams + (id to next),
+            )
+        }
+        persistSymbolState()
+    }
+
+    /**
+     * Move a pane one step up or down the stack (run E). The order is written whole the first
+     * time, so a study switched on later lands at the back rather than shuffling the reader's.
+     */
+    fun movePane(id: String, up: Boolean) {
+        _state.update { old ->
+            val order = old.paneOwnersShown.toMutableList()
+            val at = order.indexOf(id)
+            if (at < 0) return@update old
+            val to = if (up) at - 1 else at + 1
+            if (to !in order.indices) return@update old
+            order[at] = order[to].also { order[to] = order[at] }
+            old.copy(paneOrder = order)
+        }
+        persistSymbolState()
+    }
+
+    /** Draw [id]'s pane inside the pane above it, or back in its own when [into] is null. */
+    fun mergePane(id: String, into: String?) {
+        _state.update { old ->
+            val host = into?.takeIf { it != id && it in old.paneOwnersShown && old.paneMerges[it] == null }
+            old.copy(paneMerges = if (host == null) old.paneMerges - id else old.paneMerges + (id to host))
+        }
+        persistSymbolState()
+    }
+
+    /** Draw a price overlay in a pane of its own, or back over the candles. */
+    fun separateOverlay(id: String, separate: Boolean) {
+        _state.update { old ->
+            old.copy(separated = if (separate) old.separated + id else old.separated - id)
+        }
+        persistSymbolState()
+    }
+
+    /** Stored parameters this build still knows, keyed the way the catalogue keys them. */
+    private fun knownParams(stored: Map<String, Map<String, Double>>): Map<String, Map<String, Double>> =
+        stored.mapNotNull { (id, values) ->
+            val keys = ChartCatalog.parametersOf(id).map { it.key }.toSet()
+            val kept = values.filterKeys { it in keys && it != ChartCatalog.LENGTH }
+            if (kept.isEmpty()) null else id to kept
+        }.toMap()
+
+    /**
      * Arm a tool, or one of the rail's modes.
      *
      * `DrawingActions.arm` now owns both halves: a `ToolGroup.MODES` entry sets `DrawingState.mode`
@@ -1492,8 +1648,15 @@ class ChartController(
      * handed to the canvas by hand, which meant two sources for one fact and a rail that could show
      * a trend line armed while the canvas was erasing. `DrawingState.eraser` is the single read now.
      */
-    fun arm(tool: DrawingTool?) = _state.update {
-        it.copy(drawing = DrawingActions.arm(it.drawing, tool))
+    fun arm(tool: DrawingTool?) {
+        val before = _state.value.drawing.lastUsed
+        _state.update {
+            it.copy(drawing = DrawingActions.arm(it.drawing, tool))
+        }
+        // The rail's memory of the last tool per group is the reader's, so it is written with
+        // the rest of the symbol's state — but only when it moved, since a tool is armed far
+        // more often than it changes.
+        if (_state.value.drawing.lastUsed != before) persistSymbolState()
     }
 
     /**
@@ -1773,8 +1936,11 @@ class ChartController(
      * on a cold open. That is the one half of this feature that is not finished, and it is recorded
      * rather than hidden.
      */
-    fun toggleToolFavourite(toolId: String) = _state.update {
-        it.copy(drawing = DrawingActions.toggleFavourite(it.drawing, toolId))
+    fun toggleToolFavourite(toolId: String) {
+        _state.update {
+            it.copy(drawing = DrawingActions.toggleFavourite(it.drawing, toolId))
+        }
+        persistSymbolState()
     }
 
     /**
@@ -1895,6 +2061,7 @@ class ChartController(
             current.copy(
                 activeIndicators = known.toSet(),
                 indicatorPeriods = template.periods.filterKeys { ChartCatalog.periodOf(it) != null },
+                indicatorParams = knownParams(template.params),
                 chainSources = template.sources
                     .filterKeys { it in known }
                     .mapNotNull { (id, encoded) -> decodeChainSource(encoded)?.let { id to it } }
@@ -1915,6 +2082,7 @@ class ChartController(
             // panes the way the chart stacks them today.
             indicators = ChartCatalog.INDICATORS.map { it.id }.filter { it in current.activeIndicators },
             periods = current.indicatorPeriods,
+            params = current.indicatorParams,
             sources = current.chainSources.mapValues { (_, source) -> encodeChainSource(source) },
             createdAt = now,
         )
@@ -2069,6 +2237,7 @@ class ChartController(
             chartType = current.chartType,
             indicators = current.activeIndicators,
             indicatorPeriods = current.indicatorPeriods,
+            indicatorParams = current.indicatorParams,
             drawing = current.drawing,
         )
     }
@@ -2120,12 +2289,14 @@ class ChartController(
             }
             if (target.chartType != current.chartType) setChartType(target.chartType)
             if (target.indicators != current.activeIndicators ||
-                target.indicatorPeriods != current.indicatorPeriods
+                target.indicatorPeriods != current.indicatorPeriods ||
+                target.indicatorParams != current.indicatorParams
             ) {
                 _state.update {
                     it.copy(
                         activeIndicators = target.indicators,
                         indicatorPeriods = target.indicatorPeriods,
+                        indicatorParams = target.indicatorParams,
                         // The same spend [toggleIndicator] makes: a window-scoped study coming back
                         // on has to measure the bars the reader is looking at now, not the ones
                         // that were on screen when the window was last published.
@@ -2429,6 +2600,7 @@ class ChartController(
                     .toSet(),
                 indicatorPeriods = layout.indicatorPeriods
                     .filterKeys { ChartCatalog.periodOf(it) != null },
+                indicatorParams = knownParams(layout.indicatorParams),
                 scaleMode = mode ?: current.scaleMode,
                 // The layout the next drawing belongs to, and the one `syncedInto` filters against.
                 // Without it every mark carries a null layout and «فقط این چیدمان» means nothing.
@@ -3357,6 +3529,8 @@ data class ChartDerived internal constructor(
         val window: BarWindow = BarWindow.WHOLE_SERIES,
         /** The indicators a chain is drawing instead, which changes what this must skip. */
         val chained: Set<String> = emptySet(),
+        /** The other knobs, by indicator id — see [ChartUiState.indicatorParams]. */
+        val params: Map<String, Map<String, Double>> = emptyMap(),
     )
 
     /** Whether this value is still the right answer for these inputs, the window included. */
@@ -3367,7 +3541,8 @@ data class ChartDerived internal constructor(
         comparison: ComparisonSeries? = null,
         window: BarWindow = BarWindow.WHOLE_SERIES,
         chained: Set<String> = emptySet(),
-    ): Boolean = matchesApartFromWindow(series, active, periods, comparison, chained) &&
+        params: Map<String, Map<String, Double>> = emptyMap(),
+    ): Boolean = matchesApartFromWindow(series, active, periods, comparison, chained, params) &&
         key?.window == window
 
     /**
@@ -3385,12 +3560,14 @@ data class ChartDerived internal constructor(
         periods: Map<String, Int>,
         comparison: ComparisonSeries? = null,
         chained: Set<String> = emptySet(),
+        params: Map<String, Map<String, Double>> = emptyMap(),
     ): Boolean = key != null &&
         key.series === series &&
         key.active == active &&
         key.periods == periods &&
         key.comparison == comparison &&
-        key.chained == chained
+        key.chained == chained &&
+        key.params == params
 
     /**
      * This value re-answered for a new window, recomputing only the studies that read one.
@@ -3422,6 +3599,7 @@ data class ChartDerived internal constructor(
         periods: Map<String, Int>,
         chained: Set<String>,
         window: BarWindow,
+        params: Map<String, Map<String, Double>> = emptyMap(),
     ): ChartDerived {
         val previous = key ?: return this
         if (previous.window == window) return this
@@ -3448,7 +3626,7 @@ data class ChartDerived internal constructor(
             emit(
                 option.id,
                 if (option.id in WINDOW_SCOPED) {
-                    ChartCatalog.overlayFor(option, series, periods[option.id], window)
+                    ChartCatalog.overlayFor(option, series, periods[option.id], window, params[option.id].orEmpty())
                 } else {
                     held[option.id].orEmpty()
                 },
@@ -3515,8 +3693,10 @@ data class ChartDerived internal constructor(
              * concerned, and there is nothing on screen that would let them tell it from one.
              */
             chained: Set<String> = emptySet(),
+            /** The other knobs, by indicator id — see `ChartUiState.indicatorParams`. */
+            params: Map<String, Map<String, Double>> = emptyMap(),
         ): ChartDerived {
-            val key = Key(series, active, periods, comparison, window, chained)
+            val key = Key(series, active, periods, comparison, window, chained, params)
             if (active.isEmpty() || series.isEmpty) return ChartDerived(key = key)
             val chosen = ChartCatalog.INDICATORS.filter { it.id in active && it.id !in chained }
             // Each structure study computed **once** and its three products taken from the one
@@ -3532,7 +3712,7 @@ data class ChartDerived internal constructor(
             val priceLines = chosen
                 .filter { it.pane == IndicatorPane.PRICE }
                 .flatMap { option ->
-                    ChartCatalog.overlayFor(option, series, periods[option.id], window)
+                    ChartCatalog.overlayFor(option, series, periods[option.id], window, params[option.id].orEmpty())
                         .map { option.id to it }
                 }
             val structureLines = chosen
@@ -3542,7 +3722,7 @@ data class ChartDerived internal constructor(
             val separatePanes = chosen
                 .filter { it.pane == IndicatorPane.SEPARATE }
                 .mapNotNull { option ->
-                    ChartCatalog.paneFor(option, series, periods[option.id], comparison)
+                    ChartCatalog.paneFor(option, series, periods[option.id], comparison, params[option.id].orEmpty())
                         ?.let { option.id to it }
                 }
             return ChartDerived(

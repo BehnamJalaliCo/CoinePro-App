@@ -394,6 +394,7 @@ fun ChartStudioScreen(
                         hasVolume = state.series.hasVolume,
                         favourites = state.drawing.favourites,
                         onToggleFavourite = { controller.toggleToolFavourite(it.id) },
+                        lastUsed = state.drawing.lastUsed,
                         magnet = state.drawing.magnetMode,
                         onCycleMagnet = controller::cycleMagnet,
                         keepDrawing = state.drawing.keepDrawing,

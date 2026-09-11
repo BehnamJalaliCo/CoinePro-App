@@ -36,6 +36,16 @@ class SymbolChartStateStoreTest {
     }
 
     @Test
+    fun `the parameters round-trip and a stray pair drops on its own`() = runTest {
+        val store = SymbolChartStateStore(FakeStatePreferences())
+        val params = mapOf("macd" to mapOf("fast" to 8.0, "slow" to 21.0), "bollinger" to mapOf("deviation" to 2.5))
+        store.put(gold().copy(indicatorParams = params))
+        assertEquals(params, store.state("XAUUSD").first()!!.indicatorParams)
+        assertEquals(mapOf("macd" to mapOf("fast" to 8.0)), ChartParamsCodec.decode("macd/fast\u001F8.0\u001Fmacd/slow\u001Fx\u001Fbroken"))
+        assertEquals(emptyMap<String, Map<String, Double>>(), ChartParamsCodec.decode(null))
+    }
+
+    @Test
     fun `a state with no indicators round-trips as empty collections, not as one holding a blank`() = runTest {
         val store = SymbolChartStateStore(FakeStatePreferences())
         store.put(SymbolChartState(symbol = "BTCUSDT", timeframe = "M5", updatedAt = 5L))

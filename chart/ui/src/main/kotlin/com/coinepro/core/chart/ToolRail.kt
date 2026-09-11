@@ -48,6 +48,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProColors
@@ -114,6 +116,8 @@ fun ToolRail(
     /** Tool ids pinned to the top of the rail. See [DrawingState.favourites]. */
     favourites: Set<String> = emptySet(),
     onToggleFavourite: ((DrawingTool) -> Unit)? = null,
+    /** The tool last armed in each group; first in its group and marked. See [DrawingState.lastUsed]. */
+    lastUsed: Map<ToolGroup, String> = emptyMap(),
     magnet: MagnetMode = MagnetMode.OFF,
     /** Advance the magnet one step: off, weak, strong. Null hides the action. */
     onCycleMagnet: (() -> Unit)? = null,
@@ -151,7 +155,7 @@ fun ToolRail(
         else -> catalogue
     }
     val grouped = !searching && group == null
-    val rows = remember(tools, grouped) { railRows(tools, grouped) }
+    val rows = remember(tools, grouped, lastUsed) { railRows(tools, grouped, lastUsed) }
 
     // The modes, as TradingView's phone lays them out: a grid of tiles at the head of the
     // «Tools» tab rather than a row of glyphs above the search. See [modeTiles].
@@ -267,6 +271,7 @@ fun ToolRail(
                             tool = row.tool,
                             selected = row.tool.id == selected,
                             favourite = row.tool.id in favourites,
+                            promoted = lastUsed[row.tool.group] == row.tool.id,
                             onClick = { onSelect(row.tool) },
                             onHelp = row.tool.helpId?.let { id -> onHelp?.let { { it(id) } } },
                         )
@@ -284,7 +289,7 @@ fun ToolRail(
  * name the group of whatever row is at the top of the viewport, and that means asking "what is at
  * index n" — a question a `for` loop emitting items into a lazy scope cannot answer.
  */
-private sealed interface RailRow {
+internal sealed interface RailRow {
     val group: ToolGroup
 
     data class Heading(override val group: ToolGroup) : RailRow
@@ -294,10 +299,25 @@ private sealed interface RailRow {
     }
 }
 
-private fun railRows(tools: List<DrawingTool>, grouped: Boolean): List<RailRow> {
+internal fun railRows(tools: List<DrawingTool>, grouped: Boolean, lastUsed: Map<ToolGroup, String> = emptyMap()): List<RailRow> {
     val rows = ArrayList<RailRow>(tools.size + DrawingTools.GROUPS.size)
     var last: ToolGroup? = null
-    for (tool in tools) {
+    // The group's last-used tool leads its group: a flyout that opens on the tool it last armed.
+    // The catalogue's order is kept otherwise — the tool is lifted to the head of its group's run,
+    // not the groups re-sorted — so a search result or a filtered rail reads as it did.
+    val used = if (lastUsed.isEmpty()) emptyMap() else tools.filter { lastUsed[it.group] == it.id }.associateBy { it.group }
+    val promoted = if (used.isEmpty()) tools else buildList(tools.size) {
+        val led = HashSet<ToolGroup>()
+        var run: ToolGroup? = null
+        for (tool in tools) {
+            if (tool.group != run) {
+                run = tool.group
+                if (led.add(tool.group)) used[tool.group]?.let(::add)
+            }
+            if (used[tool.group] !== tool) add(tool)
+        }
+    }
+    for (tool in promoted) {
         if (grouped && tool.group != last) {
             last = tool.group
             rows += RailRow.Heading(tool.group)
@@ -665,6 +685,8 @@ private fun ToolCell(
     favourite: Boolean,
     onClick: () -> Unit,
     onHelp: (() -> Unit)?,
+    /** The group's last-used tool: first in its group and marked, so the reader's own habit leads. */
+    promoted: Boolean = false,
 ) {
     Box(
         modifier = Modifier
@@ -717,6 +739,18 @@ private fun ToolCell(
             // Two lines and then an ellipsis. "گسترش زمانی فیبوناچی" does not fit a quarter of a
             // phone at any size worth reading, and a cell that grows to fit it breaks the grid.
             overflow = TextOverflow.Ellipsis,
+        )
+    }
+    if (promoted && !selected) {
+        // A small gold pip in the leading corner: «آخرین», without a word taking the tile's height.
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(CoineProSpacing.Half)
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(CoineProColors.Gold)
+                .semantics { contentDescription = "tool-last-used-${tool.id}" },
         )
     }
     onHelp?.let { help ->

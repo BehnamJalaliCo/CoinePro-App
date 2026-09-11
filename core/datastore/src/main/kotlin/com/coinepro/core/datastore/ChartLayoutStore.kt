@@ -39,6 +39,8 @@ data class ChartLayout(
     val indicators: List<String> = emptyList(),
     /** The period each indicator was configured with, keyed by indicator id. */
     val indicatorPeriods: Map<String, Int> = emptyMap(),
+    /** The other knobs, by indicator id and parameter key — see `SymbolChartState.indicatorParams`. */
+    val indicatorParams: Map<String, Map<String, Double>> = emptyMap(),
     /** The price-scale mode id. Empty means the layout does not override the app's default. */
     val scaleMode: String = "",
     /** A [ChartColourTemplate.id], or null to keep whatever colours the theme gives. */
@@ -370,6 +372,8 @@ class ChartLayoutStore(private val dataStore: DataStore<Preferences>) {
                 layout.createdAt.toString(),
                 layout.updatedAt.toString(),
                 ChartDrawingCodec.encodeNested(layout.drawings),
+                // Twelve: the parameters, «id/key» and value pairs.
+                ChartParamsCodec.encode(layout.indicatorParams),
             ).joinToString(RECORD)
         }
 
@@ -409,6 +413,7 @@ class ChartLayoutStore(private val dataStore: DataStore<Preferences>) {
                 // Absent on every layout saved before drawings could travel with one, and an empty
                 // list is the truth about those: nothing was filed with them.
                 drawings = ChartDrawingCodec.decodeNested(parts.getOrNull(11).orEmpty()),
+                indicatorParams = ChartParamsCodec.decode(parts.getOrNull(12)),
             )
         }
 

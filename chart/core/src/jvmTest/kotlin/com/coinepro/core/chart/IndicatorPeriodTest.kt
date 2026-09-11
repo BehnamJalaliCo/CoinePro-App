@@ -104,7 +104,9 @@ class IndicatorPeriodTest {
     fun `only indicators with one lookback are offered one`() {
         // MACD has three parameters, Ichimoku three spans, VWAP none. A stepper on any of them
         // would move a number that changes nothing on screen, which is worse than no control.
-        listOf("macd", "ichimoku", "vwap", "supertrend", "pivots").forEach { id ->
+        // (Supertrend left this list in 4.67.0: its ATR length is a real lookback now, and its
+        // multiplier sits beside it in `ChartCatalog.PARAMETERS`.)
+        listOf("macd", "ichimoku", "vwap", "pivots").forEach { id ->
             assertNull("$id should have no single lookback", ChartCatalog.periodOf(id))
         }
         // And every id in the table has to be a real indicator, or the picker offers a stepper for

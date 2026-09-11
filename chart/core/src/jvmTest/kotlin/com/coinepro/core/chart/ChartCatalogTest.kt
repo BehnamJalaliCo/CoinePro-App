@@ -570,3 +570,84 @@ class ChartCatalogTest {
         assertEquals("families naming an indicator the catalogue lacks: $stray", emptyList<String>(), stray)
     }
 }
+
+/**
+ * Every parameter of every built-in (run E): the catalogue names them, the dispatch reads them,
+ * and the title says what was read — MACD 5/26/9 is not MACD 12/26/9.
+ */
+class IndicatorParametersTest {
+
+    private val series: CandleSeries = run {
+        var seed = 11L
+        fun random(): Double {
+            seed = (seed * 6364136223846793005L + 1442695040888963407L)
+            return ((seed ushr 11).toDouble() / (1L shl 53).toDouble())
+        }
+        var close = 100.0
+        CandleSeries(
+            List(400) { index ->
+                val open = close
+                close = open + (random() - 0.5) * 2.0
+                Candle(1_700_000_000L + index * 3_600L, open, maxOf(open, close) + random(), minOf(open, close) - random(), close, 1_000.0 + random() * 500)
+            },
+        )
+    }
+
+    @Test
+    fun `the length comes first and the other knobs follow, with the literals of old as defaults`() {
+        assertEquals(listOf("fast", "slow", "signal"), ChartCatalog.parametersOf("macd").map { it.key })
+        assertEquals(listOf(12.0, 26.0, 9.0), ChartCatalog.parametersOf("macd").map { it.default })
+        assertEquals(listOf("length", "deviation"), ChartCatalog.parametersOf("bollinger").map { it.key })
+        assertEquals(listOf("conversion", "base", "span"), ChartCatalog.parametersOf("ichimoku").map { it.key })
+        assertEquals(listOf("length"), ChartCatalog.parametersOf("rsi").map { it.key })
+        assertTrue(ChartCatalog.parametersOf("obv").isEmpty())
+    }
+
+    @Test
+    fun `every parameter names a known indicator and stays inside its own bounds`() {
+        for ((id, specs) in ChartCatalog.PARAMETERS) {
+            assertTrue(id, ChartCatalog.INDICATORS.any { it.id == id })
+            for (spec in specs) {
+                assertTrue("$id.${spec.key}", spec.default in spec.min..spec.max && spec.step > 0.0)
+            }
+        }
+        // Out of bounds is clamped, not refused; absent is the default.
+        assertEquals(400.0, ChartCatalog.parameter("macd", "fast", mapOf("fast" to 9_999.0)), 0.0)
+        assertEquals(12.0, ChartCatalog.parameter("macd", "fast", emptyMap()), 0.0)
+    }
+
+    @Test
+    fun `moving any knob changes what is drawn and what the title says`() {
+        for ((id, specs) in ChartCatalog.PARAMETERS) {
+            val option = ChartCatalog.INDICATORS.first { it.id == id }
+            for (spec in specs) {
+                val moved = if (spec.default + spec.step <= spec.max) spec.default + spec.step else spec.default - spec.step
+                val params = mapOf(spec.key to moved)
+                if (option.pane == IndicatorPane.SEPARATE) {
+                    val before = ChartCatalog.paneFor(option, series)
+                    val after = ChartCatalog.paneFor(option, series, params = params)
+                    if (before == null || after == null) continue
+                    assertTrue("$id.${spec.key}: the title did not change (${after.title})", before.title != after.title)
+                    assertTrue("$id.${spec.key}: the values did not change", before.lines.map { it.values.toList() } != after.lines.map { it.values.toList() } || before.histogram?.values?.toList() != after.histogram?.values?.toList())
+                } else if (option.pane == IndicatorPane.PRICE) {
+                    val before = ChartCatalog.overlayFor(option, series)
+                    val after = ChartCatalog.overlayFor(option, series, params = params)
+                    assertTrue("$id.${spec.key}: the label did not change", before.first().label != after.first().label)
+                    assertTrue("$id.${spec.key}: the values did not change", before.map { it.values.toList() } != after.map { it.values.toList() })
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `the lengths that were literals draw exactly as before by default`() {
+        val macd = ChartCatalog.paneFor(ChartCatalog.INDICATORS.first { it.id == "macd" }, series)!!
+        assertEquals("MACD 12/26/9", macd.title)
+        val stoch = ChartCatalog.paneFor(ChartCatalog.INDICATORS.first { it.id == "stochastic" }, series)!!
+        assertEquals("Stochastic 14/3", stoch.title)
+        val bb = ChartCatalog.overlayFor(ChartCatalog.INDICATORS.first { it.id == "bollinger" }, series)
+        assertEquals("BB 20/2", bb.first().label)
+        val sar = ChartCatalog.overlayFor(ChartCatalog.INDICATORS.first { it.id == "sar" }, series)
+        assertEquals("SAR 0.02/0.2", sar.first().label)
+    }
+}

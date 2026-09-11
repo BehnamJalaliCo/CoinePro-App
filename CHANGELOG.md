@@ -15,6 +15,38 @@ it is for.
 
 ---
 
+## [4.67.0] — 2026-09-11 — the tools finished, the tablet accounted for
+
+Run E of the owner's plan: the drawing and indicator tools brought to the reference, and the
+parity matrix filled.
+
+### Added
+- **Every parameter of every built-in indicator**: 54 knobs on 28 studies beyond the length
+  (MACD 12/26/9, Bollinger deviation, Ichimoku 9/26/52, Supertrend's multiplier, SAR's step and
+  max, …) and 53 lengths, on the settings sheet's «ورودی‌ها» tab with the chart redrawing behind
+  the 20 % scrim. Defaults are the values the catalogue always drew with; a stored value is
+  clamped; titles carry the figures. Kept per symbol, in layouts and in templates.
+- **Panes arranged**: a study's pane moves up or down the stack, merges into the pane above it
+  (a joint title, the guest's lines inside), or — for a price overlay — takes a pane of its own,
+  from the sheet's «نمایش» tab under «جای پنل». The arrangement persists per symbol.
+- **The floating toolbar follows the selected drawing**, sitting just above it; a **magnifier**
+  (2×) shows the pixels under the finger while a handle is dragged.
+- **The rail remembers the last tool per group** and lifts it to the head of its group with a
+  gold pip; a **favourites strip** on the plot's leading edge arms a pinned tool in one tap.
+- **Parity**: 30 renders for the windows that had none, so every named screen has a render at
+  every one of the six windows; `ToolsProofTest` (12 frames in `docs/qa/screenshots/4.67/`),
+  `DeviceProofTest` (the same six scenes × dark/light × fa/en on an attached device) and
+  `scripts/qa/monkey-soak.sh` (the 30-minute soak, log under `docs/qa/soak/`).
+
+### Changed
+- Sixteen indicator lengths that were literals (Stochastic 14, Keltner 20, Supertrend 10, …) are
+  now steppers; nothing drawn by default changes.
+- `Volatility Stop`, `Chande Kroll` and `HV` name their multiplier / factor in the legend.
+
+### Needs a device
+- The frames on Pixel 6a, Pixel Tablet, Tab S9 Ultra and Pixel Fold; the soak log; the
+  20-second recording beside TradingView. `docs/qa/DEVICE_PROOFS.md` §5–6.
+
 ## [4.66.0] — 2026-09-11 — the studio photographed, the pins in the platform, the phone's commands
 
 The owner's audit of 4.65.0 answered: the things an APK cannot show, shown.

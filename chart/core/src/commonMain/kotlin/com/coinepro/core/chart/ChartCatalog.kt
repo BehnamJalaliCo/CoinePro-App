@@ -1,5 +1,8 @@
 package com.coinepro.core.chart
 
+import kotlin.math.floor
+import kotlin.math.roundToInt
+
 
 /**
  * The chart types a reader can choose, and the indicators they can add.
@@ -85,6 +88,30 @@ data class IndicatorOption(
  * that the result is not a line of nulls on a series of 500 bars.
  */
 data class IndicatorPeriod(val default: Int, val min: Int = 2, val max: Int = 400)
+
+/**
+ * One knob of an indicator beyond its length — MACD's fast, slow and signal, a band's deviation,
+ * Ichimoku's three spans (run E, 4.67.0).
+ *
+ * [key] is what the reader's value is stored under (`ChartUiState.indicatorParams`); [label] is
+ * Persian, [labelEn] English; the bounds clamp a stored value the way [IndicatorPeriod] does, and
+ * [step] is what the stepper moves by — `1.0` for a bar count, `0.1` for a multiplier. The length
+ * itself stays in [ChartCatalog.PERIODS] and `indicatorPeriods`, where every build before this one
+ * kept it; [ChartCatalog.parametersOf] lists it first, under the key `length`, so the sheet draws
+ * one list.
+ */
+data class IndicatorParameter(
+    val key: String,
+    val label: String,
+    val labelEn: String,
+    val default: Double,
+    val min: Double,
+    val max: Double,
+    val step: Double = 1.0,
+) {
+    /** Whether the knob is a bar count, shown and stepped as a whole number. */
+    val integer: Boolean get() = step >= 1.0
+}
 
 /**
  * The reference's indicator families, as the chips on the indicator sheet name them.
@@ -475,11 +502,16 @@ object ChartCatalog {
          * see the `correlation` branch below.
          */
         comparison: ComparisonSeries? = null,
+        /** The reader's other knobs, by key — see [PARAMETERS]; absent means the default. */
+        params: Map<String, Double> = emptyMap(),
     ): ChartPane? {
         if (option.pane != IndicatorPane.SEPARATE || series.isEmpty) return null
         // A volume study on a feed that reports no volume has no values, not values of zero.
         if (option.id in VOLUME_ONLY_INDICATORS && !series.hasVolume) return null
         val n = periodFor(option.id, period)
+        fun p(key: String): Double = parameter(option.id, key, params)
+        fun pi(key: String): Int = p(key).roundToInt()
+        fun figure(value: Double): String = if (value == floor(value)) value.toInt().toString() else value.toString()
         val open = series.open
         val high = series.high
         val low = series.low
@@ -500,18 +532,18 @@ object ChartCatalog {
                 ChartLine(Indicators.rsi(close, n), colour, label = "RSI"),
                 levels = listOf(band(70.0), band(50.0, faint = true), band(30.0)),
             )
-            "macd" -> Indicators.macd(close).let { macd ->
+            "macd" -> Indicators.macd(close, pi("fast"), pi("slow"), pi("signal")).let { macd ->
                 pane(
-                    "MACD 12/26/9",
+                    "MACD ${pi("fast")}/${pi("slow")}/${pi("signal")}",
                     ChartLine(macd.macd, colour, label = "MACD"),
                     ChartLine(macd.signal, second, label = "سیگنال"),
                     levels = listOf(band(0.0, faint = true)),
                     histogram = ChartLine(macd.histogram, colour),
                 )
             }
-            "stochastic" -> Indicators.stochastic(high, low, close).let { stoch ->
+            "stochastic" -> Indicators.stochastic(high, low, close, n, pi("smoothing")).let { stoch ->
                 pane(
-                    "Stochastic 14/3",
+                    "Stochastic $n/${pi("smoothing")}",
                     ChartLine(stoch.k, colour, label = "%K"),
                     ChartLine(stoch.d, second, label = "%D"),
                     levels = listOf(band(80.0), band(20.0)),
@@ -544,41 +576,41 @@ object ChartCatalog {
                 ChartLine(Indicators.choppiness(high, low, close, n), colour),
                 levels = listOf(band(61.8), band(38.2)),
             )
-            "vortex" -> Indicators.vortex(high, low, close).let { vortex ->
+            "vortex" -> Indicators.vortex(high, low, close, n).let { vortex ->
                 pane(
-                    "Vortex 14",
+                    "Vortex $n",
                     ChartLine(vortex.plus, 0xFF00B15C, label = "VI+"),
                     ChartLine(vortex.minus, 0xFFF6465D, label = "VI−"),
                     levels = listOf(band(1.0, faint = true)),
                 )
             }
             "obv" -> pane("OBV", ChartLine(Indicators.obv(close, volume), colour))
-            "stddev" -> pane("StdDev 20", ChartLine(IndicatorsExt.stdDev(close, 20), colour))
-            "hv" -> pane("HV 10", ChartLine(IndicatorsExt.historicalVolatility(close), colour))
+            "stddev" -> pane("StdDev $n", ChartLine(IndicatorsExt.stdDev(close, n), colour))
+            "hv" -> pane("HV $n/${pi("annual")}", ChartLine(IndicatorsExt.historicalVolatility(close, n, pi("annual")), colour))
             "chaikinVol" -> pane(
-                "Chaikin Vol 10",
-                ChartLine(IndicatorsExt.chaikinVolatility(high, low), colour),
+                "Chaikin Vol $n/${pi("roc")}",
+                ChartLine(IndicatorsExt.chaikinVolatility(high, low, n, pi("roc")), colour),
                 levels = listOf(band(0.0, faint = true)),
             )
             "bbpercent" -> pane(
-                "%B 20",
-                ChartLine(IndicatorsExt.bollingerPercent(close), colour),
+                "%B $n/${figure(p("deviation"))}",
+                ChartLine(IndicatorsExt.bollingerPercent(close, n, p("deviation")), colour),
                 levels = listOf(band(1.0), band(0.0)),
             )
-            "bbw" -> pane("BBW 20", ChartLine(IndicatorsExt.bollingerWidth(close), colour))
+            "bbw" -> pane("BBW $n/${figure(p("deviation"))}", ChartLine(IndicatorsExt.bollingerWidth(close, n, p("deviation")), colour))
             "mom" -> pane(
-                "Momentum 10",
-                ChartLine(IndicatorsExt.momentum(close, 10), colour),
+                "Momentum $n",
+                ChartLine(IndicatorsExt.momentum(close, n), colour),
                 levels = listOf(band(0.0, faint = true)),
             )
             "roc" -> pane(
-                "ROC 12",
-                ChartLine(IndicatorsExt.rateOfChange(close, 12), colour),
+                "ROC $n",
+                ChartLine(IndicatorsExt.rateOfChange(close, n), colour),
                 levels = listOf(band(0.0, faint = true)),
             )
-            "trix" -> IndicatorsExt.trix(close).let { trix ->
+            "trix" -> IndicatorsExt.trix(close, n, pi("signal")).let { trix ->
                 pane(
-                    "TRIX 18/9",
+                    "TRIX $n/${pi("signal")}",
                     ChartLine(trix.line, colour, label = "TRIX"),
                     ChartLine(trix.signal, second, label = "سیگنال"),
                     levels = listOf(band(0.0, faint = true)),
@@ -590,34 +622,34 @@ object ChartCatalog {
                 histogram = ChartLine(IndicatorsExt.accelerator(high, low), colour),
             )
             "uo" -> pane(
-                "Ultimate 7/14/28",
-                ChartLine(IndicatorsExt.ultimateOscillator(high, low, close), colour),
+                "Ultimate ${pi("short")}/${pi("mid")}/${pi("long")}",
+                ChartLine(IndicatorsExt.ultimateOscillator(high, low, close, pi("short"), pi("mid"), pi("long")), colour),
                 levels = listOf(band(70.0), band(30.0)),
             )
-            "fisher" -> IndicatorsExt.fisherTransform(high, low).let { fisher ->
+            "fisher" -> IndicatorsExt.fisherTransform(high, low, n).let { fisher ->
                 pane(
-                    "Fisher 9",
+                    "Fisher $n",
                     ChartLine(fisher.line, colour, label = "Fisher"),
                     ChartLine(fisher.signal, second, label = "سیگنال"),
                     levels = listOf(band(0.0, faint = true)),
                 )
             }
             "crsi" -> pane(
-                "Connors RSI 3/2/100",
-                ChartLine(IndicatorsExt.connorsRsi(close), colour),
+                "Connors RSI ${pi("rsi")}/${pi("streak")}/${pi("rank")}",
+                ChartLine(IndicatorsExt.connorsRsi(close, pi("rsi"), pi("streak"), pi("rank")), colour),
                 levels = listOf(band(90.0), band(10.0)),
             )
-            "smiErgodic" -> IndicatorsExt.smiErgodic(close).let { smi ->
+            "smiErgodic" -> IndicatorsExt.smiErgodic(close, pi("long"), pi("short"), pi("signal")).let { smi ->
                 pane(
-                    "SMI Ergodic 20/5/5",
+                    "SMI Ergodic ${pi("long")}/${pi("short")}/${pi("signal")}",
                     ChartLine(smi.line, colour, label = "SMI"),
                     ChartLine(smi.signal, second, label = "سیگنال"),
                     levels = listOf(band(0.0, faint = true)),
                 )
             }
             "smi" -> pane(
-                "Stochastic Momentum 10",
-                ChartLine(IndicatorsExt.stochasticMomentum(high, low, close), colour),
+                "Stochastic Momentum $n/${pi("k")}/${pi("d")}",
+                ChartLine(IndicatorsExt.stochasticMomentum(high, low, close, n, pi("k"), pi("d")), colour),
                 levels = listOf(band(40.0), band(0.0, faint = true), band(-40.0)),
             )
             "bop" -> pane(
@@ -630,23 +662,23 @@ object ChartCatalog {
                 ChartLine(IndicatorsExt.accumulationDistribution(high, low, close, volume), colour),
             )
             "chaikinOsc" -> pane(
-                "Chaikin Osc 3/10",
+                "Chaikin Osc ${pi("fast")}/${pi("slow")}",
                 levels = listOf(band(0.0, faint = true)),
-                histogram = ChartLine(IndicatorsExt.chaikinOscillator(high, low, close, volume), colour),
+                histogram = ChartLine(IndicatorsExt.chaikinOscillator(high, low, close, volume, pi("fast"), pi("slow")), colour),
             )
             "eom" -> pane(
-                "Ease of Movement 14",
-                ChartLine(IndicatorsExt.easeOfMovement(high, low, volume), colour),
+                "Ease of Movement $n",
+                ChartLine(IndicatorsExt.easeOfMovement(high, low, volume, n), colour),
                 levels = listOf(band(0.0, faint = true)),
             )
             "forceIndex" -> pane(
-                "Force Index 13",
-                ChartLine(IndicatorsExt.forceIndex(close, volume), colour),
+                "Force Index $n",
+                ChartLine(IndicatorsExt.forceIndex(close, volume, n), colour),
                 levels = listOf(band(0.0, faint = true)),
             )
-            "klinger" -> IndicatorsExt.klinger(high, low, close, volume).let { klinger ->
+            "klinger" -> IndicatorsExt.klinger(high, low, close, volume, pi("fast"), pi("slow"), pi("signal")).let { klinger ->
                 pane(
-                    "Klinger 34/55/13",
+                    "Klinger ${pi("fast")}/${pi("slow")}/${pi("signal")}",
                     ChartLine(klinger.line, colour, label = "KVO"),
                     ChartLine(klinger.signal, second, label = "سیگنال"),
                     levels = listOf(band(0.0, faint = true)),
@@ -655,17 +687,17 @@ object ChartCatalog {
             "pvt" -> pane("PVT", ChartLine(IndicatorsExt.priceVolumeTrend(close, volume), colour))
 
             // ── The third pack's own-scale entries ────────────────────────────────────────
-            "stochrsi" -> IndicatorsExtB.stochasticRsi(close, n, n).let { stoch ->
+            "stochrsi" -> IndicatorsExtB.stochasticRsi(close, n, pi("stoch"), pi("k"), pi("d")).let { stoch ->
                 pane(
-                    "Stoch RSI $n",
+                    "Stoch RSI $n/${pi("stoch")}/${pi("k")}/${pi("d")}",
                     ChartLine(stoch.k.asLine(), colour, label = "%K"),
                     ChartLine(stoch.d.asLine(), second, label = "%D"),
                     levels = listOf(band(80.0), band(20.0)),
                 )
             }
-            "tsi" -> IndicatorsExtB.trueStrengthIndex(close, n).let { tsi ->
+            "tsi" -> IndicatorsExtB.trueStrengthIndex(close, n, pi("short"), pi("signal")).let { tsi ->
                 pane(
-                    "TSI $n/13/13",
+                    "TSI $n/${pi("short")}/${pi("signal")}",
                     ChartLine(tsi.tsi.asLine(), colour, label = "TSI"),
                     ChartLine(tsi.signal.asLine(), second, label = "سیگنال"),
                     levels = listOf(band(25.0), band(0.0, faint = true), band(-25.0)),
@@ -691,18 +723,18 @@ object ChartCatalog {
                     levels = listOf(band(25.0)),
                 )
             }
-            "ppo" -> IndicatorsExtB.ppo(close).let { ppo ->
+            "ppo" -> IndicatorsExtB.ppo(close, pi("fast"), pi("slow"), pi("signal")).let { ppo ->
                 pane(
-                    "PPO 12/26/9",
+                    "PPO ${pi("fast")}/${pi("slow")}/${pi("signal")}",
                     ChartLine(ppo.oscillator.asLine(), colour, label = "PPO"),
                     ChartLine(ppo.signal.asLine(), second, label = "سیگنال"),
                     levels = listOf(band(0.0, faint = true)),
                     histogram = ChartLine(ppo.histogram.asLine(), colour),
                 )
             }
-            "pvo" -> IndicatorsExtB.pvo(volume).let { pvo ->
+            "pvo" -> IndicatorsExtB.pvo(volume, pi("fast"), pi("slow"), pi("signal")).let { pvo ->
                 pane(
-                    "PVO 12/26/9",
+                    "PVO ${pi("fast")}/${pi("slow")}/${pi("signal")}",
                     ChartLine(pvo.oscillator.asLine(), colour, label = "PVO"),
                     ChartLine(pvo.signal.asLine(), second, label = "سیگنال"),
                     levels = listOf(band(0.0, faint = true)),
@@ -738,8 +770,8 @@ object ChartCatalog {
                 )
             }
             "massindex" -> pane(
-                "Mass Index $n/9",
-                ChartLine(IndicatorsExtC.massIndex(high, low, n).asLine(), colour),
+                "Mass Index $n/${pi("ema")}",
+                ChartLine(IndicatorsExtC.massIndex(high, low, n, pi("ema")).asLine(), colour),
                 // The reversal bulge, which is the only thing the indicator is read for: it has to
                 // rise through 27 and then fall back below 26.5, and without both lines drawn the
                 // second half of that sentence is invisible.
@@ -751,8 +783,8 @@ object ChartCatalog {
                 levels = listOf(band(50.0), band(0.0, faint = true), band(-50.0)),
             )
             "coppock" -> pane(
-                "Coppock 14/11/10",
-                ChartLine(IndicatorsExtC.coppockCurve(close).asLine(), colour),
+                "Coppock ${pi("roc1")}/${pi("roc2")}/${pi("wma")}",
+                ChartLine(IndicatorsExtC.coppockCurve(close, pi("roc1"), pi("roc2"), pi("wma")).asLine(), colour),
                 levels = listOf(band(0.0, faint = true)),
             )
             "netvolume" -> pane(
@@ -985,6 +1017,24 @@ object ChartCatalog {
      * number nothing looks at.
      */
     val PERIODS: Map<String, IndicatorPeriod> = mapOf(
+        // Lengths that were literals in the dispatch until 4.67.0 (run E): the defaults are those
+        // literals, so nothing drawn today changes until a reader moves a stepper.
+        "stochastic" to IndicatorPeriod(14),
+        "keltner" to IndicatorPeriod(20),
+        "supertrend" to IndicatorPeriod(10),
+        "vortex" to IndicatorPeriod(14),
+        "stddev" to IndicatorPeriod(20),
+        "hv" to IndicatorPeriod(10),
+        "chaikinVol" to IndicatorPeriod(10),
+        "bbpercent" to IndicatorPeriod(20),
+        "bbw" to IndicatorPeriod(20),
+        "mom" to IndicatorPeriod(10),
+        "roc" to IndicatorPeriod(12),
+        "trix" to IndicatorPeriod(18),
+        "fisher" to IndicatorPeriod(9),
+        "smi" to IndicatorPeriod(10),
+        "eom" to IndicatorPeriod(14),
+        "forceIndex" to IndicatorPeriod(13),
         // Price-scale averages and bands.
         "sma" to IndicatorPeriod(20),
         "ema" to IndicatorPeriod(20),
@@ -1058,6 +1108,71 @@ object ChartCatalog {
     /** The lookback [id] can be given, or null where it has no single one. */
     fun periodOf(id: String): IndicatorPeriod? = PERIODS[id]
 
+    /** The key the length travels under when it is listed beside the other parameters. */
+    const val LENGTH = "length"
+
+    /**
+     * Every knob of an indicator, the length first: what the settings sheet's Inputs tab draws.
+     * Empty for a study with nothing to set (OBV, A/D, the Alligator's fixed 13/8/5).
+     */
+    fun parametersOf(id: String): List<IndicatorParameter> {
+        val length = PERIODS[id]?.let {
+            IndicatorParameter(LENGTH, "طول", "Length", it.default.toDouble(), it.min.toDouble(), it.max.toDouble())
+        }
+        return listOfNotNull(length) + PARAMETERS[id].orEmpty()
+    }
+
+    /**
+     * A parameter's effective value: the reader's when they set one, clamped to its bounds — a
+     * stored value from a build with wider bounds must not empty the chart — else the default.
+     */
+    fun parameter(id: String, key: String, chosen: Map<String, Double>): Double {
+        val spec = PARAMETERS[id]?.firstOrNull { it.key == key }
+            ?: return chosen[key] ?: 0.0
+        return (chosen[key] ?: spec.default).coerceIn(spec.min, spec.max)
+    }
+
+    private fun bars(key: String, label: String, labelEn: String, default: Int, min: Int = 1, max: Int = 400) =
+        IndicatorParameter(key, label, labelEn, default.toDouble(), min.toDouble(), max.toDouble())
+
+    private fun factor(key: String, label: String, labelEn: String, default: Double, min: Double = 0.1, max: Double = 10.0, step: Double = 0.1) =
+        IndicatorParameter(key, label, labelEn, default, min, max, step)
+
+    /**
+     * The knobs beyond the length, by indicator. Defaults are the literals the catalogue drew with
+     * until 4.67.0, so a chart nobody has touched is drawn exactly as before.
+     */
+    val PARAMETERS: Map<String, List<IndicatorParameter>> = mapOf(
+        "macd" to listOf(bars("fast", "تند", "Fast", 12), bars("slow", "کند", "Slow", 26), bars("signal", "سیگنال", "Signal", 9)),
+        "ppo" to listOf(bars("fast", "تند", "Fast", 12), bars("slow", "کند", "Slow", 26), bars("signal", "سیگنال", "Signal", 9)),
+        "pvo" to listOf(bars("fast", "تند", "Fast", 12), bars("slow", "کند", "Slow", 26), bars("signal", "سیگنال", "Signal", 9)),
+        "stochastic" to listOf(bars("smoothing", "هموارسازی %D", "%D smoothing", 3, 1, 50)),
+        "stochrsi" to listOf(bars("stoch", "طول استوکاستیک", "Stochastic length", 14), bars("k", "هموارسازی %K", "%K smoothing", 3, 1, 50), bars("d", "هموارسازی %D", "%D smoothing", 3, 1, 50)),
+        "bollinger" to listOf(factor("deviation", "انحراف معیار", "StdDev", 2.0, 0.5, 5.0)),
+        "bbpercent" to listOf(factor("deviation", "انحراف معیار", "StdDev", 2.0, 0.5, 5.0)),
+        "bbw" to listOf(factor("deviation", "انحراف معیار", "StdDev", 2.0, 0.5, 5.0)),
+        "keltner" to listOf(factor("multiplier", "ضریب", "Multiplier", 2.0, 0.5, 5.0)),
+        "supertrend" to listOf(factor("multiplier", "ضریب ATR", "ATR factor", 3.0, 0.5, 10.0)),
+        "volstop" to listOf(factor("multiplier", "ضریب ATR", "ATR factor", 2.0, 0.5, 10.0)),
+        "envelopes" to listOf(factor("percent", "درصد", "Percent", 1.0, 0.1, 25.0)),
+        "ichimoku" to listOf(bars("conversion", "خط تبدیل", "Conversion", 9), bars("base", "خط پایه", "Base", 26), bars("span", "ابر", "Lagging span", 52)),
+        "chaikinVol" to listOf(bars("roc", "نرخ تغییر", "ROC length", 10)),
+        "trix" to listOf(bars("signal", "سیگنال", "Signal", 9)),
+        "uo" to listOf(bars("short", "کوتاه", "Short", 7), bars("mid", "میانه", "Middle", 14), bars("long", "بلند", "Long", 28)),
+        "crsi" to listOf(bars("rsi", "طول RSI", "RSI length", 3), bars("streak", "طول رشته", "Streak length", 2), bars("rank", "رتبه‌ی درصدی", "Percent rank", 100)),
+        "smiErgodic" to listOf(bars("long", "بلند", "Long", 20), bars("short", "کوتاه", "Short", 5), bars("signal", "سیگنال", "Signal", 5)),
+        "smi" to listOf(bars("k", "هموارسازی %K", "%K smoothing", 3, 1, 50), bars("d", "هموارسازی %D", "%D smoothing", 3, 1, 50)),
+        "chaikinOsc" to listOf(bars("fast", "تند", "Fast", 3), bars("slow", "کند", "Slow", 10)),
+        "klinger" to listOf(bars("fast", "تند", "Fast", 34), bars("slow", "کند", "Slow", 55), bars("signal", "سیگنال", "Signal", 13)),
+        "tsi" to listOf(bars("short", "کوتاه", "Short", 13), bars("signal", "سیگنال", "Signal", 13)),
+        "massindex" to listOf(bars("ema", "طول EMA", "EMA length", 9)),
+        "coppock" to listOf(bars("roc1", "ROC بلند", "Long ROC", 14), bars("roc2", "ROC کوتاه", "Short ROC", 11), bars("wma", "طول WMA", "WMA length", 10)),
+        "chandekroll" to listOf(factor("multiplier", "ضریب", "Multiplier", 1.0, 0.1, 10.0), bars("q", "دوره‌ی q", "Q length", 9)),
+        "kama" to listOf(bars("fast", "تند", "Fast", 2), bars("slow", "کند", "Slow", 30)),
+        "sar" to listOf(factor("step", "گام", "Step", 0.02, 0.001, 0.5, 0.01), factor("max", "بیشینه", "Maximum", 0.2, 0.01, 1.0, 0.01)),
+        "hv" to listOf(bars("annual", "روز در سال", "Days per year", 365, 200, 366)),
+    )
+
     /**
      * The period an indicator should actually be computed with.
      *
@@ -1108,8 +1223,13 @@ object ChartCatalog {
          * is the right answer for a question asked with no screen attached.
          */
         window: BarWindow = BarWindow.WHOLE_SERIES,
+        /** The reader's other knobs, by key — see [PARAMETERS]; absent means the default. */
+        params: Map<String, Double> = emptyMap(),
     ): List<ChartLine> {
         if (option.pane != IndicatorPane.PRICE || series.isEmpty) return emptyList()
+        fun p(key: String): Double = parameter(option.id, key, params)
+        fun pi(key: String): Int = p(key).roundToInt()
+        fun figure(value: Double): String = if (value == floor(value)) value.toInt().toString() else value.toString()
         // Same rule as [paneFor]: no volume column, no volume-weighted line. See
         // [VOLUME_ONLY_INDICATORS] for why zero is not an acceptable substitute.
         if (option.id in VOLUME_ONLY_INDICATORS && !series.hasVolume) return emptyList()
@@ -1125,18 +1245,18 @@ object ChartCatalog {
             "ema" -> listOf(ChartLine(Indicators.ema(close, n), option.colour, label = "EMA $n"))
             "wma" -> listOf(ChartLine(Indicators.wma(close, n), option.colour, label = "WMA $n"))
             "hma" -> listOf(ChartLine(Indicators.hma(close, n), option.colour, label = "HMA $n"))
-            "bollinger" -> Indicators.bollinger(close, n).let { band ->
+            "bollinger" -> Indicators.bollinger(close, n, p("deviation")).let { band ->
                 // The basis is drawn thinner than its edges: it is a reference, and at equal weight
                 // it competes with the two lines a reader is actually watching for a touch.
                 listOf(
-                    ChartLine(band.upper, option.colour, label = "BB $n"),
+                    ChartLine(band.upper, option.colour, label = "BB $n/${figure(p("deviation"))}"),
                     ChartLine(band.basis, option.colour, widthDp = 0.9f),
                     ChartLine(band.lower, option.colour),
                 )
             }
-            "keltner" -> Indicators.keltner(high, low, close).let { band ->
+            "keltner" -> Indicators.keltner(high, low, close, n, p("multiplier")).let { band ->
                 listOf(
-                    ChartLine(band.upper, option.colour, label = "KC"),
+                    ChartLine(band.upper, option.colour, label = "KC $n/${figure(p("multiplier"))}"),
                     ChartLine(band.basis, option.colour, widthDp = 0.9f),
                     ChartLine(band.lower, option.colour),
                 )
@@ -1148,15 +1268,15 @@ object ChartCatalog {
                     ChartLine(band.lower, option.colour),
                 )
             }
-            "ichimoku" -> Indicators.ichimoku(high, low).let { cloud ->
+            "ichimoku" -> Indicators.ichimoku(high, low, pi("conversion"), pi("base"), pi("span")).let { cloud ->
                 listOf(
-                    ChartLine(cloud.tenkan, option.colour, label = "Ichimoku"),
+                    ChartLine(cloud.tenkan, option.colour, label = "Ichimoku ${pi("conversion")}/${pi("base")}/${pi("span")}"),
                     ChartLine(cloud.kijun, 0xFF6E8BE0),
                     ChartLine(cloud.spanA, 0xFF00B15C, widthDp = 0.9f),
                     ChartLine(cloud.spanB, 0xFFF6465D, widthDp = 0.9f),
                 )
             }
-            "supertrend" -> Indicators.supertrend(high, low, close).let { result ->
+            "supertrend" -> Indicators.supertrend(high, low, close, n, p("multiplier")).let { result ->
                 // Broken at each flip rather than drawn as one continuous line.
                 //
                 // A SuperTrend jumps from below the price to above it when the trend turns, and a
@@ -1172,7 +1292,7 @@ object ChartCatalog {
                         trend.raw(index) != trend.raw(index - 1)
                     if (flipped) null else result.line[index]
                 }
-                listOf(ChartLine(split, option.colour, widthDp = 1.6f, label = "SuperTrend"))
+                listOf(ChartLine(split, option.colour, widthDp = 1.6f, label = "SuperTrend $n/${figure(p("multiplier"))}"))
             }
             "vwap" -> listOf(
                 ChartLine(
@@ -1185,7 +1305,7 @@ object ChartCatalog {
             // ── The second thirty's price-scale entries ────────────────────────────────────
             "smma" -> listOf(ChartLine(IndicatorsExt.smma(close, n), option.colour, label = "SMMA $n"))
             "zlema" -> listOf(ChartLine(IndicatorsExt.zlema(close, n), option.colour, label = "ZLEMA $n"))
-            "kama" -> listOf(ChartLine(IndicatorsExt.kama(close, n), option.colour, label = "KAMA $n"))
+            "kama" -> listOf(ChartLine(IndicatorsExt.kama(close, n, pi("fast"), pi("slow")), option.colour, label = "KAMA $n/${pi("fast")}/${pi("slow")}"))
             "t3" -> listOf(ChartLine(IndicatorsExt.t3(close, n), option.colour, label = "T3 $n"))
             "mcginley" -> listOf(ChartLine(IndicatorsExt.mcginley(close, n), option.colour, label = "McGinley $n"))
             "linreg" -> listOf(
@@ -1194,16 +1314,16 @@ object ChartCatalog {
             "lsma" -> listOf(
                 ChartLine(IndicatorsExt.linearRegression(close, n), option.colour, label = "LSMA $n"),
             )
-            "envelopes" -> IndicatorsExt.envelopes(close, n).let { band ->
+            "envelopes" -> IndicatorsExt.envelopes(close, n, p("percent")).let { band ->
                 listOf(
-                    ChartLine(band.upper, option.colour, label = "Env $n"),
+                    ChartLine(band.upper, option.colour, label = "Env $n/${figure(p("percent"))}%"),
                     ChartLine(band.basis, option.colour, widthDp = 0.9f),
                     ChartLine(band.lower, option.colour),
                 )
             }
 
             // ── The third pack's price-scale entries ──────────────────────────────────────
-            "sar" -> IndicatorsExtB.parabolicSar(high, low).let { sar ->
+            "sar" -> IndicatorsExtB.parabolicSar(high, low, p("step"), p("max")).let { sar ->
                 // Broken where the stop changes sides, for the reason SuperTrend is: the SAR jumps
                 // from under the price to over it in one bar, and a pen carried across that jump
                 // draws a vertical stroke through the candles that never happened. The values are
@@ -1216,7 +1336,7 @@ object ChartCatalog {
                         (value > close[index]) != (previous > close[index - 1])
                     if (flipped) null else value
                 }
-                listOf(ChartLine(split, option.colour, widthDp = 1.4f, label = "SAR 0.02/0.2"))
+                listOf(ChartLine(split, option.colour, widthDp = 1.4f, label = "SAR ${figure(p("step"))}/${figure(p("max"))}"))
             }
             "alligator" -> IndicatorsExtB.alligator(high, low).let { gator ->
                 // The three arrays already carry their 8/5/3-bar forward displacement, so nothing
@@ -1241,15 +1361,15 @@ object ChartCatalog {
             "dema" -> listOf(
                 ChartLine(IndicatorsExtB.dema(close, n).asLine(), option.colour, label = "DEMA $n"),
             )
-            "chandekroll" -> IndicatorsExtC.chandeKrollStop(high, low, close, n).let { stop ->
+            "chandekroll" -> IndicatorsExtC.chandeKrollStop(high, low, close, n, p("multiplier"), pi("q")).let { stop ->
                 // Both stops are drawn, in the colours of the side each protects, because which one
                 // matters depends on a position this module knows nothing about.
                 listOf(
-                    ChartLine(stop.longStop.asLine(), 0xFF00B15C, label = "Chande Kroll $n"),
+                    ChartLine(stop.longStop.asLine(), 0xFF00B15C, label = "Chande Kroll $n/${figure(p("multiplier"))}/${pi("q")}"),
                     ChartLine(stop.shortStop.asLine(), 0xFFF6465D),
                 )
             }
-            "volstop" -> IndicatorsExtC.volatilityStop(high, low, close, n).let { result ->
+            "volstop" -> IndicatorsExtC.volatilityStop(high, low, close, n, p("multiplier")).let { result ->
                 // Broken at each flip, exactly as the SAR is, and for the same reason. The side is
                 // the thing that changes: `isLong` turning over is the stop crossing the candles.
                 val split = Line.of(series.size) { index ->
@@ -1260,7 +1380,7 @@ object ChartCatalog {
                         result.isLong[index] != result.isLong[index - 1]
                     if (flipped) null else value
                 }
-                listOf(ChartLine(split, option.colour, widthDp = 1.4f, label = "Volatility Stop $n"))
+                listOf(ChartLine(split, option.colour, widthDp = 1.4f, label = "Volatility Stop $n/${figure(p("multiplier"))}"))
             }
             "volumeprofile_ind" -> volumeProfileFor(series, window).let { profile ->
                 // Three prices *and* the histogram they were read off — item 54.

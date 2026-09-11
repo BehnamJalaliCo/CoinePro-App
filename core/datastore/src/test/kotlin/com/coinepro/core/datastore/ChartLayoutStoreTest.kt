@@ -43,6 +43,14 @@ class ChartLayoutStoreTest {
     )
 
     @Test
+    fun `a layout keeps every indicator parameter it was saved with`() = runTest {
+        val store = ChartLayoutStore(FakeLayoutPreferences())
+        val saved = layout().copy(indicatorParams = mapOf("macd" to mapOf("fast" to 5.0, "signal" to 7.0)))
+        store.save(saved)
+        assertEquals(saved.indicatorParams, store.layouts().first().single().indicatorParams)
+    }
+
+    @Test
     fun `a layout round-trips with every field intact`() = runTest {
         val store = ChartLayoutStore(FakeLayoutPreferences())
         store.save(layout())

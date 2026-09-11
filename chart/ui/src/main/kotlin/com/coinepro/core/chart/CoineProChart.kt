@@ -41,6 +41,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.foundation.magnifier
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
@@ -210,6 +213,12 @@ fun CoineProChart(
     onContextMenu: ((price: Double, at: Offset) -> Unit)? = null,
     /** Per-frame layer statistics, for the tests that prove a cursor move draws no bar. */
     layerCounters: ChartLayerCounters? = null,
+    /**
+     * Where the selected drawing sits on the canvas, in pixels from the chart's top-left, or null
+     * when nothing is selected — so a toolbar can float above it (run E). Published from the draw
+     * pass, once per change.
+     */
+    onSelectionBounds: ((Rect?) -> Unit)? = null,
     /**
      * What the price axis measures. See [PriceScaleMode].
      *
@@ -965,6 +974,14 @@ fun CoineProChart(
 
     /** Whether the current long press has moved since it landed — the drag handler writes, the tap handler reads. */
     val pressMoved = remember { BooleanArray(1) }
+
+    /**
+     * Where a handle is being dragged, for the magnifier: the lens follows the finger while a
+     * point is held and goes away on the lift, so the bars under the fingertip can be aimed at.
+     */
+    var magnifierAt by remember { mutableStateOf<Offset?>(null) }
+    val currentSelectionBounds = rememberUpdatedState(onSelectionBounds)
+    val lastSelectionBounds = remember { arrayOfNulls<Rect>(1) }
     val currentTradeRing = rememberUpdatedState(onTradeRing)
 
     fun invalidate(level: Invalidation) {
@@ -1367,7 +1384,17 @@ fun CoineProChart(
         }
     }
 
-    Box(modifier = modifier) {
+    // The lens over a held handle (run E): Android's own magnifier, twice the size, following the
+    // fingertip while a point is dragged and gone on the lift. Below Android 9 the modifier is a
+    // no-op, which is the platform's answer and the right one.
+    Box(
+        modifier = modifier.magnifier(
+            sourceCenter = { magnifierAt ?: Offset.Unspecified },
+            zoom = MAGNIFIER_ZOOM,
+            size = DpSize(MAGNIFIER_WIDTH_DP.dp, MAGNIFIER_HEIGHT_DP.dp),
+            cornerRadius = MAGNIFIER_CORNER_DP.dp,
+        ),
+    ) {
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
@@ -1906,6 +1933,7 @@ fun CoineProChart(
                                             state.magnetMode,
                                         )
                                         change.consume()
+                                        if (handle >= 0) magnifierAt = change.position
                                         if (handle >= 0) {
                                             // The other end of a two-point object is what the
                                             // moving one is held straight against — item 48. Only
@@ -1955,11 +1983,13 @@ fun CoineProChart(
                                         handle = -1
                                         grabbedHandle = -1
                                         origin = null
+                                        magnifierAt = null
                                     },
                                     onDragCancel = {
                                         handle = -1
                                         grabbedHandle = -1
                                         origin = null
+                                        magnifierAt = null
                                     },
                                 )
                             }
@@ -2735,6 +2765,29 @@ fun CoineProChart(
                 // it is tapped out rather than appearing whole on the fifth tap.
                 val marks = drawing?.visible ?: decoration.drawings
                 val highlighted = drawing?.selectedId ?: decoration.selectedDrawingId
+                // The selected drawing's box, for the toolbar that floats above it (run E).
+                currentSelectionBounds.value?.let { publish ->
+                    val selected = highlighted?.let { id -> marks.firstOrNull { it.id == id } }
+                    val bounds = selected?.points?.takeIf { it.isNotEmpty() }?.let { points ->
+                        var left = Float.MAX_VALUE
+                        var top = Float.MAX_VALUE
+                        var right = -Float.MAX_VALUE
+                        var bottom = -Float.MAX_VALUE
+                        for (point in points) {
+                            val x = frame.left + view.xOfTime(point.time)
+                            val y = view.yOf(point.price)
+                            if (x < left) left = x
+                            if (x > right) right = x
+                            if (y < top) top = y
+                            if (y > bottom) bottom = y
+                        }
+                        Rect(left, top.coerceAtLeast(0f), right, bottom.coerceAtMost(plotHeight))
+                    }
+                    if (bounds != lastSelectionBounds[0]) {
+                        lastSelectionBounds[0] = bounds
+                        publish(bounds)
+                    }
+                }
                 if (marks.isNotEmpty()) {
                     val overlayKey = OverlayLayerKey(
                         firstVisibleTime = view.series.time.getOrNull(view.firstVisible) ?: 0L,
@@ -6171,6 +6224,12 @@ private const val TICK_FLASH_MIX = 0.35f
 
 /** The pinch rate: bar spacing × 1.0025 per pixel of finger travel. */
 private const val PINCH_BASE = 1.0025f
+
+/** The magnifier over a dragged handle: twice the size, a wide short lens, rounded like a plate. */
+private const val MAGNIFIER_ZOOM = 2f
+private const val MAGNIFIER_WIDTH_DP = 120
+private const val MAGNIFIER_HEIGHT_DP = 72
+private const val MAGNIFIER_CORNER_DP = 10
 
 /** Bar spacing limits, in pixels: half a pixel to fifty. Under a pixel and a half the bars are a line. */
 private const val MIN_BAR_SPACING_PX = 0.5f

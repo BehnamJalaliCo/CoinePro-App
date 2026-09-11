@@ -76,6 +76,11 @@ data class DrawingState(
      */
     val favourites: Set<String> = emptySet(),
     /**
+     * The tool the reader last armed in each group, by group (run E). The rail promotes it to the
+     * front of its group and marks it, the way a flyout remembers the tool it last opened on.
+     */
+    val lastUsed: Map<ToolGroup, String> = emptyMap(),
+    /**
      * The width the next drawing is placed at, in dp.
      *
      * Beside [colour] rather than only on the [Drawing], because the two together are what a saved
@@ -313,6 +318,7 @@ object DrawingActions {
         return cleared.copy(
             tool = tool,
             mode = if (state.mode.survivesArming) state.mode else DrawingMode.CURSOR,
+            lastUsed = if (tool == null) state.lastUsed else state.lastUsed + (tool.group to tool.id),
         )
     }
 

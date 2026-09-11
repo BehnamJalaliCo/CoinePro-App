@@ -197,6 +197,13 @@
     <string name="indicator_settings_width">ضخامت خط</string>
     <string name="indicator_settings_show">نمایش روی چارت</string>
     <string name="indicator_settings_show_note">خاموش کردن، اندیکاتور را پنهان می‌کند و تنظیماتش را نگه می‌دارد.</string>
+    <string name="indicator_settings_arrangement">جای پنل</string>
+    <string name="indicator_settings_arrangement_note">این مطالعه کجا کشیده شود: جایش در پشته، داخل پنل دیگری، یا در پنلی برای خودش.</string>
+    <string name="indicator_settings_move_up">بالا</string>
+    <string name="indicator_settings_move_down">پایین</string>
+    <string name="indicator_settings_merge_up">ادغام با پنل بالا</string>
+    <string name="indicator_settings_unmerge">پنل جدا</string>
+    <string name="indicator_settings_separate">در پنل جدا</string>
     <string name="indicator_settings_remove">برداشتن از چارت</string>
     <!-- The panels a wide window docks beside the chart, and the rail that opens them. -->
     <string name="chart_side_rail">پنل‌های چارت</string>

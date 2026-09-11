@@ -36,6 +36,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import kotlin.math.pow
+import kotlin.math.roundToInt
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
@@ -421,6 +425,57 @@ private data class PeriodControl(
 @Composable
 fun IndicatorPeriodStepper(value: Int, bounds: IndicatorPeriod, accent: Color, onChange: (Int) -> Unit) {
     PeriodStepper(PeriodControl(value = value, bounds = bounds, onChange = onChange), accent)
+}
+
+/**
+ * A stepper for any of an indicator's knobs — a bar count stepped by one, a multiplier stepped by
+ * its own [IndicatorParameter.step] and shown to the decimals that step needs. Same buttons, same
+ * Latin figures as the length's stepper, for the same reason: the number is drawn on the legend.
+ */
+@Composable
+fun IndicatorParameterStepper(value: Double, spec: IndicatorParameter, accent: Color, onChange: (Double) -> Unit) {
+    val decimals = if (spec.integer) 0 else decimalsOf(spec.step)
+    fun shown(number: Double): String = if (decimals == 0) number.roundToInt().toString() else String.format(java.util.Locale.ROOT, "%.${decimals}f", number)
+    fun moved(up: Boolean): Double {
+        val next = if (up) value + spec.step else value - spec.step
+        val rounded = if (decimals == 0) next.roundToInt().toDouble() else Math.round(next * 10.0.pow(decimals)) / 10.0.pow(decimals)
+        return rounded.coerceIn(spec.min, spec.max)
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        StepperButton(
+            glyph = DesignR.drawable.icon_caret_left,
+            enabled = value > spec.min,
+            accent = accent,
+            onClick = { onChange(moved(up = false)) },
+        )
+        Text(
+            text = shown(value),
+            style = MaterialTheme.typography.labelMedium,
+            color = CoineProColors.TextPrimary,
+            modifier = Modifier.widthIn(min = PERIOD_WIDTH).semantics { contentDescription = "indicator-param-${spec.key}" },
+            textAlign = TextAlign.Center,
+        )
+        StepperButton(
+            glyph = DesignR.drawable.icon_caret_right,
+            enabled = value < spec.max,
+            accent = accent,
+            onClick = { onChange(moved(up = true)) },
+        )
+    }
+}
+
+/** How many decimals a step needs: 0.1 → one, 0.01 → two, 0.5 → one. */
+private fun decimalsOf(step: Double): Int {
+    var decimals = 0
+    var scaled = step
+    while (decimals < 4 && kotlin.math.abs(scaled - Math.round(scaled)) > 1e-9) {
+        scaled *= 10.0
+        decimals++
+    }
+    return decimals
 }
 
 @Composable
