@@ -12,8 +12,11 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.sp
 
 /**
- * IRANYekanX (Eco) ships only Regular and Bold, so every style below resolves to one of those two
- * weights instead of relying on synthetic emphasis.
+ * IRANYekanX Pro, four static weights — Regular 400, Medium 500, DemiBold 600 (the family's name
+ * for what Compose calls SemiBold), Bold 700 — each its own file, so no style below ever asks
+ * the renderer for synthetic emphasis. Until 4.68.0 the package was the Eco one (Regular and Bold
+ * only) and the two middle weights resolved to Bold; the Pro files landed in 4.68.0 and the four
+ * entries point at four faces.
  *
  * The Latin-numeral family is deliberate: prices, quantities and identifiers must stay comparable
  * with broker and exchange terminals, and [com.coinepro.core.common.MarketNumberFormatter] already
@@ -25,9 +28,10 @@ import androidx.compose.ui.unit.sp
  * for that is `FontFeatureSettings("tnum")`, and it was measured here before being added, because
  * a feature the font does not carry is a string that silently does nothing.
  *
- * The measurement: IRANYekanX (Eco) exposes `aalt calt ccmp dlig dnom fina frac init kern locl
+ * The measurement: IRANYekanX exposes `aalt calt ccmp dlig dnom fina frac init kern locl
  * mark medi mkmk numr rlig salt ss01–ss04` — **no `tnum`.** It does not need one. Its Latin digits
- * are already monospaced by design: all ten advance 562 units in Regular and 572 in Bold. Every
+ * are already monospaced by design: all ten advance 562 units in Regular, 565 in Medium, 569 in
+ * DemiBold and 572 in Bold. Every
  * price, quantity, percentage and identifier in the app is Latin-digit by the standing rule, so
  * every column of numbers in the app is already tabular, and `tnum` here would have been a no-op
  * that read as a fix.
@@ -40,12 +44,11 @@ import androidx.compose.ui.unit.sp
  */
 val CoineProFontFamily = FontFamily(
     Font(R.font.iranyekanx_regular, FontWeight.Normal),
-    // Medium and SemiBold resolve to Bold on purpose. The shipped IRANYekanX is static Regular
-    // and Bold; the two middle weights are the owner's licence to obtain, and until they arrive a
-    // style asking for 500 must not fall back to Regular and quietly un-bold every title. When
-    // the files land, point these two entries at them and nothing else changes.
-    Font(R.font.iranyekanx_bold, FontWeight.Medium),
-    Font(R.font.iranyekanx_bold, FontWeight.SemiBold),
+    // The Pro package's Medium and DemiBold (4.68.0): the same version 4.000, the same 578 glyphs
+    // and the same feature set as Regular and Bold, with equal-width Latin digits of their own
+    // (565 and 569 units) — the consistency gate reads all four files.
+    Font(R.font.iranyekanx_medium, FontWeight.Medium),
+    Font(R.font.iranyekanx_semibold, FontWeight.SemiBold),
     Font(R.font.iranyekanx_bold, FontWeight.Bold),
 )
 

@@ -504,11 +504,11 @@ def check_tabular_digits() -> None:
 
     A column of prices only reads as a column if every digit is the same width, and the standing
     rule that market figures are Latin digits rests on this: IRANYekanX's Latin digits are
-    monospaced by design (562 units Regular, 572 Bold), its Persian digits are not (۱ at 238 against
+    monospaced by design (562 units Regular, 565 Medium, 569 DemiBold, 572 Bold), its Persian digits are not (۱ at 238 against
     ۳ at 655), and there is no feature tag that changes either. This reads the fonts so a swapped or
     re-subset file cannot quietly make every price wobble.
     """
-    for name in ("iranyekanx_regular.ttf", "iranyekanx_bold.ttf"):
+    for name in ("iranyekanx_regular.ttf", "iranyekanx_medium.ttf", "iranyekanx_semibold.ttf", "iranyekanx_bold.ttf"):
         path = ROOT / "core/designsystem/src/main/res/font" / name
         require(path.exists(), f"{name} is missing")
         advances = _ttf_digit_advances(path)

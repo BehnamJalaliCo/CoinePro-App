@@ -141,17 +141,16 @@ Cloudflare Universal SSL زنده می‌ماند. اگر روزی Cloudflare ب
 اگر یکی جواب نداد، `COINEPRO_CERTIFICATE_PINS_UNTIL` را روی دیروز بگذارید و build بگیرید — همان
 build بدون پین می‌شود.
 
-## ۴) فونت — دو فایل IRANYekanX که فقط شما دارید
+## ۴) فونت — انجام شد (4.68.0)؛ فقط کد لایسنس مانده
 
-اپ فقط `iranyekanx_regular.ttf` و `iranyekanx_bold.ttf` را دارد. وزن‌های Medium (500) و SemiBold (600)
-که برنامه در عنوان‌ها و ارقام می‌خواهد، فعلاً روی Bold می‌افتند (`CoineProType.kt`, عمداً — که یک
-عنوان بی‌صدا نازک نشود). فایل‌های `IRANYekanX-Medium.ttf` و `IRANYekanX-SemiBold.ttf` زیر مجوز
-شماست و در مخزن نیست؛ نمی‌توانم از جایی بیاورم.
+بستهٔ IRANYekanX Pro رسید و دو وزن Medium (500) و DemiBold (600) به‌عنوان `iranyekanx_medium.ttf`
+و `iranyekanx_semibold.ttf` کنار Regular و Bold در `core/designsystem/src/main/res/font/` نشسته‌اند؛
+`CoineProType.kt` هر چهار وزن را به فایل خودش می‌برد و gate هم‌عرض بودن ارقام لاتین هر چهار فایل
+را می‌سنجد.
 
-**کار شما:** دو فایل را با نام‌های `iranyekanx_medium.ttf` و `iranyekanx_semibold.ttf` در
-`core/designsystem/src/main/res/font/` بگذارید. بعد از آن دو خط `Font(R.font.iranyekanx_bold,
-FontWeight.Medium)` و `…SemiBold)` در `CoineProType.kt` را به فایل‌های جدید اشاره دهید؛
-`check_tabular_digits` در gate هر فایل جدید را هم می‌سنجد که ارقام لاتینش هم‌عرض باشند.
+**کار شما:** `FontLicense.txt` بستهٔ Pro می‌گوید کد شش‌رقمی لایسنس در جای مشخص‌شدهٔ همان فایل
+نوشته شود و فایل کنار فونت‌ها بماند. نسخهٔ فایل در `core/designsystem/FONT_LICENSE_IRANYekanX.txt`
+است و جای کد `(.....)` خالی است — کد را آنجا بنویسید (کد لایسنس secret نیست، ولی مال شماست).
 
 ## بعد از هر سه
 

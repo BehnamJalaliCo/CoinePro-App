@@ -421,20 +421,37 @@ keys, also literals, showed «✓». The fourth row (the wires) is a real findin
 are string literals in the release dex, gated by a flag rather than absent. Each run below ends with
 what the APK itself will show.
 
-### RUN A — item 3, the two weights: not in the licensed package; blocked, with the evidence
+### RUN A — item 3, the two weights (4.68.0) — done; the package arrived
 
-| what was asked | what exists |
-| --- | --- |
-| IRANYekanX Medium (500) + SemiBold (600), or the Variable build | the owner's licensed archive `TradeYar/IRANYekanX(Eco).zip` (10.2 MB) holds **`IRANYekanX-Regular.ttf` and `IRANYekanX-Bold.ttf` only** (`IRANYekanX family/`, plus the same two in FaNum and NoEn cuts, plus the *previous-generation* IRANYekan v3 in eight weights under `OldVersion/`). No Medium, no SemiBold, no variable font. Both files are static `glyf` fonts, `usWeightClass` 400 and 700, version 4.000 |
-| synthesise the two weights by interpolation | **not possible**: `fontTools` finds the Regular and Bold outlines incompatible — 303 of 538 common simple glyphs differ in contour or point count — so no instance between them can be built. And the licence is proprietary (`fsType 0x0100`, «installable, no subsetting»; `FontLicense.txt` says the terms are fontiran.com's), so a derivative weight is not the app's to make |
-| borrow IRANYekan v3 Medium from `OldVersion/` | rejected in `TradeYar/docs/redesign/FONT-LICENSING.md` §5.2 with measurements: Persian advances differ by up to 12 % between the generations (a weight change would reflow the paragraph), v3's Bold and Medium share Latin outlines, and v3 has no `ss01–ss04` so the numeral machinery stops. The same reasoning holds here |
-| wire the slots (title/label = Medium, display/headline/numericLarge = SemiBold) | already so since 4.54.0: `CoineProType.kt` maps `FontWeight.Medium` and `FontWeight.SemiBold` to their own `Font(...)` entries, resolving to Bold until the files exist; the day `iranyekanx_medium.ttf` and `iranyekanx_semibold.ttf` land in `core/designsystem/src/main/res/font/`, the change is the two resource names on lines 47–48 |
-| `tnum` on every numeric style, with the grep | 4.59.0 — the table in item 3 above (11 sites), `TypeScaleTest` fails any style without it, `TickSequenceTest` 300 frames at 0.0 px |
-| font list from the built APK | 4.62.0's APK: `res/6B.ttf` (84 240 B = IRANYekanX-Regular), `res/aj.ttf` (83 957 B = IRANYekanX-Bold), `res/W4.ttf` (879 708 B = Inter Variable). Exactly the files the repository holds |
+The 4.63.0 finding stands as history: the Eco archive held Regular and Bold only, the two were
+outline-incompatible, and no weight could be made. The owner then supplied **IRANYekanX Pro**
+(`IRANYekanXPro.zip`, 148 files: ten static weights in three cuts, a variable font, webfonts,
+the licence). What was taken from it and why:
 
-**What unblocks it**: the IRANYekanX *Pro* package (or its variable font) from fontiran.com, which
-is a separate purchase from the Eco licence the owner holds. Once the two `.ttf`s are in the
-repository the wiring, the tick proof and the screenshots are a one-commit run.
+| in the package | taken | why |
+| --- | --- | --- |
+| `IRANYekanX family/IRANYekanX-Medium.ttf` (500), `IRANYekanX-DemiBold.ttf` (600) | **yes**, as `iranyekanx_medium.ttf` and `iranyekanx_semibold.ttf` | the two weights the typography has asked for since 4.54.0. Version 4.000, 578 glyphs, the same seventeen GSUB features (`ss01–ss04` included, so the numeral machinery holds) as the Regular and Bold already shipped; Latin digits equal-width in each (565 and 569 units) — the gate now reads all four files |
+| `IRANYekanX-Regular.ttf` | already in the repository, **byte-identical** (md5 `d9df54c4…`) | — |
+| `IRANYekanX-Bold.ttf` | kept the repository's copy | the package's Bold is 84 041 B against the shipped 83 957 B (the archive's copy was re-saved in 2026-09); identical `usWeightClass`, glyph count, digit advances and features. Nothing on screen would change; nothing was swapped |
+| `Variable Font/IRANYekanXVF.ttf` (254 KB, `wght` 100–1000, `dots` 0–4) | **no** | different metrics from the statics — Latin digit 547 units against 562–572, Persian digits 10–20 % narrower — so switching to it would reflow every screen; and it offers no weight the four statics do not already give. It would also replace 337 KB of statics with 254 KB, which is not worth a reflow |
+| `Farsi numerals/`, `NonEnglish/` cuts | **no** | market figures are Latin by the standing rule and set in Inter; a face with Persian default digits or no Latin would fight both |
+| `FontLicense.txt` | copied to `core/designsystem/FONT_LICENSE_IRANYekanX.txt` | the package asks for the six-digit licence code to be written in it beside the fonts. **The code is the owner's** — the placeholder is still `(.....)`; `docs/OWNER_ACTIONS.md` §4 |
+
+**Wiring.** `CoineProFontFamily` maps 400 / 500 / 600 / 700 to four files (`CoineProType.kt`);
+no other line changed — the typography has been defined by weight since 4.54.0, exactly so that
+this would be a two-line change. `grep -rn "FontSynthesis\|synthetic" --include=*.kt` over the
+design system and the features: **none** (the one hit is a KDoc sentence saying there is none).
+
+**Proof.** `FontWeightProofTest` sets one Persian line at the four weights and asserts the four
+advances are distinct and strictly increasing — a real heavier face respaces the line, a
+synthetic bold of one file thickens strokes and does not — and writes
+`docs/qa/screenshots/4.68/fonts-four-weights-fa`. The Persian Home, Watchlist, Chart and sheet
+frames re-rendered with the four weights are beside it. 137 goldens — every frame that
+carries a title, a label or a large figure — moved past the 0.1 % tolerance (0.3–1.2 % of their
+pixels, the weight of the words) and were re-recorded with the four faces; `TickSequenceTest`
+and `TabularFiguresTest` pass unchanged (the figures are Inter's and did not move). The release
+APK's font list is the acceptance's: four IRANYekanX files (84 240 / 84 836 / 84 836 / 83 957 B)
+and Inter Variable (879 708 B).
 
 ### RUN B — item 4 (4.63.0) — done to the audit; the two device proofs remain
 
@@ -545,6 +562,7 @@ to decide.
 **Fonts (run A′).** Not done: the Vazirmatn download was declined in this session, and the face is
 a standing constraint (`CLAUDE.md`: IRANYekanX) that only the owner changes. The typography is
 wired by weight, so either the Pro files or another family is a one-file change when decided.
+*(Closed in 4.68.0: the owner supplied IRANYekanX Pro — see RUN A above.)*
 
 **Device proofs.** `docs/qa/DEVICE_PROOFS.md` has the exact commands with this repository's class
 names and tasks (the benchmark is `com.coinepro.benchmark.ChartFlingBenchmark` under
@@ -580,7 +598,7 @@ Five items, one run. What each one is now, what pins it, and what only a device 
 
 ### The owner's plan A–E (4.63.0 → 4.67.0), in one line each
 
-- A. Fonts — **blocked, with the evidence**: the licensed Eco archive holds Regular and Bold only, the two are outline-incompatible, the licence is proprietary; the slots are wired for the day the files land.
+- A. Fonts — done (4.68.0): the Pro package arrived; Medium and DemiBold shipped as their own files, the four weights proven distinct; the licence code is the owner's to write in.
 - B. Physics — done (4.63.0): the fling on `exponentialDecay`, `setFrameRate` on Android 12+, the long-press menu, every audited symbol greppable in the release dex; the benchmark and the recording need a device.
 - C. NamaScript — done (4.64.0): six help entries fa+en, the strategy entry rewritten, Pine's short strategy form, every `ta.*` under a conformance script; the Pixel 6a timings need the phone.
 - D. Network — done (4.65.0): no third-party host in the release dex, a gate that keeps it so; the pins measured live.

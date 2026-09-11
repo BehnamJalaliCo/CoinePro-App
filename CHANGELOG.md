@@ -15,6 +15,30 @@ it is for.
 
 ---
 
+## [4.68.0] — 2026-09-11 — the four weights
+
+Run A of the owner's plan, closed by the IRANYekanX Pro package.
+
+### Added
+- **IRANYekanX Medium (500) and DemiBold (600)** from the Pro package, as `iranyekanx_medium.ttf`
+  and `iranyekanx_semibold.ttf`; `CoineProFontFamily` maps every one of its four weights to its
+  own file, so titles, labels and the large figures are set in real intermediate weights instead
+  of resolving to Bold. Same version (4.000), glyph count and feature set as Regular and Bold;
+  Latin digits equal-width in each (565 / 569 units).
+- `FontWeightProofTest`: the four weights on one frame in Persian, asserting four distinct
+  advances, and the Persian home / watchlist / chart / sheet frames in
+  `docs/qa/screenshots/4.68/`.
+
+### Changed
+- `check_tabular_digits` reads all four IRANYekanX files.
+- `CLAUDE.md` names the Pro package; `docs/OWNER_ACTIONS.md` §4 asks only for the licence code.
+
+### Not shipped, on purpose
+- The package's variable font (`IRANYekanXVF.ttf`): its metrics differ from the statics (Latin
+  digit 547 units against 562–572, Persian digits narrower), so it would reflow every screen for
+  no weight the statics do not already give. The Farsi-numeral and no-Latin cuts are not needed:
+  market figures are Latin by rule and Inter sets them.
+
 ## [4.67.0] — 2026-09-11 — the tools finished, the tablet accounted for
 
 Run E of the owner's plan: the drawing and indicator tools brought to the reference, and the
@@ -71,6 +95,7 @@ The owner's audit of 4.65.0 answered: the things an APK cannot show, shown.
 ### Not done, on purpose
 - The Vazirmatn font (run A′) was not fetched: the download was declined in this session, and the
   face is the owner's decision. The typography's slots stay wired for IRANYekanX Medium/SemiBold.
+  (Closed in 4.68.0 by the IRANYekanX Pro package.)
 
 ## [4.65.0] — 2026-09-10 — no third party in the release, by construction
 
