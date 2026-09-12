@@ -52,6 +52,7 @@ internal class Interpreter(
     private val inputs = mutableListOf<ScriptInput>()
     private val log = mutableListOf<String>()
     private var setup: ScriptSetup? = null
+    private val verdicts = mutableListOf<ScriptVerdict>()
     private val backgrounds = mutableListOf<ScriptBackground>()
     private val alerts = mutableListOf<ScriptAlert>()
     private val drawings = mutableListOf<ScriptDrawing>()
@@ -103,6 +104,7 @@ internal class Interpreter(
             alerts = alerts.toList(),
             drawings = drawings.toList(),
             strategy = simulate(),
+            verdicts = verdicts.toList(),
             elapsedMillis = currentTimeMillis() - startedAt,
         )
     }
@@ -570,6 +572,11 @@ internal class Interpreter(
 
     fun setSetup(value: ScriptSetup) {
         setup = value
+    }
+
+    /** One short-form `signal(...)`. Capped with the plots, for the same reason. */
+    fun addVerdict(verdict: ScriptVerdict) {
+        if (verdicts.size < MAX_PLOTS) verdicts += verdict
     }
 
     fun addLog(message: String) {

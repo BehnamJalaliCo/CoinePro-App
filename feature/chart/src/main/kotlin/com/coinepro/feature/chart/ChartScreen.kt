@@ -543,6 +543,14 @@ fun ChartScreen(
         }
     }
     var sheet by remember { mutableStateOf<ChartSheet?>(null) }
+    /**
+     * Which study the Explain sheet is about, or null for the chart as a whole (run Ω1).
+     *
+     * Held beside [sheet] rather than inside it because the sheet is one destination with two
+     * subjects — a study, and the score over all of them — and the score's own row moves the sheet
+     * onto a study without closing it.
+     */
+    var explaining by remember { mutableStateOf<String?>(null) }
     // The desk's right-click menu: the price it landed on and where, or null while closed.
     var contextMenu by remember { mutableStateOf<ChartContextMenu?>(null) }
     /** Which drawing's own settings are open, or null. Opened from the object tree's row. */
@@ -750,6 +758,15 @@ fun ChartScreen(
     val onHelp: (String) -> Unit = { helpId = it }
 
     LaunchedStart(controller, symbolChartStates, chartLayoutStore, drawingSync)
+
+    // **The Signal Layer's language** (run Ω1).
+    //
+    // The controller has no composition and so cannot read `inEnglish()`, and the sentences it
+    // builds — «RSI came back over 30» — are prose. Told here, once, and again whenever the reader
+    // changes language: the studies are re-read rather than the strings translated, which is the
+    // same work and one fewer thing that can end up half in each language.
+    val readingInEnglish = inEnglish()
+    LaunchedEffect(controller, readingInEnglish) { controller.setSignalLanguage(readingInEnglish) }
 
     // The demonstration marks' reaper — item 41.
     //
@@ -1144,6 +1161,16 @@ fun ChartScreen(
                             else -> sheet = ChartSheet.INDICATORS
                         }
                     },
+                    // The name, tapped: «what is this study and what is it saying». The gear beside
+                    // it still opens the settings — see `onExplainSeries` for why the two are
+                    // different questions. A comparison has no reading of its own, so its name
+                    // stays inert rather than opening a sheet with nothing in it.
+                    onExplainSeries = { target ->
+                        state.indicatorFor(target)?.let { id ->
+                            explaining = id
+                            sheet = ChartSheet.EXPLAIN
+                        }
+                    },
                     // One hidden set for the legend's eye and the settings sheet's switch: the
                     // chart reports the row, the controller keeps the id.
                     hiddenSeries = state.hiddenTargets,
@@ -1533,6 +1560,25 @@ fun ChartScreen(
                 },
         )
         HorizontalDivider(color = CoineProColors.Border)
+
+        // **What the chart is saying** (4.75.0, run Ω1): the Setup score and one pill per study.
+        //
+        // Under the plot rather than under the legend, and the difference is the renderer: the
+        // legend is drawn *inside* the canvas by the chart engine, so a row «under» it would have to
+        // be positioned against a plate whose height depends on how many studies are on. Here it is
+        // the first thing below the candles, which is where a reader's eye goes next, and it costs
+        // the plot twenty-six points only on a chart that has something to say.
+        //
+        // It is the one row this page has gained since the bands were collapsed, and it is the
+        // product: a line is a measurement, this is the judgement. See `ChartNowStrip`.
+        ChartNowStrip(
+            layer = state.signals,
+            onOpenExplain = { id ->
+                explaining = id
+                sheet = ChartSheet.EXPLAIN
+            },
+        )
+
         // No teaching banner on this screen, and it is the only screen in the app without one.
         //
         // The banner is a good mechanism and it stays everywhere else: one sentence, in place, put
@@ -2056,6 +2102,36 @@ fun ChartScreen(
                     }
                 },
                 tradeHereLabel = stringResource(R.string.chart_partners_here),
+            )
+        }
+
+        // **The Explain sheet** (run Ω1): what a study is, what it is saying, and its base rate.
+        ChartSheet.EXPLAIN -> CoineProSheet(
+            title = stringResource(R.string.chart_explain_title),
+            onDismiss = { sheet = null },
+        ) {
+            ExplainSheetBody(
+                id = explaining,
+                layer = state.signals,
+                onSetHorizon = controller::setConfidenceHorizon,
+                // Offered only where the screen was given an alert composer and a price to alert
+                // on — the same rule the hub's alert tile follows.
+                onAddAlert = onCreateAlert?.let { create ->
+                    state.lastPrice?.let { price ->
+                        {
+                            create(state.symbol, price)
+                            sheet = null
+                        }
+                    }
+                },
+                // «Practise this» is replay, which is the app's own answer to «what would I have
+                // done»: it needs bars to rewind through and not to be rewinding already.
+                onPractise = {
+                    controller.enterReplay()
+                    sheet = null
+                }.takeIf { !state.replay.isOn && state.series.bars.size >= Replay.MINIMUM_BARS },
+                onSelect = { explaining = it },
+                onShowTimeframes = controller::readAcrossTimeframes,
             )
         }
 
@@ -2656,7 +2732,7 @@ internal fun rememberHelpCatalog(wanted: Boolean): HelpCatalog? {
  * used to own a permanent band under the plot, and it is all behind that one word now. Internal
  * rather than private because `ChartChrome.kt` names these in the callbacks it hands back.
  */
-internal enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP, BACKTEST, LAYOUTS, INTERVAL, SCALE, COMPARE, EVENTS, MORE, PARTNERS }
+internal enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP, BACKTEST, LAYOUTS, INTERVAL, SCALE, COMPARE, EVENTS, MORE, PARTNERS, EXPLAIN }
 
 /**
  * Binds the stores and starts the controller, in that order and in one effect.

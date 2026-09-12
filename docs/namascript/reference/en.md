@@ -186,6 +186,7 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 | `hline(70, title = "اشباع خرید", color = color.grey)` | A horizontal level. | همان عدد |
 | `marker(condition, title = "ورود", style = "up", color = color.green)` | A mark on every bar the condition holds. | همان شرط |
 | `signal(condition, entry, stop, target = target, buy = true)` | The trade idea from the last bar the condition held, with its risk-to-reward. | true/false |
+| `signal(condition, buy = true, strength = 1, text = "متن")` | The trade idea from the last bar the condition held, with its risk-to-reward. | true/false |
 | `log("متن")` | A line in the studio's log. | درست |
 
 ## Averages and trend (4.50)

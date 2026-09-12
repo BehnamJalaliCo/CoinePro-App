@@ -1,0 +1,12 @@
+// expect: ok
+// expect: plots 1
+// expect: verdicts 2
+// expect: verdict 0 7 buy
+// expect: verdict 1 7 sell
+// The short form of signal(): a script says what it means, in its author's own words, and the app
+// measures how often it has been right. One argument is a verdict; three are a whole setup.
+fast = ta.ema(close, 9)
+slow = ta.ema(close, 21)
+plot(fast, title = "Fast")
+signal(ta.crossover(fast, slow), strength = 0.8, text = "Fast crossed the slow average")
+signal(ta.crossunder(fast, slow), buy = false, text = "Fast fell under the slow average")

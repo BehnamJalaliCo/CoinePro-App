@@ -305,6 +305,14 @@ fun CoineProChart(
     onToggleSeriesVisibility: ((ChartLegendTarget) -> Unit)? = null,
     /** A legend row's settings were asked for. Null hides the affordance rather than disabling it. */
     onSeriesSettings: ((ChartLegendTarget) -> Unit)? = null,
+    /**
+     * Tapping a legend row's **name** — «what is this and what is it saying» (4.75.0, run Ω1).
+     *
+     * Separate from [onSeriesSettings], which the gear opens: one changes the study, the other
+     * explains it, and they are different questions asked by different readers. Null leaves the name
+     * inert, which is what a preview and a fixture want.
+     */
+    onExplainSeries: ((ChartLegendTarget) -> Unit)? = null,
     /** A legend row's remove was tapped. Null hides the affordance rather than disabling it. */
     onRemoveSeries: ((ChartLegendTarget) -> Unit)? = null,
     /**
@@ -3304,6 +3312,7 @@ fun CoineProChart(
                     onToggleSeriesVisibility?.invoke(target)
                 },
                 onOpenSettings = onSeriesSettings,
+                onExplain = onExplainSeries,
                 onRemove = onRemoveSeries,
                 change = change,
                 marketStatus = marketStatus,

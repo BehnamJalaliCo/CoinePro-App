@@ -163,6 +163,15 @@ data class ScriptResult(
     val drawings: List<ScriptDrawing> = emptyList(),
     /** The strategy simulation, when the script placed an order (4.61.0). */
     val strategy: ScriptStrategyReport? = null,
+    /**
+     * What the script said, bar by bar — the short form of `signal(...)` (4.75.0, run Ω1).
+     *
+     * Empty for a script that never calls it, and that is not a gap: the app reads such a script's
+     * first plot by the same rule it reads a built-in's line (see `SignalSpec.readLine`). This list
+     * is for a script that wants to say so *itself* — «this is a buy, and here is why» — which is
+     * the only thing a script author can tell the reader that the app cannot work out.
+     */
+    val verdicts: List<ScriptVerdict> = emptyList(),
     /** How long the run took, in milliseconds, read by the studio's console. */
     val elapsedMillis: Long = 0,
 ) {
@@ -171,8 +180,32 @@ data class ScriptResult(
     /** Whether anything at all would be drawn. A script that runs and draws nothing is worth saying so. */
     val isEmpty: Boolean
         get() = plots.isEmpty() && levels.isEmpty() && markers.isEmpty() && setup == null && backgrounds.isEmpty() &&
-            drawings.isEmpty() && strategy == null
+            drawings.isEmpty() && strategy == null && verdicts.isEmpty()
 }
+
+/**
+ * One `signal(condition)` call: what the script says, where it says it, and in whose words.
+ *
+ * ### Why the short form exists beside the setup form
+ *
+ * `signal(cond, entry, stop)` has always meant «here is a whole trade», and it is the right call for
+ * a script that has worked out all three numbers. Most scripts have not: they have a condition and
+ * an opinion, and before this they had no way to say «this is a buy» at all — the app could see a
+ * marker and a line and had to guess which of them was the point.
+ *
+ * So the same name takes a shorter form. One argument is a verdict; three are a setup. The author
+ * writes what they know and the reader gets a sentence either way.
+ */
+data class ScriptVerdict(
+    /** True for a buy. */
+    val buy: Boolean,
+    /** The author's own conviction, 0..1 — not the historical win rate, which is the app's to measure. */
+    val strength: Double,
+    /** The author's sentence, or empty to let the app phrase it. */
+    val text: String,
+    /** Every bar the condition held on, oldest first. */
+    val bars: List<Int>,
+)
 
 /**
  * A refusal, with the position to put a caret at.

@@ -980,6 +980,27 @@ internal object Builtins {
     private fun signal(interpreter: Interpreter, node: Call, arguments: Arguments): Value {
         val flags = interpreter.flagLine(arguments.value(0), node)
         val buy = if (arguments.has("buy")) arguments.flagOf(arguments.named("buy")) else true
+        // **The short form: a verdict rather than a setup** (4.75.0, run Ω1).
+        //
+        // `signal(cond)` says «this is a buy here», and that is all most scripts have to say. The
+        // three-number form below says «here is the whole trade» and is unchanged. Which one the
+        // author meant is not a guess: a setup needs an entry and a stop, so a call without them is
+        // the short form by construction.
+        //
+        // Why one name for both: to a reader they are the same sentence with more or less detail in
+        // it, and a second function called `verdict` would be a second thing to learn for no gain.
+        if (!arguments.has("entry") && !arguments.has("stop") && arguments.size < 2) {
+            val strength = if (arguments.has("strength")) {
+                arguments.constantOf(arguments.named("strength"), "قدرت", "The strength").coerceIn(0.0, 1.0)
+            } else {
+                1.0
+            }
+            val text = if (arguments.has("text")) arguments.textOf(arguments.named("text")) else ""
+            val bars = (0 until interpreter.barCount).filter { flags.flagAt(it) }
+            if (bars.isEmpty()) return Value.Flag(false)
+            interpreter.addVerdict(ScriptVerdict(buy = buy, strength = strength, text = text, bars = bars))
+            return Value.Flag(true)
+        }
         val entry = interpreter.numberLine(arguments.namedOrPositional("entry", 1), node)
         val stop = interpreter.numberLine(arguments.namedOrPositional("stop", 2), node)
         val target = if (arguments.has("target")) {

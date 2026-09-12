@@ -111,6 +111,21 @@ class ConformanceSuiteTest {
             "alerts" -> if (result.alerts.getOrNull(parts[1].toInt())?.bars?.size == parts[2].toInt()) null else "$name: expected alert ${parts[1]} on ${parts[2]} bars"
             "drawings" -> if (result.ok && result.drawings.size == parts[1].toInt()) null else "$name: expected ${parts[1]} drawings, got ${result.error?.code ?: result.drawings.size}"
             "trades" -> if (result.ok && (result.strategy?.closedCount ?: 0) == parts[1].toInt()) null else "$name: expected ${parts[1]} closed trades, got ${result.error?.code ?: result.strategy?.closedCount}"
+            // `verdicts N` — how many short-form `signal(...)` calls the script made, and
+            // `verdict I BARS side` — that one's bar count and which way it points (run Ω1).
+            "verdicts" -> if (result.ok && result.verdicts.size == parts[1].toInt()) null
+            else "$name: expected ${parts[1]} verdicts, got ${result.error?.code ?: result.verdicts.size}"
+            "verdict" -> {
+                val verdict = result.verdicts.getOrNull(parts[1].toInt())
+                    ?: return "$name: no verdict ${parts[1]}"
+                val side = if (verdict.buy) "buy" else "sell"
+                when {
+                    verdict.bars.size != parts[2].toInt() ->
+                        "$name: verdict ${parts[1]} expected on ${parts[2]} bars, got ${verdict.bars.size}"
+                    parts.size > 3 && side != parts[3] -> "$name: verdict ${parts[1]} expected $side to be ${parts[3]}"
+                    else -> null
+                }
+            }
             "plot" -> {
                 if (!result.ok) return "$name: expected a plot, refused ${result.error!!.code} ${result.error.messageEn}"
                 val plot = result.plots.getOrNull(parts[1].toInt()) ?: return "$name: no plot ${parts[1]}"

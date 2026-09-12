@@ -527,6 +527,8 @@ internal fun ChartLegendOverlay(
     marketStatus: ChartMarketStatus? = null,
     /** The instrument whose mark goes before the title — TradingView's legend starts with the logo. */
     logoSymbol: String? = null,
+    /** Tapping a row's name opens the Explain sheet for that study (4.75.0, run Ω1). */
+    onExplain: ((ChartLegendTarget) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     if (viewport.visibleCount == 0) return
@@ -738,6 +740,7 @@ internal fun ChartLegendOverlay(
                         overflowChip = (OVERFLOW_MARK + "+" + hiddenCount.toString())
                             .takeIf { collapsed && position == 0 && hiddenCount > 0 },
                         onOverflowClick = { expanded = true },
+                        onExplain = onExplain,
                         colour = row.colour?.let { Color(opaqueArgb(it)) } ?: palette.text,
                         palette = palette,
                         measurer = measurer,
@@ -824,6 +827,14 @@ private fun LegendRow(
      * is looking. «discoverability کم است» is exactly that. Null where there is nothing to open.
      */
     onOverflowClick: (() -> Unit)? = null,
+    /**
+     * What tapping the row's **name** does — open the Explain sheet (4.75.0, run Ω1).
+     *
+     * The name, not the whole row: a legend row is drawn over the plot, and a row-wide target would
+     * swallow a tap meant for the candles behind it. The name is the part a reader points at when
+     * they want to know what the thing is, which is exactly the question the sheet answers.
+     */
+    onExplain: ((ChartLegendTarget) -> Unit)? = null,
 ) {
     val faded = if (dimmed) colour.copy(alpha = HIDDEN_ROW_ALPHA) else colour
     // The line box, pinned to the letters rather than to the font's own metrics.
@@ -880,6 +891,13 @@ private fun LegendRow(
                 style = LocalTextStyle.current.copy(lineHeightStyle = lineHeightStyle),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = if (onExplain == null) {
+                    Modifier
+                } else {
+                    Modifier
+                        .clickable { onExplain(row.target) }
+                        .semantics { contentDescription = "legend-explain" }
+                },
             )
         }
         // «NAME PARAMS · VALUE», which is how TradingView sets a legend row and what the owner

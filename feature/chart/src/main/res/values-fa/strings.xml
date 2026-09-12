@@ -238,4 +238,22 @@
     <string name="chart_load_interval">این پلتفرم کندل این بازه را ندارد. بازه‌ی بلندتری انتخاب کنید.</string>
     <string name="chart_load_stale">این کندل‌ها آخرین چیزی است که رسیده.</string>
     <string name="chart_retry">تلاش دوباره</string>
+    <string name="chart_setup_score">وضعیت</string>
+    <string name="chart_setup_from">%1$s اندیکاتور · %2$s سیگنال</string>
+    <string name="chart_confidence_short">%1$s%% از %2$s</string>
+    <string name="chart_confidence_thin">کم‌داده</string>
+    <string name="chart_confidence_title">اینجا چطور کار کرده</string>
+    <string name="chart_confidence_none">هنوز سیگنال کاملی روی این سری نیست.</string>
+    <string name="chart_confidence_long">در %1$s%% از %2$s بار درست بوده، با اندازه‌گیری %3$s کندل بعد.</string>
+    <string name="chart_confidence_thin_long">فقط %1$s سیگنال کامل — کمتر از آن است که عدد بدهیم.</string>
+    <string name="chart_confidence_r">نتیجه‌ی میانگین: %1$s برابر ریسک.</string>
+    <string name="chart_confidence_bars">%1$s کندل</string>
+    <string name="chart_explain_stop">زیر %1$s اشتباه است</string>
+    <string name="chart_explain_alert">روی سیگنال بعدی هشدار بسازید</string>
+    <string name="chart_explain_practise">در ریپلی تمرین کنید</string>
+    <string name="chart_explain_not_advice">خوانشی از گذشته است، نه توصیه.</string>
+    <string name="chart_explain_missing">این اندیکاتور دیگر روی چارت نیست.</string>
+    <string name="chart_explain_title">چارت چه می‌گوید</string>
+    <string name="chart_explain_timeframes">روی تایم‌فریم‌های دیگر</string>
+    <string name="chart_explain_timeframes_none">هیچ تایم‌فریم دیگری برای این نماد جواب نداد.</string>
 </resources>

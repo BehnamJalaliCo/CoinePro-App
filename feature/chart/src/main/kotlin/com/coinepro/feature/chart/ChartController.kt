@@ -22,6 +22,7 @@ import com.coinepro.core.chart.ChartPoint
 import com.coinepro.core.chart.ChartType
 import com.coinepro.core.chart.ChartViewport
 import com.coinepro.core.chart.ComparisonBasis
+import com.coinepro.core.chart.ConfidenceEngine
 import com.coinepro.core.chart.ComparisonSeries
 import com.coinepro.core.chart.Drawing
 import com.coinepro.core.chart.DrawingActions
@@ -46,6 +47,7 @@ import com.coinepro.core.chart.Replay
 import com.coinepro.core.chart.ReplaySpeed
 import com.coinepro.core.chart.ReplayState
 import com.coinepro.core.chart.ScaleSide
+import com.coinepro.core.chart.SignalSpec
 import com.coinepro.core.chart.TradeSide
 import com.coinepro.core.chart.ChartHistory
 import com.coinepro.core.chart.align
@@ -253,6 +255,20 @@ data class ChartUiState(
      * previous one, which is the last correct picture rather than a blank.
      */
     val scriptDraw: ChartScriptDraw = ChartScriptDraw.EMPTY,
+    /**
+     * What every study on this chart is **saying** (4.75.0, run Ω1).
+     *
+     * The product's whole thesis, as one field: a state, a base rate and a sentence per study, and
+     * the header's Setup score over all of them. Computed off the main thread beside
+     * [scriptDraw] and for the same reason — it walks five hundred bars per study — and published
+     * as a value so the legend, the Now strip, the markers, the Explain sheet and the coach cannot
+     * disagree about what the chart says.
+     *
+     * Empty until the first study is switched on, which is also the first frame of a fresh install:
+     * a chart with nothing on it is saying nothing, and inventing a reading from the candles alone
+     * would be the app having an opinion of its own. See [ChartSignalEngine].
+     */
+    val signals: ChartSignalLayer = ChartSignalLayer.EMPTY,
     val drawing: DrawingState = DrawingState(),
     /**
      * The drawings the reader has switched off in the object tree.
@@ -919,8 +935,13 @@ data class ChartUiState(
             if (indicatorsHidden) return emptyList()
             val scripted = scriptDraw.shown(scriptDraw.markers, scriptDraw.markerOwners, hiddenIndicators)
             val patterned = CandlePatterns.markersFor(visibleSeries, patterns)
-            if (scripted.isEmpty() && patterned.isEmpty()) return derived.markers
-            return derived.markers + scripted + patterned
+            // The Signal Layer's own: a triangle on each of the newest bars a study fired on, in
+            // that study's colour. They are appended rather than merged for the same reason the
+            // patterns are — they belong to a different question — and an eye switched off on a
+            // study takes its marks with it, which is what `hiddenIndicators` is doing here.
+            val signalled = ChartSignalEngine.markersFor(signals, visibleSeries, hiddenIndicators)
+            if (scripted.isEmpty() && patterned.isEmpty() && signalled.isEmpty()) return derived.markers
+            return derived.markers + scripted + patterned + signalled
         }
 
     /**
@@ -1638,6 +1659,10 @@ class ChartController(
      * `update` and this is two things that have to happen after it has landed.
      */
     private fun startRestoredScripts() {
+        // The signal layer restores whether or not there are scripts: a stored row can carry
+        // studies with no script among them, and a chart that came back with three indicators on it
+        // and an empty Now strip would be the layer silently missing from every returning reader.
+        watchSignals()
         if (_state.value.scripts.isEmpty()) return
         watchScripts()
         refreshScripts()
@@ -1848,6 +1873,7 @@ class ChartController(
             )
         }
         watchScripts()
+        watchSignals()
         refreshScripts()
         persistSymbolState()
         return instanceId
@@ -1891,7 +1917,9 @@ class ChartController(
             )
         }
         refreshScripts()
+        refreshSignals()
         stopWatchingScripts()
+        stopWatchingSignals()
         persistSymbolState()
     }
 
@@ -1949,6 +1977,185 @@ class ChartController(
      * answer is committed in one assignment, so the overlays, the panes and their owners can never
      * be read half-swapped.
      */
+    /* ------------------------------------------------------------------ the signal layer (4.75.0) */
+
+    private var signalJob: Job? = null
+    private var signalWatch: Job? = null
+
+    /**
+     * Recompute what every study is saying, off the main thread.
+     *
+     * ### Why it is not a getter on the state
+     *
+     * Because it is the one derived value on this chart whose cost scales with *history* rather than
+     * with what is on screen: [ConfidenceEngine] walks five hundred bars per study, and eleven
+     * studies is eleven of those. `derived` can be a getter because it is bounded by the viewport;
+     * this cannot, and a frame that computed it would be a frame that dropped.
+     *
+     * Cancelled and restarted rather than queued: a reader flipping through studies produces a run
+     * per tap, and the only answer anybody wants is the last one's.
+     */
+    private fun refreshSignals() {
+        val current = _state.value
+        val ids = current.activeIndicators.toList()
+        if (ids.isEmpty() && current.scripts.isEmpty()) {
+            if (current.signals !== ChartSignalLayer.EMPTY) {
+                _state.update { it.copy(signals = ChartSignalLayer.EMPTY) }
+            }
+            return
+        }
+        signalJob?.cancel()
+        signalJob = scope.launch(workers ?: EmptyCoroutineContext) {
+            val at = _state.value
+            val layer = ChartSignalEngine.evaluate(
+                series = at.visibleSeries,
+                // Catalogue order rather than tap order, so the Now strip does not reshuffle itself
+                // when a reader switches one off and back on. The same rule the panes follow.
+                indicatorIds = ChartCatalog.INDICATORS.map { it.id }.filter { it in at.activeIndicators },
+                periods = at.indicatorPeriods,
+                params = at.indicatorParams,
+                scripts = at.scripts,
+                draw = at.scriptDraw,
+                horizon = at.signals.horizon,
+                english = signalsInEnglish,
+            )
+            _state.update { it.copy(signals = layer) }
+            signalJob = null
+        }
+    }
+
+    /**
+     * Watch the things a reading depends on: the bars, the studies, the scripts' output.
+     *
+     * The same shape as [watchScripts] and for the same reason — a collector that never returns must
+     * not exist on a chart that has nothing to collect for. It starts with the first study and is
+     * cancelled by [stopWatchingSignals] when the last one goes.
+     */
+    private fun watchSignals() {
+        if (signalWatch != null) return
+        signalWatch = scope.launch {
+            var lastSeries: CandleSeries? = null
+            var lastDraw: ChartScriptDraw? = null
+            var lastStudies: Set<String>? = null
+            var lastPeriods: Map<String, Int>? = null
+            state.collect { at ->
+                val series = at.visibleSeries
+                val unchanged = series === lastSeries &&
+                    at.scriptDraw === lastDraw &&
+                    at.activeIndicators == lastStudies &&
+                    at.indicatorPeriods == lastPeriods
+                if (unchanged) return@collect
+                lastSeries = series
+                lastDraw = at.scriptDraw
+                lastStudies = at.activeIndicators
+                lastPeriods = at.indicatorPeriods
+                refreshSignals()
+            }
+        }
+    }
+
+    private fun stopWatchingSignals() {
+        if (_state.value.activeIndicators.isNotEmpty() || _state.value.scripts.isNotEmpty()) return
+        signalWatch?.cancel()
+        signalWatch = null
+        signalJob?.cancel()
+        signalJob = null
+    }
+
+    /**
+     * Read one study on three other bar lengths — «show on all timeframes» (run Ω1).
+     *
+     * ### Why this fetches rather than folds
+     *
+     * Because a study is not a function of the picture, it is a function of *the bars it is computed
+     * on*, and an hourly RSI is not four fifteen-minute ones averaged. The only honest way to say
+     * what the daily chart's RSI reads is to ask for the daily bars and compute it, which is a
+     * request per row — and the reason this happens on a tap rather than on every chart open.
+     *
+     * Asked once per study: the answer is cached on the layer until the studies or the series
+     * change, because a reader who opens the sheet twice has not changed the market.
+     */
+    fun readAcrossTimeframes(id: String) {
+        if (_state.value.signals.across.containsKey(id)) return
+        acrossJob?.cancel()
+        acrossJob = scope.launch(workers ?: EmptyCoroutineContext) {
+            val at = _state.value
+            val script = at.scripts.firstOrNull { it.ownerId == id }
+            val rows = MULTI_TIMEFRAMES
+                // The one the reader is already looking at is not «another timeframe».
+                .filter { it != (at.interval as? ChartInterval.Preset)?.timeframe }
+                .mapNotNull { timeframe ->
+                    val interval = ChartInterval.Preset(timeframe)
+                    val page = try {
+                        gateway.load(at.symbol, interval, limit = MULTI_TIMEFRAME_BARS)
+                    } catch (cancellation: CancellationException) {
+                        throw cancellation
+                    } catch (_: Throwable) {
+                        // A venue that will not serve this bar length is not an error the reader
+                        // asked about: the row is simply absent, and the sheet says how many came.
+                        return@mapNotNull null
+                    }
+                    val series = buildSeries { CandleSeries(page.candles.map(OhlcBar::toCandle)) }
+                    val read = when {
+                        script == null -> SignalSpec.read(id, series, at.indicatorPeriods[id], at.indicatorParams[id].orEmpty(), signalsInEnglish)
+                        else -> {
+                            // A fresh engine per timeframe, deliberately: the chart's own runner
+                            // holds the chart's bars and splices a tail onto them, and handing it a
+                            // different series would be asking it to continue a study of something
+                            // else. A throwaway compile is the cost of an honest answer.
+                            val draw = ChartScriptEngine().evaluate(series, listOf(script)) { System.currentTimeMillis() }
+                            ChartSignalEngine.evaluate(
+                                series = series,
+                                indicatorIds = emptyList(),
+                                scripts = listOf(script),
+                                draw = draw,
+                                english = signalsInEnglish,
+                            ).readOf(id)
+                        }
+                    } ?: return@mapNotNull null
+                    TimeframeRead(
+                        timeframe = timeframe.name,
+                        state = read.state,
+                        sentence = read.note.text(signalsInEnglish),
+                    )
+                }
+            _state.update { it.copy(signals = it.signals.copy(across = it.signals.across + (id to rows))) }
+            acrossJob = null
+        }
+    }
+
+    private var acrossJob: Job? = null
+
+    /**
+     * How many bars ahead a base rate is measured over: five, ten or twenty.
+     *
+     * The reader's, because the honest answer depends on how they trade — a scalper's «did it work»
+     * is five bars away and a swing trader's is twenty, and one number pretending to be both would
+     * be right for neither. See [ConfidenceEngine.HORIZONS].
+     */
+    fun setConfidenceHorizon(bars: Int) {
+        val horizon = ConfidenceEngine.HORIZONS.minByOrNull { kotlin.math.abs(it - bars) } ?: return
+        if (horizon == _state.value.signals.horizon) return
+        _state.update { it.copy(signals = it.signals.copy(horizon = horizon)) }
+        refreshSignals()
+    }
+
+    /**
+     * Whether the sentences are written in English.
+     *
+     * Set by the screen, because the language is a property of the *composition* and this controller
+     * is not one — `inEnglish()` reads the configuration the screen was drawn with. Changing it
+     * re-reads the studies rather than translating what is there, which is the same work and one
+     * less thing that can be half-translated.
+     */
+    fun setSignalLanguage(english: Boolean) {
+        if (english == signalsInEnglish) return
+        signalsInEnglish = english
+        refreshSignals()
+    }
+
+    private var signalsInEnglish: Boolean = false
+
     private fun refreshScripts() {
         val current = _state.value
         if (current.scripts.isEmpty()) {
@@ -1996,6 +2203,11 @@ class ChartController(
                 window = if (ChartDerived.readsWindow(next, old.chained)) lastWindow else old.window,
             )
         }
+        // The Signal Layer follows the studies: it starts with the first one switched on and stops
+        // with the last one switched off, the same lifetime `watchScripts` has and for the same
+        // reason. See [watchSignals].
+        watchSignals()
+        stopWatchingSignals()
         persistSymbolState()
     }
 
@@ -3145,6 +3357,8 @@ class ChartController(
         // chart. Keeping them would hold a previous layout's bars against a new layout's scripts.
         scriptEngine.reset()
         if (_state.value.scripts.isNotEmpty()) watchScripts() else stopWatchingScripts()
+        watchSignals()
+        stopWatchingSignals()
         refreshScripts()
     }
 
@@ -4009,6 +4223,18 @@ class ChartController(
          * operation and an absurd one for a round trip to a server over a mobile network in Iran.
          */
         const val FIRST_CANDLE_BUDGET_MS = 1_200L
+
+        /**
+         * The bar lengths «show on all timeframes» asks for: the hour, the four-hour and the day.
+         *
+         * Three, not fifteen: the question is «does the bigger picture agree», and a reader who is
+         * shown a study on every bar length in the strip has been given a table to interpret rather
+         * than an answer. These are the three every desk actually checks.
+         */
+        val MULTI_TIMEFRAMES = listOf(Timeframe.H1, Timeframe.H4, Timeframe.D1)
+
+        /** How many bars each of those rows is computed on. Enough for the longest study to warm up. */
+        const val MULTI_TIMEFRAME_BARS = 200
 
         /**
          * How long one attempt at a page of candles is given: eight seconds.

@@ -218,4 +218,22 @@
     <string name="chart_load_interval">This platform has no candle of this length. Pick a longer one.</string>
     <string name="chart_load_stale">These candles are the last ones that arrived.</string>
     <string name="chart_retry">Try again</string>
+    <string name="chart_setup_score">Setup</string>
+    <string name="chart_setup_from">%1$s indicators · %2$s signals</string>
+    <string name="chart_confidence_short">%1$s%% of %2$s</string>
+    <string name="chart_confidence_thin">low data</string>
+    <string name="chart_confidence_title">How it has done here</string>
+    <string name="chart_confidence_none">No completed signals on this series yet.</string>
+    <string name="chart_confidence_long">Right %1$s%% of %2$s times, measured %3$s bars later.</string>
+    <string name="chart_confidence_thin_long">Only %1$s completed signals — too few to put a figure on.</string>
+    <string name="chart_confidence_r">Average result: %1$s times the risk.</string>
+    <string name="chart_confidence_bars">%1$s bars</string>
+    <string name="chart_explain_stop">Wrong below %1$s</string>
+    <string name="chart_explain_alert">Alert me on the next signal</string>
+    <string name="chart_explain_practise">Practise this in replay</string>
+    <string name="chart_explain_not_advice">A reading of the past, not advice.</string>
+    <string name="chart_explain_missing">This indicator is no longer on the chart.</string>
+    <string name="chart_explain_title">What the chart says</string>
+    <string name="chart_explain_timeframes">Show on other timeframes</string>
+    <string name="chart_explain_timeframes_none">No other bar length answered for this symbol.</string>
 </resources>

@@ -183,6 +183,11 @@ def check_learned_surfaces() -> None:
         # terminal; it now opens the list of venues a reader can actually put the trade on, with
         # the in-app route at the top of it. See `TradePartnersSheetBody`.
         "PARTNERS",
+        # Run Ω1's: what an indicator is, what it is saying now, and how often it has been right on
+        # this symbol and this bar length. Opened from a legend row's name, a Now-strip pill and the
+        # Setup score; it is the one sheet on this screen that answers a question rather than
+        # changing a setting. See `ExplainSheetBody`.
+        "EXPLAIN",
     ]
     require(
         entries == expected_sheets,

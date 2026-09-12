@@ -13,6 +13,7 @@ import com.coinepro.core.script.ScriptFailure
 import com.coinepro.core.script.ScriptInput
 import com.coinepro.core.script.ScriptResult
 import com.coinepro.core.script.ScriptStrategyReport
+import com.coinepro.core.script.ScriptVerdict
 import com.coinepro.core.script.toOverlay
 
 /**
@@ -138,6 +139,14 @@ data class ChartScriptDraw(
     val strategies: Map<String, ScriptStrategyReport> = emptyMap(),
     /** The `input(...)`s each instance declares, by owner id — what the settings sheet draws. */
     val inputs: Map<String, List<ScriptInput>> = emptyMap(),
+    /**
+     * What each instance's own `signal(...)` calls said, by owner id (4.75.0, run Ω1).
+     *
+     * Carried rather than re-derived because it is the one thing about a script the app cannot work
+     * out for itself: a line can be read, an author's verdict has to be reported. See
+     * `ChartSignalEngine`.
+     */
+    val verdicts: Map<String, List<ScriptVerdict>> = emptyMap(),
     /** The diagnostic behind the legend's red dot, by owner id. The last good draw stays up. */
     val failures: Map<String, ScriptFailure> = emptyMap(),
     /** The instances that ran out of budget, by owner id. See [ChartScriptPause]. */
@@ -226,6 +235,7 @@ internal class ChartScriptEngine {
         val drawingOwners = mutableListOf<String>()
         val alerts = LinkedHashMap<String, List<ScriptAlert>>()
         val strategies = LinkedHashMap<String, ScriptStrategyReport>()
+        val verdicts = LinkedHashMap<String, List<ScriptVerdict>>()
         val inputs = LinkedHashMap<String, List<ScriptInput>>()
         val failures = LinkedHashMap<String, ScriptFailure>()
         val paused = LinkedHashMap<String, ChartScriptPause>()
@@ -261,6 +271,7 @@ internal class ChartScriptEngine {
             inputs[script.ownerId] = drawn.inputs
             if (drawn.alerts.isNotEmpty()) alerts[script.ownerId] = drawn.alerts
             drawn.strategy?.let { strategies[script.ownerId] = it }
+            if (drawn.verdicts.isNotEmpty()) verdicts[script.ownerId] = drawn.verdicts
 
             val overlay = drawn.toOverlay(series, script.displayName)
             overlay.overlays.forEach { line ->
@@ -289,6 +300,7 @@ internal class ChartScriptEngine {
             drawingOwners = drawingOwners,
             alerts = alerts,
             strategies = strategies,
+            verdicts = verdicts,
             inputs = inputs,
             failures = failures,
             paused = paused,
