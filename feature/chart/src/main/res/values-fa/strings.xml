@@ -219,4 +219,17 @@
     <string name="chart_menu_copy_price">کپی قیمت</string>
     <string name="chart_menu_scale">مقیاس قیمت…</string>
     <string name="chart_menu_search">جست‌وجوی نماد</string>
+    <string name="chart_script_kind">اندیکاتور نمااسکریپت</string>
+    <string name="chart_script_paused">متوقف شد — این اسکریپت برای اجرا روی هر کندل کند است (خط %1$s).</string>
+    <string name="chart_script_inputs_note">این‌ها ورودی‌های خود اسکریپت‌اند. چارت با هر تغییر دوباره کشیده می‌شود.</string>
+    <string name="chart_script_edit">باز کردن در ویرایشگر</string>
+    <string name="chart_script_custom">اسکریپت‌های من</string>
+    <string name="chart_script_none">هنوز اسکریپتی ندارید. در ویرایشگر یکی بنویسید و از همان‌جا اضافه کنید.</string>
+    <string name="chart_script_restore">بازگرداندن اسکریپت</string>
+    <string name="chart_script_missing">این لی‌اوت با اسکریپتی ذخیره شده که این نسخه پیدایش نمی‌کند.</string>
+    <string name="chart_script_on_chart">روی چارت</string>
+    <string name="chart_script_alerts">شرط‌های هشدار</string>
+    <string name="chart_script_alert_firing">روی کندل آخر برقرار است</string>
+    <string name="chart_script_alert_quiet">برقرار نیست</string>
+    <string name="chart_script_alert_create">هشدار بسازید</string>
 </resources>

@@ -11,6 +11,7 @@ import com.coinepro.core.chart.Line
 import com.coinepro.core.common.AppResult
 import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.StoredDrawing
+import com.coinepro.core.script.NamaScript
 import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.guest.GuestCandle
 import com.coinepro.core.guest.GuestGateway
@@ -137,7 +138,46 @@ class GuestAlertMarketSource @Inject constructor(
                 readingOf(key, series)?.let { key to it }
             }.toMap(),
             drawingLevels = drawingLevels(sample.symbol, request.needs.drawings, closed),
+            scriptConditions = scriptConditions(request.needs.scripts, series),
         )
+    }
+
+    /**
+     * Each asked-for `alertcondition` resolved against the closed bars (4.73.0).
+     *
+     * ### Why the script is run here rather than anywhere else
+     *
+     * Because this is the only place in a background pass that has **bars**. A script needs open,
+     * high, low, close and volume; the sample carries closes, which is enough for a `Move` and not
+     * enough for a line of somebody's own code. The candles are already in hand here — the indicator
+     * readings above are computed from the same `series` — so running the script costs the run and
+     * no extra fetch.
+     *
+     * ### What an absent entry means
+     *
+     * «Could not be answered», and the routing turns that into `NaN`. A script that does not
+     * compile, exceeds its budget, or draws no condition by that name simply produces nothing: an
+     * alert on a broken script has to be silent, because the alternative is a notification the
+     * reader cannot explain about code they have since changed.
+     *
+     * The distinct sources are compiled once each, so ten alerts on one script cost one run.
+     */
+    private fun scriptConditions(
+        keys: Set<AlertScriptKey>,
+        series: CandleSeries,
+    ): Map<AlertScriptKey, Boolean> {
+        if (keys.isEmpty()) return emptyMap()
+        val out = LinkedHashMap<AlertScriptKey, Boolean>()
+        for ((source, group) in keys.groupBy { it.source }) {
+            val compiled = NamaScript.compile(source).script ?: continue
+            val result = runCatching { compiled.run(series) }.getOrNull() ?: continue
+            if (!result.ok) continue
+            for (key in group) {
+                val alert = result.alerts.firstOrNull { it.title == key.condition } ?: continue
+                out[key] = alert.firing(series.size)
+            }
+        }
+        return out
     }
 
     /**

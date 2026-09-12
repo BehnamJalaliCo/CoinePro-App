@@ -69,13 +69,17 @@ class StudioHelpersTest {
         assertEquals("nothing", signatureFor("nothing"))
     }
 
+    /**
+     * The snippets are **resources** since 4.73.0, so their text is not reachable from a plain JVM
+     * test any more — what is left to assert here is that there are four of them and that no two
+     * point at the same string, which is the mistake a copied line makes. That every snippet
+     * *compiles*, in both languages, is asserted where a context exists: `ScriptSnippetsTest`.
+     */
     @Test
-    fun `every snippet compiles`() {
-        for (snippet in SNIPPETS) {
-            val failure = com.coinepro.core.script.NamaScript.check(snippet.source)
-            assertEquals("${snippet.title}: ${failure?.messageEn}", null, failure)
-        }
+    fun `there are four snippets and no two are the same`() {
         assertTrue(SNIPPETS.size >= 4)
+        assertEquals(SNIPPETS.size, SNIPPETS.map { it.sourceRes }.toSet().size)
+        assertEquals(SNIPPETS.size, SNIPPETS.map { it.titleRes }.toSet().size)
     }
 
     @Test

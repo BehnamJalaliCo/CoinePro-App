@@ -79,6 +79,17 @@ object AlertTriggerCodec {
                 trigger.drawingId,
             ).joinToString(PART)
 
+            // The script and the condition are Base64'd, because unlike every other field here
+            // they are *arbitrary text*: a reader's script contains newlines, separators and
+            // whatever else they typed, and the refusal at the end of this function would quietly
+            // drop the alert the first time one of them appeared.
+            is AlertTrigger.ScriptCondition -> listOf(
+                AlertTrigger.ScriptCondition.ID,
+                b64(trigger.source),
+                b64(trigger.condition),
+                b64(trigger.name),
+            ).joinToString(PART)
+
             is AlertTrigger.MultiCondition -> {
                 val parts = trigger.conditions.map(::encode)
                 if (parts.any(String::isEmpty)) return ""
@@ -152,6 +163,24 @@ object AlertTriggerCodec {
             ?.takeIf(String::isNotBlank)
             ?.let { AlertTrigger.DrawingTouch(it) }
 
+        AlertTrigger.ScriptCondition.ID -> {
+            val source = parts.getOrNull(0)?.let(::unB64)?.takeIf(String::isNotBlank)
+            val condition = parts.getOrNull(1)?.let(::unB64)?.takeIf(String::isNotBlank)
+            if (source == null || condition == null) {
+                null
+            } else {
+                AlertTrigger.ScriptCondition(source, condition, parts.getOrNull(2)?.let(::unB64).orEmpty())
+            }
+        }
+
         else -> null
     }
 }
+
+/** URL-safe and unpadded, so the alphabet contains none of this codec's separators. */
+private fun b64(text: String): String =
+    java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(text.encodeToByteArray())
+
+/** Never a throw: a corrupt field loses that trigger, and the alert falls back to its condition. */
+private fun unB64(text: String): String =
+    runCatching { java.util.Base64.getUrlDecoder().decode(text).decodeToString() }.getOrDefault("")

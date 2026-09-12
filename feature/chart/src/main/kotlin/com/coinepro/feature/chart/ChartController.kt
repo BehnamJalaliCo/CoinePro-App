@@ -55,6 +55,7 @@ import com.coinepro.core.datastore.ChartColourTemplate
 import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartLayout
 import com.coinepro.core.datastore.ChartLayoutStore
+import com.coinepro.core.datastore.ChartScriptRow
 import com.coinepro.core.datastore.DrawingSyncMode
 import com.coinepro.core.datastore.DrawingImageStore
 import com.coinepro.core.datastore.DrawingSyncStore
@@ -85,6 +86,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -211,6 +213,24 @@ data class ChartUiState(
      * Visibility tab. Hidden, not off: the period and the style are kept for the way back.
      */
     val hiddenIndicators: Set<String> = emptySet(),
+    /**
+     * The NamaScript scripts running on this chart, in the order the reader added them (4.73.0).
+     *
+     * They are indicators — see [ChartScript] — and every other field here that keys by indicator
+     * id addresses them by [ChartScript.ownerId]. That is why there is no `scriptColours` beside
+     * [indicatorColours] and no `hiddenScripts` beside [hiddenIndicators]: a script's colour lives
+     * in the indicator colours, its eye in the hidden set, its place in [paneOrder]. One mechanism.
+     */
+    val scripts: List<ChartScript> = emptyList(),
+    /**
+     * What those scripts last drew — computed off the UI thread and swapped in whole.
+     *
+     * Not derived lazily like [derived], and deliberately: a reader's own code has no bound on how
+     * long it takes, so it cannot be run from a getter a frame reads. The controller evaluates it
+     * on [ChartController.workers] and commits the batch; until it lands the chart draws the
+     * previous one, which is the last correct picture rather than a blank.
+     */
+    val scriptDraw: ChartScriptDraw = ChartScriptDraw.EMPTY,
     val drawing: DrawingState = DrawingState(),
     /**
      * The drawings the reader has switched off in the object tree.
@@ -396,6 +416,13 @@ data class ChartUiState(
             } else {
                 onThisLayout.filterNot { it.id in hiddenDrawingIds }
             }
+            // And the scripts' own labels, lines and boxes, appended rather than merged into the
+            // reader's list (4.73.0). They are not the reader's marks: they cannot be selected,
+            // dragged, styled or deleted, they are regenerated on every run, and one of them in
+            // `drawing.drawings` would be saved to disk as a mark somebody made.
+            val scripted = scriptDraw.shown(scriptDraw.drawings, scriptDraw.drawingOwners, hiddenIndicators)
+                .takeUnless { indicatorsHidden } ?: emptyList()
+            if (scripted.isNotEmpty()) return drawing.copy(drawings = shown + scripted)
             return if (shown.size == drawing.drawings.size) drawing else drawing.copy(drawings = shown)
         }
 
@@ -596,17 +623,35 @@ data class ChartUiState(
         get() = if (indicatorsHidden) emptyList()
         else chainPlot.priceLines.ifEmpty { return shownOverlays }.let { shownOverlays + it }
 
-    /** [styledOverlays] less the studies the reader moved to a pane of their own — the list itself when none were. */
+    /**
+     * Every price-scale line before the reader's arrangement is applied: the catalogue's, then the
+     * scripts' (4.73.0).
+     *
+     * Scripts come **after** the built-ins and **before** the chain's lines, and the order is not
+     * arbitrary: the chain appends lines that carry no owner, so anything with an owner has to sit
+     * in front of them or `overlayOwners` stops being aligned with `overlays` and the legend's ×
+     * removes the wrong study. Putting scripts at the end of the owned block keeps both lists
+     * aligned by construction and puts a reader's own work under the app's in the legend, which is
+     * where the thing they just added should appear.
+     */
+    private val baseOverlays: List<ChartLine>
+        get() = if (scriptDraw.overlays.isEmpty()) styledOverlays else styledOverlays + scriptOverlays
+
+    private val baseOverlayOwners: List<String>
+        get() = if (scriptDraw.overlayOwners.isEmpty()) derived.overlayOwners
+        else derived.overlayOwners + scriptDraw.overlayOwners
+
+    /** [baseOverlays] less the studies the reader moved to a pane of their own — the list itself when none were. */
     private val shownOverlays: List<ChartLine>
         get() {
-            if (separated.isEmpty()) return styledOverlays
-            val lines = styledOverlays
-            return lines.filterIndexed { index, _ -> derived.overlayOwners.getOrNull(index) !in separated }
+            if (separated.isEmpty()) return baseOverlays
+            val owners = baseOverlayOwners
+            return baseOverlays.filterIndexed { index, _ -> owners.getOrNull(index) !in separated }
         }
 
-    /** [ChartDerived.overlayOwners] aligned with [overlays]. */
+    /** [ChartDerived.overlayOwners] plus the scripts', aligned with [overlays]. */
     val shownOverlayOwners: List<String>
-        get() = if (separated.isEmpty()) derived.overlayOwners else derived.overlayOwners.filter { it !in separated }
+        get() = if (separated.isEmpty()) baseOverlayOwners else baseOverlayOwners.filter { it !in separated }
 
     /**
      * The panes as the reader arranged them: separated overlays become panes, the order is
@@ -615,11 +660,18 @@ data class ChartUiState(
      */
     internal val arrangedPanes: List<Pair<List<String>, ChartPane>>
         get() {
-            val own = styledPanes.mapIndexed { index, pane -> (derived.paneOwners.getOrNull(index) ?: "") to pane }
+            val panes = basePanes
+            val owners = basePaneOwners
+            val own = panes.mapIndexed { index, pane -> (owners.getOrNull(index) ?: "") to pane }
             val moved = separated.mapNotNull { id ->
-                val option = ChartCatalog.INDICATORS.firstOrNull { it.id == id } ?: return@mapNotNull null
-                val lines = styledOverlays.filterIndexed { index, _ -> derived.overlayOwners.getOrNull(index) == id }
-                if (lines.isEmpty()) null else id to ChartPane(title = lines.firstOrNull()?.label ?: option.label, lines = lines)
+                // A separated *script* names its pane after the script; a separated built-in after
+                // the catalogue. Anything else is an id from a build that no longer has it.
+                val title = ChartScript.instanceOf(id)
+                    ?.let { instance -> scripts.firstOrNull { it.instanceId == instance }?.displayName }
+                    ?: ChartCatalog.INDICATORS.firstOrNull { it.id == id }?.label
+                    ?: return@mapNotNull null
+                val lines = baseOverlays.filterIndexed { index, _ -> baseOverlayOwners.getOrNull(index) == id }
+                if (lines.isEmpty()) null else id to ChartPane(title = lines.firstOrNull()?.label ?: title, lines = lines)
             }
             val all = own + moved
             if (paneOrder.isEmpty() && paneMerges.isEmpty() && moved.isEmpty()) return all.map { listOf(it.first) to it.second }
@@ -675,6 +727,63 @@ data class ChartUiState(
             }
         }
 
+    /**
+     * Every own-pane strip before the arrangement: the catalogue's, then the scripts' (4.73.0).
+     *
+     * Same order and the same reason as [baseOverlays]; `arrangedPanes` reads these two rather
+     * than `styledPanes` and `derived.paneOwners`, so a script's pane can be reordered, merged
+     * into another and hidden by exactly the code that does it for RSI.
+     */
+    private val basePanes: List<ChartPane>
+        get() = if (scriptDraw.panes.isEmpty()) styledPanes else styledPanes + scriptPanes
+
+    private val basePaneOwners: List<String>
+        get() = if (scriptDraw.paneOwners.isEmpty()) derived.paneOwners
+        else derived.paneOwners + scriptDraw.paneOwners
+
+    /**
+     * The scripts' price-scale lines with the reader's colour and width on them.
+     *
+     * A script's «own colour» is its **first plot's**, not the catalogue's — there is no catalogue
+     * row to read. So a recoloured script takes the new colour on the line it leads with and keeps
+     * the relation of everything it draws beside that line, which is the rule [restyled] applies
+     * to a built-in's signal line for the same reason.
+     */
+    private val scriptOverlays: List<ChartLine>
+        get() {
+            if (indicatorColours.isEmpty() && indicatorWidths.isEmpty()) return scriptDraw.overlays
+            val leads = HashMap<String, Long>()
+            scriptDraw.overlays.forEachIndexed { index, line ->
+                scriptDraw.overlayOwners.getOrNull(index)?.let { leads.putIfAbsent(it, line.colour) }
+            }
+            return scriptDraw.overlays.mapIndexed { index, line ->
+                restyledScript(line, scriptDraw.overlayOwners.getOrNull(index), leads)
+            }
+        }
+
+    private val scriptPanes: List<ChartPane>
+        get() {
+            if (indicatorColours.isEmpty() && indicatorWidths.isEmpty()) return scriptDraw.panes
+            return scriptDraw.panes.mapIndexed { index, pane ->
+                val owner = scriptDraw.paneOwners.getOrNull(index) ?: return@mapIndexed pane
+                if (owner !in indicatorColours && owner !in indicatorWidths) return@mapIndexed pane
+                val lead = pane.lines.firstOrNull()?.colour
+                val leads = if (lead == null) emptyMap() else mapOf(owner to lead)
+                pane.copy(lines = pane.lines.map { restyledScript(it, owner, leads) })
+            }
+        }
+
+    private fun restyledScript(line: ChartLine, owner: String?, leads: Map<String, Long>): ChartLine {
+        if (owner == null) return line
+        val colour = indicatorColours[owner]
+        val width = indicatorWidths[owner]
+        if (colour == null && width == null) return line
+        return line.copy(
+            colour = if (colour != null && line.colour == leads[owner]) colour else line.colour,
+            widthDp = width ?: line.widthDp,
+        )
+    }
+
     private fun restyled(line: ChartLine, owner: String?): ChartLine {
         if (owner == null) return line
         val colour = indicatorColours[owner]
@@ -707,7 +816,44 @@ data class ChartUiState(
             return targets
         }
 
-    val levels: List<PriceLevel> get() = if (indicatorsHidden) emptyList() else derived.levels
+    /**
+     * The horizontal references on the price scale: the catalogue's, plus every `hline` a script
+     * put over the price (4.73.0).
+     *
+     * Hidden with the indicators, because that is what a script on this chart **is**: the rail's
+     * «اندیکاتورها» switch is one switch and it turns off everything computed, a reader's own
+     * included. A script that survived it would be the one thing on the chart the switch lies about.
+     */
+    /**
+     * The legend rows belonging to a script that is not currently compiling, or is paused.
+     *
+     * Resolved from the owner ids the same way [hiddenTargets] is, and for the same reason: the
+     * legend addresses a row by its position in the list it was handed, and the owners are what
+     * turn a position back into a study.
+     */
+    val scriptWarnings: Set<ChartLegendTarget>
+        get() {
+            val flagged = scriptDraw.failures.keys
+            if (flagged.isEmpty()) return emptySet()
+            val targets = LinkedHashSet<ChartLegendTarget>()
+            shownOverlayOwners.forEachIndexed { index, owner ->
+                if (owner in flagged) targets += ChartLegendTarget.Overlay(index)
+            }
+            paneOwnersShown.forEachIndexed { index, owner ->
+                if (owner in flagged) targets += ChartLegendTarget.Pane(index)
+            }
+            return targets
+        }
+
+    val levels: List<PriceLevel>
+        get() = when {
+            indicatorsHidden -> emptyList()
+            scriptDraw.levels.isEmpty() -> derived.levels
+            // The eye takes a script's levels with its lines: `levelOwners` is carried beside the
+            // levels for exactly this, so nothing here has to re-run a reader's code to find out
+            // whose line it is looking at.
+            else -> derived.levels + scriptDraw.shown(scriptDraw.levels, scriptDraw.levelOwners, hiddenIndicators)
+        }
 
     /**
      * Which indicator a legend row belongs to, or null — item 109.
@@ -747,10 +893,13 @@ data class ChartUiState(
      * switched on, so a chart without them allocates one empty list.
      */
     val markers: List<ChartMarker>
-        get() = if (indicatorsHidden) emptyList()
-        else CandlePatterns.markersFor(visibleSeries, patterns)
-            .ifEmpty { return derived.markers }
-            .let { derived.markers + it }
+        get() {
+            if (indicatorsHidden) return emptyList()
+            val scripted = scriptDraw.shown(scriptDraw.markers, scriptDraw.markerOwners, hiddenIndicators)
+            val patterned = CandlePatterns.markersFor(visibleSeries, patterns)
+            if (scripted.isEmpty() && patterned.isEmpty()) return derived.markers
+            return derived.markers + scripted + patterned
+        }
 
     /**
      * The strips below the price — one per switched-on oscillator.
@@ -763,7 +912,11 @@ data class ChartUiState(
         /** The same identity-preserving empty case as [overlays], for the same reason. */
         get() = if (indicatorsHidden) emptyList()
         else {
-            val arranged = if (paneOrder.isEmpty() && paneMerges.isEmpty() && separated.isEmpty()) styledPanes else arrangedPanes.map { it.second }
+            // `basePanes` rather than `styledPanes`: the fast path is for a chart nobody has
+            // arranged, and a script's pane is a pane on it like any other. Reading the built-ins'
+            // list here is what left a script's own strip computed, owned, legend-resolvable — and
+            // not drawn.
+            val arranged = if (paneOrder.isEmpty() && paneMerges.isEmpty() && separated.isEmpty()) basePanes else arrangedPanes.map { it.second }
             chainPlot.panes.ifEmpty { return arranged }.let { arranged + it }
         }
 
@@ -925,6 +1078,18 @@ internal fun ChartUiState.toLayout(
     indicators = activeIndicators.toList(),
     indicatorPeriods = indicatorPeriods,
     indicatorParams = indicatorParams,
+    // A script is part of the apparatus this layout is, so it travels with it — source, inputs and
+    // all. See `ChartScriptRow`.
+    scripts = scripts.filterNot { it.missing }.map {
+        ChartScriptRow(
+            instanceId = it.instanceId,
+            name = it.name,
+            source = it.source,
+            scriptId = it.scriptId,
+            ordinal = it.ordinal,
+            overrides = it.overrides,
+        )
+    },
     scaleMode = scaleMode.name,
     // Null where the chart is on the theme's own palette, which is not the same as being on the
     // dark built-in: a reader who never opened the colour picker should get whatever the theme
@@ -1315,6 +1480,18 @@ class ChartController(
      * and the honest answer to each of those is to keep the app's current value for that one field
      * — not to discard the row, which would throw away four good settings because of a fifth.
      */
+    /**
+     * Whether an id may take part in the pane arrangement and the styling: a catalogue indicator,
+     * or a script instance.
+     *
+     * The filter exists at all because ids on disk outlive the build that wrote them — an indicator
+     * that was renamed, a study that was dropped — and a stale id in `paneOrder` is a pane that
+     * never arrives. A script's id is not in the catalogue and is still valid, which is the one
+     * case the original filter could not express.
+     */
+    private fun arrangeable(id: String): Boolean =
+        ChartScript.owns(id) || ChartCatalog.INDICATORS.any { it.id == id }
+
     private fun applySymbolState(saved: SymbolChartState) {
         val interval = ChartInterval.of(saved.timeframe)
         val type = ChartType.entries.firstOrNull { it.name == saved.chartType }
@@ -1331,13 +1508,28 @@ class ChartController(
                     .toSet(),
                 indicatorPeriods = saved.indicatorPeriods.filterKeys { ChartCatalog.periodOf(it) != null },
                 indicatorParams = knownParams(saved.indicatorParams),
-                paneOrder = saved.paneOrder.filter { id -> ChartCatalog.INDICATORS.any { it.id == id } },
-                paneMerges = saved.paneMerges.filter { (guest, host) -> ChartCatalog.INDICATORS.any { it.id == guest } && ChartCatalog.INDICATORS.any { it.id == host } },
-                separated = saved.separatedIndicators.filter { id -> ChartCatalog.INDICATORS.any { it.id == id && it.pane == IndicatorPane.PRICE } }.toSet(),
+                // The arrangement keeps ids the catalogue knows **and** ids a script owns: a
+                // reader who dragged their script's pane above MACD gets it back above MACD, and a
+                // filter that only knew the catalogue would quietly straighten it every cold start.
+                paneOrder = saved.paneOrder.filter(::arrangeable),
+                paneMerges = saved.paneMerges.filter { (guest, host) -> arrangeable(guest) && arrangeable(host) },
+                separated = saved.separatedIndicators.filter { id ->
+                    ChartScript.owns(id) || ChartCatalog.INDICATORS.any { it.id == id && it.pane == IndicatorPane.PRICE }
+                }.toSet(),
                 zoom = saved.zoom.filterValues { it in ChartViewport.MIN_BARS_PER_VIEW..ChartViewport.MAX_BARS_PER_VIEW },
                 readingsOpen = saved.readingsOpen,
-                indicatorColours = saved.indicatorColours.filterKeys { id -> ChartCatalog.INDICATORS.any { it.id == id } },
-                indicatorWidths = saved.indicatorWidths.filterKeys { id -> ChartCatalog.INDICATORS.any { it.id == id } },
+                indicatorColours = saved.indicatorColours.filterKeys(::arrangeable),
+                indicatorWidths = saved.indicatorWidths.filterKeys(::arrangeable),
+                scripts = saved.scripts.map { row ->
+                    ChartScript(
+                        instanceId = row.instanceId,
+                        name = row.name,
+                        source = row.source,
+                        scriptId = row.scriptId,
+                        overrides = row.overrides,
+                        ordinal = row.ordinal,
+                    )
+                },
                 scaleMode = mode ?: current.scaleMode,
                 // Sparse on the way out and sparse on the way back: an indicator whose source no
                 // longer decodes reads the candles, which is what every indicator does until
@@ -1367,6 +1559,7 @@ class ChartController(
                 ),
             )
         }
+        startRestoredScripts()
     }
 
     /** The layout the reader last applied anywhere, put back on a cold open. See [start]. */
@@ -1416,6 +1609,18 @@ class ChartController(
      * reader is most annoyed. The store packs every symbol into one preferences string, so this is
      * one small write and not one per field.
      */
+    /**
+     * The scripts a stored row brought back start the watch and get their first evaluation.
+     *
+     * Called at the end of [applySymbolState] rather than inside it, because the restore is one
+     * `update` and this is two things that have to happen after it has landed.
+     */
+    private fun startRestoredScripts() {
+        if (_state.value.scripts.isEmpty()) return
+        watchScripts()
+        refreshScripts()
+    }
+
     private fun persistSymbolState() {
         val store = symbolStates ?: return
         if (!symbolStateRestored) return
@@ -1441,6 +1646,16 @@ class ChartController(
             separatedIndicators = current.separated.toList(),
             zoom = current.zoom,
             readingsOpen = current.readingsOpen,
+            scripts = current.scripts.filterNot { it.missing }.map {
+                ChartScriptRow(
+                    instanceId = it.instanceId,
+                    name = it.name,
+                    source = it.source,
+                    scriptId = it.scriptId,
+                    ordinal = it.ordinal,
+                    overrides = it.overrides,
+                )
+            },
             patterns = current.patterns.toList(),
             chainSources = current.chainSources.mapValues { (_, source) -> encodeChainSource(source) },
         )
@@ -1520,7 +1735,220 @@ class ChartController(
         if (factor <= 0f || !factor.isFinite()) it else it.copy(paneScale = it.paneScale * factor)
     }
 
+    /* ------------------------------------------------------------------ scripts (4.73.0) */
+
+    /**
+     * The compiled scripts on this chart, and their last drawing.
+     *
+     * One engine per controller, which is one symbol: a `IncrementalRunner` holds the previous
+     * series and splices a tail onto it, and two symbols' bars spliced together would be a study
+     * of something that never traded.
+     */
+    private val scriptEngine = ChartScriptEngine()
+
+    /** The evaluation in flight. One at a time — a second run of the same scripts is waste. */
+    private var scriptJob: Job? = null
+
+    /** The watch that re-runs the scripts when the bars change. One per controller. */
+    private var scriptWatch: Job? = null
+
+    /**
+     * Re-run the scripts whenever the bars under them change.
+     *
+     * By **identity** of the visible series, which is the same trick `ChartDerived.Key` uses: the
+     * series is a large object replaced wholesale, so `===` answers «are these different bars» in
+     * one comparison, and committing a draw — which changes the state but not the series — cannot
+     * feed the loop back into itself.
+     *
+     * A pan does not land here and should not: a script is a function of the bars, not of where the
+     * reader is looking, and re-running one on every frame of a drag is the thing that would make a
+     * charted script unusable. The visible series changes when bars arrive, when the timeframe
+     * changes and when the replay steps — which is exactly the list of things that change a value.
+     *
+     * ### Why it starts with the first script and stops with the last
+     *
+     * Because collecting a `StateFlow` never returns, and a job that never returns is a job that
+     * outlives whatever it was for. A chart with no scripts on it — every chart in the app until
+     * somebody adds one, and every controller in every test — must launch nothing at all; starting
+     * this in `start()` made eleven unrelated tests wait a minute for a coroutine that was watching
+     * an empty list.
+     */
+    private fun watchScripts() {
+        if (scriptWatch != null) return
+        scriptWatch = scope.launch {
+            var last: CandleSeries? = null
+            state.collect { at ->
+                val series = at.visibleSeries
+                if (series === last) return@collect
+                last = series
+                if (at.scripts.isNotEmpty()) refreshScripts()
+            }
+        }
+    }
+
+    /** Stop watching once the last script has gone; there is nothing left for it to re-run. */
+    private fun stopWatchingScripts() {
+        if (_state.value.scripts.isNotEmpty()) return
+        scriptWatch?.cancel()
+        scriptWatch = null
+    }
+
+    /** Counts up so two instances of the same script never share an id. Persisted with the row. */
+    private var scriptSerial: Long = 0
+
+    /**
+     * Put a script on this chart — the «Add to chart» the studio's Run button sits beside.
+     *
+     * Returns the new instance's id so the caller can open its settings, or hand it back to the
+     * studio for the hot-swap in [setScriptSource]. Numbering is TradingView's: a second copy of a
+     * script already here comes back as «RSI Zones (2)».
+     */
+    fun addScript(name: String, source: String, scriptId: String? = null, overrides: Map<String, Double> = emptyMap()): String {
+        record()
+        val instanceId = nextScriptInstanceId()
+        _state.update { old ->
+            val ordinal = old.scripts.count { it.name == name } + 1
+            old.copy(
+                scripts = old.scripts + ChartScript(
+                    instanceId = instanceId,
+                    name = name,
+                    source = source,
+                    scriptId = scriptId,
+                    overrides = overrides,
+                    ordinal = ordinal,
+                ),
+            )
+        }
+        watchScripts()
+        refreshScripts()
+        persistSymbolState()
+        return instanceId
+    }
+
+    /**
+     * Add this script, or **update the one already here under the same name**.
+     *
+     * The one call «Add to chart» makes, and the reason it is one call: a reader iterating in the
+     * editor presses that button ten times on the same script, and ten copies in the legend is not
+     * what any of those presses meant. The second press hot-swaps — the instance keeps its id, its
+     * pane, its colour and every input the reader set — which is exactly [setScriptSource]. Two
+     * copies on purpose is two names, and `ChartScript.ordinal` numbers those.
+     */
+    fun putScript(name: String, source: String, overrides: Map<String, Double> = emptyMap()): String {
+        val existing = _state.value.scripts.firstOrNull { it.name == name }
+        if (existing != null) {
+            setScriptSource(existing.instanceId, source)
+            if (overrides.isNotEmpty()) {
+                overrides.forEach { (input, value) -> setScriptInput(existing.instanceId, input, value) }
+            }
+            return existing.instanceId
+        }
+        return addScript(name = name, source = source, overrides = overrides)
+    }
+
+    /** Take a script off this chart. Its compiled form and its history go with it. */
+    fun removeScript(instanceId: String) {
+        record()
+        scriptEngine.forget(instanceId)
+        _state.update { old ->
+            val owner = ChartScript.OWNER_PREFIX + instanceId
+            old.copy(
+                scripts = old.scripts.filterNot { it.instanceId == instanceId },
+                hiddenIndicators = old.hiddenIndicators - owner,
+                indicatorColours = old.indicatorColours - owner,
+                indicatorWidths = old.indicatorWidths - owner,
+                paneOrder = old.paneOrder - owner,
+                paneMerges = old.paneMerges.filterKeys { it != owner }.filterValues { it != owner },
+                separated = old.separated - owner,
+            )
+        }
+        refreshScripts()
+        stopWatchingScripts()
+        persistSymbolState()
+    }
+
+    /**
+     * New text for a script already on the chart — the studio's Run, hot-swapped.
+     *
+     * The instance keeps its id, its place in the legend, its pane, its colour and the inputs the
+     * reader set: a reader iterating on a script is *editing the study they are looking at*, not
+     * replacing it, and a swap that reset those would make the studio unusable for the one workflow
+     * it exists for. A source that does not compile leaves the last good drawing up — see
+     * `ChartScriptEngine`.
+     */
+    fun setScriptSource(instanceId: String, source: String, name: String? = null) {
+        _state.update { old ->
+            old.copy(
+                scripts = old.scripts.map {
+                    if (it.instanceId != instanceId) it
+                    else it.copy(source = source, name = name ?: it.name, missing = false)
+                },
+            )
+        }
+        refreshScripts()
+        persistSymbolState()
+    }
+
+    /** One `input(...)` of one instance, by the input's own title. Null clears it to the script's default. */
+    fun setScriptInput(instanceId: String, name: String, value: Double?) {
+        record()
+        _state.update { old ->
+            old.copy(
+                scripts = old.scripts.map { script ->
+                    if (script.instanceId != instanceId) script
+                    else script.copy(
+                        overrides = if (value == null) script.overrides - name else script.overrides + (name to value),
+                    )
+                },
+            )
+        }
+        refreshScripts()
+        persistSymbolState()
+    }
+
+    /** The instance behind an owner id, or null. What the settings sheet and the legend resolve with. */
+    fun scriptFor(ownerId: String): ChartScript? {
+        val instance = ChartScript.instanceOf(ownerId) ?: return null
+        return _state.value.scripts.firstOrNull { it.instanceId == instance }
+    }
+
+    /**
+     * Re-run every script over the bars now on screen, off the UI thread.
+     *
+     * Launched rather than called, on [workers] where the app supplies one: this is a reader's own
+     * code, bounded by a node budget and a two-second clock rather than by anything this class
+     * knows, and a getter that ran it would be a getter that can hold a frame for two seconds. The
+     * answer is committed in one assignment, so the overlays, the panes and their owners can never
+     * be read half-swapped.
+     */
+    private fun refreshScripts() {
+        val current = _state.value
+        if (current.scripts.isEmpty()) {
+            if (current.scriptDraw !== ChartScriptDraw.EMPTY) {
+                _state.update { it.copy(scriptDraw = ChartScriptDraw.EMPTY) }
+            }
+            return
+        }
+        scriptJob?.cancel()
+        scriptJob = scope.launch(workers ?: EmptyCoroutineContext) {
+            val at = _state.value
+            val draw = scriptEngine.evaluate(at.visibleSeries, at.scripts) { System.currentTimeMillis() }
+            _state.update { it.copy(scriptDraw = draw) }
+            scriptJob = null
+        }
+    }
+
+    private fun nextScriptInstanceId(): String {
+        val used = _state.value.scripts.mapNotNull { it.instanceId.toLongOrNull() }.maxOrNull() ?: 0L
+        scriptSerial = maxOf(scriptSerial, used) + 1
+        return scriptSerial.toString()
+    }
+
     fun toggleIndicator(id: String) {
+        // A script is an indicator and the legend's × is the same ×, so the id it hands back is
+        // routed to the one function that can take a script off: there is no `activeIndicators`
+        // entry to flip for a script, only an instance to remove.
+        ChartScript.instanceOf(id)?.let { return removeScript(it) }
         record()
         _state.update { old ->
             val next = if (id in old.activeIndicators) {
@@ -2654,6 +3082,22 @@ class ChartController(
                 indicatorPeriods = layout.indicatorPeriods
                     .filterKeys { ChartCatalog.periodOf(it) != null },
                 indicatorParams = knownParams(layout.indicatorParams),
+                // The layout's scripts **replace** this chart's, which is what applying a layout
+                // means everywhere else in this function: the apparatus on screen becomes the one
+                // that was saved. A row whose source did not survive decoding comes back as a
+                // placeholder that draws nothing and offers «بازگرداندن اسکریپت» rather than
+                // vanishing, so a reader can see that something was there.
+                scripts = layout.scripts.map { row ->
+                    ChartScript(
+                        instanceId = row.instanceId,
+                        name = row.name,
+                        source = row.source,
+                        scriptId = row.scriptId,
+                        overrides = row.overrides,
+                        ordinal = row.ordinal,
+                        missing = row.source.isBlank(),
+                    )
+                },
                 scaleMode = mode ?: current.scaleMode,
                 // The layout the next drawing belongs to, and the one `syncedInto` filters against.
                 // Without it every mark carries a null layout and «فقط این چیدمان» means nothing.
@@ -2667,6 +3111,11 @@ class ChartController(
             )
         }
         applyColourTemplate(layout.colourTemplate)
+        // The compiled forms of whatever was here belong to scripts that are no longer on the
+        // chart. Keeping them would hold a previous layout's bars against a new layout's scripts.
+        scriptEngine.reset()
+        if (_state.value.scripts.isNotEmpty()) watchScripts() else stopWatchingScripts()
+        refreshScripts()
     }
 
     /**

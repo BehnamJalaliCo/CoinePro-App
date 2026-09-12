@@ -290,6 +290,17 @@ fun CoineProChart(
      * already in that state, and a caller that only listens still gets a working control.
      */
     hiddenSeries: Set<ChartLegendTarget> = emptySet(),
+    /**
+     * The legend rows that carry a **warning dot** — a study drawing something it can no longer
+     * recompute (4.73.0).
+     *
+     * Beside [hiddenSeries] and shaped like it, for the same reason: it is a fact about this
+     * reader's chart right now rather than about the line, so it belongs to the caller. What
+     * produces it today is a NamaScript indicator whose last compile failed — its previous good
+     * drawing stays on the chart, and the dot is what stops that being a lie. The engine has no
+     * idea what a script is and does not need one: it draws a dot where it is told to.
+     */
+    warningSeries: Set<ChartLegendTarget> = emptySet(),
     /** A legend row's eye was tapped. See [hiddenSeries]. */
     onToggleSeriesVisibility: ((ChartLegendTarget) -> Unit)? = null,
     /** A legend row's settings were asked for. Null hides the affordance rather than disabling it. */
@@ -3212,6 +3223,7 @@ fun CoineProChart(
                 logoSymbol = legendLogo,
                 palette = palette,
                 hidden = hidden,
+                warnings = warningSeries,
                 measurer = measurer,
                 tracking = tracking,
                 onToggleVisibility = { target ->
@@ -6267,11 +6279,23 @@ internal const val LEGEND_BUDGET = 0.25f
 /** Breathing room between the legend's text and the edge of the plate behind it. */
 internal val LEGEND_PLATE_PADDING_DP = 5.dp
 
-/** How much of the chart shows through the legend's plate. */
-// Nothing. TradingView draws its legend straight onto the pane with no plate behind it, and the
-// 82% stage-coloured panel this app drew over the top-left of the plot was the single most visible
-// difference between the two charts at a glance.
-internal const val LEGEND_PLATE_ALPHA = 0f
+/**
+ * How much of the chart's ground sits behind the legend's text.
+ *
+ * ### The history of this number, because it has moved twice
+ *
+ * It was **0.82** — a panel over the top-left of the plot, and at a glance the single most visible
+ * difference between this chart and TradingView's. Run F took it to **0**, which is what TradingView
+ * does: the legend is drawn straight onto the pane.
+ *
+ * Run I puts it at **0.60**, and the owner's reason is the one thing zero cannot answer: with eight
+ * overlays switched on, a moving average passes *through* the words. TradingView gets away with
+ * nothing behind its legend because its legend sits above a chart that is mostly empty at the top
+ * left; a chart with a reader's own scripts on it is not. Sixty per cent is the number that hides a
+ * line under the text and still lets the candles behind it read as candles — a scrim rather than a
+ * panel, which is what eighty-two was.
+ */
+internal const val LEGEND_PLATE_ALPHA = 0.60f
 
 /** The plate's corner. Softer than a tag's, because it is a panel rather than a marker. */
 internal val LEGEND_PLATE_RADIUS_DP = 6.dp

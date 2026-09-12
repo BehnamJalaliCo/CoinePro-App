@@ -191,6 +191,12 @@ data class AlertConditionDraft(
                 drawingId = trigger.drawingId,
             )
 
+            // Null for the same reason a nested multi-condition is null: this sheet builds price,
+            // channel, move, indicator and drawing conditions, and a script condition is a sentence
+            // in the reader's own code that only the studio can edit. The caller hides «ویرایش» and
+            // the alert is paused, duplicated and deleted like any other.
+            is AlertTrigger.ScriptCondition -> null
+
             is AlertTrigger.MultiCondition -> null
         }
 
@@ -504,6 +510,12 @@ data class AlertDraft(
                 is AlertTrigger.Indicator -> LocalAlertCondition.ABOVE to trigger.value
 
                 is AlertTrigger.DrawingTouch -> LocalAlertCondition.ABOVE to 0.0
+
+                // A script condition has no price level at all — it is a sentence in the reader's
+                // own code — so the flat mirror is a placeholder that can never be reached: an
+                // older build that cannot read the trigger has no way to evaluate the script
+                // either, and «بالای صفر» firing on every bar would be worse than silence.
+                is AlertTrigger.ScriptCondition -> LocalAlertCondition.ABOVE to Double.MAX_VALUE
 
                 // The first condition, because an AND cannot be said in one flat comparison and the
                 // first is the one the reader wrote first.

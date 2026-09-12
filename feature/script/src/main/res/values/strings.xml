@@ -96,4 +96,16 @@
     <string name="script_returns">Returns: %1$s</string>
     <string name="script_colours">Colours</string>
     <string name="script_colours_count">%1$s colours</string>
+    <string name="script_add_to_chart">Add to chart</string>
+    <string name="script_update_on_chart">Update on chart</string>
+    <string name="script_target_chart">Your chart</string>
+    <string name="script_target_sandbox">Sandbox</string>
+    <string name="script_snippet_cross">Two moving averages</string>
+    <string name="script_snippet_cross_source">fast = ta.ema(close, input.int(12, title = \"Fast\"))\nslow = ta.ema(close, input.int(26, title = \"Slow\"))\nplot(fast, title = \"Fast\", color = color.gold)\nplot(slow, title = \"Slow\", color = color.blue)\nmarker(ta.crossover(fast, slow) and confirmed, title = \"Buy\", style = \"up\")\nmarker(ta.crossunder(fast, slow) and confirmed, title = \"Sell\", style = \"down\")</string>
+    <string name="script_snippet_rsi">RSI with zones</string>
+    <string name="script_snippet_rsi_source">r = ta.rsi(close, input.int(14, title = \"Length\"))\nplot(r, title = \"RSI\", pane = \"own\")\nhline(70, pane = \"own\")\nhline(30, pane = \"own\")\nbgcolor(r &gt; 70, color.new(color.sell, 85))\nbgcolor(r &lt; 30, color.new(color.buy, 85))</string>
+    <string name="script_snippet_label">A label on the last bar</string>
+    <string name="script_snippet_label_source">label.new(bar_index, high, \"close \" + str.tostring(close), color = color.gold)\nline.new(bar_index - 20, ta.lowest(low, 20), bar_index, ta.lowest(low, 20), color = color.blue)</string>
+    <string name="script_snippet_strategy">A simple strategy</string>
+    <string name="script_snippet_strategy_source">fast = ta.ema(close, 9)\nslow = ta.ema(close, 21)\nstrategy.entry(\"L\", strategy.long, when = ta.crossover(fast, slow))\nstrategy.entry(\"S\", strategy.short, when = ta.crossunder(fast, slow))</string>
 </resources>

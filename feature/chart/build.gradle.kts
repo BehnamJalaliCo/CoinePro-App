@@ -16,6 +16,9 @@ android {
 
 dependencies {
     implementation(project(":chart-ui"))
+    // The language itself, not `:core:script`: the chart runs scripts as indicators
+    // (`ChartScripts.kt`) and has no business with the database the studio saves them in.
+    implementation(project(":namascript"))
     implementation(project(":core:chartevents"))
     implementation(project(":core:diagnostics"))
     implementation(project(":core:backtest"))

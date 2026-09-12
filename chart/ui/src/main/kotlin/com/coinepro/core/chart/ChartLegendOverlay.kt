@@ -151,6 +151,15 @@ data class ChartLegendRow(
      * one line and a remove would be an offer to delete arithmetic.
      */
     val primary: Boolean,
+    /**
+     * Whether this row draws a warning dot before its swatch.
+     *
+     * True where the study is still *drawn* but no longer *current* — the one case today is a
+     * script whose last compile failed. The alternative, removing the line, is worse: a reader
+     * editing a script would watch the study they are working on disappear on every stray
+     * keystroke, and the picture they want to compare against is the last one that worked.
+     */
+    val warning: Boolean = false,
 )
 
 /**
@@ -174,6 +183,7 @@ internal fun legendRows(
     tracking: Boolean,
     rebased: List<DoubleArray>,
     seriesLabel: String?,
+    warnings: Set<ChartLegendTarget> = emptySet(),
 ): List<ChartLegendRow> {
     val bar = series.bars.getOrNull(index) ?: return emptyList()
     val decimals = decimalsFor(bar.c)
@@ -209,6 +219,7 @@ internal fun legendRows(
             alternatives = listOf(groupThousands(reading(overlay.values[index], decimals))),
             colour = overlay.colour,
             primary = true,
+            warning = ChartLegendTarget.Overlay(position) in warnings,
         )
     }
     decoration.panes.forEachIndexed { position, pane ->
@@ -219,6 +230,7 @@ internal fun legendRows(
             alternatives = listOf(""),
             colour = pane.lines.firstOrNull()?.colour ?: pane.histogram?.colour,
             primary = true,
+            warning = target in warnings,
         )
         if (!tracking) return@forEachIndexed
         (pane.lines + listOfNotNull(pane.histogram))
@@ -488,6 +500,8 @@ internal fun ChartLegendOverlay(
     seriesLabel: String?,
     palette: ChartPalette,
     hidden: Set<ChartLegendTarget>,
+    /** The rows that draw a warning dot. See `CoineProChart`'s `warningSeries`. */
+    warnings: Set<ChartLegendTarget> = emptySet(),
     measurer: TextMeasurer,
     tracking: Boolean,
     onToggleVisibility: (ChartLegendTarget) -> Unit,
@@ -526,6 +540,7 @@ internal fun ChartLegendOverlay(
         tracking = tracking,
         rebased = rebased,
         seriesLabel = seriesLabel,
+        warnings = warnings,
     )
     if (rows.isEmpty()) return
     // The caller's figure is a statement about now, so it is only true of the last bar. Anywhere
@@ -820,6 +835,18 @@ private fun LegendRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(LEGEND_GAP_DP),
     ) {
+        // The warning dot, before the swatch and in the sell colour: it is the first thing on the
+        // row because it changes what every figure after it means — «this is the last drawing that
+        // worked, not the current one». Tapping the row's gear opens the diagnostic.
+        if (row.warning) {
+            Box(
+                modifier = Modifier
+                    .size(SWATCH_DP)
+                    .clip(CircleShape)
+                    .background(palette.down)
+                    .semantics { contentDescription = "legend-warning" },
+            )
+        }
         if (row.colour != null) {
             Box(
                 modifier = Modifier

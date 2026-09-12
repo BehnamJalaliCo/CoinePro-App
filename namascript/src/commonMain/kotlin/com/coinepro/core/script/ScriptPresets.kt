@@ -17,7 +17,18 @@ data class ScriptPreset(
     /** What a reader learns by reading it, one line. Shown under the title in the library. */
     val teaches: String,
     val source: String,
-)
+) {
+    /**
+     * This preset in the reader's language (4.73.0).
+     *
+     * The Persian table is the one written here and the English one is [ScriptPresetsEn]; a preset
+     * with no English entry answers with itself rather than disappearing, which is the safe half of
+     * the two failures — a Persian card in an English list is a translation that is missing, and an
+     * absent card is a study the reader cannot reach at all.
+     */
+    fun localised(english: Boolean): ScriptPreset =
+        if (english) ScriptPresetsEn.BY_ID[id] ?: this else this
+}
 
 object ScriptPresets {
 
@@ -246,4 +257,10 @@ object ScriptPresets {
     )
 
     fun byId(id: String): ScriptPreset? = ALL.firstOrNull { it.id == id }
+
+    /** The presets in the reader's language, in the order they are written above. */
+    fun all(english: Boolean): List<ScriptPreset> = if (english) ALL.map { it.localised(true) } else ALL
+
+    /** The blank script's starting lines in the reader's language. See [BLANK]. */
+    fun blank(english: Boolean): String = if (english) ScriptPresetsEn.BLANK else BLANK
 }

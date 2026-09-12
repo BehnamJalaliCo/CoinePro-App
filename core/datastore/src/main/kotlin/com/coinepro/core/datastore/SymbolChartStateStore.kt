@@ -176,6 +176,14 @@ data class SymbolChartState(
      * whole glass on the index.
      */
     val readingsOpen: Boolean = false,
+    /**
+     * The NamaScript scripts that were on this chart, with their source and their inputs (4.73.0).
+     *
+     * A script is an indicator here as it is everywhere else, so it could in principle have gone
+     * into [indicators] as an id — and it does not, because an id is all that list can hold and a
+     * script is text. See [ChartScriptRow] for why the text travels rather than a reference to it.
+     */
+    val scripts: List<ChartScriptRow> = emptyList(),
 )
 
 /**
@@ -355,6 +363,9 @@ class SymbolChartStateStore(private val dataStore: DataStore<Preferences>) {
                     .joinToString(UNIT),
                 // Twenty-three: the readings panel's fold.
                 if (state.readingsOpen) "1" else "0",
+                // Twenty-four: the scripts, each Base64'd so a reader's own text cannot contain
+                // this format's frame. See `ChartScriptCodec`.
+                ChartScriptCodec.encode(state.scripts),
             ).joinToString(RECORD)
         }
 
@@ -416,6 +427,7 @@ class SymbolChartStateStore(private val dataStore: DataStore<Preferences>) {
                 // A row from a build before run G is short here, and short means closed — which is
                 // the new default and is what a reader who has never touched the panel should get.
                 readingsOpen = parts.getOrNull(23) == "1",
+                scripts = ChartScriptCodec.decode(parts.getOrNull(24)),
             )
         }
 

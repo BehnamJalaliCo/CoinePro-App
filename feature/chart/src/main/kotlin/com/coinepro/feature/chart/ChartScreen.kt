@@ -363,6 +363,27 @@ fun ChartScreen(
     onCreateAlert: ((symbol: String, price: Double) -> Unit)? = null,
     /** The symbol search, for the `/` key and the desk's menu; null on a screen without one. */
     onOpenSymbolSearch: (() -> Unit)? = null,
+    /**
+     * Open a script instance's source in the NamaScript editor (4.73.0).
+     *
+     * From the settings sheet's «Open in the editor», so a script the reader is looking at on the
+     * chart is one tap from the text that makes it. Null where this build has no editor route.
+     */
+    onOpenScript: ((source: String, name: String) -> Unit)? = null,
+    /**
+     * The scripts this reader could switch on, for the indicator sheet's «My scripts» section.
+     *
+     * Filled by the app from the saved-script table and the shipped presets. Empty in a test and a
+     * preview, where the section simply is not drawn.
+     */
+    scriptLibrary: List<ChartScriptSource> = emptyList(),
+    /**
+     * Make an alert on one of a script's `alertcondition(...)`s (run I item 0.6).
+     *
+     * The script's source travels with the request because that is what the alert has to carry:
+     * see `AlertTrigger.ScriptCondition`. Null where this build has no alerts.
+     */
+    onCreateScriptAlert: ((symbol: String, name: String, source: String, condition: String) -> Unit)? = null,
     /** Saved layouts. Null leaves the button off — a build with no store has nothing to offer. */
     layouts: List<ChartLayout>? = null,
     onSaveLayout: ((ChartLayout) -> Unit)? = null,
@@ -1103,6 +1124,9 @@ fun ChartScreen(
                     // One hidden set for the legend's eye and the settings sheet's switch: the
                     // chart reports the row, the controller keeps the id.
                     hiddenSeries = state.hiddenTargets,
+                    // A script whose last compile failed keeps its previous drawing and grows a
+                    // dot: the study is on the chart, and it is not what the text now says.
+                    warningSeries = state.scriptWarnings,
                     onToggleSeriesVisibility = { target ->
                         state.indicatorFor(target)?.let(controller::toggleIndicatorHidden)
                     },
@@ -1672,6 +1696,13 @@ fun ChartScreen(
             val recent by remember(indicatorFavourites) {
                 indicatorFavourites?.recent() ?: flowOf(emptyList<String>())
             }.collectAsStateWithLifecycle(emptyList())
+            // A reader's own studies first. See `ScriptPickerSection` for why they lead.
+            ScriptPickerSection(
+                library = scriptLibrary,
+                onChart = state.scripts,
+                onAdd = { entry -> controller.putScript(entry.name, entry.source) },
+                onRemove = { instance -> controller.removeScript(instance.instanceId) },
+            )
             IndicatorPicker(
                 active = state.activeIndicators,
                 onToggle = { option ->
@@ -2092,6 +2123,71 @@ fun ChartScreen(
     }
 
     indicatorSettings?.let { id ->
+        // A script's gear opens the script's own sheet — its `input(...)`s, its diagnostic — and
+        // everything else about it (the colour, the eye, the pane) is the same behaviour the
+        // catalogue's sheet drives, because a script instance is addressed by an indicator id.
+        val script = state.scripts.firstOrNull { it.ownerId == id }
+        if (script != null) {
+            val owners = state.paneOwnersShown
+            val at = owners.indexOf(id)
+            val hostAbove = if (at > 0) owners[at - 1] else null
+            ScriptSettingsSheet(
+                script = script,
+                inputs = state.scriptDraw.inputs[id].orEmpty(),
+                failure = state.scriptDraw.failures[id],
+                paused = state.scriptDraw.paused[id],
+                colour = state.indicatorColours[id],
+                widthDp = state.indicatorWidths[id],
+                hidden = id in state.hiddenIndicators,
+                arrangement = IndicatorArrangement(
+                    // A script decides its own pane through `pane =` and by measuring its values
+                    // against the price, so «is this an overlay» is a fact about what it drew
+                    // rather than about a catalogue row: it is an overlay when it put lines over
+                    // the candles, and `separate` is then a choice the reader can make.
+                    overlayByDefault = state.scriptDraw.overlayOwners.contains(id),
+                    separated = id in state.separated,
+                    merged = state.paneMerges[id] != null,
+                    canMoveUp = at > 0,
+                    canMoveDown = at in 0 until owners.lastIndex,
+                    canMergeUp = hostAbove != null && state.paneMerges[hostAbove] == null,
+                ),
+                onDismiss = { indicatorSettings = null },
+                onSetInput = { name, value -> controller.setScriptInput(script.instanceId, name, value) },
+                onSetColour = { colour -> controller.setIndicatorColour(id, colour) },
+                onSetWidth = { width -> controller.setIndicatorWidth(id, width) },
+                onToggleHidden = { controller.toggleIndicatorHidden(id) },
+                onArrange = { action ->
+                    when (action) {
+                        IndicatorArrangement.Action.SEPARATE -> controller.separateOverlay(id, true)
+                        IndicatorArrangement.Action.JOIN_PRICE -> controller.separateOverlay(id, false)
+                        IndicatorArrangement.Action.MOVE_UP -> controller.movePane(id, up = true)
+                        IndicatorArrangement.Action.MOVE_DOWN -> controller.movePane(id, up = false)
+                        IndicatorArrangement.Action.MERGE_UP -> controller.mergePane(id, hostAbove)
+                        IndicatorArrangement.Action.UNMERGE -> controller.mergePane(id, null)
+                    }
+                },
+                onRemove = {
+                    controller.removeScript(script.instanceId)
+                    indicatorSettings = null
+                },
+                onEdit = onOpenScript?.let { open ->
+                    {
+                        indicatorSettings = null
+                        open(script.source, script.name)
+                    }
+                },
+                alerts = state.scriptDraw.alerts[id].orEmpty().map {
+                    it.title to it.firing(state.visibleSeries.size)
+                },
+                onCreateAlert = onCreateScriptAlert?.let { create ->
+                    { condition ->
+                        indicatorSettings = null
+                        create(state.symbol, script.displayName, script.source, condition)
+                    }
+                },
+            )
+            return@let
+        }
         val option = ChartCatalog.INDICATORS.firstOrNull { it.id == id }
         if (option == null || id !in state.activeIndicators) {
             indicatorSettings = null

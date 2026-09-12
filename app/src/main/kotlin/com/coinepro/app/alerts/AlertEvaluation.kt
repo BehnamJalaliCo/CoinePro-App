@@ -26,6 +26,16 @@ data class AlertIndicatorKey(val indicatorId: String, val period: Int?)
 data class AlertIndicatorReading(val previous: Double?, val current: Double)
 
 /**
+ * One `alertcondition(...)` of one script, as the sample keys it (4.73.0).
+ *
+ * The **source** is the key and not a name, which is deliberate: two alerts on the same condition
+ * name in two different scripts are two different questions, and two alerts on one script share the
+ * run. Keying by source means the worker compiles and evaluates each distinct script once per pass
+ * however many alerts point at it.
+ */
+data class AlertScriptKey(val source: String, val condition: String)
+
+/**
  * What one evaluation pass knows about one instrument.
  *
  * ### Why the indicator outputs and the drawn levels travel with the sample
@@ -89,6 +99,14 @@ data class AlertSample(
      * rather than firing against a level of zero.
      */
     val drawingLevels: Map<String, List<Double>> = emptyMap(),
+    /**
+     * Whether each asked-for script condition held on the last closed bar (4.73.0).
+     *
+     * Absent rather than false where the script could not be run — a compile error, a budget
+     * breach, too few bars — and the routing turns an absent entry into `NaN`, which fires nothing.
+     * A script that is broken must not be a script that fires.
+     */
+    val scriptConditions: Map<AlertScriptKey, Boolean> = emptyMap(),
 ) {
 
     /**
@@ -130,6 +148,8 @@ data class AlertDataNeeds(
     val candles: Boolean,
     val indicators: Set<AlertIndicatorKey>,
     val drawings: Set<String>,
+    /** The script conditions to resolve — see [AlertScriptKey]. */
+    val scripts: Set<AlertScriptKey> = emptySet(),
 ) {
 
     /** The union of two sets of needs, for two alerts that happen to be on the same instrument. */
@@ -137,6 +157,7 @@ data class AlertDataNeeds(
         candles = candles || other.candles,
         indicators = indicators + other.indicators,
         drawings = drawings + other.drawings,
+        scripts = scripts + other.scripts,
     )
 
     companion object {
@@ -221,6 +242,13 @@ object AlertConditions {
             is AlertTrigger.Indicator ->
                 reading.indicators[AlertIndicatorKey(condition.indicatorId, condition.period)]?.current
                     ?: Double.NaN
+            // One or zero, which is what `ScriptCondition.evaluate` compares. An absent entry is
+            // `NaN` for the same reason an absent indicator reading is: every comparison against it
+            // is false, so a script that could not be run fires nothing without a branch saying so.
+            is AlertTrigger.ScriptCondition ->
+                reading.scriptConditions[AlertScriptKey(condition.source, condition.condition)]
+                    ?.let { if (it) 1.0 else 0.0 }
+                    ?: Double.NaN
             else -> reading.price
         }
 
@@ -273,6 +301,12 @@ object AlertConditions {
             candles = true,
             indicators = emptySet(),
             drawings = setOf(trigger.drawingId),
+        )
+        is AlertTrigger.ScriptCondition -> AlertDataNeeds(
+            candles = true,
+            indicators = emptySet(),
+            drawings = emptySet(),
+            scripts = setOf(AlertScriptKey(trigger.source, trigger.condition)),
         )
         is AlertTrigger.MultiCondition -> trigger.conditions
             .fold(AlertDataNeeds.QUOTE_ONLY) { needs, condition -> needs + needsOf(condition) }

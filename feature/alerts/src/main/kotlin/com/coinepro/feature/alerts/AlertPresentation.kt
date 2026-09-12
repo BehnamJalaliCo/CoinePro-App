@@ -350,6 +350,11 @@ object AlertSentence {
         // honest statement is that the alert watches a line the reader drew, not which one.
         is AlertTrigger.DrawingTouch -> "برخورد با ترسیم روی نمودار"
 
+        // «Script: RSI Zones → Oversold cross», as the owner's item 0.6 words it: the script's own
+        // name and the condition's own name, both the reader's words rather than this file's.
+        is AlertTrigger.ScriptCondition ->
+            "نمااسکریپت: " + trigger.name.ifBlank { "اسکریپت" } + " ← " + trigger.condition
+
         is AlertTrigger.MultiCondition ->
             trigger.conditions.joinToString(AND) { predicate(it) }
     }

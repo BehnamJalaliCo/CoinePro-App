@@ -199,4 +199,17 @@
     <string name="chart_menu_copy_price">Copy price</string>
     <string name="chart_menu_scale">Price scale…</string>
     <string name="chart_menu_search">Search symbol</string>
+    <string name="chart_script_kind">NamaScript indicator</string>
+    <string name="chart_script_paused">Paused — this script is too slow to run on every bar (line %1$s).</string>
+    <string name="chart_script_inputs_note">These are the script\'s own inputs. The chart redraws as you move them.</string>
+    <string name="chart_script_edit">Open in the editor</string>
+    <string name="chart_script_custom">My scripts</string>
+    <string name="chart_script_none">No scripts yet. Write one in the editor and add it here.</string>
+    <string name="chart_script_restore">Restore script</string>
+    <string name="chart_script_missing">This layout was saved with a script this version cannot find.</string>
+    <string name="chart_script_on_chart">On the chart</string>
+    <string name="chart_script_alerts">Alert conditions</string>
+    <string name="chart_script_alert_firing">Holding on the last bar</string>
+    <string name="chart_script_alert_quiet">Not holding</string>
+    <string name="chart_script_alert_create">Create an alert</string>
 </resources>

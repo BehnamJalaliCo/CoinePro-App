@@ -75,6 +75,7 @@ import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.database.SavedScriptEntity
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSegmentedControl
@@ -123,10 +124,42 @@ fun ScriptScreen(
     series: CandleSeries,
     modifier: Modifier = Modifier,
     loading: Boolean = false,
+    /**
+     * Put the script in the editor on the **main chart** — «Add to chart» (4.73.0, run I item 0).
+     *
+     * The button this feeds is the whole point of the studio: everything a reader wants from a
+     * script they wrote happens after it. Null where there is no chart behind this screen, and the
+     * button is then absent rather than dead.
+     *
+     * Answers the instance id it created or updated, so the screen can say «Update on chart» the
+     * next time and the caller can open that instance's settings.
+     */
+    onAddToChart: ((name: String, source: String, overrides: Map<String, Double>) -> String)? = null,
+    /**
+     * The **names** of the scripts already on the chart, so the button knows which word to use.
+     *
+     * Names rather than instance ids, because that is the key the caller matches on: adding a
+     * script whose name is already on the chart *replaces* it rather than stacking a second copy,
+     * which is what a reader iterating in the editor means every time. Two deliberately different
+     * copies get two names, and `ChartScript.ordinal` numbers them when they do not.
+     */
+    onChart: Set<String> = emptySet(),
+    /**
+     * The **main chart**, for the split view's right half.
+     *
+     * When this is supplied the split shows the reader's actual chart — their indicators, their
+     * drawings, their timeframe — and the studio's two-hundred-bar preview becomes a *sandbox* one
+     * chip away. That inversion is run I item 0's second sentence and it is the difference between
+     * an editor that previews and an editor that edits the thing you are looking at.
+     */
+    mainChart: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     val saved by controller.saved.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(ScriptTab.EDITOR) }
+    // The studio's language, read once: the presets, the blank script and the snippet chips all
+    // choose their words with it, and the code inside them travels to the reader's chart.
+    val english = inEnglish()
     // Whether this composition has already decided where to land. One shot, and saveable, so a
     // rotation does not throw the reader back to the library out of a script they are editing.
     var landed by rememberSaveable { mutableStateOf(false) }
@@ -157,7 +190,7 @@ fun ScriptScreen(
         // The blank script is still prepared, so the editor is ready the moment they switch to it
         // — an empty editor is the hardest screen in any programming product, and it is now the
         // second thing they see rather than the first.
-        if (state.source.isBlank()) controller.openBlank()
+        if (state.source.isBlank()) controller.openBlank(english)
     }
 
     Column(
@@ -179,9 +212,19 @@ fun ScriptScreen(
                 state = state,
                 series = series,
                 loading = loading,
+                onAddToChart = onAddToChart,
+                onChart = onChart,
+                mainChart = mainChart,
             )
             ScriptTab.LIBRARY -> LibraryTab(
                 saved = saved,
+                english = english,
+                // «Add to chart» from a card, without opening the editor first: a reader picking a
+                // ready-made study out of the library wants it *on the chart*, and making them
+                // route through Run to get there was the studio pretending to be an IDE.
+                onAddToChart = onAddToChart?.let { add ->
+                    { name, source -> add(name, source, emptyMap()); Unit }
+                },
                 openId = state.savedId,
                 onOpen = controller::open,
                 onDelete = controller::delete,
@@ -194,7 +237,7 @@ fun ScriptScreen(
                     tab = ScriptTab.EDITOR
                 },
                 onNew = {
-                    controller.openBlank()
+                    controller.openBlank(english)
                     tab = ScriptTab.EDITOR
                 },
             )
@@ -251,6 +294,9 @@ private fun EditorTab(
     state: ScriptEditorState,
     series: CandleSeries,
     loading: Boolean,
+    onAddToChart: ((String, String, Map<String, Double>) -> String)? = null,
+    onChart: Set<String> = emptySet(),
+    mainChart: (@Composable (Modifier) -> Unit)? = null,
 ) = BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
     // Named for the pane the script's own-pane plots land in, so a reader with three scripts saved
     // can tell which strip belongs to which.
@@ -313,6 +359,8 @@ private fun EditorTab(
     val fits = maxWidth >= EDITOR_MIN * 2 + CoineProSpacing.Gutter
     var splitOn by rememberSaveable(fits) { mutableStateOf(fits) }
     val split = fits && splitOn
+    /** Whether the split's other half is the rehearsal chart rather than the reader's own. */
+    var sandbox by rememberSaveable { mutableStateOf(false) }
     val editorItems: LazyListScope.() -> Unit = {
         if (!split) item { preview(Modifier.fillMaxWidth().height(PREVIEW_HEIGHT)) }
 
@@ -336,6 +384,27 @@ private fun EditorTab(
             }
         }
 
+        // **Which chart the other half is** — the reader's, or the sandbox (run I item 0.2).
+        //
+        // The default is the main chart, which is the inversion this run is about: the studio's
+        // two-hundred-bar preview was the *destination* before, and it is a rehearsal room. It is
+        // still here, one chip away, because a script that throws or draws nonsense is better
+        // rehearsed somewhere that is not the chart the reader is trading from.
+        if (split && mainChart != null) {
+            item {
+                CoineProChipRow(
+                    options = listOf(
+                        CoineProChip(id = TARGET_MAIN, label = stringResource(R.string.script_target_chart)),
+                        CoineProChip(id = TARGET_SANDBOX, label = stringResource(R.string.script_target_sandbox)),
+                    ),
+                    selectedId = if (sandbox) TARGET_SANDBOX else TARGET_MAIN,
+                    onSelect = { id -> sandbox = id == TARGET_SANDBOX },
+                    compact = true,
+                    neutral = true,
+                )
+            }
+        }
+
         state.failure?.let { failure ->
             item { FailureCard(failure = failure) }
         }
@@ -346,6 +415,34 @@ private fun EditorTab(
                     stringResource(R.string.script_stale),
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,
+                )
+            }
+        }
+
+        // **«Add to chart»** — the button the whole studio points at (run I item 0.2).
+        //
+        // Above Run and full width, because it is the *destination*: Run is «show me what this
+        // does», and this is «make it one of my indicators». A reader who has already added this
+        // script sees «Update on chart» instead, which hot-swaps the instance and keeps its inputs,
+        // its colour and its place in the legend — see `ChartController.setScriptSource`.
+        if (onAddToChart != null) {
+            item {
+                val added = state.name.isNotBlank() && state.name in onChart
+                CoineProPrimaryButton(
+                    text = stringResource(
+                        if (added) R.string.script_update_on_chart else R.string.script_add_to_chart,
+                    ),
+                    onClick = {
+                        onAddToChart(
+                            state.name.ifBlank { untitled },
+                            state.source,
+                            state.overrides,
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "script-add-to-chart" },
+                    enabled = state.source.isNotBlank(),
                 )
             }
         }
@@ -445,12 +542,12 @@ private fun EditorTab(
                 verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
                 content = editorItems,
             )
-            preview(
-                Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .padding(end = CoineProSpacing.Gutter, bottom = CoineProSpacing.Gutter),
-            )
+            val half = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .padding(end = CoineProSpacing.Gutter, bottom = CoineProSpacing.Gutter)
+            val other = mainChart.takeIf { !sandbox } ?: preview
+            other(half)
         }
     } else {
         LazyColumn(
@@ -683,40 +780,22 @@ internal fun signatureFor(name: String): String = SIGNATURES[name] ?: name
 private val SIGNATURES: Map<String, String> = (ScriptReference.SERIES + ScriptReference.ALL_GROUPS.flatMap { it.functions })
     .associate { it.signature.substringBefore('(').trim() to it.signature }
 
-/** A working script per idea; tapped in when the reader has the idea and not yet the syntax. */
-internal data class ScriptSnippet(val title: String, val source: String)
+/**
+ * A working script per idea; tapped in when the reader has the idea and not yet the syntax.
+ *
+ * **Both halves are resources** since 4.73.0 (run I item 4): the chip's own title, and the source
+ * it types in. The source, because a snippet is not a fixed text — it contains `title = "تند"`, and
+ * an English reader who taps «Two moving averages» and gets a plot labelled «تند» has been handed a
+ * script they cannot read in a language they did not choose. The code is the same in both; the
+ * words inside its strings are not, and those words end up on their chart.
+ */
+data class ScriptSnippet(@StringRes val titleRes: Int, @StringRes val sourceRes: Int)
 
-internal val SNIPPETS: List<ScriptSnippet> = listOf(
-    ScriptSnippet(
-        "تقاطع دو میانگین",
-        "fast = ta.ema(close, input.int(12, title = \"تند\"))\n" +
-            "slow = ta.ema(close, input.int(26, title = \"کند\"))\n" +
-            "plot(fast, title = \"تند\", color = color.gold)\n" +
-            "plot(slow, title = \"کند\", color = color.blue)\n" +
-            "marker(ta.crossover(fast, slow) and confirmed, title = \"خرید\", style = \"up\")\n" +
-            "marker(ta.crossunder(fast, slow) and confirmed, title = \"فروش\", style = \"down\")",
-    ),
-    ScriptSnippet(
-        "RSI با نواحی",
-        "r = ta.rsi(close, input.int(14, title = \"طول\"))\n" +
-            "plot(r, title = \"RSI\", pane = \"own\")\n" +
-            "hline(70, pane = \"own\")\n" +
-            "hline(30, pane = \"own\")\n" +
-            "bgcolor(r > 70, color.new(color.sell, 85))\n" +
-            "bgcolor(r < 30, color.new(color.buy, 85))",
-    ),
-    ScriptSnippet(
-        "برچسب روی آخرین کندل",
-        "label.new(bar_index, high, \"close \" + str.tostring(close), color = color.gold)\n" +
-            "line.new(bar_index - 20, ta.lowest(low, 20), bar_index, ta.lowest(low, 20), color = color.blue)",
-    ),
-    ScriptSnippet(
-        "استراتژی ساده",
-        "fast = ta.ema(close, 9)\n" +
-            "slow = ta.ema(close, 21)\n" +
-            "strategy.entry(\"L\", strategy.long, when = ta.crossover(fast, slow))\n" +
-            "strategy.entry(\"S\", strategy.short, when = ta.crossunder(fast, slow))",
-    ),
+val SNIPPETS: List<ScriptSnippet> = listOf(
+    ScriptSnippet(R.string.script_snippet_cross, R.string.script_snippet_cross_source),
+    ScriptSnippet(R.string.script_snippet_rsi, R.string.script_snippet_rsi_source),
+    ScriptSnippet(R.string.script_snippet_label, R.string.script_snippet_label_source),
+    ScriptSnippet(R.string.script_snippet_strategy, R.string.script_snippet_strategy_source),
 )
 
 /**
@@ -737,16 +816,18 @@ private fun SnippetRow(onInsert: (String) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        items(SNIPPETS, key = { it.title }) { snippet ->
+        items(SNIPPETS, key = { it.titleRes }) { snippet ->
+            val title = stringResource(snippet.titleRes)
+            val source = stringResource(snippet.sourceRes)
             Box(
                 modifier = Modifier
                     .background(CoineProColors.Surface, CoineProShapes.small)
                     .border(1.dp, CoineProColors.Border, CoineProShapes.small)
-                    .clickable { onInsert(snippet.source) }
+                    .clickable { onInsert(source) }
                     .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half)
-                    .semantics { contentDescription = "script-snippet-${snippet.title}" },
+                    .semantics { contentDescription = "script-snippet-$title" },
             ) {
-                Text(snippet.title, style = MaterialTheme.typography.labelMedium, color = CoineProColors.TextSecondary)
+                Text(title, style = MaterialTheme.typography.labelMedium, color = CoineProColors.TextSecondary)
             }
         }
     }
@@ -1036,6 +1117,10 @@ private fun SetupRow(label: String, value: Double) {
 private fun LibraryTab(
     saved: List<SavedScriptEntity>,
     openId: Long?,
+    /** The studio's language. Read once by the caller; `items` is not a composable scope. */
+    english: Boolean,
+    /** «Add to chart» on a card, or null where there is no chart behind this screen. */
+    onAddToChart: ((name: String, source: String) -> Unit)? = null,
     onOpen: (SavedScriptEntity) -> Unit,
     onDelete: (Long) -> Unit,
     onOpenPreset: (ScriptPreset) -> Unit,
@@ -1084,7 +1169,7 @@ private fun LibraryTab(
                         // preset or one of the shipped strategies — the two id spaces are separate
                         // and a saved copy of a strategy should not lose its lineage.
                         val origin = script.presetId?.let { id ->
-                            ScriptPresets.byId(id)?.title
+                            ScriptPresets.byId(id)?.localised(english)?.title
                                 ?: ScriptStrategies.byId(id)?.let { stringResource(nameOf(it)) }
                         }
                         origin?.let {
@@ -1092,6 +1177,15 @@ private fun LibraryTab(
                                 stringResource(R.string.script_strategy_based_on, it),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = CoineProColors.TextMuted,
+                            )
+                        }
+                    }
+                    onAddToChart?.let { add ->
+                        TextButton(onClick = { add(script.name, script.source) }) {
+                            Text(
+                                stringResource(R.string.script_add_to_chart),
+                                color = CoineProColors.Gold,
+                                style = MaterialTheme.typography.labelMedium,
                             )
                         }
                     }
@@ -1125,6 +1219,7 @@ private fun LibraryTab(
                     style = MaterialTheme.typography.bodySmall,
                     color = CoineProColors.TextSecondary,
                 )
+                AddToChartRow(onAddToChart, name, strategy.source)
             }
         }
         item {
@@ -1133,7 +1228,10 @@ private fun LibraryTab(
                 stringResource(R.string.script_presets_count, ScriptPresets.ALL.size.proseDigits()),
             )
         }
-        items(ScriptPresets.ALL, key = ScriptPreset::id) { preset ->
+        // In the reader's language, code and all: a preset's `input(title = ...)` becomes a
+        // control in their settings sheet and its `plot(title = ...)` a row in their legend, so a
+        // translated card over a Persian script would be the worse half of the two.
+        items(ScriptPresets.all(english), key = ScriptPreset::id) { preset ->
             CoineProCard(modifier = Modifier.fillMaxWidth().clickable { onOpenPreset(preset) }) {
                 Text(preset.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 Text(preset.summary, style = MaterialTheme.typography.bodySmall, color = CoineProColors.TextSecondary)
@@ -1142,8 +1240,31 @@ private fun LibraryTab(
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,
                 )
+                AddToChartRow(onAddToChart, preset.title, preset.source)
             }
         }
+    }
+}
+
+/**
+ * «Add to chart» under a library card.
+ *
+ * On the card rather than only in the editor, because a reader browsing the library is choosing a
+ * study, not a text to read: making them open it, run it and then add it put two steps between the
+ * thing they pointed at and the thing they wanted.
+ */
+@Composable
+private fun AddToChartRow(onAddToChart: ((String, String) -> Unit)?, name: String, source: String) {
+    val add = onAddToChart ?: return
+    TextButton(
+        onClick = { add(name, source) },
+        modifier = Modifier.semantics { contentDescription = "library-add-to-chart" },
+    ) {
+        Text(
+            stringResource(R.string.script_add_to_chart),
+            color = CoineProColors.Gold,
+            style = MaterialTheme.typography.labelMedium,
+        )
     }
 }
 
@@ -1372,5 +1493,9 @@ private const val MINIMAP_BAR = 0.6f
 internal val EDITOR_MIN = 400.dp
 
 /** The split toggle's two ids. Named so the chip row and the state cannot disagree by a typo. */
+/** The split's other half: the reader's chart, or the studio's rehearsal one. */
+private const val TARGET_MAIN = "chart"
+private const val TARGET_SANDBOX = "sandbox"
+
 private const val SPLIT_ON = "split"
 private const val SPLIT_OFF = "code"

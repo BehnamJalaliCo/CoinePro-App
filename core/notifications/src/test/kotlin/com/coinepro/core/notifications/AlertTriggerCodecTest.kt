@@ -100,4 +100,33 @@ class AlertTriggerCodecTest {
     fun `a multi-condition with one unreadable condition decodes to null`() {
         assertNull(AlertTriggerCodec.decode("multi\u001Fprice\u001Fgreater_than\u001F1\u001Etarot\u001Fcups"))
     }
+
+    /**
+     * A script condition round-trips, **including a script with the codec's separators in it**.
+     *
+     * The case that would have lost the alert: `encode` refuses any payload containing `;` or `|`,
+     * and a reader's script contains whatever they typed. Base64 on the two free-text fields is
+     * what makes the refusal unreachable for them.
+     */
+    @Test
+    fun `a script condition survives the field it is stored in`() {
+        val trigger = AlertTrigger.ScriptCondition(
+            source = "r = ta.rsi(close, 14)\nalertcondition(ta.crossunder(r, 30), \"Oversold; cross|back\")",
+            condition = "Oversold; cross|back",
+            name = "RSI Zones",
+        )
+        val encoded = AlertTriggerCodec.encode(trigger)
+        assertTrue("a script's own punctuation must not empty the field", encoded.isNotEmpty())
+        assertEquals(trigger, AlertTriggerCodec.decode(encoded))
+    }
+
+    @Test
+    fun `a script condition fires only where the routing says the condition held`() {
+        val trigger = AlertTrigger.ScriptCondition(source = "plot(close)", condition = "cross")
+        assertTrue(trigger.evaluate(previous = 0.0, current = 1.0, series = null))
+        assertTrue(!trigger.evaluate(previous = 1.0, current = 0.0, series = null))
+        // An unanswerable condition arrives as NaN — a script that did not compile, or too few
+        // bars — and every comparison against NaN is false, so nothing fires.
+        assertTrue(!trigger.evaluate(previous = null, current = Double.NaN, series = null))
+    }
 }

@@ -15,6 +15,55 @@ it is for.
 
 ---
 
+## [4.73.0] — 2026-09-12 — a script is one of your indicators
+
+Run I. The owner asked why the studio has a chart of its own, and the honest answer was that its
+two-hundred-bar preview had quietly become the **destination**. TradingView's Pine editor has the
+same preview and it also has «Add to chart»; everything a reader wants from a script they wrote
+happens after that button. This is that button, and everything behind it.
+
+### Added
+- **«Add to chart».** Above Run in the studio, on every saved script, strategy and preset card, and
+  as a «My scripts» section at the top of the indicator sheet — above the eighty-three built-ins,
+  because these are the studies this particular reader wrote. Pressing it twice on the same script
+  updates the one instance rather than stacking a second copy.
+- **A script is an indicator.** A compiled script is addressed by an indicator id — `nama:1`, a
+  string exactly as `ema` is a string — so the legend row, the eye, the gear, the ×, the pane
+  order, the merges, the separations, the colour and the stroke all work on it through the code
+  that already does them. There is no script-shaped hole in the chart.
+- **A settings sheet generated from the script's own `input(...)`s**, with the same three tabs a
+  built-in has. Two copies of one script are two sets of inputs, numbered «RSI Zones (2)».
+- **`alertcondition` is a real alert.** The condition and the script travel in the trigger, and the
+  background pass runs each distinct script once against the candles it already loads for indicator
+  alerts. The alert reads «نمااسکریپت: RSI Zones ← Oversold cross» and fires on a closed bar.
+- **Scripts are saved with the symbol and with a layout** — source, inputs and all. The text travels
+  rather than a reference to it, so a restored chart is the chart that was saved even after the
+  reader has renamed or deleted the script it came from.
+- The studio's split view shows **the reader's own chart** in its other half. The sandbox is still
+  there, one chip away, which is the right place for a script that throws.
+
+### Changed
+- **The legend has a scrim again, at 60 %.** It was 82 % (a panel), then 0 % (TradingView's, which
+  works because its top left is usually empty). A chart carrying a reader's own scripts is not
+  usually empty, and an average passing through the words is not a legend.
+- The NamaScript studio's ten **presets are translated, code included**. A preset is not a label:
+  tapping one types a script whose `plot(title = ...)` becomes a row in the reader's legend, so an
+  English reader was being handed a study labelled «تند». The code is identical line for line in
+  both; only the prose inside the quotes moved.
+- The four snippet chips are resources for the same reason.
+
+### Fixed
+- **A script that stops compiling keeps the drawing it had**, and grows a red dot in the legend. The
+  alternative — removing the line — would make the studio unusable for the one workflow it exists
+  for: a reader typing a bracket would watch the study they are working on disappear.
+- **A script that runs out of budget pauses itself and nothing else.** The node budget, the clock
+  and the retained-series budget say «this is too expensive to run on every bar, at line N» rather
+  than reading as a mistake in the reader's code.
+- A script's own strip was computed, owned and legend-resolvable — and not drawn, because the
+  fast path for a chart nobody has arranged read the built-ins' pane list.
+
+---
+
 ## [4.72.1] — 2026-09-11 — the licence code
 
 ### Fixed

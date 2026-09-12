@@ -63,6 +63,15 @@ data class ChartLayout(
      * with it: a layout that will not save because of one mark is the worse failure.
      */
     val drawings: List<StoredDrawing> = emptyList(),
+    /**
+     * The NamaScript scripts that were on the chart, with their source and their inputs (4.73.0).
+     *
+     * A layout is the apparatus a reader looks through, and since run I a script is part of that
+     * apparatus in exactly the way an indicator is. The source travels for the reason
+     * [ChartScriptRow] gives: a layout that stored an id would restore a chart with a hole in it
+     * the first time somebody renamed the script it referred to.
+     */
+    val scripts: List<ChartScriptRow> = emptyList(),
 )
 
 /**
@@ -374,6 +383,8 @@ class ChartLayoutStore(private val dataStore: DataStore<Preferences>) {
                 ChartDrawingCodec.encodeNested(layout.drawings),
                 // Twelve: the parameters, «id/key» and value pairs.
                 ChartParamsCodec.encode(layout.indicatorParams),
+                // Thirteen: the scripts, Base64'd — see `ChartScriptCodec`.
+                ChartScriptCodec.encode(layout.scripts),
             ).joinToString(RECORD)
         }
 
@@ -414,6 +425,7 @@ class ChartLayoutStore(private val dataStore: DataStore<Preferences>) {
                 // list is the truth about those: nothing was filed with them.
                 drawings = ChartDrawingCodec.decodeNested(parts.getOrNull(11).orEmpty()),
                 indicatorParams = ChartParamsCodec.decode(parts.getOrNull(12)),
+                scripts = ChartScriptCodec.decode(parts.getOrNull(13)),
             )
         }
 

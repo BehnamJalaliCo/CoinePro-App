@@ -92,4 +92,16 @@
     <string name="script_returns">خروجی: %1$s</string>
     <string name="script_colours">رنگ‌ها</string>
     <string name="script_colours_count">%1$s رنگ</string>
+    <string name="script_add_to_chart">اعمال روی چارت</string>
+    <string name="script_update_on_chart">به‌روزرسانی روی چارت</string>
+    <string name="script_target_chart">چارت شما</string>
+    <string name="script_target_sandbox">آزمایشگاه</string>
+    <string name="script_snippet_cross">تقاطع دو میانگین</string>
+    <string name="script_snippet_cross_source">fast = ta.ema(close, input.int(12, title = \"تند\"))\nslow = ta.ema(close, input.int(26, title = \"کند\"))\nplot(fast, title = \"تند\", color = color.gold)\nplot(slow, title = \"کند\", color = color.blue)\nmarker(ta.crossover(fast, slow) and confirmed, title = \"خرید\", style = \"up\")\nmarker(ta.crossunder(fast, slow) and confirmed, title = \"فروش\", style = \"down\")</string>
+    <string name="script_snippet_rsi">RSI با نواحی</string>
+    <string name="script_snippet_rsi_source">r = ta.rsi(close, input.int(14, title = \"طول\"))\nplot(r, title = \"RSI\", pane = \"own\")\nhline(70, pane = \"own\")\nhline(30, pane = \"own\")\nbgcolor(r &gt; 70, color.new(color.sell, 85))\nbgcolor(r &lt; 30, color.new(color.buy, 85))</string>
+    <string name="script_snippet_label">برچسب روی آخرین کندل</string>
+    <string name="script_snippet_label_source">label.new(bar_index, high, \"close \" + str.tostring(close), color = color.gold)\nline.new(bar_index - 20, ta.lowest(low, 20), bar_index, ta.lowest(low, 20), color = color.blue)</string>
+    <string name="script_snippet_strategy">استراتژی ساده</string>
+    <string name="script_snippet_strategy_source">fast = ta.ema(close, 9)\nslow = ta.ema(close, 21)\nstrategy.entry(\"L\", strategy.long, when = ta.crossover(fast, slow))\nstrategy.entry(\"S\", strategy.short, when = ta.crossunder(fast, slow))</string>
 </resources>

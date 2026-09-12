@@ -151,6 +151,7 @@ import com.coinepro.feature.chart.ChartSidePanel
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.feature.chart.R as ChartR
 import com.coinepro.core.designsystem.CoineProTheme
+import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.CoineProWindowClass
 import androidx.compose.material3.adaptive.currentWindowDpSize
 import com.coinepro.core.designsystem.ProvideToaster
@@ -204,6 +205,9 @@ import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.SignalDirection
 import com.coinepro.core.navigation.AppDestination
+import com.coinepro.core.notifications.AlertFrequency
+import com.coinepro.core.notifications.AlertTrigger
+import com.coinepro.core.notifications.LocalAlertCondition
 import com.coinepro.core.notifications.LocalPriceAlert
 import com.coinepro.core.notifications.NotificationCategory
 import com.coinepro.core.notifications.NotificationController
@@ -217,6 +221,7 @@ import com.coinepro.core.papertrade.PaperTradeController
 import com.coinepro.core.papertrade.asPaperQuote
 import com.coinepro.core.portfolio.PortfolioController
 import com.coinepro.core.script.ScriptController
+import com.coinepro.core.script.ScriptPresets
 import com.coinepro.core.signals.SignalController
 import com.coinepro.feature.academy.AcademyScreen
 import com.coinepro.feature.academy.LessonScreen
@@ -239,6 +244,8 @@ import com.coinepro.feature.community.CommunityThreadScreen
 import com.coinepro.feature.explore.ExploreScreen
 import com.coinepro.feature.chart.ChartController
 import com.coinepro.feature.chart.ChartPanesScreen
+import com.coinepro.feature.chart.ChartMirror
+import com.coinepro.feature.chart.ChartScriptSource
 import com.coinepro.feature.chart.ChartScreen
 import com.coinepro.feature.chart.ChartStudioScreen
 import com.coinepro.feature.chart.ChartWorkspaceStore
@@ -1917,6 +1924,8 @@ private fun MainShell(
     var appLockOpen by rememberSaveable { mutableStateOf(false) }
     /** The symbol and price a reader asked to be alerted about, from the chart. */
     var alertFromChart by remember { mutableStateOf<Pair<String, Double>?>(null) }
+    /** A pending «alert me when this script's condition holds» — run I item 0.6. */
+    var scriptAlert by remember { mutableStateOf<ScriptAlertRequest?>(null) }
 
     /**
      * The instrument the chart destination currently has in front of the reader, hoisted here.
@@ -2537,11 +2546,37 @@ private fun MainShell(
                         symbol = activeChartSymbol,
                         series = chartState.series,
                         loading = chartState.loading,
+                        // No `mainChart` here and none wanted: the reader's chart is already the
+                        // other three quarters of this window. What the panel needs is the button.
+                        onAddToChart = { name, source, overrides ->
+                            chartControllers.controllerFor(activeChartSymbol).putScript(name, source, overrides)
+                        },
+                        onChart = chartState.scripts.mapTo(mutableSetOf()) { it.name },
                     )
                 },
             )
+            // The reader's own studies, for the indicator sheet's «My scripts» section and for the
+            // legend's gear to be able to open one in the editor (4.73.0).
+            val savedScripts by scriptController.saved.collectAsStateWithLifecycle()
+            val appLanguageIsEnglish = inEnglish()
+            val scriptLibrary = remember(savedScripts, appLanguageIsEnglish) {
+                savedScripts.map { ChartScriptSource(id = it.id.toString(), name = it.name, source = it.source) } +
+                    // In the reader's language, for the same reason the studio's library is: the
+                    // preset's own `plot(title = ...)` becomes a row in their legend.
+                    ScriptPresets.all(english = appLanguageIsEnglish).map {
+                        ChartScriptSource(id = it.id, name = it.title, source = it.source, preset = true)
+                    }
+            }
             ChartScreen(
                 sidePanels = sidePanels,
+                scriptLibrary = scriptLibrary,
+                onCreateScriptAlert = { symbol, name, source, condition ->
+                    scriptAlert = ScriptAlertRequest(symbol, name, source, condition)
+                },
+                onOpenScript = { source, name ->
+                    scriptController.openText(name = name, source = source)
+                    navController.navigate(scriptRoute(activeChartSymbol))
+                },
                 onOpenSymbolSearch = { navController.navigate(MARKET_SEARCH_ROUTE) },
                 position = openPosition,
                 layouts = chartLayouts,
@@ -3374,26 +3409,27 @@ private fun MainShell(
                 arguments = listOf(navArgument("symbol") { type = NavType.StringType }),
             ) { entry ->
                 val symbol = entry.arguments?.getString("symbol").orEmpty()
-                val scope = rememberCoroutineScope()
-                // A chart controller purely to fetch bars: the studio draws its own preview, and
-                // reusing the chart's loader means the studio's candles and the chart's candles
-                // come from one place. A second fetcher here would be a second thing to keep in
-                // step with paging, timeframes and the academy-token failure modes.
-                val previewController = remember(symbol, candleGateway) {
-                    ChartController(
-                        symbol = symbol,
-                        gateway = candleGateway,
-                        scope = scope,
-                        workers = Dispatchers.Default,
-                    )
-                }
-                val previewState by previewController.state.collectAsStateWithLifecycle()
-                LaunchedEffect(previewController) { previewController.start() }
+                // **The chart's own controller, not a second one** (4.73.0).
+                //
+                // It used to be a private `ChartController` built here, purely to fetch bars for
+                // the studio's little preview. That was correct while the preview was the
+                // destination and wrong the moment «Add to chart» existed: a script added through a
+                // controller nobody else holds lands on a chart that is thrown away when the reader
+                // navigates back. Sharing the instance is what makes the studio an editor *of the
+                // chart* — the same fix `ChartStudioScreen` needed for the same reason.
+                val chartController = chartControllers.controllerFor(symbol)
+                val chartStateForScript by chartController.state.collectAsStateWithLifecycle()
+                LaunchedEffect(chartController) { chartController.start() }
                 ScriptScreen(
                     controller = scriptController,
                     symbol = symbol,
-                    series = previewState.series,
-                    loading = previewState.loading,
+                    series = chartStateForScript.series,
+                    loading = chartStateForScript.loading,
+                    onAddToChart = { name, source, overrides ->
+                        chartController.putScript(name, source, overrides)
+                    },
+                    onChart = chartStateForScript.scripts.mapTo(mutableSetOf()) { it.name },
+                    mainChart = { modifier -> ChartMirror(chartController, modifier) },
                 )
             }
             composable(
@@ -3822,6 +3858,36 @@ private fun MainShell(
         )
     }
 
+    // A script condition has no price to compose against, so it does not open the price composer:
+    // the alert is complete the moment the reader taps «هشدار بده» — the script, the condition and
+    // the instrument are all already decided — and asking them for a level would be asking for a
+    // number the trigger does not read.
+    scriptAlert?.let { request ->
+        LaunchedEffect(request) {
+            localAlertStore.add(
+                LocalPriceAlert(
+                    id = java.util.UUID.randomUUID().toString().replace("-", "").take(12),
+                    symbol = request.symbol,
+                    condition = LocalAlertCondition.ABOVE,
+                    value = Double.MAX_VALUE,
+                    trigger = AlertTrigger.ScriptCondition(
+                        source = request.source,
+                        condition = request.condition,
+                        name = request.name,
+                    ),
+                    // Once per closed bar, which is what an `alertcondition` means: it is computed
+                    // on a bar, and a condition re-checked mid-bar signals and unsignals as the
+                    // candle moves.
+                    frequency = AlertFrequency.ONCE_PER_BAR_CLOSE,
+                    createdAtEpochMillis = System.currentTimeMillis(),
+                ),
+            )
+            localAlertScheduler.sync(hasActiveAlerts = true)
+            scriptAlert = null
+            toaster.show(alertSavedMessage, ToastTone.SUCCESS)
+        }
+    }
+
     alertFromChart?.let { (symbol, price) ->
         val localAlerts by localAlertStore.alerts.collectAsStateWithLifecycle(initialValue = emptyList())
         AlertComposerSheet(
@@ -4035,3 +4101,11 @@ private fun PriceFeedStatus.reading(): PriceFeedReading? = when {
     fullOutage -> PriceFeedReading.FULL
     else -> PriceFeedReading.PARTIAL
 }
+
+/** One pending script-condition alert, from the chart's script settings sheet to the store. */
+private data class ScriptAlertRequest(
+    val symbol: String,
+    val name: String,
+    val source: String,
+    val condition: String,
+)

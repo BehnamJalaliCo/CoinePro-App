@@ -327,6 +327,49 @@ sealed interface AlertTrigger {
     }
 
     /**
+     * A condition a reader's own NamaScript script named with `alertcondition(...)` (4.73.0).
+     *
+     * ### Why the source travels in the trigger
+     *
+     * Because the thing that evaluates this runs in a background worker with no chart, no database
+     * of the reader's scripts and no way to ask one. The alternative — a script *id* resolved at
+     * fire time — makes the alert depend on a row the reader can rename or delete, and the failure
+     * is silent: the alert simply stops firing and nothing says why. A few hundred bytes of the
+     * reader's own text stored beside the alert is the price of an alert that keeps its promise.
+     *
+     * ### Why `evaluate` reads one number
+     *
+     * It is routed the same way an [Indicator] trigger is: the caller resolves the condition
+     * against the bars — see `AlertConditions.currentFor` — and hands the answer in as 1 or 0.
+     * `core:notifications` cannot run a script and must not learn how; what it owns is «fires when
+     * the condition holds on the bar this sample is for», which is one comparison.
+     *
+     * [name] is the script's, for the notification's text. It is not an identity and nothing keys
+     * on it.
+     */
+    data class ScriptCondition(
+        val source: String,
+        val condition: String,
+        val name: String = "",
+    ) : AlertTrigger {
+
+        init {
+            require(source.isNotBlank()) { "A script trigger needs the script." }
+            require(condition.isNotBlank()) { "A script trigger needs a condition name." }
+        }
+
+        override val id: String get() = ID
+
+        /** True where the resolved condition held. See the class note on what `current` carries. */
+        override fun evaluate(previous: Double?, current: Double, series: DoubleArray?): Boolean =
+            current >= 1.0
+
+        companion object {
+            const val ID = "script"
+        }
+    }
+
+    /**
      * Price reaching a line the reader drew.
      *
      * ### Why the level arrives in `series`

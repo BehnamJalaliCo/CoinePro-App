@@ -68,6 +68,30 @@ class TabletEnglishTest {
         assertNoPersian("the tablet chart")
     }
 
+    /**
+     * The NamaScript studio, too (run I item 4).
+     *
+     * Its snippet chips were the last leak of the kind this test exists for: the chip's title *and*
+     * the source it types in were Kotlin literals, so «تقاطع دو میانگین» appeared on the English
+     * tablet and, worse, the script it inserted plotted a line labelled «تند» on the reader's chart.
+     */
+    @Test
+    fun theScriptStudioOnATabletIsEnglishThroughout() {
+        render {
+            val series = ScreenshotFixtures.chartSeries(symbol = "XAUUSD")
+            val controller = remember {
+                ScreenshotFixtures.scriptController(scope).also {
+                    it.setSeries(series)
+                    // The localised preset, which is what the library hands the controller on an
+                    // English screen. Opening the Persian one here would test a path no reader takes.
+                    it.openPreset(com.coinepro.core.script.ScriptPresets.byId("rsi-zones")!!.localised(english = true))
+                }
+            }
+            com.coinepro.feature.script.ScriptScreen(controller = controller, symbol = "XAUUSD", series = series)
+        }
+        assertNoPersian("the tablet studio")
+    }
+
     @Test
     fun theWatchlistOnATabletIsEnglishThroughout() {
         render {

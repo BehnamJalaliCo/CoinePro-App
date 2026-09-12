@@ -172,9 +172,15 @@ class ScriptController(
         run()
     }
 
-    /** Opens a blank script. */
-    fun openBlank() {
-        _state.value = ScriptEditorState(name = "", source = ScriptPresets.BLANK)
+    /**
+     * Opens a blank script — three lines rather than an empty editor.
+     *
+     * [english] chooses the language of those three lines. It is a parameter rather than something
+     * read here because this class has no screen and no configuration; the studio knows what
+     * language it is drawn in and says so.
+     */
+    fun openBlank(english: Boolean = false) {
+        _state.value = ScriptEditorState(name = "", source = ScriptPresets.blank(english))
         run()
     }
 
@@ -187,6 +193,19 @@ class ScriptController(
             presetId = script.presetId,
             overrides = decodeInputs(script.inputs),
         )
+        run()
+    }
+
+    /**
+     * Opens a script the reader is looking at somewhere else — «open in the editor» (4.73.0).
+     *
+     * Text and a name, because that is all a script instance on the chart carries: the instance's
+     * source is the source of truth for what is *drawn*, and it may differ from the saved row it
+     * started as. Opening the row instead would show the reader the wrong code — the code that is
+     * not on their chart — which is the more confusing of the two answers by a distance.
+     */
+    fun openText(name: String, source: String, overrides: Map<String, Double> = emptyMap()) {
+        _state.value = ScriptEditorState(name = name, source = source, overrides = overrides)
         run()
     }
 

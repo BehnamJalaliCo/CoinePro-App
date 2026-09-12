@@ -397,9 +397,16 @@ private fun ArrangementPill(text: String, enabled: Boolean, tag: String, accent:
     }
 }
 
-/** The strokes offered, in dp; the catalogue's own is one point two. */
-private val INDICATOR_WIDTHS: List<Float> = listOf(1f, DEFAULT_LINE_WIDTH, 2f, 3f)
-private const val DEFAULT_LINE_WIDTH = 1.2f
+/**
+ * The strokes offered, in dp; the catalogue's own is one point two.
+ *
+ * [INDICATOR_WIDTHS] and [DEFAULT_LINE_WIDTH] are internal since 4.73.0 so the script indicator's
+ * settings sheet offers the same four strokes rather than a second opinion about them. The swatch
+ * geometry beside them stays private: three other files in this module already declare a `SWATCH`
+ * of their own at their own size, and widening these would only make every one of them ambiguous.
+ */
+internal val INDICATOR_WIDTHS: List<Float> = listOf(1f, DEFAULT_LINE_WIDTH, 2f, 3f)
+internal const val DEFAULT_LINE_WIDTH = 1.2f
 private const val SWATCHES_ACROSS = 6
 private val SWATCH = 32.dp
 private const val COLOUR_SHIFT = 32
