@@ -232,4 +232,10 @@
     <string name="chart_script_alert_firing">روی کندل آخر برقرار است</string>
     <string name="chart_script_alert_quiet">برقرار نیست</string>
     <string name="chart_script_alert_create">هشدار بسازید</string>
+    <string name="chart_load_failed">چارت بارگیری نشد.</string>
+    <string name="chart_load_unsupported">این نماد روی این پلتفرم چارت ندارد.</string>
+    <string name="chart_load_disabled">چارت این پلتفرم فعلاً در دسترس نیست.</string>
+    <string name="chart_load_interval">این پلتفرم کندل این بازه را ندارد. بازه‌ی بلندتری انتخاب کنید.</string>
+    <string name="chart_load_stale">این کندل‌ها آخرین چیزی است که رسیده.</string>
+    <string name="chart_retry">تلاش دوباره</string>
 </resources>

@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -25,12 +26,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -52,6 +55,7 @@ import com.coinepro.core.designsystem.numeric
 import com.coinepro.core.script.ScriptFailure
 import com.coinepro.core.script.ScriptInput
 import com.coinepro.core.script.ScriptInputKind
+import com.coinepro.core.designsystem.R as DesignR
 
 /**
  * A script indicator's settings — **generated from its own `input(...)`s** (run I item 0.4).
@@ -445,9 +449,18 @@ private const val COLOUR_SHIFT = 32
  *
  * One row per script the reader could switch on, each a toggle: tapping a row that is off adds the
  * script to the chart, tapping one that is on takes it off, which is exactly what the row above it
- * does for EMA. The section is at the top of the sheet rather than the bottom because these are the
- * studies this particular reader wrote, and a list of eighty-three built-ins is not where you look
- * for your own work.
+ * does for EMA.
+ *
+ * ### Why it is at the foot of the sheet now, and collapsed (4.74.0, run K item 3)
+ *
+ * It used to be first, on the argument that these are the studies this particular reader wrote. The
+ * owner's recording is what overturned it: the sheet opened, the keyboard came up over the bottom
+ * half, and what was left above it was this section — so a reader who owned two scripts saw two
+ * rows and a divider where eighty-three indicators should have been, and reported that «the
+ * indicators are not all shown». Their own scripts are one or two rows; the built-in catalogue is
+ * the thing the sheet is *for*. So the order is the reference's — search, then Favourites, Recent
+ * and the families, then the list — and this is a closed disclosure at the end, which is a row the
+ * reader can find and not a wall they have to get past.
  *
  * A row is «on» when an instance of that **name** is on the chart — the same key `putScript` uses,
  * so the sheet and the button can never disagree about whether something is already there.
@@ -458,17 +471,61 @@ internal fun ScriptPickerSection(
     onChart: List<ChartScript>,
     onAdd: (ChartScriptSource) -> Unit,
     onRemove: (ChartScript) -> Unit,
+    /**
+     * Whether the section opens closed behind a header the reader taps.
+     *
+     * True in the indicator sheet, where the built-in list is the subject. False where the section
+     * *is* the subject — a preview, or a panel that has nothing else in it.
+     */
+    collapsible: Boolean = false,
 ) {
     if (library.isEmpty() && onChart.isEmpty()) return
+    // Remembered rather than hoisted: the state worth keeping is «did the reader open it», and it is
+    // worth keeping only for as long as the sheet is up.
+    var open by remember { mutableStateOf(!collapsible) }
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
-        Text(
-            text = stringResource(R.string.chart_script_custom),
-            style = MaterialTheme.typography.labelMedium,
-            color = CoineProColors.TextPrimary,
-        )
+        if (collapsible) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { open = !open }
+                    .padding(vertical = CoineProSpacing.One)
+                    .semantics { contentDescription = "script-section-header" },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+            ) {
+                Text(
+                    text = stringResource(R.string.chart_script_custom),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = CoineProColors.TextPrimary,
+                    modifier = Modifier.weight(1f),
+                )
+                // Latin, like every other bare numeral on a control — see the toolbar badge.
+                Text(
+                    text = library.size.toString(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = CoineProColors.TextMuted,
+                )
+                Icon(
+                    painter = painterResource(
+                        if (open) DesignR.drawable.icon_caret_up else DesignR.drawable.icon_caret_down,
+                    ),
+                    contentDescription = null,
+                    tint = CoineProColors.TextMuted,
+                    modifier = Modifier.size(CoineProSpacing.Two),
+                )
+            }
+        } else {
+            Text(
+                text = stringResource(R.string.chart_script_custom),
+                style = MaterialTheme.typography.labelMedium,
+                color = CoineProColors.TextPrimary,
+            )
+        }
+        if (!open) return@Column
         if (library.isEmpty()) {
             Text(
                 text = stringResource(R.string.chart_script_none),

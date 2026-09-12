@@ -624,13 +624,44 @@ fun CoineProChart(
         val price = display.bars.lastOrNull()?.c ?: 0.0
         groupThousands(formatPrice(price, decimalsFor(price)))
     }
-    val axisWidth = remember(sampleLabel, priceFontSp, density, measurer) {
-        priceAxisWidth(
-            maxLabelWidth = measurer
-                .measure(sampleLabel, axisStyle(Color.Black, priceFontSp))
-                .size.width.toFloat(),
+    /**
+     * Whether this chart is on a phone, which is the only place the gutter is rationed.
+     *
+     * The screen's own width rather than this composable's, and deliberately: the cap below is a
+     * judgement about how much of a *phone* the price scale may take, and a phone does not stop
+     * being one because the chart is in a card. A tablet's chart, docked or not, keeps the gutter
+     * its labels ask for — there is no shortage of width there to ration.
+     */
+    val onPhone = LocalConfiguration.current.screenWidthDp < TABLET_WIDTH_DP
+    val axisWidth = remember(sampleLabel, priceFontSp, density, measurer, onPhone) {
+        val labelWidth = measurer
+            .measure(sampleLabel, axisStyle(Color.Black, priceFontSp))
+            .size.width.toFloat()
+        val natural = priceAxisWidth(
+            maxLabelWidth = labelWidth,
             fontSize = with(density) { priceFontSp.sp.toPx() },
         )
+        if (!onPhone) {
+            natural
+        } else {
+            // **Sixty-four points, and the number is never the thing that gives way.**
+            //
+            // The owner measured the gutter and the right margin together at about a quarter of a
+            // phone's width, and asked for the scale at 64dp or under. What is over-generous in
+            // `priceAxisWidth` is its *margins* — an inner margin, two paddings that scale with the
+            // type and an outer margin, about fourteen points at three times density — and not the
+            // price. So the cap comes out of those.
+            //
+            // The floor is what the label actually needs: the inset it is drawn at (see
+            // [AXIS_PADDING_DP], which is where the placement really comes from) plus its own width
+            // plus the hairline. A seven-figure quote asks for more than sixty-four and gets it —
+            // a clipped price is a worse fault than a wide gutter, and it is the fault that would
+            // have been shipped by clamping and hoping.
+            val inset = with(density) { AXIS_PADDING_DP.toPx() }
+            val floor = evenUp(AXIS_HAIRLINE_PX + inset + labelWidth + AXIS_TRAILING_PX)
+            val cap = with(density) { PHONE_AXIS_MAX.toPx() }
+            max(floor, min(natural, cap))
+        }
     }
     val timeHeight = remember(timeFontSp, density) {
         timeAxisHeight(with(density) { timeFontSp.sp.toPx() })
@@ -2558,10 +2589,25 @@ fun CoineProChart(
             //
             // Counted over the *shown* panes, so hiding one from the legend gives its height back
             // to the candles rather than leaving a gap where it used to be.
+            // **And never so little that a pane is a line.**
+            //
+            // The owner's recording has an RSI in a strip about a tenth of the chart high, with the
+            // volume histogram pressing on it: the default `heightRatio` is 0.18 of the canvas, the
+            // reader's own `paneScale` can be a third of that, and eighteen per cent of the
+            // forty-five per cent a phone's plot actually had is not a pane anybody can read a
+            // divergence in. So each shown pane is guaranteed [MIN_PANE_FRACTION] — twenty-two per
+            // cent, the owner's figure — up to what the budget can pay for. Two panes fit inside
+            // the budget at that size; three share it evenly and each gets a sixth, because the
+            // price pane keeps half the chart whatever happens and that is the one thing here that
+            // is not negotiable.
+            val paneFloor = min(MIN_PANE_FRACTION, PANE_BUDGET / max(1, shown.panes.size))
             val paneRatio = min(
                 PANE_BUDGET,
-                shown.panes.sumOf { it.heightRatio.toDouble() }.toFloat() *
-                    decoration.paneScale.coerceIn(MIN_PANE_SCALE, MAX_PANE_SCALE),
+                max(
+                    paneFloor * shown.panes.size,
+                    shown.panes.sumOf { it.heightRatio.toDouble() }.toFloat() *
+                        decoration.paneScale.coerceIn(MIN_PANE_SCALE, MAX_PANE_SCALE),
+                ),
             )
             val available = max(0f, size.height - timeAxis)
             val paneHeight = if (shown.panes.isEmpty()) 0f else available * paneRatio
@@ -2922,16 +2968,43 @@ fun CoineProChart(
                 // than a price the price axis would have had to invent. See [PaneBand].
                 if (paneHeight > 0f) {
                     var top = plotHeight
-                    val share = paneHeight / shown.panes.sumOf { it.heightRatio.toDouble() }.toFloat()
+                    val totalRatio = shown.panes.sumOf { it.heightRatio.toDouble() }.toFloat()
+                    val share = if (totalRatio > 0f) paneHeight / totalRatio else 0f
+                    // **Proportional where every pane clears the floor, equal where one does not.**
+                    //
+                    // The budget above guarantees the panes *together* enough room for
+                    // [MIN_PANE_FRACTION] each, and dividing it by the designers' own ratios can
+                    // still starve one of them — a 0.18 pane beside a 0.36 one, or the correlation
+                    // pane, whose declared ratio is nought. One comparison rather than a
+                    // per-pane clamp: a clamp would have to give the height back from somewhere,
+                    // and there is nowhere inside a fixed total that does not starve a different
+                    // pane instead. Equal shares are what a reader who has three oscillators on
+                    // actually wants anyway, and the drag handle is still there to change it.
+                    val equalShare = paneHeight / shown.panes.size
+                    val smallest = shown.panes.minOf { it.heightRatio } * share
+                    val useEqual = totalRatio <= 0f || smallest < available * paneFloor
                     val bands = ArrayList<PaneBand>(shown.panes.size)
                     for (pane in shown.panes) {
-                        val height = pane.heightRatio * share
+                        val height = if (useEqual) equalShare else pane.heightRatio * share
                         val band = paneBandOf(pane, view.firstVisible, view.lastVisible, top, height)
                         if (band != null) {
                             bands += band
                             drawPane(view, pane, band, plotWidth, palette, measurer, density.density, metrics.body)
                         }
                         top += height
+                    }
+                    // The grip, where the drag already was. Drawn only when there is a boundary to
+                    // take hold of, and centred on the plot rather than on the canvas — the price
+                    // gutter is not part of what is being resized. See [PANE_GRIP_WIDTH_DP].
+                    if (onScalePanes != null && plotWidth > PANE_GRIP_WIDTH_DP.toPx()) {
+                        val gripWidth = PANE_GRIP_WIDTH_DP.toPx()
+                        val gripHeight = crispStroke(PANE_GRIP_HEIGHT_DP.toPx())
+                        drawRoundRect(
+                            color = palette.text.copy(alpha = PANE_GRIP_ALPHA),
+                            topLeft = Offset((plotWidth - gripWidth) / 2f, plotHeight - gripHeight / 2f),
+                            size = Size(gripWidth, gripHeight),
+                            cornerRadius = CornerRadius(gripHeight / 2f),
+                        )
                     }
                     paneBands[0] = bands
                 } else {
@@ -3823,10 +3896,20 @@ private fun DrawScope.drawOverlay(
 ) {
     val path = Path()
     var started = false
+    // The last y the pen was at, for a stepped line: the step is «hold, then jump», which is one
+    // extra `lineTo` at the previous height. Held here rather than read back off the path because a
+    // `Path` cannot be asked where its pen is.
+    var heldY = 0f
     // The conflator holds a column open, so the pen has to be lifted through it as well: a gap that
     // bypassed it would leave the previous column unflushed and join the two sides of the gap.
     val conflator = ColumnConflator(conflateGap) { x, y ->
-        if (started) path.lineTo(x, y) else { path.moveTo(x, y); started = true }
+        when {
+            !started -> { path.moveTo(x, y); started = true }
+            // Along at the height it was, then up or down to the new one. See [ChartLine.stepped].
+            overlay.stepped -> { path.lineTo(x, heldY); path.lineTo(x, y) }
+            else -> path.lineTo(x, y)
+        }
+        heldY = y
     }
     for (index in view.firstVisible..view.lastVisible) {
         val value = overlay.values[index]
@@ -3958,6 +4041,7 @@ private fun DrawScope.drawPane(
         pane.lines.forEach { line ->
             val path = Path()
             var started = false
+            var heldY = 0f
             for (index in view.firstVisible..view.lastVisible) {
                 val value = line.values[index]
                 if (value == null) {
@@ -3966,12 +4050,20 @@ private fun DrawScope.drawPane(
                 }
                 val x = view.xOf(index)
                 val y = yOf(value)
-                if (!started) {
-                    path.moveTo(x, y)
-                    started = true
-                } else {
-                    path.lineTo(x, y)
+                when {
+                    !started -> {
+                        path.moveTo(x, y)
+                        started = true
+                    }
+                    // The same rule as an overlay's — see [ChartLine.stepped]. A stepped series in a
+                    // pane is the same kind of series; the pane is only where it is drawn.
+                    line.stepped -> {
+                        path.lineTo(x, heldY)
+                        path.lineTo(x, y)
+                    }
+                    else -> path.lineTo(x, y)
                 }
+                heldY = y
             }
             drawPath(
                 path = path,
@@ -6082,6 +6174,34 @@ private const val PROFILE_TAIL_ALPHA = 0.12f
  */
 private const val PANE_BUDGET = 0.5f
 
+/**
+ * The least of the canvas one indicator pane may have: **twenty-two per cent** (run K item 2).
+ *
+ * The owner's figure, and the reason for it is on the recording: an RSI in a tenth of the chart,
+ * with the volume histogram pressing on it from above, is a strip you can see a line move in and
+ * cannot read a level off. Twenty-two per cent of a phone's plot is about sixty points — enough for
+ * the pane's own two reference lines and the space between them to mean something.
+ *
+ * It is a floor and not a size: two panes at this figure fit inside [PANE_BUDGET] with the price
+ * pane keeping its half, and beyond two the budget is shared equally instead, because the price
+ * pane's half is the rule that does not bend.
+ */
+private const val MIN_PANE_FRACTION = 0.22f
+
+/**
+ * The grip drawn on the boundary between the candles and the first pane.
+ *
+ * The drag has worked since run E and nothing said so — «دسته‌ی کشیدنی بین پین‌ها» is a request for
+ * the *handle*, not for the gesture. Forty-eight points of hairline at the middle of the boundary,
+ * which is the smallest mark that reads as something to take hold of rather than as a grid line
+ * that went wrong.
+ */
+private val PANE_GRIP_WIDTH_DP = 48.dp
+private val PANE_GRIP_HEIGHT_DP = 3.dp
+
+/** Visible enough to find, faint enough not to compete with the pane's own plot. */
+private const val PANE_GRIP_ALPHA = 0.55f
+
 
 /**
  * How far a label chip's rounded corners are cut.
@@ -6415,6 +6535,36 @@ internal val LINE_WIDTH_DP = 1.6.dp
 // Ten, measured: TradingView sets its price labels 10 css px in from the axis edge (tick 5 + inner
 // padding 5, in Lightweight Charts' own terms), and the live-price tag's text at the same x.
 internal val AXIS_PADDING_DP = 10.dp
+
+/**
+ * The widest the price gutter may be on a phone: **sixty-four points** (run K item 2).
+ *
+ * The owner's figure, from a frame-by-frame reading of a recording where the gutter and the right
+ * margin together held about a quarter of the glass. It is a ceiling on the scale's *margins* and
+ * never on its labels — see where it is applied.
+ */
+private val PHONE_AXIS_MAX = 64.dp
+
+/** A phone below this and a tablet at or above it, in points. The framework's own boundary. */
+private const val TABLET_WIDTH_DP = 600
+
+/** The hairline between the plot and the gutter, in device pixels. */
+private const val AXIS_HAIRLINE_PX = 1f
+
+/** A pixel or two after the last glyph, so a capped gutter does not end flush against it. */
+private const val AXIS_TRAILING_PX = 2f
+
+/**
+ * Rounded up to an even number of device pixels.
+ *
+ * The same rule `priceAxisWidth` applies and for the same reason: the border between the plot and
+ * the gutter has to land on a device pixel, and an odd width puts it on a half one — which the
+ * compositor resolves into two rows at half intensity, a grey smear down the side of the chart.
+ */
+private fun evenUp(value: Float): Float {
+    val raw = ceil(value)
+    return if (raw.toInt() % 2 == 0) raw else raw + 1f
+}
 // Opaque: the template colour *is* the grid colour, measured as #282828 on TradingView's #0F0F0F.
 // It used to be a 12% white at 35% alpha — four percent of ink, which is a grid nobody can see.
 private const val GRID_ALPHA = 1f
@@ -6447,7 +6597,16 @@ private val ENTRY_MARK_DP = 2.dp
 
 /** How far a marker sits from the bar's high or low, so it points rather than covers. */
 private const val MARKER_CLEARANCE = 8f
-private const val MARKER_SIZE = 7f
+
+/**
+ * A marker's overall size: **six points** (run K item 4).
+ *
+ * Seven before, which sounds like nothing and is not: the owner's recording has a script marking a
+ * condition on a run of consecutive bars, and at seven points on a phone's bar width the triangles
+ * touched and read as a band rather than as marks. Six is the reference's own, and it is the size at
+ * which the marks stay separate at the default zoom while remaining the thing a reader can see.
+ */
+private const val MARKER_SIZE = 6f
 
 /** Below this a pinch is a drag with slightly uneven fingers, not an intent to zoom. */
 private const val ZOOM_DEADZONE = 0.01f

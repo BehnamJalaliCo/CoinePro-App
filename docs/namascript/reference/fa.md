@@ -182,7 +182,7 @@
 
 | فراخوانی | چه می‌دهد | خروجی |
 | --- | --- | --- |
-| `plot(series, title = "نام", color = color.gold, width = 1.4, dashed = false, pane = "auto")` | یک خط روی نمودار. جای خط — روی قیمت یا در پنل جدا — خودکار تعیین می‌شود مگر pane را بدهید. | همان سری |
+| `plot(series, title = "نام", color = color.gold, width = 1.5, dashed = false, stepped = false, pane = "auto")` | یک خط روی نمودار. جای خط — روی قیمت یا در پنل جدا — خودکار تعیین می‌شود مگر pane را بدهید. | همان سری |
 | `hline(70, title = "اشباع خرید", color = color.grey)` | یک خط افقی ثابت. | همان عدد |
 | `marker(condition, title = "ورود", style = "up", color = color.green)` | روی هر کندلی که شرط برقرار است یک نشانه می‌گذارد. style یکی از up، down یا circle. | همان شرط |
 | `signal(condition, entry, stop, target = target, buy = true)` | از آخرین کندلی که شرط در آن برقرار شد یک ستاپ می‌سازد: ورود، حد ضرر، هدف و نسبت ریسک به بازده. | درست/نادرست |

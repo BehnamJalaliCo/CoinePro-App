@@ -22,6 +22,22 @@ data class ChartLine(
      */
     val dashed: Boolean = false,
     /**
+     * Drawn as steps — held flat across the bar, then jumped — rather than as a sloped line.
+     *
+     * ### Why a chart needs this at all
+     *
+     * Because some series are not measurements, they are **decisions**, and a sloped line tells a
+     * lie about one. A trailing stop is at one price for the whole of a bar and then moves; drawn as
+     * a diagonal it appears to have been at a dozen intermediate prices the reader could have been
+     * filled at, and on a rising market two of them drawn together read as a shaded band rather than
+     * as two levels. Every terminal draws a stop, a step-line and a `plot(style=stepline)` this way
+     * for the same reason.
+     *
+     * Off by default: for an average, an oscillator or a band edge the value really does move
+     * through the bar and the slope is the honest shape.
+     */
+    val stepped: Boolean = false,
+    /**
      * Join across the gaps instead of breaking at them.
      *
      * Off by default and it must stay off by default: for an indicator a gap is a warm-up or a

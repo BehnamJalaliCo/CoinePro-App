@@ -78,4 +78,5 @@
     <string name="announcements_open_failed">No browser was found to open this address.</string>
     <string name="news_platform_crypto">Crypto</string>
     <string name="news_platform_forex">Forex</string>
+    <string name="news_image_retry">Picture didn\'t load. Tap to try again.</string>
 </resources>

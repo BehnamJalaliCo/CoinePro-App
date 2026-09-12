@@ -46,13 +46,23 @@ data class ScriptOverlay(
 fun ScriptResult.toOverlay(series: CandleSeries, title: String): ScriptOverlay {
     if (!ok) return ScriptOverlay()
 
-    val overlays = plots.filter { !it.ownPane }.map { plot ->
+    // **The first line over the price carries the script's name, not the plot's** (run K item 4).
+    //
+    // The legend collapses to one row, and that row is the first of these. With the plot's own title
+    // on it the plate read «حد ضرر خرید · 76,350.1 ▸ +4»: a phrase from inside somebody's source,
+    // with no indication of which study it belongs to, over a chart carrying five. Every terminal
+    // names the *study* on its legend row and the plots inside it after. So the lead line is the
+    // script — which is what the reader switched on, and what the gear beside it opens — and the
+    // rest keep their own titles, which is how two plots of one script stay apart when the plate is
+    // open.
+    val overlays = plots.filter { !it.ownPane }.mapIndexed { index, plot ->
         ChartLine(
             values = plot.values,
             colour = plot.colour,
             widthDp = plot.widthDp,
-            label = plot.title,
+            label = if (index == 0) title else plot.title,
             dashed = plot.dashed,
+            stepped = plot.stepped,
         )
     }
     val paneLines = plots.filter { it.ownPane }.map { plot ->
@@ -62,6 +72,7 @@ fun ScriptResult.toOverlay(series: CandleSeries, title: String): ScriptOverlay {
             widthDp = plot.widthDp,
             label = plot.title,
             dashed = plot.dashed,
+            stepped = plot.stepped,
         )
     }
     val priceLevels = levels.filter { !it.ownPane }.map { it.toPriceLevel() }

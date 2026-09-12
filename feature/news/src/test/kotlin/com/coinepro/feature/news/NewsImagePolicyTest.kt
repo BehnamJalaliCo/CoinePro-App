@@ -46,23 +46,31 @@ class NewsImagePolicyTest {
     }
 
     @Test
-    fun `a publishers oversized hero is halved until it stops dwarfing the card`() {
-        // A 2000px wide photograph on a 400px card: four steps of halving still covers it, five
-        // would not. The result has to be a power of two, because BitmapFactory silently rounds
-        // anything else down to one.
-        assertEquals(4, NewsImagePolicy.sampleSize(sourceWidth = 2000, targetWidth = 400))
-        assertEquals(2, NewsImagePolicy.sampleSize(sourceWidth = 900, targetWidth = 400))
+    fun `with no backend picture route the publishers own address is fetched unchanged`() {
+        // Which is what ships today, and the reason this is a test rather than a comment: the seam
+        // must be inert until somebody sets it, or turning it on becomes a change to the loader.
+        val url = "https://cdn.example.com/gold.jpg"
+        assertEquals(url, NewsImagePolicy.through(base = null, url = url))
+        assertEquals(url, NewsImagePolicy.through(base = "   ", url = url))
     }
 
     @Test
-    fun `a picture already at or under the card width is decoded whole`() {
-        assertEquals(1, NewsImagePolicy.sampleSize(sourceWidth = 400, targetWidth = 400))
-        assertEquals(1, NewsImagePolicy.sampleSize(sourceWidth = 120, targetWidth = 400))
+    fun `a configured backend route carries the publishers address as a query`() {
+        val proxied = NewsImagePolicy.through(
+            base = "https://api.example.com/news/image/",
+            url = "https://cdn.example.com/gold.jpg?w=2000",
+        )
+        // The trailing slash of the base is not doubled, and the publisher's own query survives
+        // being encoded — an un-encoded `?w=2000` would arrive at the backend as *its* parameter.
+        assertEquals(
+            "https://api.example.com/news/image?url=https%3A%2F%2Fcdn.example.com%2Fgold.jpg%3Fw%3D2000",
+            proxied,
+        )
     }
 
     @Test
-    fun `bounds that could not be read do not divide by zero`() {
-        assertEquals(1, NewsImagePolicy.sampleSize(sourceWidth = -1, targetWidth = 400))
-        assertEquals(1, NewsImagePolicy.sampleSize(sourceWidth = 2000, targetWidth = 0))
+    fun `an address the policy refuses is never handed to the backend either`() {
+        val hostile = "http://cdn.example.com/gold.jpg"
+        assertEquals(hostile, NewsImagePolicy.through(base = "https://api.example.com/news/image", url = hostile))
     }
 }

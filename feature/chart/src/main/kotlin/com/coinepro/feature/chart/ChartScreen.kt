@@ -270,6 +270,23 @@ fun ChartScreen(
      */
     onOpenTerminal: (() -> Unit)? = null,
     /**
+     * Opens the depth ladder on this symbol, or null where this venue publishes no Level II.
+     *
+     * ### Why it arrives as a parameter now
+     *
+     * It was a worded button in the app bar's action slot — the only permanent control on the chart
+     * route that was not part of the chart — and it cost forty-eight points of height on every
+     * phone, on every symbol, for a screen a reader opens occasionally. The owner's recording is
+     * what settled it: the plot had about forty-five per cent of the glass and this row was one of
+     * the five things holding it there.
+     *
+     * So it moves where the rest of the once-a-month controls already live — the «…» hub — and on a
+     * window wide enough it stays what it already was, a docked panel beside the plot. Null keeps
+     * the tile out altogether, which is right for the forex venue: its broker publishes no order
+     * book and a tile whose only destination is a refusal is worse than an absent one.
+     */
+    onOpenDepth: (() -> Unit)? = null,
+    /**
      * Opens the chart studio on this symbol — indicators, drawing tools, replay, backtest, script.
      *
      * A whole destination rather than a toolbar, and that is the owner's call. The chart page is
@@ -948,8 +965,14 @@ fun ChartScreen(
                 else -> {
                 CoineProChart(
                     series = state.visibleSeries,
-                    // Read in the layer, so the fade repaints without recomposing the chart.
-                    modifier = Modifier.fillMaxSize().graphicsLayer { alpha = symbolFade.value }.testTag("chart-plot"),
+                    // Read in the layer, so the fade repaints without recomposing the chart. The
+                    // stale factor multiplies into the same alpha rather than adding a second
+                    // layer: bars on their way out are drawn at [STALE_ALPHA] and a symbol switch
+                    // fades over the top of that. See [ChartUiState.stale].
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = symbolFade.value * if (state.stale) STALE_ALPHA else 1f }
+                        .testTag("chart-plot"),
                     type = state.chartType,
                     // The legend's first line, as TradingView's phone sets it: the mark and the
                     // instrument's name — «Bitcoin / TetherUS» — not the ticker.
@@ -1185,6 +1208,28 @@ fun ChartScreen(
                     }
                 }
                 }
+            }
+            // **A load that failed over a chart that still has candles on it is a line, not a page.**
+            //
+            // The reader can see prices. They are real and they are merely old, and replacing a
+            // working chart with a centred «چارت بارگیری نشد» throws away the only useful thing on
+            // the glass to deliver news that fits in a sentence. So the full-screen failure is kept
+            // for the one case that earns it — nothing to look at at all, the branch above — and
+            // everything else gets this: one compact row at the foot of the plot, with the retry in
+            // it, over a chart the reader can go on reading and drawing on.
+            if (state.error != null && !state.series.isEmpty) {
+                ChartInlineFailure(
+                    error = state.error!!,
+                    onRetry = controller::retry,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .windowInsetsPadding(WindowInsets.safeDrawing)
+                        // Clear of the time axis, which is the one row at this end of the plot that
+                        // has to stay readable: a banner over it hides the dates the reader would
+                        // use to judge how old these candles are.
+                        .padding(bottom = TIME_AXIS_CLEARANCE)
+                        .zIndex(1f),
+                )
             }
             // Older bars arriving: a shimmer down the left edge, where they will land, rather
             // than a spinner in the corner. The viewport is anchored at the newest bar, so the
@@ -1696,13 +1741,6 @@ fun ChartScreen(
             val recent by remember(indicatorFavourites) {
                 indicatorFavourites?.recent() ?: flowOf(emptyList<String>())
             }.collectAsStateWithLifecycle(emptyList())
-            // A reader's own studies first. See `ScriptPickerSection` for why they lead.
-            ScriptPickerSection(
-                library = scriptLibrary,
-                onChart = state.scripts,
-                onAdd = { entry -> controller.putScript(entry.name, entry.source) },
-                onRemove = { instance -> controller.removeScript(instance.instanceId) },
-            )
             IndicatorPicker(
                 active = state.activeIndicators,
                 onToggle = { option ->
@@ -1721,7 +1759,20 @@ fun ChartScreen(
                     { id -> favouriteScope.launch { store.toggleFavourite(id) } }
                 },
                 recent = recent,
-                autoFocusSearch = true,
+                // **No keyboard on open** (run K item 3). The reference raises one; on the owner's
+                // phone that covered the bottom half of the sheet and the catalogue with it.
+                autoFocusSearch = false,
+                // The reader's own studies, at the foot of the same scroll — see
+                // `ScriptPickerSection` for why they moved from the head of the sheet to here.
+                trailing = {
+                    ScriptPickerSection(
+                        library = scriptLibrary,
+                        onChart = state.scripts,
+                        onAdd = { entry -> controller.putScript(entry.name, entry.source) },
+                        onRemove = { instance -> controller.removeScript(instance.instanceId) },
+                        collapsible = true,
+                    )
+                },
                 modifier = Modifier.fillMaxHeight(INDICATOR_SHEET_HEIGHT),
             )
         }
@@ -1962,6 +2013,12 @@ fun ChartScreen(
                 // is told so instead of concluding nothing has happened.
                 eventNotice = eventState.notice,
                 onOpenTerminal = onOpenTerminal?.let { open ->
+                    {
+                        sheet = null
+                        open()
+                    }
+                },
+                onOpenDepth = onOpenDepth?.let { open ->
                     {
                         sheet = null
                         open()
@@ -4196,10 +4253,78 @@ private fun SecondsWarmingUp(interval: ChartInterval) {
 }
 
 /**
+ * One sentence per way a load can fail, shared by the full-screen failure and the inline row.
+ *
+ * Split out so the two cannot drift: the banner is the same news in a smaller place, and a reader
+ * who meets both in one sitting must not be told two different things.
+ */
+private fun chartErrorText(error: ChartError): Int = when (error) {
+    ChartError.NETWORK -> R.string.chart_load_failed
+    ChartError.UNSUPPORTED_SYMBOL -> R.string.chart_load_unsupported
+    ChartError.CHART_DISABLED -> R.string.chart_load_disabled
+    // No retry appears under this one — the callers already exclude it, and that is deliberate:
+    // this venue has no feed fine enough to build this bar length, so a «تلاش دوباره» would be a
+    // button that cannot ever succeed.
+    ChartError.INTERVAL_UNAVAILABLE -> R.string.chart_load_interval
+}
+
+/**
+ * The failure as one row at the foot of a chart that still has candles on it.
+ *
+ * ### Why this exists at all
+ *
+ * Because the full-screen version was being shown for a *transient* failure over a working chart.
+ * The owner's recording has it five times: a timeframe the venue did not answer for, and the whole
+ * chart — the candles, the drawings, the indicators, the axis — replaced by a centred sentence. The
+ * reader had lost nothing except the app's willingness to draw what it already had.
+ *
+ * So the rule is the one TradingView follows: the page is for «there is nothing to show you», and
+ * anything else is a line. One row, a sentence, and the retry in it, over a chart that stays
+ * readable and usable while it is up.
+ */
+@Composable
+private fun ChartInlineFailure(error: ChartError, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .padding(horizontal = CoineProSpacing.Two)
+            .clip(com.coinepro.core.designsystem.CoineProPillShape)
+            // Opaque enough to read over candles, which is the whole difficulty of a banner on a
+            // chart: a scrim that lets the plot through makes both illegible.
+            .background(CoineProColors.SurfaceElevated.copy(alpha = 0.94f))
+            .border(1.dp, CoineProColors.BorderSubtle, com.coinepro.core.designsystem.CoineProPillShape)
+            .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One)
+            .semantics { contentDescription = "chart-inline-failure" },
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(chartErrorText(error)),
+            style = MaterialTheme.typography.bodySmall,
+            color = CoineProColors.TextSecondary,
+            maxLines = 2,
+        )
+        if (error == ChartError.NETWORK) {
+            Text(
+                text = stringResource(R.string.chart_retry),
+                style = MaterialTheme.typography.labelMedium,
+                color = CoineProColors.Accent,
+                modifier = Modifier
+                    .clip(com.coinepro.core.designsystem.CoineProPillShape)
+                    .clickable(onClick = onRetry)
+                    .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half),
+            )
+        }
+    }
+}
+
+/**
  * Why the chart is empty, and what to do about it.
  *
  * Each case gets its own sentence, and only one of them offers a retry. Offering "try again" for a
  * symbol the platform does not carry sends the reader round a loop that cannot end.
+ *
+ * Shown only when there is genuinely nothing on the plot. A failure over a chart that still has
+ * candles on it is [ChartInlineFailure] instead.
  */
 @Composable
 private fun ChartFailure(error: ChartError, onRetry: () -> Unit) {
@@ -4209,22 +4334,16 @@ private fun ChartFailure(error: ChartError, onRetry: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = when (error) {
-                ChartError.NETWORK -> "چارت بارگیری نشد."
-                ChartError.UNSUPPORTED_SYMBOL -> "این نماد روی این پلتفرم چارت ندارد."
-                ChartError.CHART_DISABLED -> "چارت این پلتفرم موقتاً در دسترس نیست."
-                // No retry appears under this one — the guard below already excludes it, and that
-                // is deliberate: this venue has no feed fine enough to build this bar length, so
-                // a «تلاش دوباره» would be a button that cannot ever succeed.
-                ChartError.INTERVAL_UNAVAILABLE ->
-                    "این پلتفرم کندل این بازه را ندارد. بازه‌ی بلندتری انتخاب کنید."
-            },
+            // Resources, not literals. These four sentences were the last Persian strings left in
+            // this file's own code, which meant an English reader met «چارت بارگیری نشد» on the one
+            // screen in the app where nothing else was going to explain itself.
+            text = stringResource(chartErrorText(error)),
             style = MaterialTheme.typography.bodyMedium,
             color = CoineProColors.TextSecondary,
         )
         if (error == ChartError.NETWORK) {
             Text(
-                text = "تلاش دوباره",
+                text = stringResource(R.string.chart_retry),
                 style = MaterialTheme.typography.labelLarge,
                 color = CoineProColors.Accent,
                 modifier = Modifier
@@ -4243,8 +4362,16 @@ private fun ChartFailure(error: ChartError, onRetry: () -> Unit) {
  * horizontal strip, and short enough that two tiers of controls still read as one band.
  */
 // Forty-four tall and fifty-six wide: TradingView's interval chips, measured off the phone app.
-/** The indicator sheet is full-height, the reference's: a list of eighty is a page, not a drawer. */
-private const val INDICATOR_SHEET_HEIGHT = 0.92f
+/**
+ * The indicator sheet is full-height, the reference's: a list of eighty is a page, not a drawer.
+ *
+ * **One, as of 4.74.0** (run K item 3). It was 0.92, which left eight per cent of the window as a
+ * strip of chart above the sheet and, with the keyboard up, put the catalogue's last rows below the
+ * fold. There is nothing on that strip a reader is reading while they choose a study, and the whole
+ * of the request is that the list be visible. The sheet's own handle and heading are still inside
+ * it, so «full» is not edge to edge — it is as much as this sheet is allowed to take.
+ */
+private const val INDICATOR_SHEET_HEIGHT = 1f
 
 /** The toolbar's slide out before the fullscreen window, and the chart's fade on a symbol switch. */
 private const val FULLSCREEN_SLIDE_MS = 200
@@ -4253,6 +4380,24 @@ private const val INTERVAL_CROSSFADE_MS = 150
 
 /** The shimmer down the left edge while older bars load. */
 private val HISTORY_SKELETON_WIDTH = 24.dp
+
+/**
+ * How solid bars that are on their way out are drawn: forty per cent.
+ *
+ * The figure the owner asked for and the one TradingView uses, and it is a judgement about *two*
+ * legibilities at once. Much above this and a reader cannot tell the old candles from the new ones
+ * when they land — the switch stops reading as a switch. Much below it and the chart may as well
+ * have been blanked, which is the thing being fixed. See [ChartUiState.stale].
+ */
+internal const val STALE_ALPHA = 0.4f
+
+/**
+ * How far above the plot's foot the inline failure sits: enough to clear the time axis.
+ *
+ * The dates are the one row at this end that has to stay readable while a banner is up — they are
+ * how a reader judges how old the candles under it are.
+ */
+private val TIME_AXIS_CLEARANCE = 28.dp
 
 private val INTERVAL_KEY_HEIGHT = 44.dp
 private val INTERVAL_KEY_WIDTH = 56.dp

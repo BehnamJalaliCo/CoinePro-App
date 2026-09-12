@@ -111,8 +111,11 @@ internal object ScriptPresetsEn {
                 longStop = close - atr * multiplier
                 shortStop = close + atr * multiplier
 
-                plot(longStop, title = "Long stop", color = color.buy, dashed = true)
-                plot(shortStop, title = "Short stop", color = color.sell, dashed = true)
+                // Stepped and solid rather than dashed: a stop is at one price for the whole of a
+                // bar and then moves. Two dashed lines beside each other read as a shaded band on a
+                // phone rather than as two levels.
+                plot(longStop, title = "Long stop", color = color.buy, stepped = true)
+                plot(shortStop, title = "Short stop", color = color.sell, stepped = true)
             """.trimIndent(),
         ),
         ScriptPreset(

@@ -256,7 +256,6 @@ import com.coinepro.feature.dom.DepthLadderPreference
 import com.coinepro.feature.dom.DepthLadderPreferences
 import com.coinepro.feature.dom.LadderFigure
 import com.coinepro.feature.dom.DepthOfMarketScreen
-import com.coinepro.feature.dom.R as DomR
 import com.coinepro.feature.execution.ExecutionScreen
 import com.coinepro.feature.guest.GuestGate
 import com.coinepro.feature.guest.GuestGateScreen
@@ -1927,18 +1926,6 @@ private fun MainShell(
     /** A pending «alert me when this script's condition holds» — run I item 0.6. */
     var scriptAlert by remember { mutableStateOf<ScriptAlertRequest?>(null) }
 
-    /**
-     * The instrument the chart destination currently has in front of the reader, hoisted here.
-     *
-     * The bar needs it and the bar is outside the destination. It cannot be taken from the route
-     * argument: the watchlist strip under the chart swaps the symbol *in place* without
-     * navigating, so `chart/{symbol}` keeps naming the market the reader started from. The chart
-     * route below reports its live symbol into this, which is what lets the depth entry open the
-     * ladder on the market actually on screen rather than on one several taps ago.
-     *
-     * Saveable, so a rotation on the chart does not empty the bar.
-     */
-    var chartSymbolOnScreen by rememberSaveable { mutableStateOf("") }
     val shellScope = rememberCoroutineScope()
     // What this phone can do about proving who is holding it. Read once — it changes only when
     // somebody enrols a fingerprint, which happens outside this app.
@@ -2262,49 +2249,21 @@ private fun MainShell(
                         }
                     },
                     actions = {
-                        // The way into the depth ladder, and today the only one.
+                        // **The depth entry is not here any more.**
                         //
-                        // It belongs on the chart's own surface, beside the studio and the panes
-                        // entries — but those live inside `feature:chart`, which this file does
-                        // not own, and a route nothing opens is a screen nobody reaches. So it
-                        // sits in the corner of the chart's bar, which is otherwise empty: the
-                        // chart is self-titled, so there is no heading here to crowd, and the
-                        // control appears on that one route and nowhere else.
+                        // It was a worded button in this slot, on the chart route and nowhere else,
+                        // and it was the one permanent control over the plot that was not part of
+                        // the chart. The owner's frame-by-frame reading of the recording put a
+                        // number on what that cost: the plot had about forty-five per cent of a
+                        // phone's glass, and this row was one of the five bands holding it there.
                         //
-                        // Worded rather than drawn, because the icon set has no ladder in it and
-                        // the nearest shape — the table glyph — is already the chart's own «جدول»
-                        // drawing tool two taps away on the same screen.
+                        // It now lives where the rest of the chart's once-a-month controls already
+                        // live — a tile in the «…» hub — and on a wide window it stays the docked
+                        // panel it already was. `feature:chart` still cannot see `feature:dom`, so
+                        // what crosses the boundary is a lambda: see `ChartScreen.onOpenDepth`,
+                        // passed from `chartPane` below with the same crypto-only condition this
+                        // slot used to apply.
                         //
-                        // The route argument is the fallback rather than the answer: it is right
-                        // until the watchlist strip swaps the symbol in place, and it is what the
-                        // bar has on the first frame of a chart, before that destination has
-                        // reported its live symbol up.
-                        val depthSymbol = chartSymbolOnScreen.ifBlank {
-                            backStackEntry?.arguments?.getString("symbol").orEmpty()
-                        }
-                        // Crypto only, and that is settled rather than pending.
-                        //
-                        // CoinePro-FX's MetaTrader 5 broker does not publish Level II, so
-                        // `NoDepthGateway` answers `FEED_PUBLISHES_NO_DEPTH` for every forex symbol
-                        // and always will — it is the broker's decision, not the backend's. This
-                        // entry used to be on every chart, so a reader on gold pressed «عمق بازار»
-                        // and got one sentence saying there is none. A button whose only
-                        // destination is a refusal is worse than an absent one; see
-                        // `docs/SERVER_ASKS_DOM.md`, section two.
-                        //
-                        // Read from the platform rather than by probing the gateway, because the
-                        // answer is a property of the venue and is known before any request. The
-                        // route itself stays reachable — a saved back stack or an old link still
-                        // lands on the screen, which still says the true thing.
-                        val depthAvailable = activePlatform.marketType == MarketType.CRYPTO
-                        if (currentRoute == CHART_PATTERN && depthSymbol.isNotBlank() && depthAvailable) {
-                            TextButton(onClick = { navController.navigate(domRoute(depthSymbol)) }) {
-                                Text(
-                                    text = stringResource(DomR.string.dom_title),
-                                    color = CoineProColors.TextPrimary,
-                                )
-                            }
-                        }
                         // One control where there were two text buttons.
                         //
                         // «ایمنی» and «خروج» were a pair of words in the corner of every screen,
@@ -2481,10 +2440,6 @@ private fun MainShell(
              * Saved rather than remembered, so a rotation does not undo the switch.
              */
             var activeChartSymbol by rememberSaveable { mutableStateOf(routeSymbol) }
-            // What the bar's depth entry opens on. Keyed on the symbol rather than set inside
-            // `onSymbolChanged`, because that callback only fires on a *change* — a reader who
-            // opens a chart and presses depth straight away has never changed anything.
-            LaunchedEffect(activeChartSymbol) { chartSymbolOnScreen = activeChartSymbol }
             val chartController = chartControllers.controllerFor(routeSymbol)
             // The bar a fired alert was decided on. Recorded rather than applied, because the
             // controller's own restore reads a stored interval for this symbol and whichever
@@ -2649,6 +2604,25 @@ private fun MainShell(
                 },
                 onOpenTerminal = if (terminalController.isConfigured) {
                     { navController.navigate(TERMINAL_ROUTE) }
+                } else {
+                    null
+                },
+                // The depth ladder, moved off the app bar and into the chart's own hub (4.74.0).
+                //
+                // Crypto only, and that is settled rather than pending. CoinePro-FX's MetaTrader 5
+                // broker does not publish Level II, so `NoDepthGateway` answers
+                // `FEED_PUBLISHES_NO_DEPTH` for every forex symbol and always will — it is the
+                // broker's decision, not the backend's. Read from the platform rather than by
+                // probing the gateway, because the answer is a property of the venue and is known
+                // before any request; see `docs/SERVER_ASKS_DOM.md`, section two. The route itself
+                // stays reachable — a saved back stack or an old link still lands on the screen,
+                // which still says the true thing.
+                //
+                // `activeChartSymbol`, not the route argument: the watchlist strip swaps the
+                // instrument in place without navigating, and the ladder must open on the market
+                // the reader is actually looking at.
+                onOpenDepth = if (activePlatform.marketType == MarketType.CRYPTO) {
+                    { navController.navigate(domRoute(activeChartSymbol)) }
                 } else {
                     null
                 },
@@ -3491,8 +3465,9 @@ private fun MainShell(
                 arguments = listOf(navArgument("symbol") { type = NavType.StringType }),
             ) { entry ->
                 // The market this ladder belongs to. The entry that reaches here is built from the
-                // chart's *live* symbol rather than its route argument — see `chartSymbolOnScreen`
-                // — so this is the instrument that was in front of the reader when they pressed it.
+                // chart's *live* symbol rather than its route argument — see the chart pane's
+                // `activeChartSymbol` — so this is the instrument that was in front of the reader
+                // when they pressed it.
                 val activeChartSymbol = entry.arguments?.getString("symbol").orEmpty()
                 val depthScope = rememberCoroutineScope()
                 // One controller per visit, on the gateway of the platform on screen. Not held for

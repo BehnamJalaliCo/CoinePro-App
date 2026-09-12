@@ -874,8 +874,16 @@ internal object Builtins {
             "خط " + persianDigits(interpreter.plotCount + 1)
         }
         val colour = if (arguments.has("color")) arguments.colourOf(arguments.named("color")) else 0xFFD8A848
-        val width = if (arguments.has("width")) arguments.constantOf(arguments.named("width"), "ضخامت", "The width") else 1.4
+        // **One and a half, not one point four** (4.74.0, run K item 4). The owner's figure, and the
+        // reason is the recording: at 1.4 a script's line on a phone rasterises to a one-pixel
+        // column at some densities and a two-pixel one at others, so two plots from the same script
+        // came out visibly different weights. One and a half lands on a whole pixel either side of
+        // the boundary at 2x and 3x and reads as one weight everywhere.
+        val width = if (arguments.has("width")) arguments.constantOf(arguments.named("width"), "ضخامت", "The width") else 1.5
         val dashed = arguments.has("dashed") && arguments.flagOf(arguments.named("dashed"))
+        // A series that holds for the bar and then jumps — a trailing stop, a level. See
+        // `ChartLine.stepped` for why a sloped line misrepresents one.
+        val stepped = arguments.has("stepped") && arguments.flagOf(arguments.named("stepped"))
         val pane = if (arguments.has("pane")) {
             arguments.textOf(arguments.named("pane")) != "price"
         } else {
@@ -889,6 +897,7 @@ internal object Builtins {
                 widthDp = width.toFloat().coerceIn(0.5f, 6f),
                 ownPane = pane,
                 dashed = dashed,
+                stepped = stepped,
             ),
             node,
         )

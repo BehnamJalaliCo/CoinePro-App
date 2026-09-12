@@ -182,7 +182,7 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 
 | Call | What it gives | Returns |
 | --- | --- | --- |
-| `plot(series, title = "نام", color = color.gold, width = 1.4, dashed = false, pane = "auto")` | Draws a number series as a line. | همان سری |
+| `plot(series, title = "نام", color = color.gold, width = 1.5, dashed = false, stepped = false, pane = "auto")` | Draws a number series as a line. | همان سری |
 | `hline(70, title = "اشباع خرید", color = color.grey)` | A horizontal level. | همان عدد |
 | `marker(condition, title = "ورود", style = "up", color = color.green)` | A mark on every bar the condition holds. | همان شرط |
 | `signal(condition, entry, stop, target = target, buy = true)` | The trade idea from the last bar the condition held, with its risk-to-reward. | true/false |

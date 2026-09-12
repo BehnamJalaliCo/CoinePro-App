@@ -672,7 +672,7 @@ fun DrawScope.drawDrawing(
                 drawCircle(colour.copy(alpha = HANDLE_HALO_ALPHA * grow), radius * HANDLE_HALO_SCALE, point)
             }
             drawCircle(Color.White, radius, point)
-            drawCircle(colour, radius, point, style = Stroke(HANDLE_RING.toPx()))
+            drawCircle(colour, radius, point, style = Stroke(crispStroke(HANDLE_RING_PX)))
             // The readout: what the finger is over, said beside the ring rather than under the
             // finger. The bar's open, high, low and close and its moment, so a handle being
             // dragged onto a wick can be put exactly on it — the same figures a magnifier would
@@ -1533,7 +1533,22 @@ private const val HANDLE_GRAB_SCALE = 2.2f
 /** The halo around the held handle, as a multiple of its grown radius, and how faint it is. */
 private const val HANDLE_HALO_SCALE = 1.9f
 private const val HANDLE_HALO_ALPHA = 0.18f
-private val HANDLE_RING = 2.dp
+
+/**
+ * The accent ring around a handle: **two device pixels**, not two points (run K item 7).
+ *
+ * The handle has been an eight-point dot since run E and the owner still read it as «حلقه‌های زرد
+ * ۲۸ پیکسلی», which is not a contradiction — it is arithmetic. A two-*point* stroke on a
+ * three-and-a-half-times screen is seven pixels, centred on a radius of fourteen, so the ring
+ * occupied ten of the dot's twenty-eight pixels from each side and what was left of the white
+ * middle was a sliver. The dot *was* the colour.
+ *
+ * Two pixels is a ring: the handle reads white with an accent edge, which is what makes it legible
+ * over a candle and what every terminal draws. It is a pixel count rather than a point count
+ * deliberately — a hairline is a property of the screen, not of the layout, and scaling it with
+ * density is what produced the problem.
+ */
+private const val HANDLE_RING_PX = 2f
 
 /** The readout plate's distance from the held ring, its corner, and how much stage it keeps. */
 private val READOUT_LIFT = 14.dp

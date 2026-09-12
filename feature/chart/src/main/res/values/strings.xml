@@ -212,4 +212,10 @@
     <string name="chart_script_alert_firing">Holding on the last bar</string>
     <string name="chart_script_alert_quiet">Not holding</string>
     <string name="chart_script_alert_create">Create an alert</string>
+    <string name="chart_load_failed">The chart didn\'t load.</string>
+    <string name="chart_load_unsupported">This symbol has no chart on this platform.</string>
+    <string name="chart_load_disabled">This platform\'s chart is unavailable for the moment.</string>
+    <string name="chart_load_interval">This platform has no candle of this length. Pick a longer one.</string>
+    <string name="chart_load_stale">These candles are the last ones that arrived.</string>
+    <string name="chart_retry">Try again</string>
 </resources>

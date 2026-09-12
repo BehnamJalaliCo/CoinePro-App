@@ -301,8 +301,14 @@ private fun ToolbarButton(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    // A count of things, so Persian digits — see `NumberStyle`.
-                    text = count.coerceAtMost(TOOLBAR_BADGE_MAX).proseDigits(),
+                    // **Latin, in both languages** (4.74.0, run K item 3).
+                    //
+                    // The owner's instruction, and it fits the standing rule rather than bending
+                    // it: Persian digits are for a count *in prose* — «۴ اندیکاتور» — and this is a
+                    // bare numeral on a control, with no sentence around it, read at a glance
+                    // beside a chart whose every figure is Latin. «۴» in a sixteen-point disc next
+                    // to a price axis reading 76,350.1 is two numbering systems on one surface.
+                    text = count.coerceAtMost(TOOLBAR_BADGE_MAX).toString(),
                     style = MaterialTheme.typography.labelSmall.copy(fontSize = TOOLBAR_BADGE_TEXT),
                     color = CoineProColors.onPageAccent,
                     maxLines = 1,
@@ -699,6 +705,14 @@ internal fun ChartMoreSheetBody(
     /** The web terminal, where a deployment reports one. */
     onOpenTerminal: (() -> Unit)? = null,
     /**
+     * The depth ladder, where the venue publishes one (4.74.0, run K item 2).
+     *
+     * It was a permanent worded button in the app bar over every chart. Here it is a tile among the
+     * other once-a-month entries, which is what it always was, and the forty-eight points it used
+     * to hold are the plot's.
+     */
+    onOpenDepth: (() -> Unit)? = null,
+    /**
      * Ask the assistant about **this** chart, or null where this build has no assistant.
      *
      * The AI used to be a tab of its own, which is the wrong shape for it: nobody opens an app to
@@ -828,7 +842,9 @@ internal fun ChartMoreSheetBody(
 
         // MORE — the phone app's second section: what belongs to the page rather than to the
         // chart. Drawn only when there is something in it; a heading over nothing is a promise.
-        if (onEvents != null || onOpenStudio != null || onOpenTerminal != null || onAskAi != null) {
+        if (onEvents != null || onOpenStudio != null || onOpenTerminal != null ||
+            onAskAi != null || onOpenDepth != null
+        ) {
             SheetLabel(stringResource(R.string.chart_hub_more))
             HubGrid(columns = 2, outlined = false) {
                 // First in the section, and first deliberately: it is the only tile here that
@@ -838,6 +854,13 @@ internal fun ChartMoreSheetBody(
                     HubTile(
                         icon = DesignR.drawable.icon_sparkle,
                         label = stringResource(R.string.chart_more_ask_ai),
+                        onClick = it,
+                    )
+                }
+                onOpenDepth?.let {
+                    HubTile(
+                        icon = DesignR.drawable.tv_chart_columns,
+                        label = stringResource(R.string.chart_panel_depth),
                         onClick = it,
                     )
                 }
@@ -1039,8 +1062,10 @@ private fun HubScope.HubTile(
                     modifier = Modifier.size(HUB_GLYPH),
                 )
                 if (count > 0) {
+                    // Latin, for the same reason as the toolbar badge above: a bare numeral on a
+                    // control, not a count in a sentence.
                     Text(
-                        text = count.proseDigits(),
+                        text = count.toString(),
                         style = MaterialTheme.typography.labelMedium,
                         color = ink,
                     )

@@ -159,6 +159,7 @@ fun NewsArticleScreen(
                 url = story.imageUrl,
                 contentDescription = stringResource(R.string.news_image_of, story.title),
                 shape = RectangleShape,
+                source = story.source,
             )
 
             Column(

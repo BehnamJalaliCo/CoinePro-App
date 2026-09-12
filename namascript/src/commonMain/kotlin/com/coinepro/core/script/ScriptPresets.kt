@@ -124,8 +124,10 @@ object ScriptPresets {
                 longStop = close - atr * multiplier
                 shortStop = close + atr * multiplier
 
-                plot(longStop, title = "حد ضرر خرید", color = color.buy, dashed = true)
-                plot(shortStop, title = "حد ضرر فروش", color = color.sell, dashed = true)
+                // پله‌ای و یکدست، نه خط‌چین: حد ضرر در طول یک کندل یک قیمت است و بعد جابه‌جا
+                // می‌شود. دو خط خط‌چین کنار هم روی گوشی مثل یک نوار سایه‌دار دیده می‌شد، نه دو سطح.
+                plot(longStop, title = "حد ضرر خرید", color = color.buy, stepped = true)
+                plot(shortStop, title = "حد ضرر فروش", color = color.sell, stepped = true)
             """.trimIndent(),
         ),
         ScriptPreset(

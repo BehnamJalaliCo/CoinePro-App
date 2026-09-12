@@ -6,6 +6,7 @@ import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.OhlcBar
 import com.coinepro.core.marketdata.Timeframe
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.test.runTest
@@ -58,12 +59,19 @@ class ChartCacheTest {
         val cache = FakeCache(bars(50, base = 100.0))
         val controller = ChartController("BTCUSDT", NeverAnswers(), this, cache = cache)
         controller.start()
-        advanceUntilIdle()
+        // **Not `advanceUntilIdle`.** A request has a deadline and one retry as of 4.74.0, so
+        // running the virtual clock to the end of time now runs it past both — which is a different
+        // state and a different test (`ChartStaleTest` has it). What this one is about is the
+        // interval *while the fetch is out*, so the clock moves a second and stops.
+        advanceTimeBy(1_000)
 
         assertEquals(50, controller.state.value.series.size)
         // Still loading, and that is not a contradiction: the fetch is out, the spinner belongs,
         // and the reader has something real to look at while it runs.
         assertTrue(controller.state.value.loading)
+        // Dimmed while it runs, because these are the disk's bars and not the venue's — item 1(c)
+        // of run K, and the reason a cold open no longer shows a spinner over nothing.
+        assertTrue(controller.state.value.stale)
         // The gateway never answers, so the load job would keep this test's scope alive.
         coroutineContext.cancelChildren()
     }

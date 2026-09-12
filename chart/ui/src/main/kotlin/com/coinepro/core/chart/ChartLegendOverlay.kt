@@ -737,6 +737,7 @@ internal fun ChartLegendOverlay(
                         row = row,
                         overflowChip = (OVERFLOW_MARK + "+" + hiddenCount.toString())
                             .takeIf { collapsed && position == 0 && hiddenCount > 0 },
+                        onOverflowClick = { expanded = true },
                         colour = row.colour?.let { Color(opaqueArgb(it)) } ?: palette.text,
                         palette = palette,
                         measurer = measurer,
@@ -814,6 +815,15 @@ private fun LegendRow(
      * the indicator's reading, and it comes after the value for the same reason.
      */
     overflowChip: String? = null,
+    /**
+     * What tapping [overflowChip] does — open the plate (4.74.0, run K item 4).
+     *
+     * The chip was a caption. It says «four more studies are on this chart» and it was the only
+     * thing on the plate that named them, and it could not be pressed: the way to open the legend
+     * was a caret on the *symbol* row above, which is not where a reader who has just read «+4»
+     * is looking. «discoverability کم است» is exactly that. Null where there is nothing to open.
+     */
+    onOverflowClick: (() -> Unit)? = null,
 ) {
     val faded = if (dimmed) colour.copy(alpha = HIDDEN_ROW_ALPHA) else colour
     // The line box, pinned to the letters rather than to the font's own metrics.
@@ -930,6 +940,17 @@ private fun LegendRow(
                 color = palette.text,
                 fontSize = fontSize,
                 maxLines = 1,
+                // A touch target rather than a glyph: the padding is what makes «▸ +4» pressable
+                // with a thumb without moving it on the row.
+                modifier = if (onOverflowClick == null) {
+                    Modifier
+                } else {
+                    Modifier
+                        .clip(RoundedCornerShape(LEGEND_PLATE_RADIUS_DP))
+                        .clickable(onClick = onOverflowClick)
+                        .padding(horizontal = LEGEND_GAP_DP)
+                        .semantics { contentDescription = "legend-overflow" }
+                },
             )
         }
         // `slots == 0` is the closed legend, and it means *no controls at all* rather than controls

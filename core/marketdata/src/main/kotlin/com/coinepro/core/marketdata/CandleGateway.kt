@@ -705,10 +705,45 @@ suspend fun CandleGateway.loadFolded(
     if (!plan.available) {
         throw CandleIntervalUnavailableException(interval, sourceName, natives.lastOrNull())
     }
-    val page = load(symbol, plan.source, plan.requestLimit, before)
-    if (!plan.foldsOnClient) return page
+    // **The venue's own feed first, then anything finer that divides the interval.**
+    //
+    // A venue that lists a bar length does not always answer for it: the recording behind run K
+    // shows M5, M15 and M30 — all three in `SERVER_NATIVE_TIMEFRAMES` — coming back as «چارت
+    // بارگیری نشد» after a five-second spinner while H1 and M1 loaded. Whatever the cause on the
+    // day (a rate limit, a route that is out, a symbol that feed does not carry), the reader's
+    // position is the same: **the bars exist, one feed down.** Fifteen minutes is three M5 bars or
+    // fifteen M1 bars, and a chart that refuses to draw one because its first choice of feed
+    // failed is refusing something it can compute.
+    //
+    // So the request walks: the resolved source, then every coarser-first native strictly finer
+    // than it that divides the interval. The first that answers is folded. A refusal that is about
+    // the *interval* rather than the feed — `CandleIntervalUnavailableException` above — never
+    // reaches here, and a cancellation is rethrown rather than treated as a failed venue.
+    val sources = listOf(plan.source) + finerSourcesFor(interval, plan.source, natives)
+    var failure: Throwable? = null
+    var page: CandlePage? = null
+    var used: Timeframe = plan.source
+    for (candidate in sources) {
+        val factor = foldFactorFor(interval, candidate)
+        val requestLimit = (limit.coerceAtLeast(1).toLong() * factor)
+            .coerceAtMost(sourceLimitMax.coerceAtLeast(1).toLong())
+            .toInt()
+        val answer = try {
+            load(symbol, candidate, requestLimit, before)
+        } catch (cancellation: kotlinx.coroutines.CancellationException) {
+            throw cancellation
+        } catch (error: Throwable) {
+            failure = failure ?: error
+            continue
+        }
+        page = answer
+        used = candidate
+        break
+    }
+    val loaded = page ?: throw (failure ?: IllegalStateException("no candle feed answered for $interval"))
+    if (used == plan.source && !plan.foldsOnClient) return loaded
 
-    val folded = foldBars(page.candles, interval, zone)
+    val folded = foldBars(loaded.candles, interval, zone)
     // The oldest bucket is dropped when the feed says it has more and the page did not begin on a
     // bucket boundary. In that case the bucket's true open is in bars nobody asked for, and the
     // open drawn from what did arrive would be a mid-bucket price presented as an open — the same
@@ -716,19 +751,46 @@ suspend fun CandleGateway.loadFolded(
     // false the feed has nothing older, so a short leading bucket is the market's own and stays.
     // The oldest bar by time rather than by position: a feed that made no ordering promise can and
     // does answer newest-first, and reading position zero would then test the wrong bar entirely.
-    val oldestSource = page.candles.minOfOrNull { it.t }
+    val oldestSource = loaded.candles.minOfOrNull { it.t }
     val startsMidBucket = oldestSource != null && oldestSource != interval.bucketStart(oldestSource, zone)
-    val bars = if (page.hasMore && startsMidBucket && folded.isNotEmpty()) folded.drop(1) else folded
+    val bars = if (loaded.hasMore && startsMidBucket && folded.isNotEmpty()) folded.drop(1) else folded
 
-    return page.copy(
+    return loaded.copy(
         // A preset names the bars honestly. A custom interval has no `Timeframe` that describes its
         // bars at all, so this field names the **feed** they were folded from and the caller must
         // read the interval it asked for instead — see the note on `CandlePage.timeframe`.
-        timeframe = (interval as? ChartInterval.Preset)?.timeframe ?: plan.source,
+        timeframe = (interval as? ChartInterval.Preset)?.timeframe ?: used,
         candles = bars,
-        oldest = bars.firstOrNull()?.t ?: page.oldest,
-        hasMore = page.hasMore,
-        limitMax = page.limitMax,
+        oldest = bars.firstOrNull()?.t ?: loaded.oldest,
+        hasMore = loaded.hasMore,
+        limitMax = loaded.limitMax,
         interval = interval,
     )
+}
+
+/**
+ * The venue's feeds that could fold into [interval], finer than [source], coarsest first.
+ *
+ * Coarsest first because it is the cheapest correct answer: fifteen minutes out of M5 is three bars
+ * folded into one, out of M1 it is fifteen, and both are the same picture. Strictly finer than the
+ * source that was already tried, so the walk always terminates and never re-asks the feed that just
+ * refused.
+ *
+ * Empty for the calendar intervals and for a seconds bar. A day, a week and a month open at the
+ * reader's midnight and only `D1` divides them without a guess — see [sourceTimeframeFor] — so
+ * there is no finer feed to fall back to, and a seconds bar has no server behind it at all.
+ */
+internal fun finerSourcesFor(
+    interval: ChartInterval,
+    source: Timeframe,
+    natives: List<Timeframe>,
+): List<Timeframe> {
+    if (interval is ChartInterval.Seconds) return emptyList()
+    if (interval is ChartInterval.Preset && interval.timeframe in CALENDAR_TIMEFRAMES) return emptyList()
+    return natives
+        .filter { it.seconds < source.seconds && interval.seconds % it.seconds == 0L }
+        // Sorted here rather than trusted from the caller's list: `nativeTimeframes` is written
+        // shortest-first, which is the order a *catalogue* wants and the exact opposite of the one
+        // this walk wants.
+        .sortedByDescending { it.seconds }
 }

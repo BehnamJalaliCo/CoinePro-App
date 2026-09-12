@@ -17,6 +17,14 @@ data class ScriptPlot(
      */
     val ownPane: Boolean,
     val dashed: Boolean = false,
+    /**
+     * Drawn as steps rather than as a sloped line — `plot(..., stepped = true)`.
+     *
+     * For a series that is a decision rather than a measurement: a trailing stop, a level that holds
+     * for the whole of a bar and then moves. See `ChartLine.stepped` for why a slope misrepresents
+     * one.
+     */
+    val stepped: Boolean = false,
 )
 
 /** A horizontal level — `hline(30)` under an oscillator, or a target over the price. */

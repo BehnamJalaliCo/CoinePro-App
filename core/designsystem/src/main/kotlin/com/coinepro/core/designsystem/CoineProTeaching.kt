@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.CompositionLocalProvider
@@ -35,10 +38,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 
 /**
  * The teaching banner: one sentence at the top of a screen saying what the screen is for.
@@ -174,6 +189,18 @@ fun CoineProTeachingStrip(
         host.request(surface)
         onDispose { host.release(surface) }
     }
+    // **Where the tooltip points** (4.74.0, run K item 5).
+    //
+    // Nothing is drawn: this is a zero-height line reporting *its own* position up to the host. A
+    // screen already calls this at the place the sentence is about — under the chart's command band,
+    // above the watchlist's first row — so the strip's own coordinates are the anchor, and the host
+    // can put a caret against them without a single call site learning what an anchor is.
+    Spacer(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(0.dp)
+            .onGloballyPositioned { host.place(surface, it.positionInRoot().y) },
+    )
 }
 
 /**
@@ -217,21 +244,70 @@ fun CoineProTeachingHost(
                 delay(COACH_MARK_MS)
                 dismissals.dismiss(surface.key)
             }
+            // **Only an anchor the reader can see.**
+            //
+            // The strip registers from inside the page's own scroll, so on a long screen it can be
+            // below the fold — and a caret pointing at a line nobody can see, from a plate half off
+            // the bottom of the glass, is worse than no caret. When the anchor is out of the window
+            // the same tooltip sits clear of the bottom bar instead, which is where run F put it and
+            // is the one placement that is right on every screen.
+            val windowHeight = with(LocalDensity.current) {
+                LocalConfiguration.current.screenHeightDp.dp.toPx()
+            }
+            val anchorY = host.anchorFor(surface)
+                ?.takeIf { it > 0f && it < windowHeight - TOOLTIP_RESERVE_PX }
             CoineProCoachMark(
                 surface = surface,
                 onDismiss = { dismissals.dismiss(surface.key) },
-                modifier = Modifier.align(Alignment.BottomCenter),
+                // Anchored where the screen put its strip, with the caret pointing back at it; and
+                // at the foot of the window for a surface that has not reported one yet, which is
+                // the first frame and a preview.
+                modifier = if (anchorY == null) {
+                    Modifier.align(Alignment.BottomCenter)
+                } else {
+                    Modifier
+                        .align(Alignment.TopStart)
+                        .offset { IntOffset(0, anchorY.roundToInt()) }
+                },
+                anchored = anchorY != null,
             )
         }
     }
 }
 
-/** The floating card itself. Separated so a preview and a screenshot can place one directly. */
+/**
+ * The floating mark itself. Separated so a preview and a screenshot can place one directly.
+ *
+ * ### Two shapes, and why (4.74.0, run K item 5)
+ *
+ * **A tooltip** when the screen has told the host where its strip is, which is the ordinary case: a
+ * caret pointing back at the thing being explained, the lead in at most two lines, and nothing else
+ * — no icon, no «متوجه شدم», no second paragraph. The owner's recording is the argument: what was on
+ * screen was a full-width bordered card with an icon, a sentence, a caution and a button, over the
+ * top of a watchlist, and «TradingView/Binance هرگز صفحه را برای کاربر توضیح نمی‌دهند». A tooltip
+ * that removes itself in five seconds is a different object from a card the reader has to dismiss,
+ * even when the words in it are the same.
+ *
+ * **The card** where there is no anchor — the first frame, a preview, a fixture. It is the run-F
+ * shape and it is kept because it is the honest fallback: with nowhere to point, a caret pointing at
+ * nothing is worse than a plate at the foot of the screen.
+ *
+ * The `pitfall` line is not lost. It is still what the help centre prints for the surface; it is
+ * simply not what a five-second tooltip is for.
+ */
 @Composable
 fun CoineProCoachMark(
     surface: TeachingSurface,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Whether the caret is drawn, which is to say whether the host had somewhere to point.
+     *
+     * The plate is the same either way — that is the point of the rewrite. What the anchor changes
+     * is the caret and the lift: pointing at the strip that registered it, or sitting clear of the
+     * bottom bar when the strip is off screen (a chart scrolled past it, a fixture, a preview).
+     */
+    anchored: Boolean = false,
 ) {
     AnimatedVisibility(
         visible = true,
@@ -241,49 +317,51 @@ fun CoineProCoachMark(
     ) {
         val shape = MaterialTheme.shapes.medium
         val haptics = rememberCoineProHaptics()
-        Row(
+        Column(
             modifier = Modifier
                 .padding(horizontal = CoineProSpacing.Gutter)
-                .padding(bottom = COACH_MARK_LIFT)
-                .fillMaxWidth()
-                .background(CoineProColors.SurfaceRaised, shape)
-                .border(1.dp, CoineProColors.Border, shape)
-                .clip(shape)
+                .padding(bottom = if (anchored) 0.dp else COACH_MARK_LIFT)
+                .wrapContentWidth(Alignment.Start)
+                .widthIn(max = TOOLTIP_MAX_WIDTH)
                 .clickable {
                     haptics.select()
                     onDismiss()
-                }
-                .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+                },
         ) {
-            Icon(
-                painter = painterResource(CoineProIcons.Info),
-                contentDescription = null,
-                tint = CoineProColors.TextMuted,
-                modifier = Modifier.padding(top = GLYPH_NUDGE).size(GLYPH),
-            )
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(TWO),
-            ) {
-                Text(
-                    text = stringResource(surface.lead),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = CoineProColors.TextPrimary,
-                )
-                surface.pitfall?.let { pitfall ->
-                    Text(
-                        text = stringResource(pitfall),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = CoineProColors.TextMuted,
-                    )
+            if (anchored) {
+                // The caret, over the plate and inset from its corner: a tooltip's point sits near
+                // the end it belongs to rather than in the middle, which is what makes it read as
+                // pointing at one thing instead of at the whole row.
+                //
+                // Read out here: `CoineProColors` is a composable accessor and a draw lambda is not
+                // a composition.
+                val plate = CoineProColors.SurfaceRaised
+                Canvas(
+                    modifier = Modifier
+                        .padding(start = CoineProSpacing.Two)
+                        .size(width = TOOLTIP_CARET_WIDTH, height = TOOLTIP_CARET_HEIGHT),
+                ) {
+                    val point = Path().apply {
+                        moveTo(size.width / 2f, 0f)
+                        lineTo(0f, size.height)
+                        lineTo(size.width, size.height)
+                        close()
+                    }
+                    drawPath(point, plate)
                 }
             }
             Text(
-                text = stringResource(R.string.teaching_got_it),
-                style = MaterialTheme.typography.labelMedium,
-                color = CoineProColors.pageAccentInk,
+                text = stringResource(surface.lead),
+                style = MaterialTheme.typography.bodySmall,
+                color = CoineProColors.TextPrimary,
+                // **Two lines**, which is the whole of the instruction. A teaching sentence that
+                // does not fit two lines is too long to be a tooltip, and the answer is shorter
+                // copy rather than a taller plate.
+                maxLines = TOOLTIP_LINES,
+                modifier = Modifier
+                    .background(CoineProColors.SurfaceRaised, shape)
+                    .clip(shape)
+                    .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
             )
         }
     }
@@ -305,14 +383,54 @@ class TeachingHost internal constructor() {
 
     internal fun release(surface: TeachingSurface) {
         stack.remove(surface)
+        anchors.remove(surface)
     }
+
+    /**
+     * Where this surface's strip sits in the window, in root pixels from the top.
+     *
+     * Reported by the strip itself rather than declared by the screen — see
+     * [CoineProTeachingStrip]. A state map so the host recomposes when the number arrives, which it
+     * does one frame after the registration.
+     */
+    private val anchors = mutableStateMapOf<TeachingSurface, Float>()
+
+    internal fun place(surface: TeachingSurface, top: Float) {
+        if (top.isFinite() && top >= 0f) anchors[surface] = top
+    }
+
+    internal fun anchorFor(surface: TeachingSurface): Float? = anchors[surface]
 }
 
 /** Where a screen's registration lands. Null outside a host, and then nothing is taught. */
 val LocalTeachingHost = staticCompositionLocalOf<TeachingHost?> { null }
 
-/** How long a coach-mark waits before putting itself away for good. */
-private const val COACH_MARK_MS = 6_000L
+/**
+ * How long a coach-mark waits before putting itself away for good: **five seconds**.
+ *
+ * The owner's figure (run K item 5). Six was a guess and five is a decision: long enough to read two
+ * short lines at a glance, short enough that a reader who looked up mid-sentence is not still
+ * looking at it when they look back.
+ */
+private const val COACH_MARK_MS = 5_000L
+
+/** A tooltip is a caption, not a banner: it takes the width of its words up to this. */
+private val TOOLTIP_MAX_WIDTH = 280.dp
+
+/** Two lines, which is what «tooltip ۲ خطی» asks for exactly. */
+private const val TOOLTIP_LINES = 2
+
+/** The caret: ten by six, the smallest triangle that reads as a point rather than as a notch. */
+private val TOOLTIP_CARET_WIDTH = 10.dp
+private val TOOLTIP_CARET_HEIGHT = 6.dp
+
+/**
+ * How much window an anchored tooltip needs below the line it points at, in pixels.
+ *
+ * A caret, two lines and their padding, generously: an anchor closer than this to the foot of the
+ * glass would put the plate half off it, and the foot placement is better there anyway.
+ */
+private const val TOOLTIP_RESERVE_PX = 220f
 
 /** Above the bottom bar, so the card floats over the content rather than over the navigation. */
 private val COACH_MARK_LIFT = 76.dp

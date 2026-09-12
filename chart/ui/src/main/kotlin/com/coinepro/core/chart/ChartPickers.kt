@@ -170,8 +170,26 @@ fun IndicatorPicker(
     onToggleFavourite: ((String) -> Unit)? = null,
     /** The most recently switched-on ids, newest first. See `IndicatorFavouritesStore`. */
     recent: List<String> = emptyList(),
-    /** Whether the search field takes the keyboard as the sheet opens. The reference's does. */
+    /**
+     * Whether the search field takes the keyboard as the sheet opens.
+     *
+     * **False everywhere in this app** as of 4.74.0, and the recording is why. The reference does
+     * raise the keyboard, and on the owner's phone the result was that the sheet opened with its
+     * bottom half covered: the catalogue was under the keyboard, what was left above it was the two
+     * rows of «my scripts», and the reader's conclusion was that the indicators were not all being
+     * shown. A reader who came to *browse* eighty-three studies has not asked to type, and a reader
+     * who has taps the field. Nothing is lost and the whole list is visible.
+     */
     autoFocusSearch: Boolean = false,
+    /**
+     * One more section at the foot of the list, inside the same scroll.
+     *
+     * A slot rather than a second composable under this one, because this list is a `LazyColumn`:
+     * anything drawn beside it gets its own scroll and its own share of a fixed height, which is
+     * what put «my scripts» above the catalogue and the catalogue under the keyboard. As an item it
+     * is simply the last thing the reader scrolls to. See `ScriptPickerSection`.
+     */
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     var chip by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
@@ -234,6 +252,9 @@ fun IndicatorPicker(
                     else -> "اندیکاتوری با این نام پیدا نشد."
                 },
             )
+            // The reader's own studies are still offered. A filter that matched nothing in the
+            // catalogue is exactly the moment somebody is looking for the script they wrote.
+            trailing?.invoke()
             return@Column
         }
 
@@ -277,6 +298,11 @@ fun IndicatorPicker(
                                 )
                             },
                     )
+                }
+            }
+            trailing?.let { section ->
+                item(key = "trailing") {
+                    Column(modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter)) { section() }
                 }
             }
         }

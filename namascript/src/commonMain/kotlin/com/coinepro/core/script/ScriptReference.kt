@@ -221,7 +221,7 @@ object ScriptReference {
             "خروجی روی نمودار",
             listOf(
                 ScriptFunction(
-                    "plot(series, title = \"نام\", color = color.gold, width = 1.4, dashed = false, pane = \"auto\")",
+                    "plot(series, title = \"نام\", color = color.gold, width = 1.5, dashed = false, stepped = false, pane = \"auto\")",
                     "یک خط روی نمودار. جای خط — روی قیمت یا در پنل جدا — خودکار تعیین می‌شود مگر pane را بدهید.",
                     "همان سری",
                 ),

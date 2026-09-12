@@ -46,6 +46,10 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)
+    // The one image loader in the app, with its disk cache. See `NewsImage.kt` for why the
+    // hand-written fetcher that used to live there is gone.
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
     implementation(libs.androidx.lifecycle.runtime.compose)
     testImplementation(libs.junit)
 }

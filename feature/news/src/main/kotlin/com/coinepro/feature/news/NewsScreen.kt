@@ -787,6 +787,9 @@ internal fun NewsCard(
         NewsHero(
             url = story.imageUrl,
             contentDescription = stringResource(R.string.news_image_of, story.title),
+            // For the plate a failed fetch leaves: the wire's own name, so the space says what it
+            // was for. See `NewsHero`.
+            source = story.source,
             // The card's own radius on the two corners the picture touches, so no fill shows through
             // behind it. `MaterialTheme.shapes.large` is 16dp; naming it here rather than reading it
             // keeps the two corners identical to the card's even if this card is ever given another.

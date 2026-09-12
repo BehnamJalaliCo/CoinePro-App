@@ -752,6 +752,141 @@ three script indicators on the chart (0.7's p95 ≤ 8 ms phone / ≤ 12 ms table
 recording, the NamaScript timings on a Pixel 6a, the Pixel Fold frames, the tablet soak — and the
 five MP4s items 0 to 3 ask for.
 
+## Run K — the 120 fps recording, and the seven things it showed (4.74.0)
+
+The owner recorded two hundred and eighty-seven seconds of the app on a 120 Hz phone and read it
+frame by frame. The first finding is the one worth stating before any of the fixes: **the renderer
+is not the problem.** The chart draws at 120 fps, drops two per cent of frames at 120 Hz and none
+above 26 ms, and the fling is a real `exponentialDecay` with an e-folding of about 0.28 s that stops
+in 0.9 s. Everything below is about what *felt* slow, which turned out to be a different set of
+faults entirely.
+
+### 1. Timeframe loading — the one that mattered
+
+On the recording, M15, M5, M30 and M10 each put a spinner over a blank rectangle for four to six
+seconds and then said «چارت بارگیری نشد». Only H1, H2 and M1 loaded. Three separate defects:
+
+**(a) A venue that lists a bar length does not always serve it.** M5, M15 and M30 are all in
+`SERVER_NATIVE_TIMEFRAMES`, so the mapping was right and the request still came back empty. The fix
+is in `CandleGateway.loadFolded`: the request now walks the resolved source and then **every
+coarser-first native feed strictly finer than it that divides the interval**, and folds whatever
+answers — fifteen minutes out of M5 is three bars, out of M1 is fifteen, and both are the same
+picture. `finerSourcesFor` is the new helper; it is empty for a seconds bar (no server serves one)
+and for the calendar timeframes (a day, a week and a month open at the reader's midnight and only D1
+divides them without a guess). A refusal that is about the *interval* rather than the feed —
+`CandleIntervalUnavailableException` — still short-circuits before any request, and a cancellation
+is rethrown rather than counted as a failed venue. `CandleIntervalLoadTest` pins all three.
+
+**(b) A timeframe change never blanks the chart.** `setInterval` used to set `series =
+CandleSeries.EMPTY`; it no longer does. The previous bars stay up, `ChartUiState.stale` is set, and
+`ChartScreen` draws the plot at `STALE_ALPHA` (0.4) until the new series lands — TradingView's
+behaviour, and the reason the five seconds felt like thirty. The skeleton is now only what a *first*
+load shows, because `stale` is false when there was nothing on the glass to keep.
+
+**(c) Eight seconds, then one more attempt, then a line rather than a page.** `ChartController.loadPage`
+puts `LOAD_TIMEOUT_MS` on each attempt and makes `LOAD_ATTEMPTS` of them. A timeout is re-thrown as
+an ordinary `ChartLoadTimeout` rather than the `TimeoutCancellationException` `withTimeout` raises,
+because every load path here treats a `CancellationException` as «the reader has moved on» and
+publishes nothing — which would have left the spinner turning for ever. When it finally fails over a
+chart that still has candles on it, the full-screen `ChartFailure` is replaced by
+`ChartInlineFailure`: one row at the foot of the plot with the retry in it, over a chart that stays
+readable. The page is kept for the one case that earns it — nothing to look at at all.
+
+**(c, cold start)** `paintFromCache` now paints over a *stale* series as well as over an empty one,
+and marks what it painted stale. A cold open with cached bars shows them dimmed at once and refreshes
+in place; there is no centred spinner over nothing.
+
+`ChartStaleTest` (five cases) covers the kept bars, the cleared dimming, the deadline and its retry,
+the silent retry that succeeds, and the cold open that is still allowed a skeleton.
+
+### 2. Chart real estate on a phone
+
+- **The «عمق بازار» row is gone from the chart.** It was a worded button in the app bar's action
+  slot, on the chart route and nowhere else — the only permanent control over the plot that was not
+  part of the chart. It is now a tile in the «…» hub (`ChartScreen.onOpenDepth`, crypto-only exactly
+  as the app bar's condition was) and, on a wide window, the docked panel it already was.
+- **The price pane keeps at least half.** `PANE_BUDGET` was already 0.5 and still is.
+- **A sub-pane gets at least twenty-two per cent.** New `MIN_PANE_FRACTION`, floored per pane and
+  shared equally when more panes are on than the budget can pay for at that size — because the price
+  pane's half is the rule that does not bend. The equal-share branch also fixes the correlation pane,
+  whose declared `heightRatio` is nought and which therefore used to divide by zero.
+- **The divider has a handle.** The drag has worked since run E and nothing said so; there is now a
+  48 × 3 dp grip on the boundary, centred on the plot rather than on the canvas.
+- **The right offset was already 10 % of the plot** (`ChartViewport.RIGHT_MARGIN_SHARE`), so what the
+  owner measured at ~25 % of the screen was that plus the gutter. **The gutter is now capped at 64 dp
+  on a phone**, taken out of `priceAxisWidth`'s margins and never out of the number: the floor is the
+  label's own width plus the inset it is drawn at, so a seven-figure quote gets a wider gutter rather
+  than a clipped price.
+
+### 3. The indicator sheet
+
+`autoFocusSearch` is false: the sheet opens with no keyboard, and the field takes one when the reader
+taps it. The sheet is full height (1.0, was 0.92). «My scripts» moved from the head of the sheet to
+the foot as a collapsed disclosure, inside the catalogue's own `LazyColumn` through a new `trailing`
+slot — which is what makes it one scroll rather than two competing for a fixed height. The chip row
+was already Favourites · Recent · families. Toolbar and hub badges print Latin digits: a bare numeral
+on a control is not a count in a sentence.
+
+### 4. Script default styles
+
+A plot's default width is 1.5 (was 1.4). `plot(..., stepped = true)` is new, carried through
+`ScriptPlot` and `ChartLine.stepped` to both the overlay and the pane renderer: a stop is at one
+price for the whole of a bar and then moves, and a sloped line claims a dozen intermediate prices
+that never existed. The shipped ATR preset uses it in both languages and no longer draws two dashed
+lines that read as a shaded band. Markers are 6 dp (was 7). A script's **lead** legend row now carries
+the script's name rather than its first plot's title, which is what «حد ضرر خرید · 76,350.1 ▸ +4» was
+missing; the other plots keep their own titles. The «▸ +N» chip opens the plate on a tap. The RSI
+script pane gets `MIN_PANE_FRACTION` like every other pane, because a script's pane is a pane.
+
+### 5. First-run coach marks
+
+One tooltip, not a card: the lead in at most two lines, no icon, no «متوجه شدم», wrapping to its
+words, dismissing itself after five seconds (was six) and never coming back. Where the screen's strip
+is on the glass the tooltip is anchored to it with a caret; where the strip has scrolled out of the
+window — which is the honest common case on a long page — the same plate sits clear of the bottom
+bar, which is where run F put it.
+
+### 6. Explore news images
+
+The hand-written fetch-and-decode is gone and Coil loads them, with its disk cache and its own
+downsampling. What is left in `NewsImage.kt` is the part that is this app's judgement: `https` only,
+a length cap, a plate the height of the picture while it loads, and — new — **the publisher's
+monogram and «تلاش دوباره» when a fetch fails**, where the old code rendered nothing over a space it
+had already reserved, which is the column of grey rectangles on the recording.
+
+**Not done, and it is not an app change.** «Coil with the backend image proxy» needs a backend route
+that re-serves a publisher's picture from a host the reader can already reach, and neither
+CoinePro-FX nor TradeYar has one. `NewsImagePolicy.through` is the seam, written and tested now, and
+`NewsImagePolicy.proxyBase` is the one value to set when the endpoint exists. It is null today, so
+every hero fetches the publisher's own address exactly as before.
+
+### 7. Drawing handles
+
+The handle has been an 8 dp dot since run E and the owner still read it as a 28-pixel yellow disc,
+which is arithmetic rather than a contradiction: the ring was 2 **dp**, which is seven pixels at 3.5×
+density, centred on a radius of fourteen — so the ring ate twenty of the dot's twenty-eight pixels
+and the dot *was* the colour. The ring is now 2 device pixels. The mini-toolbar and the magnifier are
+untouched, as asked.
+
+### The evidence, and what is still device-bound
+
+Five frames in `app/build/proof/`, each with the assertion that makes it evidence:
+`run-k-two-panes-fa-dark.png` (two sub-panes, price pane at half, the grip on the boundary),
+`run-k-stale-switch-fa-dark.png` (M15 selected, the previous bars dimmed, no spinner and no blank),
+`run-k-script-legend-fa-dark.png` (a script's own name leading its legend rows, both stops stepped),
+`run-k-indicator-sheet-fa-dark.png` (the sheet's body: no keyboard, chips in order, the list from its
+first row) and `run-k-coach-mark-fa-dark.png` (the two-line tooltip with its caret).
+
+The indicator frame is the sheet's **body** rather than the sheet: a Material bottom sheet renders
+into a window of its own and this capture is of the activity's decor view — the same reason run H's
+flyout had to come in-layout before it could be photographed.
+
+**Still device-bound**, unchanged from run I and now with the run's own four: this machine has no
+`/dev/kvm`, no system image and no `emulator` binary, so the H1 → M15 → M5 → M30 → M10 → H2 recording
+of item 1(d), the open-sheet → enable-RSI-script clip, the fling benchmark with three script
+indicators, the 120 fps recording, the NamaScript timings on a Pixel 6a, the Pixel Fold frames and
+the tablet soak all still need the owner's phone.
+
 ## Definition of done — as it stands
 
 - [x] §0 copy hygiene done; lint enforced (`tools/i18n/lint_strings.py` through the consistency gate).

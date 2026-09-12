@@ -82,4 +82,5 @@
     <string name="announcements_open_failed">مرورگری برای باز کردن این نشانی پیدا نشد.</string>
     <string name="news_platform_crypto">کریپتو</string>
     <string name="news_platform_forex">فارکس</string>
+    <string name="news_image_retry">تصویر نیامد. برای تلاش دوباره بزنید.</string>
 </resources>

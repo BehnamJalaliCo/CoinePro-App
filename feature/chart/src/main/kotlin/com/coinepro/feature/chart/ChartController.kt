@@ -68,6 +68,7 @@ import com.coinepro.core.diagnostics.LogTag
 import com.coinepro.core.marketdata.CandleArchive
 import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.marketdata.CandleGateway
+import com.coinepro.core.marketdata.CandlePage
 import com.coinepro.core.marketdata.ChartInterval
 import com.coinepro.core.marketdata.ChartTickSource
 import com.coinepro.core.marketdata.HISTORY_PAGE_BARS
@@ -88,6 +89,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -123,6 +126,25 @@ data class ChartUiState(
     val loading: Boolean = false,
     /** Distinct from [loading]: paging back leaves the chart on screen and usable. */
     val loadingMore: Boolean = false,
+    /**
+     * The bars on screen are **not** the ones being loaded: they are the previous interval's, or
+     * the cache's, kept up while the request for the current ones is still out.
+     *
+     * ### Why the chart keeps bars it knows are wrong
+     *
+     * Because the alternative was measured, on the owner's own recording, as the single worst thing
+     * in the app: tapping M15 emptied the chart, put a spinner in the middle of a white rectangle
+     * for five seconds, and then — if the venue did not answer — «چارت بارگیری نشد». Five seconds
+     * of nothing is slower than any dropped frame, and it happened on most of the strip.
+     *
+     * TradingView never blanks: the old candles stay, dimmed, and are replaced in place when the
+     * new ones land. That is what this flag is for. It is a *rendering* fact and nothing else reads
+     * it — the series is still the series, `loading` is still the request, and no decision about
+     * paging, ticks or indicators is taken from it. The screen draws the plot at
+     * `ChartScreen.STALE_ALPHA` while it is set, so the reader can see that what they are looking
+     * at is on its way out without losing the prices while it goes.
+     */
+    val stale: Boolean = false,
     val error: ChartError? = null,
     val activeIndicators: Set<String> = emptySet(),
     /**
@@ -1681,7 +1703,13 @@ class ChartController(
         _state.update {
             it.copy(
                 interval = interval,
-                series = CandleSeries.EMPTY,
+                // **The previous bars stay.**
+                //
+                // They are the wrong bar length under the new label for as long as the request is
+                // out, and that is the lesser of the two wrongs: the other one is a white
+                // rectangle. See [ChartUiState.stale] — [reload] marks them stale, the screen dims
+                // them, and `paintFromCache` or the response replaces them in place.
+                stale = !it.series.isEmpty,
                 hasMore = false,
                 // The tag the next drawing records. Stamped on the state rather than passed to each
                 // of the six calls that can commit a drawing, so the one that was forgotten cannot
@@ -3050,7 +3078,9 @@ class ChartController(
         // that method too and `start` issues the one load itself. Two loads for one open is not
         // merely wasteful: the second one lands over the first and the chart visibly redraws.
         if (_state.value.interval != before) {
-            _state.update { it.copy(series = CandleSeries.EMPTY, hasMore = false) }
+            // Dimmed rather than emptied, for the reason set out on [ChartUiState.stale]: a layout
+            // that changes the timeframe is a timeframe change and must not blank the chart either.
+            _state.update { it.copy(stale = !it.series.isEmpty, hasMore = false) }
             reload()
             refetchComparisons()
         }
@@ -3340,7 +3370,11 @@ class ChartController(
         // start its own fill once the new bars are on screen; nothing of the old one is wanted.
         fillJob?.cancel()
         fillJob = null
-        _state.update { it.copy(loading = true, error = null) }
+        // Whatever is on the glass now belongs to the request that is being replaced, so it is
+        // marked as such in the same breath as the new one starting. On a cold open there is
+        // nothing there and the flag stays clear, which is what leaves the skeleton to the first
+        // load alone. See [ChartUiState.stale].
+        _state.update { it.copy(loading = true, error = null, stale = !it.series.isEmpty) }
         loadJob = scope.launch {
             val current = _state.value
             // **A seconds chart has no server to ask.**
@@ -3356,7 +3390,13 @@ class ChartController(
                     if (it.symbol != current.symbol || it.interval != current.interval) {
                         it
                     } else {
-                        it.copy(loading = false, error = null, hasMore = !it.series.isEmpty, venueExhausted = true)
+                        it.copy(
+                            loading = false,
+                            error = null,
+                            stale = false,
+                            hasMore = !it.series.isEmpty,
+                            venueExhausted = true,
+                        )
                     }
                 }
                 publishDepth(current.symbol, current.interval)
@@ -3375,7 +3415,7 @@ class ChartController(
             // timeframe the reader has just picked — while that timeframe is still loading. On a
             // slow link that is a failure on every tap and none on the one that loaded at open,
             // which is exactly how it was reported.
-            val outcome = runCatching { gateway.load(current.symbol, current.interval) }
+            val outcome = loadPage(current.symbol, current.interval)
             if (outcome.exceptionOrNull() is CancellationException) return@launch
             outcome
                 .onSuccess { page ->
@@ -3395,6 +3435,9 @@ class ChartController(
                             series = series,
                             loading = false,
                             error = null,
+                            // In place, in one frame: the bars change and the dimming comes off
+                            // together, because they are one publication of one state.
+                            stale = false,
                             hasMore = page.hasMore,
                             venueExhausted = false,
                         )
@@ -3430,7 +3473,12 @@ class ChartController(
                         // merely old — so the failure is reported without throwing away the only
                         // useful thing on the surface. `ChartFailure` is shown only when there is
                         // genuinely nothing to look at.
-                        it.copy(loading = false, error = failure.toChartError())
+                        //
+                        // The dimming comes off with it. It means «being replaced», and after two
+                        // attempts and a banner nothing is being replaced any more — a chart left
+                        // at forty per cent for as long as the reader has no signal reads as
+                        // broken, and these prices are real. The banner is what says they are old.
+                        it.copy(loading = false, stale = false, error = failure.toChartError())
                     }
                     log?.warn(
                         LogTag.CHART,
@@ -3451,6 +3499,56 @@ class ChartController(
             // bars under the new interval's label.
             if (loadJob === coroutineContext[Job]) loadJob = null
         }
+    }
+
+    /**
+     * One page of candles, with a deadline on it and one silent retry.
+     *
+     * ### Why a deadline at all, when the client has its own
+     *
+     * Because the client's timeout is per *socket* and this is per *tap*. A venue that accepts the
+     * connection and then thinks about it, a proxy in the middle that holds the request, a DNS
+     * lookup on a mobile network in Iran — none of those trips a read timeout quickly, and all of
+     * them read to the reader as «M15 does not work». The recording has five of them. Eight seconds
+     * is the point past which no answer is worth waiting for on a chart the reader is looking at;
+     * [LOAD_TIMEOUT_MS] is that number and it is generous on purpose.
+     *
+     * ### Why the retry is silent, and why there is exactly one
+     *
+     * The failure that this fixes is overwhelmingly the first request after a switch: a connection
+     * that was idle, a token that had just gone stale, a venue under a burst. A second attempt
+     * costs the reader nothing they can see — the previous bars are still up and still dimmed — and
+     * it turns most of those into a chart rather than a banner.
+     *
+     * One, not three: past that the reader is waiting on something that is not going to answer, and
+     * a third attempt only delays the banner that lets them act. So the worst case is bounded at
+     * two deadlines, and the screen is never blank for any of it.
+     *
+     * ### Why a timeout is not allowed to look like a cancellation
+     *
+     * `withTimeout` reports itself by throwing a `CancellationException`, and the caller treats one
+     * of those as «the reader has moved on» and publishes nothing at all. A timeout that arrived in
+     * that costume would leave the spinner turning for ever. So it is caught here and re-thrown as
+     * an ordinary failure carrying the word the error mapping already knows.
+     */
+    private suspend fun loadPage(symbol: String, interval: ChartInterval): Result<CandlePage> {
+        var last: Throwable? = null
+        repeat(LOAD_ATTEMPTS) {
+            val outcome = runCatching {
+                try {
+                    withTimeout(LOAD_TIMEOUT_MS) { gateway.load(symbol, interval) }
+                } catch (timeout: TimeoutCancellationException) {
+                    throw ChartLoadTimeout(interval.wire, LOAD_TIMEOUT_MS, timeout)
+                }
+            }
+            if (outcome.isSuccess) return outcome
+            val failure = outcome.exceptionOrNull() ?: return outcome
+            // The reader's own cancellation — a second switch, or the screen leaving. Handed
+            // straight back, because retrying it would fetch a timeframe nobody is looking at.
+            if (failure is CancellationException) return outcome
+            last = failure
+        }
+        return Result.failure(last ?: IllegalStateException("no attempt was made for $interval"))
     }
 
     /**
@@ -3872,18 +3970,31 @@ class ChartController(
             // or one whose cache write lost a race, still comes up on real candles.
             .ifEmpty { runCatching { archive.read(symbol, interval) }.getOrDefault(emptyList()) }
         if (cached.isEmpty()) return
-        // Only if the chart is still empty — checked before the build, so a cache that lost the
-        // race to the network does not cost a worker thread a build that is then thrown away.
+        // Only if the chart has nothing of this request's own on it — checked before the build, so a
+        // cache that lost the race to the network does not cost a worker thread a build that is
+        // then thrown away.
+        //
+        // **Stale counts as nothing of its own.** Since a timeframe change keeps the previous
+        // interval's bars up rather than emptying the chart, `series` is no longer empty when this
+        // runs, and the test that used to mean «the network has not answered yet» would now refuse
+        // to paint on every switch — leaving the old interval's candles on screen for the whole
+        // round trip when this symbol's own bars for the new one were sitting on disk. See
+        // [ChartUiState.stale].
         val current = _state.value
-        if (current.symbol != symbol || current.interval != interval || !current.series.isEmpty) return
+        if (current.symbol != symbol || current.interval != interval) return
+        if (!current.series.isEmpty && !current.stale) return
         val series = buildSeries { CandleSeries(cached.map(OhlcBar::toCandle)) }
         _state.update { latest ->
-            if (latest.symbol != symbol || latest.interval != interval || !latest.series.isEmpty) {
+            if (latest.symbol != symbol || latest.interval != interval) {
+                latest
+            } else if (!latest.series.isEmpty && !latest.stale) {
                 latest
             } else {
-                // `loading` stays true: the fetch is still out, the spinner still belongs, and the
-                // reader now has something to look at while it runs. Those are not in conflict.
-                latest.copy(series = series)
+                // `loading` stays true and so does `stale`: the fetch is still out, these bars are
+                // the disk's rather than the venue's, and the reader now has something to look at
+                // while it runs. Those are not in conflict — which is item (c) of the run, a cold
+                // open that shows cached candles dimmed instead of a spinner over nothing.
+                latest.copy(series = series, stale = true)
             }
         }
     }
@@ -3898,6 +4009,20 @@ class ChartController(
          * operation and an absurd one for a round trip to a server over a mobile network in Iran.
          */
         const val FIRST_CANDLE_BUDGET_MS = 1_200L
+
+        /**
+         * How long one attempt at a page of candles is given: eight seconds.
+         *
+         * The owner's recording is the measurement behind it — the failed switches sat on a spinner
+         * for four to six seconds before the client gave up, and every one of them was a venue that
+         * was never going to answer. Eight is above the worst *successful* load seen on a slow
+         * connection and below the point where a reader has decided the app is broken. See
+         * [loadPage].
+         */
+        const val LOAD_TIMEOUT_MS = 8_000L
+
+        /** How many times a page is asked for before the reader is told: two. See [loadPage]. */
+        const val LOAD_ATTEMPTS = 2
 
         /**
          * How many bars one page-back takes off the **disk**: five thousand.
@@ -4268,6 +4393,18 @@ internal fun OhlcBar.toCandle(): Candle = Candle(t = t, o = o, h = h, l = l, c =
  */
 internal fun Candle.toBar(): OhlcBar =
     OhlcBar(t = t, o = o, h = h, l = l, c = c, v = v ?: 0.0, closed = true)
+
+/**
+ * A page of candles that did not arrive inside [ChartController.LOAD_TIMEOUT_MS].
+ *
+ * An ordinary exception rather than the `TimeoutCancellationException` it comes from, because that
+ * one is a `CancellationException` and every load path in this controller treats those as «the
+ * reader has moved on» and publishes nothing — which would leave the spinner turning for ever on
+ * the one failure this whole apparatus exists to end. The word in the message is what
+ * [toChartError] reads.
+ */
+internal class ChartLoadTimeout(wire: String, millis: Long, cause: Throwable) :
+    RuntimeException("timeout after ${millis}ms loading $wire", cause)
 
 /**
  * What went wrong, from what the gateway threw.

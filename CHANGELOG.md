@@ -15,6 +15,48 @@ it is for.
 
 ---
 
+## [4.74.0] — 2026-09-12 — the recording, and the seven things in it
+
+Run K. The owner recorded the app on a 120 Hz phone and read it frame by frame, and the first finding
+is the one worth keeping: the chart draws at 120 fps, drops two per cent of frames and flings with a
+real exponential decay. Nothing below is a rendering fix. What felt slow was a timeframe that would
+not load, a plot with less than half the glass, and a keyboard over the indicator list.
+
+### Fixed
+- **Timeframes that would not load.** A venue that lists a bar length does not always serve it: M5,
+  M15 and M30 all failed on the recording while H1 and M1 loaded. A request now walks down to any
+  finer feed that divides the interval and folds it, so a chart the app can compute is never a
+  «چارت بارگیری نشد».
+- **A timeframe change no longer blanks the chart.** The previous bars stay, dimmed to forty per
+  cent, until the new ones land. The skeleton is only for a first load, and a cold open with cached
+  candles shows them at once instead of a spinner over nothing.
+- **A load has eight seconds and a second attempt**, and a failure over a chart that still has
+  candles on it is one line at the foot of the plot rather than a full-screen error.
+- **News pictures.** Loaded through Coil, with its disk cache; a fetch that fails now leaves the
+  publisher's monogram and a way to ask again where it used to leave an empty grey rectangle.
+- **Drawing handles** keep their eight points and lose the heavy ring: two device pixels rather than
+  two points, which is what made them read as solid yellow discs.
+
+### Changed
+- **The depth ladder** moved off the chart's app bar into its «…» hub, and stays a docked panel on a
+  wide window. That row was forty-eight points of every phone chart.
+- **Panes.** A sub-pane gets at least twenty-two per cent of the chart and the price pane keeps at
+  least half; the divider between them has a visible grip. The price scale is capped at sixty-four
+  points on a phone, taken out of its margins and never out of the number.
+- **The indicator sheet** opens with no keyboard and at full height. «My scripts» moved to the foot
+  as a collapsed section, inside the catalogue's own scroll, so the eighty-three built-ins are what
+  the sheet opens on. Badges print Latin digits.
+- **Script styles.** One 1.5-point line per plot, markers at six points, and the shipped ATR stop is
+  one stepped line per side rather than two dashed ones. A script's legend row carries the script's
+  name and its value; the «+N» chip opens the plate on a tap.
+- **The first-run mark** is a two-line tooltip with a caret that removes itself after five seconds,
+  where it was a bordered card with an icon and a button.
+
+### Added
+- `plot(..., stepped = true)` in NamaScript, for a series that holds across a bar and then jumps.
+
+---
+
 ## [4.73.0] — 2026-09-12 — a script is one of your indicators
 
 Run I. The owner asked why the studio has a chart of its own, and the honest answer was that its
