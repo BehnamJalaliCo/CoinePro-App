@@ -23,7 +23,7 @@ axis-margin arithmetic, ported line for line.
 |---|---|---|---|
 | Pane | `#0F0F0F` | dark template `background`; theme mode draws on the page stage | `TradingViewPalette.DARK_BACKGROUND` |
 | Grid | `#282828`, **dotted** 1 on / 3 off | `#282828` opaque, dotted `[1dp, 3dp]` | `CoineProChart.drawGrid`, `GRID_ALPHA = 1f` |
-| Candle up / down | `#089981` / `#F23645` | same | `TradingViewPalette.UP / DOWN`, built-in templates |
+| Candle up / down | `#089981` / `#F23645` | same in the **dark** theme; `#057A66` / `#D01427` on a white pane | `TradingViewPalette.UP / DOWN`, `LIGHT_UP / LIGHT_DOWN`, built-in templates |
 | Volume | candle colour at 50 % (`#1A5A54` measured) | `VOLUME_ALPHA = 0.5f` | `CoineProChart.drawVolume` |
 | Axis label ink | brightest pixel `#A6`–`#B5` (12 px text) → `#B2B2B2` | `DARK_TEXT` | `ChartPalette.text` |
 | Legend title ink | `#DBDBDB` | `DARK_TEXT_PRIMARY` | `ChartPalette.title` |
@@ -76,6 +76,12 @@ colour (`ohlcAnnotated`), the change row under it, every figure grouped, and the
   naming the foreground app, not a control TradingView draws; Android has no counterpart and a
   painted imitation over the legend would collide with the legend's own title. The app's name is
   in the watermark instead, which is where TradingView's own name is on the chart.
+* **The candle colours on a white pane** (run Ω2). `#089981` / `#F23645` were measured on `#0F0F0F`
+  and are exact there; the dark theme carries them untouched. On white the green measures 3.3:1 and a
+  five-pixel body of it reads as a tint rather than a candle. The light pane keeps the hue and takes
+  the lightness to `#057A66` / `#D01427` — 4.62:1 and 5.02:1 — which are the values this app's own
+  light palette already holds for `marketUp` / `marketDown`, so in the light theme a rising candle, a
+  sparkline and a green percentage are one colour.
 * **«Manage», «New», «Save», «Open» on the hub's first row.** TradingView's are operations on
   named layouts; this app keeps its layouts, colour templates and their save field in one sheet
   behind the «چیدمان‌ها» tile rather than spreading one sheet over four tiles.

@@ -53,6 +53,26 @@ class ChartStaleTest {
         }
     }
 
+    /**
+     * Answers after [delayMillis], and refuses everything once [refusing] is set.
+     *
+     * Switched rather than counted, unlike [FlakyGateway]: a controller that has started also fills
+     * its archive, so «the second call» is not the reader's second request and a test that counted
+     * would be asserting about a page request it never meant to name.
+     */
+    private class SwitchableGateway(
+        private val page: CandlePage,
+        private val delayMillis: Long = 0L,
+    ) : CandleGateway {
+        var refusing = false
+
+        override suspend fun load(symbol: String, timeframe: Timeframe, limit: Int, before: Long?): CandlePage {
+            if (delayMillis > 0L) kotlinx.coroutines.delay(delayMillis)
+            if (refusing) throw RuntimeException("HTTP 502 from the candle feed")
+            return page.copy(timeframe = timeframe)
+        }
+    }
+
     /** Answers, then refuses, then answers again — the shape of a venue under a burst. */
     private class FlakyGateway(private val page: CandlePage, private val refuseCalls: Set<Int>) : CandleGateway {
         var calls = 0
@@ -143,6 +163,53 @@ class ChartStaleTest {
         assertNull("a retried failure is not news", controller.state.value.error)
         assertEquals(40, controller.state.value.series.size)
         assertFalse(controller.state.value.stale)
+    }
+
+    @Test
+    fun `a retry dims the chart and undims it, like a timeframe change does`(): Unit = runTest {
+        // The other way into the dimmed state, and the one run Ω2 asks be pinned: `reload()` off the
+        // pull-to-refresh. It was only ever exercised through `setTimeframe` and the two set the flag
+        // in different places, so a change to one could leave the other dim for ever — which on a
+        // chart is not a visible bug, it is a chart that quietly looks wrong at forty per cent alpha.
+        // `retry()` is `reload()`'s one public door — the banner's «تلاش دوباره» and the pull to
+        // refresh both come through it.
+        val page = CandlePage("BTCUSDT", Timeframe.H1, bars(1_000, 40))
+        // Slow enough that the mid-flight state is observable, well inside the controller's deadline.
+        val gateway = SwitchableGateway(page, delayMillis = 3_000L)
+        val controller = ChartController("BTCUSDT", gateway, TestScope(StandardTestDispatcher(testScheduler)))
+        controller.start()
+        advanceUntilIdle()
+        assertFalse(controller.state.value.stale)
+
+        controller.retry()
+        advanceTimeBy(1_000)
+        assertTrue("a refresh over good candles must dim them, not blank them", controller.state.value.stale)
+        assertEquals("and must not throw the bars away", 40, controller.state.value.series.size)
+
+        advanceUntilIdle()
+        assertFalse("the chart stayed at forty per cent after a refresh", controller.state.value.stale)
+    }
+
+    @Test
+    fun `a refusal over a chart that already has candles leaves it undimmed and readable`(): Unit = runTest {
+        // The state a reader is most likely to be left in: offline, pulling to refresh, and refused.
+        // The bars are still true — they are the last ones the venue sent — so the chart must come
+        // back to full strength with the news in a banner rather than sit dimmed behind an error.
+        val page = CandlePage("BTCUSDT", Timeframe.H1, bars(1_000, 40))
+        val gateway = SwitchableGateway(page)
+        val controller = ChartController("BTCUSDT", gateway, TestScope(StandardTestDispatcher(testScheduler)))
+        controller.start()
+        advanceUntilIdle()
+
+        gateway.refusing = true
+        controller.retry()
+        advanceUntilIdle()
+
+        val after = controller.state.value
+        assertNotNull("a refusal the reader can act on was swallowed", after.error)
+        assertEquals(40, after.series.size)
+        assertFalse("a failed refresh left the chart dim", after.stale)
+        assertFalse(after.loading)
     }
 
     @Test

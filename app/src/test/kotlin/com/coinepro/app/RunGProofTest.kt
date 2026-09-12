@@ -226,21 +226,30 @@ class RunGProofTest {
         )
     }
 
-    // ── G. the readings panel opens on a drag, not on arrival ────────────────────────────────
+    // ── G. the readings are not on the chart page at all ─────────────────────────────────────
 
+    /**
+     * **Stronger than it was, because run Ω2 moved the readings off the page.**
+     *
+     * Run G's version asserted that the disclosure *handle* was on the page and its contents were
+     * not — a closed drawer under the toolbar. Run Ω2's first line is that the chart owns the screen:
+     * the readings are behind the «…» hub now, so there is no handle and no drawer, and the assertion
+     * that used to look for the handle is the assertion that it is gone.
+     *
+     * Both halves are kept because both still say something. Neither string may appear on the phone
+     * page: the handle because the drawer no longer exists, the reading because it never did.
+     */
     @Test
-    fun theReadingsPanelIsClosedOnArrival() {
+    fun theReadingsAreNotOnTheChartPage() {
         proof("run-g-chart-readings-closed", dark = true, persian = true) { Chart() }
-        val heading = composeRule.activity.getString(
+        val handle = composeRule.activity.getString(
             com.coinepro.feature.chart.R.string.chart_readings_disclosure,
         )
-        assertTrue("the handle is on the page", texts().any { it.contains(heading) })
-        // What is *inside* the panel is not: the trend reading's own heading is the panel's first
-        // block, and a closed panel does not draw it.
+        assertTrue("the drawer's handle is back under the toolbar", texts().none { it.contains(handle) })
         val reading = composeRule.activity.getString(
             com.coinepro.feature.chart.R.string.chart_reading_title,
         )
-        assertTrue("and the readings behind it are not", texts().none { it.contains(reading) })
+        assertTrue("and the readings themselves are on the page", texts().none { it.contains(reading) })
     }
 
     // ── The screens ──────────────────────────────────────────────────────────────────────────

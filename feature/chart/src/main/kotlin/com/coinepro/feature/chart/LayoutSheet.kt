@@ -31,6 +31,7 @@ import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.designsystem.LtrDirection
 import com.coinepro.core.marketdata.ChartInterval
 import com.coinepro.core.marketdata.of
+import androidx.compose.ui.res.stringResource
 
 /**
  * Saved chart layouts.
@@ -87,13 +88,18 @@ internal fun LayoutSheetBody(
                             color = CoineProColors.TextPrimary,
                         )
                         Text(
-                            text = layout.summary(),
+                            text = layout.summary(
+                                stringResource(
+                                    R.string.layout_indicator_count,
+                                    layout.indicators.size.toPersianDigits(),
+                                ),
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = CoineProColors.TextMuted,
                         )
                     }
                     Text(
-                        text = "حذف",
+                        text = stringResource(R.string.layout_delete),
                         style = MaterialTheme.typography.labelSmall,
                         color = CoineProColors.Sell,
                         modifier = Modifier
@@ -108,17 +114,17 @@ internal fun LayoutSheetBody(
         CoineProTextField(
             value = name,
             onValueChange = { name = it },
-            label = "نام چیدمان تازه",
+            label = stringResource(R.string.layout_name_label),
             modifier = Modifier.fillMaxWidth(),
         )
         CoineProPrimaryButton(
-            text = "ذخیره‌ی چیدمان فعلی",
+            text = stringResource(R.string.layout_save),
             onClick = { onSave(name); name = "" },
             modifier = Modifier.fillMaxWidth(),
             enabled = name.isNotBlank(),
         )
         Text(
-            text = "چیدمان، نوع چارت و بازه‌ی زمانی و اندیکاتورهای روشن و دوره‌هایشان و مقیاس محور قیمت را نگه می‌دارد. ترسیم‌ها را نه — یک خط روند به قیمت‌های همان نماد چسبیده و روی نماد دیگر معنایی ندارد.",
+            text = stringResource(R.string.layout_note),
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
             modifier = Modifier.background(CoineProColors.Stage),
@@ -129,7 +135,10 @@ internal fun LayoutSheetBody(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "چیدمان فعلی: ${current.activeIndicators.size.toPersianDigits()} اندیکاتور ·",
+                text = stringResource(
+                    R.string.layout_current,
+                    current.activeIndicators.size.toPersianDigits(),
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextMuted,
             )
@@ -157,8 +166,10 @@ internal fun LayoutSheetBody(
  * raw string. The string is on disk for a reason — a later build may understand it — but a reader
  * has no use for a spelling their app cannot draw.
  */
-private fun ChartLayout.summary(): String {
-    val count = "${indicators.size.toPersianDigits()} اندیکاتور"
+private fun ChartLayout.summary(
+    /** «۴ اندیکاتور», resolved by the caller — this is not a composable and cannot read a resource. */
+    count: String,
+): String {
     val resolved = ChartInterval.of(timeframe) ?: return count
     return BidiText.isolateLtr(resolved.wire) + " · " + count
 }

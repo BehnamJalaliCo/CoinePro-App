@@ -20,11 +20,13 @@ import androidx.compose.ui.platform.LocalHapticFeedback
  * answer the eye. An app that stays silent under the thumb reads as a web page in a frame, and no
  * amount of spacing or type fixes that impression.
  *
- * ### Three weights, and no more
+ * ### Five weights, and no more
  *
  * The temptation is a vocabulary — one buzz per kind of event — and it is a mistake, because a
  * reader cannot learn eight vibrations and will read any of them as "something happened". So there
- * are three, separated by how much they should make somebody look up:
+ * are five, and each one earns its place by being a *different answer to the finger* rather than a
+ * different event: three separated by how much they should make somebody look up, plus the two that
+ * belong to a hold ([longPress], [contextClick]) and fire while the finger is still down.
  *
  * - [select] for a choice that changed: a tab, a chip, a segment, a row that opened something. The
  *   lightest tick the platform has. Used constantly, so it has to be nearly subliminal.
@@ -64,6 +66,27 @@ class CoineProHaptics internal constructor(private val feedback: HapticFeedback)
     /** A long press took hold — the crosshair landing, a drag beginning. Android's `LONG_PRESS`. */
     fun longPress() {
         feedback.performHapticFeedback(HapticFeedbackType.LongPress)
+    }
+
+    /**
+     * A menu appeared where the finger was: Android's `CONTEXT_CLICK`.
+     *
+     * ### Why this is a fourth weight and not [longPress]
+     *
+     * It looks like one more entry in the vocabulary the note above warns against, and the
+     * distinction it draws is the one case that earns an entry. [longPress] says «your hold
+     * registered» — it fires *while the finger is still down and nothing has happened yet*, which is
+     * exactly what the crosshair taking hold is. This says «and here is the thing you were holding
+     * for». On a right-click menu or a long-press menu both are true in sequence, a hundred and fifty
+     * milliseconds apart, and giving them one buzz means a reader cannot tell a hold that worked from
+     * a hold that opened something — which is the difference between lifting their finger and keeping
+     * it down.
+     *
+     * The platform makes it shorter and drier than a long press, which is the right shape for it: the
+     * news is on screen now, and the buzz only has to point at it.
+     */
+    fun contextClick() {
+        feedback.performHapticFeedback(HapticFeedbackType.ContextClick)
     }
 }
 

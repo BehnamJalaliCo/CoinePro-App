@@ -48,6 +48,7 @@ import com.coinepro.core.designsystem.continuousMotionAllowed
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.marketdata.MarketSearchRow
 import com.coinepro.core.symbols.MarketStatus
+import com.coinepro.core.designsystem.CoineProRollingNumber
 
 /** Why a market is not quoting, when it is not. Named separately because one of them passes. */
 internal enum class MarketClosure {
@@ -74,6 +75,14 @@ internal data class MarketPreviewState(
     val pretty: String,
     val name: String,
     val price: String,
+    /**
+     * The same price as a number, for the rolling digits to know which way to travel (run Ω2).
+     *
+     * A formatted string cannot answer that: `9.99` is a longer string than `10.0` and a smaller
+     * number, so comparing the two as text gets the direction backwards on exactly the ticks that
+     * cross a power of ten. Null where the feed has not quoted this market, and then nothing rolls.
+     */
+    val rawPrice: Double?,
     val changePercent: Double?,
     val line: List<Double>,
     val closure: MarketClosure?,
@@ -122,6 +131,7 @@ internal fun previewOf(
     // An em dash, not a zero and not a blank: the feed has not quoted this market, and both of the
     // other two would be read as a price.
     price = row.quote?.price?.let(MarketNumberFormatter::priceAuto) ?: EM_DASH,
+    rawPrice = row.quote?.price,
     changePercent = changePercent?.takeIf { status.open },
     // Fewer than two points is not a short line, it is no line — one price has no shape, and the
     // renderer would have to invent what a single value looks like.
@@ -200,16 +210,30 @@ internal fun MarketPreviewSheet(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
             ) {
-                Text(
+                // The one rolling figure on this screen (run Ω2). It is the number the reader opened
+                // the sheet to watch, and a digit that slides up says «moving, and upward» before any
+                // of it has been read. Everything else here — the pill, the line — is still still.
+                //
+                // `CoineProRollingNumber` lays itself out left-to-right and sets its own tabular
+                // style, which is why the direction and alignment this `Text` carried are gone rather
+                // than moved: they were doing the same job by hand.
+                var previousPrice by remember { mutableStateOf(state.rawPrice) }
+                var tickDirection by remember { mutableStateOf(0) }
+                LaunchedEffect(state.rawPrice) {
+                    val old = previousPrice
+                    val now = state.rawPrice
+                    previousPrice = now
+                    tickDirection = when {
+                        old == null || now == null || old == now -> 0
+                        now > old -> 1
+                        else -> -1
+                    }
+                }
+                CoineProRollingNumber(
                     text = state.price,
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        textDirection = TextDirection.Ltr,
-                    ),
+                    style = MaterialTheme.typography.headlineSmall,
                     color = CoineProColors.TextPrimary,
-                    // Right, never End: the figure is Latin inside a right-to-left paragraph, and
-                    // an End alignment would throw it to the far side of its own box.
-                    textAlign = TextAlign.Right,
-                    maxLines = 1,
+                    direction = tickDirection,
                 )
                 when {
                     state.changePercent != null -> CoineProPercentPill(

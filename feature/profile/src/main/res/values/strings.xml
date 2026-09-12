@@ -52,6 +52,8 @@
     <string name="appearance_system_note">Whatever the phone is — dark at night, light by day.</string>
     <string name="appearance_dark">Always dark</string>
     <string name="appearance_dark_note">Even when the phone is light.</string>
+    <string name="appearance_midnight">Midnight</string>
+    <string name="appearance_midnight_note">Dark on true black. Kinder to an OLED screen.</string>
     <string name="appearance_light">Always light</string>
     <string name="appearance_light_note">Even when the phone is dark.</string>
     <string name="appearance_colours">Rise and fall</string>

@@ -117,6 +117,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.backtest.Backtest
 import com.coinepro.core.chart.ActiveToolBar
 import com.coinepro.core.chart.BarWindow
+import com.coinepro.core.chart.ChartAlertLine
 import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.chart.ChartDecoration
 import com.coinepro.core.chart.ChartLegendChange
@@ -222,6 +223,11 @@ import com.coinepro.core.chart.DrawingIconPicker
 import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.common.BidiText
+import com.coinepro.core.designsystem.LocalToaster
+import com.coinepro.core.designsystem.CoineProToast
+import com.coinepro.core.designsystem.ToastTone
+import com.coinepro.core.designsystem.CoineProCelebration
+import com.coinepro.core.designsystem.CoineProConfetti
 
 /**
  * The chart screen.
@@ -378,6 +384,21 @@ fun ChartScreen(
      * them to do the app's arithmetic.
      */
     onCreateAlert: ((symbol: String, price: Double) -> Unit)? = null,
+    /**
+     * The alerts already set on this symbol, drawn on the plot (run Ω2).
+     *
+     * Passed in rather than read here, for the reason [onCreateAlert] is hoisted: the store lives in
+     * `core:notifications` and this module has no business knowing what an alert's condition or its
+     * repeat rule are. What it needs is a price and an id, which is what [ChartAlertLine] is.
+     */
+    alerts: List<ChartAlertLine> = emptyList(),
+    /**
+     * Move one of them to a new price — a drag on its gutter tag (run Ω2).
+     *
+     * Null draws the lines and refuses to move them, which is the honest state for a build with a
+     * read-only route to the store.
+     */
+    onMoveAlert: ((id: String, price: Double) -> Unit)? = null,
     /** The symbol search, for the `/` key and the desk's menu; null on a screen without one. */
     onOpenSymbolSearch: (() -> Unit)? = null,
     /**
@@ -495,6 +516,17 @@ fun ChartScreen(
     // tick through it. Neither is a sound the chart makes itself — see `CoineProChart.onSnap`.
     val haptics = rememberCoineProHaptics()
     var lastCrosshairPrice by remember { mutableStateOf<Double?>(null) }
+    // A removed drawing offers itself back (run Ω2).
+    //
+    // Three places delete one — the selection toolbar, the object tree's row and the style sheet's
+    // button — and each of them is one tap with no question asked, which is the right trade for a
+    // line somebody drew in two seconds. What was missing is the other half of that trade: without a
+    // way back, «one tap, no question» is «one tap, gone». The undo is the chart's own history, so it
+    // restores the drawing with its colour, its width, its lock and its place in the stack, and a
+    // reader who mis-taps twice can press it twice.
+    val toaster = LocalToaster.current
+    val drawingRemovedMessage = stringResource(R.string.chart_drawing_removed)
+    val undoLabel = stringResource(R.string.chart_more_undo)
 
     // The controller the whole screen works against.
     //
@@ -509,6 +541,19 @@ fun ChartScreen(
     @Suppress("NAME_SHADOWING")
     val controller = resolvedController
     val state by controller.state.collectAsStateWithLifecycle()
+
+    /** Deletes a drawing and says so, with the way back. See the note on [toaster] above. */
+    val deleteDrawingAnnounced: (Long) -> Unit = { id ->
+        controller.deleteDrawing(id)
+        toaster.show(
+            CoineProToast(
+                message = drawingRemovedMessage,
+                tone = ToastTone.NEUTRAL,
+                actionLabel = undoLabel,
+                onAction = controller::undo,
+            ),
+        )
+    }
 
     /**
      * The reader's chart zone, resolved once per change rather than once per label.
@@ -551,6 +596,16 @@ fun ChartScreen(
      * onto a study without closing it.
      */
     var explaining by remember { mutableStateOf<String?>(null) }
+    /**
+     * A setup built from one price in the gutter, rather than drawn (run Ω2).
+     *
+     * The gutter chip's second action. It wins over [ChartUiState.setup] for as long as it is open,
+     * because a reader who has just asked for an order *at this price* is not asking about the three
+     * lines they dragged an hour ago — and it is cleared on dismiss, so the drawn setup is back
+     * untouched. Held here rather than pushed into the controller for the same reason: nothing about
+     * it is worth surviving a rotation, and a stored one would reopen this sheet on every restore.
+     */
+    var pendingOrder by remember { mutableStateOf<ChartOrder?>(null) }
     // The desk's right-click menu: the price it landed on and where, or null while closed.
     var contextMenu by remember { mutableStateOf<ChartContextMenu?>(null) }
     /** Which drawing's own settings are open, or null. Opened from the object tree's row. */
@@ -1067,11 +1122,46 @@ fun ChartScreen(
                     onRequestAlertAt = onCreateAlert?.let { create ->
                         { price -> create(state.symbol, price) }
                     },
+                    // And the other half of that gesture: a paper order at the price under the
+                    // finger (run Ω2). The side is read off the market rather than asked — a price
+                    // below the last trade is where somebody wants to get long and one above is
+                    // where they want to get short, which is true of every limit order anybody has
+                    // ever placed — and the stop and target arrive as a draggable default, not as a
+                    // recommendation. Offered only where the build can take a paper trade.
+                    onRequestOrderAt = onPaperTrade?.let {
+                        { price ->
+                            val live = state.lastPrice ?: state.series.bars.lastOrNull()?.c
+                            val side = if (live != null && price > live) TradeSide.SELL else TradeSide.BUY
+                            TradeFromChart.defaultOrder(side, price)?.let { order ->
+                                pendingOrder = order
+                                sheet = ChartSheet.SETUP
+                            }
+                        }
+                    },
+                    alerts = alerts,
+                    onMoveAlert = onMoveAlert,
+                    // The gutter's `L`. It writes the same field the scale sheet writes, so the two
+                    // cannot disagree and a layout saved after a tap here carries the log axis.
+                    onToggleLogScale = {
+                        controller.setScaleMode(
+                            if (state.scaleMode == PriceScaleMode.LOGARITHMIC) {
+                                PriceScaleMode.REGULAR
+                            } else {
+                                PriceScaleMode.LOGARITHMIC
+                            },
+                        )
+                    },
                     // Long press on the price gutter opens the axis' own settings, which is where
                     // every terminal puts them and the one gesture on this chart a reader is
                     // likely to try by accident and be pleased to find.
                     onPriceAxisMenu = { sheet = ChartSheet.SCALE },
-                    onContextMenu = { price, at -> contextMenu = ChartContextMenu(price, at) },
+                    onContextMenu = { price, at ->
+                        // The platform's context tick as the menu lands — a different answer to the
+                        // finger from the long-press buzz that fired while it was still holding. See
+                        // `CoineProHaptics.contextClick`.
+                        haptics.contextClick()
+                        contextMenu = ChartContextMenu(price, at)
+                    },
                     // Where the selected drawing lies on the canvas, so the floating toolbar can
                     // sit just above it rather than at the top of the plot (run E).
                     onSelectionBounds = { bounds -> selectionBounds = bounds },
@@ -1322,7 +1412,19 @@ fun ChartScreen(
                     // Every selected drawing, not only the primary. `DrawingActions.delete` refuses
                     // a locked one, so a mixed selection loses the loose drawings and keeps the
                     // protected ones — which is what the lock is for.
+                    //
+                    // One message for the lot, and one undo: the chart's history records the whole
+                    // deletion as one step, so offering a message per drawing would be three toasts
+                    // for one action, each claiming to undo the same thing.
                     state.drawing.selection.forEach(controller::deleteDrawing)
+                    toaster.show(
+                        CoineProToast(
+                            message = drawingRemovedMessage,
+                            tone = ToastTone.NEUTRAL,
+                            actionLabel = undoLabel,
+                            onAction = controller::undo,
+                        ),
+                    )
                 },
                 onOpenSettings = { id -> styling = id },
                 onDismiss = controller::clearSelection,
@@ -1351,6 +1453,15 @@ fun ChartScreen(
                         .padding(start = CoineProSpacing.Half),
                 )
             }
+            // The first time a study this reader *wrote* draws on the chart (run Ω2).
+            //
+            // Over the plot rather than over the page, because the plot is where the thing being
+            // celebrated just appeared — and it is the one moment in this app where somebody has
+            // crossed from reading a chart to building one. Once per install; see `CoineProConfetti`.
+            CoineProConfetti(
+                celebrate = state.scripts.isNotEmpty(),
+                key = CoineProCelebration.FIRST_SCRIPT,
+            )
         }
     }
 
@@ -1476,7 +1587,7 @@ fun ChartScreen(
             onSelect = controller::selectDrawing,
             onToggleHidden = controller::toggleDrawingHidden,
             onToggleLocked = { node -> controller.setDrawingLocked(node.id, !node.locked) },
-            onDelete = controller::deleteDrawing,
+            onDelete = deleteDrawingAnnounced,
             onReorder = controller::reorderDrawing,
             onOpenStyle = { id -> styling = id },
         )
@@ -1702,28 +1813,19 @@ fun ChartScreen(
         // dismissed for good; the way back is the small «این صفحه چیست؟» the strip leaves behind.
         if (!fullscreenRequested) CoineProTeachingStrip(TeachingSurface.CHART)
 
-        // Only where they have nowhere better to be. On a window wide enough for the side column
-        // these three are already drawn there, permanently, instead of below a plot the reader has
-        // to scroll off the screen to reach them.
+        // **The readings are not a row on this page any more** (4.76.0, run Ω2).
         //
-        // Closed by default, and that is the whole of what paid for the taller plot. These blocks
-        // are *read*, not touched: the trend reading, an open setup, the way into the studio. A
-        // reader who wants them taps once and the disclosure remembers for the rest of the session;
-        // a reader who came to look at candles never spends a point of glass on them. On a large
-        // window the question does not arise — they are a column beside the plot, always open.
-        if (!columns.hasReadings) {
-            ChartReadingsDisclosure(
-                open = state.readingsOpen,
-                onOpenChange = controller::setReadingsOpen,
-            ) {
-                ChartUnderline(
-                    state = state,
-                    source = controller.sourceName,
-                    signalOnChart = drawnSetup != null,
-                    head = false,
-                )
-                analysisBlocks()
-            }
+        // They were a closed disclosure — one line, «خوانش بازار و ابزارها», with the trend reading,
+        // an open setup and the way into the studio behind it. Closed it still cost a row, a rule
+        // and a chevron at the foot of the one screen whose entire product is vertical space, and
+        // what it holds is read occasionally rather than while reading: they are now a tile in the
+        // «…» hub, which is where everything else touched about once a month already lives.
+        //
+        // A wide window is unchanged: there they are a column beside the plot, always open, because
+        // there is room for them and scrolling to a reading is what a tablet exists to avoid.
+        if (columns.hasReadings) {
+            // Nothing here. `ChartWorkbench` draws them in its own column — see [analysisBlocks].
+            Unit
         }
         Spacer(Modifier.height(CoineProSpacing.Three))
     }
@@ -1961,11 +2063,12 @@ fun ChartScreen(
             )
         }
 
-        ChartSheet.SETUP -> state.setup?.let { order ->
+        // The gutter's order wins over the drawn one while it is open — see [pendingOrder].
+        ChartSheet.SETUP -> (pendingOrder ?: state.setup)?.let { order ->
             CoineProSheet(
-                title = "معامله‌ی روی نمودار",
+                title = stringResource(R.string.chart_setup_title),
                 subtitle = state.symbol,
-                onDismiss = { sheet = null },
+                onDismiss = { sheet = null; pendingOrder = null },
             ) {
                 SetupSheetBody(
                     order = order,
@@ -1975,6 +2078,7 @@ fun ChartScreen(
                         { buy, entry, size, stopLoss, takeProfit ->
                             take(state.symbol, buy, entry, size, stopLoss, takeProfit)
                             sheet = null
+                            pendingOrder = null
                         }
                     },
                 )
@@ -2051,6 +2155,10 @@ fun ChartScreen(
                 // a platform this build was not configured for there is nothing behind the row,
                 // and a settings page for a feed that does not exist is worse than no row.
                 onEvents = { sheet = ChartSheet.EVENTS }.takeIf { events != null },
+                // The trend reading, the open setup and the way into the studio — the row that used
+                // to sit at the foot of the chart page. Offered only where there is a reading to
+                // show: under sixty bars `ChartReading.of` refuses to name a market it cannot read.
+                onReadings = { sheet = ChartSheet.READINGS }.takeIf { reading != null || state.setup != null },
                 // Counted over what a backend serves rather than over all five, so the figure on
                 // the closed row is one the reader can actually reach. See `SERVED_EVENT_KINDS`.
                 eventKinds = eventState.visibility.kinds.count { it in SERVED_EVENT_KINDS },
@@ -2135,6 +2243,23 @@ fun ChartScreen(
             )
         }
 
+        // The readings, off the page and into the hub (run Ω2). Same three blocks, same lambda.
+        ChartSheet.READINGS -> CoineProSheet(
+            title = stringResource(R.string.chart_reading_title),
+            onDismiss = { sheet = null },
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                ChartUnderline(
+                    state = state,
+                    source = controller.sourceName,
+                    signalOnChart = drawnSetup != null,
+                    head = false,
+                )
+                analysisBlocks()
+                Spacer(Modifier.height(CoineProSpacing.Two))
+            }
+        }
+
         ChartSheet.EVENTS -> CoineProSheet(
             title = stringResource(R.string.chart_events_title),
             subtitle = stringResource(
@@ -2201,7 +2326,7 @@ fun ChartScreen(
                 },
                 onToggleHidden = controller::toggleDrawingHidden,
                 onToggleLocked = { node -> controller.setDrawingLocked(node.id, !node.locked) },
-                onDelete = controller::deleteDrawing,
+                onDelete = deleteDrawingAnnounced,
                 onReorder = controller::reorderDrawing,
                 onOpenStyle = { id -> styling = id },
             )
@@ -2242,7 +2367,7 @@ fun ChartScreen(
                 onBringToFront = { controller.bringDrawingToFront(drawing.id) },
                 onSendToBack = { controller.sendDrawingToBack(drawing.id) },
                 onDelete = {
-                    controller.deleteDrawing(drawing.id)
+                    deleteDrawingAnnounced(drawing.id)
                     styling = null
                 },
                 onSetTextColour = { colour -> controller.setDrawingTextColour(drawing.id, colour) },
@@ -2732,7 +2857,7 @@ internal fun rememberHelpCatalog(wanted: Boolean): HelpCatalog? {
  * used to own a permanent band under the plot, and it is all behind that one word now. Internal
  * rather than private because `ChartChrome.kt` names these in the callbacks it hands back.
  */
-internal enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP, BACKTEST, LAYOUTS, INTERVAL, SCALE, COMPARE, EVENTS, MORE, PARTNERS, EXPLAIN }
+internal enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP, BACKTEST, LAYOUTS, INTERVAL, SCALE, COMPARE, EVENTS, MORE, PARTNERS, EXPLAIN, READINGS }
 
 /**
  * Binds the stores and starts the controller, in that order and in one effect.
@@ -3487,6 +3612,7 @@ private fun ComparisonSheetBody(
     onRemove: (String) -> Unit,
 ) {
     var refusal by remember { mutableStateOf<ComparisonRefusal?>(null) }
+    val haptics = rememberCoineProHaptics()
     val drawn = comparisons.map { it.symbol.uppercase() }.toSet()
     val offered = watchlist.filter { it.uppercase() != base.uppercase() && it.uppercase() !in drawn }
     val full = comparisons.size >= MAX_COMPARISONS
@@ -3537,7 +3663,14 @@ private fun ComparisonSheetBody(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(CoineProShapes.small)
-                        .clickable { refusal = onAdd(symbol) }
+                        .clickable {
+                            val answer = onAdd(symbol)
+                            refusal = answer
+                            // «It worked» and «it did not» must never feel the same. A refusal here
+                            // is a sentence a reader has to look up to read, and the buzz is what
+                            // makes them look. See `CoineProHaptics.reject`.
+                            if (answer == null) haptics.select() else haptics.reject()
+                        }
                         .padding(vertical = CoineProSpacing.Half),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),

@@ -102,13 +102,14 @@ import kotlin.math.abs
  *
  * Nothing was removed. `ChartScreen`'s own report says where each control went.
  *
- * ### Why the accent is the page's and not gold
+ * ### Why the accent is the page's and not a named colour
  *
- * `CoineProPageAccent` calls a gold selection on an analysis screen the bug it is meant to prevent,
- * and the chart route already declares `PageAccent.ANALYSIS`. The strip was gold because nothing
- * had asked the question. Reading the accent off the page also means the one genuinely gold object
- * left on the screen — the drawn setup's card — is again the only one, which is the surface rule
- * this design system is built on.
+ * Every lit state here reads `CoineProColors.pageAccent` rather than naming a hue, which is what let
+ * run Ω2 change the answer in one file: the chart route declares `PageAccent.ANALYSIS`, that used to
+ * resolve to blue, and it now resolves to the one warm gold the whole app acts in. Nothing in this
+ * file moved. The rule it now obeys is the one the plot forces on it — green and red are the market's
+ * and mean «up» and «down», so a control painted in a third and fourth hue is competing with the only
+ * two colours on the screen that carry a fact.
  */
 
 /**
@@ -699,6 +700,14 @@ internal fun ChartMoreSheetBody(
     onOpenStudio: (() -> Unit)?,
     /** Null where nothing fetches events; the tile is not drawn. */
     onEvents: (() -> Unit)? = null,
+    /**
+     * The market reading, the open setup and the studio — «خوانش بازار» (4.76.0, run Ω2).
+     *
+     * They were a permanent disclosure at the foot of the chart page. A closed disclosure is still a
+     * row, a rule and a chevron on the one screen whose product is vertical space, and what is
+     * behind it is read occasionally rather than while reading.
+     */
+    onReadings: (() -> Unit)? = null,
     eventKinds: Int = 0,
     /** Why the event strip is empty, where it is; said on the tile rather than only behind it. */
     eventNotice: ChartEventNotice? = null,
@@ -843,7 +852,7 @@ internal fun ChartMoreSheetBody(
         // MORE — the phone app's second section: what belongs to the page rather than to the
         // chart. Drawn only when there is something in it; a heading over nothing is a promise.
         if (onEvents != null || onOpenStudio != null || onOpenTerminal != null ||
-            onAskAi != null || onOpenDepth != null
+            onAskAi != null || onOpenDepth != null || onReadings != null
         ) {
             SheetLabel(stringResource(R.string.chart_hub_more))
             HubGrid(columns = 2, outlined = false) {
@@ -854,6 +863,13 @@ internal fun ChartMoreSheetBody(
                     HubTile(
                         icon = DesignR.drawable.icon_sparkle,
                         label = stringResource(R.string.chart_more_ask_ai),
+                        onClick = it,
+                    )
+                }
+                onReadings?.let {
+                    HubTile(
+                        icon = DesignR.drawable.tv_tool_sine,
+                        label = stringResource(R.string.chart_reading_title),
                         onClick = it,
                     )
                 }

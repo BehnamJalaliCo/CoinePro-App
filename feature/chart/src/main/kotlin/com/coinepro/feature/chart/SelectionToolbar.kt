@@ -44,6 +44,7 @@ import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.R as DesignR
+import androidx.compose.ui.res.stringResource
 
 /**
  * The strip that appears over the chart the moment something is selected.
@@ -80,14 +81,13 @@ import com.coinepro.core.designsystem.R as DesignR
  * that paint a wash — `DrawingActions.holdsText` and `DrawingActions.washes`. A target that set a
  * value nothing rendered would be precisely the failure this whole wave is about.
  *
- * ### Why the lit states are the page's accent and not gold
+ * ### Why the lit states are the page's accent and not a named colour
  *
- * They were gold — the armed panel, the multi-select toggle, the lock, the chosen swatch — and so
- * was every selected pill on the page below. `CoineProPageAccent` names a gold selection on an
- * analysis screen as exactly the bug it exists to prevent, and the chart route has declared
- * `PageAccent.ANALYSIS` since that file was written. Reading the accent off the page rather than
- * naming a colour also means this strip lights up in the same hue as the band under the plot, so
- * "this control is on" is one visual fact on the whole screen rather than two that happen to agree.
+ * The armed panel, the multi-select toggle, the lock and the chosen swatch all read
+ * `CoineProColors.pageAccent`, so «this control is on» is one visual fact on the whole screen rather
+ * than several that happen to agree. That indirection is also why run Ω2's one-accent rule cost
+ * nothing here: `PageAccent.ANALYSIS` stopped being blue and became the app's single gold, and this
+ * strip followed without an edit. Naming a hue in this file would have meant editing it.
  */
 @Composable
 internal fun DrawingSelectionToolbar(
@@ -138,7 +138,7 @@ internal fun DrawingSelectionToolbar(
             // label restating the handles the reader can already see.
             if (count > 1) {
                 Text(
-                    text = count.toPersianDigits() + " انتخاب",
+                    text = stringResource(R.string.selection_count, count.toPersianDigits()),
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.pageAccentInk,
                     fontWeight = FontWeight.Normal,
@@ -147,19 +147,21 @@ internal fun DrawingSelectionToolbar(
             }
             SelectionAction(
                 icon = DesignR.drawable.tv_tool_select,
-                label = if (multiSelect) "پایان انتخاب چندتایی" else "انتخاب چندتایی",
+                label = stringResource(
+                    if (multiSelect) R.string.selection_multi_end else R.string.selection_multi_start,
+                ),
                 tint = if (multiSelect) CoineProColors.pageAccentInk else null,
             ) { onSetMultiSelect(!multiSelect) }
             SelectionAction(
                 icon = DesignR.drawable.tv_pencil,
-                label = "رنگ و ضخامت",
+                label = stringResource(R.string.selection_colour_width),
                 tint = if (panel == SelectionPanel.STYLE) CoineProColors.pageAccentInk else null,
                 enabled = !locked,
             ) { panel = if (panel == SelectionPanel.STYLE) SelectionPanel.NONE else SelectionPanel.STYLE }
             if (templates.isNotEmpty()) {
                 SelectionAction(
                     icon = DesignR.drawable.tv_tool_template,
-                    label = "قالب‌ها",
+                    label = stringResource(R.string.selection_templates),
                     tint = if (panel == SelectionPanel.TEMPLATES) CoineProColors.pageAccentInk else null,
                     enabled = !locked,
                 ) {
@@ -171,27 +173,37 @@ internal fun DrawingSelectionToolbar(
             if (DrawingActions.holdsText(primary.toolId)) {
                 SelectionAction(
                     icon = DesignR.drawable.tv_tool_text,
-                    label = "متن",
+                    label = stringResource(R.string.selection_text),
                     enabled = !locked,
                 ) { onEditText(primary.id) }
             }
-            SelectionAction(icon = DesignR.drawable.icon_copy, label = "تکثیر") { onDuplicate(primary.id) }
+            SelectionAction(
+                icon = DesignR.drawable.icon_copy,
+                label = stringResource(R.string.selection_duplicate),
+            ) { onDuplicate(primary.id) }
             SelectionAction(
                 icon = if (locked) DesignR.drawable.tv_lock else DesignR.drawable.tv_unlock,
-                label = if (locked) "باز کردن قفل" else "قفل کردن",
+                label = stringResource(if (locked) R.string.selection_unlock else R.string.selection_lock),
                 tint = if (locked) CoineProColors.pageAccentInk else null,
             ) { onSetLocked(primary.id, !locked) }
             SelectionAction(
                 icon = DesignR.drawable.tv_trash2,
-                label = "حذف",
+                label = stringResource(R.string.selection_delete),
                 tint = if (locked) null else CoineProColors.Sell,
                 enabled = !locked,
                 onClick = onDelete,
             )
-            SelectionAction(icon = DesignR.drawable.tv_settings2, label = "همه‌ی تنظیمات") {
+            SelectionAction(
+                icon = DesignR.drawable.tv_settings2,
+                label = stringResource(R.string.selection_all_settings),
+            ) {
                 onOpenSettings(primary.id)
             }
-            SelectionAction(icon = DesignR.drawable.icon_x, label = "بستن", onClick = onDismiss)
+            SelectionAction(
+                icon = DesignR.drawable.icon_x,
+                label = stringResource(R.string.selection_close),
+                onClick = onDismiss,
+            )
         }
 
         when (panel) {
@@ -252,7 +264,7 @@ internal fun DrawingClipboardRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             ClipboardChip(
-                text = "کپی انتخاب",
+                text = stringResource(R.string.selection_copy),
                 enabled = state.selection.isNotEmpty(),
                 onClick = onCopy,
             )
@@ -260,15 +272,18 @@ internal fun DrawingClipboardRow(
                 // The count is what makes an empty clipboard legible without a second line: «۰»
                 // is never drawn, because the chip is disabled and says the same thing.
                 text = if (state.clipboard.isEmpty()) {
-                    "چسباندن"
+                    stringResource(R.string.selection_paste)
                 } else {
-                    "چسباندن " + state.clipboard.size.toPersianDigits() + " ترسیم"
+                    stringResource(
+                        R.string.selection_paste_count,
+                        state.clipboard.size.toPersianDigits(),
+                    )
                 },
                 enabled = state.clipboard.isNotEmpty(),
                 onClick = onPaste,
             )
             ClipboardChip(
-                text = "پاک کردن همه",
+                text = stringResource(R.string.selection_clear_all),
                 enabled = state.drawings.isNotEmpty(),
                 tone = CoineProColors.Sell,
                 onClick = onClear,
@@ -351,17 +366,26 @@ private fun StylePanel(
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            StyleChip(label = "خط", active = aimed == ColourTarget.LINE) { target = ColourTarget.LINE }
+            StyleChip(
+            label = stringResource(R.string.selection_target_line),
+            active = aimed == ColourTarget.LINE,
+        ) { target = ColourTarget.LINE }
             if (holdsText) {
-                StyleChip(label = "متن", active = aimed == ColourTarget.TEXT) { target = ColourTarget.TEXT }
+                StyleChip(
+            label = stringResource(R.string.selection_target_text),
+            active = aimed == ColourTarget.TEXT,
+        ) { target = ColourTarget.TEXT }
             }
             if (washes) {
-                StyleChip(label = "پُرشدگی", active = aimed == ColourTarget.FILL) { target = ColourTarget.FILL }
+                StyleChip(
+            label = stringResource(R.string.selection_target_fill),
+            active = aimed == ColourTarget.FILL,
+        ) { target = ColourTarget.FILL }
             }
             // Only on the two that can be absent. The line always has a colour, so «مثل خط» on it
             // would be a button that says "be yourself".
             if (aimed != ColourTarget.LINE) {
-                StyleChip(label = "مثل خط", active = chosen == null) {
+                StyleChip(label = stringResource(R.string.selection_follow_line), active = chosen == null) {
                     if (aimed == ColourTarget.TEXT) onSetTextColour(null) else onSetFillColour(null)
                 }
             }
@@ -555,13 +579,20 @@ private fun SelectionAction(
  * Persian digits, because these are prose counts rather than market figures. Named here rather than
  * built at the call site so the tree and the toolbar cannot end up describing the same selection
  * two different ways.
+ *
+ * A composable since run Ω2, and only so that it can read the two strings it prints. Both are
+ * resolved up front rather than inside the branches: `stringResource` is a composable call and a
+ * composable call inside an early return is a call that happens on some compositions and not others.
  */
+@Composable
 internal fun selectionSummary(state: DrawingState): String {
     val count = state.selection.size
-    if (count == 0) return "چیزی انتخاب نشده"
-    if (count > 1) return count.toPersianDigits() + " ترسیم انتخاب شده"
-    val id = state.selectedId ?: return count.toPersianDigits() + " ترسیم انتخاب شده"
-    val drawing = state.drawings.firstOrNull { it.id == id } ?: return "چیزی انتخاب نشده"
+    val none = stringResource(R.string.selection_none)
+    val many = stringResource(R.string.selection_many, count.toPersianDigits())
+    if (count == 0) return none
+    if (count > 1) return many
+    val id = state.selectedId ?: return many
+    val drawing = state.drawings.firstOrNull { it.id == id } ?: return none
     return DrawingTools[drawing.toolId]?.label ?: drawing.toolId
 }
 

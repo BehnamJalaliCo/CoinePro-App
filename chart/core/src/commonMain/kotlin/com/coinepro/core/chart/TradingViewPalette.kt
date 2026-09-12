@@ -58,4 +58,28 @@ object TradingViewPalette {
     const val LIGHT_SEPARATOR = 0xFFE0E0E0
     const val LIGHT_CHIP = 0xFFEFEFEF
     const val LIGHT_TEXT_PRIMARY = 0xFF0F0F0F
+
+    /**
+     * The candles on a **white** pane — the same two hues, taken down until they are candles (run Ω2).
+     *
+     * ### Why the reference's own values are not kept here
+     *
+     * [UP] and [DOWN] were measured on `#0F0F0F` and are right there: on near-black, `#089981` is a
+     * solid green body and `#F23645` is a solid red one. On `#FFFFFFFF` the same green measures
+     * **3.3:1** and a five-pixel-wide body of it reads as a grey-green tint rather than as a candle —
+     * which is the owner's reading of the light theme beside the dark one, and it is correct. A chart
+     * whose bodies you have to look for is not a lighter version of the same chart.
+     *
+     * So the light pane keeps the hue and takes the lightness down to the values the app's own light
+     * palette already arrived at for exactly this reason — `CoineProLightPalette.marketUp` /
+     * `marketDown`, 4.62:1 and 5.02:1 on white. That has a second consequence worth having: in the
+     * light theme a rising candle, a rising sparkline and a green percentage are finally one colour,
+     * which is the «one green, one red» rule the palette file argues for and the dark theme already
+     * keeps.
+     *
+     * The dark theme is untouched. It is the terminal look the parity work is measured against, and
+     * it carries the published values exactly — see `docs/design/TRADINGVIEW_PARITY.md`.
+     */
+    const val LIGHT_UP = 0xFF057A66
+    const val LIGHT_DOWN = 0xFFD01427
 }

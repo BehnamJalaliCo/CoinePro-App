@@ -259,3 +259,4 @@ webhooks_secret_hint	visible	feature/alerts
 webhooks_url_hint	visible	feature/alerts
 indicator_settings_arrangement_note	tip	feature/chart
 chart_script_inputs_note	tip	feature/chart
+appearance_midnight_note	tip	feature/profile

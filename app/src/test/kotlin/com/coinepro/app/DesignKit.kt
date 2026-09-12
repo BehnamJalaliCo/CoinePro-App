@@ -34,9 +34,11 @@ import com.coinepro.core.designsystem.pageAccent
 /**
  * The design system on one page, for review rather than for shipping.
  *
- * Two things it exists to catch. First, the accent rule: four domains, one button component, and
- * they have to be visibly four colours — a single screen cannot show that, because on any one
- * screen a wrong accent still looks deliberate. Second, the surface ladder: five steps that have to
+ * Two things it exists to catch. First, the accent rule, which since run Ω2 is the opposite check
+ * from the one this page was built for: three domains, one button component, and they now have to be
+ * visibly **one** colour, because green and red belong to the market and one gold belongs to action.
+ * A single screen cannot show that either — a stray blue chip looks deliberate on the screen it is
+ * on, and only looks wrong beside its siblings. Second, the surface ladder: five steps that have to
  * be distinguishable from each other in both themes, which is the property that lets this app drop
  * borders between cards and separate them by gap instead.
  */
@@ -50,7 +52,9 @@ internal fun DesignKit() {
             .padding(CoineProSpacing.Gutter),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
     ) {
-        Section("لهجه‌ی هر دامنه")
+        Section("یک لهجه برای همه‌ی دامنه‌ها")
+        // Three rows, one gold: سبز و سرخ مال بازار است و طلا مال عمل. اگر روزی یکی از این سه
+        // ردیف رنگ دیگری داشت، قاعده شکسته است و همین صفحه نشانش می‌دهد.
         AccentRow(PageAccent.ANALYSIS, "تحلیل — بازار، چارت، هوش مصنوعی")
         AccentRow(PageAccent.BRAND, "اجرا — معامله، سفارش، حساب")
         AccentRow(PageAccent.SOCIAL, "اجتماعی — کپی‌تریدینگ")

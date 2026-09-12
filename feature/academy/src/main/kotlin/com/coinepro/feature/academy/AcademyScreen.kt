@@ -57,6 +57,8 @@ import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.TeachingSurface
+import com.coinepro.core.designsystem.CoineProCelebration
+import com.coinepro.core.designsystem.CoineProConfetti
 
 /**
  * The curriculum, as a path rather than a list.
@@ -83,6 +85,11 @@ fun AcademyScreen(
     val extras by controller.extras.collectAsStateWithLifecycle()
     var sheet by remember { mutableStateOf<AcademyExtra?>(null) }
 
+    // A seven-day streak is the one celebration in this app that is *earned over time* rather than in
+    // a tap, which is exactly why it needs to be marked: nobody is looking at the moment it happens.
+    // Once per install — see `CoineProConfetti`.
+    val streak = state.profile?.streak?.current ?: 0
+    Box(modifier = Modifier.fillMaxSize()) {
     when {
         state.loading && state.catalog == null -> Centre { CoineProThinkingDots() }
         state.error != null && state.catalog == null -> Centre {
@@ -135,6 +142,11 @@ fun AcademyScreen(
                 }
             }
         }
+    }
+        CoineProConfetti(
+            celebrate = streak >= STREAK_CELEBRATED,
+            key = CoineProCelebration.SEVEN_DAY_STREAK,
+        )
     }
 
     sheet?.let { open ->
@@ -427,3 +439,12 @@ private fun Centre(content: @Composable ColumnScope.() -> Unit) {
  * zigzag rather than two slightly offset lists.
  */
 private const val NODE_WIDTH_FRACTION = 0.72f
+
+/**
+ * The streak that gets the burst.
+ *
+ * Seven, because a week is the shortest run anybody describes as a habit and it is the number the
+ * roadmap's own copy uses. Not a ladder of them at 7, 30 and 100: the burst is once per install, so a
+ * ladder would be three thresholds competing for one firing.
+ */
+private const val STREAK_CELEBRATED = 7

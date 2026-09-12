@@ -56,6 +56,7 @@ import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import androidx.compose.ui.res.stringResource
 
 /**
  * The object tree: every drawing on the chart, grouped, and reachable.
@@ -105,7 +106,7 @@ internal fun ObjectTreeSheetBody(
     onOpenStyle: (Long) -> Unit,
 ) {
     if (groups.isEmpty()) {
-        CoineProSheetEmpty("هنوز چیزی روی چارت نکشیده‌ای.")
+        CoineProSheetEmpty(stringResource(R.string.objects_empty))
         return
     }
     val total = groups.sumOf { it.nodes.size }
@@ -116,7 +117,7 @@ internal fun ObjectTreeSheetBody(
             .verticalScroll(rememberScrollState()),
     ) {
         Text(
-            text = total.toPersianDigits() + " ترسیم. برای انتخاب بزنید، برای جابه‌جایی نگه دارید، برای حذف بکشید.",
+            text = stringResource(R.string.objects_hint, total.toPersianDigits()),
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
             modifier = Modifier.padding(bottom = CoineProSpacing.One),
@@ -333,19 +334,19 @@ private fun ObjectRow(
             )
             RowAction(
                 icon = if (node.hidden) DesignR.drawable.icon_eye_slash else DesignR.drawable.icon_eye,
-                label = if (node.hidden) "نمایش" else "پنهان کردن",
+                label = stringResource(if (node.hidden) R.string.objects_show else R.string.objects_hide),
                 tint = if (node.hidden) CoineProColors.Gold else CoineProColors.TextMuted,
                 onClick = onToggleHidden,
             )
             RowAction(
                 icon = if (node.locked) DesignR.drawable.tv_lock else DesignR.drawable.tv_unlock,
-                label = if (node.locked) "باز کردن قفل" else "قفل کردن",
+                label = stringResource(if (node.locked) R.string.objects_unlock else R.string.objects_lock),
                 tint = if (node.locked) CoineProColors.Gold else CoineProColors.TextMuted,
                 onClick = onToggleLocked,
             )
             RowAction(
                 icon = DesignR.drawable.tv_settings2,
-                label = "تنظیمات این ترسیم",
+                label = stringResource(R.string.objects_settings),
                 tint = CoineProColors.TextMuted,
                 onClick = onOpenStyle,
             )

@@ -57,6 +57,13 @@ private fun CoineProPalette.toColorScheme() = if (isDark) {
 fun CoineProTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     /**
+     * Whether the dark palette is drawn on true black — «نیمه‌شب» (run Ω2).
+     *
+     * Ignored when [darkTheme] is false, because there is no light theme on black and a flag that
+     * silently did nothing would be worse than one that says so. See [CoineProMidnightPalette].
+     */
+    midnight: Boolean = false,
+    /**
      * Whether a rise is drawn in the palette's green or its red.
      *
      * Swapped here, at the palette, rather than at any call site — which is the whole reason this
@@ -89,7 +96,11 @@ fun CoineProTheme(
             LayoutDirection.Ltr
         }
     }
-    val base = if (darkTheme) CoineProDarkPalette else CoineProLightPalette
+    val base = when {
+        darkTheme && midnight -> CoineProMidnightPalette
+        darkTheme -> CoineProDarkPalette
+        else -> CoineProLightPalette
+    }
     // The movement pair flips with the execution pair. A reader who has asked for red-up gets it
     // everywhere a price is drawn, not only on the two controls that commit an order.
     val palette = if (risingIsGreen) {

@@ -36,6 +36,7 @@ import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProDarkPalette
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProLightPalette
+import com.coinepro.core.designsystem.CoineProMidnightPalette
 import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSheetBody
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -342,6 +343,9 @@ private fun ThemeSwatch(mode: ThemeMode) {
     ) {
         when (mode) {
             ThemeMode.DARK -> Box(Modifier.fillMaxSize().background(DARK_STAGE))
+            // Black beside the dark theme's near-black, which is a difference a reader can see on
+            // this disc and is the only honest way to offer the choice.
+            ThemeMode.MIDNIGHT -> Box(Modifier.fillMaxSize().background(MIDNIGHT_STAGE))
             ThemeMode.LIGHT -> Box(Modifier.fillMaxSize().background(LIGHT_STAGE))
             // Two halves, because "follow the phone" has two answers and showing one of them would
             // be showing whichever the phone happens to be at this instant.
@@ -373,6 +377,7 @@ val AppearanceTitle: Int get() = R.string.appearance_title
 fun ThemeMode.labelRes(): Int = when (this) {
     ThemeMode.SYSTEM -> R.string.appearance_system
     ThemeMode.DARK -> R.string.appearance_dark
+    ThemeMode.MIDNIGHT -> R.string.appearance_midnight
     ThemeMode.LIGHT -> R.string.appearance_light
 }
 
@@ -380,17 +385,21 @@ fun ThemeMode.labelRes(): Int = when (this) {
 private fun ThemeMode.noteRes(): Int = when (this) {
     ThemeMode.SYSTEM -> R.string.appearance_system_note
     ThemeMode.DARK -> R.string.appearance_dark_note
+    // The one note on this sheet that says something a reader could not work out from the swatch,
+    // which is the bar a line of secondary text has to clear (run Ω, R7).
+    ThemeMode.MIDNIGHT -> R.string.appearance_midnight_note
     ThemeMode.LIGHT -> R.string.appearance_light_note
 }
 
 /**
- * The two stage colours, taken from the palettes themselves.
+ * The three stage colours, taken from the palettes themselves.
  *
- * Read from [CoineProDarkPalette] and [CoineProLightPalette] rather than through
- * `CoineProColors.Stage`, which resolves to whichever theme is currently in force and would draw
- * three identical discs. A swatch has to show the theme it *offers*, not the one running.
+ * Read from [CoineProDarkPalette], [CoineProMidnightPalette] and [CoineProLightPalette] rather than
+ * through `CoineProColors.Stage`, which resolves to whichever theme is currently in force and would
+ * draw four identical discs. A swatch has to show the theme it *offers*, not the one running.
  */
 private val DARK_STAGE = CoineProDarkPalette.stage
+private val MIDNIGHT_STAGE = CoineProMidnightPalette.stage
 private val LIGHT_STAGE = CoineProLightPalette.stage
 
 private val SWATCH = 28.dp

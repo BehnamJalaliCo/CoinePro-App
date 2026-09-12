@@ -140,6 +140,7 @@
     <string name="toast_alert_saved">هشدار ساخته شد</string>
     <string name="toast_deleted">حذف شد</string>
     <string name="toast_layout_saved">چیدمان ذخیره شد</string>
+    <string name="toast_unstarred">از دیده‌بان برداشته شد</string>
     <string name="action_undo">برگردان</string>
     <string name="profile_action_support">پشتیبانی و بازخورد</string>
     <string name="profile_action_support_note">مستقیم به یک آدم می‌رسد، نه به یک ربات.</string>

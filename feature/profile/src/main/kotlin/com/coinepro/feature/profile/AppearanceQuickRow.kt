@@ -51,9 +51,19 @@ fun AppearanceQuickRow(
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
         CoineProSegmentedControl(
-            options = ThemeMode.entries.map { it to stringResource(it.shortLabelRes()) },
-            selected = theme,
-            onSelect = onSelectTheme,
+            options = QUICK_THEMES.map { it to stringResource(it.shortLabelRes()) },
+            // Midnight sits under «تیره» here rather than as a fourth segment. This row answers one
+            // question — light or dark, now — and four segments across a phone is where a segmented
+            // control stops being readable; Midnight is a refinement of dark and lives on the sheet
+            // with its swatch and its one line, where a reader choosing it can see what it is.
+            selected = if (theme == ThemeMode.MIDNIGHT) ThemeMode.DARK else theme,
+            // And pressing «تیره» while already on Midnight keeps Midnight. A reader who has chosen
+            // true black and then taps the segment that is already lit has asked for nothing; taking
+            // their choice away would be this row quietly undoing the sheet.
+            onSelect = { mode ->
+                val keepMidnight = mode == ThemeMode.DARK && theme == ThemeMode.MIDNIGHT
+                if (!keepMidnight) onSelectTheme(mode)
+            },
         )
         CoineProSegmentedControl(
             // Each language named in itself — «فارسی», "English" — for the same reason the sheet
@@ -83,5 +93,16 @@ fun AppearanceQuickRow(
 private fun ThemeMode.shortLabelRes(): Int = when (this) {
     ThemeMode.SYSTEM -> R.string.appearance_theme_system_short
     ThemeMode.LIGHT -> R.string.appearance_theme_light_short
-    ThemeMode.DARK -> R.string.appearance_theme_dark_short
+    // Midnight never reaches this row as a segment of its own — see [QUICK_THEMES] — but a `when`
+    // that threw for it would be a landmine under the next reader of this file.
+    ThemeMode.DARK, ThemeMode.MIDNIGHT -> R.string.appearance_theme_dark_short
 }
+
+/**
+ * The three the quick row offers, in the order they read.
+ *
+ * Not `ThemeMode.entries`, and that is the whole point: [ThemeMode.MIDNIGHT] is a fourth stored value
+ * and not a fourth question. `AppearanceSheetTest` holds both halves of that — every mode reachable
+ * somewhere, and this row at three.
+ */
+internal val QUICK_THEMES = listOf(ThemeMode.SYSTEM, ThemeMode.LIGHT, ThemeMode.DARK)

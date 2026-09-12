@@ -121,7 +121,7 @@ internal fun ReplayBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "بازپخش",
+                text = stringResource(R.string.replay_title),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.Accent,
             )
@@ -135,19 +135,19 @@ internal fun ReplayBar(
                 color = CoineProColors.TextMuted,
                 modifier = Modifier.weight(1f),
             )
-            TransportButton(CoineProIcons.StepBack, "یک میله عقب", onStepBack)
+            TransportButton(CoineProIcons.StepBack, stringResource(R.string.replay_step_back), onStepBack)
             TransportButton(
                 icon = if (state.playing) DesignR.drawable.icon_pause else DesignR.drawable.tv_play,
-                label = if (state.playing) "توقف" else "پخش",
+                label = stringResource(if (state.playing) R.string.replay_pause else R.string.replay_play),
                 onClick = onToggle,
                 tint = CoineProColors.Accent,
             )
-            TransportButton(CoineProIcons.StepForward, "یک میله جلو", onStep)
+            TransportButton(CoineProIcons.StepForward, stringResource(R.string.replay_step_forward), onStep)
             // To the end of the snapshot, still inside replay. Distinct from the exit beside it,
             // and the reason both are here: a reader finishing a practice run wants to see how it
             // turned out before they throw the run away.
-            TransportButton(DesignR.drawable.tv_maximize2, "تا آخرین کندل", onJumpToLive)
-            TransportButton(DesignR.drawable.icon_x, "خروج از بازپخش", onExit)
+            TransportButton(DesignR.drawable.tv_maximize2, stringResource(R.string.replay_jump_live), onJumpToLive)
+            TransportButton(DesignR.drawable.icon_x, stringResource(R.string.replay_exit), onExit)
         }
 
         Slider(
@@ -225,12 +225,12 @@ internal fun GoToDateField(
         CoineProTextField(
             value = typedDate,
             onValueChange = { typedDate = it },
-            label = "رفتن به تاریخ ۱۴۰۳/۰۵/۱۲",
+            label = stringResource(R.string.replay_goto_label),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             modifier = Modifier.weight(1f),
         )
         Text(
-            text = "برو",
+            text = stringResource(R.string.replay_goto_action),
             style = MaterialTheme.typography.labelSmall,
             color = if (target == null) CoineProColors.TextDisabled else CoineProColors.OnAccent,
             modifier = Modifier

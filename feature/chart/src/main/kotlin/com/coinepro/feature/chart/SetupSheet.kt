@@ -80,7 +80,9 @@ internal fun SetupSheetBody(
 
     Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf)) {
         Text(
-            text = if (order.side == TradeSide.BUY) "موقعیت خرید" else "موقعیت فروش",
+            text = stringResource(
+                if (order.side == TradeSide.BUY) R.string.setup_side_buy else R.string.setup_side_sell,
+            ),
             style = MaterialTheme.typography.titleMedium,
             color = if (order.side == TradeSide.BUY) CoineProColors.Buy else CoineProColors.Sell,
         )
@@ -90,7 +92,7 @@ internal fun SetupSheetBody(
             // stop and a target dragged past each other, and every number under it would be a
             // confident answer to a question the reader did not ask.
             Text(
-                text = "چیدمان خط‌ها با جهت معامله نمی‌خواند. حد ضرر و هدف را جابه‌جا کنید.",
+                text = stringResource(R.string.setup_invalid),
                 style = MaterialTheme.typography.bodyMedium,
                 color = CoineProColors.Warning,
             )
@@ -98,22 +100,22 @@ internal fun SetupSheetBody(
 
         CoineProCard(modifier = Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
-                Line("ورود", price(order.entry))
-                Line("حد ضرر", price(order.stopLoss), CoineProColors.Sell)
-                Line("هدف", price(order.takeProfit), CoineProColors.Buy)
+                Line(stringResource(R.string.setup_entry), price(order.entry))
+                Line(stringResource(R.string.setup_stop), price(order.stopLoss), CoineProColors.Sell)
+                Line(stringResource(R.string.setup_target), price(order.takeProfit), CoineProColors.Buy)
             }
         }
 
         CoineProCard(modifier = Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
-                Line("فاصله‌ی ریسک", price(riskDistance))
-                Line("فاصله‌ی ریوارد", price(rewardDistance))
+                Line(stringResource(R.string.setup_risk_distance), price(riskDistance))
+                Line(stringResource(R.string.setup_reward_distance), price(rewardDistance))
                 Line(
-                    "پیپ تا حد ضرر",
+                    stringResource(R.string.setup_stop_pips),
                     BidiText.isolateLtr(MarketNumberFormatter.price(TradeFromChart.stopPips(order, symbol), 1)),
                 )
                 Line(
-                    label = "ریسک به ریوارد",
+                    label = stringResource(R.string.setup_ratio),
                     // Null rather than a number when there is no risk to divide by: a stop sitting
                     // on the entry has no ratio, and anything printed would be read as a real one.
                     value = ratio?.let { BidiText.isolateLtr("1 : ${MarketNumberFormatter.price(it, 2)}") } ?: "—",
@@ -126,19 +128,25 @@ internal fun SetupSheetBody(
         CoineProTextField(
             value = riskInput,
             onValueChange = { riskInput = it },
-            label = "چقدر حاضرید روی این معامله از دست بدهید؟",
+            label = stringResource(R.string.setup_risk_label),
             modifier = Modifier.fillMaxWidth(),
         )
         if (risk != null && risk > 0 && valid) {
             val size = TradeFromChart.positionSize(order, risk)
             CoineProCard(modifier = Modifier.fillMaxWidth()) {
                 Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
-                    Line("حجم (واحد)", BidiText.isolateLtr(MarketNumberFormatter.price(size.units, 2)))
-                    Line("حجم (لات استاندارد)", BidiText.isolateLtr(MarketNumberFormatter.price(size.lots, 4)))
+                    Line(
+                        stringResource(R.string.setup_size_units),
+                        BidiText.isolateLtr(MarketNumberFormatter.price(size.units, 2)),
+                    )
+                    Line(
+                        stringResource(R.string.setup_size_lots),
+                        BidiText.isolateLtr(MarketNumberFormatter.price(size.lots, 4)),
+                    )
                 }
             }
             Text(
-                text = "لات استاندارد بر پایه‌ی قرارداد ۱۰۰٬۰۰۰ واحدی حساب می‌شود. اگر کارگزار شما اندازه‌ی دیگری دارد، از ماشین‌حساب حجم در «ابزارها» استفاده کنید.",
+                text = stringResource(R.string.setup_lot_note),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextMuted,
             )
@@ -172,8 +180,10 @@ internal fun SetupSheetBody(
         livePrice?.let { price ->
             val open = TradeFromChart.unrealised(order, price, symbol)
             Line(
-                "فاصله‌ی قیمت فعلی تا ورود",
-                BidiText.isolateLtr(MarketNumberFormatter.price(open.pips, 1) + " پیپ"),
+                stringResource(R.string.setup_distance_to_entry),
+                BidiText.isolateLtr(
+                    MarketNumberFormatter.price(open.pips, 1) + " " + stringResource(R.string.setup_pips_suffix),
+                ),
             )
         }
     }

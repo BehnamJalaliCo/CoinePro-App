@@ -87,6 +87,7 @@ import com.coinepro.core.common.NumberStyle
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.pageAccent
 import com.coinepro.core.designsystem.LocalCoineProPalette
 import java.time.Instant
 import java.time.ZoneId
@@ -197,6 +198,36 @@ fun CoineProChart(
      * what a reader means and "alert me at this level" almost always is.
      */
     onRequestAlertAt: ((Double) -> Unit)? = null,
+    /**
+     * Open a paper order at a price the reader stopped on, from the gutter chip (run Ω2).
+     *
+     * The second half of [onRequestAlertAt]'s gesture and hoisted for the same reason: this module
+     * knows which price the finger meant and knows nothing about a book, a size or a stop. Null on a
+     * chart with no route to the setup, and then the chip is the bare `+` it was.
+     */
+    onRequestOrderAt: ((Double) -> Unit)? = null,
+    /**
+     * Flip the price axis between regular and logarithmic, from the gutter's `L` (run Ω2).
+     *
+     * Hoisted because [scaleMode] is: the mode belongs to the saved layout, so the chart cannot own
+     * it and a local flip would be forgotten on the next restore. Null leaves only `A` in the corner.
+     */
+    onToggleLogScale: (() -> Unit)? = null,
+    /**
+     * The reader's own price alerts on this symbol, drawn and draggable (run Ω2).
+     *
+     * Empty on every chart that has no route to the alert store, which is what a thumbnail and the
+     * share renderer pass, and then nothing about this costs anything at all.
+     */
+    alerts: List<ChartAlertLine> = emptyList(),
+    /**
+     * A dragged alert's new price. Null draws the lines and lets nothing be moved.
+     *
+     * The chart reports the price and stops there — it does not know what an alert's condition is,
+     * whether the move should re-arm a fired one, or what the store calls it. See
+     * [PriceAxisAlertLines].
+     */
+    onMoveAlert: ((id: String, price: Double) -> Unit)? = null,
     /**
      * Open the price axis' own menu — log scale, percent, decimals, which side it sits on.
      *
@@ -1197,6 +1228,10 @@ fun CoineProChart(
     // docs/design/TRADINGVIEW_PARITY.md) rather than the app's market colours. The owner's brief
     // is that the chart be point-for-point TradingView's, and the colour of a candle is the first
     // point anybody compares. Only the chart takes these; the rest of the app keeps its own greens.
+    // The one accent the app acts in, read here because a `@Composable` colour cannot be read from
+    // the overlay's draw lambda. An alert is a thing the reader did, so it takes the action colour
+    // rather than a hue of its own — see `CoineProPageAccent`, run Ω2.
+    val alertAccent = CoineProColors.pageAccent
     val themePalette = if (LocalCoineProPalette.current.isDark) {
         ChartPalette(
             up = Color(TradingViewPalette.UP),
@@ -1208,8 +1243,10 @@ fun CoineProChart(
         )
     } else {
         ChartPalette(
-            up = Color(TradingViewPalette.UP),
-            down = Color(TradingViewPalette.DOWN),
+            // Saturated for white (run Ω2) — see `TradingViewPalette.LIGHT_UP`. The reference's own
+            // pair is measured on near-black and reads as a tint on a white pane.
+            up = Color(TradingViewPalette.LIGHT_UP),
+            down = Color(TradingViewPalette.LIGHT_DOWN),
             grid = Color(TradingViewPalette.LIGHT_GRID),
             text = Color(TradingViewPalette.LIGHT_TEXT),
             crosshair = Color(TradingViewPalette.LIGHT_CROSSHAIR),
@@ -3344,6 +3381,34 @@ fun CoineProChart(
                 lastView = lastView,
                 palette = palette,
                 onRequestAlertAt = request,
+                onRequestOrderAt = onRequestOrderAt,
+            )
+        }
+
+        // The reader's alerts, over the plot and draggable by their gutter tags (run Ω2).
+        if (alerts.isNotEmpty()) {
+            PriceAxisAlertLines(
+                frame = frames[0],
+                view = lastView[0],
+                alerts = alerts,
+                palette = palette,
+                accent = alertAccent,
+                onMoveAlert = onMoveAlert,
+                onGrab = onSnap,
+            )
+        }
+
+        // `A` and `L` in the corner of the price gutter (run Ω2). Drawn only where there is an axis
+        // to put them on: a thumbnail with `showAxes = false` has no gutter and gets nothing.
+        if (decoration.showAxes) {
+            PriceAxisScaleMinis(
+                frame = frames[0],
+                plotBottom = viewport.plotHeight,
+                manualScale = viewport.priceZoom != 1f,
+                logarithmic = viewport.scaleMode == PriceScaleMode.LOGARITHMIC,
+                palette = palette,
+                onAutoScale = { viewport = viewport.autoPriceScale() },
+                onToggleLogarithmic = onToggleLogScale,
             )
         }
     }
@@ -3363,6 +3428,7 @@ private fun AlertGutterAffordance(
     lastView: Array<ChartViewport?>,
     palette: ChartPalette,
     onRequestAlertAt: (Double) -> Unit,
+    onRequestOrderAt: ((Double) -> Unit)? = null,
 ) {
     val y = pointer.value ?: return
     val view = lastView[0] ?: return
@@ -3377,6 +3443,12 @@ private fun AlertGutterAffordance(
         onRequestAlertAt = {
             onRequestAlertAt(it)
             pointer.value = null
+        },
+        onRequestOrderAt = onRequestOrderAt?.let { order ->
+            {
+                order(it)
+                pointer.value = null
+            }
         },
     )
 }
@@ -5680,7 +5752,7 @@ private const val MAJOR_TICK_EPSILON = 1e-6
  * `+1.2500%` is four characters of noise in a gutter that is already tight — while a price wants
  * the precision its own magnitude implies.
  */
-private fun ChartViewport.axisText(price: Double): String = axisText(
+internal fun ChartViewport.axisText(price: Double): String = axisText(
     price = price,
     places = when (scaleMode) {
         PriceScaleMode.PERCENT, PriceScaleMode.INDEXED_100 -> SCALE_VALUE_DECIMALS

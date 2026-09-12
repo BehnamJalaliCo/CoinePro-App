@@ -23,7 +23,10 @@ import kotlin.math.abs
  */
 class SurfaceLadderTest {
 
-    private val palettes = listOf(CoineProDarkPalette, CoineProLightPalette)
+    // All three, since run Ω2. Midnight is a `copy` of the dark palette with a black page under it,
+    // which means it inherits every ink without being covered by anything — a copy is exactly the
+    // change these tests cannot see unless they are run over it.
+    private val palettes = listOf(CoineProDarkPalette, CoineProLightPalette, CoineProMidnightPalette)
 
     /** WCAG relative contrast, for two opaque colours. */
     private fun contrast(a: Color, b: Color): Double {
@@ -39,7 +42,7 @@ class SurfaceLadderTest {
         palettes.forEach { palette ->
             val delta = abs(palette.surfaceRaised.luminance() - palette.surface.luminance())
             assertTrue(
-                "raised is indistinguishable from its container (isDark=${palette.isDark})",
+                "raised is indistinguishable from its container (${palette.name})",
                 delta > 0.01f,
             )
         }
@@ -51,12 +54,14 @@ class SurfaceLadderTest {
         // cards are white and there is no lighter than white: the reference draws its raised
         // plates as a tint on the card (TradingView's #F0F3FA tiles), so raised is *darker* there.
         // Either way it is a different value — the first test above — and the direction is the
-        // theme's, not a universal.
-        listOf(CoineProDarkPalette, CoineProLightPalette).forEach { palette ->
+        // theme's, not a universal. Midnight is a dark theme by this test as by every other: it adds
+        // a rung below the dark theme's card and keeps every rung above it, so it climbs the same way
+        // and further.
+        palettes.forEach { palette ->
             val raised = palette.surfaceRaised.luminance()
             val container = palette.surface.luminance()
             assertTrue(
-                "raised is on the wrong side of its container (isDark=${palette.isDark})",
+                "raised is on the wrong side of its container (${palette.name})",
                 if (palette.isDark) raised > container else raised < container,
             )
         }
@@ -73,7 +78,7 @@ class SurfaceLadderTest {
             )
             ladder.zipWithNext { lower, upper ->
                 assertTrue(
-                    "two adjacent surfaces are the same value (isDark=${palette.isDark})",
+                    "two adjacent surfaces are the same value (${palette.name})",
                     abs(lower.luminance() - upper.luminance()) > 0.002f,
                 )
             }
@@ -87,7 +92,7 @@ class SurfaceLadderTest {
         // surface a card is drawn on.
         palettes.forEach { palette ->
             assertTrue(
-                "the terminal ground and the card surface are the same (isDark=${palette.isDark})",
+                "the terminal ground and the card surface are the same (${palette.name})",
                 palette.terminal != palette.surface,
             )
         }
@@ -99,7 +104,7 @@ class SurfaceLadderTest {
         // panel, which is exactly how a card ends up looking like a printed region.
         palettes.forEach { palette ->
             assertTrue(
-                "the subtle border is too faint to read (isDark=${palette.isDark})",
+                "the subtle border is too faint to read (${palette.name})",
                 palette.borderSubtle.alpha >= 0.06f,
             )
         }
@@ -109,7 +114,7 @@ class SurfaceLadderTest {
     fun `the border weights are ordered`() {
         palettes.forEach { palette ->
             assertTrue(
-                "border weights are not ordered (isDark=${palette.isDark})",
+                "border weights are not ordered (${palette.name})",
                 palette.borderSubtle.alpha < palette.border.alpha &&
                     palette.border.alpha < palette.borderStrong.alpha,
             )
@@ -121,7 +126,7 @@ class SurfaceLadderTest {
         // What a selected chip, a primary button and a filled pill all depend on.
         palettes.forEach { palette ->
             assertTrue(
-                "onAccent is unreadable on accentFill (isDark=${palette.isDark})",
+                "onAccent is unreadable on accentFill (${palette.name})",
                 contrast(palette.accentFill, palette.onAccent) >= 4.5,
             )
         }
@@ -132,7 +137,7 @@ class SurfaceLadderTest {
         palettes.forEach { palette ->
             listOf(palette.stage, palette.surface, palette.surfaceElevated).forEach { ground ->
                 assertTrue(
-                    "the ink accent is unreadable on a surface (isDark=${palette.isDark})",
+                    "the ink accent is unreadable on a surface (${palette.name})",
                     contrast(palette.accent, ground) >= 4.5,
                 )
             }
@@ -148,19 +153,19 @@ class SurfaceLadderTest {
         palettes.forEach { palette ->
             listOf(palette.stage, palette.surface, palette.surfaceElevated).forEach { ground ->
                 assertTrue(
-                    "textPrimary is unreadable on a surface (isDark=${palette.isDark})",
+                    "textPrimary is unreadable on a surface (${palette.name})",
                     contrast(palette.textPrimary, ground) >= 7.0,
                 )
                 assertTrue(
-                    "textSecondary is unreadable on a surface (isDark=${palette.isDark})",
+                    "textSecondary is unreadable on a surface (${palette.name})",
                     contrast(palette.textSecondary, ground) >= 4.5,
                 )
                 assertTrue(
-                    "textMuted is unreadable on a surface (isDark=${palette.isDark})",
+                    "textMuted is unreadable on a surface (${palette.name})",
                     contrast(palette.textMuted, ground) >= 4.5,
                 )
                 assertTrue(
-                    "textDisabled is unreadable on a surface (isDark=${palette.isDark})",
+                    "textDisabled is unreadable on a surface (${palette.name})",
                     contrast(palette.textDisabled, ground) >= 3.0,
                 )
             }
@@ -180,7 +185,7 @@ class SurfaceLadderTest {
             ).map { contrast(it, palette.surface) }
             ramp.zipWithNext { louder, quieter ->
                 assertTrue(
-                    "the text ramp is not monotonic (isDark=${palette.isDark})",
+                    "the text ramp is not monotonic (${palette.name})",
                     louder > quieter,
                 )
             }
@@ -197,11 +202,67 @@ class SurfaceLadderTest {
                 listOf("buy" to palette.buy, "sell" to palette.sell, "warning" to palette.warning)
                     .forEach { (name, ink) ->
                         assertTrue(
-                            "$name is unreadable on a surface (isDark=${palette.isDark})",
+                            "$name is unreadable on a surface (${palette.name})",
                             contrast(ink, ground) >= 4.5,
                         )
                     }
             }
+        }
+    }
+
+    @Test
+    fun `midnight is black on the two grounds an OLED panel can switch off, and dark everywhere else`() {
+        // The whole reason the option exists: the page and the chart's pane are #000000, so on an
+        // OLED panel those pixels are off. A «midnight» that painted a near-black instead would cost
+        // the same battery as the dark theme while claiming not to.
+        assertTrue("the midnight stage is not black", CoineProMidnightPalette.stage == Color.Black)
+        assertTrue("the midnight chart ground is not black", CoineProMidnightPalette.terminal == Color.Black)
+        // And a card is still a card. A flat fill of black everywhere is not a theme, it is the
+        // absence of one, and this is where that failure would show.
+        assertTrue(
+            "midnight has no card above its page",
+            CoineProMidnightPalette.surface.luminance() > CoineProMidnightPalette.stage.luminance(),
+        )
+    }
+
+    @Test
+    fun `midnight changes the ground and nothing else`() {
+        // The claim the palette's own note makes, held by the build. Every ink, hue and market
+        // colour is the dark theme's — the option is about the room, not about what a candle means.
+        val dark = CoineProDarkPalette
+        val midnight = CoineProMidnightPalette
+        listOf(
+            "textPrimary" to (dark.textPrimary to midnight.textPrimary),
+            "textSecondary" to (dark.textSecondary to midnight.textSecondary),
+            "textMuted" to (dark.textMuted to midnight.textMuted),
+            "textDisabled" to (dark.textDisabled to midnight.textDisabled),
+            "accent" to (dark.accent to midnight.accent),
+            "accentFill" to (dark.accentFill to midnight.accentFill),
+            "buy" to (dark.buy to midnight.buy),
+            "sell" to (dark.sell to midnight.sell),
+            "marketUp" to (dark.marketUp to midnight.marketUp),
+            "marketDown" to (dark.marketDown to midnight.marketDown),
+            "warning" to (dark.warning to midnight.warning),
+        ).forEach { (field, pair) ->
+            assertTrue("midnight moved $field, which is not a surface", pair.first == pair.second)
+        }
+    }
+
+    @Test
+    fun `no ground in midnight is lighter than the dark theme's, so no ink loses contrast`() {
+        // The property that makes «every ink is re-measured» unnecessary. Midnight only ever moves a
+        // ground *down*; if one ever moved up instead, an ink measured on the dark theme could
+        // quietly fall below its bar here, and this is the test that would catch it before a reader
+        // did. The three below are the three values the palette changes at all.
+        listOf(
+            CoineProDarkPalette.stage to CoineProMidnightPalette.stage,
+            CoineProDarkPalette.surface to CoineProMidnightPalette.surface,
+            CoineProDarkPalette.terminal to CoineProMidnightPalette.terminal,
+        ).forEach { (dark, midnight) ->
+            assertTrue(
+                "a midnight ground is lighter than the dark theme's",
+                midnight.luminance() <= dark.luminance(),
+            )
         }
     }
 

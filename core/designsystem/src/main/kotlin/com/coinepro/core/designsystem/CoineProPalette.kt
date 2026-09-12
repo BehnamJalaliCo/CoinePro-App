@@ -130,6 +130,14 @@ data class CoineProPalette(
     /** How far an asset's brand colour is pulled toward black before it is used as ink. */
     val assetInkShift: Float,
     val isDark: Boolean,
+    /**
+     * Which palette this is, for a test's failure message and nothing else.
+     *
+     * Added when [CoineProMidnightPalette] arrived (run Ω2) and `isDark=true` stopped identifying a
+     * palette: two of the three are dark, so «a hairline is too faint (isDark=true)» named neither.
+     * Never shown to a reader — the theme names readers see are string resources.
+     */
+    val name: String = "",
 )
 
 /**
@@ -198,6 +206,54 @@ val CoineProDarkPalette = CoineProPalette(
     warning = Color(0xFFF0B90B),
     assetInkShift = 0f,
     isDark = true,
+    name = "dark",
+)
+
+/**
+ * **Midnight** — the dark theme on true black (run Ω2).
+ *
+ * ### Why a third palette and not a switch inside the second
+ *
+ * On an OLED panel a `#000000` pixel is off. That is worth an option for two reasons a trader will
+ * give you unprompted: the chart at night stops glowing around its own edges, and a phone left on a
+ * chart all day spends measurably less battery on the two thirds of the screen that are background.
+ * It is *not* the default, because true black is also where a one-pixel hairline disappears and a
+ * near-black card has no shadow to sit in — which is why this is a ladder shifted down by a rung
+ * rather than a flat fill of black.
+ *
+ * ### What it changes, which is only the ground
+ *
+ * Every ink, every hue and every rung above the page is the dark theme's, unchanged, by construction
+ * — this is a `copy` and the compiler holds it to that. **Three** values move: the page, the chart's
+ * pane, and the card that sits directly on them.
+ *
+ * The ladder is not shifted wholesale, and that was the first attempt. Moving every rung down put
+ * `surfaceRaised` at `#171C24` over a `#0B0E11` card, and near black the *linear* luminance between
+ * two such values is a few thousandths — `SurfaceLadderTest`'s «a raised surface is never the same
+ * value as the container it is raised out of» caught it, which is what that test is for. A plate
+ * lifted off a card has to still read as lifted, and on a black page the way to get that is not to
+ * push the whole ladder down into the region where it stops separating.
+ *
+ * So a new rung is *inserted at the bottom* instead: `surface` becomes the dark theme's stage —
+ * `#0B0E11`, the value every ink in this file was already measured against — and everything above it
+ * stays exactly where it was. The result is one more step of structure than the dark theme has, all
+ * of it above a page that is genuinely off.
+ */
+val CoineProMidnightPalette = CoineProDarkPalette.copy(
+    stage = Color(0xFF000000),
+    // Black, like the stage — the chart shares the page's ground in every theme since 4.70.0, and
+    // on an OLED panel this is the whole point of the option: the pane behind the candles is off.
+    terminal = Color(0xFF000000),
+    // The dark theme's *stage* as this theme's card. A card here is a card there, so nothing above
+    // it needed re-measuring and nothing below it is lighter than it was.
+    surface = Color(0xFF0B0E11),
+    // Raised from eight per cent, for the reason the dark theme raised them from five: an edge has to
+    // survive the panel. On a black page a card's own fill is doing less of the work than it does on
+    // `#0B0E11`, so the hairline is carrying more of the structure and has to be seen.
+    borderSubtle = Color(0x1FFFFFFF),
+    border = Color(0x26FFFFFF),
+    borderStrong = Color(0x3AFFFFFF),
+    name = "midnight",
 )
 
 /**
@@ -284,6 +340,7 @@ val CoineProLightPalette = CoineProPalette(
     warning = Color(0xFF8A5606), // 5.74:1
     assetInkShift = 0.35f,
     isDark = false,
+    name = "light",
 )
 
 /**

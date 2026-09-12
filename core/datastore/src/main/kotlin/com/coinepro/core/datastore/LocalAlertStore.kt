@@ -95,6 +95,32 @@ class LocalAlertStore(private val dataStore: DataStore<Preferences>) {
     }
 
     /**
+     * Moves one alert's level — a drag on its line on the chart (run Ω2).
+     *
+     * ### Why this also re-arms it
+     *
+     * A one-shot alert that has fired is kept so the reader can see what it was, and it is no longer
+     * watching. Dragging its line to a new price is not a note about history: it is somebody saying
+     * «tell me at *this* price instead», and an alert that silently stayed spent would be the app
+     * taking an instruction and doing nothing. So the fire stamp is cleared and [LocalPriceAlert.active]
+     * is set. A reader who wanted it off has a switch for that, on the alerts screen, and this is not it.
+     *
+     * Refuses a value that is not a finite, positive price, and refuses it on a *percentage* alert —
+     * see [LocalAlertCondition.isPercent]. A percent alert's number is not a level, so there is no
+     * line on the chart to drag and nothing here should be able to write one as if there were.
+     */
+    suspend fun setValue(id: String, value: Double) {
+        if (!value.isFinite() || value <= 0.0) return
+        update(id) { alert ->
+            if (alert.condition.isPercent) {
+                alert
+            } else {
+                alert.copy(value = value, active = true, lastFiredAtEpochMillis = null)
+            }
+        }
+    }
+
+    /**
      * Writes back the alerts that fired.
      *
      * Takes the whole list rather than one id because the evaluator finds them in a batch, and

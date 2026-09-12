@@ -84,6 +84,34 @@ data class PriceLevel(
     val extendRight: Boolean = true,
 )
 
+/**
+ * One of the reader's own price alerts, as the chart draws it (run Ω2).
+ *
+ * ### Why this is not a [PriceLevel]
+ *
+ * A level is a fact the chart computed — a pivot, a script's line — and nothing about it can be
+ * moved. An alert is a *thing the reader owns*: it has an identity that outlives the chart, it is
+ * stored, and its whole point is that it can be dragged to a different price. Those two differences
+ * are exactly the two fields below, and collapsing them into `PriceLevel` would mean either giving
+ * every computed level an id it has no use for or discovering, the first time somebody dragged a
+ * pivot, that the app had no idea which alert they meant.
+ *
+ * It carries no colour. Every alert is the app's one accent, because an alert is an action the reader
+ * took and this app paints actions in one colour — see `CoineProPageAccent`.
+ */
+data class ChartAlertLine(
+    /** The stored alert's own id. What a drag reports back, and the only way to name it again. */
+    val id: String,
+    val price: Double,
+    /**
+     * Whether the alert is still armed.
+     *
+     * A fired one-shot alert is kept by the store and is no longer watching anything; drawing it at
+     * full strength would be the chart claiming a level is being watched when it is not.
+     */
+    val armed: Boolean = true,
+)
+
 /** What a marker looks like. */
 enum class MarkerGlyph { ARROW_UP, ARROW_DOWN, CIRCLE }
 

@@ -196,10 +196,19 @@ internal fun legendRows(
     val h = groupThousands(formatPrice(bar.h, decimals))
     val l = groupThousands(formatPrice(bar.l, decimals))
     val c = groupThousands(formatPrice(bar.c, decimals))
+    // And the volume, on the widest form only (run Ω2). The crosshair's reading is meant to be the
+    // whole bar, and «how much traded here» is the fifth fact a trader reads off a candle they have
+    // stopped on — compact, because `1.2M` is the number and `1,203,441` is the noise around it. It
+    // rides the widest alternative alone so that the first thing a narrow phone drops is the volume
+    // rather than the open, which is the order a reader would drop them in themselves.
+    // Null where the feed does not publish a volume — a forex pair on most brokers. The
+    // widest form then reads `V —`, which is the truth; printing a zero would not be.
+    val v = bar.v?.let { compactVolume(it) }
     rows += ChartLegendRow(
         target = ChartLegendTarget.Series,
         label = seriesLabel.orEmpty(),
         alternatives = listOf(
+            "O $o   H $h   L $l   C $c" + (v?.let { "   V $it" } ?: ""),
             "O $o   H $h   L $l   C $c",
             "O $o H $h L $l C $c",
             "$o $h $l $c",
@@ -1176,9 +1185,10 @@ private fun LegendHead(
 /**
  * `O 77,004.19 H 77,182.00` with the letters in one colour and the figures in another.
  *
- * A token is a label when it is a single letter or the change mark — `O`, `H`, `L`, `C`, `Δ` —
+ * A token is a label when it is a single letter or the change mark — `O`, `H`, `L`, `C`, `V`, `Δ` —
  * and a figure otherwise. Whitespace is kept as it was, so the widest and the narrowest forms in
- * [legendRows] both survive with their own spacing.
+ * [legendRows] both survive with their own spacing. A compact volume (`1.2M`) is four characters and
+ * lands on the right side of that rule by being longer than one, not by being special-cased.
  */
 internal fun ohlcAnnotated(text: String, labels: Color, values: Color): AnnotatedString = buildAnnotatedString {
     var index = 0

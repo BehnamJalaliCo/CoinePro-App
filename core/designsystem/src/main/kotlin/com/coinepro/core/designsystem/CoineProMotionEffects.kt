@@ -59,11 +59,16 @@ private const val SHIMMER_PERIOD_MS = 1_150
  *
  * Six hundred and twenty was long enough to still be lit when the next tick arrived, so a fast
  * market read as a row that was permanently green rather than a row that had just moved — the
- * signal that says «this one changed» stops saying anything once it is always on. The reference
- * holds its own for a little over a third of a second, which is long enough to be caught by
- * peripheral vision and short enough to have cleared before the next print.
+ * signal that says «this one changed» stops saying anything once it is always on.
+ *
+ * **Two hundred since run Ω2**, down from three hundred and eighty. The argument for 380 was the
+ * reference's own hold, and it is still the right hold for a *web* table read at arm's length. On a
+ * phone a crypto pair prints several times a second, and at 380 the tint on a moving row never went
+ * out — which is the same failure 620 had, arrived at more slowly. Two hundred is the shortest hold
+ * that peripheral vision reliably catches, and it clears between prints on every market this app
+ * quotes.
  */
-private const val FLASH_MS = 380
+private const val FLASH_MS = 200
 private const val REVEAL_CHARS_PER_SECOND = 45f
 
 /**

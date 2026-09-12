@@ -188,6 +188,10 @@ def check_learned_surfaces() -> None:
         # Setup score; it is the one sheet on this screen that answers a question rather than
         # changing a setting. See `ExplainSheetBody`.
         "EXPLAIN",
+        # The market reading, the open setup and the studio entry — the disclosure that used to sit
+        # at the foot of the chart page, moved into the hub in run Ω2 so the plot could have the row
+        # back. Unchanged on a wide window, where they are a column beside the plot.
+        "READINGS",
     ]
     require(
         entries == expected_sheets,

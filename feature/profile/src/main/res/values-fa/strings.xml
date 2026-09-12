@@ -52,6 +52,8 @@
     <string name="appearance_system_note">هر چه گوشی باشد؛ شب تاریک، روز روشن.</string>
     <string name="appearance_dark">همیشه تاریک</string>
     <string name="appearance_dark_note">حتی وقتی گوشی روشن است.</string>
+    <string name="appearance_midnight">نیمه‌شب</string>
+    <string name="appearance_midnight_note">تاریک روی سیاه کامل. برای نمایشگر OLED ملایم‌تر است.</string>
     <string name="appearance_light">همیشه روشن</string>
     <string name="appearance_light_note">حتی وقتی گوشی تاریک است.</string>
     <string name="appearance_colours">رنگ صعود و نزول</string>

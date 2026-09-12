@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.coinepro.core.common.BrandConfig
 
 /**
  * The Pro Chart mark and wordmark.
@@ -145,11 +146,14 @@ const val PRO_CHART = "Pro Chart"
 /**
  * The brand name in Persian, which is what almost every reader of this app calls it.
  *
- * One word, as the owner's artwork sets it — «پروچارت», not «پرو چارت». It is a proper noun and it
- * is written the way the logo is written; a space here and none in the logo is the kind of
- * inconsistency that makes a product look like two products.
+ * **Two words, and this file is not where that is decided.** `BrandConfig.DISPLAY_NAME_FA` is the one
+ * place the product's name is spelt, the consistency gate holds every resource file to it, and this
+ * constant held «پروچارت» — the other spelling — against it. A space here and none there is precisely
+ * the inconsistency that makes a product look like two products, which is what the gate exists to
+ * catch and what it could not see, because it reads resources and this is Kotlin. So it delegates
+ * (run Ω2) and there is now one spelling in the app, in one file.
  */
-const val PRO_CHART_FA = "پروچارت"
+val PRO_CHART_FA: String get() = BrandConfig.DISPLAY_NAME_FA
 
 /**
  * The mark on its own, in the brand gold.

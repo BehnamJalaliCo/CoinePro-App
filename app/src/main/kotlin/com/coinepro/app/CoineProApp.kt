@@ -205,7 +205,9 @@ import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.SignalDirection
 import com.coinepro.core.navigation.AppDestination
+import com.coinepro.core.chart.ChartAlertLine
 import com.coinepro.core.notifications.AlertFrequency
+import com.coinepro.core.notifications.AlertRepeat
 import com.coinepro.core.notifications.AlertTrigger
 import com.coinepro.core.notifications.LocalAlertCondition
 import com.coinepro.core.notifications.LocalPriceAlert
@@ -307,6 +309,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import com.coinepro.core.designsystem.CoineProCelebration
+import com.coinepro.core.designsystem.CoineProConfetti
 
 private const val SIGNAL_DETAIL_PATTERN = "signal/{signalId}"
 private const val EXECUTION_PATTERN = "execution/{signalId}"
@@ -443,6 +447,42 @@ private const val SCREENER_ROUTE = "screener"
 /** The portfolio's own report: the curve, the attribution, the month matrix and the export. */
 private const val PORTFOLIO_REPORT_ROUTE = "portfolio-report"
 private const val ACTIVITY_ROUTE = "activity"
+
+/**
+ * How long «هشدار ساخته شد» stays (run Ω2).
+ *
+ * Three seconds, stated rather than taken from the tone's default of two and a half. An alert is the
+ * one action in this app whose confirmation carries a *fact* the reader may want to check — the price
+ * they agreed to — and the tone default is tuned for «saved», which carries none. It matches the
+ * three seconds an alert *firing* already gets, so the two halves of the same feature are on screen
+ * for the same length of time.
+ */
+private const val ALERT_TOAST_MILLIS = 3_000L
+
+/**
+ * The alerts on one symbol, as lines the chart can draw and drag (run Ω2).
+ *
+ * Two filters and both matter. A percentage alert is dropped because its number is a *move*, not a
+ * level — there is no y on the axis for «+5 %» — and an inactive alert keeps its line but loses its
+ * full strength, because a reader who switched one off still wants to see where it was.
+ *
+ * A one-shot that has fired is «armed = false» for the same reason: the level is still theirs, the
+ * watching has stopped, and the chart says which by how brightly it draws it. Dragging it re-arms it —
+ * see `LocalAlertStore.setValue`.
+ */
+private fun chartAlertLines(alerts: List<LocalPriceAlert>, symbol: String): List<ChartAlertLine> =
+    alerts.asSequence()
+        .filter { !it.condition.isPercent }
+        .filter { it.symbol.equals(symbol, ignoreCase = true) }
+        .filter { it.value.isFinite() && it.value > 0.0 }
+        .map { alert ->
+            ChartAlertLine(
+                id = alert.id,
+                price = alert.value,
+                armed = alert.active && !(alert.repeat == AlertRepeat.ONCE && alert.lastFiredAtEpochMillis != null),
+            )
+        }
+        .toList()
 
 /**
  * The menu.
@@ -1218,14 +1258,13 @@ fun CoineProApp(
     }
 
     val systemDark = isSystemInDarkTheme()
-    val darkTheme = when (themeMode) {
-        ThemeMode.SYSTEM -> systemDark
-        ThemeMode.DARK -> true
-        ThemeMode.LIGHT -> false
-    }
+    // `ThemeMode.isDark` answers for the three modes that know, and null is `SYSTEM` asking the
+    // phone. The `when` lives on the enum so a fifth mode cannot be added without this resolving.
+    val darkTheme = themeMode.isDark ?: systemDark
 
     CoineProTheme(
         darkTheme = darkTheme,
+        midnight = themeMode.isMidnight,
         risingIsGreen = marketColors == MarketColorScheme.GREEN_UP,
         // The activity's own window, not the configuration: in a split screen or a free-form
         // window the two differ, and the rail must follow the glass the app actually has.
@@ -1923,6 +1962,15 @@ private fun MainShell(
     var appLockOpen by rememberSaveable { mutableStateOf(false) }
     /** The symbol and price a reader asked to be alerted about, from the chart. */
     var alertFromChart by remember { mutableStateOf<Pair<String, Double>?>(null) }
+    /**
+     * Every alert this reader has, so the chart can draw the ones on the symbol it is showing
+     * (run Ω2).
+     *
+     * Collected once here rather than per destination: the alerts screen, the chart and the market
+     * rows all read it, and three collectors on one preferences file is three reads of the same
+     * bytes for one answer.
+     */
+    val shellAlerts by localAlertStore.alerts.collectAsStateWithLifecycle(initialValue = emptyList())
     /** A pending «alert me when this script's condition holds» — run I item 0.6. */
     var scriptAlert by remember { mutableStateOf<ScriptAlertRequest?>(null) }
 
@@ -1942,8 +1990,37 @@ private fun MainShell(
     val deletedMessage = stringResource(R.string.toast_deleted)
     val layoutSavedMessage = stringResource(R.string.toast_layout_saved)
     val undoLabel = stringResource(R.string.action_undo)
+    val unstarredMessage = stringResource(R.string.toast_unstarred)
     val openChartLabel = stringResource(R.string.alert_toast_open)
 
+    /**
+     * Starring and un-starring, with the un-star offering itself back (run Ω2).
+     *
+     * Only the *removal* says anything. Adding a market to the watchlist is confirmed by the star
+     * filling in under the finger that pressed it — a message on top of that is a message about
+     * something the reader can already see. Taking one off is the one half of the toggle that
+     * destroys something, and a mis-tap on a scrolling list of forty rows is exactly how it happens.
+     *
+     * The undo is `toggle` again, which is safe to describe as an undo because a toggle is its own
+     * inverse: the symbol is not in the list, so toggling puts it back. The list's *order* is the
+     * one thing not recovered — the symbol returns at the end rather than where it was — and that is
+     * worth saying here rather than pretending otherwise; `WatchlistStore.move` is how a reader puts
+     * it back where they want it.
+     */
+    val onToggleWatchAnnounced: (String) -> Unit = { symbol ->
+        val wasStarred = symbol in storedWatchlist
+        onToggleWatch(symbol)
+        if (wasStarred) {
+            toaster.show(
+                CoineProToast(
+                    message = unstarredMessage,
+                    tone = ToastTone.NEUTRAL,
+                    actionLabel = undoLabel,
+                    onAction = { onToggleWatch(symbol) },
+                ),
+            )
+        }
+    }
     // The layout callbacks, with a sentence added. Wrapped once here rather than at the two
     // screens that take them, so the chart and the studio cannot disagree about whether saving
     // says anything.
@@ -2566,6 +2643,13 @@ private fun MainShell(
                 // The chart says which price; the composer asks the rest. Opened here rather
                 // than inside `feature:chart` so the sheet keeps one owner.
                 onCreateAlert = { symbol, price -> alertFromChart = symbol to price },
+                // And the ones already set on this symbol, as lines on the plot (run Ω2). Only the
+                // two price conditions: a «+5 %» alert's number is not a level, so it has no line
+                // to draw and nothing here should invent one.
+                alerts = chartAlertLines(shellAlerts, activeChartSymbol),
+                onMoveAlert = { id, price ->
+                    shellScope.launch { localAlertStore.setValue(id, price) }
+                },
                 onSelectSymbol = { symbol ->
                     // Replaces the chart rather than stacking one on top of another: flipping
                     // through six symbols must not build a six-deep back stack that takes six
@@ -2768,7 +2852,7 @@ private fun MainShell(
                     // is Home's only way into the account.
                     displayName = profile.displayName ?: accountName,
                     watchlist = watchlist,
-                    onToggleWatch = onToggleWatch,
+                    onToggleWatch = onToggleWatchAnnounced,
                     onVisibleSymbols = onSubscribeSymbols,
                     onOpenSymbol = { navController.navigate(chartRoute(it)) },
                     briefing = briefing,
@@ -3151,7 +3235,7 @@ private fun MainShell(
                             // screen they were on come back and has no way to tell whether the
                             // alert was made. The list behind it is the proof, but it is below the
                             // fold on a full list.
-                            toaster.show(alertSavedMessage, ToastTone.SUCCESS)
+                            toaster.show(CoineProToast(alertSavedMessage, ToastTone.SUCCESS, durationMillis = ALERT_TOAST_MILLIS))
                         },
                         onDismiss = { composing = false },
                     )
@@ -3332,7 +3416,7 @@ private fun MainShell(
             composable(MARKET_SEARCH_ROUTE) {
                 SearchScreen(
                     watchlist = watchlist,
-                    onToggleWatch = onToggleWatch,
+                    onToggleWatch = onToggleWatchAnnounced,
                     controller = marketSearchController,
                     onOpenSymbol = { navController.navigate(chartRoute(it)) },
                     // What this reader can actually reach, so a section is never an invitation to
@@ -3801,6 +3885,20 @@ private fun MainShell(
         // Above every screen and below nothing: inside the suite's content, so a message never
         // covers the bar or the rail a reader is aiming at.
         CoineProToastHost()
+        // The first alert this reader ever sets (run Ω2).
+        //
+        // Here rather than in the composer, because the composer is a sheet in its own window and a
+        // burst inside it would be a burst behind the sheet the reader is dismissing. This is the
+        // shell's own `Box`, so the paper falls over whatever screen they were on when it landed.
+        //
+        // The condition is «they have one» rather than «they just made one», which is the shape
+        // `CoineProConfetti` is built for: the key is spent on the first true reading, so a reader who
+        // already had alerts before this shipped never sees it and one who sets their first sees it
+        // once. Held true from then on, and ignored from then on.
+        CoineProConfetti(
+            celebrate = shellAlerts.isNotEmpty(),
+            key = CoineProCelebration.FIRST_ALERT,
+        )
         }
         }
         }
@@ -3859,7 +3957,7 @@ private fun MainShell(
             )
             localAlertScheduler.sync(hasActiveAlerts = true)
             scriptAlert = null
-            toaster.show(alertSavedMessage, ToastTone.SUCCESS)
+            toaster.show(CoineProToast(alertSavedMessage, ToastTone.SUCCESS, durationMillis = ALERT_TOAST_MILLIS))
         }
     }
 
@@ -3875,7 +3973,7 @@ private fun MainShell(
                     localAlertScheduler.sync(hasActiveAlerts = true)
                 }
                 alertFromChart = null
-                toaster.show(alertSavedMessage, ToastTone.SUCCESS)
+                toaster.show(CoineProToast(alertSavedMessage, ToastTone.SUCCESS, durationMillis = ALERT_TOAST_MILLIS))
             },
             onDismiss = { alertFromChart = null },
         )

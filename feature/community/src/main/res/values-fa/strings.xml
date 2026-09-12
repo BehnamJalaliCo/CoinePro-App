@@ -2,7 +2,7 @@
 <!-- Default language: Persian. -->
 <resources>
     <string name="community_title">انجمن</string>
-    <string name="community_subtitle">گفت‌وگوی معامله‌گرهای کوینه‌پرو</string>
+    <string name="community_subtitle">گفت‌وگوی معامله‌گرهای پرو چارت</string>
     <string name="community_compose">نوشتن</string>
     <string name="community_compose_close">بستن</string>
     <string name="community_refresh">به‌روزرسانی</string>
