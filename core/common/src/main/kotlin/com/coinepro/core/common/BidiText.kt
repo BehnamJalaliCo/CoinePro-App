@@ -25,6 +25,16 @@ object BidiText {
     /** U+2069 POP DIRECTIONAL ISOLATE. Public for the same reason as [LRI]. */
     const val PDI = '⁩'
 
+    /**
+     * U+2068 FIRST STRONG ISOLATE, the mark [isolateNumbers] uses.
+     *
+     * [LRI] would also work on a run that is only digits — there is no first strong character in
+     * one, so both resolve the same way — and the difference shows the moment a run is not: a
+     * ticker, a unit, an `R` after a multiple. FSI asks the run itself which way it goes, which is
+     * the right question for a mark applied by a rule rather than by an author.
+     */
+    const val FSI = '⁨'
+
     /** Wraps [value] so it renders left-to-right regardless of the surrounding paragraph. */
     fun isolateLtr(value: String): String = if (value.isEmpty()) value else "$LRI$value$PDI"
 
@@ -111,6 +121,102 @@ object BidiText {
         out.append(value, index, value.length)
         return out.toString()
     }
+
+    /**
+     * **Every** number in a sentence, isolated — the whole-prose rule (run Ω-FIX item 6).
+     *
+     * ### Why [isolateNumericRuns] was not enough
+     *
+     * That one wraps a *compound* run — two numbers with a connector between them, «۱:۱۰۰» — and
+     * deliberately leaves a lone number alone, on the reasoning that digits carry their own strong
+     * direction and cannot be reordered. That reasoning holds for the digits. It does not hold for
+     * what is *beside* them.
+     *
+     * A number in Persian prose is a left-to-right run inside a right-to-left paragraph, and the
+     * neutral characters that touch it — a per-cent sign, a comma, a full stop, the sentence's own
+     * closing punctuation — are resolved against whichever run wins. The owner's device shows what
+     * that costs: «.در 11% از 9 بار درست بوده», with the sentence's full stop moved to the front of
+     * the line. Nothing about the copy is wrong; the paragraph simply has three direction changes
+     * in it and the last neutral character went to the wrong one.
+     *
+     * An isolate around each number gives the paragraph nothing to resolve. The digits, their
+     * separators and a per-cent sign or a sign in front go inside; everything else stays in the
+     * Persian run it belongs to, so the full stop is the paragraph's and lands at the paragraph's
+     * end.
+     *
+     * ### What counts as a number
+     *
+     * A run of digits — Latin, Persian or Arabic-Indic — with its internal separators, an optional
+     * leading sign, and a trailing `%` or `٪`. Trailing connectors are left outside: a full stop
+     * that ends a sentence is punctuation, not a decimal point, and pulling it inside the isolate
+     * is the same bug in the other direction.
+     *
+     * Idempotent. A run that is already isolated — by this, by [isolateLtr] or by
+     * [isolateNumericRuns] — is left exactly as it is, so a caller can apply it to a string built
+     * out of parts some of which were already handled.
+     */
+    fun isolateNumbers(value: String): String {
+        if (value.isEmpty()) return value
+        val out = StringBuilder(value.length + 8)
+        var index = 0
+        while (index < value.length) {
+            val character = value[index]
+            if (!character.isNumeral() && character !in SIGNS) {
+                out.append(character)
+                index++
+                continue
+            }
+            // A sign only opens a run when a digit follows it; otherwise it is arithmetic or a dash.
+            val start = index
+            if (character in SIGNS) {
+                if (index + 1 >= value.length || !value[index + 1].isNumeral()) {
+                    out.append(character)
+                    index++
+                    continue
+                }
+            }
+            // The scan itself starts at the first digit; a leading sign is already accounted for.
+            var end = if (character in SIGNS) index + 1 else index
+            var lastDigit = -1
+            while (end < value.length) {
+                val here = value[end]
+                when {
+                    here.isNumeral() -> {
+                        lastDigit = end
+                        end++
+                    }
+                    here in CONNECTORS && end + 1 < value.length && value[end + 1].isNumeral() -> end++
+                    else -> break
+                }
+            }
+            if (lastDigit < 0) {
+                out.append(character)
+                index++
+                continue
+            }
+            var stop = lastDigit
+            if (stop + 1 < value.length && value[stop + 1] in PERCENTS) stop++
+            // Already inside somebody else's isolate: leave it, marks and all.
+            val opened = start > 0 && value[start - 1] in OPENERS
+            val closed = stop + 1 < value.length && value[stop + 1] == PDI
+            if (opened && closed) {
+                out.append(value, start, stop + 1)
+            } else {
+                out.append(FSI).append(value, start, stop + 1).append(PDI)
+            }
+            index = stop + 1
+        }
+        return out.toString()
+    }
+
+    /** What may stand in front of a number and belongs inside its isolate. U+2212, not a hyphen. */
+    private const val SIGNS = "+−"
+
+    /** The two per-cent signs this app can meet, both of which belong to the figure before them. */
+    private const val PERCENTS = "%٪"
+
+    /** The marks that open an isolate somebody else has already placed. */
+    private const val OPENERS = "$LRI$FSI"
 
     /**
      * Where [isolateNumericRuns] would put its marks, as ranges into [value].

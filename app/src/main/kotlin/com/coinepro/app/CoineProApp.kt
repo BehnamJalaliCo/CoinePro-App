@@ -347,7 +347,7 @@ private const val CONNECTIONS_ROUTE = "connections"
 private const val COPY_TRADE_ROUTE = "copy-trade"
 private const val AI_VISION_ROUTE = "ai/vision"
 private const val AI_ASSISTANT_ROUTE = "ai/assistant"
-private const val MARKET_SEARCH_ROUTE = "market/search"
+internal const val MARKET_SEARCH_ROUTE = "market/search"
 /**
  * The chart, with the bar as an optional query rather than a second path segment.
  *
@@ -355,7 +355,7 @@ private const val MARKET_SEARCH_ROUTE = "market/search"
  * routes that already spend the second segment — the studio, the two-pane screen and depth — and
  * because a chart opened without one is the ordinary case, which a required argument cannot say.
  */
-private const val CHART_PATTERN = "chart/{symbol}?timeframe={timeframe}"
+internal const val CHART_PATTERN = "chart/{symbol}?timeframe={timeframe}"
 private const val PORTFOLIO_ROUTE = "portfolio"
 private const val ACADEMY_ROUTE = "academy"
 private const val TERMINAL_ROUTE = "terminal"
@@ -382,7 +382,7 @@ private const val MARKETS_ROUTE = "markets"
  * Constants rather than enum entries for the same reason [MARKETS_ROUTE] is one: the enum is the
  * bar, and a route that is not in the bar has no business being in it.
  */
-private const val HOME_ROUTE = "home"
+internal const val HOME_ROUTE = "home"
 private const val SIGNALS_ROUTE = "signals"
 private const val AI_ROUTE = "ai"
 
@@ -724,6 +724,38 @@ private fun orderBookPlatformFor(
  * one gold object on it should be the thing that acts. The market list is a passenger there; the
  * dedicated markets surface is the search route, and that one is blue.
  */
+/**
+ * Whether the shell draws an app bar over [route] at all.
+ *
+ * ### Home, and why it never had one
+ *
+ * Home draws its own header — the greeting and the balance *are* the page's title — so a bar on top
+ * of it would be a second heading saying less.
+ *
+ * ### The chart, and why it no longer has one (run Ω-FIX item 1)
+ *
+ * The chart is in [SELF_TITLED], so its bar had no title in it either: fifty-six points of stage
+ * colour holding a single arrow, above the one page in this app whose entire product is the height
+ * of the plot. Run Ω2 was supposed to have taken it and did not — it took the bar's *contents*, the
+ * depth button and the avatar, and left the band — and the owner's device recording of 4.79.0 found
+ * it in every portrait frame: «ردیف → هنوز بالای صفحه‌ی چارت است».
+ *
+ * Both ways back survive it. The predictive-back gesture never belonged to the bar, and the arrow
+ * moves to the head of the chart's own legend, which already carries the instrument's name and is
+ * therefore already the page's header — see `ChartScreen.onBack`. Every reader mode, portrait and
+ * landscape alike: the route is named here, once, rather than emptied downstream by a condition
+ * some layout can miss.
+ *
+ * A function rather than a line inside the composable so the rule can be asserted without a device
+ * or a rendered shell. The claim «the row is gone» was made once already on the strength of a
+ * reading of the code; `ChartTopBarTest` is what makes it checkable.
+ */
+internal fun showsTopBar(route: String?, isSubScreen: Boolean): Boolean =
+    (isSubScreen || route != HOME_ROUTE) && route !in BARELESS
+
+/** The routes that draw no app bar at all. See [showsTopBar]. */
+internal val BARELESS: Set<String> = setOf(CHART_PATTERN)
+
 /**
  * Routes whose screen carries its own heading.
  *
@@ -2365,9 +2397,7 @@ private fun MainShell(
         LAUNCH_READINESS_ROUTE -> R.string.screen_launch_readiness
         else -> R.string.app_name
     }
-    // Home draws its own header — the greeting and the balance are the page's title — so a bar on
-    // top of it would be a second one saying less.
-    val showTopBar = isSubScreen || currentRoute != HOME_ROUTE
+    val showTopBar = showsTopBar(currentRoute, isSubScreen)
 
     /**
      * Whether this destination has somewhere to go back **to**.
@@ -2825,6 +2855,10 @@ private fun MainShell(
             }
             ChartScreen(
                 sidePanels = sidePanels,
+                // The arrow the app bar used to hold. The bar is not drawn over this route any
+                // more — see `showTopBar` — and this is the same `popBackStack` it called, handed
+                // to the page so it can put it where it costs the plot nothing.
+                onBack = { navController.popBackStack() },
                 // How much of the chart's chrome this reader asked for, and the hub's one-tap way
                 // to change their mind. See `ReaderMode`: nothing is gated, so the tap is a
                 // statement about what to draw and it is reversible.

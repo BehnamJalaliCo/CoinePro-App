@@ -90,7 +90,11 @@ def main() -> None:
     if len(sys.argv) < 2:
         raise SystemExit(__doc__)
     base = sys.argv[1]
-    out = Path(sys.argv[3]) if len(sys.argv) > 3 and sys.argv[2] == "--out" else DEFAULT_OUT
+    # Resolved against the repository root rather than the shell's working directory, and resolved
+    # at all — a relative `--out` reached the end of the run and then died on `relative_to` in the
+    # one `print` statement, after every sheet had already been written. A run that writes its
+    # output and then reports a traceback is a run somebody re-runs for no reason.
+    out = (ROOT / sys.argv[3]).resolve() if len(sys.argv) > 3 and sys.argv[2] == "--out" else DEFAULT_OUT
     out.mkdir(parents=True, exist_ok=True)
     scratch = out / ".before.png"
 

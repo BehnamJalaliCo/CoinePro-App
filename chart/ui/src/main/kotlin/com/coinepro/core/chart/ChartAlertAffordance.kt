@@ -4,12 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -58,6 +59,19 @@ import com.coinepro.core.designsystem.R as DesignR
  * The price is printed on it, at the axis' own precision, because "alert me at roughly here" is not
  * a thing a reader means: they are looking at the number, and the number is what they will be
  * agreeing to.
+ *
+ * ### It is **in** the gutter, not over the plot (run Ω-FIX item 7)
+ *
+ * It used to be a single row 84 or 108 points wide, right-aligned to the canvas and bleeding two
+ * points past the axis hairline. The gutter this chart draws is about sixty-four, so between twenty
+ * and forty-four points of chip sat on the candles — and during a scrub, which is when it appears,
+ * that is a plate over the exact part of the chart the reader is scrubbing. The owner's device
+ * report is unambiguous: «پیل «77,124.2 ⇄» روی پلات هنگام scrub».
+ *
+ * So the chip is exactly [PlotFrame.tagGutterWidth] wide, laid out from the axis hairline outwards,
+ * and it stacks instead of stretching: the price on its own line, the one or two actions in a row
+ * underneath. Nothing of it crosses onto the plot at any gutter width, and the two glyphs get a
+ * bigger target than they had in a row that was fighting a six-figure price for the same points.
  */
 @Composable
 internal fun PriceAxisAlertAffordance(
@@ -82,57 +96,79 @@ internal fun PriceAxisAlertAffordance(
 ) {
     if (frame == null || pointerY == null || price == null) return
     val density = LocalDensity.current
+    // The gutter's own width, in pixels, and the chip is exactly that. A canvas with the axis off
+    // has none, and then there is nowhere to put this that is not the plot — so it is not drawn.
+    val gutterPx = frame.tagGutterWidth
+    if (gutterPx <= 0f) return
+    val gutter = with(density) { gutterPx.toDp() }
     val height = with(density) { CHIP_HEIGHT_DP.toPx() }
     val top = (pointerY - height / 2f).coerceAtLeast(0f)
-    val width = if (onRequestOrderAt == null) CHIP_WIDTH_DP else CHIP_WIDTH_TWO_DP
-    // Against the gutter it belongs to, growing into the plot: the chip is wider than the gutter,
-    // and hanging it off the canvas edge would cut the price in half.
-    val left = if (frame.tagsOnRight) {
-        frame.right - with(density) { width.toPx() } + with(density) { CHIP_BLEED_DP.toPx() }
-    } else {
-        frame.left - with(density) { CHIP_BLEED_DP.toPx() }
-    }
+    val left = alertChipLeft(frame)
     Box(modifier = modifier.fillMaxSize()) {
-        Row(
+        Column(
             modifier = Modifier
                 .offset { IntOffset(left.roundToInt(), top.roundToInt()) }
+                .width(gutter)
                 .height(CHIP_HEIGHT_DP)
                 .clip(RoundedCornerShape(CHIP_RADIUS_DP))
                 .background(palette.crosshair)
                 // The whole chip is still the alert, which is what it was and what a reader who has
                 // learned it expects. The position tool is a target inside it, not a mode switch.
                 .clickable { onRequestAlertAt(price) }
-                .padding(horizontal = CHIP_PADDING_DP)
                 .semantics { contentDescription = ALERT_LABEL },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(CHIP_PADDING_DP),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            if (onRequestOrderAt == null) {
-                Text(text = "+", color = palette.stage, fontSize = PLUS_SIZE_SP.sp)
-            } else {
-                // A bell rather than a plus once there are two of them: «+ and a position tool» does
-                // not say which of the two the plus is.
-                Icon(
-                    painter = painterResource(DesignR.drawable.tv_bell),
-                    contentDescription = null,
-                    tint = palette.stage,
-                    modifier = Modifier.size(GLYPH_DP),
-                )
-            }
-            Text(text = label, color = palette.stage, fontSize = axisFontSizeSp(isPriceAxis = true).sp)
-            onRequestOrderAt?.let { order ->
-                Icon(
-                    painter = painterResource(DesignR.drawable.tv_tool_longshort),
-                    contentDescription = ORDER_LABEL,
-                    tint = palette.stage,
-                    modifier = Modifier
-                        .size(GLYPH_DP)
-                        .clickable { order(price) },
-                )
+            // The price first and on its own line, because it is what the reader is agreeing to and
+            // it is the widest thing here — the gutter is sized to hold exactly this text.
+            Text(
+                text = label,
+                color = palette.stage,
+                fontSize = axisFontSizeSp(isPriceAxis = true).sp,
+                maxLines = 1,
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(CHIP_PADDING_DP),
+            ) {
+                if (onRequestOrderAt == null) {
+                    Text(text = "+", color = palette.stage, fontSize = PLUS_SIZE_SP.sp)
+                } else {
+                    // A bell rather than a plus once there are two of them: «+ and a position tool»
+                    // does not say which of the two the plus is.
+                    Icon(
+                        painter = painterResource(DesignR.drawable.tv_bell),
+                        contentDescription = null,
+                        tint = palette.stage,
+                        modifier = Modifier.size(GLYPH_DP),
+                    )
+                }
+                onRequestOrderAt?.let { order ->
+                    Icon(
+                        painter = painterResource(DesignR.drawable.tv_tool_longshort),
+                        contentDescription = ORDER_LABEL,
+                        tint = palette.stage,
+                        modifier = Modifier
+                            .size(GLYPH_DP)
+                            .clickable { order(price) },
+                    )
+                }
             }
         }
     }
 }
+
+/**
+ * The chip's left edge in canvas pixels — the axis hairline, on whichever side the tags are.
+ *
+ * Separate from the composable because it is the part of run Ω-FIX item 7 that can be wrong and the
+ * only part that can be asserted without a renderer. Together with [PlotFrame.tagGutterWidth] as
+ * the chip's width, it is the whole claim: `left` is where the plot stops and `left + width` is
+ * where the canvas does, so no pixel of the chip is over the candles. There is no bleed — two
+ * points of overhang was the smaller half of what made this a plate on the plot.
+ */
+internal fun alertChipLeft(frame: PlotFrame): Float =
+    if (frame.tagsOnRight) frame.right else frame.left - frame.tagGutterWidth
 
 /**
  * How long the chip stays after the pointer leaves the gutter.
@@ -142,23 +178,21 @@ internal fun PriceAxisAlertAffordance(
  */
 internal const val ALERT_LINGER_MILLIS = 2_500L
 
-/** Tall enough to be a tap target on a chart that is otherwise all drag gestures. */
-private val CHIP_HEIGHT_DP = 26.dp
-
-/** Wide enough for a six-figure price and the plus. */
-private val CHIP_WIDTH_DP = 84.dp
-
-/** The same, plus the position tool and the gap before it. */
-private val CHIP_WIDTH_TWO_DP = 108.dp
-
-/** How far the chip overhangs the plot, so it reads as attached to the axis rather than floating. */
-private val CHIP_BLEED_DP = 2.dp
+/**
+ * Two rows: the price over the actions.
+ *
+ * Forty points rather than twenty-six, and the extra fourteen are what buying the width back cost —
+ * the chip is now as wide as the gutter and no wider, so the price and the glyphs cannot share a
+ * line. It is still entirely inside the axis, which is the point, and it is a *larger* target than
+ * the row was.
+ */
+private val CHIP_HEIGHT_DP = 40.dp
 
 private val CHIP_RADIUS_DP = 4.dp
 private val CHIP_PADDING_DP = 4.dp
 private const val PLUS_SIZE_SP = 13f
 
-/** A glyph inside a 26 dp chip, with the padding above and below it left visible. */
+/** A glyph on the chip's action row: small enough that two of them fit a sixty-four point gutter. */
 private val GLYPH_DP = 14.dp
 
 /** What TalkBack says. Persian, plain, and it names the action rather than the glyph. */

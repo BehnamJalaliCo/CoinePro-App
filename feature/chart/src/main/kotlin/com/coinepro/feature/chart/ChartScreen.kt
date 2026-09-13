@@ -278,6 +278,24 @@ fun ChartScreen(
      */
     position: PaperPosition? = null,
     /**
+     * The way out of the chart — the arrow at the head of the legend (run Ω-FIX item 1).
+     *
+     * ### Why the page carries its own
+     *
+     * Because the shell's app bar does not draw over this route any more. It was fifty-six points
+     * of height holding a single arrow — no title, since the chart names itself — above a page
+     * whose entire product is the height of the plot, and the owner's device recording found it
+     * still there after a version that claimed it was gone: «ردیف → هنوز بالای صفحه‌ی چارت است».
+     *
+     * The gesture still goes back, on every Android this app supports, and it is what most readers
+     * already use. The arrow is for the rest, and it costs the plot nothing where it now sits: the
+     * legend's head row is as tall as the instrument's name whether or not there is a mark before
+     * it. See `CoineProChart.onBack`.
+     *
+     * Null in a preview, in a fixture, and in a pane that is not a whole screen.
+     */
+    onBack: (() -> Unit)? = null,
+    /**
      * Opens the full web terminal on this symbol.
      *
      * Null on a build with no terminal address, which is the default — so the button is absent
@@ -989,7 +1007,11 @@ fun ChartScreen(
         reads = state.signals.reads,
         setup = state.signals.setup,
         english = inEnglish(),
-    )
+        // The card is a `StaticLayout` with an explicit RTL heuristic and no Compose text engine
+        // behind it, so a number in one of these sentences is the same left-to-right run inside a
+        // right-to-left paragraph it is on the page — with the same full stop waiting to walk to
+        // the front of the line, in an image the reader posts. See `BidiText.isolateNumbers`.
+    ).map(BidiText::isolateNumbers)
 
     val focusRequester = remember { FocusRequester() }
     // Requested once, so a keyboard works without the reader first tapping the chart. It is
@@ -1357,6 +1379,14 @@ fun ChartScreen(
                             sheet = ChartSheet.EXPLAIN
                         }
                     },
+                    // **The way back lives on the legend now** (run Ω-FIX item 1).
+                    //
+                    // The shell draws no app bar over this route any more, so the arrow that used
+                    // to sit in one goes to the head of the plate that already names the
+                    // instrument. Null in the fullscreen window and in a docked pane, where the
+                    // page's own control is elsewhere and a second one would be two ways out of a
+                    // chart that has one.
+                    onBack = onBack?.takeIf { !fullscreen },
                     // One hidden set for the legend's eye and the settings sheet's switch: the
                     // chart reports the row, the controller keeps the id.
                     hiddenSeries = state.hiddenTargets,

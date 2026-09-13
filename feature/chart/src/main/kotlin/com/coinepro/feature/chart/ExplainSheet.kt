@@ -29,6 +29,7 @@ import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.chart.ConfidenceEngine
 import com.coinepro.core.chart.ConfidenceReport
 import com.coinepro.core.chart.MarketState
+import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPillShape
@@ -38,6 +39,7 @@ import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.onPageAccent
 import com.coinepro.core.designsystem.pageAccentInk
 import com.coinepro.core.designsystem.numeric
+import kotlin.math.roundToInt
 
 /**
  * **What this study is, what it is saying, and how often it has been right** (run Ω1).
@@ -147,7 +149,12 @@ fun ExplainSheetBody(
         // opens nothing is worse than an absent one.
         read.stop?.let { stop ->
             Text(
-                text = stringResource(R.string.chart_explain_stop, MarketNumberFormatter.priceAuto(stop)),
+                // «حد ضرر پیشنهادی: زیر ⁨91,263.03⁩» — the label rewritten and the price isolated
+                // (run Ω-FIX item 6). It used to read «زیر 91,263.03 اشتباه است», which names no
+                // stop and reads as a verdict on the reader rather than as a level.
+                text = BidiText.isolateNumbers(
+                    stringResource(R.string.chart_explain_stop, MarketNumberFormatter.priceAuto(stop)),
+                ),
                 style = MaterialTheme.typography.bodySmall.numeric(),
                 color = CoineProColors.TextSecondary,
             )
@@ -248,11 +255,31 @@ private fun ChartExplanation(layer: ChartSignalLayer, english: Boolean, onSelect
                 style = MaterialTheme.typography.labelLarge,
                 color = stateColour(layer.setup.side),
             )
+            // **The average win rate is printed beside the score** (run Ω-FIX item 3).
+            //
+            // It is what makes the number checkable, and its absence is how «۱۰۰ صعودی» could sit
+            // above four rows reading 43 %, 40 %, 39 % and 40 % without the page contradicting
+            // itself out loud. The score is now built from these figures — see
+            // `ConfidenceEngine.setupScore` — and printing the mean under it is what lets a reader
+            // see that it was. Omitted, rather than shown as a zero, where nothing on the chart has
+            // a record yet: a mean of nothing is not nought per cent.
+            val rate = layer.setup.winRate
             Text(
-                text = stringResource(
-                    R.string.chart_setup_from,
-                    layer.setup.studies.toString(),
-                    layer.setup.signals.toString(),
+                text = BidiText.isolateNumbers(
+                    if (rate == null) {
+                        stringResource(
+                            R.string.chart_setup_from,
+                            layer.setup.studies.toString(),
+                            layer.setup.signals.toString(),
+                        )
+                    } else {
+                        stringResource(
+                            R.string.chart_setup_from_rate,
+                            layer.setup.studies.toString(),
+                            layer.setup.signals.toString(),
+                            (rate * 100).roundToInt().toString(),
+                        )
+                    },
                 ),
                 style = MaterialTheme.typography.labelSmall.numeric(),
                 color = CoineProColors.TextMuted,
@@ -284,7 +311,9 @@ private fun ChartExplanation(layer: ChartSignalLayer, english: Boolean, onSelect
             )
             if (report != null && report.trustworthy) {
                 Text(
-                    text = stringResource(R.string.chart_confidence_short, report.percent.toString(), report.samples.toString()),
+                    text = BidiText.isolateNumbers(
+                        stringResource(R.string.chart_confidence_short, report.percent.toString(), report.samples.toString()),
+                    ),
                     style = MaterialTheme.typography.labelSmall.numeric(),
                     color = lerp(CoineProColors.TextMuted, CoineProColors.Gold, report.winRate.toFloat()),
                 )
@@ -316,22 +345,27 @@ private fun ConfidenceCard(report: ConfidenceReport?, english: Boolean, onSetHor
             )
         } else {
             Text(
-                text = if (report.trustworthy) {
-                    stringResource(
-                        R.string.chart_confidence_long,
-                        report.percent.toString(),
-                        report.samples.toString(),
-                        report.horizon.toString(),
-                    )
-                } else {
-                    stringResource(R.string.chart_confidence_thin_long, report.samples.toString())
-                },
+                // «.در 11% از 9 بار درست بوده» — the sentence's own full stop at the front of the
+                // line, because three Latin runs in a Persian paragraph left the last neutral
+                // character with nowhere to belong. One isolate per figure settles it.
+                text = BidiText.isolateNumbers(
+                    if (report.trustworthy) {
+                        stringResource(
+                            R.string.chart_confidence_long,
+                            report.percent.toString(),
+                            report.samples.toString(),
+                            report.horizon.toString(),
+                        )
+                    } else {
+                        stringResource(R.string.chart_confidence_thin_long, report.samples.toString())
+                    },
+                ),
                 style = MaterialTheme.typography.bodySmall.numeric(),
                 color = CoineProColors.TextSecondary,
             )
             Text(
                 // Two decimals, Latin, with its sign: «+0.42 R» is a market figure like any other.
-                text = stringResource(R.string.chart_confidence_r, formatR(report.averageR)),
+                text = BidiText.isolateNumbers(stringResource(R.string.chart_confidence_r, formatR(report.averageR))),
                 style = MaterialTheme.typography.bodySmall.numeric(),
                 color = CoineProColors.TextSecondary,
             )

@@ -185,6 +185,107 @@ class RasadCoachTest {
         assertTrue("it did not report reaching the target: ${review[1]}", review[1].contains("هدف"))
     }
 
+    // ── the contradiction gate (run Ω-FIX item 5) ────────────────────────────────────────────
+
+    @Test
+    fun `no combination of the trend template contradicts itself`() {
+        // The whole matrix, both languages, rather than the sentences one fixture happens to
+        // produce. The device found «بازار خنثی است و روند قوی خوانده می‌شود، با نوسان کم.» — a
+        // neutral market with a strong trend — and it took a real chart to find it, because the
+        // combination needs a high ADX and two averages sitting on each other.
+        val lines = everyTrendLine()
+        assertEquals("the matrix shrank", 2 * 2 * 3 * 3 * 3, lines.size)
+        for (line in lines) {
+            RasadContradiction.of(line)?.let { (flat, trend) ->
+                throw AssertionError("«$flat» and «$trend» in one sentence: $line")
+            }
+        }
+    }
+
+    @Test
+    fun `a directionless trend names the strength and not a direction`() {
+        val line = RasadCoach.trendLine(
+            trending = true,
+            direction = null,
+            strength = "قوی",
+            swing = "کم",
+            english = false,
+        )
+        assertTrue("a direction was invented: $line", !line.contains("خنثی"))
+        assertTrue("the strength was dropped along with it: $line", line.contains("قوی"))
+    }
+
+    @Test
+    fun `every sentence a real chart produces passes the gate`() {
+        val charts = listOf(trending(), trending(drift = -0.35), trending(drift = 0.0))
+        for (series in charts) {
+            for (english in listOf(false, true)) {
+                for (sentence in RasadCoach.readChart(series, english = english)) {
+                    RasadContradiction.of(sentence)?.let { (flat, trend) ->
+                        throw AssertionError("«$flat» and «$trend» in one sentence: $sentence")
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `every trend sentence fits the two lines the strip gives it`() {
+        // The chart page draws the first of the coach's three sentences in a row that wraps to two
+        // lines and never ellipsises — `RasadSheet.RASAD_LINES`. Two lines of `bodySmall` beside the
+        // «رصد» mark on a 411 dp phone is a little over a hundred characters, and what can actually
+        // go wrong is somebody adding a template twice as long as these.
+        //
+        // A character budget rather than a measured layout, deliberately: text measurement needs a
+        // font, a density and a renderer, and a test carrying all three is a test about Robolectric.
+        for (line in everyTrendLine()) {
+            assertTrue("${line.length} characters will not fit two lines: $line", line.length <= STRIP_BUDGET)
+        }
+    }
+
+    /** Every sentence [RasadCoach.trendLine] can write, in both languages. */
+    private fun everyTrendLine(): List<String> {
+        val persian = Labels(
+            directions = listOf("صعودی", "نزولی", null),
+            strengths = listOf("قوی", "متوسط", "بدون روند"),
+            swings = listOf("زیاد", "متوسط", "کم"),
+        )
+        val english = Labels(
+            directions = listOf("Bullish", "Bearish", null),
+            strengths = listOf("Strong", "Moderate", "No trend"),
+            swings = listOf("High", "Medium", "Low"),
+        )
+        val lines = mutableListOf<String>()
+        for ((labels, inEnglish) in listOf(persian to false, english to true)) {
+            for (trending in listOf(true, false)) {
+                for (direction in labels.directions) {
+                    for (strength in labels.strengths) {
+                        for (swing in labels.swings) {
+                            lines += RasadCoach.trendLine(
+                                trending = trending,
+                                direction = direction,
+                                strength = strength,
+                                swing = swing,
+                                english = inEnglish,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        return lines
+    }
+
+    /** What two lines of the chart page's strip hold. See the test above. */
+    private val STRIP_BUDGET = 110
+
+    /** The three label columns of one language, for the matrix above. */
+    private data class Labels(
+        val directions: List<String?>,
+        val strengths: List<String>,
+        val swings: List<String>,
+    )
+
     @Test
     fun `the English coach speaks English`() {
         val said = RasadCoach.readChart(trending(), english = true) +

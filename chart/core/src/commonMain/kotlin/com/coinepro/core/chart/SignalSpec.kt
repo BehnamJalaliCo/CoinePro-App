@@ -325,12 +325,8 @@ object SignalSpec {
         }
         val last = series.size - 1
         val level = line[last]
-        val state = when {
-            level == null -> MarketState.NEUTRAL
-            close[last] > level -> MarketState.BULL
-            close[last] < level -> MarketState.BEAR
-            else -> MarketState.NEUTRAL
-        }
+        val range = Indicators.atr(series.high, series.low, series.close)[last] ?: 0.0
+        val state = referenceState(close[last], level, range)
         val note = when {
             events.lastOrNull()?.bar == last && state == MarketState.BULL ->
                 SignalNote(NoteShape.CROSSED_ABOVE, listOf(priceWord(english), name))
@@ -358,7 +354,6 @@ object SignalSpec {
     ): SignalRead {
         val floor = bounds.start
         val ceiling = bounds.endInclusive
-        val middle = (floor + ceiling) / 2
         val events = mutableListOf<SignalEvent>()
         for (bar in 1 until series.size) {
             val now = line[bar] ?: continue
@@ -368,12 +363,7 @@ object SignalSpec {
         }
         val last = series.size - 1
         val level = line[last]
-        val state = when {
-            level == null -> MarketState.NEUTRAL
-            level > middle -> MarketState.BULL
-            level < middle -> MarketState.BEAR
-            else -> MarketState.NEUTRAL
-        }
+        val state = oscillatorState(level, bounds)
         val note = when {
             level == null -> SignalNote(NoteShape.QUIET)
             events.lastOrNull()?.bar == last && events.last().side == TradeSide.BUY ->
@@ -502,6 +492,66 @@ object SignalSpec {
         return SignalRead(id, state, events, note, stop = stop)
     }
 
+    // ── the state bands, as arithmetic a test can reach (run Ω-FIX item 4) ───────────────────
+
+    /**
+     * What a bounded oscillator reading [level] is saying, or NEUTRAL where it is saying nothing.
+     *
+     * ### The dead band, and the reading that made it necessary
+     *
+     * It used to be a single cut at the midpoint: above it bullish, below it bearish. On the owner's
+     * device that put a red dot and the word «نزولی» beside **RSI = 48.6** — one and a half points
+     * off dead centre, on a scale whose own conventional extremes are twenty points away in each
+     * direction. A chart that has been promised it will say nothing when there is nothing to say
+     * cannot call that a direction.
+     *
+     * So there is a band around the middle, [NEUTRAL_BAND] of the floor-to-ceiling span on each
+     * side. On RSI's 30..70 that is exactly the 40–60 the fix names; on Stochastic's 20..80 it is
+     * 35–65, on CCI's ±100 it is ±50, and on every one of them it is the same sentence — «this study
+     * is in the middle of its range» — rather than thirteen thresholds to keep in step.
+     *
+     * The extremes are untouched. At or past the floor and the ceiling the note already says so
+     * ([NoteShape.AT_FLOOR], [NoteShape.AT_CEILING]), and those are the readings worth a colour.
+     *
+     * Internal and separate from [bounded] because this is the part that can be wrong, and a test
+     * that has to build a candle series to reach it is a test about the candle series.
+     */
+    internal fun oscillatorState(level: Double?, bounds: ClosedFloatingPointRange<Double>): MarketState {
+        if (level == null) return MarketState.NEUTRAL
+        val middle = (bounds.start + bounds.endInclusive) / 2
+        val band = (bounds.endInclusive - bounds.start) * NEUTRAL_BAND
+        return when {
+            level > middle + band -> MarketState.BULL
+            level < middle - band -> MarketState.BEAR
+            else -> MarketState.NEUTRAL
+        }
+    }
+
+    /**
+     * What a close at [close] is saying about a reference line at [level], given an average range.
+     *
+     * ### Sitting on the line is not being above it
+     *
+     * A moving average and a close agree to the last decimal about once a year; the rest of the time
+     * the close is a hair one side or the other, and reading that hair as a direction is how a chart
+     * in a range comes to have four studies shouting «صعودی» at each other while none of them has an
+     * edge. The threshold has to be in the instrument's own units or it is a threshold about the
+     * price of Bitcoin — so it is [TOUCHING_ATR] of the average range, the same reasoning
+     * [defaultStop] already uses for the air under a stop.
+     *
+     * A zero or absent [range] collapses this to the old strict comparison, which is the right
+     * degenerate case: with no measured range there is nothing to be within.
+     */
+    internal fun referenceState(close: Double, level: Double?, range: Double): MarketState {
+        if (level == null) return MarketState.NEUTRAL
+        val touching = if (range.isFinite() && range > 0.0) range * TOUCHING_ATR else 0.0
+        return when {
+            close > level + touching -> MarketState.BULL
+            close < level - touching -> MarketState.BEAR
+            else -> MarketState.NEUTRAL
+        }
+    }
+
     /** A measurement: it reports, it never fires. See [MEASURES]. */
     private fun measure(id: String, name: String, series: CandleSeries): SignalRead {
         val line = when (id) {
@@ -628,6 +678,24 @@ object SignalSpec {
 
     /** A cross this far past the line, as a fraction of price, is a strength of one. */
     private const val CROSS_FULL = 0.01
+
+    /**
+     * The dead band around a bounded oscillator's midpoint, as a fraction of its floor-to-ceiling
+     * span, on each side.
+     *
+     * A quarter, which on RSI's 30..70 is the 40–60 the owner's fix names, and on every other
+     * oscillator is the same idea at that oscillator's own scale. See [bounded].
+     */
+    const val NEUTRAL_BAND = 0.25
+
+    /**
+     * How near a reference line the close has to be to count as sitting **on** it, in average
+     * ranges.
+     *
+     * 0.15 ATR. See [reference]: below this the study has no direction, whatever side of the line
+     * the last tick happened to land on.
+     */
+    const val TOUCHING_ATR = 0.15
 }
 
 /**

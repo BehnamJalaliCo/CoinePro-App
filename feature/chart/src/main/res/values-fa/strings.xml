@@ -630,6 +630,7 @@
     <string name="chart_setup_title">معامله‌ی روی چارت</string>
     <string name="chart_setup_score">وضعیت</string>
     <string name="chart_setup_from">%1$s اندیکاتور · %2$s سیگنال</string>
+    <string name="chart_setup_from_rate">%1$s اندیکاتور · %2$s سیگنال · میانگین برد %3$s%%</string>
     <string name="chart_confidence_short">%1$s%% از %2$s</string>
     <string name="chart_confidence_thin">کم‌داده</string>
     <string name="chart_confidence_title">اینجا چطور کار کرده</string>
@@ -638,7 +639,7 @@
     <string name="chart_confidence_thin_long">فقط %1$s سیگنال کامل — کمتر از آن است که عدد بدهیم.</string>
     <string name="chart_confidence_r">نتیجه‌ی میانگین: %1$s برابر ریسک.</string>
     <string name="chart_confidence_bars">%1$s کندل</string>
-    <string name="chart_explain_stop">زیر %1$s اشتباه است</string>
+    <string name="chart_explain_stop">حد ضرر پیشنهادی: زیر %1$s</string>
     <string name="chart_explain_alert">روی سیگنال بعدی هشدار بسازید</string>
     <string name="chart_explain_practise">در ریپلی تمرین کنید</string>
     <string name="chart_explain_not_advice">خوانشی از گذشته است، نه توصیه.</string>

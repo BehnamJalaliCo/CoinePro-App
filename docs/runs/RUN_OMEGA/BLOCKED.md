@@ -29,6 +29,13 @@ from that rig, and every claim about frame timing is marked as owed.
 `docs/qa/DEVICE_PROOFS.md` carries the exact `adb` commands, so the owner can take the recordings in
 one pass rather than discovering the incantation.
 
+**The one that 4.80.0 is waiting on.** The Ω-FIX list ends with a thirty-second sequence the owner
+asked to record once the eight fixes landed: chart portrait with no top row → scrub → «+» on the
+axis → alert → the Setup sheet → the Rasad sheet → an Arena result → a share card. Every step of it
+has a still frame in `app/build/proof/` or a test behind it, and none of that is the same thing as
+watching it happen. It is the acceptance test for this version and it is the one piece of evidence
+this container cannot produce.
+
 ## 2. The Arena's daily challenge has no server to ask
 
 **Blocked on:** an endpoint. Neither backend serves «today's symbol and window».

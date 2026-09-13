@@ -1,6 +1,7 @@
 package com.coinepro.core.chart
 
 import kotlin.math.abs
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
@@ -159,13 +160,37 @@ object ConfidenceEngine {
     /**
      * The chart's **Setup score**, 0–100, from every switched-on study at once.
      *
-     * ### What it is and what it deliberately is not
+     * ### What it was, and why the device threw it out
      *
-     * It is an *agreement* measure weighted by each study's own base rate: how much of what is on
-     * this chart is pointing the same way, and how much has that pointing been worth on this
-     * instrument. A study with no history contributes its direction at half weight rather than
-     * nothing, because a reader who has switched on one study and gets a score of zero has been
-     * told the app is broken rather than that the study is new.
+     * It used to be an *agreement* measure: how much of what is on the chart points the same way,
+     * with each study's win rate as its voting weight. That reads plausibly and it is wrong in the
+     * one case a reader will meet most often. On the owner's device the header said **«۱۰۰ صعودی»**
+     * beside four contributors whose win rates were 43 %, 40 %, 39 % and 40 % — because all four
+     * agreed, and agreement was the whole of the measurement. A hundred out of a hundred over four
+     * studies that are each wrong three times in five is not a strong setup; it is four studies
+     * that are wrong together, and printing 100 next to 40 % is the app telling the reader the
+     * opposite of what its own numbers say.
+     *
+     * ### What it is now: confidence, not consensus
+     *
+     * `score = |Σ(direction × winRate × w)| / Σw`, as a percentage, where `direction` is +1 for a
+     * bullish read and −1 for a bearish one and `w = min(1, samples / 30)`.
+     *
+     * Three properties follow, and they are the three the old one lacked:
+     *
+     * * **A study cannot score above its own record.** Four contributors at 40 % produce 40, not
+     *   100. Agreement still matters — disagreement cancels in the sum — but it can no longer
+     *   manufacture confidence out of studies that have none.
+     * * **A thin record counts for less.** `w` is the ramp to thirty samples, so a study with six
+     *   outcomes carries a fifth of the weight of one with thirty. It is the same fact
+     *   [ConfidenceReport.trustworthy] states as a yes or no, applied continuously instead.
+     * * **No record, no vote.** `w` is zero at zero samples, so an unmeasured study neither lifts
+     *   the score nor drags it down; it is simply not one of the things the number is about. The
+     *   header prints how many studies did vote, which is what makes that legible.
+     *
+     * [CONFIDENCE_CAP] is the last guard: where *every* contributor is under an even coin, the
+     * score cannot read above 85 however hard they agree. A chart made of losing studies should
+     * never be able to print the same number as one made of winning ones.
      *
      * It is **not** a probability, not a price target and not advice, and the number is drawn on a
      * grey→gold scale rather than a red→green one for exactly that reason: green means «up» on this
@@ -173,36 +198,68 @@ object ConfidenceEngine {
      */
     fun setupScore(reads: List<SignalRead>, reports: Map<String, ConfidenceReport>): SetupScore {
         val voting = reads.filter { it.state != MarketState.NEUTRAL }
-        if (voting.isEmpty()) return SetupScore(0, MarketState.NEUTRAL, 0, 0)
-        var bull = 0.0
-        var bear = 0.0
+        val signals = reads.sumOf { it.events.size }
+        if (voting.isEmpty()) return SetupScore(0, MarketState.NEUTRAL, signals, 0)
+        var sum = 0.0
+        var weights = 0.0
+        var rates = 0.0
+        var measured = 0
         for (read in voting) {
             val report = reports[read.id]
-            // A study's own record on this instrument, or an even coin for one with no record —
-            // weighted down, because an unmeasured opinion is still an opinion.
-            val weight = when {
-                report == null || !report.trustworthy -> UNPROVEN_WEIGHT
-                else -> report.winRate
-            }
-            if (read.state == MarketState.BULL) bull += weight else bear += weight
+            val samples = report?.samples ?: 0
+            val weight = min(1.0, samples.toDouble() / FULL_WEIGHT_SAMPLES)
+            if (weight <= 0.0 || report == null) continue
+            val direction = if (read.state == MarketState.BULL) 1.0 else -1.0
+            sum += direction * report.winRate * weight
+            weights += weight
+            rates += report.winRate
+            measured++
         }
-        val total = bull + bear
-        if (total <= 0.0) return SetupScore(0, MarketState.NEUTRAL, 0, voting.size)
-        val leading = if (bull >= bear) MarketState.BULL else MarketState.BEAR
-        val share = maxOf(bull, bear) / total
-        // Rescaled from «half of them agree» to «all of them agree»: a fifty-fifty chart scores
-        // nought rather than fifty, because a fifty out of a hundred that means «no information» is
-        // the single most misread number a dashboard can print.
-        val score = (((share - 0.5) * 2).coerceIn(0.0, 1.0) * 100).roundToInt()
-        val signals = reads.sumOf { it.events.size }
-        return SetupScore(score, leading, signals, voting.size)
+        // Nothing on this chart has a record yet. The direction is still worth saying — it is what
+        // the studies read — but the confidence in it is genuinely nought, and a number invented to
+        // avoid printing a zero would be the same lie in the other direction.
+        if (weights <= 0.0) {
+            val bulls = voting.count { it.state == MarketState.BULL }
+            val side = when {
+                bulls * 2 > voting.size -> MarketState.BULL
+                bulls * 2 < voting.size -> MarketState.BEAR
+                else -> MarketState.NEUTRAL
+            }
+            return SetupScore(0, side, signals, voting.size, winRate = null)
+        }
+        val side = when {
+            sum > 0.0 -> MarketState.BULL
+            sum < 0.0 -> MarketState.BEAR
+            else -> MarketState.NEUTRAL
+        }
+        val average = rates / measured
+        val raw = ((abs(sum) / weights).coerceIn(0.0, 1.0) * 100).roundToInt()
+        // Every contributor a losing one: the ceiling comes down. `< 0.5` and not `<= 0.5`, so a
+        // chart of even coins is not held under the cap on a technicality.
+        val allLosing = measured > 0 && voting.all { read ->
+            reports[read.id]?.let { it.samples == 0 || it.winRate < EVEN_COIN } ?: true
+        }
+        val score = if (allLosing) min(raw, CONFIDENCE_CAP) else raw
+        return SetupScore(score, side, signals, voting.size, winRate = average)
     }
 
     /** How many of the newest outcomes a card shows as dots. */
     const val RECENT_DOTS: Int = 5
 
-    /** What a study with no measured history counts for in [setupScore]. */
-    private const val UNPROVEN_WEIGHT = 0.5
+    /**
+     * The sample count at which a study's record carries its full weight in [setupScore].
+     *
+     * Thirty, the same figure every other rule of thumb about a base rate uses, and the same order
+     * as [THIN]: below it the record is real but provisional, and the score says so by discounting
+     * it rather than by footnoting it.
+     */
+    const val FULL_WEIGHT_SAMPLES: Int = 30
+
+    /** The ceiling for a chart on which no contributor beats an even coin. */
+    const val CONFIDENCE_CAP: Int = 85
+
+    /** An even coin. Below it a study has no edge, whatever it is currently pointing at. */
+    private const val EVEN_COIN = 0.5
 }
 
 /**
@@ -216,6 +273,14 @@ data class SetupScore(
     val side: MarketState,
     val signals: Int,
     val studies: Int,
+    /**
+     * The mean win rate of the studies that actually had a record, 0..1, or null where none did.
+     *
+     * Printed under the score, and the reason it is on this type rather than recomputed at the
+     * header: it is the figure that makes the score checkable. «۴۱ · ۴ اندیکاتور · میانگین برد
+     * ۴۰٪» is a number a reader can argue with; «۱۰۰» on its own is one they can only believe.
+     */
+    val winRate: Double? = null,
 ) {
     val isEmpty: Boolean get() = studies == 0
 

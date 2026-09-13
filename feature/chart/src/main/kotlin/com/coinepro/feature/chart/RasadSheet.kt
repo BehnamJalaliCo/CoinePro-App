@@ -55,6 +55,19 @@ import com.coinepro.core.designsystem.rememberCoineProHaptics
  * That is not a compromise between the two lines: the first sentence is deliberately the trend one,
  * which is the sentence a reader wants when they have three seconds. The levels and the studies are
  * what they open when they have thirty.
+ *
+ * ### Two lines, and never an ellipsis (run Ω-FIX item 5)
+ *
+ * It was one line with `TextOverflow.Ellipsis`, and on the device that produced «اینجا روندی نیست —
+ * بازار داخل یک محدوده می‌چرخد، با ن…». A sentence cut at «با ن» is not a shorter sentence, it is a
+ * riddle: the reader can see that the coach said something and cannot see what. Two lines hold every
+ * sentence this coach can write — the longest of them is under a hundred and thirty characters — and
+ * a second line costs the plot sixteen points on the one row of the page that is prose.
+ *
+ * `Clip` rather than `Ellipsis` behind that, and it is not a fallback that is expected to fire:
+ * the ellipsis is what made a truncation look deliberate, and if a future sentence ever does
+ * overflow two lines the right outcome is a visibly cut line that somebody fixes, not a tidy «…»
+ * that ships.
  */
 @Composable
 internal fun RasadLine(
@@ -63,7 +76,10 @@ internal fun RasadLine(
     modifier: Modifier = Modifier,
 ) {
     val english = inEnglish()
-    val first = RasadCoach.readChart(series, english = english).firstOrNull() ?: return
+    val first = RasadCoach.readChart(series, english = english)
+        .firstOrNull()
+        ?.let(BidiText::isolateNumbers)
+        ?: return
     val haptics = rememberCoineProHaptics()
     Row(
         modifier = modifier
@@ -86,8 +102,8 @@ internal fun RasadLine(
             text = first,
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextSecondary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            maxLines = RASAD_LINES,
+            overflow = TextOverflow.Clip,
             modifier = Modifier.weight(1f),
         )
     }
@@ -119,9 +135,13 @@ internal fun RasadSheetBody(
     onCreateAlert: ((AlertSuggestion) -> Unit)?,
 ) {
     val english = inEnglish()
-    val sentences = RasadCoach.readChart(series, reads, setup, english)
+    // Every sentence the coach writes has a price, a percentage or a multiple in it, and every
+    // one of those is a left-to-right run inside Persian prose. Isolated once, here, rather than
+    // at the four `Text`s below. See `BidiText.isolateNumbers` (run Ω-FIX item 6).
+    val sentences = RasadCoach.readChart(series, reads, setup, english).map(BidiText::isolateNumbers)
     val suggestion = RasadCoach.suggestAlert(series, english)
     val review = lastTrade?.let { RasadCoach.reviewTrade(it, english) }.orEmpty()
+        .map(BidiText::isolateNumbers)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -164,7 +184,7 @@ internal fun RasadSheetBody(
         if (suggestion != null && onCreateAlert != null) {
             HorizontalDivider(color = CoineProColors.BorderSubtle)
             Text(
-                text = suggestion.why,
+                text = BidiText.isolateNumbers(suggestion.why),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextSecondary,
             )
@@ -243,5 +263,14 @@ private fun RasadAction(label: String, onClick: () -> Unit) {
 }
 
 /** What a screenshot test looks for. */
+/**
+ * Two lines on the strip, never one and never an ellipsis. See [RasadLine].
+ *
+ * Two is not a guess: the longest sentence [RasadCoach] can compose is the level one with two
+ * six-figure prices in it, and `RasadStripTest` measures every template against this number
+ * rather than against a phone.
+ */
+internal const val RASAD_LINES = 2
+
 private const val RASAD_TAG = "rasad-line"
 private const val RASAD_SHEET_TAG = "rasad-sheet"

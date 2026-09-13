@@ -161,4 +161,5 @@
     <string name="legend_remove">حذف</string>
     <string name="legend_controls_open">کنترل‌های اندیکاتورها</string>
     <string name="legend_controls_close">بستن کنترل‌ها</string>
+    <string name="legend_back">بازگشت</string>
 </resources>

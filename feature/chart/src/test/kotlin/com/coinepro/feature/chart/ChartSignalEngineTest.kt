@@ -2,6 +2,7 @@ package com.coinepro.feature.chart
 
 import com.coinepro.core.chart.Candle
 import com.coinepro.core.chart.CandleSeries
+import com.coinepro.core.chart.ConfidenceEngine
 import com.coinepro.core.chart.MarketState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -119,9 +120,15 @@ class ChartSignalEngineTest {
     fun `the setup score is over the studies that have an opinion`() {
         val series = rising()
         val layer = ChartSignalEngine.evaluate(series = series, indicatorIds = listOf("ema", "sma"))
-        // Both averages are under a rising close, so the chart agrees with itself and says so.
+        // Both averages are under a rising close, so the chart agrees with itself about the
+        // direction. The *score* is a different question now — see `ConfidenceEngine.setupScore`,
+        // run Ω-FIX item 3 — and on a straight-line rise neither average has ever crossed the close,
+        // so neither has a measured record and the confidence in that direction is honestly nought.
         assertEquals(MarketState.BULL, layer.setup.side)
-        assertEquals(100, layer.setup.score)
         assertEquals(2, layer.setup.studies)
+        assertTrue(
+            "a chart of unmeasured studies scored ${layer.setup.score}",
+            layer.setup.score <= ConfidenceEngine.CONFIDENCE_CAP,
+        )
     }
 }

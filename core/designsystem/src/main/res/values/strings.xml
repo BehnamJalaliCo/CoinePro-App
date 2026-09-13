@@ -168,4 +168,5 @@
     <string name="legend_remove">Remove</string>
     <string name="legend_controls_open">Indicator controls</string>
     <string name="legend_controls_close">Close the controls</string>
+    <string name="legend_back">Back</string>
 </resources>

@@ -538,6 +538,8 @@ internal fun ChartLegendOverlay(
     logoSymbol: String? = null,
     /** Tapping a row's name opens the Explain sheet for that study (4.75.0, run Ω1). */
     onExplain: ((ChartLegendTarget) -> Unit)? = null,
+    /** The way out of the chart, drawn first on the head row. See `CoineProChart`'s `onBack`. */
+    onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     if (viewport.visibleCount == 0) return
@@ -575,6 +577,10 @@ internal fun ChartLegendOverlay(
     val lines = if (tracking) TRACKING_LEGEND_LINES else LEGEND_LINES
     val body = rows.drop(1)
 
+    // Read **before** the plate forces itself left-to-right, because the back mark is the one thing
+    // on this plate that belongs to the page rather than to the chart: a chart reads left to right
+    // in every locale, but «back» points the way the reader's own language came from.
+    val backGlyph = if (LocalLayoutDirection.current == LayoutDirection.Rtl) GLYPH_BACK_RTL else GLYPH_BACK_LTR
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         BoxWithConstraints(modifier = modifier) {
             val density = LocalDensity.current
@@ -695,6 +701,8 @@ internal fun ChartLegendOverlay(
                     dimmed = ChartLegendTarget.Series in hidden,
                     disclosure = { expanded = !expanded },
                     disclosed = expanded,
+                    onBack = onBack,
+                    backGlyph = backGlyph,
                 )
                 // The values line hands its alternatives over whole. `LegendRow` picks against
                 // the width it is actually given, which is the only measurement that cannot be
@@ -1128,6 +1136,8 @@ private fun LegendHead(
     dimmed: Boolean,
     disclosure: () -> Unit,
     disclosed: Boolean,
+    onBack: (() -> Unit)? = null,
+    backGlyph: String = GLYPH_BACK_LTR,
 ) {
     val ink = if (dimmed) palette.title.copy(alpha = HIDDEN_ROW_ALPHA) else palette.title
     val lineHeightStyle = LineHeightStyle(
@@ -1141,6 +1151,17 @@ private fun LegendHead(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(LEGEND_GAP_DP * 2),
     ) {
+        // The way back, first on the row and before the instrument's own mark — the position a
+        // reader's thumb already goes to, now that the band that used to hold it is gone.
+        onBack?.let { back ->
+            LegendButton(
+                glyph = backGlyph,
+                description = stringResource(DesignR.string.legend_back),
+                colour = palette.title,
+                fontSize = fontSize * TITLE_SCALE,
+                onClick = back,
+            )
+        }
         logoSymbol?.let { CoineProAssetLogo(symbol = it, size = LEGEND_LOGO_DP) }
         if (title.isNotBlank()) {
             Text(
@@ -1268,6 +1289,17 @@ private const val GLYPH_REMOVE = "✕"
  * collides with the three above: the eye is a disc, settings is a *vertical* ellipsis, and remove is
  * a cross.
  */
+/**
+ * The way back, as an arrow rather than a chevron: it replaces an app bar's arrow and a reader who
+ * used that bar for four versions should find the same picture where it went.
+ *
+ * Two of them, because the plate is laid out left to right in every locale — see
+ * [ChartLegendOverlay] — so nothing here mirrors on its own, and an arrow pointing the wrong way is
+ * worse than no arrow. Which one is chosen against the *page's* direction, not the plate's.
+ */
+private const val GLYPH_BACK_LTR = "←"
+private const val GLYPH_BACK_RTL = "→"
+
 private const val GLYPH_EXPAND = "⋯"
 private const val GLYPH_COLLAPSE = "⌃"
 

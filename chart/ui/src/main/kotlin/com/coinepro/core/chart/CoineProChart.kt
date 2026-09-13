@@ -344,6 +344,23 @@ fun CoineProChart(
      * inert, which is what a preview and a fixture want.
      */
     onExplainSeries: ((ChartLegendTarget) -> Unit)? = null,
+    /**
+     * The way out of the chart, drawn as the first mark on the legend's own head row.
+     *
+     * ### Why a navigation control is in the chart engine at all
+     *
+     * Because the alternative was a fifty-six point band above the plot holding one arrow and
+     * nothing else, and the owner's device recording is what settled it: «ردیف → هنوز بالای صفحه‌ی
+     * چارت است». A screen whose entire product is vertical space cannot spend eight per cent of a
+     * phone's glass on a back arrow. The legend already owns the top of the plot, it already draws
+     * the instrument's name — it *is* the header — and a mark at the head of it costs the plot
+     * nothing at all: the plate's height is set by its text, and this button's footprint is smaller
+     * than the row it joins.
+     *
+     * Null on every caller that is not a navigable screen — a preview, a fixture, a docked pane —
+     * and then no mark is drawn.
+     */
+    onBack: (() -> Unit)? = null,
     /** A legend row's remove was tapped. Null hides the affordance rather than disabling it. */
     onRemoveSeries: ((ChartLegendTarget) -> Unit)? = null,
     /**
@@ -3350,6 +3367,7 @@ fun CoineProChart(
                 },
                 onOpenSettings = onSeriesSettings,
                 onExplain = onExplainSeries,
+                onBack = onBack,
                 onRemove = onRemoveSeries,
                 change = change,
                 marketStatus = marketStatus,

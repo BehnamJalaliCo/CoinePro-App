@@ -151,4 +151,34 @@ class SymbolWheelTest {
     fun `a symbol with no artwork is not a place the flick can land`() {
         assertEquals("BTCUSDT", symbolStep(listOf("XAUUSD", "ZZZQQQ", "BTCUSDT"), "XAUUSD", 1))
     }
+
+    // ── one name at rest (run Ω-FIX item 2) ──────────────────────────────────────────────────
+
+    @Test
+    fun `at rest the cell shows one name and no neighbours`() {
+        // The device: «چیپ هنوز ۳خطه (ADAUSDT / DOGEUSD خاکستری)». Two grey tickers permanently
+        // under the instrument the chart is drawing, read by everybody who has not discovered that
+        // the cell turns as a list, or as a rendering fault.
+        assertEquals(0f, wheelRowAlpha(far = false, reveal = 0f), 0f)
+        assertEquals(0f, wheelRowAlpha(far = true, reveal = 0f), 0f)
+    }
+
+    @Test
+    fun `a held thumb brings the ring back at its own distance ink`() {
+        assertEquals(WHEEL_NEAR_ALPHA, wheelRowAlpha(far = false, reveal = 1f), 1e-6f)
+        assertEquals(WHEEL_FAR_ALPHA, wheelRowAlpha(far = true, reveal = 1f), 1e-6f)
+    }
+
+    @Test
+    fun `the far row is always fainter than the near one, at every point of the reveal`() {
+        // The curvature the wheel is drawn with survives the fade. A reveal that crossed the two
+        // would make the cell read as a list opening rather than as a wheel turning.
+        for (step in 1..10) {
+            val reveal = step / 10f
+            assertTrue(
+                "at $reveal the far row was not the fainter",
+                wheelRowAlpha(far = true, reveal = reveal) < wheelRowAlpha(far = false, reveal = reveal),
+            )
+        }
+    }
 }

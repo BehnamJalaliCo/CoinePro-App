@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -42,7 +43,12 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -496,17 +502,58 @@ internal fun SymbolScrollWheel(
             move(value)
         }
     }
+    // **One name at rest; the ring only while a thumb is on it** (run Ω-FIX item 2).
+    //
+    // The pill used to draw its neighbours the whole time, at 55 % and 25 % ink. On the device that
+    // is not a wheel with a hint of depth, it is three tickers stacked in a cell — «چیپ هنوز ۳خطه
+    // (ADAUSDT / DOGEUSD خاکستری)» — and the two grey ones are read as a list, or as a rendering
+    // fault, by everybody who has not yet discovered that the cell turns. Worse, they are the
+    // *wrong* two names to have permanently under the instrument the chart is drawing.
+    //
+    // So the ring is revealed rather than resident: held down, or being dragged, and otherwise the
+    // cell is one bold ticker. The carets stay — they are now the whole of the discoverability, and
+    // they are what a long press is discovered from.
+    //
+    // A hold rather than a press, because a press is the first half of the drag this control
+    // already takes, and revealing on touch-down would flash the ring on every flick before it
+    // moved. `longPressTimeoutMillis` is the platform's own threshold, so it matches every other
+    // hold on the device.
+    var held by remember { mutableStateOf(false) }
+    val revealed = held || dragging
+    // A fade, so a tween: opacity has no momentum, and the spring policy is explicit about it.
+    val reveal by animateFloatAsState(
+        targetValue = if (revealed) 1f else 0f,
+        animationSpec = CoineProMotionSpecs.standard(),
+        label = "wheel-reveal",
+    )
     // The cell, as a control rather than as a column of text cut by the bar's edge.
     //
     // A pill on the elevated surface with a hairline round it, the current ticker bold on its
-    // centre line, the neighbours dimmed and faded out towards the pill's edges, and a pair of
-    // carets on the trailing side. The carets are the whole of the discoverability: three tickers
-    // stacked in the open read as a misprint, and a reader who does not know the cell turns will
-    // never drag it. Five rows are still drawn where one and two halves are visible, because a
-    // wheel that slides has to have something to slide *in*.
+    // centre line, and a pair of carets on the trailing side. Five rows are still *laid out* where
+    // one is visible, because a wheel that slides has to have something to slide in — what changes
+    // with [reveal] is their ink, not the layout, so nothing moves when the ring appears.
     Box(
         modifier = modifier
             .height(WHEEL_SCROLL_HEIGHT)
+            // Before the draggable and consuming nothing, so the drag still starts on the same
+            // pointer. See [held].
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    // Non-null means the finger lifted, or something else claimed the pointer,
+                    // inside the threshold — a tap or the beginning of a drag, neither of which is
+                    // a hold. Null is the timeout, which is the hold.
+                    val settled = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                        waitForUpOrCancellation()
+                        true
+                    }
+                    if (settled == null) {
+                        held = true
+                        waitForUpOrCancellation()
+                        held = false
+                    }
+                }
+            }
             .draggable(
                 state = drag,
                 orientation = Orientation.Vertical,
@@ -543,11 +590,11 @@ internal fun SymbolScrollWheel(
                 // row rather than as a gradient over the cell, because the gradient gate is
                 // right: a wash on a control is decoration, and a row's own ink is not.
                 Column(modifier = Modifier.graphicsLayer { translationY = travel.floatValue }) {
-                    WheelSide(symbol = symbolStep(symbols, current, -2), onSelect = onSelect, far = true)
-                    WheelSide(symbol = ring.previous, onSelect = onSelect, far = false)
+                    WheelSide(symbolStep(symbols, current, -2), onSelect, far = true, reveal = reveal)
+                    WheelSide(ring.previous, onSelect, far = false, reveal = reveal)
                     WheelCurrent(symbol = current)
-                    WheelSide(symbol = ring.next, onSelect = onSelect, far = false)
-                    WheelSide(symbol = symbolStep(symbols, current, 2), onSelect = onSelect, far = true)
+                    WheelSide(ring.next, onSelect, far = false, reveal = reveal)
+                    WheelSide(symbolStep(symbols, current, 2), onSelect, far = true, reveal = reveal)
                 }
             }
             Column(
@@ -585,22 +632,26 @@ private fun WheelCaret(@DrawableRes icon: Int, enabled: Boolean) {
  *
  * An absent neighbour still takes its row. A wheel whose middle jumps up when the list is short is
  * a control that moves while you are reading it.
+ *
+ * [reveal] is how far the ring has been shown — 0 at rest, 1 under a held thumb. It multiplies the
+ * ink *and* gates the tap: an invisible row that can still be pressed is a trap under the pill's
+ * edge, and at rest this row is invisible.
  */
 @Composable
-private fun WheelSide(symbol: String?, onSelect: (String) -> Unit, far: Boolean) {
+private fun WheelSide(symbol: String?, onSelect: (String) -> Unit, far: Boolean, reveal: Float) {
     val haptics = rememberCoineProHaptics()
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(WHEEL_SCROLL_ROW)
-            .alpha(if (far) WHEEL_FAR_ALPHA else WHEEL_NEAR_ALPHA)
+            .alpha(wheelRowAlpha(far = far, reveal = reveal))
             .graphicsLayer {
                 scaleX = WHEEL_SIDE_SCALE
                 scaleY = WHEEL_SIDE_SCALE
                 transformOrigin = TransformOrigin(0f, 0.5f)
             }
             .then(
-                if (symbol == null) {
+                if (symbol == null || reveal == 0f) {
                     Modifier
                 } else {
                     Modifier.clickable {
@@ -615,6 +666,17 @@ private fun WheelSide(symbol: String?, onSelect: (String) -> Unit, far: Boolean)
         WheelTicker(symbol = symbol, colour = CoineProColors.TextDisabled)
     }
 }
+
+/**
+ * A neighbour row's ink, at a given reveal.
+ *
+ * Pulled out of [WheelSide] because it is the part of run Ω-FIX item 2 that can be wrong and the
+ * only part a test can see: an alpha of zero is still a laid-out node, so no semantics assertion
+ * can tell «invisible» from «faint». At rest this is nought — one name in the cell — and under a
+ * held thumb it is the row's own distance ink.
+ */
+internal fun wheelRowAlpha(far: Boolean, reveal: Float): Float =
+    reveal * if (far) WHEEL_FAR_ALPHA else WHEEL_NEAR_ALPHA
 
 /** The instrument the chart is drawing: bold, in the primary ink, on the pill's own centre line. */
 @Composable
@@ -810,9 +872,9 @@ private val WHEEL_PILL_HEIGHT = 36.dp
 private val WHEEL_PILL_SHAPE = RoundedCornerShape(10.dp)
 private val WHEEL_PILL_INSET = 10.dp
 
-/** The neighbours' ink, by distance from the centre row. */
-private const val WHEEL_NEAR_ALPHA = 0.55f
-private const val WHEEL_FAR_ALPHA = 0.25f
+/** The neighbours' ink, by distance from the centre row — at full reveal. See [SymbolScrollWheel]. */
+internal const val WHEEL_NEAR_ALPHA = 0.55f
+internal const val WHEEL_FAR_ALPHA = 0.25f
 
 /** The far rows, a touch smaller: the wheel is round and its far rows are further from the eye. */
 private const val WHEEL_SIDE_SCALE = 0.9f

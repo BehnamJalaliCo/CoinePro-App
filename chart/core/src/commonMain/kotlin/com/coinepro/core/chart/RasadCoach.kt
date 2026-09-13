@@ -145,28 +145,80 @@ object RasadCoach {
         resultSentence(trade, english),
     )
 
-    /** The trend, its strength, and how much the instrument is moving while it does it. */
+    /**
+     * The trend, its strength, and how much the instrument is moving while it does it.
+     *
+     * ### Three branches, because two of them produced a contradiction
+     *
+     * The sentence used to be a two-way choice: trending, or not. Trending printed the *direction*
+     * and the *strength* together — and those come from two different measurements that are allowed
+     * to disagree. ADX says how hard the market is travelling and says nothing about which way; the
+     * bias is the gap between two averages and says which way and nothing about how hard. A market
+     * that has travelled a long way and come back has a high ADX and a bias of nearly nothing, and
+     * the template then wrote what the owner's device showed:
+     *
+     * > «بازار خنثی است و روند قوی خوانده می‌شود، با نوسان کم.»
+     *
+     * Neutral and a strong trend, in one sentence, about one market. A reader cannot act on that
+     * and should not have to work out which half to believe.
+     *
+     * So a strong reading with no direction in it now says exactly that — the trend is there and its
+     * direction is not yet legible — which is both true and the more useful of the two facts. The
+     * gate is [RasadContradiction], and it is run over every combination of the three labels rather
+     * than over the sentences this chart happened to produce.
+     *
+     * The neutral *word* never reaches the trending branch at all, because [trendLine] takes a
+     * nullable direction rather than a word plus a flag: the state that produced the contradiction
+     * is not representable in its arguments, which is a stronger guarantee than a test over them.
+     */
     private fun trendSentence(series: CandleSeries, english: Boolean): String? {
         val reading = ChartReading.of(series) ?: return null
-        val trending = reading.strength >= ChartReading.TRENDING_FLOOR
-        val direction = reading.biasLabel(english)
-        val strength = reading.strengthLabel(english)
-        val swing = reading.volatilityLabel(english)
-        return if (trending) {
-            if (english) {
-                "The market is $direction and the trend reads $strength, with $swing swing."
-            } else {
-                "بازار $direction است و روند $strength خوانده می‌شود، با نوسان $swing."
-            }
+        return trendLine(
+            trending = reading.strength >= ChartReading.TRENDING_FLOOR,
+            // Null rather than «خنثی»: the neutral *word* is what walked into the trending branch
+            // and made the contradiction, so the trending branch is never handed one.
+            direction = reading.biasLabel(english).takeIf { reading.isUp || reading.isDown },
+            strength = reading.strengthLabel(english),
+            swing = reading.volatilityLabel(english),
+            english = english,
+        )
+    }
+
+    /**
+     * The trend sentence's template matrix, taken out of [trendSentence] so a test can walk it.
+     *
+     * Internal rather than private for that reason alone: the thing that has to be proved is that
+     * *no combination of inputs* writes a self-contradicting sentence, and a test that can only
+     * reach this through a candle series proves it about the candle series it happened to build.
+     */
+    internal fun trendLine(
+        trending: Boolean,
+        /** Which way, or **null** where the averages have not separated far enough to say. */
+        direction: String?,
+        strength: String,
+        swing: String,
+        english: Boolean,
+    ): String = when {
+        // No trend is a fact about the market and the most useful one there is: every signal a
+        // trend study gives inside a range is a signal measured against something that is not
+        // happening. The strength word is deliberately absent — this branch is what «بدون روند»
+        // means, spelled out, and printing it again beside a range would be the same word twice.
+        !trending -> if (english) {
+            "There is no trend here — the market is turning inside a range, with $swing swing."
         } else {
-            // No trend is a fact about the market and the most useful one there is: every signal a
-            // trend study gives inside a range is a signal measured against something that is not
-            // happening.
-            if (english) {
-                "There is no trend here — the market is turning inside a range, with $swing swing."
-            } else {
-                "اینجا روندی نیست — بازار داخل یک محدوده می‌چرخد، با نوسان $swing."
-            }
+            "اینجا روندی نیست — بازار داخل یک محدوده می‌چرخد، با نوسان $swing."
+        }
+        // Travelling hard, but the averages have not separated: there is a move and it has no side
+        // yet. Naming the strength here is honest; naming a direction would not be.
+        direction == null -> if (english) {
+            "The trend reads $strength, but which way it is going is not clear yet, with $swing swing."
+        } else {
+            "روند $strength خوانده می‌شود، اما هنوز روشن نیست به کدام سمت، با نوسان $swing."
+        }
+        else -> if (english) {
+            "The market is $direction and the trend reads $strength, with $swing swing."
+        } else {
+            "بازار $direction است و روند $strength خوانده می‌شود، با نوسان $swing."
         }
     }
 
@@ -370,6 +422,53 @@ data class TradeFacts(
     /** The result in units of risk, where there was a stop to measure it against. */
     val rMultiple: Double? = null,
 )
+
+/**
+ * The rule that says a sentence disagrees with itself (run Ω-FIX item 5).
+ *
+ * ### Why it is a rule rather than a review
+ *
+ * Because the sentence that shipped read perfectly well in the file it was written in. «بازار
+ * $direction است و روند $strength خوانده می‌شود» is a fine template; it is only wrong for two of
+ * the nine values its two holes can take, and neither of those two was the one anybody typed into a
+ * fixture. What catches that is not a careful reading of the template — it is walking every
+ * combination the template can produce and asserting a property about each one.
+ *
+ * ### The property
+ *
+ * A sentence may say the market has no direction, or it may say the trend is strong. It may not say
+ * both. Those are the two vocabularies [ChartReading] draws from — the bias and the ADX — and a
+ * sentence holding one word from each is a sentence a reader has to arbitrate.
+ *
+ * Both languages, because both ship, and the English half went unread for four versions for
+ * precisely the reason a lint exists.
+ */
+object RasadContradiction {
+
+    /** «this market has no direction», in every wording the coach owns. */
+    val FLAT: List<String> = listOf(
+        "خنثی", "روندی نیست", "بدون روند",
+        "no trend", "No trend", "Neutral", "neutral",
+    )
+
+    /** «this market has a trend and it is a real one», likewise. */
+    val TRENDING: List<String> = listOf(
+        "روند قوی", "روند متوسط",
+        "trend reads Strong", "trend reads Moderate",
+    )
+
+    /**
+     * The two phrases that contradict each other in [sentence], or null where it is consistent.
+     *
+     * A pair rather than a boolean, so a failing test names the two halves instead of printing the
+     * whole sentence and leaving somebody to find them.
+     */
+    fun of(sentence: String): Pair<String, String>? {
+        val flat = FLAT.firstOrNull { it in sentence } ?: return null
+        val trending = TRENDING.firstOrNull { it in sentence } ?: return null
+        return flat to trending
+    }
+}
 
 /** One decimal place, without pulling in a platform formatter. */
 private object ChartFormatting {

@@ -14,6 +14,7 @@ import com.coinepro.core.chart.SignalNote
 import com.coinepro.core.chart.SignalRead
 import com.coinepro.core.chart.SignalSpec
 import com.coinepro.core.chart.TradeSide
+import com.coinepro.core.common.BidiText
 
 /**
  * The Signal Layer as one chart holds it (run Ω1).
@@ -75,9 +76,13 @@ data class ChartSignalLayer(
      * what their script is for and the app is guessing from a line.
      */
     fun sentence(id: String, english: Boolean): String? {
-        authored[id]?.takeIf { it.isNotBlank() }?.let { return it }
+        // Isolated here rather than at each of the five places that draws one (run Ω-FIX item 6).
+        // Every sentence this returns has a figure in it — a level, a percentage, a bound — and
+        // every one of them is a left-to-right run inside Persian prose. See
+        // `BidiText.isolateNumbers`, and the full stop that walked to the front of the line.
+        authored[id]?.takeIf { it.isNotBlank() }?.let { return BidiText.isolateNumbers(it) }
         val note = readOf(id)?.note ?: return null
-        return if (note.shape == NoteShape.QUIET) null else note.text(english)
+        return if (note.shape == NoteShape.QUIET) null else BidiText.isolateNumbers(note.text(english))
     }
 
     companion object {

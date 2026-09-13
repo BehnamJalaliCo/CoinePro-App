@@ -433,3 +433,88 @@ at half width. Fifty-four sheets for run Ω, 1.9 MB as WEBP against nine as PNG,
 the `git show` that gets each full-resolution *before* back. The pair for `chart-fa-411` is the run
 in one image: the disclosure at the foot of the page on the left, رصد's line and no disclosure on the
 right.
+
+## Ω-FIX — what the device found, and what it cost to be wrong about it (4.80.0)
+
+The owner installed 4.79.0 on a phone, recorded two sessions and sent 229 proof files. The verdict
+on the thesis was that it holds: «تز «چارتی که حرف می‌زند» واقعاً پیاده شده و روی دستگاه کار
+می‌کند», the experience 4.6 → 7.2 out of ten, performance untouched at 120 fps with 1.2 % of frames
+dropped and none at 60 Hz. The verdict on this repository's own documentation was worse: **eight
+places where the device disagreed with `CHECKLIST.md`**, three of them 🔴.
+
+### The one that matters most is not a bug
+
+`CHECKLIST.md` said «ردیف → بالای چارت حذف شد» with a ✅ and an evidence cell beside it. The row was
+in every portrait frame of both recordings. Nothing in the repository was lying deliberately; run Ω2
+removed the app bar's *contents* — the depth button, the title, the avatar — read the result, and
+wrote down that the bar was gone. The band was still there, fifty-six points of stage colour holding
+one arrow, above the one page in this app whose entire product is the height of the plot.
+
+That is a process defect rather than a code defect, and it has two answers in this version:
+
+* **The rule is a function now.** `showsTopBar(route, isSubScreen)`, called by the shell and called
+  directly by `ChartTopBarTest`. The old claim could only have been checked by running the app;
+  this one is checked by the suite.
+* **Every row of the E6 table names a frame, or says it cannot have one.** Seven rows are motion,
+  timing or feel — a haptic, a 200 ms flash, a spring, a three-second toast — and there is no honest
+  still of a spring. Those seven now say so and name the gate that fails when the thing stops being
+  true. A blank cell is what let the «→» row ship.
+
+### The three 🔴, in order of how much they misled a reader
+
+**The Setup score was direction consensus wearing a confidence label.** The device showed «۱۰۰
+صعودی» above four contributors reading 43 %, 40 %, 39 % and 40 %. Every one of them agreed, and
+agreement was the whole measurement, so four studies that are wrong three times in five produced the
+same number as four that are right. A hundred beside forty per cent is the app contradicting its own
+figures on one screen.
+
+It is now `|Σ(direction × winRate × w)| / Σw` with `w = min(1, samples / 30)`. Three properties
+follow and they are the three the old one lacked: a chart cannot score above the records behind it,
+a thin record counts proportionally less, and a study nobody has measured neither lifts the score nor
+drags it down — it simply is not one of the things the number is about. `SetupScore.winRate` carries
+the mean of the contributing records and the panel prints it under the figure, which is what makes
+the number checkable rather than believable. The owner's own four contributors now score **41**.
+
+**The «→» row.** Above.
+
+**The one-line symbol chip was never in the E6 table.** It is in the Ω2 brief; it was dropped
+silently from the tracking, which is exactly the narrowing R3 exists to catch, and on the device the
+chip was still three lines with two grey tickers under the instrument the chart was drawing. It is
+back in the table, and the chip now shows one name until a thumb is held on it.
+
+### The five 🟠 and 🟡
+
+* **RSI 48.6 read «نزولی».** The state was a single cut at the midpoint. There is a dead band now —
+  a quarter of the floor-to-ceiling span each side, which on RSI's 30..70 is exactly the 40–60 the
+  fix names and on every other oscillator is the same sentence at its own scale. A moving average
+  gets the equivalent in the instrument's own units: neutral within 0.15 of an average range.
+* **«بازار خنثی است و روند قوی خوانده می‌شود.»** Two measurements that are allowed to disagree —
+  ADX says how hard, the bias says which way — printed in one sentence as though they could not.
+  `RasadCoach.trendLine` now takes a *nullable* direction, so the contradiction is not representable
+  in its arguments, and `RasadContradiction` walks all 108 combinations of the templates in both
+  languages.
+* **The Rasad strip ellipsised** — «با ن…». It wraps to two lines and clips rather than ellipsising,
+  and every template is budgeted against those two lines in `:chart-core`, where the templates are.
+* **«.در 11% از 9 بار درست بوده».** Three Latin runs in a Persian paragraph and the sentence's own
+  full stop resolved against the wrong one. `BidiText.isolateNumbers` wraps every number, its
+  separators, a leading sign and a trailing per-cent sign in FSI…PDI and leaves the sentence's
+  punctuation outside. Applied at six surfaces, including the share card, whose `StaticLayout` has
+  the same problem in an image the reader posts.
+* **«زیر 91,263.03 اشتباه است»** named no stop and read as a verdict on the reader. It is «حد ضرر
+  پیشنهادی: زیر ⁨91,263.03⁩».
+* **The scrub chip sat on the plot.** 84 to 108 points wide against a 64-point gutter, right-aligned
+  to the canvas with two points of deliberate bleed. It is the gutter's own width now, laid out from
+  the axis hairline outwards, stacking the price over its actions instead of stretching across them
+  — and `AlertChipGutterTest` holds that no pixel of it is over the plot at nineteen gutter widths on
+  all four scale sides, which is a stronger claim than the one frame a screenshot could make.
+
+### What this cost
+
+| | |
+|---|---|
+| Files changed | 20 source, 7 test, 3 documents |
+| New tests | `ChartTopBarTest`, `RunOmegaFixProofTest`, `BidiIsolateNumbersTest`, `AlertChipGutterTest`, `RasadStripTest`, plus cases added to `SignalLayerTest`, `RasadCoachTest`, `SymbolWheelTest` |
+| Tests whose expectation changed | 3 — two setup-score cases and `ChartSignalEngineTest`'s, all three because a hundred is no longer the right answer |
+| New proof frames | 6 |
+| Goldens re-recorded | the fold-closed English chart pair, where the coach's line now takes two rows |
+| New features | none, deliberately |
