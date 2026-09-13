@@ -35,6 +35,10 @@ import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
+import com.coinepro.core.common.BidiText
+import androidx.compose.ui.semantics.SemanticsProperties
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -99,6 +103,62 @@ class ScriptShareProofTest {
             CommunityThreadScreen(controller = controller, postId = 7L, onClose = {}, onOpenScript = {})
         }
         composeRule.onNodeWithText("«آر‌اس‌آی من» را در استودیو باز کنید").assertExists()
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_PHONE)
+    fun `the code in a post is the file, not a rearrangement of it`() {
+        // Run Σ-FIX item 1. The first version drew the whole post as one right-to-left paragraph
+        // and every line of the file came out with its leading token at the far end — «1 nama //».
+        // The second wrapped each code run in a bidi isolate, which straightened the tokens and
+        // left an invisible control character inside the code.
+        //
+        // The block now renders the file's own characters, so this asserts the absence of the
+        // isolate rather than the presence of the text: `// nama 1` matches either way, and only
+        // one of them is a code block.
+        val controller = CommunityController(ScriptBoard(), FakeCommunityIdentity(), scope)
+        composeRule.setContent {
+            CoineProTheme(darkTheme = true) {
+                CompositionLocalProvider(LocalTeachingDismissals provides AllTeachingDismissed) {
+                    Surface(modifier = Modifier.fillMaxSize()) {
+                        CommunityThreadScreen(controller = controller, postId = 7L, onClose = {}, onOpenScript = {})
+                    }
+                }
+            }
+        }
+        composeRule.waitForIdle()
+        val drawn = composeRule.onNodeWithText("// nama 1", substring = true)
+            .fetchSemanticsNode()
+            .config[SemanticsProperties.Text]
+            .first()
+            .text
+        assertFalse("the code block carries a bidi isolate", drawn.contains(BidiText.LRI))
+        assertFalse("the code block carries a bidi isolate", drawn.contains(BidiText.PDI))
+        assertTrue("the block is the file rather than a line of it", drawn.contains("plot(rsi"))
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_PHONE)
+    fun `a post offers the chart first and the studio second`() {
+        // Run Σ-FIX 6. «I want this indicator» is what a reader means when they open a post that
+        // shares one, so the chart is the primary and the editor the secondary — the reverse of
+        // what 4.85.0 shipped, which offered only the editor and left the install to the reader.
+        val controller = CommunityController(ScriptBoard(), FakeCommunityIdentity(), scope)
+        proof("sigma-fix-share-thread-install-phone-fa") {
+            CommunityThreadScreen(
+                controller = controller,
+                postId = 7L,
+                onClose = {},
+                onOpenScript = {},
+                onAddScriptToChart = {},
+                installed = setOf(shared.id),
+            )
+        }
+        composeRule.onNodeWithText("«آر‌اس‌آی من» را به چارت من اضافه کنید").assertExists()
+        composeRule.onNodeWithText("«آر‌اس‌آی من» را در استودیو باز کنید").assertExists()
+        // Said only of this device, and in those words. There is no «۱۲ نصب» anywhere, because
+        // nothing knows that — see `ScriptInstallStore` and BLOCKED.md.
+        composeRule.onNodeWithText("شما این را اضافه کرده‌اید").assertExists()
     }
 
     @Test

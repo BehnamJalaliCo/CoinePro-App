@@ -73,6 +73,7 @@ import com.coinepro.core.designsystem.LogoProvider
 import com.coinepro.app.alerts.LocalAlertScheduler
 import com.coinepro.app.alerts.InAppAlertBus
 import com.coinepro.core.datastore.LastVisitStore
+import com.coinepro.core.datastore.ScriptInstallStore
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
@@ -142,6 +143,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var membershipController: MembershipController
     @Inject lateinit var watchlistStore: WatchlistStore
     @Inject lateinit var lastVisitStore: LastVisitStore
+    @Inject lateinit var scriptInstallStore: ScriptInstallStore
 
     @Inject
     lateinit var watchlistSyncController: WatchlistSyncController
@@ -291,6 +293,7 @@ class MainActivity : FragmentActivity() {
                 inAppAlerts = inAppAlertBus,
                 watchlistStore = watchlistStore,
                 lastVisitStore = lastVisitStore,
+                scriptInstallStore = scriptInstallStore,
                 watchlistSyncController = watchlistSyncController,
                 chartLayoutStore = chartLayoutStore,
                 chartDrawingStore = chartDrawingStore,

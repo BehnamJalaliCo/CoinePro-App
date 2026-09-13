@@ -88,4 +88,6 @@
     <string name="community_leaderboard_points">%1$s امتیاز</string>
     <string name="community_leaderboard_posts">%1$s نوشته</string>
     <string name="community_open_script">«%1$s» را در استودیو باز کنید</string>
+    <string name="community_add_script">«%1$s» را به چارت من اضافه کنید</string>
+    <string name="community_script_installed">شما این را اضافه کرده‌اید</string>
 </resources>

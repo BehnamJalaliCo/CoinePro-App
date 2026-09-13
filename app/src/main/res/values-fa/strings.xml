@@ -200,4 +200,5 @@
     <string name="profile_export_empty">هنوز چیزی برای پشتیبان‌گیری نیست.</string>
     <string name="profile_import_done">%1$s مورد بازگردانده شد.</string>
     <string name="profile_import_none">پشتیبانی در حافظه‌ی موقت نیست.</string>
+    <string name="toast_script_added_to_chart">به چارت شما اضافه شد</string>
 </resources>

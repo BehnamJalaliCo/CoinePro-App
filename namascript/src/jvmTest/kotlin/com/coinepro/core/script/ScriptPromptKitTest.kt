@@ -132,6 +132,64 @@ class ScriptPromptKitTest {
         }
     }
 
+    // ── the Persian prompt carries an English specification (run Σ-FIX 2) ────────────────────
+
+    @Test
+    fun `the Persian prompt asks in Persian and specifies in English`() {
+        // The owner's review of 4.85.0: «مدل‌ها با مشخصات انگلیسی کد دقیق‌تری می‌دهند». The reader
+        // and the model are two audiences, and only one of them is Persian — so the ask is Persian
+        // and the specification the model has to follow is English.
+        val prompt = ScriptPromptKit.prompt("XAUUSD", "H1")
+        assertTrue("the ask is not Persian", prompt.startsWith("یک اندیکاتور"))
+        assertTrue("no English specification block", prompt.contains("--- NamaScript specification"))
+        assertTrue("the block does not close", prompt.contains("--- end of specification ---"))
+        for (line in listOf(
+            "The logical operators are and, or, not",
+            "The previous bar is close[1]",
+            "There is no ta.rma; it is called ta.smma",
+            "signal(condition, text =",
+            "What draws:",
+            "Three examples:",
+        )) {
+            assertTrue("the English spec is missing «$line»", prompt.contains(line))
+        }
+    }
+
+    @Test
+    fun `both prompts specify the same language, word for word`() {
+        // One specification, not two: a Persian copy and an English copy would be two descriptions
+        // free to disagree, and the one nobody reads is the one that drifts.
+        val fa = ScriptPromptKit.prompt("XAUUSD", "H1")
+        val en = ScriptPromptKit.prompt("XAUUSD", "H1", english = true)
+        val spec = { text: String ->
+            text.substringAfter("--- NamaScript specification").substringBefore("--- end of specification ---")
+        }
+        assertEquals(spec(en), spec(fa))
+    }
+
+    @Test
+    fun `the reader's own chart is named to the model, in English`() {
+        // A model that knows it is writing for gold on the hourly picks different lengths. Inside
+        // the English block, because that is the half the model is reading.
+        val prompt = ScriptPromptKit.prompt("XAUUSD", "H1")
+        assertTrue(prompt.contains("The reader's chart: XAUUSD on the H1 timeframe"))
+        assertTrue(
+            "the chart line is outside the specification block",
+            prompt.indexOf("The reader's chart") < prompt.indexOf("--- end of specification ---"),
+        )
+    }
+
+    @Test
+    fun `the prompt says the reader's own words may stay Persian`() {
+        // Without this the English specification quietly asks for English titles, and a Persian
+        // reader gets a chart legend in a language they did not choose — the exact leak run G spent
+        // itself on, arriving through a prompt.
+        assertTrue(
+            ScriptPromptKit.prompt("XAUUSD", "H1")
+                .contains("Titles and signal text may be written in Persian"),
+        )
+    }
+
     private companion object {
         /** Names the prompt teaches that are not `ta.`-style calls but plain built-ins. */
         val DRAWING = setOf("plot", "hline", "marker", "fill", "input", "signal", "color.new")

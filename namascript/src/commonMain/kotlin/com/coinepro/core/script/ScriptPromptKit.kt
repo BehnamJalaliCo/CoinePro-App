@@ -25,15 +25,37 @@ package com.coinepro.core.script
 object ScriptPromptKit {
 
     /**
-     * The prompt's own version, bumped whenever the language's surface changes.
+     * The prompt's own version, bumped whenever a change here could change an assistant's answer.
      *
-     * Not the app's version: the app ships many times without the language moving, and a prompt
-     * that claimed to be new every fortnight would teach a reader that the number means nothing.
+     * That is the language's surface *and* the prompt's own shape — 2 is the split into a Persian
+     * ask and an English specification, which changes what comes back even though the language did
+     * not move. Not the app's version: the app ships many times without either changing, and a
+     * number that was new every fortnight would teach a reader that it means nothing.
      */
-    const val VERSION: String = "1"
+    const val VERSION: String = "2"
 
     /** How many functions of each group the prompt lists before it says «and more». */
     private const val PER_GROUP = 6
+
+    /**
+     * Where the English specification starts inside a prompt.
+     *
+     * Public because the screen draws the two halves differently — the ask as prose in the reader's
+     * own direction, the specification as a code block that does not wrap — and it must split on
+     * the same marker the prompt is built with rather than on a guess about where English begins.
+     */
+    const val SPEC_MARK: String = "--- NamaScript specification"
+
+    /**
+     * A prompt split into the half the reader reads and the half the model reads.
+     *
+     * Second is null for anything that is not one of these prompts, so a caller handed arbitrary
+     * text draws it as prose rather than as a block of code it is not.
+     */
+    fun parts(prompt: String): Pair<String, String?> {
+        val at = prompt.indexOf(SPEC_MARK)
+        return if (at < 0) prompt to null else prompt.substring(0, at).trimEnd() to prompt.substring(at)
+    }
 
     /**
      * The whole prompt, ready to be copied into an assistant.
@@ -45,60 +67,58 @@ object ScriptPromptKit {
     fun prompt(symbol: String, timeframe: String, english: Boolean = false): String =
         if (english) promptEn(symbol, timeframe) else promptFa(symbol, timeframe)
 
+    /**
+     * The Persian prompt: a Persian ask, and the language's specification **in English**.
+     *
+     * ### Why the spec is English even in the Persian app
+     *
+     * Because the reader is not the one reading it. Every assistant a Persian reader reaches —
+     * ChatGPT, Claude, the rest — was trained overwhelmingly on English technical text, and a
+     * specification written in Persian is a specification the model half-understands: it returns
+     * Pine with Persian titles, or invents a third language out of the two. The same six hundred
+     * characters in English come back as code that runs.
+     *
+     * So the two halves are split by who reads them. The reader reads the top — what this prompt is,
+     * what to paste back — in their own language. The model reads the specification, and it reads it
+     * in the language the model is best at. The owner's review of 4.85.0 asked for exactly this
+     * split, and it is the one part of the app where English is not the doorway but the tool.
+     */
     private fun promptFa(symbol: String, timeframe: String): String = buildString {
-        appendLine("یک اندیکاتور به زبان «نمااسکریپت» بنویس. فقط کد بده، بدون توضیح.")
+        appendLine("یک اندیکاتور به زبان «نمااسکریپت» برای من بنویس. فقط کد بده، بدون توضیح.")
+        appendLine("مشخصات زبان در بخش انگلیسی زیر آمده است؛ دقیقاً از همان پیروی کن.")
+        appendLine("جواب را که گرفتی، در همان صفحه‌ی «پرسیدن از دستیار» دکمه‌ی «چسباندن جواب» را بزن.")
         appendLine()
-        appendLine("نمااسکریپت زبان اندیکاتورنویسی اپلیکیشن پرو چارت است. پاین (Pine) نیست؛ شبیه آن است و فرق‌هایی دارد:")
-        appendLine("- سربرگ ندارد. نه //@version، نه indicator(...)، نه strategy(...). مستقیم کد را شروع کن.")
-        appendLine("- عملگرهای منطقی and و or و not هستند، نه && و || و !.")
-        appendLine("- کندل قبلی close[1] است، نه close(1).")
-        appendLine("- هر خط یک دستور. if و for و while و تعریف تابع نداریم؛ به جای if از iff(شرط، الف، ب) استفاده کن.")
-        appendLine("- «var x = …» و «x := …» هستند، اما تقریباً هیچ‌وقت لازم نمی‌شوند: هر سری یک‌جا روی همه‌ی کندل‌ها حساب می‌شود.")
-        appendLine("- ta.rma وجود ندارد؛ نامش ta.smma است.")
-        appendLine()
-        appendLine("چه چیزی در دسترس است:")
-        appendLine("- سری‌ها: " + ScriptReference.SERIES.joinToString(", ") { it.signature.substringBefore("(") })
-        for (group in ScriptReference.GROUPS) {
-            val names = group.functions.take(PER_GROUP).joinToString("، ") { ScriptReferenceEn.nameOf(it.signature) }
-            val more = if (group.functions.size > PER_GROUP) " و چند تای دیگر" else ""
-            appendLine("- ${group.title}: $names$more")
-        }
-        appendLine()
-        appendLine("چه چیزی می‌کشد:")
-        appendLine("- plot(series, title = \"نام\", color = color.gold) — یک خط. جایش خودکار تعیین می‌شود؛ pane = \"own\" پنل جدا و pane = \"price\" روی قیمت.")
-        appendLine("- hline(60, title = \"سقف\") — یک خط افقی ثابت")
-        appendLine("- marker(condition, style = \"up\", title = \"نام\") — نشانه روی کندل‌هایی که شرط درست است؛ style یکی از up، down یا circle")
-        appendLine("- input(20, title = \"دوره\", min = 2, max = 200) — عددی که کاربر می‌تواند عوض کند")
-        appendLine("- رنگ‌ها: " + ScriptReference.COLOUR_NAMES.joinToString("، "))
-        appendLine()
-        appendLine("و مهم‌تر از همه:")
-        appendLine("- signal(condition, text = \"چه اتفاقی افتاد\") — این چیزی است که اسکریپت را به یک «سیگنال» تبدیل می‌کند.")
-        appendLine("  اپلیکیشن روی همین شرط نرخ برد تاریخی حساب می‌کند و همان جمله را به کاربر نشان می‌دهد.")
-        appendLine("  دست‌کم یک signal بنویس؛ برای جهت مخالف یکی دیگر.")
-        appendLine()
-        appendLine("سه نمونه:")
-        appendLine()
-        for (example in EXAMPLES) {
-            appendLine("// ${example.title}")
-            appendLine(example.source.trimIndent())
-            appendLine()
-        }
-        appendLine("چارت کاربر: $symbol روی تایم‌فریم $timeframe.")
-        appendLine()
-        appendLine("حالا این را بنویس: ")
+        append(spec(symbol, timeframe))
         appendLine()
         appendLine("(نسخه‌ی راهنما: $VERSION)")
     }
 
     private fun promptEn(symbol: String, timeframe: String): String = buildString {
-        appendLine("Write an indicator in NamaScript. Code only, no commentary.")
+        appendLine("Write an indicator in NamaScript for me. Code only, no commentary.")
+        appendLine("The language's specification is below; follow it exactly.")
+        appendLine()
+        append(spec(symbol, timeframe))
+        appendLine()
+        appendLine("(kit version: $VERSION)")
+    }
+
+    /**
+     * The specification both prompts carry, in English, generated from the reference.
+     *
+     * One function and not two, because the thing being described is one language. A Persian copy
+     * and an English copy would be two descriptions free to disagree, and the one nobody reads is
+     * the one that would drift — which is the same argument that made this generated from
+     * `ScriptReference` rather than written out beside it.
+     */
+    private fun spec(symbol: String, timeframe: String): String = buildString {
+        appendLine("--- NamaScript specification (read this in English) ---")
         appendLine()
         appendLine("NamaScript is the Pro Chart app's indicator language. It is not Pine; it looks like it and differs:")
         appendLine("- No header. No //@version, no indicator(...), no strategy(...). Start with the code.")
         appendLine("- The logical operators are and, or, not — not &&, ||, !.")
         appendLine("- The previous bar is close[1], not close(1).")
         appendLine("- One statement per line. No if, for or while and no function definitions; use iff(condition, a, b) in place of if.")
-        appendLine("- “var x = …” and “x := …” exist but are almost never needed: every series is computed over all the bars at once.")
+        appendLine("- \u201Cvar x = \u2026\u201D and \u201Cx := \u2026\u201D exist but are almost never needed: every series is computed over all the bars at once.")
         appendLine("- There is no ta.rma; it is called ta.smma.")
         appendLine()
         appendLine("What is available:")
@@ -120,6 +140,7 @@ object ScriptPromptKit {
         appendLine("- signal(condition, text = \"what happened\") — this is what turns a script into a *signal*.")
         appendLine("  The app measures that condition's historical win rate and shows the reader your sentence.")
         appendLine("  Write at least one; write a second for the other direction.")
+        appendLine("  Titles and signal text may be written in Persian — the reader reads them.")
         appendLine()
         appendLine("Three examples:")
         appendLine()
@@ -128,11 +149,9 @@ object ScriptPromptKit {
             appendLine(example.source.trimIndent())
             appendLine()
         }
-        appendLine("The reader's chart: $symbol on the $timeframe timeframe.")
+        appendLine("The reader's chart: $symbol on the $timeframe timeframe. Choose lengths that suit it.")
         appendLine()
-        appendLine("Now write: ")
-        appendLine()
-        appendLine("(kit version: $VERSION)")
+        appendLine("--- end of specification ---")
     }
 
     /**

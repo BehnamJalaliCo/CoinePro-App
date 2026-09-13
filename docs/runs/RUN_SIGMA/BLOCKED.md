@@ -120,3 +120,24 @@ Robolectric classes asking for an API level the hosted runner cannot supply, whi
 passed in this container. Fixed in 4.85.1 by pinning the default in `robolectric.properties`, with
 `RobolectricDefaultSdkTest` to notice if it moves. The lesson is the one D10 keeps making: a check
 that is green where somebody is looking and red where nobody is has told you nothing.
+
+## 8. How many people installed a shared script
+
+**Blocked on:** an endpoint that counts installs. There is none, and there is no honest local
+substitute.
+
+A shared post carries «به چارت من اضافه کنید» and the install works — `putScript`, the same door the
+studio's own button uses. What it cannot carry is the number beside it. An install count is a fact
+about everybody who read the post, and this device knows only what this device did.
+
+The tempting shortcut is to print the local number under the public word, and it is worse than
+nothing: «۱۲ نصب» computed from one phone reads as social proof and is a private figure wearing a
+public label — which is the failure D2 is about, arriving through a feature rather than through a
+percentage.
+
+**Implemented instead:** `ScriptInstallStore` remembers what this device added, and the card says
+exactly that — «شما این را اضافه کرده‌اید» — which is true, useful, and about the reader rather than
+about a crowd. The board's own like is server-side and stays the social number on the post.
+
+The day the community route grows a counter, the shape is a field on the post, and the sentence
+above the button becomes two: what everybody did, and what you did.

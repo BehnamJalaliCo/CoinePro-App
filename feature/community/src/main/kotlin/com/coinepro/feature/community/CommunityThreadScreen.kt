@@ -99,6 +99,22 @@ fun CommunityThreadScreen(
      * build that does not carry one.
      */
     onOpenScript: ((ScriptDocument) -> Unit)? = null,
+    /**
+     * Puts a shared script straight on the reader's chart — the one-tap install (run Σ-FIX 6).
+     *
+     * The primary of the two, because «I want this indicator» is what a reader means when they open
+     * a post that shares one; the studio is where they go to *read* it first, which is the smaller
+     * half. Null where the host has no chart to add to.
+     */
+    onAddScriptToChart: ((ScriptDocument) -> Unit)? = null,
+    /**
+     * Public ids this device already added, so the button can say so.
+     *
+     * This device's own, and nobody else's — see `ScriptInstallStore`. There is no «۱۲ نصب» here
+     * because there is no endpoint that knows, and a private count under a public word would be a
+     * figure that reads as social proof and is not.
+     */
+    installed: Set<String> = emptySet(),
 ) {
     val feed by controller.state.collectAsStateWithLifecycle()
     LaunchedEffect(postId) { controller.openThread(postId) }
@@ -200,11 +216,30 @@ fun CommunityThreadScreen(
                 }
                 shared?.let { (document, open) ->
                     item("shared-script") {
-                        CoineProSecondaryButton(
-                            text = stringResource(R.string.community_open_script, document.name),
-                            onClick = { open(document) },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+                            onAddScriptToChart?.let { add ->
+                                CoineProPrimaryButton(
+                                    text = stringResource(R.string.community_add_script, document.name),
+                                    onClick = { add(document) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                            CoineProSecondaryButton(
+                                text = stringResource(R.string.community_open_script, document.name),
+                                onClick = { open(document) },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            // Said only when it is true of this device, and said in those words.
+                            if (document.id in installed) {
+                                Text(
+                                    text = stringResource(R.string.community_script_installed),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = CoineProColors.TextMuted,
+                                    textAlign = TextAlign.Right,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                        }
                     }
                 }
 

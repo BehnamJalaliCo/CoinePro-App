@@ -163,6 +163,7 @@ import com.coinepro.feature.alerts.AlertsController
 import com.coinepro.feature.alerts.StoredWebhooks
 import com.coinepro.core.datastore.ArenaStore
 import com.coinepro.core.datastore.LastVisitStore
+import com.coinepro.core.datastore.ScriptInstallStore
 import com.coinepro.feature.chart.ChartWorkspaceStore
 import com.coinepro.feature.screener.CandleScreenerBarSource
 import com.coinepro.feature.screener.MarketTickerScreenerSource
@@ -746,6 +747,17 @@ object AppModule {
     @Provides
     @Singleton
     fun lastVisitStore(dataStore: DataStore<Preferences>): LastVisitStore = LastVisitStore(dataStore)
+
+    /**
+     * Which shared scripts this device put on its chart (run Σ-FIX 6).
+     *
+     * The same preferences file as everything else local. Deliberately not an install *count* —
+     * see [ScriptInstallStore] for why a private number must not wear a public word.
+     */
+    @Provides
+    @Singleton
+    fun scriptInstallStore(dataStore: DataStore<Preferences>): ScriptInstallStore =
+        ScriptInstallStore(dataStore)
 
     /**
      * The reader's own name and face.

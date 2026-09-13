@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.remember
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.designsystem.CoineProCard
+import com.coinepro.core.designsystem.CoineProCodeBlock
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
@@ -32,6 +33,7 @@ import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.inEnglish
+import com.coinepro.core.script.ScriptPromptKit
 import com.coinepro.core.script.ScriptPaste
 import com.coinepro.core.script.ScriptTemplate
 
@@ -294,13 +296,8 @@ fun ScriptPromptBody(
             // `TextDirection.Content` resolves per paragraph from its first strong character, which
             // is exactly the rule this content wants: Persian sentences right to left, `ta.ema(...)`
             // left to right, decided line by line rather than declared for the block.
-            Text(
-                text = remember(prompt) { isolatedForDisplay(prompt) },
-                style = MaterialTheme.typography.bodySmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 11.sp,
-                    textDirection = TextDirection.Content,
-                ),
+            val parts = remember(prompt) { ScriptPromptKit.parts(prompt) }
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = PROMPT_HEIGHT)
@@ -308,7 +305,23 @@ fun ScriptPromptBody(
                     .padding(CoineProSpacing.One)
                     .verticalScroll(rememberScrollState())
                     .testTag(PROMPT_TEXT),
-            )
+                verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+            ) {
+                Text(
+                    text = remember(parts.first) { isolatedForDisplay(parts.first) },
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp,
+                        textDirection = TextDirection.Content,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                // The specification is English and is code as much as it is prose — the function
+                // lists, the `plot(...)` family, three whole scripts. Drawn as a paragraph it came
+                // back with every line's dash at the wrong end; drawn as a code block it reads the
+                // way it will read in the assistant's box (run Σ-FIX 2, the same rule as a post's).
+                parts.second?.let { spec -> CoineProCodeBlock(code = spec, framed = false) }
+            }
             CoineProPrimaryButton(
                 text = stringResource(R.string.script_prompt_copy),
                 // The **raw** prompt, never the isolated one: the isolates are invisible characters

@@ -533,3 +533,16 @@ const val SHEET_PREVIEW_SCRIM_ALPHA = 0.2f
  * On a phone it costs nothing: 411 dp is already narrower.
  */
 val CONTENT_MAX_WIDTH = 720.dp
+
+/**
+ * The same cap on a window wide enough for **two** columns of content (run Σ-FIX 7).
+ *
+ * 720 is one readable column, and on a 1973 dp panel a single 720 dp column with two empty thirds
+ * beside it is not restraint, it is a phone screen in the middle of a tablet — which is what the
+ * owner's review of 4.85.0 said about Home, and they were right. A dashboard on that much glass
+ * puts two columns side by side and caps the pair.
+ *
+ * 1160 because it is two 560 dp columns and a gutter: 560 is the sheet's own cap, which is the
+ * width this app already decided a column of controls reads well at.
+ */
+val CONTENT_MAX_WIDTH_WIDE = 1160.dp

@@ -55,6 +55,8 @@ import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.SinceLastVisit
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.designsystem.CONTENT_MAX_WIDTH
+import com.coinepro.core.designsystem.coineProWindowClass
+import com.coinepro.core.designsystem.CONTENT_MAX_WIDTH_WIDE
 import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProAgentOrb
 import com.coinepro.core.designsystem.CoineProAssetLogo
@@ -236,6 +238,18 @@ fun HomeScreen(
     // reader opens and stares at, so it is the one where the reflex to tug is strongest — and it
     // was the one with no answer to it at all, because the only retry lived inside an error state
     // the reader only sees when something is already wrong.
+    // **Two columns where there is room for two** (run Σ-FIX 7).
+    //
+    // 4.84.0 capped this list at one readable column, which fixed a row whose symbol and figure were
+    // two thousand dp apart and introduced the fault the owner's review names: a phone-width column
+    // in the middle of a Pixel Tablet with both thirds empty. Restraint and waste look identical in
+    // a screenshot; the difference is whether the space could have carried something.
+    //
+    // So on an expanded window the pairs that belong together go side by side and the *pair* is
+    // capped, rather than each of them being capped alone. The decision is the window class, which
+    // is a question about the space this layout was given — never «is this a tablet».
+    val wide = coineProWindowClass().showsTwoPanes
+
     CoineProPullToRefresh(
         refreshing = state.connection == MarketConnectionState.CONNECTING,
         onRefresh = onRetry,
@@ -249,7 +263,7 @@ fun HomeScreen(
             // On a phone the cap is wider than the screen, so nothing moves.
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .widthIn(max = CONTENT_MAX_WIDTH)
+                .widthIn(max = if (wide) CONTENT_MAX_WIDTH_WIDE else CONTENT_MAX_WIDTH)
                 .fillMaxSize()
                 .testTag(HOME_LIST),
             contentPadding = PaddingValues(
@@ -268,8 +282,24 @@ fun HomeScreen(
             // happened — which is the question somebody opening an app after a night's sleep is
             // actually asking. It is absent far more often than it is present, which is what keeps
             // it worth reading when it is there.
-            since?.let { item { SinceCard(it) } }
-            challenge?.let { item { ChallengeCard(it, streak, onDoChallenge) } }
+            // Side by side on a tablet (run Σ-FIX 7). They are two short cards and one question —
+            // «what happened, and what now» — and stacking them on a twelve-inch panel spends a
+            // third of the fold saying it twice as tall. On a phone they stay one above the other,
+            // because two 180 dp columns at 411 dp is two cards nobody can read.
+            if (wide && since != null && challenge != null) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
+                    ) {
+                        Box(Modifier.weight(1f)) { SinceCard(since) }
+                        Box(Modifier.weight(1f)) { ChallengeCard(challenge, streak, onDoChallenge) }
+                    }
+                }
+            } else {
+                since?.let { item { SinceCard(it) } }
+                challenge?.let { item { ChallengeCard(it, streak, onDoChallenge) } }
+            }
 
             // Only when the build actually serves both. A one-option switch is a label pretending to be
             // a control, and it would take the top of the screen to say nothing.
@@ -283,7 +313,10 @@ fun HomeScreen(
                 }
             }
 
-            item {
+            // The hero, and — where the window has room for it — the reader's markets beside it
+            // rather than a screen below it (run Σ-FIX 7). Their money and their instruments are
+            // the two things somebody opens this app to look at; on a tablet they fit in one look.
+            val hero: @Composable () -> Unit = {
                 // The brief's hero: the accent at 18 % fading to nothing down behind the balance.
                 // The one gradient a surface in this app carries; the gate's allow-list names it.
                 Box(
@@ -305,6 +338,44 @@ fun HomeScreen(
                         onOpenPortfolio = onOpenPortfolio,
                     )
                 }
+            }
+            val markets: @Composable () -> Unit = {
+                if (quotes.isEmpty()) {
+                    EmptyMarket(state = state, onRetry = onRetry)
+                } else {
+                    // One card, not two. The watchlist used to be a second card above this one, so a
+                    // reader with three starred symbols scrolled two headings and two card edges
+                    // through the same rows twice. Starred symbols lead, in the order they were
+                    // starred, and the rest follow — which is the same information in one object.
+                    //
+                    // Capped, and the cap is the point: eight rows at eighty points each was the
+                    // largest thing on the page, and the markets screen holds all of them, denser,
+                    // with a filter and a search. The footer says so and goes there.
+                    val rest = quotes.filterNot { it.instrument.symbol in watchlist }
+                    MarketCard(
+                        quotes = (watched + rest).take(HOME_MARKET_ROWS),
+                        onOpenSymbol = onOpenSymbol,
+                        watchlist = watchlist,
+                        onToggleWatch = onToggleWatch,
+                        more = (watched.size + rest.size - HOME_MARKET_ROWS).takeIf { it > 0 },
+                        onOpenMarket = onOpenMarket,
+                        sparklines = sparklines,
+                    )
+                }
+            }
+
+            if (wide) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
+                    ) {
+                        Box(Modifier.weight(1f)) { hero() }
+                        Box(Modifier.weight(1f)) { markets() }
+                    }
+                }
+            } else {
+                item { hero() }
             }
 
             // **The board, above the reader's own markets and below their own money.**
@@ -347,29 +418,9 @@ fun HomeScreen(
             // nothing. The state this card exists for is the one where the plan is about to end.
             subscription?.takeIf { it.endingSoon }?.let { item { SubscriptionCard(it) } }
 
-            if (quotes.isEmpty()) {
-                item { EmptyMarket(state = state, onRetry = onRetry) }
-            } else {
-                // One card, not two. The watchlist used to be a second card above this one, so a
-                // reader with three starred symbols scrolled two headings and two card edges
-                // through the same rows twice. Starred symbols lead, in the order they were
-                // starred, and the rest follow — which is the same information in one object.
-                //
-                // Capped, and the cap is the point: eight rows at eighty points each was the
-                // largest thing on the page, and the markets screen holds all of them, denser,
-                // with a filter and a search. The footer says so and goes there.
-                val rest = quotes.filterNot { it.instrument.symbol in watchlist }
-                item {
-                    MarketCard(
-                        quotes = (watched + rest).take(HOME_MARKET_ROWS),
-                        onOpenSymbol = onOpenSymbol,
-                        watchlist = watchlist,
-                        onToggleWatch = onToggleWatch,
-                        more = (watched.size + rest.size - HOME_MARKET_ROWS).takeIf { it > 0 },
-                        onOpenMarket = onOpenMarket,
-                        sparklines = sparklines,
-                    )
-                }
+            // Drawn above, beside the hero, where the window was wide enough for both.
+            if (!wide) {
+                item { markets() }
             }
 
             if (openSignals.isNotEmpty()) {

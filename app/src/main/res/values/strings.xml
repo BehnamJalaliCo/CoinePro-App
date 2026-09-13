@@ -200,4 +200,5 @@
     <string name="profile_export_empty">There is nothing to back up yet.</string>
     <string name="profile_import_done">Restored %1$s things.</string>
     <string name="profile_import_none">There is no backup in the clipboard.</string>
+    <string name="toast_script_added_to_chart">Added to your chart</string>
 </resources>

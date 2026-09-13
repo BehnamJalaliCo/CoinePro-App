@@ -103,7 +103,7 @@ class ScriptPasteProofTest {
     @Config(sdk = [34], qualifiers = FA_PHONE)
     fun `the prompt kit, in Persian`() {
         proof("sigma1-prompt-kit-phone-fa") {
-            CoineProSheetBody(title = "گرفتن اسکریپت از هوش مصنوعی", subtitle = "نسخه‌ی متن ۱") {
+            CoineProSheetBody(title = "گرفتن اسکریپت از هوش مصنوعی", subtitle = "نسخه‌ی متن " + ScriptPromptKit.VERSION.map { "۰۱۲۳۴۵۶۷۸۹"[it - '0'] }.joinToString("")) {
                 ScriptPromptBody(
                     prompt = ScriptPromptKit.prompt(symbol = "XAUUSD", timeframe = "۱ ساعته"),
                     onOpenAssistant = {},
@@ -117,7 +117,7 @@ class ScriptPasteProofTest {
     @Config(sdk = [34], qualifiers = EN_PHONE)
     fun `the prompt kit, in English`() {
         proof("sigma1-prompt-kit-phone-en") {
-            CoineProSheetBody(title = "Get a script from an AI", subtitle = "Prompt version 1") {
+            CoineProSheetBody(title = "Get a script from an AI", subtitle = "Prompt version " + ScriptPromptKit.VERSION) {
                 ScriptPromptBody(
                     prompt = ScriptPromptKit.prompt(symbol = "XAUUSD", timeframe = "1 hour", english = true),
                     onOpenAssistant = {},

@@ -46,6 +46,8 @@ import com.coinepro.core.community.CommunityReactions
 import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.common.BidiText
+import com.coinepro.core.script.ScriptShare
+import com.coinepro.core.designsystem.CoineProCodeBlock
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -166,21 +168,39 @@ internal fun CommunityPostCard(
                 post.categoryLabel?.let { label -> TopicChip(label) }
             }
 
-            // A post that shares a script is Persian prose with a whole Latin file under it, and
-            // that is the shape bidi reordering gets wrong: every line comes out with its leading
-            // token at the far end, so `// nama 1` reads «1 nama //» and `plot(rsi)` reads
-            // «(rsi)plot`. `BidiText.isolateCode` wraps each code run in an isolate — on the way to
-            // the screen only; the post's own text is untouched, and the reader who copies it gets
-            // what the author wrote (run Σ, S3 D; the same fix as the prompt kit's).
-            Text(
-                text = remember(post.content) { BidiText.isolateCode(post.content) },
-                style = MaterialTheme.typography.bodyMedium,
-                color = CoineProColors.TextSecondary,
-                maxLines = if (expanded) Int.MAX_VALUE else FEED_LINES,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Right,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            // **A post is prose, and sometimes a file** (run Σ-FIX 1).
+            //
+            // The two halves are read in opposite directions and drawing them as one paragraph gets
+            // the file wrong every time: in a right-to-left paragraph each line's leading token is
+            // pulled to the far end, so `// nama 1` read «1 nama //» and
+            // `plot(rsi, title = "RSI")` came apart in the middle. The first fix isolated the code
+            // runs, which straightened the tokens and left the block wrapped and right-aligned —
+            // better, and still not what code looks like.
+            //
+            // So the file goes to `CoineProCodeBlock`, which is what the studio's editor does:
+            // left-to-right in layout as well as in text, monospace, no wrapping, scrolled sideways.
+            // The prose keeps the isolates, because a Persian sentence with `ta.ema` in the middle
+            // of it is the case those were written for.
+            val halves = remember(post.content) { ScriptShare.split(post.content) }
+            if (halves.prose.isNotBlank()) {
+                Text(
+                    text = remember(halves.prose) { BidiText.isolateCode(halves.prose) },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CoineProColors.TextSecondary,
+                    maxLines = if (expanded) Int.MAX_VALUE else FEED_LINES,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Right,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            halves.code?.let { code ->
+                // In the feed the file is a promise rather than a read: four lines and the reader
+                // taps through if it interests them. Whole in the thread, where they chose it.
+                CoineProCodeBlock(
+                    code = if (expanded) code else code.lineSequence().take(FEED_CODE_LINES).joinToString("\n"),
+                    modifier = Modifier.padding(top = CoineProSpacing.Half),
+                )
+            }
 
             // Under the words and above the counters, which is where a picture belongs on a board:
             // the text says what the author is claiming and the picture is the evidence for it.
@@ -423,6 +443,8 @@ private fun ReactionRow(post: CommunityPost, onReact: ((String) -> Unit)?) {
  * phone, and a feed of those is one post per screen — a list nobody scrolls. Four is enough to know
  * whether the post is for you and short enough that six of them fit.
  */
+private const val FEED_CODE_LINES = 4
+
 private const val FEED_LINES = 4
 
 /**

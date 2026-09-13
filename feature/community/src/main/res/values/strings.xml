@@ -77,4 +77,6 @@
     <string name="community_reply">Reply</string>
     <string name="community_best_badge">Best answer</string>
     <string name="community_open_script">Open “%1$s” in the studio</string>
+    <string name="community_add_script">Add “%1$s” to my chart</string>
+    <string name="community_script_installed">You have added this one</string>
 </resources>

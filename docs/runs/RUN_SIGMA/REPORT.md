@@ -498,3 +498,99 @@ its sentence rather than predicting it.
 | Tests | `ScriptShareTest` (11), `ScriptShareProofTest` (3) |
 | Bug found by the first frame | code on the board read backwards; fixed for the board and the prompt kit at once |
 | Service needed | none |
+
+# Σ-FIX — the owner's review of 4.85.0 (4.86.0)
+
+Twenty-four frames, seven items back. Two were real defects, two were things the app does and could
+not prove, two were features worth having, and one was a zip file.
+
+## The code on the board, and the third attempt at it
+
+A shared script rendered as one right-to-left paragraph came out with every line's leading token at
+the far end: `// nama 1` read «1 nama //». Σ4 fixed that by wrapping the code runs in bidi isolates,
+which straightened the tokens — and left the file wrapped, right-aligned and carrying invisible
+control characters. Better, and still not code.
+
+A code block is four decisions that travel together, and the fourth is the one everybody forgets:
+
+* left to right **as a layout direction**, not only a text one, or the block is pushed to the right
+  edge of the card;
+* monospace, at the editor's own size and line height;
+* no wrapping, with a horizontal scroll, because a wrapped line of NamaScript reads as three
+  statements;
+* and the Persian inside it **left alone** — in an LTR paragraph the bidi algorithm already puts a
+  Persian comment where it belongs, and isolating it by hand reproduces the original bug.
+
+That is `CoineProCodeBlock`, and both the board and the prompt kit now use it. The post is split into
+prose and file by `ScriptShare.split`, which is the screen's half of the same decision: they are read
+in opposite directions and were being drawn as one paragraph.
+
+The test asserts the *absence* of an isolate in the drawn text rather than the presence of the
+words, because `// nama 1` matches either way and only one of them is a code block.
+
+## A Persian ask and an English specification
+
+The owner's item 2: «مدل‌ها با مشخصات انگلیسی کد دقیق‌تری می‌دهند». That is right, and the reason is
+worth writing down — the reader and the model are two audiences and only one of them is Persian.
+Every assistant a Persian reader reaches was trained overwhelmingly on English technical text, and a
+specification in Persian comes back as Pine with Persian titles.
+
+So the prompt is now three lines of Persian ask and one generated English specification, shared word
+for word between both prompts (one language, one description of it) with the reader's chart named
+inside the English half. It also says, explicitly, that titles and signal text may stay Persian —
+without that line the English spec quietly asks for an English legend, which is run G's leak
+arriving through a prompt.
+
+## The two the review could not see
+
+Marker labels at 4, 8 and 16 dp have had seven frames since Σ0, and the documents — `DOCTRINE.md`,
+`CHECKLIST.md`, `REPORT.md`, `BLOCKED.md` — have been in the repository the whole time. Neither was
+in the package that was handed over. That is D10 defeated by a zip file: a reviewer with frames and
+no documents cannot check a claim against what the run says about itself, and «it is in the repo» is
+not an answer when the deliverable is what somebody was given.
+
+## The install, and the number that is not there
+
+«به چارت من اضافه کنید» is now the primary button on a post that shares a script, with the studio
+second — 4.85.0 had it the other way round, which made a reader who wanted the indicator walk
+through an editor to get it. It is the same `putScript` call the studio's own button makes, so an
+installed script is one of the reader's indicators in every sense that matters.
+
+What is deliberately absent is the counter. How many people installed a script is a fact about
+everybody; this device knows what this device did. Printing the local number under the word «نصب»
+would be a private figure wearing a public label, which is the failure D2 exists to forbid arriving
+through a feature instead of a percentage. `ScriptInstallStore` remembers this device's own installs
+and the card says exactly that. BLOCKED item 8 names the endpoint.
+
+## The tablet, and the correction to the correction
+
+4.84.0 capped Home's column because a watchlist row on a 1973 dp panel had its symbol at one edge
+and its figure at the other. That was right and it was half the answer: a 720 dp column in the
+middle of a twelve-inch panel with both thirds empty is not restraint, it is a phone screen on a
+tablet, which is what the review said.
+
+Home now puts the pairs that belong together side by side — «وقتی نبودید» beside «امروز», the
+balance beside the markets — and caps the *pair* at 1160 dp, which is two sheet-widths and a gutter.
+`ContentWidthTest` holds both halves, and the second is the one that matters: on a phone they stay
+stacked, because two 180 dp columns at 411 dp is two cards nobody can read.
+
+## And the guest who signs in
+
+S6 claimed export, import and migration. The first two had a round-trip test and no frame; the third
+had neither. Both are closed: the profile's backup rows are in a frame with their own note about
+what is *not* in the file, and `GuestMigrationTest` holds the migration — a guest's list survives
+their first sync, an account's markets are added rather than substituted, and an empty account takes
+nothing away.
+
+The reason it holds is worth stating because it is structural rather than careful: **there is no
+account-scoped store in this app.** Signing in changes who the server thinks you are and changes
+nothing about what is on the phone. The migration is not a step that runs; it is the absence of a
+step that would destroy something — which is exactly the kind of property that quietly stops being
+true, and now has a test.
+
+| | |
+|---|---|
+| Items | 7 of 7 closed; 2 with a named limit (public install count, server sync) |
+| New | `CoineProCodeBlock`, `ScriptShare.split`, `ScriptPromptKit.spec`, `ScriptInstallStore`, two-column Home |
+| Tests | `GuestMigrationTest` (3), `ContentWidthTest` (4), 4 new in `ScriptShareTest`, 4 in `ScriptPromptKitTest`, 2 in `ScriptShareProofTest` |
+| Frames | the thread with its code block and its install button, the prompt kit, tablet Home in two columns, the guest's backup rows |

@@ -133,6 +133,7 @@ import com.coinepro.app.ideas.IdeasScreen
 import com.coinepro.core.datastore.UserPreferencesStore
 import com.coinepro.core.datastore.StoredProfile
 import com.coinepro.core.datastore.LastVisitStore
+import com.coinepro.core.datastore.ScriptInstallStore
 import com.coinepro.core.datastore.Watchlist
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.watchlistsync.WatchlistSyncController
@@ -896,6 +897,8 @@ fun CoineProApp(
     watchlistStore: WatchlistStore,
     /** When the reader was last on Home, for «since your last visit» (run Σ, S5). */
     lastVisitStore: LastVisitStore,
+    /** Which shared scripts this device put on a chart (run Σ-FIX 6). */
+    scriptInstallStore: ScriptInstallStore,
     watchlistSyncController: WatchlistSyncController,
     chartLayoutStore: ChartLayoutStore,
     chartDrawingStore: ChartDrawingStore,
@@ -1453,6 +1456,7 @@ fun CoineProApp(
                 storedWatchlist = watchlist,
                 watchlistStore = watchlistStore,
                 lastVisitStore = lastVisitStore,
+                scriptInstallStore = scriptInstallStore,
                 onToggleWatch = { symbol -> scope.launch { watchlistStore.toggle(symbol) } },
                 onRefreshAccount = accountController::refresh,
                 signalController = signalController,
@@ -1686,6 +1690,7 @@ fun CoineProApp(
                         storedWatchlist = watchlist,
                         watchlistStore = watchlistStore,
                         lastVisitStore = lastVisitStore,
+                        scriptInstallStore = scriptInstallStore,
                         onToggleWatch = { symbol -> scope.launch { watchlistStore.toggle(symbol) } },
                         onRefreshAccount = {},
                         signalController = signalController,
@@ -2023,6 +2028,8 @@ private fun MainShell(
     watchlistStore: WatchlistStore,
     /** When the reader was last on Home, for «since your last visit» (run Σ, S5). */
     lastVisitStore: LastVisitStore,
+    /** Which shared scripts this device put on a chart (run Σ-FIX 6). */
+    scriptInstallStore: ScriptInstallStore,
     onToggleWatch: (String) -> Unit,
     onSignalLaunchConsumed: () -> Unit,
     onActivityLaunchConsumed: () -> Unit,
@@ -2190,6 +2197,11 @@ private fun MainShell(
     // whole script is thousands of characters and a route is a URL — and not a store, because
     // it is not state anybody wants back after a restart.
     var scriptToShare by remember { mutableStateOf<String?>(null) }
+
+    // Which shared scripts this device has put on a chart, so a post can say so of itself. This
+    // device's own set and nobody else's — see `ScriptInstallStore` for why there is no count here.
+    val installedSharedScripts by scriptInstallStore.installed.collectAsStateWithLifecycle(initialValue = emptySet())
+    val scriptAddedToChart = stringResource(R.string.toast_script_added_to_chart)
 
     val deletedMessage = stringResource(R.string.toast_deleted)
     val layoutSavedMessage = stringResource(R.string.toast_layout_saved)
@@ -3396,6 +3408,28 @@ private fun MainShell(
             }
         }
 
+        /**
+         * Puts a shared script on the reader's own chart — the one-tap install (run Σ-FIX 6).
+         *
+         * The same `putScript` the studio's «افزودن به چارت» calls, so a script installed from a
+         * post is one of the reader's indicators in every sense that matters: its own legend row,
+         * its own settings sheet, its own eye, and `×` removes it. Adding by name means tapping
+         * twice updates the one instance rather than stacking a second.
+         *
+         * The chart it lands on is the one the reader is working in, and they are taken there — an
+         * install whose result is somewhere the reader has to go and find is an install they cannot
+         * tell happened.
+         */
+        val addSharedScriptToChart: (ScriptDocument) -> Unit = { document ->
+            // The reader's own first market: the chart route's symbol lives inside the chart's own
+            // composable and this is the shell. The same choice the studio and the toolkit make.
+            val symbol = defaultScriptSymbol(activePlatform, watchlist)
+            chartControllers.controllerFor(symbol).putScript(document.name, document.source, document.defaults)
+            shellScope.launch { scriptInstallStore.markInstalled(document.id) }
+            toaster.show(scriptAddedToChart)
+            navController.navigate(chartRoute(symbol)) { launchSingleTop = true }
+        }
+
         // Forward pushes, back pulls, tabs cross-fade, and the pop is seekable so the system's
         // predictive-back gesture has something to preview. See [appEnter] for the whole argument.
         val motion = continuousMotionAllowed()
@@ -4287,6 +4321,8 @@ private fun MainShell(
                     postId = entry.arguments?.getLong("pid") ?: 0L,
                     onClose = { navController.popBackStack() },
                     onOpenScript = openSharedScript,
+                    onAddScriptToChart = addSharedScriptToChart,
+                    installed = installedSharedScripts,
                 )
             }
             composable(CALENDAR_ROUTE) {

@@ -10,11 +10,13 @@ import androidx.compose.ui.unit.width
 import com.coinepro.core.common.ReturnLoop
 import com.coinepro.core.common.SymbolMove
 import com.coinepro.core.designsystem.CONTENT_MAX_WIDTH
+import com.coinepro.core.designsystem.CONTENT_MAX_WIDTH_WIDE
 import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.designsystem.LocalTeachingDismissals
 import com.coinepro.core.model.MarketPlatform
 import com.coinepro.feature.home.HOME_LIST
 import com.coinepro.feature.home.HomeScreen
+import androidx.compose.ui.test.onNodeWithText
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -39,6 +41,12 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 class ContentWidthTest {
 
+    private companion object {
+        const val SINCE = "وقتی نبودید"
+        /** The challenge card's own sentence: «امروز» alone also matches the balance's day chip. */
+        val TODAY = ReturnLoop.challengeFor(19_980L).title
+    }
+
     @get:Rule
     val rule = createAndroidComposeRule<ComponentActivity>()
 
@@ -60,6 +68,7 @@ class ContentWidthTest {
                         onOpenActivity = {},
                         onOpenNews = {},
                         watchlist = listOf("BTCUSDT", "XAUUSD"),
+                        challenge = ReturnLoop.challengeFor(19_980L),
                         since = ReturnLoop.sinceLastVisit(
                             lastVisitEpochMillis = 1_726_000_000_000L - 14 * 3_600_000L,
                             nowEpochMillis = 1_726_000_000_000L,
@@ -74,10 +83,38 @@ class ContentWidthTest {
 
     @Test
     @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-sw1232dp-w1973dp-h1232dp-hdpi")
-    fun `on the widest panel the column stops at the cap`() {
+    fun `on the widest panel the content stops at the wide cap`() {
+        // Two columns, capped as a pair — not one column with two empty thirds beside it, which is
+        // what 4.84.0's single cap produced and what the owner's review called out (run Σ-FIX 7).
         compose()
         val width = rule.onNodeWithTag(HOME_LIST).getUnclippedBoundsInRoot().width
-        assertTrue("the column is $width wide on a 1973dp panel", width <= CONTENT_MAX_WIDTH)
+        assertTrue("the content is $width wide on a 1973dp panel", width <= CONTENT_MAX_WIDTH_WIDE)
+        assertTrue("the content is only $width wide — one column again", width > CONTENT_MAX_WIDTH)
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-sw800dp-w1280dp-h800dp-xhdpi")
+    fun `on a tablet the two cards share a row`() {
+        // «since you were away» and «today» are two short cards answering one question. Stacked on
+        // a twelve-inch panel they spend a third of the fold saying it twice as tall.
+        compose()
+        val since = rule.onNodeWithText(SINCE, substring = true).getUnclippedBoundsInRoot()
+        val today = rule.onNodeWithText(TODAY, substring = true).getUnclippedBoundsInRoot()
+        assertTrue(
+            "the cards are stacked: since at ${since.top}, today at ${today.top}",
+            kotlin.math.abs((since.top - today.top).value) < 24f,
+        )
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
+    fun `on a phone the two cards stay stacked`() {
+        // The other half, and the one that would look fine in a diff: two 180 dp columns at 411 dp
+        // is two cards nobody can read.
+        compose()
+        val since = rule.onNodeWithText(SINCE, substring = true).getUnclippedBoundsInRoot()
+        val today = rule.onNodeWithText(TODAY, substring = true).getUnclippedBoundsInRoot()
+        assertTrue("the cards share a row on a phone", today.top > since.top)
     }
 
     @Test

@@ -49,6 +49,27 @@ object ScriptShare {
     fun carries(body: String): Boolean = scriptIn(body) != null
 
     /**
+     * A post split into what the author wrote and the file they attached.
+     *
+     * The screen needs the two halves separately because they are read in opposite directions: the
+     * prose is Persian and lays out right-to-left, the file is code and must not. Rendering the
+     * whole post as one paragraph is what produced «1 nama //» on the board — see
+     * `CoineProCodeBlock` for the four decisions a code block actually needs.
+     *
+     * `code` is null on an ordinary post, and then `prose` is the whole of it. The split is on the
+     * text as written: nothing is re-serialised, so what the reader sees is what the author sent,
+     * character for character.
+     */
+    fun split(body: String): Post {
+        val start = body.indexOf(HEADER)
+        if (start < 0 || ScriptFile.read(body.substring(start)) == null) return Post(body, null)
+        return Post(prose = body.substring(0, start).trimEnd(), code = body.substring(start))
+    }
+
+    /** One post, in its two halves. See [split]. */
+    data class Post(val prose: String, val code: String?)
+
+    /**
      * The script inside a post, or null.
      *
      * The document need not start the post: a reader may write three paragraphs about what they

@@ -475,8 +475,17 @@ class ScreenshotRenderTest {
             platformLabel = "کریپتو",
             readings = listOf(CoineProReading(label = "بازارهای دنبال‌شده", value = "۷")),
             onSignIn = {},
+            // The guest's own four, in the shell's own order. The archive rows are here because a
+            // signed-out reader is exactly who they are for — nothing of theirs is on a server —
+            // and because S6 claimed them for two versions with no frame to point at (run Σ-FIX 5).
             actions = listOf(
                 ProfileAction(label = "ایمنی و نسخه", note = "اعلان‌ها، گزارش خطا و شماره‌ی نسخه") {},
+                ProfileAction(
+                    label = "پشتیبان‌گیری از چیزهایی که ساخته‌ام",
+                    note = "دیده‌بان، اسکریپت‌ها و زنجیره‌تان، در یک متن که هر جا بخواهید نگه می‌دارید. " +
+                        "چیدمان‌ها و دفترچه هنوز در آن نیستند.",
+                ) {},
+                ProfileAction(label = "بازگرداندن از پشتیبان") {},
             ),
         )
     }

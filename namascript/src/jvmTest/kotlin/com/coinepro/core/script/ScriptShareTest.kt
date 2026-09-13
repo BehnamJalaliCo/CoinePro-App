@@ -75,6 +75,44 @@ class ScriptShareTest {
         assertTrue(ScriptShare.carries(body))
     }
 
+    // ── the two halves the screen draws ──────────────────────────────────────────────────────
+
+    @Test
+    fun `a post splits into what was written and what was attached`() {
+        // The screen needs these apart because they are read in opposite directions: the prose is
+        // Persian and the file is code. Drawn as one paragraph, the file came out with every line's
+        // leading token at the far end — «1 nama //» — which is what run Σ-FIX item 1 is about.
+        val body = ScriptShare.post(document())
+        val halves = ScriptShare.split(body)
+        assertTrue(halves.prose.startsWith("یک اسکریپت از من"))
+        assertTrue(halves.code!!.startsWith("// nama 1"))
+        assertFalse("the prose half still carries the file", halves.prose.contains("// nama"))
+    }
+
+    @Test
+    fun `the split loses not one character`() {
+        // Nothing is re-serialised on the way to the screen: what the reader sees is what the
+        // author sent. A split that rebuilt the file would be a post whose code differs from the
+        // code somebody else can open.
+        val body = "سه ماه روی این کار کردم.\n\n" + ScriptFile.write(document())
+        val halves = ScriptShare.split(body)
+        assertEquals(body.trimEnd(), (halves.prose + "\n\n" + halves.code).trimEnd())
+    }
+
+    @Test
+    fun `an ordinary post is all prose and no code`() {
+        val halves = ScriptShare.split("طلا امروز خوب بود.")
+        assertEquals("طلا امروز خوب بود.", halves.prose)
+        assertNull(halves.code)
+    }
+
+    @Test
+    fun `a post that only quotes the header is all prose`() {
+        // The same discrimination `scriptIn` makes, at the place the screen asks: a card must not
+        // draw a code block around a sentence somebody wrote about the format.
+        assertNull(ScriptShare.split("اولین خط فایل «// nama 1» است.").code)
+    }
+
     // ── what is not a shared script ──────────────────────────────────────────────────────────
 
     @Test
