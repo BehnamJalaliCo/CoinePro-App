@@ -35,7 +35,43 @@ data class SavedScriptEntity(
     val inputs: String = "",
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long,
+    /**
+     * The reader's own description, colour, tags and pane (4.82.0, run Σ item S3 C).
+     *
+     * Five columns rather than a second table, for the same reason [inputs] is a blob: they are
+     * only ever read and written with the script, and a join for a colour would buy nothing.
+     *
+     * Every one has a default, which is what lets the migration below add them with a plain
+     * `ALTER TABLE` and lets an older row — one saved before 4.82.0 — be read without ceremony. A
+     * script with no colour is not broken; it is a script whose owner has not chosen one.
+     */
+    val description: String = "",
+    val colour: Long = DEFAULT_SCRIPT_COLOUR,
+    /** Comma-separated, as the reader typed them. */
+    val tags: String = "",
+    val ownPane: Boolean = false,
+    /**
+     * The public id a share link addresses, or empty for a script never shared.
+     *
+     * Kept beside the row id rather than replacing it: the row id is this device's and the public
+     * id is the world's, and conflating them would mean a script's address changing when it is
+     * restored onto a new phone.
+     */
+    val publicId: String = "",
+    /**
+     * Earlier revisions, newest first, at most five — `at:length:source` records, end to end.
+     *
+     * Length-prefixed rather than separated, because a revision is a *whole script*: brackets,
+     * quotes, newlines, Persian and — as `ScriptHistoryTest` shows — even a control character a
+     * reader put inside a string literal. An encoding with a delimiter has to either escape its
+     * payload or forbid something, and both eventually lose somebody a version. Nothing is
+     * forbidden here: the parser is told how many characters to take. See `ScriptController`.
+     */
+    val history: String = "",
 )
+
+/** The app's gold. Mirrors `ScriptDocument.DEFAULT_COLOUR`, which this module cannot see. */
+const val DEFAULT_SCRIPT_COLOUR: Long = 0xFFD8A848
 
 @Dao
 interface SavedScriptDao {

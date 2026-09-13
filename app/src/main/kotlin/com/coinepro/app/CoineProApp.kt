@@ -958,6 +958,14 @@ fun CoineProApp(
     launchActivity: Boolean,
     /** Set when the recovery App Link opened the app; null on every other launch. */
     launchResetToken: String?,
+    /**
+     * A shared script's id, from `pro-chart.com/s/<id>` (4.82.0, run Σ item S3 C).
+     *
+     * Looked up among the reader's **own** scripts. A link from somebody else names a script that
+     * is not on this device, and until the community service exists the honest answer to that is to
+     * say so — not to fetch nothing and open a blank editor.
+     */
+    launchScriptId: String?,
     /** A market to open, from a row of the home-screen widget. See `MarketsWidget`. */
     launchSymbol: String?,
     /** The bar a deep link asked for, or null. Consumed with [launchSymbol]. See `AlertDeepLink`. */
@@ -967,6 +975,7 @@ fun CoineProApp(
     onActivityLaunchConsumed: () -> Unit,
     onSymbolLaunchConsumed: () -> Unit,
     onResetTokenConsumed: () -> Unit,
+    onScriptLaunchConsumed: () -> Unit,
     onRequestNotificationPermission: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
     onSendFeedback: () -> Unit,
@@ -1422,6 +1431,8 @@ fun CoineProApp(
                 launchSymbol = launchSymbol,
                 launchTimeframe = launchTimeframe,
                 onSymbolLaunchConsumed = onSymbolLaunchConsumed,
+                launchScriptId = launchScriptId,
+                onScriptLaunchConsumed = onScriptLaunchConsumed,
                 notificationPermissionState = deliverablePermissionState,
                 chartVisionAvailable = chartVisionAvailable,
                 pushAvailable = pushAvailable,
@@ -1695,6 +1706,8 @@ fun CoineProApp(
                         launchSymbol = launchSymbol,
                         launchTimeframe = launchTimeframe,
                         onSymbolLaunchConsumed = onSymbolLaunchConsumed,
+                        launchScriptId = launchScriptId,
+                        onScriptLaunchConsumed = onScriptLaunchConsumed,
                     )
 
                 if (showForm) {
@@ -1933,6 +1946,9 @@ private fun MainShell(
     /** The bar a deep link asked for, or null. Consumed with [launchSymbol]. See `AlertDeepLink`. */
     launchTimeframe: String?,
     onSymbolLaunchConsumed: () -> Unit,
+    /** A shared script's id, from `pro-chart.com/s/<id>`. See `CoineProApp`'s own parameter. */
+    launchScriptId: String?,
+    onScriptLaunchConsumed: () -> Unit,
     notificationPermissionState: NotificationPermissionUiState,
     /** What this deployment reports it can do. A feature it does not offer is not drawn. */
     chartVisionAvailable: Boolean,
@@ -2081,6 +2097,7 @@ private fun MainShell(
     // places these are used are lambdas that are not.
     val copiedMessage = stringResource(R.string.toast_copied)
     val alertSavedMessage = stringResource(R.string.toast_alert_saved)
+    val unknownScriptLink = stringResource(R.string.script_link_unknown)
     val deletedMessage = stringResource(R.string.toast_deleted)
     val layoutSavedMessage = stringResource(R.string.toast_layout_saved)
     val undoLabel = stringResource(R.string.action_undo)
@@ -2422,6 +2439,26 @@ private fun MainShell(
             navController.navigate(chartRoute(symbol, launchTimeframe)) { launchSingleTop = true }
             onSymbolLaunchConsumed()
         }
+    }
+    // **A shared script link** (4.82.0, run Σ item S3 C).
+    //
+    // The id is looked up among the reader's own scripts, which is the whole of what this app can
+    // honestly answer today: a reader who exported a script and mailed themselves the link gets it
+    // back. A link from somebody else names something that is not on this device, and until there
+    // is a service to ask, saying so is better than opening an empty editor and letting them
+    // wonder what they did wrong.
+    //
+    // Either way nothing runs and nothing is added. What a link can do is open a screen.
+    LaunchedEffect(launchScriptId) {
+        val id = launchScriptId ?: return@LaunchedEffect
+        val mine = scriptController.saved.value.firstOrNull { it.publicId == id }
+        if (mine != null) {
+            scriptController.open(mine)
+            navController.navigate(scriptRoute(defaultScriptSymbol(activePlatform, watchlist))) { launchSingleTop = true }
+        } else {
+            toaster.show(unknownScriptLink)
+        }
+        onScriptLaunchConsumed()
     }
     // The in-app delivery channel, which is this collector and nothing else.
     //

@@ -1,6 +1,7 @@
 package com.coinepro.app
 
 import com.coinepro.core.common.BrandConfig
+import com.coinepro.core.script.ScriptLink
 
 internal sealed interface CoineProDeepLink {
     data class Signal(val signalId: Long) : CoineProDeepLink
@@ -23,6 +24,19 @@ internal sealed interface CoineProDeepLink {
 
     /** The password-recovery App Link, carrying the token the reset step must present. */
     data class PasswordReset(val token: String) : CoineProDeepLink
+
+    /**
+     * A shared script — `pro-chart.com/s/<id>` (4.82.0, run Σ item S3 C).
+     *
+     * The id and nothing else. The link does not carry code and could not be made to: what it
+     * opens is a screen showing the reader the script, which is added to a chart only if they say
+     * so. A link that ran what it named would be running a stranger's script on the strength of a
+     * tap, from a message nobody can vouch for.
+     *
+     * Validated by `ScriptLink.idOf`, which is the same shape check `:namascript` applies — so the
+     * app and the language agree on what an id is, rather than each having an opinion.
+     */
+    data class Script(val scriptId: String) : CoineProDeepLink
 }
 
 /**
@@ -109,6 +123,13 @@ internal fun parseCoineProDeepLink(
     // is a credential, and a custom scheme any installed app may register is not somewhere to put
     // one.
     if (scheme == "https") {
+        // A shared script, on the brand host only. Checked before the reset paths because it is a
+        // different path on the same host, and because an id is not a credential: the worst a bad
+        // one can do is open a screen that says the script could not be found.
+        if (host?.lowercase() == BrandConfig.WEB_HOST && pathSegments.firstOrNull() == ScriptLink.PATH) {
+            val id = ScriptLink.idOf("https://${BrandConfig.WEB_HOST}/" + pathSegments.joinToString("/"))
+            return id?.let(CoineProDeepLink::Script)
+        }
         val expected = RESET_HOSTS[host?.lowercase()] ?: return null
         if (pathSegments.firstOrNull() != expected) return null
         val token = resetToken?.takeIf { RESET_TOKEN.matches(it) } ?: return null

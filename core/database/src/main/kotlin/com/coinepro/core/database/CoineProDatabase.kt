@@ -160,10 +160,10 @@ abstract class CoineProCacheDao {
         CachedCandleEntity::class,
     ],
     // Bumped for the candle cache, then again to re-key it on the chart interval rather than the
-    // timeframe enum. `fallbackToDestructiveMigration` is deliberately *not* used: every cache
+    // timeframe enum, and again for the six columns a reader's own script grew in 4.82.0. `fallbackToDestructiveMigration` is deliberately *not* used: every cache
     // table here can be refetched, and the three that cannot — the journal, the paper trades and
     // the reader's own scripts — are the whole reason the migrations below are written out.
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 abstract class CoineProDatabase : RoomDatabase() {
@@ -359,6 +359,47 @@ internal val CANDLE_CACHE_INTERVAL_REBUILD: List<String> = listOf(
         "ON cached_candles (symbol, `interval`, t)",
 )
 
+/**
+ * Version 6 to 7: a saved script becomes something the reader owns.
+ *
+ * Six columns added to `saved_scripts` — a description, a colour, tags, a pane, a public id and a
+ * history — because a script a reader named and edited is not a cache row, and «save as mine» has
+ * nowhere to put any of that otherwise.
+ *
+ * Plain `ALTER TABLE ADD COLUMN`, one per column, and **no rebuild**: every one carries a default,
+ * so an existing row is complete the moment the statement finishes. A script saved in 4.73.0 comes
+ * back with its name and its source, gold, untagged, over the price and with no history — which is
+ * exactly what it was. Nothing is copied, so nothing can be lost in the copying, which is the whole
+ * argument for doing it this way rather than the way [MIGRATION_5_6] had to.
+ *
+ * The statements are in [SAVED_SCRIPT_COLUMNS] rather than inline so a test can run them against a
+ * version-6 table without Room, an emulator or a device.
+ */
+val MIGRATION_6_7: Migration = object : Migration(6, 7) {
+    override fun migrate(connection: SQLiteConnection) {
+        SAVED_SCRIPT_COLUMNS.forEach { statement -> connection.execSQL(statement) }
+    }
+}
+
+/**
+ * The six statements [MIGRATION_6_7] runs.
+ *
+ * The defaults are written into the SQL as well as into the entity. Room compares the schema it
+ * derives from `SavedScriptEntity` against the one it finds and refuses to open a database that
+ * disagrees, so a column added here without its default would fail at the next launch rather than
+ * at the next edit — and the reader's own scripts are in this table.
+ */
+internal val SAVED_SCRIPT_COLUMNS: List<String> = listOf(
+    "ALTER TABLE saved_scripts ADD COLUMN description TEXT NOT NULL DEFAULT ''",
+    // 0xFFD8A848, the app's gold, written as the decimal SQLite stores. `MigrationSqlTest`
+    // checks it against `DEFAULT_SCRIPT_COLOUR` rather than trusting the conversion.
+    "ALTER TABLE saved_scripts ADD COLUMN colour INTEGER NOT NULL DEFAULT 4292388936",
+    "ALTER TABLE saved_scripts ADD COLUMN tags TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE saved_scripts ADD COLUMN ownPane INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE saved_scripts ADD COLUMN publicId TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE saved_scripts ADD COLUMN history TEXT NOT NULL DEFAULT ''",
+)
+
 object CoineProDatabaseFactory {
     fun create(context: Context): CoineProDatabase = Room.databaseBuilder(
         context.applicationContext,
@@ -367,7 +408,7 @@ object CoineProDatabaseFactory {
     )
         // The journal migration is registered rather than the database being allowed to fall back
         // to destructive recreation. Every other table here is a cache; the journal is not.
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
         .build()
 }
 

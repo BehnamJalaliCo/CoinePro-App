@@ -13,10 +13,18 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import com.coinepro.core.designsystem.CoineProSheetBody
 import com.coinepro.core.designsystem.CoineProTheme
+import com.coinepro.core.database.SavedScriptDao
+import com.coinepro.core.database.SavedScriptEntity
 import com.coinepro.core.script.ScriptPaste
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import com.coinepro.core.script.ScriptPromptKit
 import com.coinepro.feature.script.ScriptPasteBody
+import com.coinepro.core.script.ScriptController
+import com.coinepro.feature.script.ScriptMinePanelPreview
 import com.coinepro.feature.script.ScriptPromptBody
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -119,6 +127,28 @@ class ScriptPasteProofTest {
         }
     }
 
+    @Test
+    @Config(sdk = [34], qualifiers = FA_PHONE)
+    fun `a script the reader owns, with its versions`() {
+        // The panel with something in every field, which is the only version worth photographing:
+        // an empty one proves the layout and nothing about what a reader sees after a fortnight.
+        val controller = ScriptController(NoScripts(), CoroutineScope(Dispatchers.Unconfined))
+        controller.openText(name = "میانگین من", source = "plot(ta.ema(close, 20), title = \"میانگین\")")
+        controller.describe("وقتی قیمت از میانگین رد شد")
+        controller.setColour(0xFF2962FF)
+        controller.setTags("روند، میانگین، طلا")
+        controller.setOwnPane(false)
+        proof("sigma1-my-script-phone-fa") {
+            CoineProSheetBody(title = "نمااسکریپت", subtitle = "XAUUSD") {
+                ScriptMinePanelPreview(controller)
+            }
+        }
+        assertTrue(
+            "the panel is not on the frame",
+            composeRule.onAllNodesWithText("این اسکریپت مال من است").fetchSemanticsNodes().isNotEmpty(),
+        )
+    }
+
     private fun proof(name: String, content: @Composable () -> Unit) {
         composeRule.setContent {
             CoineProTheme(darkTheme = true) {
@@ -147,5 +177,15 @@ class ScriptPasteProofTest {
         val OUTPUT = File("build/proof")
         const val FA_PHONE = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi"
         const val EN_PHONE = "en-rUS-w411dp-h914dp-xxhdpi"
+    }
+
+    /** A store with nothing in it: this frame is about the panel, not about the library. */
+    private class NoScripts : SavedScriptDao {
+        override fun scripts(): Flow<List<SavedScriptEntity>> = MutableStateFlow(emptyList())
+        override suspend fun byId(id: Long): SavedScriptEntity? = null
+        override suspend fun count(): Int = 0
+        override suspend fun insert(script: SavedScriptEntity): Long = 1
+        override suspend fun update(script: SavedScriptEntity) = Unit
+        override suspend fun delete(id: Long) = Unit
     }
 }

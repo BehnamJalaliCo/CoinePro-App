@@ -143,4 +143,21 @@
     <string name="script_prompt_paste_result">Paste the result</string>
     <string name="script_prompt_version">Prompt version %1$s</string>
     <string name="script_prompt_no_assistant">No app on this device can open that link.</string>
+
+    <!-- «Save as mine» (4.82.0, run Σ item S3 C): what makes a script the reader's own. -->
+    <string name="script_mine_panel">This script is mine</string>
+    <string name="script_description_label">One line about it</string>
+    <string name="script_colour_label">Colour</string>
+    <string name="script_tags_label">Tags, separated by commas</string>
+    <string name="script_pane_label">In its own panel</string>
+    <string name="script_versions">Earlier versions</string>
+    <string name="script_versions_count">%1$s kept</string>
+    <string name="script_version_restore">Put this one back</string>
+    <string name="script_version_none">No earlier version yet. One is kept each time you save a change, up to five.</string>
+    <string name="script_export">Export</string>
+    <string name="script_export_done">Copied. Paste it anywhere to keep it.</string>
+    <string name="script_import">Import</string>
+    <string name="script_import_failed">There is no script in the clipboard.</string>
+    <string name="script_copy_link">Copy the link</string>
+    <string name="script_link_copied">Link copied.</string>
 </resources>

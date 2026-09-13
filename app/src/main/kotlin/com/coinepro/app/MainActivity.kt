@@ -202,6 +202,14 @@ class MainActivity : FragmentActivity() {
     private var launchResetToken by mutableStateOf<String?>(null)
 
     /**
+     * A shared script's id, from `pro-chart.com/s/<id>` (4.82.0, run Σ item S3 C).
+     *
+     * Held like the others because a link can arrive before the composition exists. It is an id and
+     * never source: the app looks it up, shows the reader the script, and adds nothing on its own.
+     */
+    private var launchScriptId by mutableStateOf<String?>(null)
+
+    /**
      * A market to open, from a row of the home-screen widget.
      *
      * Held here rather than passed straight down for the same reason the signal id is: the intent
@@ -331,12 +339,14 @@ class MainActivity : FragmentActivity() {
                 launchSignalId = launchSignalId,
                 launchActivity = launchActivity,
                 launchResetToken = launchResetToken,
+                launchScriptId = launchScriptId,
                 launchSymbol = launchSymbol,
                 launchTimeframe = launchTimeframe,
                 notificationPermissionState = notificationPermissionState,
                 onSignalLaunchConsumed = { launchSignalId = null },
                 onActivityLaunchConsumed = { launchActivity = false },
                 onResetTokenConsumed = { launchResetToken = null },
+                onScriptLaunchConsumed = { launchScriptId = null },
                 onSymbolLaunchConsumed = {
                     launchSymbol = null
                     launchTimeframe = null
@@ -471,6 +481,7 @@ class MainActivity : FragmentActivity() {
                 launchTimeframe = target.timeframe
                 launchSymbol = target.symbol
             }
+            is CoineProDeepLink.Script -> launchScriptId = target.scriptId
             null -> Unit
         }
     }

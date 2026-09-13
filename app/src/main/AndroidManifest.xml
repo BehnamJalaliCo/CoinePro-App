@@ -125,6 +125,19 @@
                     android:host="pro-chart.com"
                     android:pathPrefix="/reset" />
                 <!--
+                    A shared script — pro-chart.com/s/<id> (4.82.0, run Σ item S3 C).
+
+                    The link carries an id and never source, so the worst a hostile one can do is
+                    name a script that does not exist. The id's shape is checked twice before it
+                    reaches anything: by ScriptLink.idOf, which is the language's own rule, and by
+                    parseCoineProDeepLink, which is where every untrusted link in this app is read.
+                    Nothing runs and nothing is added to a chart: a link opens a screen.
+                -->
+                <data
+                    android:scheme="https"
+                    android:host="pro-chart.com"
+                    android:pathPrefix="/s/" />
+                <!--
                     CoinePro-FX's own recovery link, on its API host. The path differs from
                     the brand host's because the two web apps spell it differently; both are
                     named exactly, because verification is per host and a pattern host is not

@@ -135,4 +135,20 @@
     <string name="script_prompt_paste_result">چسباندن جواب</string>
     <string name="script_prompt_version">نسخه‌ی متن %1$s</string>
     <string name="script_prompt_no_assistant">هیچ برنامه‌ای روی این دستگاه نمی‌تواند آن پیوند را باز کند.</string>
+
+    <string name="script_mine_panel">این اسکریپت مال من است</string>
+    <string name="script_description_label">یک خط درباره‌اش</string>
+    <string name="script_colour_label">رنگ</string>
+    <string name="script_tags_label">برچسب‌ها، با ویرگول جدا شوند</string>
+    <string name="script_pane_label">در پنل جدا</string>
+    <string name="script_versions">نسخه‌های قبلی</string>
+    <string name="script_versions_count">%1$s نسخه نگه داشته شده</string>
+    <string name="script_version_restore">همین را برگردانید</string>
+    <string name="script_version_none">هنوز نسخه‌ی قبلی نیست. هر بار که تغییری را ذخیره کنید یکی نگه داشته می‌شود، تا پنج تا.</string>
+    <string name="script_export">خروجی گرفتن</string>
+    <string name="script_export_done">کپی شد. هر جا بخواهید بچسبانید و نگه دارید.</string>
+    <string name="script_import">ورودی گرفتن</string>
+    <string name="script_import_failed">اسکریپتی در حافظه‌ی موقت نیست.</string>
+    <string name="script_copy_link">کپی پیوند</string>
+    <string name="script_link_copied">پیوند کپی شد.</string>
 </resources>

@@ -55,4 +55,48 @@ class DeepLinkValidationTest {
             parseCoineProDeepLink("https", "pro-chart.com", listOf("reset"), "$token <script>"),
         )
     }
+
+    // ── a shared script (4.82.0, run Σ item S3 C) ────────────────────────────────────────────
+
+    @Test
+    fun `a script link on the brand host is read`() {
+        val id = "abcdefghjkm"
+        assertEquals(
+            CoineProDeepLink.Script(id),
+            parseCoineProDeepLink("https", "pro-chart.com", listOf("s", id)),
+        )
+    }
+
+    @Test
+    fun `a script link from anywhere else is nothing`() {
+        // A script id becomes a lookup and then a screen showing code. The link carries no source
+        // and could not be made to — but the host check is still where an unverified link stops.
+        val id = "abcdefghjkm"
+        assertNull(parseCoineProDeepLink("https", "evil.example", listOf("s", id)))
+        assertNull(parseCoineProDeepLink("https", "pro-chart.com.evil.example", listOf("s", id)))
+        assertNull(parseCoineProDeepLink("http", "pro-chart.com", listOf("s", id)))
+        assertNull(parseCoineProDeepLink("coinepro", "s", listOf(id)))
+    }
+
+    @Test
+    fun `a script link with a malformed id is nothing`() {
+        for (bad in listOf("", "ABCDEFGH", "abc defgh", "ab", "a".repeat(64), "../../etc/passwd")) {
+            assertNull(bad, parseCoineProDeepLink("https", "pro-chart.com", listOf("s", bad)))
+        }
+        assertNull(parseCoineProDeepLink("https", "pro-chart.com", listOf("s")))
+    }
+
+    @Test
+    fun `a script link does not collide with the recovery link`() {
+        // Same host, different path, and the script branch is checked first — so a token on /reset
+        // still gets through and an id on /s/ is never read as a credential.
+        val token = "a".repeat(32)
+        assertEquals(
+            CoineProDeepLink.PasswordReset(token),
+            parseCoineProDeepLink("https", "pro-chart.com", listOf("reset"), token),
+        )
+        assertNull(parseCoineProDeepLink("https", "pro-chart.com", listOf("s", "abcdefghjkm"), token).let {
+            if (it is CoineProDeepLink.PasswordReset) it else null
+        })
+    }
 }

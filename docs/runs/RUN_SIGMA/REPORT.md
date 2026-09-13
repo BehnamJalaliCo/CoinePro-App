@@ -172,3 +172,42 @@ folded into a ✅:
 | Assistant answers in the paste suite | 30 |
 | New tests | 100 in `:namascript`, 8 in `:core:script`, 7 in `:feature:script`, 4 proof frames |
 
+## Σ1 addendum — «save as mine» wired (4.82.1)
+
+4.82.0 shipped `ScriptDocument` as a tested model with nothing behind it. This finishes it.
+
+**The migration.** `saved_scripts` gains six columns — description, colour, tags, pane, public id,
+history — as six `ALTER TABLE … ADD COLUMN … NOT NULL DEFAULT`. No rebuild, so nothing is copied
+and nothing can be lost in the copying; a script saved in 4.73.0 comes back with its name and its
+source, gold, untagged and with no history, which is exactly what it was. The statements live in
+`SAVED_SCRIPT_COLUMNS` so `SavedScriptMigrationTest` can run them against a seeded version-6 table
+without Room, an emulator or a device — the same arrangement `MIGRATION_5_6` has.
+
+**The history, and the assumption that was wrong.** Five revisions in one column, pushed on a save
+that changed the source and on no other event. The first encoding separated records with U+001E and
+U+001F, on the reasoning that NamaScript cannot contain them. `ScriptHistoryTest` was written to
+confirm that and disproved it: the lexer refuses a control character in the code and **accepts one
+inside a string literal**, which is exactly where a reader's own label lives. A single stray
+character in a title would have split a record and taken every earlier version after it. The column
+is length-prefixed now — `at:length:source`, the source never scanned — so nothing is forbidden and
+nothing has to be escaped. The test stays, inverted, as the record of why.
+
+**The panel, and where it sits.** «اسکریپت من» carries the description, a colour swatch row, tags,
+the pane switch, the five versions and export / import / copy-link. It went in above the inputs and
+came out below them: `StudioProofTest.studioInputs` failed because «ورودی‌ها» was no longer
+composed — pushed off the bottom of a phone — which is the right answer to the wrong order. The
+inputs are touched on every run and this panel about once per script.
+
+**The link.** `pro-chart.com/s/<id>` is claimed in the manifest and read by `parseCoineProDeepLink`,
+which checks the host and then hands the id to `ScriptLink.idOf` — the language's own rule, so the
+app and the language cannot disagree about what an id is. What it opens is the reader's own script,
+matched on the public id stored beside it. A link from anyone else names something this device does
+not have and the app says so. It does not fetch, because there is nothing to fetch from yet, and it
+will never carry source: the whole point of an id is that the code arrives from somewhere the reader
+can be shown it before anything is added.
+
+| | |
+|---|---|
+| New columns on `saved_scripts` | 6, by `ALTER TABLE`, no rebuild |
+| New tests | 5 migration, 10 controller, 3 history, 4 deep-link, 1 proof frame |
+

@@ -46,25 +46,23 @@ noisy study for an afternoon should not find it silenced next week. The study's 
 period, its colour — are the ones that persist, and they still do. If the owner wants it remembered,
 it is one map in the workspace store and the seam is `setMarkerStyle`.
 
-## 4. «Save as mine» is a model with no home yet (Σ1 item C)
+## 4. A share link can only open a script this device already has (Σ1 item C)
 
-**Blocked on:** nothing external. It is scope, and it is named here rather than being folded into a
-claim.
+**Blocked on:** S7, the community surface, which this run's own plan puts in Σ4.
 
-`ScriptDocument`, `ScriptFile` and `ScriptLink` are written and tested: a document with a name, a
-description, a colour, tags, a pane, default inputs and five revisions; a `.nama` file whose header
-is comment lines, so an exported file is itself a runnable script; and a link reader that refuses
-every hostile form the test throws at it. `ScriptDocumentTest` is twenty cases.
+`pro-chart.com/s/<id>` is claimed in the manifest, checked twice — by `ScriptLink.idOf`, the
+language's own rule, and again by `parseCoineProDeepLink`, where every untrusted link in this app is
+read — and routed. What it opens is the reader's **own** script, matched on the public id stored
+beside it: export a script, mail yourself the link, tap it, and it is there.
 
-What does not exist is the wiring. `saved_scripts` stores a name, a source, a preset id and a blob
-of input overrides — that is all it has ever stored — so a document needs four more columns and a
-migration written out by hand, which is what that table's own documentation requires because there
-is no server copy to refetch. On top of that sits a «My scripts» screen that can show a colour, a
-set of tags and a revision list.
+A link from somebody else names a script that is not on this device, and the app says exactly that.
+It does not fetch, because there is nothing to fetch from, and it does not open an empty editor and
+let the reader wonder what they did wrong.
 
-**What the reader has meanwhile:** the studio's existing save, unchanged since 4.73.0 — a name and a
-source. The new types are not half-connected to it; they are simply not connected, which is the
-state that cannot mislead anybody.
+**What this deliberately does not do, and will not:** carry source in the link. A link that carried
+code would run a stranger's script on the strength of a tap, from a message nobody can vouch for.
+When the service exists, the id will fetch the code, show it to the reader, and add it only if they
+say so — every step after the tap something they can see and refuse.
 
 ## 5. Sharing a script needs somewhere to share it to (Σ1 item D)
 

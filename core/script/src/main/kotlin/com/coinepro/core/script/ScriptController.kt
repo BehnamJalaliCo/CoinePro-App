@@ -25,9 +25,24 @@ data class ScriptEditorState(
     val source: String = "",
     /** The row in the database this is a copy of, or null for a script never saved. */
     val savedId: Long? = null,
+    /** The id a share link addresses, or empty for a script never shared or imported. */
+    val publicId: String = "",
     val presetId: String? = null,
     /** Reader-set values for `input(...)`, keyed by the input's title. */
     val overrides: Map<String, Double> = emptyMap(),
+    /**
+     * What the reader has made this script *theirs* with (4.82.0, run Σ item S3 C).
+     *
+     * A description, a colour, tags and a pane. Held here rather than only in the row, because the
+     * reader edits them in the editor and a value that only existed after a save would be a value
+     * that vanished if they changed their mind.
+     */
+    val description: String = "",
+    val colour: Long = ScriptDocument.DEFAULT_COLOUR,
+    val tags: List<String> = emptyList(),
+    val ownPane: Boolean = false,
+    /** Earlier versions of this script, newest first, at most five. */
+    val history: List<ScriptRevision> = emptyList(),
     val result: ScriptResult? = null,
     /** A syntax error found without running — see [NamaScript.check]. */
     val syntax: ScriptFailure? = null,
@@ -273,6 +288,80 @@ class ScriptController(
             savedId = script.id,
             presetId = script.presetId,
             overrides = decodeInputs(script.inputs),
+            description = script.description,
+            colour = script.colour,
+            tags = script.tags.split(',').map { it.trim() }.filter { it.isNotEmpty() },
+            ownPane = script.ownPane,
+            history = decodeHistory(script.history),
+        )
+        run()
+    }
+
+    // ── what makes a script the reader's own (4.82.0, run Σ item S3 C) ───────────────────────
+
+    fun describe(description: String) = _state.update {
+        it.copy(description = description.replace('\n', ' ').take(ScriptDocument.DESCRIPTION_LIMIT), dirty = true)
+    }
+
+    fun setColour(colour: Long) = _state.update { it.copy(colour = colour, dirty = true) }
+
+    /**
+     * Sets the tags from what the reader typed, comma-separated.
+     *
+     * Split here rather than in the screen so the rule — trim, drop the empties, keep the order —
+     * is one rule. A tag list is a small thing to get inconsistent between the editor and the row.
+     */
+    fun setTags(typed: String) = _state.update {
+        it.copy(tags = typed.split(',', '،').map(String::trim).filter(String::isNotEmpty).take(TAG_LIMIT), dirty = true)
+    }
+
+    fun setOwnPane(own: Boolean) = _state.update { it.copy(ownPane = own, dirty = true) }
+
+    /**
+     * Puts an earlier version back in the editor.
+     *
+     * It does not save. A reader looking through their history is *looking*, and a restore that
+     * wrote itself to the row would make «what did this used to say» a destructive question.
+     */
+    fun restore(revision: ScriptRevision) = _state.update {
+        it.copy(source = revision.source, dirty = true, syntax = NamaScript.check(revision.source))
+    }
+
+    /** This editor as a document — for export, for a link, for anything outside the database. */
+    fun document(): ScriptDocument {
+        val current = _state.value
+        return ScriptDocument(
+            id = current.publicId.ifEmpty { ScriptDocument.idFor(current.source, current.savedId ?: 0L) },
+            name = current.name,
+            description = current.description,
+            source = current.source,
+            colour = current.colour,
+            tags = current.tags,
+            ownPane = current.ownPane,
+            defaults = current.overrides,
+            origin = current.presetId,
+            updatedAt = now(),
+            history = current.history,
+        )
+    }
+
+    /**
+     * Loads an imported document into the editor as a **new, unsaved** script.
+     *
+     * Unsaved on purpose. An import that wrote itself to the library would be a file deciding what
+     * is in the reader's list; this way the file offers and the reader keeps.
+     */
+    fun openDocument(document: ScriptDocument) {
+        _state.value = ScriptEditorState(
+            name = document.name,
+            source = document.source,
+            presetId = document.origin,
+            overrides = document.defaults,
+            description = document.description,
+            colour = document.colour,
+            tags = document.tags,
+            ownPane = document.ownPane,
+            publicId = document.id,
         )
         run()
     }
@@ -315,19 +404,44 @@ class ScriptController(
                         inputs = encodeInputs(current.overrides),
                         createdAtEpochMillis = stamp,
                         updatedAtEpochMillis = stamp,
+                        description = current.description,
+                        colour = current.colour,
+                        tags = current.tags.joinToString(", "),
+                        ownPane = current.ownPane,
+                        publicId = current.publicId,
+                        history = encodeHistory(current.history),
                     ),
                 )
                 _state.update { it.copy(savedId = id, name = name) }
             } else {
+                // **The version being replaced goes onto the history, here and nowhere else.**
+                //
+                // Not on every keystroke — five revisions of a half-typed line is a history that
+                // has lost what it was kept for — and not on a save that changed nothing, which is
+                // what a reader does when they open a script, look at it and press save out of
+                // habit. A save that changes the source is the one moment that means «the old one
+                // is gone unless somebody kept it».
+                val history = if (existing.source == current.source) {
+                    current.history
+                } else {
+                    (listOf(ScriptRevision(existing.source, existing.updatedAtEpochMillis)) + current.history)
+                        .take(ScriptDocument.REVISIONS)
+                }
                 dao.update(
                     existing.copy(
                         name = name,
                         source = current.source,
                         inputs = encodeInputs(current.overrides),
                         updatedAtEpochMillis = stamp,
+                        description = current.description,
+                        colour = current.colour,
+                        tags = current.tags.joinToString(", "),
+                        ownPane = current.ownPane,
+                        publicId = current.publicId,
+                        history = encodeHistory(history),
                     ),
                 )
-                _state.update { it.copy(name = name) }
+                _state.update { it.copy(name = name, history = history) }
             }
         }
     }
@@ -362,6 +476,55 @@ class ScriptController(
         fun encodeInputs(values: Map<String, Double>): String = values.entries
             .filter { '\n' !in it.key && '=' !in it.key && it.value.isFinite() }
             .joinToString("\n") { "${it.key}=${it.value}" }
+
+        /** At most this many tags. A list a reader cannot read is not a list. */
+        const val TAG_LIMIT = 8
+
+        /**
+         * The history as length-prefixed records: `at:length:source` repeated, nothing between.
+         *
+         * ### Why lengths and not a separator
+         *
+         * The first version of this used two control characters, U+001E and U+001F, on the
+         * reasoning that NamaScript cannot contain them. Half true, and the wrong half:
+         * `ScriptHistoryTest` shows the lexer refuses them in code and **accepts them inside a
+         * string literal**, so a reader whose label happened to carry one would have had a record
+         * split in half — and, with the filter that was guarding it, a whole earlier version of
+         * their script quietly dropped instead.
+         *
+         * A length prefix has no forbidden character. The source is never scanned; the parser is
+         * told how many characters to take and takes them, so quotes, newlines, colons, Persian and
+         * control characters all pass through as themselves. The two colons are unambiguous
+         * because everything before them is digits.
+         */
+        fun encodeHistory(history: List<ScriptRevision>): String = buildString {
+            for (revision in history) {
+                append(revision.at).append(':').append(revision.source.length).append(':').append(revision.source)
+            }
+        }
+
+        /**
+         * Reads what [encodeHistory] wrote; stops at the first record that does not parse.
+         *
+         * Stops rather than skips, because the records after a malformed one cannot be found — the
+         * next one begins wherever this one ended, and that is the thing that is unknown. Keeping
+         * the versions read so far is the most that can honestly be recovered.
+         */
+        fun decodeHistory(stored: String): List<ScriptRevision> {
+            val history = mutableListOf<ScriptRevision>()
+            var cursor = 0
+            while (cursor < stored.length) {
+                val firstColon = stored.indexOf(':', cursor).takeIf { it > cursor } ?: break
+                val secondColon = stored.indexOf(':', firstColon + 1).takeIf { it > firstColon } ?: break
+                val at = stored.substring(cursor, firstColon).toLongOrNull() ?: break
+                val length = stored.substring(firstColon + 1, secondColon).toIntOrNull() ?: break
+                val start = secondColon + 1
+                if (length < 0 || start + length > stored.length) break
+                history += ScriptRevision(stored.substring(start, start + length), at)
+                cursor = start + length
+            }
+            return history
+        }
 
         fun decodeInputs(stored: String): Map<String, Double> = stored.lineSequence()
             .mapNotNull { line ->

@@ -105,6 +105,10 @@ import com.coinepro.core.script.ScriptLessons
 import com.coinepro.core.script.ScriptPreset
 import com.coinepro.core.script.ScriptPresets
 import com.coinepro.core.script.ScriptPromptKit
+import androidx.compose.ui.text.AnnotatedString
+import com.coinepro.core.script.ScriptFile
+import com.coinepro.core.script.ScriptLink
+import com.coinepro.core.script.ScriptRevision
 import com.coinepro.core.script.ScriptReference
 import com.coinepro.core.script.ScriptStrategies
 import com.coinepro.core.script.ScriptStrategy
@@ -182,6 +186,9 @@ fun ScriptScreen(
     val clipboard = LocalClipboardManager.current
     val emptyClipboard = stringResource(R.string.script_paste_empty)
     val noAssistant = stringResource(R.string.script_prompt_no_assistant)
+    val exported = stringResource(R.string.script_export_done)
+    val importFailed = stringResource(R.string.script_import_failed)
+    val linkCopied = stringResource(R.string.script_link_copied)
     val context = LocalContext.current
     val toaster = LocalToaster.current
 
@@ -256,6 +263,30 @@ fun ScriptScreen(
                 mainChart = mainChart,
                 onPaste = { readClipboard() },
                 onPromptKit = { promptOpen = true },
+                onExport = {
+                    // The clipboard rather than a file picker. A `.nama` file is text, the reader
+                    // is going to paste it into a message or a note, and a document provider is
+                    // three taps and a permission between them and that.
+                    clipboard.setText(AnnotatedString(ScriptFile.write(controller.document())))
+                    toaster.show(exported)
+                },
+                onImport = {
+                    val text = clipboard.getText()?.text.orEmpty()
+                    val document = ScriptFile.read(text)
+                    when {
+                        // A whole `.nama` file: the name, the colour, the tags, everything.
+                        document != null -> controller.openDocument(document)
+                        // Not one, but there is *something* there — so it is a bare script, which
+                        // is the likelier thing on the other end of «import» by a distance. It goes
+                        // through the paste path and gets the repairs with it.
+                        text.isNotBlank() -> controller.paste(text)
+                        else -> toaster.show(importFailed)
+                    }
+                },
+                onCopyLink = {
+                    clipboard.setText(AnnotatedString(ScriptLink.of(controller.document().id)))
+                    toaster.show(linkCopied)
+                },
             )
             ScriptTab.LIBRARY -> LibraryTab(
                 saved = saved,
@@ -376,6 +407,9 @@ private fun EditorTab(
     mainChart: (@Composable (Modifier) -> Unit)? = null,
     onPaste: () -> Unit = {},
     onPromptKit: () -> Unit = {},
+    onExport: () -> Unit = {},
+    onImport: () -> Unit = {},
+    onCopyLink: () -> Unit = {},
 ) = BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
     // Named for the pane the script's own-pane plots land in, so a reader with three scripts saved
     // can tell which strip belongs to which.
@@ -585,6 +619,7 @@ private fun EditorTab(
 
         item { NameField(name = state.name, onChange = controller::rename) }
 
+
         val inputs = state.result?.inputs.orEmpty()
         if (inputs.isNotEmpty()) {
             item {
@@ -599,6 +634,29 @@ private fun EditorTab(
                     onChange = { controller.setInput(input.name, it) },
                 )
             }
+        }
+
+
+        // **«اسکریپت من»** — what turns a working script into one the reader owns (run Σ, S3 C).
+        //
+        // **Below the inputs, not above them.** It was above at first, on the reasoning that a
+        // reader names a thing before they tune it. The opposite is true: the inputs are touched on
+        // every run and this panel about once per script, and putting it first pushed «ورودی‌ها»
+        // off the bottom of a phone — which `StudioProofTest.studioInputs` caught by looking for a
+        // control that was no longer composed. It is collapsed until asked for, so the summary row
+        // costs the list one line.
+        item {
+            MinePanel(
+                state = state,
+                onDescribe = controller::describe,
+                onColour = controller::setColour,
+                onTags = controller::setTags,
+                onOwnPane = controller::setOwnPane,
+                onRestore = controller::restore,
+                onExport = onExport,
+                onImport = onImport,
+                onCopyLink = onCopyLink,
+            )
         }
 
         val setup = state.result?.setup
@@ -1631,4 +1689,185 @@ private fun android.content.Context.openLink(url: String): Boolean = try {
     true
 } catch (_: android.content.ActivityNotFoundException) {
     false
+}
+
+/**
+ * **«اسکریپت من»**: a description, a colour, tags, a pane, and what came before (run Σ, S3 C).
+ *
+ * ### Why it is a panel in the editor rather than a dialog on save
+ *
+ * Because a dialog on save is a toll gate. A reader who has just got something working wants it
+ * kept, and a form standing between them and that is a form they will fill in with anything. Here
+ * the fields are beside the script, filled in when the reader has an answer, and a save takes
+ * whatever is in them — including nothing.
+ *
+ * ### The versions
+ *
+ * Five, newest first, each with the date it was replaced. Restoring puts it in the editor and does
+ * **not** save: looking through a history is looking, and a restore that wrote itself would make
+ * «what did this used to say» a destructive question.
+ */
+@Composable
+private fun MinePanel(
+    state: ScriptEditorState,
+    onDescribe: (String) -> Unit,
+    onColour: (Long) -> Unit,
+    onTags: (String) -> Unit,
+    onOwnPane: (Boolean) -> Unit,
+    onRestore: (ScriptRevision) -> Unit,
+    onExport: () -> Unit,
+    onImport: () -> Unit,
+    onCopyLink: () -> Unit,
+    /** Open from the start — for the proof frame, which is of the panel and not of the summary. */
+    startOpen: Boolean = false,
+) {
+    var open by rememberSaveable { mutableStateOf(startOpen) }
+    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { open = !open },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.script_mine_panel),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Box(
+                    modifier = Modifier
+                        .size(SWATCH)
+                        .background(Color(state.colour), CoineProShapes.small)
+                        .border(1.dp, CoineProColors.Border, CoineProShapes.small),
+                )
+            }
+            if (!open) return@Column
+
+            PlainField(
+                value = state.description,
+                placeholder = stringResource(R.string.script_description_label),
+                onChange = onDescribe,
+                tag = "script-description",
+            )
+            SectionTitle(stringResource(R.string.script_colour_label), subtitle = null)
+            ColourChips(selected = state.colour, onSelect = onColour)
+            PlainField(
+                value = state.tags.joinToString("، "),
+                placeholder = stringResource(R.string.script_tags_label),
+                onChange = onTags,
+                tag = "script-tags",
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.script_pane_label), style = MaterialTheme.typography.bodyMedium)
+                Switch(checked = state.ownPane, onCheckedChange = onOwnPane)
+            }
+
+            SectionTitle(
+                stringResource(R.string.script_versions),
+                stringResource(R.string.script_versions_count, state.history.size.proseDigits()),
+            )
+            if (state.history.isEmpty()) {
+                Text(
+                    stringResource(R.string.script_version_none),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextMuted,
+                )
+            } else {
+                for (revision in state.history) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            // The first line of the version, which is what a reader recognises it
+                            // by — a date alone tells them nothing about which one this was.
+                            text = revision.source.lineSequence().firstOrNull { it.isNotBlank() }.orEmpty().take(REVISION_PREVIEW),
+                            style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                            color = CoineProColors.TextMuted,
+                            maxLines = 1,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = { onRestore(revision) }) {
+                            Text(stringResource(R.string.script_version_restore), style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
+                CoineProSecondaryButton(
+                    text = stringResource(R.string.script_export),
+                    onClick = onExport,
+                    modifier = Modifier.weight(1f).semantics { contentDescription = "script-export" },
+                )
+                CoineProSecondaryButton(
+                    text = stringResource(R.string.script_import),
+                    onClick = onImport,
+                    modifier = Modifier.weight(1f).semantics { contentDescription = "script-import" },
+                )
+            }
+            CoineProSecondaryButton(
+                text = stringResource(R.string.script_copy_link),
+                onClick = onCopyLink,
+                modifier = Modifier.fillMaxWidth().semantics { contentDescription = "script-copy-link" },
+            )
+        }
+    }
+}
+
+/** A one-line field with a placeholder. The same chrome as [NameField], which it is a sibling of. */
+@Composable
+private fun PlainField(value: String, placeholder: String, onChange: (String) -> Unit, tag: String) {
+    BasicTextField(
+        value = value,
+        onValueChange = onChange,
+        singleLine = true,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(CoineProColors.Surface, CoineProShapes.medium)
+            .border(1.dp, CoineProColors.Border, CoineProShapes.medium)
+            .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One)
+            .semantics { contentDescription = tag },
+        textStyle = LocalTextStyle.current.merge(TextStyle(color = CoineProColors.TextPrimary)),
+        cursorBrush = SolidColor(CoineProColors.Gold),
+        decorationBox = { field ->
+            if (value.isEmpty()) {
+                Text(placeholder, style = MaterialTheme.typography.bodyMedium, color = CoineProColors.TextMuted)
+            }
+            field()
+        },
+    )
+}
+
+/** How much of an earlier version's first line the row shows. */
+private const val REVISION_PREVIEW = 60
+
+/**
+ * The «اسکریپت من» panel on its own, already open, for a proof frame.
+ *
+ * The same reason `CoineProSheetBody` exists: a panel that can only be reached by driving a whole
+ * screen is a panel nobody looks at before it ships. It takes a controller rather than the state so
+ * the frame is of the real thing — the same composable the editor draws, with the same callbacks
+ * wired to the same controller — rather than a stand-in that could drift from it.
+ */
+@Composable
+fun ScriptMinePanelPreview(controller: ScriptController) {
+    val state by controller.state.collectAsStateWithLifecycle()
+    MinePanel(
+        state = state,
+        onDescribe = controller::describe,
+        onColour = controller::setColour,
+        onTags = controller::setTags,
+        onOwnPane = controller::setOwnPane,
+        onRestore = controller::restore,
+        onExport = {},
+        onImport = {},
+        onCopyLink = {},
+        startOpen = true,
+    )
 }
