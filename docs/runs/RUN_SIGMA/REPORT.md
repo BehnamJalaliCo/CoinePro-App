@@ -281,3 +281,84 @@ for.
 | Principles with a gate | 8 of 10 |
 | Found by the new gates, in their own repository | 2 hollow checklist cells, 4 undocumented deep routes |
 
+
+# Σ3 — a reason to come back (4.83.0)
+
+## The part that is not a card
+
+Two cards went on Home: «وقتی نبودید», which says what the reader's own watchlist did while they
+were away, and today's challenge, which is one task and a streak. Drawing either is an afternoon.
+The work is in the four rules that keep them off the screen.
+
+A card that greets a reader every morning is not a feature with a small flaw — it is worse than no
+card at all, because it teaches them that the top of Home is noise, and after about four days they
+stop looking at it. Everything above the fold then costs more than it earns. So `ReturnLoop` is a
+decision object rather than a layout, and most of `ReturnLoopTest` is about silence:
+
+* **Under four hours away is not an absence.** Somebody who checked the price before lunch is not
+  «back».
+* **A move under two per cent is not news.** One per cent is about the width of the candle it
+  happened in. A card announcing it would be a card announcing nothing.
+* **A first launch has been away from nothing.** Zero means never, not «a long time».
+* **Offline is the quiet case, not a broken one.** No quotes means no movers and no counts, and the
+  card is absent — «۰ سیگنال» reads as a claim about the market when it is a claim about the radio.
+
+The third proof frame is the one worth having. `sigma3-return-loop-quiet-phone-fa.png` is the same
+Home, the same fixture and the same movers, four minutes after the last visit instead of fourteen
+hours, with neither card on it. Without that frame the other two prove only that a card can be
+drawn.
+
+## Where the last visit is stamped
+
+On the way *out* of the shell, in an `onDispose`, not on the way in. A visit recorded when Home was
+composed would make «since your last visit» measure from the moment the card was drawn — a window of
+zero, and a card that can never appear. `LastVisitStore` keeps two timestamps for a related reason:
+the visit is the clock, and the acknowledgement is a different moment, because a reader who reads
+the card and comes back an hour later must not be shown the same three movers as news.
+
+## Twelve challenges, and why the walk has a stride
+
+One task a day, the same for everybody, decided by the date and nothing else. Not random — a reader
+who closes and reopens the app would get a different task, which makes the whole thing feel
+arbitrary. Not personalised — the app is in no position to know what somebody needs to practise.
+
+The table is walked at a stride of seven over twelve entries rather than by the day number, because
+the two are coprime: consecutive days land seven places apart, the cycle is the full fortnight, and
+the three scripting tasks do not arrive on the three consecutive mornings a reader happens to open
+it. A wrong clock reaching a negative epoch day uses the mathematical modulo, not Kotlin's
+remainder, which would otherwise throw.
+
+`challengeRoute` maps each challenge's surface to this graph, exhaustively on the enum, so a
+thirteenth challenge with nowhere to go fails to compile rather than opening the profile screen. The
+arena maps to the chart deliberately: the replay game lives there, behind its own button.
+
+## The twelve sentences the string lint cannot see
+
+They were written informally — «یک سیگنال را باز کن», «دیده‌بانت را مرتب کن» — and the reason is
+worth writing down, because it is structural rather than careless. These are the only pieces of
+interface copy in the product that live in Kotlin rather than in `strings.xml`, and
+`tools/i18n/lint_strings.py` — the thing that holds the entire app to «شما» — reads `strings.xml`.
+Copy that steps outside the resources steps outside the rule with it.
+
+All twelve are now the formal plural, and `ReturnLoopTest` carries the lint's own patterns so they
+stay that way. A card reading «باز کن» directly beneath one reading «وقتی نبودید» is two different
+applications stacked on top of each other.
+
+## What Σ3 does not claim
+
+**The signal and alert counts come from the shell's own state.** The fields are real and the card
+renders them, but nothing counts a signal that fired while the app was closed. That is background
+work, and the claim is not made.
+
+**The streak is the arena's.** It counts days a reader played a replay round — something they did.
+A number that went up for opening the app would be a number about the app.
+
+**D8 is half a principle.** The archive round-trips, export and import are wired into the profile,
+and nothing syncs to a server. S6's row and D8's row both say so.
+
+| | |
+|---|---|
+| New | `ReturnLoop`, `LastVisitStore`, two Home cards, `challengeRoute` |
+| Tests | `ReturnLoopTest` (21), `ReaderArchiveTest` (22), `ReturnLoopProofTest` (3 frames) |
+| Principles with a gate | 10 of 10 — D8's is honest about covering only half of its rule |
+| Frames | `sigma3-return-loop-phone-fa.png`, `-phone-en.png`, `-quiet-phone-fa.png` |

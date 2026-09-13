@@ -87,4 +87,14 @@
     <string name="mood_counts">%1$s markets up, %2$s down</string>
     <string name="mood_movers">Biggest moves</string>
     <string name="mood_busy">Busy and moving</string>
+
+    <!-- The return loop (4.82.4, run Σ item S5; doctrine D7). -->
+    <string name="home_since_title">While you were away</string>
+    <string name="home_since_hours">%1$s hours</string>
+    <string name="home_since_days">%1$s days</string>
+    <string name="home_since_signals">%1$s signals fired</string>
+    <string name="home_since_alerts">%1$s of your alerts went off</string>
+    <string name="home_challenge_title">Today</string>
+    <string name="home_challenge_do">Do it</string>
+    <string name="home_streak">%1$s days running</string>
 </resources>

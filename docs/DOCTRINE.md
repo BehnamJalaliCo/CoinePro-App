@@ -4,10 +4,10 @@ The owner's brief for the second half opens with these, and the reason they are 
 than a conversation is that a principle nobody can fail is a slogan. Every one below has a
 **measurable rule** and a **gate**: something that runs, and fails, when the rule is broken.
 
-The status column is honest about which gates exist today. The four that were ❌ were wired in Σ2
-(4.82.2) and the column says so; the two that remain are the two whose *feature* does not exist yet,
-and they are ❌ because until a gate exists the principle is an intention — which is exactly the
-distinction run Ω-FIX was about.
+The status column is honest about which gates exist today. Four were wired in Σ2 (4.82.2) and the
+last two in Σ3 (4.83.0), once the features they measure existed — because a gate written over a
+feature that is not there is a green check measuring nothing, which is exactly the distinction run
+Ω-FIX was about. D8's row is the one that is still partly ❌, and it names which part.
 
 | # | The principle | The measurable rule | The gate | Today |
 |---|---|---|---|---|
@@ -17,8 +17,8 @@ distinction run Ω-FIX was about.
 | D4 | **One layer** | Nothing is more than one layer away from the chart | `NavigationDepthTest` reads every `composable(route = …)` out of `CoineProApp.kt` — the graph itself, not a list beside it — and requires each to be a menu or bar destination, or to be named in an exemption list with a reason a test checks the length of | ✅ |
 | D5 | **Zero explanatory prose** | A note exists only to prevent a real mistake, and is at most one line | `NotePolicy` + `tools/i18n/lint_strings.py`, which fails the build on a `*_note`/`*_hint`/`*_body` key a source resolves itself | ✅ |
 | D6 | **Physical feedback** | Every confirmation is a haptic; every tick is a flash; every sheet is a spring | `check-motion-policy.sh` for the motion, and `check-haptic-policy.sh` for the rest: nothing outside `CoineProHaptics` may call the platform's haptics, the five primitives a screen relies on must each still take them, and the call-site count has a floor so a refactor cannot quietly silence the app | ✅ |
-| D7 | **A variable reward on every return** | «Since your last visit», today's challenge and a new signal or story are above the fold on Home | A Home test in three data states: nothing new, something new, and offline | ❌ — Σ3 builds the feature; a gate before the feature would be a gate over nothing |
-| D8 | **The reader's own investment** | Watchlists, layouts, my scripts, the journal and the streak all sync and export | Round-trip tests per store: write, export, wipe, import, compare | ❌ Σ3 |
+| D7 | **A variable reward on every return** | «Since your last visit», today's challenge and a new signal or story are above the fold on Home | `ReturnLoopTest` in the three states the rule names — nothing new, something new, offline — and most of it is about when the card must **not** appear, because a card that greets a reader every morning is what teaches them to scroll past the top of Home. `ReturnLoopProofTest` photographs the loud morning and the quiet one, the second being the only evidence that the card is conditional | ✅ (4.83.0, Σ3) |
+| D8 | **The reader's own investment** | Watchlists, layouts, my scripts, the journal and the streak all sync and export | `ReaderArchiveTest` — write, export, wipe, import, compare, and the same per store, because a format that loses one section while the others pass is what a single whole-archive test hides. Export and import are wired into the profile; server sync is not, and S6 says so | ✅ for export and import (4.83.0, Σ3); sync is still ❌ |
 | D9 | **Persian as the advantage, English as the doorway** | Every string in both languages; both calendars; Latin digits in figures and Persian digits in prose counts | `tools/i18n/lint_strings.py` (parity, glossary, register, orthography) and `TabletEnglishTest`; the Gradle `checkDefaultLocaleIsEnglish` task | ✅ |
 | D10 | **Honest with the device** | No ✅ without a frame or a test; every claim about motion reads «owed» until a device recording lands | `check-checklist-honesty.py` walks every `docs/runs/**/CHECKLIST.md` and fails a ✅ whose Evidence or Frame cell points at nothing — `—` included, because a dash is the shape a blank takes once somebody has been told not to leave one. It found a row in RUN Σ's own checklist the hour it was written | ✅ |
 

@@ -47,7 +47,10 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.BidiText
+import com.coinepro.core.common.ChallengeSurface
+import com.coinepro.core.common.DailyChallenge
 import com.coinepro.core.common.MarketNumberFormatter
+import com.coinepro.core.common.SinceLastVisit
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProAgentOrb
@@ -138,6 +141,20 @@ fun HomeScreen(
      * reader goes deliberately rather than surfaces they live in, and Home is where somebody looks
      * when they are deciding what to do next.
      */
+    /**
+     * **The return loop** (4.82.4, run Σ item S5; doctrine D7).
+     *
+     * [since] is what changed while the reader was away, or null when nothing did — and null is the
+     * ordinary case. A card that says «no news» every morning teaches a reader that the top of Home
+     * is noise, which costs more than the card was ever going to earn. `ReturnLoop` decides.
+     *
+     * [challenge] is the one task for today, the same for everybody, and [streak] is how many days
+     * running they have kept it.
+     */
+    since: SinceLastVisit? = null,
+    challenge: DailyChallenge? = null,
+    streak: Int = 0,
+    onDoChallenge: (ChallengeSurface) -> Unit = {},
     onOpenTools: (() -> Unit)? = null,
     onOpenActivity: (() -> Unit)? = null,
     /** The headlines. See `ShortcutRow` for why this earned a slot. */
@@ -232,6 +249,15 @@ fun HomeScreen(
             if (displayName != null) {
                 item { GreetingRow(displayName, avatar, onOpenProfile) }
             }
+
+            // **Above the fold, and only when there is something to say** (run Σ, S5).
+            //
+            // Above the balance on purpose: the balance is where the reader *is*, and this is what
+            // happened — which is the question somebody opening an app after a night's sleep is
+            // actually asking. It is absent far more often than it is present, which is what keeps
+            // it worth reading when it is there.
+            since?.let { item { SinceCard(it) } }
+            challenge?.let { item { ChallengeCard(it, streak, onDoChallenge) } }
 
             // Only when the build actually serves both. A one-option switch is a label pretending to be
             // a control, and it would take the top of the screen to say nothing.
@@ -1064,3 +1090,106 @@ private const val MIN_EQUITY_POINTS = 5
 
 /** The accent behind the balance: eighteen per cent at the top, nothing at the foot. */
 private const val HERO_WASH_ALPHA = 0.18f
+
+/**
+ * What happened while the reader was away.
+ *
+ * Every line is a fact with a number behind it, and the sentence is assembled here rather than in
+ * `ReturnLoop` because word order differs between the two languages and composing it in the model
+ * would bake one grammar into the other's screen.
+ */
+@Composable
+private fun SinceCard(since: SinceLastVisit) {
+    CoineProCard(modifier = Modifier.fillMaxWidth().semantics { contentDescription = "home-since" }) {
+        Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.home_since_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = if (since.awayDays >= 1) {
+                        stringResource(R.string.home_since_days, since.awayDays.proseDigits())
+                    } else {
+                        stringResource(R.string.home_since_hours, since.awayHours.proseDigits())
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextMuted,
+                )
+            }
+            for (mover in since.movers) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(mover.symbol, style = MaterialTheme.typography.bodyMedium)
+                    // A market figure, so Latin digits and the app's own up/down colours — the same
+                    // rule every price in this app follows.
+                    Text(
+                        text = MarketNumberFormatter.signedPercent(mover.change * 100),
+                        style = CoineProTextStyles.Numeric,
+                        color = if (mover.isUp) CoineProColors.Buy else CoineProColors.Sell,
+                    )
+                }
+            }
+            if (since.signals > 0) {
+                Text(
+                    stringResource(R.string.home_since_signals, since.signals.proseDigits()),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextMuted,
+                )
+            }
+            if (since.alerts > 0) {
+                Text(
+                    stringResource(R.string.home_since_alerts, since.alerts.proseDigits()),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextMuted,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Today's one task, and the streak it is keeping.
+ *
+ * The streak is beside the task rather than on a card of its own, because a number with nothing to
+ * do about it is a scoreboard — and a scoreboard on a charting app is the kind of thing that makes
+ * a reader feel managed.
+ */
+@Composable
+private fun ChallengeCard(challenge: DailyChallenge, streak: Int, onDo: (ChallengeSurface) -> Unit) {
+    CoineProCard(modifier = Modifier.fillMaxWidth().semantics { contentDescription = "home-challenge" }) {
+        Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.home_challenge_title),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.TextMuted,
+                )
+                if (streak > 0) {
+                    Text(
+                        stringResource(R.string.home_streak, streak.proseDigits()),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CoineProColors.Gold,
+                    )
+                }
+            }
+            Text(challenge.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            CoineProSecondaryButton(
+                text = stringResource(R.string.home_challenge_do),
+                onClick = { onDo(challenge.surface) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}

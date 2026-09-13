@@ -15,8 +15,8 @@ false on the device in every frame of two recordings.
 | S1 | Horizontal pinch on the plot zooms time; vertical does too with auto-scale on; the price gutter scales price only | ✅ code, ⏳ owed to device | `PinchZone` + `pinchZoneOf` route by **start location only**; the plot's zoom is the Euclidean distance ratio at any angle. The bug was a per-frame `1.0025.pow(Δspan)` behind a one-per-cent dead zone — arithmetically unreachable at any human finger speed. `ChartPinchTest` (6) injects two real pointers; `PinchZoneTest` (6) walks every point of the canvas | **A gesture, so not a still.** Six injected-pointer tests, one of them through the whole page to prove nothing above the plot steals the second finger. The owner's recording is what closes it |
 | S2 | Buy/Sell markers carry labels per the density rules; goldens at 4/8/16 dp | ✅ | `ChartMarker.label` + `TradeSide.action`; `SignalMarkers.detailFor` — label at ≥ 12 dp a bar, triangle 6–12, one per ten-bar swing below 6; `sizeDpFor` gives 6/8/10 dp by strength; labels skip the legend plate, the plot's edges and each other. Per-study «با برچسب / فقط مثلث / خاموش» in the Explain sheet. `SignalMarkersTest` (13) | `sigma0-markers-{16,8,4}dp-phone-fa.png`, the same three on a tablet, `sigma0-markers-16dp-phone-en.png`, `sigma0-markers-triangles-phone-fa.png` |
 | S3 | BYO Script end to end | ✅ for A, B, C, E, F, G; ❌ for D | Σ1 below | `sigma1-paste-fixes-phone-fa.png`, `sigma1-paste-templates-phone-fa.png`, `sigma1-prompt-kit-phone-{fa,en}.png`, `sigma1-my-script-phone-fa.png` |
-| S4 | `docs/DOCTRINE.md` with D1–D10, each with a CI gate | ✅ for eight; ❌ for D7 and D8, whose features are Σ3 | Σ2 below | **Gates, not pictures** — the evidence is that they run and fail: `check-haptic-policy.sh`, `check-checklist-honesty.py`, `NavigationDepthTest`, `SixtySecondsToMeaningTest`, all four in CI |
-| S5 | Retention loop | ❌ | Σ3 | — |
+| S4 | `docs/DOCTRINE.md` with D1–D10, each with a CI gate | ✅ for nine; D8's row is ✅ for export and import and ❌ for server sync, and says so | Σ2 below | **Gates, not pictures** — the evidence is that they run and fail: `check-haptic-policy.sh`, `check-checklist-honesty.py`, `NavigationDepthTest`, `SixtySecondsToMeaningTest`, all four in CI |
+| S5 | Retention loop | ✅ | Σ3 below. `ReturnLoop` decides; Home draws. The card is absent on a quiet morning, which is most of what `ReturnLoopTest` (21) is about | `sigma3-return-loop-phone-fa.png`, `sigma3-return-loop-phone-en.png`, and `sigma3-return-loop-quiet-phone-fa.png` — the same fixture four minutes later, with neither card |
 | S6 | Account value: sync, export/import, guest migration | ✅ for the archive's own format and for watchlist + scripts; ❌ for layouts, the journal and server sync | `ReaderArchive` + `ReaderArchiveTest` (22) is D8's gate — write, export, wipe, import, compare, per store. The profile carries «پشتیبان‌گیری» and «بازگرداندن» for a guest, who needs them most because nothing of theirs is on a server. Import merges and never duplicates | **A round trip, so not a still.** The test is the evidence; the row's own note on the profile says what is in the file and what is not |
 | S7 | Community scripts | ❌ | Σ4 | — |
 | S8 | All of the above on tablet, parity matrix 100 % | ❌ | Σ5 | — |
@@ -93,10 +93,40 @@ only reason this was findable at all.
 
 ### What Σ2 does not claim
 
-**D7 and D8 have no gate because they have no feature.** A Home test in three data states needs a
-Home that has «since your last visit» on it, and a round-trip test per store needs the export to
-exist. Σ3 builds both. Writing a gate over a feature that is not there would be a green check
-measuring nothing, which is the exact failure D10 is about.
+**D7 and D8 had no gate in Σ2 because they had no feature.** A Home test in three data states needs
+a Home that has «since your last visit» on it, and a round-trip test per store needs the export to
+exist. Σ3 built both, and the gates went in with them — `ReturnLoopTest` and `ReaderArchiveTest`.
+Writing either a release earlier would have been a green check measuring nothing, which is the exact
+failure D10 is about. D8 is still only half a principle: the archive round-trips, and nothing
+syncs.
+
+## Σ3, item by item — a reason to come back
+
+The loop is three parts and a rule about when to keep quiet. The rule is the part with the work in
+it: two of the three parts are easy to draw and all three are easy to draw *too often*, which is the
+failure that costs more than the cards earn.
+
+| Σ3 item | State | Evidence | Frame |
+|---|---|---|---|
+| «Since your last visit» above the fold, with what actually moved | ✅ | `ReturnLoop.sinceLastVisit` takes the reader's own watchlist and the feed's own change figures, keeps the three biggest moves either way, and names how many signals fired and how many of their own alerts went off. The sentence is composed at the screen, never in the model — a summary string built here would bake one language's word order into shared code | `sigma3-return-loop-phone-fa.png`, `sigma3-return-loop-phone-en.png` |
+| Nothing new means **nothing drawn** | ✅ | Four rules, each with its own test: under four hours away is not an absence; a move smaller than two per cent is the width of its own candle and not news; a first launch has been away from nothing; and offline — no quotes, so no movers and no counts — is the quiet case rather than a broken one, because «۰ سیگنال» reads as a claim about the market rather than about the radio | `sigma3-return-loop-quiet-phone-fa.png` — the same screen, the same movers, four minutes instead of fourteen hours |
+| The last visit is measured from the right moment | ✅ | Stamped on the way *out* of the shell rather than on arrival: a visit recorded when Home was drawn would make the window zero and the card would never appear at all. `LastVisitStore` keeps the visit and the acknowledgement as two timestamps for the same reason | — **a lifecycle effect**; `LastVisitStore`'s own note is the record, and the four-minute frame is what it buys |
+| One challenge a day, the same for everybody | ✅ | `ReturnLoop.challengeFor(epochDay)` walks a twelve-entry table in a stride coprime with its length, so a fortnight passes before a repeat and three scripting tasks do not arrive together. Not random — a reader who reopens the app would get a different task, which makes the whole thing feel arbitrary — and not personalised, which the app is in no position to decide. Negative epoch days (a wrong clock) use the mathematical modulo, with a test | `sigma3-return-loop-phone-fa.png` |
+| Every challenge is a minute's work, in both languages, and lands somewhere real | ✅ | Twelve tasks, each doable today with no account and no money; `challengeRoute` maps the surface to this graph's routes and is exhaustive on the enum, so a thirteenth with nowhere to go fails to compile. The arena is deliberately the chart: the replay game lives there, and a route that did not exist would be a promise the graph cannot keep | — **a table and a mapping**; the two tests are the proof |
+| The challenges address the reader as «شما», like everything else | ✅ | These twelve sentences are the only interface copy in the product that lives in Kotlin rather than `strings.xml`, so `lint_strings.py` cannot see them — and they were written informally on the first pass for exactly that reason. `ReturnLoopTest.the challenges address the reader the way the rest of the app does` carries the lint's own patterns | `sigma3-return-loop-phone-fa.png` |
+| The streak, and a day's grace | ✅ | The arena already keeps it; `ReturnLoop.streakAfter` is the rule about losing it. One day's grace, because a streak that breaks because somebody was asleep at midnight in the wrong time zone teaches them the number is not about them; two days and it is genuinely over, which is what keeps it worth anything. A clock corrected backwards does not inflate it | `sigma3-return-loop-phone-fa.png` — «۶ روز پشت سر هم» |
+| Export and import of everything a reader made | ✅ | `ReaderArchiveFile` — a text format with length-prefixed records, so a journal entry containing the format's own punctuation survives. Import merges without duplicating, never shortens a streak, and refuses a file that is not an archive rather than half-reading it. This is D8's gate | — **a round trip, so not a still**; `ReaderArchiveTest` (22) is the evidence, and S6's row says which stores are in |
+
+### What Σ3 does not claim
+
+**The «since» card counts signals and alerts only when something counted them.** The fields are
+real and the card renders them; what feeds them today is the shell's own state, which means a
+signal that fired while the app was closed is not in the number. That is a background-work claim,
+and it is not made.
+
+**A streak is the arena's, not a login streak.** It counts days a reader played a replay round,
+which is a thing they did. A number that went up for opening the app would be a number about the
+app rather than about them.
 
 ## What Σ0 does **not** claim
 

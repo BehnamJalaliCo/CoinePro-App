@@ -81,4 +81,13 @@
     <string name="mood_counts">%1$s بازار بالا، %2$s پایین</string>
     <string name="mood_movers">بیشترین حرکت</string>
     <string name="mood_busy">شلوغ و در حرکت</string>
+
+    <string name="home_since_title">وقتی نبودید</string>
+    <string name="home_since_hours">%1$s ساعت</string>
+    <string name="home_since_days">%1$s روز</string>
+    <string name="home_since_signals">%1$s سیگنال صادر شد</string>
+    <string name="home_since_alerts">%1$s هشدار شما به صدا درآمد</string>
+    <string name="home_challenge_title">امروز</string>
+    <string name="home_challenge_do">انجامش بدهید</string>
+    <string name="home_streak">%1$s روز پشت سر هم</string>
 </resources>

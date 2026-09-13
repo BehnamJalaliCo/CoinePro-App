@@ -140,18 +140,18 @@ object ReturnLoop {
      * today with no account and no money.
      */
     private val CHALLENGES: List<Challenge> = listOf(
-        Challenge("read-a-signal", "یک سیگنال را باز کن و ببین چرا", "Open one signal and see why", ChallengeSurface.CHART),
-        Challenge("add-a-study", "یک اندیکاتور تازه به چارت اضافه کن", "Put one new study on the chart", ChallengeSurface.CHART),
-        Challenge("explain-sheet", "برگه‌ی «چرا» را برای یک اندیکاتور بخوان", "Read the Explain sheet for one study", ChallengeSurface.CHART),
-        Challenge("paste-a-script", "یک اسکریپت از هوش مصنوعی بگیر و اجرا کن", "Get a script from an AI and run it", ChallengeSurface.SCRIPT),
-        Challenge("save-a-script", "یک اسکریپت را به نام خودت ذخیره کن", "Save one script as your own", ChallengeSurface.SCRIPT),
-        Challenge("library-strategy", "یک استراتژی از کتابخانه را امتحان کن", "Try one strategy from the library", ChallengeSurface.SCRIPT),
-        Challenge("set-an-alert", "یک هشدار روی قیمتی که برایت مهم است بگذار", "Set an alert on a price you care about", ChallengeSurface.ALERTS),
-        Challenge("journal-a-trade", "یک معامله را در دفترچه بنویس", "Write one trade in the journal", ChallengeSurface.JOURNAL),
-        Challenge("paper-trade", "یک معامله‌ی آزمایشی باز کن", "Open one paper trade", ChallengeSurface.PAPER),
-        Challenge("replay-arena", "یک دور در میدان بازپخش بازی کن", "Play one round in the replay arena", ChallengeSurface.ARENA),
-        Challenge("watchlist-tidy", "دیده‌بانت را مرتب کن", "Tidy your watchlist", ChallengeSurface.WATCHLIST),
-        Challenge("compare-two", "دو نماد را کنار هم بگذار", "Put two symbols side by side", ChallengeSurface.CHART),
+        Challenge("read-a-signal", "یک سیگنال را باز کنید و دلیلش را ببینید", "Open one signal and see why", ChallengeSurface.CHART),
+        Challenge("add-a-study", "یک اندیکاتور تازه به چارت اضافه کنید", "Put one new study on the chart", ChallengeSurface.CHART),
+        Challenge("explain-sheet", "برگه‌ی «چرا» را برای یک اندیکاتور بخوانید", "Read the Explain sheet for one study", ChallengeSurface.CHART),
+        Challenge("paste-a-script", "یک اسکریپت از هوش مصنوعی بگیرید و اجرا کنید", "Get a script from an AI and run it", ChallengeSurface.SCRIPT),
+        Challenge("save-a-script", "یک اسکریپت را به نام خودتان ذخیره کنید", "Save one script as your own", ChallengeSurface.SCRIPT),
+        Challenge("library-strategy", "یک استراتژی از کتابخانه را امتحان کنید", "Try one strategy from the library", ChallengeSurface.SCRIPT),
+        Challenge("set-an-alert", "یک هشدار روی قیمتی که برایتان مهم است بگذارید", "Set an alert on a price you care about", ChallengeSurface.ALERTS),
+        Challenge("journal-a-trade", "یک معامله را در دفترچه بنویسید", "Write one trade in the journal", ChallengeSurface.JOURNAL),
+        Challenge("paper-trade", "یک معامله‌ی آزمایشی باز کنید", "Open one paper trade", ChallengeSurface.PAPER),
+        Challenge("replay-arena", "یک دور در میدان بازپخش بازی کنید", "Play one round in the replay arena", ChallengeSurface.ARENA),
+        Challenge("watchlist-tidy", "دیده‌بانتان را مرتب کنید", "Tidy your watchlist", ChallengeSurface.WATCHLIST),
+        Challenge("compare-two", "دو نماد را کنار هم بگذارید", "Put two symbols side by side", ChallengeSurface.CHART),
     )
 }
 

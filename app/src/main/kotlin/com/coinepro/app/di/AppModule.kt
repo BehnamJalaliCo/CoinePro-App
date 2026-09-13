@@ -162,6 +162,7 @@ import com.coinepro.core.webhook.WebhookStore
 import com.coinepro.feature.alerts.AlertsController
 import com.coinepro.feature.alerts.StoredWebhooks
 import com.coinepro.core.datastore.ArenaStore
+import com.coinepro.core.datastore.LastVisitStore
 import com.coinepro.feature.chart.ChartWorkspaceStore
 import com.coinepro.feature.screener.CandleScreenerBarSource
 import com.coinepro.feature.screener.MarketTickerScreenerSource
@@ -735,6 +736,16 @@ object AppModule {
     @Provides
     @Singleton
     fun arenaStore(dataStore: DataStore<Preferences>): ArenaStore = ArenaStore(dataStore)
+
+    /**
+     * When the reader was last on Home, for «since your last visit» (run Σ, S5).
+     *
+     * The same preferences file again. Two longs and no server: nobody else needs to know when
+     * somebody opened an app.
+     */
+    @Provides
+    @Singleton
+    fun lastVisitStore(dataStore: DataStore<Preferences>): LastVisitStore = LastVisitStore(dataStore)
 
     /**
      * The reader's own name and face.

@@ -27,6 +27,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -42,6 +43,9 @@ import com.coinepro.core.common.ArchivedStreak
 import com.coinepro.core.common.ImportRule
 import com.coinepro.core.common.ReaderArchive
 import com.coinepro.core.common.ReaderArchiveFile
+import com.coinepro.core.common.ChallengeSurface
+import com.coinepro.core.common.ReturnLoop
+import com.coinepro.core.common.SymbolMove
 import com.coinepro.core.script.ScriptDocument
 import com.coinepro.core.database.SavedScriptEntity
 import com.coinepro.core.script.ScriptFile
@@ -128,6 +132,7 @@ import com.coinepro.core.datastore.ThemeMode
 import com.coinepro.app.ideas.IdeasScreen
 import com.coinepro.core.datastore.UserPreferencesStore
 import com.coinepro.core.datastore.StoredProfile
+import com.coinepro.core.datastore.LastVisitStore
 import com.coinepro.core.datastore.Watchlist
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.watchlistsync.WatchlistSyncController
@@ -652,6 +657,31 @@ internal fun surfaceRoute(id: String, platform: MarketPlatform, watchlist: List<
     }
 
 /**
+ * Where today's challenge is done (run Σ, S5).
+ *
+ * `ReturnLoop` names a surface rather than a route because it is pure Kotlin shared with the web
+ * build and has no business knowing how this graph is spelled. The mapping is the one place that
+ * decision is made, and it is exhaustive on the enum so that a challenge added without somewhere to
+ * do it fails to compile rather than opening the profile screen.
+ *
+ * The arena is not a route: the replay game lives on the chart, behind its own button, so a reader
+ * sent there arrives on a chart with the challenge in reach. Anything else would be a promise the
+ * navigation graph cannot keep.
+ */
+private fun challengeRoute(
+    surface: ChallengeSurface,
+    platform: MarketPlatform,
+    watchlist: List<String>,
+): String = when (surface) {
+    ChallengeSurface.CHART, ChallengeSurface.ARENA -> chartRoute(defaultScriptSymbol(platform, watchlist))
+    ChallengeSurface.SCRIPT -> scriptRoute(defaultScriptSymbol(platform, watchlist))
+    ChallengeSurface.ALERTS -> ALERTS_ROUTE
+    ChallengeSurface.JOURNAL -> JOURNAL_ROUTE
+    ChallengeSurface.PAPER -> PAPER_TRADE_ROUTE
+    ChallengeSurface.WATCHLIST -> WATCHLIST_ROUTE
+}
+
+/**
  * Where a menu row sends the reader.
  *
  * Delegates to [surfaceRoute] rather than repeating it: the menu and the search screen name the
@@ -864,6 +894,8 @@ fun CoineProApp(
     localAlertStore: LocalAlertStore,
     localAlertScheduler: LocalAlertScheduler,
     watchlistStore: WatchlistStore,
+    /** When the reader was last on Home, for «since your last visit» (run Σ, S5). */
+    lastVisitStore: LastVisitStore,
     watchlistSyncController: WatchlistSyncController,
     chartLayoutStore: ChartLayoutStore,
     chartDrawingStore: ChartDrawingStore,
@@ -1420,6 +1452,7 @@ fun CoineProApp(
                 subscription = current.entitlement.toHomeSubscription(),
                 storedWatchlist = watchlist,
                 watchlistStore = watchlistStore,
+                lastVisitStore = lastVisitStore,
                 onToggleWatch = { symbol -> scope.launch { watchlistStore.toggle(symbol) } },
                 onRefreshAccount = accountController::refresh,
                 signalController = signalController,
@@ -1652,6 +1685,7 @@ fun CoineProApp(
                         subscription = null,
                         storedWatchlist = watchlist,
                         watchlistStore = watchlistStore,
+                        lastVisitStore = lastVisitStore,
                         onToggleWatch = { symbol -> scope.launch { watchlistStore.toggle(symbol) } },
                         onRefreshAccount = {},
                         signalController = signalController,
@@ -1987,6 +2021,8 @@ private fun MainShell(
      * markets tab is the one that needs the lists, the flags and the columns, so it takes the store.
      */
     watchlistStore: WatchlistStore,
+    /** When the reader was last on Home, for «since your last visit» (run Σ, S5). */
+    lastVisitStore: LastVisitStore,
     onToggleWatch: (String) -> Unit,
     onSignalLaunchConsumed: () -> Unit,
     onActivityLaunchConsumed: () -> Unit,
@@ -2119,6 +2155,33 @@ private fun MainShell(
     val savedScriptsForArchive by scriptController.saved.collectAsStateWithLifecycle()
     val clipboardManager = LocalClipboardManager.current
     val archiveEnglish = inEnglish()
+
+    // ── the return loop (4.82.4, run Σ item S5) ──────────────────────────────────────────────
+    //
+    // The last visit is stamped on the way *out* of a composition rather than on the way in: a
+    // visit recorded on arrival would make «since your last visit» measure from the moment the card
+    // was drawn, which is a window of zero and a card that never appears.
+    val lastVisit by lastVisitStore.lastVisit.collectAsStateWithLifecycle(initialValue = 0L)
+    val nowForLoop = remember { System.currentTimeMillis() }
+    val returnSince = remember(lastVisit, marketState.quotes, watchlist) {
+        ReturnLoop.sinceLastVisit(
+            lastVisitEpochMillis = lastVisit,
+            nowEpochMillis = nowForLoop,
+            // The reader's own list, and only the rows the feed has actually spoken about. A
+            // symbol with no change reported is not a symbol that did not move.
+            movers = watchlist.mapNotNull { symbol ->
+                marketState.quotes[symbol.uppercase()]?.changePercent?.let { SymbolMove(symbol, it / 100.0) }
+            },
+        )
+    }
+    val loopArenaHistory by arenaStore.results.collectAsStateWithLifecycle(initialValue = emptyList())
+    val loopToday = remember { java.time.LocalDate.now().toEpochDay() }
+    val todaysChallenge = remember(archiveEnglish, nowForLoop) {
+        ReturnLoop.challengeFor(nowForLoop / 86_400_000L, english = archiveEnglish)
+    }
+    DisposableEffect(Unit) {
+        onDispose { shellScope.launch { lastVisitStore.visited(System.currentTimeMillis()) } }
+    }
     val deletedMessage = stringResource(R.string.toast_deleted)
     val layoutSavedMessage = stringResource(R.string.toast_layout_saved)
     val undoLabel = stringResource(R.string.action_undo)
@@ -3369,6 +3432,13 @@ private fun MainShell(
                     onVisibleSymbols = onSubscribeSymbols,
                     onOpenSymbol = { navController.navigate(chartRoute(it)) },
                     briefing = briefing,
+                    // **The return loop** (4.82.4, run Σ item S5; doctrine D7). Absent far more
+                    // often than present — `ReturnLoop` decides, and its rule is that a card which
+                    // says «no news» every morning teaches a reader to stop reading the card.
+                    since = returnSince,
+                    challenge = todaysChallenge,
+                    streak = loopArenaHistory.streak(loopToday),
+                    onDoChallenge = { surface -> navController.navigate(challengeRoute(surface, activePlatform, watchlist)) },
                     portfolio = portfolio?.copy(
                         equity = equityState.stats.equity.map { it.equity },
                     ),

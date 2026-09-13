@@ -173,6 +173,30 @@ class ReturnLoopTest {
     }
 
     @Test
+    fun `the challenges address the reader the way the rest of the app does`() {
+        // These twelve sentences are the only interface copy in the product that lives in Kotlin
+        // rather than in `strings.xml`, which means `tools/i18n/lint_strings.py` — the thing that
+        // holds the whole app to «شما» — cannot see them. They were written informally on the first
+        // pass for exactly that reason, and a card that says «باز کن» sitting under a card that
+        // says «وقتی نبودید» reads as two different applications.
+        //
+        // The patterns are the lint's own. Keeping a copy here is the price of the copy living
+        // outside the resources; the alternative is a rule nothing enforces.
+        val informal = Regex(
+            "(?<![\\u0620-\\u064A\\u066E-\\u06D5\\u200C])" +
+                "(بنویس|بفرست|بگیر|ببین|بزن|بساز|کن|بده|بخوان|بیا|برو|بگو|بکش|بردار|بگذار|بذار|" +
+                "بسنج|بپرس|بخر|بفروش|بچین|بکن|بیاور|بیار|باش|نکن|نده|نرو|نزن|بشین|بمان|بگرد|بیاب)" +
+                "(?![\\u0620-\\u064A\\u066E-\\u06D5\\u200C])",
+        )
+        val possessive = Regex("(?<![\\u0620-\\u064A\\u066E-\\u06D5])(خودت|برات|بهت|ازت|باهات)(?![\\u0620-\\u064A\\u066E-\\u06D5])")
+        for (day in 0L until 12L) {
+            val title = ReturnLoop.challengeFor(day).title
+            assertNull("«$title» uses a singular imperative", informal.find(title)?.value)
+            assertNull("«$title» uses a singular possessive", possessive.find(title)?.value)
+        }
+    }
+
+    @Test
     fun `every challenge names somewhere it can be done`() {
         val surfaces = (0L until 12L).map { ReturnLoop.challengeFor(it).surface }.toSet()
         assertTrue("the challenges all point at one screen", surfaces.size >= 4)
