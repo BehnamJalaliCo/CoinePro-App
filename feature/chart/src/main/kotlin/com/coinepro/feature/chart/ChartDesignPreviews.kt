@@ -9,6 +9,7 @@ import com.coinepro.core.chart.ChartPoint
 import com.coinepro.core.chart.Drawing
 import com.coinepro.core.marketdata.ChartInterval
 import com.coinepro.core.marketdata.Timeframe
+import androidx.compose.ui.res.stringResource
 
 /**
  * The chart's sheets, drawable on their own for a design review.
@@ -107,7 +108,7 @@ object ChartDesignPreviews {
             onUndo = {},
             onRedo = null,
             comparisons = 0,
-            scaleLabel = "خودکار",
+            scaleLabel = stringResource(R.string.scale_decimals_auto),
             scaleAdjusted = false,
             onOpen = {},
             onCreateAlert = {},

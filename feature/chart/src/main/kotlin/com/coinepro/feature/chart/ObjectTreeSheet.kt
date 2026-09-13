@@ -57,6 +57,7 @@ import com.coinepro.core.designsystem.rememberCoineProHaptics
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import androidx.compose.ui.res.stringResource
+import com.coinepro.core.designsystem.CoineProNote
 
 /**
  * The object tree: every drawing on the chart, grouped, and reachable.
@@ -116,10 +117,10 @@ internal fun ObjectTreeSheetBody(
             .heightIn(max = TREE_MAX_HEIGHT)
             .verticalScroll(rememberScrollState()),
     ) {
-        Text(
-            text = stringResource(R.string.objects_hint, total.toPersianDigits()),
+        CoineProNote(
+            R.string.objects_hint,
+            total.toPersianDigits(),
             style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextMuted,
             modifier = Modifier.padding(bottom = CoineProSpacing.One),
         )
         groups.forEach { group ->

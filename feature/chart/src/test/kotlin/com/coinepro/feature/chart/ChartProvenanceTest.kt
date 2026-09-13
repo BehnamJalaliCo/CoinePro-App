@@ -9,6 +9,7 @@ import com.coinepro.core.marketdata.Timeframe
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.Assert.assertNotNull
 
 /**
  * What the chart says it is *not* showing.
@@ -45,57 +46,76 @@ class ChartProvenanceTest {
     fun `a feed that reports no volume says so`() {
         // The TradingView complaint this exists for: their volume did not match the exchange's,
         // nothing said why, and the conclusion drawn was that the data was invented.
+        // Asserted on the reason's *identity* rather than on a substring of its Persian (run Ω2):
+        // the sentences live in `values/` and `values-fa/` now, and «some string contains حجم» was
+        // always a proxy for the thing this test means.
         val silent = chartExclusions(state(bars = series(200, volume = null)))
-        assertTrue(silent.any { it.contains("حجم") })
+        assertTrue(silent.any { it.res == R.string.provenance_no_volume })
     }
 
     @Test
     fun `a feed that does report volume says nothing about it`() {
-        assertTrue(chartExclusions(state(bars = series(200, volume = 5.0))).none { it.contains("حجم") })
+        assertTrue(
+            chartExclusions(state(bars = series(200, volume = 5.0)))
+                .none { it.res == R.string.provenance_no_volume },
+        )
     }
 
     @Test
     fun `a folded bar length names the bars it was actually built from`() {
         val folded = chartExclusions(state(interval = ChartInterval.Preset(Timeframe.H2)))
-        assertTrue(folded.any { it.contains(Timeframe.H1.wire) })
+        val reason = folded.firstOrNull { it.res == R.string.provenance_folded }
+        assertNotNull("a folded chart said nothing about being folded", reason)
+        // And it names the bar it was folded *from*, which is the whole of what the sentence adds.
+        assertEquals(listOf<Any>(Timeframe.H1.wire), reason!!.args)
     }
 
     @Test
     fun `a bar length the feed serves outright claims no folding`() {
         val native = chartExclusions(state(interval = ChartInterval.Preset(Timeframe.H1)))
-        assertTrue(native.none { it.contains("ساخته می‌شوند") })
+        assertTrue(native.none { it.res == R.string.provenance_folded })
     }
 
     @Test
     fun `a replay says the future is being withheld on purpose`() {
         val replaying = state(replay = ReplayState(bars = series(200).bars, cursor = 100))
-        assertTrue(chartExclusions(replaying).any { it.contains("بازپخش") })
+        assertTrue(chartExclusions(replaying).any { it.res == R.string.provenance_replay })
     }
 
     @Test
     fun `a repainting study is named rather than merely losing the trust mark`() {
-        assertTrue(chartExclusions(state(setOf("zigzag"))).any { it.contains(RepaintClaim.REPAINTS.note) })
+        val reason = chartExclusions(state(setOf("zigzag")))
+            .firstOrNull { it.res == R.string.provenance_repainting }
+        assertNotNull("a repainting study slipped through unnamed", reason)
+        // The claim's own sentence rides in as the second argument, so the colon between them is
+        // the resource's business — see `ChartExclusion`.
+        assertEquals(RepaintClaim.REPAINTS.noteRes, reason!!.args[1])
     }
 
     @Test
     fun `an ordinary chart has nothing to exclude and prints no line at all`() {
         assertTrue(chartExclusions(state()).isEmpty())
-        assertEquals("", exclusionsLine(emptyList()))
+        assertEquals("", exclusionsLine(emptyList(), heading = "%1\$s"))
     }
 
     @Test
     fun `the exclusions read as one sentence with a heading when there are any`() {
-        val line = exclusionsLine(listOf("یک", "دو"))
-        assertTrue(line.startsWith("آنچه در این تصویر نیست"))
-        assertTrue(line.contains("یک"))
-        assertTrue(line.contains("دو"))
+        // The heading arrives resolved — this is not a composable — so the test supplies its own
+        // and checks the shape rather than the wording.
+        val line = exclusionsLine(listOf("one", "two"), heading = "not here — %1\$s")
+        assertTrue(line.startsWith("not here — "))
+        assertTrue(line.contains("one"))
+        assertTrue(line.contains("two"))
     }
 
     @Test
     fun `an empty chart claims nothing about a volume column it has never seen`() {
         // A failed first load is not evidence about the feed. Saying "this feed reports no volume"
         // over an empty chart would be inventing a fact out of an absence of data.
-        assertTrue(chartExclusions(state(bars = CandleSeries.EMPTY)).none { it.contains("حجم") })
+        assertTrue(
+            chartExclusions(state(bars = CandleSeries.EMPTY))
+                .none { it.res == R.string.provenance_no_volume },
+        )
     }
 
     @Test

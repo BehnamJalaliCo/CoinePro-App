@@ -80,6 +80,7 @@ import com.coinepro.core.marketdata.CHART_TIME_ZONE
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.annotation.StringRes
 
 /**
  * The strategy report: five tabs over the bars the chart has.
@@ -169,7 +170,7 @@ internal fun BacktestSheetBody(
         CoineProTeachingStrip(TeachingSurface.BACKTEST, gutter = false)
         Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
             Backtest.Strategy.entries.forEach { option ->
-                Chip(option.label(), option == strategy) { strategy = option }
+                Chip(stringResource(option.labelRes()), option == strategy) { strategy = option }
             }
         }
 
@@ -182,15 +183,14 @@ internal fun BacktestSheetBody(
                     selected = points == costBasisPoints,
                 ) { costBasisPoints = points }
             }
-            Chip("با فروش", allowShorts) { allowShorts = !allowShorts }
+            Chip(stringResource(R.string.bt_with_shorts), allowShorts) { allowShorts = !allowShorts }
         }
 
         if (allowShorts) {
-            Text(
-                text = "فروش استقراضی تقریبی است: کارمزد دو طرف حساب می‌شود ولی بهره‌ی قرض و نرخ فاندینگ در سری کندل وجود ندارد.",
-                style = MaterialTheme.typography.labelSmall,
+            CoineProNote(
+                R.string.bt_shorts_note,
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Normal),
                 color = CoineProColors.Warning,
-                fontWeight = FontWeight.Normal,
             )
         }
 
@@ -204,7 +204,7 @@ internal fun BacktestSheetBody(
 
         if (report == null) {
             Text(
-                text = "برای بک‌تست دست‌کم ${Backtest.MINIMUM_BARS.toPersianDigits()} کندل لازم است. کمی به عقب اسکرول کنید تا بارگذاری شود.",
+                text = stringResource(R.string.bt_needs_bars, Backtest.MINIMUM_BARS.toPersianDigits()),
                 style = MaterialTheme.typography.bodyMedium,
                 color = CoineProColors.TextMuted,
             )
@@ -212,7 +212,7 @@ internal fun BacktestSheetBody(
         }
 
         CoineProSegmentedControl(
-            options = ReportTab.entries.map { it to it.label },
+            options = ReportTab.entries.map { it to stringResource(it.labelRes) },
             selected = tab,
             onSelect = { tab = it },
         )
@@ -228,7 +228,7 @@ internal fun BacktestSheetBody(
         ExportCard(report, symbol)
 
         Text(
-            text = "ورود در باز شدنِ کندلِ بعد از سیگنال حساب می‌شود، نه در بسته‌ی همان کندل. موقعیتِ باز در آخرین کندل بسته می‌شود تا منحنی سرمایه روی عددی تمام شود که واقعاً قابل برداشت بود. نتیجه‌ی گذشته تضمین آینده نیست.",
+            text = stringResource(R.string.bt_disclaimer),
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
         )
@@ -241,12 +241,12 @@ internal fun BacktestSheetBody(
  * Short labels, because five segments across a phone is already tight and a truncated tab name is
  * worse than a terse one. The full sense of each is carried by what is inside it.
  */
-private enum class ReportTab(val label: String) {
-    OVERVIEW("کلی"),
-    PERFORMANCE("عملکرد"),
-    TRADES("معاملات"),
-    RISK("ریسک"),
-    LIST("فهرست"),
+private enum class ReportTab(val labelRes: Int) {
+    OVERVIEW(R.string.bt_tab_overview),
+    PERFORMANCE(R.string.bt_tab_performance),
+    TRADES(R.string.bt_tab_trades),
+    RISK(R.string.bt_tab_risk),
+    LIST(R.string.bt_tab_list),
 }
 
 /**
@@ -301,7 +301,7 @@ internal fun ReplayReportBody(report: ReplayReport, modifier: Modifier = Modifie
         }
 
         CoineProSegmentedControl(
-            options = ReportTab.entries.map { it to it.label },
+            options = ReportTab.entries.map { it to stringResource(it.labelRes) },
             selected = tab,
             onSelect = { tab = it },
         )
@@ -361,12 +361,7 @@ private fun ReplaySessionCard(report: ReplayReport) {
                     BacktestFormat.money(report.unrealised, signed = true),
                     resultTint(report.unrealised),
                 )
-                MutedNote(
-                    stringResource(
-                        R.string.replay_report_open_note,
-                        report.openPositions.proseDigits(),
-                    ),
-                )
+                MutedNote(R.string.replay_report_open_note, report.openPositions.proseDigits())
             }
 
             if (report.roundTrips.isNotEmpty()) {
@@ -388,7 +383,7 @@ private fun ReplaySessionCard(report: ReplayReport) {
                     stringResource(R.string.replay_report_exit_session),
                     BacktestFormat.count(report.closedWithSession),
                 )
-                MutedNote(stringResource(R.string.replay_report_discipline))
+                MutedNote(R.string.replay_report_discipline)
             }
 
             val range = BacktestFormat.dateRange(
@@ -396,9 +391,9 @@ private fun ReplaySessionCard(report: ReplayReport) {
                 report.window.lastTime,
                 CHART_TIME_ZONE,
             )
-            MetricRow("کندل‌های این جلسه", BacktestFormat.count(report.window.bars))
+            MetricRow(stringResource(R.string.bt_session_bars), BacktestFormat.count(report.window.bars))
             if (range.isNotEmpty()) {
-                MetricRow("بازه‌ی زمانی", range)
+                MetricRow(stringResource(R.string.bt_timeframe), range)
             }
         }
     }
@@ -422,30 +417,31 @@ private fun WindowCard(
     val counted = report?.window?.bars ?: barsLoaded
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
-            MetricRow("کندل‌های این اجرا", BacktestFormat.count(counted))
+            MetricRow(stringResource(R.string.bt_run_bars), BacktestFormat.count(counted))
             val range = report?.let {
                 BacktestFormat.dateRange(it.window.firstTime, it.window.lastTime, CHART_TIME_ZONE)
             }
             if (!range.isNullOrEmpty()) {
-                MetricRow("بازه‌ی زمانی", range)
+                MetricRow(stringResource(R.string.bt_timeframe), range)
             }
             if (hasMoreHistory) {
-                Text(
-                    text = "این اجرا فقط روی کندل‌های بارگذاری‌شده است، نه کل تاریخچه. تا وقتی بازه کوتاه است، شارپ و ضریب سود بیشتر شانس‌اند تا نتیجه.",
-                    style = MaterialTheme.typography.labelSmall,
+                CoineProNote(
+                    R.string.bt_loaded_only_note,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Normal),
                     color = CoineProColors.Warning,
-                    fontWeight = FontWeight.Normal,
                 )
                 if (onLoadMoreHistory != null) {
                     CoineProSecondaryButton(
-                        text = if (loadingHistory) "در حال بارگذاری تاریخچه" else "بارگذاری تاریخچه‌ی بیشتر",
+                        text = stringResource(
+                    if (loadingHistory) R.string.bt_loading_history else R.string.bt_load_more_history,
+                ),
                         onClick = { if (!loadingHistory) onLoadMoreHistory() },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
             } else if (report != null) {
                 Text(
-                    text = "کل تاریخچه‌ی بارگذاری‌شده‌ی این نماد در این اجرا هست.",
+                    text = stringResource(R.string.bt_all_history_loaded),
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,
                     fontWeight = FontWeight.Normal,
@@ -464,32 +460,38 @@ private fun OverviewTab(report: TradeReport, guardSample: Boolean = false) {
         CoineProCard(modifier = Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
                 MetricRow(
-                    "سود خالص",
+                    stringResource(R.string.bt_net_profit),
                     BacktestFormat.money(metrics.netProfit, signed = true),
                     resultTint(metrics.netProfit),
                 )
                 MetricRow(
-                    "سود خالص (درصد)",
+                    stringResource(R.string.bt_net_profit_percent),
                     BacktestFormat.signedPercent(metrics.netProfitPercent),
                     resultTint(metrics.netProfit),
                 )
                 MetricRow(
                     // The number that decides position size, and the one a flattering backtest
                     // leaves out: peak to trough on the account, not start to end.
-                    "بیشترین افت سرمایه",
+                    stringResource(R.string.bt_max_drawdown),
                     BacktestFormat.percent(metrics.maxEquityDrawdownPercent, 1),
                     CoineProColors.Sell,
                 )
                 MetricRow(
-                    "بیشترین رشد سرمایه",
+                    stringResource(R.string.bt_max_runup),
                     BacktestFormat.percent(metrics.maxEquityRunUpPercent, 1),
                     CoineProColors.Buy,
                 )
-                MetricRow("تعداد معامله", BacktestFormat.count(metrics.totalTrades))
-                MetricRow("درصد برد", rateFigure(metrics.percentProfitable, metrics.totalTrades, guardSample))
-                MetricRow("ضریب سود", ratioFigure(metrics.profitFactor, metrics.totalTrades, guardSample))
+                MetricRow(stringResource(R.string.bt_trade_count), BacktestFormat.count(metrics.totalTrades))
                 MetricRow(
-                    "خرید و نگهداری",
+                    stringResource(R.string.bt_win_rate),
+                    rateFigure(metrics.percentProfitable, metrics.totalTrades, guardSample),
+                )
+                MetricRow(
+                    stringResource(R.string.bt_profit_factor),
+                    ratioFigure(metrics.profitFactor, metrics.totalTrades, guardSample),
+                )
+                MetricRow(
+                    stringResource(R.string.bt_buy_and_hold),
                     BacktestFormat.signedPercent(metrics.buyAndHoldReturn),
                     resultTint(metrics.buyAndHoldReturn),
                 )
@@ -517,16 +519,16 @@ private fun PerformanceTab(report: TradeReport, guardSample: Boolean = false) {
 
     Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
         CoineProSegmentedControl(
-            options = Side.entries.map { it to it.label },
+            options = Side.entries.map { it to stringResource(it.labelRes) },
             selected = side,
             onSelect = { side = it },
         )
         if (metrics.totalTrades == 0) {
             Text(
                 text = if (side == Side.SHORT && !report.allowShorts) {
-                    "این اجرا فقط خرید بود. برای دیدن فروش، «با فروش» را روشن کنید."
+                    stringResource(R.string.bt_long_only_run)
                 } else {
-                    "در این جهت معامله‌ای بسته نشد."
+                    stringResource(R.string.bt_no_trades_side)
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = CoineProColors.TextMuted,
@@ -536,27 +538,33 @@ private fun PerformanceTab(report: TradeReport, guardSample: Boolean = false) {
         CoineProCard(modifier = Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
                 MetricRow(
-                    "سود خالص",
+                    stringResource(R.string.bt_net_profit),
                     BacktestFormat.money(metrics.netProfit, signed = true),
                     resultTint(metrics.netProfit),
                 )
-                MetricRow("سود ناخالص", BacktestFormat.money(metrics.grossProfit))
-                MetricRow("زیان ناخالص", BacktestFormat.money(metrics.grossLoss))
-                MetricRow("مجموع کارمزد", BacktestFormat.money(metrics.totalFees))
-                MetricRow("تعداد معامله", BacktestFormat.count(metrics.totalTrades))
-                MetricRow("برنده", BacktestFormat.count(metrics.winningTrades))
-                MetricRow("بازنده", BacktestFormat.count(metrics.losingTrades))
-                MetricRow("درصد برد", rateFigure(metrics.percentProfitable, metrics.totalTrades, guardSample))
-                MetricRow("ضریب سود", ratioFigure(metrics.profitFactor, metrics.totalTrades, guardSample))
+                MetricRow(stringResource(R.string.bt_gross_profit), BacktestFormat.money(metrics.grossProfit))
+                MetricRow(stringResource(R.string.bt_gross_loss), BacktestFormat.money(metrics.grossLoss))
+                MetricRow(stringResource(R.string.bt_total_fees), BacktestFormat.money(metrics.totalFees))
+                MetricRow(stringResource(R.string.bt_trade_count), BacktestFormat.count(metrics.totalTrades))
+                MetricRow(stringResource(R.string.bt_winners), BacktestFormat.count(metrics.winningTrades))
+                MetricRow(stringResource(R.string.bt_losers), BacktestFormat.count(metrics.losingTrades))
                 MetricRow(
-                    "بیشترین افت سرمایه",
+                    stringResource(R.string.bt_win_rate),
+                    rateFigure(metrics.percentProfitable, metrics.totalTrades, guardSample),
+                )
+                MetricRow(
+                    stringResource(R.string.bt_profit_factor),
+                    ratioFigure(metrics.profitFactor, metrics.totalTrades, guardSample),
+                )
+                MetricRow(
+                    stringResource(R.string.bt_max_drawdown),
                     BacktestFormat.percent(metrics.maxEquityDrawdownPercent, 1),
                     CoineProColors.Sell,
                 )
             }
         }
         MutedNote(
-            "کارمزد را کنار سود خالص بخوانید. وقتی کارمزد از سود بزرگ‌تر است، این قاعده هرچقدر هم درصد بردش بالا باشد، فقط برای صرافی سود می‌سازد.",
+            R.string.bt_fees_note,
         )
     }
 }
@@ -576,42 +584,45 @@ private fun TradesTab(report: TradeReport, guardSample: Boolean = false) {
         CoineProCard(modifier = Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
                 MetricRow(
-                    "میانگین هر معامله",
+                    stringResource(R.string.bt_average_trade),
                     BacktestFormat.money(metrics.averagePnl, signed = true),
                     resultTint(metrics.averagePnl),
                 )
-                MetricRow("میانگین برد", BacktestFormat.money(metrics.averageWin), CoineProColors.Buy)
-                MetricRow("میانگین باخت", BacktestFormat.money(metrics.averageLoss), CoineProColors.Sell)
+                MetricRow(stringResource(R.string.bt_average_win), BacktestFormat.money(metrics.averageWin), CoineProColors.Buy)
+                MetricRow(stringResource(R.string.bt_average_loss), BacktestFormat.money(metrics.averageLoss), CoineProColors.Sell)
                 MetricRow(
-                    "نسبت برد به باخت",
+                    stringResource(R.string.bt_win_loss_ratio),
                     ratioFigure(metrics.winLossRatio, metrics.totalTrades, guardSample),
                 )
-                MetricRow("بزرگ‌ترین برد", BacktestFormat.money(metrics.largestWin), CoineProColors.Buy)
-                MetricRow("بزرگ‌ترین باخت", BacktestFormat.money(metrics.largestLoss), CoineProColors.Sell)
+                MetricRow(stringResource(R.string.bt_largest_win), BacktestFormat.money(metrics.largestWin), CoineProColors.Buy)
+                MetricRow(stringResource(R.string.bt_largest_loss), BacktestFormat.money(metrics.largestLoss), CoineProColors.Sell)
                 MetricRow(
-                    "سهم بزرگ‌ترین برد از سود",
+                    stringResource(R.string.bt_largest_win_share),
                     BacktestFormat.percent(BacktestReports.bestTradeShare(metrics) * 100, 1),
                 )
-                MetricRow("پراکندگی سود", BacktestFormat.money(BacktestReports.pnlDispersion(report.trades)))
-                MetricRow("میانگین کندل در معامله", BacktestFormat.bars(metrics.averageBarsInTrade))
-                MetricRow("میانگین کندل در برنده‌ها", BacktestFormat.bars(metrics.averageBarsInWinners))
-                MetricRow("میانگین کندل در بازنده‌ها", BacktestFormat.bars(metrics.averageBarsInLosers))
+                MetricRow(
+            stringResource(R.string.bt_pnl_dispersion),
+            BacktestFormat.money(BacktestReports.pnlDispersion(report.trades)),
+        )
+                MetricRow(stringResource(R.string.bt_avg_bars_trade), BacktestFormat.bars(metrics.averageBarsInTrade))
+                MetricRow(stringResource(R.string.bt_avg_bars_winners), BacktestFormat.bars(metrics.averageBarsInWinners))
+                MetricRow(stringResource(R.string.bt_avg_bars_losers), BacktestFormat.bars(metrics.averageBarsInLosers))
             }
         }
         CoineProCard(modifier = Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
                 MetricRow(
-                    "بیشترین سود میان‌راهِ یک معامله",
+                    stringResource(R.string.bt_max_favourable),
                     BacktestFormat.money(report.bestTradeRunUp),
                     CoineProColors.Buy,
                 )
                 MetricRow(
-                    "میانگین سود میان‌راهِ بازنده‌ها",
+                    stringResource(R.string.bt_avg_favourable_losers),
                     BacktestFormat.money(report.averageLoserRunUp),
                     CoineProColors.Buy,
                 )
                 MutedNote(
-                    "سود میان‌راه یعنی معامله تا کجا به نفع شما رفت پیش از آنکه بسته شود. اگر بازنده‌ها سود میان‌راه بزرگی داشته‌اند، ایراد از قاعده‌ی ورود نیست، از حد ضرر یا حد سود است.",
+                    R.string.bt_favourable_note,
                 )
             }
         }
@@ -633,31 +644,41 @@ private fun RiskTab(report: TradeReport, guardSample: Boolean = false) {
     Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
         CoineProCard(modifier = Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
-                MetricRow("شارپ (سالانه)", ratioFigure(metrics.sharpeRatio, metrics.totalTrades, guardSample))
-                MetricRow("سورتینو (سالانه)", ratioFigure(metrics.sortinoRatio, metrics.totalTrades, guardSample))
-                MetricRow("ضریب سود", ratioFigure(metrics.profitFactor, metrics.totalTrades, guardSample))
                 MetricRow(
-                    "امید ریاضی هر معامله",
+            stringResource(R.string.bt_sharpe),
+            ratioFigure(metrics.sharpeRatio, metrics.totalTrades, guardSample),
+        )
+                MetricRow(
+            stringResource(R.string.bt_sortino),
+            ratioFigure(metrics.sortinoRatio, metrics.totalTrades, guardSample),
+        )
+                MetricRow(
+                    stringResource(R.string.bt_profit_factor),
+                    ratioFigure(metrics.profitFactor, metrics.totalTrades, guardSample),
+                )
+                MetricRow(
+                    stringResource(R.string.bt_expectancy),
                     BacktestFormat.money(metrics.expectancy, signed = true),
                     resultTint(metrics.expectancy),
                 )
                 MetricRow(
-                    "بیشترین افت سرمایه",
+                    stringResource(R.string.bt_max_drawdown),
                     BacktestFormat.money(metrics.maxEquityDrawdown),
                     CoineProColors.Sell,
                 )
                 MetricRow(
-                    "بیشترین افت سرمایه (درصد)",
+                    stringResource(R.string.bt_max_drawdown_percent),
                     BacktestFormat.percent(metrics.maxEquityDrawdownPercent, 1),
                     CoineProColors.Sell,
                 )
-                MetricRow("طولانی‌ترین دوره‌ی افت", "${BacktestFormat.count(metrics.longestDrawdownBars)} کندل")
-                MetricRow("کندل در سال", BacktestFormat.count(metrics.periodsPerYear.toInt()))
+                MetricRow(
+            stringResource(R.string.bt_longest_drawdown),
+            stringResource(R.string.bt_bars_value, BacktestFormat.count(metrics.longestDrawdownBars)),
+        )
+                MetricRow(stringResource(R.string.bt_bars_per_year), BacktestFormat.count(metrics.periodsPerYear.toInt()))
             }
         }
-        MutedNote(
-            "شارپ نوسان مثبت را هم مثل نوسان منفی جریمه می‌کند، پس قاعده‌ای که چند برد بزرگ دارد بدتر از یک قاعده‌ی کم‌جان امتیاز می‌گیرد. سورتینو فقط سمت زیان را می‌سنجد و وقتی کندل‌های زیان‌ده کم باشند بزرگ و بی‌معنا می‌شود — دقیقاً همان‌جا که بیشتر نقل می‌شود.",
-        )
+        MutedNote(R.string.bt_sharpe_note)
         SampleWarning(metrics.totalTrades, guardSample)
     }
 }
@@ -682,16 +703,16 @@ private fun TradeListTab(report: TradeReport) {
 
     Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
         CoineProSegmentedControl(
-            options = Side.entries.map { it to it.label },
+            options = Side.entries.map { it to stringResource(it.labelRes) },
             selected = side,
             onSelect = { side = it },
         )
         if (listed.isEmpty()) {
             Text(
                 text = if (side == Side.ALL) {
-                    "این قاعده در این بازه هیچ معامله‌ای نبست."
+                    stringResource(R.string.bt_no_trades_at_all)
                 } else {
-                    "در این جهت معامله‌ای بسته نشد."
+                    stringResource(R.string.bt_no_trades_side)
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = CoineProColors.TextMuted,
@@ -706,7 +727,11 @@ private fun TradeListTab(report: TradeReport) {
         }
         if (listed.size > shown.size) {
             Text(
-                text = "${shown.size.toPersianDigits()} معامله‌ی آخر از ${listed.size.toPersianDigits()} معامله. برای همه، خروجی CSV بگیرید.",
+                text = stringResource(
+                R.string.bt_shown_of,
+                shown.size.toPersianDigits(),
+                listed.size.toPersianDigits(),
+            ),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextMuted,
                 fontWeight = FontWeight.Normal,
@@ -718,13 +743,13 @@ private fun TradeListTab(report: TradeReport) {
 @Composable
 private fun TradeHeaderRow() {
     Row(modifier = Modifier.padding(vertical = CoineProSpacing.Half)) {
-        Cell("جهت", DIRECTION_WIDTH, header = true)
-        Cell("ورود", PRICE_WIDTH, header = true)
-        Cell("خروج", PRICE_WIDTH, header = true)
-        Cell("سود", PNL_WIDTH, header = true)
-        Cell("درصد", PERCENT_WIDTH, header = true)
-        Cell("میان‌راه", PNL_WIDTH, header = true)
-        Cell("کندل", BARS_WIDTH, header = true)
+        Cell(stringResource(R.string.bt_col_side), DIRECTION_WIDTH, header = true)
+        Cell(stringResource(R.string.bt_col_entry), PRICE_WIDTH, header = true)
+        Cell(stringResource(R.string.bt_col_exit), PRICE_WIDTH, header = true)
+        Cell(stringResource(R.string.bt_col_pnl), PNL_WIDTH, header = true)
+        Cell(stringResource(R.string.bt_col_percent), PERCENT_WIDTH, header = true)
+        Cell(stringResource(R.string.bt_col_favourable), PNL_WIDTH, header = true)
+        Cell(stringResource(R.string.bt_col_bars), BARS_WIDTH, header = true)
     }
 }
 
@@ -739,7 +764,7 @@ private fun TradeHeaderRow() {
 private fun TradeRow(trade: EngineTrade) {
     Row(modifier = Modifier.padding(vertical = 4.dp)) {
         Cell(
-            text = if (trade.isLong) "خرید" else "فروش",
+            text = stringResource(if (trade.isLong) R.string.bt_side_long else R.string.bt_side_short),
             width = DIRECTION_WIDTH,
             tint = if (trade.isLong) CoineProColors.Buy else CoineProColors.Sell,
         )
@@ -861,10 +886,10 @@ private fun EquityChart(report: TradeReport) {
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
-            LegendDot("سرمایه", ink)
-            LegendDot("خرید و نگهداری", holdInk)
-            LegendDot("بیشترین رشد", runUpInk)
-            LegendDot("بیشترین افت", drawdownInk)
+            LegendDot(stringResource(R.string.bt_legend_equity), ink)
+            LegendDot(stringResource(R.string.bt_buy_and_hold), holdInk)
+            LegendDot(stringResource(R.string.bt_legend_runup), runUpInk)
+            LegendDot(stringResource(R.string.bt_legend_drawdown), drawdownInk)
         }
     }
 }
@@ -897,6 +922,10 @@ private fun ExportCard(report: BacktestReport, symbol: String) {
     val scope = rememberCoroutineScope()
     val current by rememberUpdatedState(report)
     var outcome by remember { mutableStateOf<String?>(null) }
+    // The two outcomes, resolved here where there is a composition: `write` runs off the main
+    // thread and has no way to read a resource.
+    val savedMessage = stringResource(R.string.bt_saved)
+    val failedMessage = stringResource(R.string.bt_save_failed)
 
     val csv = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(CSV_MIME)) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -904,7 +933,7 @@ private fun ExportCard(report: BacktestReport, symbol: String) {
             val bytes = withContext(Dispatchers.Default) {
                 BacktestExport.toCsv(current, symbol, CHART_TIME_ZONE).toByteArray(Charsets.UTF_8)
             }
-            outcome = write(context, uri, bytes)
+            outcome = write(context, uri, bytes, savedMessage, failedMessage)
         }
     }
     // The second writer, and not a duplicate of the first. `BacktestExport.toXlsx` declares which
@@ -917,7 +946,7 @@ private fun ExportCard(report: BacktestReport, symbol: String) {
             val bytes = withContext(Dispatchers.Default) {
                 BacktestExport.toXlsx(current, symbol, CHART_TIME_ZONE)
             }
-            outcome = write(context, uri, bytes)
+            outcome = write(context, uri, bytes, savedMessage, failedMessage)
         }
     }
 
@@ -925,18 +954,18 @@ private fun ExportCard(report: BacktestReport, symbol: String) {
         Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
             Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
                 CoineProSecondaryButton(
-                    text = "خروجی CSV",
+                    text = stringResource(R.string.bt_export_csv),
                     onClick = { csv.launch(exportFileName(symbol, "csv")) },
                     modifier = Modifier.weight(1f),
                 )
                 CoineProSecondaryButton(
-                    text = "خروجی Excel",
+                    text = stringResource(R.string.bt_export_excel),
                     onClick = { xlsx.launch(exportFileName(symbol, "xlsx")) },
                     modifier = Modifier.weight(1f),
                 )
             }
             MutedNote(
-                "همه‌ی معاملات، همه‌ی سنجه‌ها و بازه‌ی اجرا در یک فایل. رایگان — تریدینگ‌ویو برای همین خروجی اشتراک می‌گیرد.",
+                R.string.bt_export_note,
             )
             outcome?.let {
                 Text(
@@ -958,14 +987,22 @@ private fun ExportCard(report: BacktestReport, symbol: String) {
  * disc, so one sentence covers both. The exception is swallowed rather than rethrown because a
  * crash at the end of an export loses the export as well as the session.
  */
-private suspend fun write(context: Context, uri: Uri, bytes: ByteArray): String =
+private suspend fun write(
+    context: Context,
+    uri: Uri,
+    bytes: ByteArray,
+    /** «فایل ذخیره شد.», resolved by the caller — this is not a composable. */
+    savedMessage: String,
+    /** And the other outcome. */
+    failedMessage: String,
+): String =
     withContext(Dispatchers.IO) {
         runCatching {
             context.contentResolver.openOutputStream(uri)?.use { stream -> stream.write(bytes) }
                 ?: error("no stream")
         }.fold(
-            onSuccess = { "فایل ذخیره شد." },
-            onFailure = { "ذخیره‌ی فایل انجام نشد. جای دیگری را انتخاب کنید." },
+            onSuccess = { savedMessage },
+            onFailure = { failedMessage },
         )
     }
 
@@ -996,7 +1033,7 @@ private fun SampleWarning(trades: Int, guarded: Boolean = false) {
                 CONFIDENT_TRADES.proseDigits(),
             )
         } else {
-            "فقط ${trades.toPersianDigits()} معامله بسته شد. زیر ${CONFIDENT_TRADES.toPersianDigits()} معامله، این عددها حکایت‌اند نه نتیجه."
+            stringResource(R.string.bt_thin_sample, trades.toPersianDigits(), CONFIDENT_TRADES.toPersianDigits())
         },
         style = MaterialTheme.typography.labelSmall,
         color = CoineProColors.Warning,
@@ -1030,12 +1067,14 @@ private fun ratioFigure(value: Double, trades: Int, guard: Boolean): String =
     if (guard) BacktestFormat.ratioIfSampled(value, trades) else BacktestFormat.ratio(value)
 
 @Composable
-private fun MutedNote(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelSmall,
-        color = CoineProColors.TextMuted,
-        fontWeight = FontWeight.Normal,
+private fun MutedNote(@StringRes id: Int, vararg formatArgs: Any) {
+    // Through `CoineProNote` rather than a `Text`, because every string this draws is a tip-class
+    // note and the component is what decides whether a tip is shown inline or folded into an ⓘ —
+    // see `NotePolicy`. The weight and the size are this sheet's, which is why it is still wrapped.
+    CoineProNote(
+        id,
+        *formatArgs,
+        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Normal),
     )
 }
 
@@ -1077,17 +1116,17 @@ private fun resultTint(value: Double): Color = when {
     else -> CoineProColors.TextPrimary
 }
 
-private fun Backtest.Strategy.label(): String = when (this) {
-    Backtest.Strategy.MA_CROSS -> "تقاطع میانگین"
-    Backtest.Strategy.RSI_REVERSION -> "بازگشت RSI"
-    Backtest.Strategy.BREAKOUT -> "شکست کانال"
+private fun Backtest.Strategy.labelRes(): Int = when (this) {
+    Backtest.Strategy.MA_CROSS -> R.string.bt_strategy_ma_cross
+    Backtest.Strategy.RSI_REVERSION -> R.string.bt_strategy_rsi
+    Backtest.Strategy.BREAKOUT -> R.string.bt_strategy_breakout
 }
 
 /** The three ways the Performance tab can be sliced. */
-private enum class Side(val label: String) {
-    ALL("همه"),
-    LONG("فقط خرید"),
-    SHORT("فقط فروش"),
+private enum class Side(val labelRes: Int) {
+    ALL(R.string.bt_side_all),
+    LONG(R.string.bt_side_long_only),
+    SHORT(R.string.bt_side_short_only),
 }
 
 /**

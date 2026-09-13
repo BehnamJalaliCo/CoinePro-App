@@ -44,6 +44,8 @@ import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.designsystem.CoineProTint
+import androidx.compose.ui.res.stringResource
+import com.coinepro.core.designsystem.CoineProNote
 
 /**
  * The three things a reader does to a set of indicators once they have chosen them: point one at
@@ -89,7 +91,7 @@ internal fun IndicatorChainSection(
 ) {
     if (active.isEmpty()) {
         Text(
-            text = "اول چند اندیکاتور را روشن کنید تا بتوانید یکی را روی دیگری ببرید.",
+            text = stringResource(R.string.workbench_chain_empty),
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
         )
@@ -100,9 +102,10 @@ internal fun IndicatorChainSection(
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
         Text(
-            text = "هر اندیکاتور می‌تواند به‌جای قیمت، روی خروجی یک اندیکاتور دیگر حساب شود. " +
-                "بیشتر از " + IndicatorChain.MAX_DEPTH.toPersianDigits() +
-                " حلقه پشت هم پذیرفته نمی‌شود، چون بعد از آن هیچ‌کس نمی‌داند خط آخر چه چیزی را اندازه می‌گیرد.",
+            text = stringResource(
+                R.string.workbench_chain_note,
+                IndicatorChain.MAX_DEPTH.toPersianDigits(),
+            ),
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
         )
@@ -123,7 +126,7 @@ internal fun IndicatorChainSection(
                 )
                 if (!IndicatorChain.canChain(id)) {
                     Text(
-                        text = "این اندیکاتور بیش از یک ستون از کندل می‌خواند، پس فقط روی خود کندل‌ها حساب می‌شود.",
+                        text = stringResource(R.string.workbench_multi_column),
                         style = MaterialTheme.typography.bodySmall,
                         color = CoineProColors.TextDisabled,
                     )
@@ -136,7 +139,7 @@ internal fun IndicatorChainSection(
                         BarField.entries.forEach { field ->
                             val source = IndicatorSource.Bars(field)
                             SourcePill(
-                                text = field.persianLabel,
+                                text = field.readerLabel,
                                 active = chosen == source || (chosen == null && field == BarField.CLOSE),
                             ) { onSetSource(id, source) }
                         }
@@ -188,12 +191,7 @@ internal fun CandlePatternSection(chosen: Set<String>, onToggle: (String) -> Uni
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
-        Text(
-            text = "الگو یک نشانه است، نه سیگنال. روی نمودار پنج‌دقیقه‌ای چند بار در ساعت «چکش» پیدا می‌شود و " +
-                "بیشترشان ادامه‌ی همان روند است. دو یا سه الگو را روشن کنید، نه همه را.",
-            style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextMuted,
-        )
+        CoineProNote(R.string.workbench_patterns_note, style = MaterialTheme.typography.bodySmall)
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
@@ -228,7 +226,7 @@ internal fun CandlePatternSection(chosen: Set<String>, onToggle: (String) -> Uni
         }
         if (chosen.isNotEmpty()) {
             Text(
-                text = chosen.size.toPersianDigits() + " الگو روی نمودار علامت می‌خورد.",
+                text = stringResource(R.string.workbench_patterns_count, chosen.size.toPersianDigits()),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextDisabled,
                 fontWeight = FontWeight.Normal,
@@ -268,15 +266,10 @@ internal fun IndicatorTemplateSection(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
-        Text(
-            text = "قالب اندیکاتور فقط خود اندیکاتورها، دوره‌ها و منبعشان را نگه می‌دارد. " +
-                "بازه‌ی زمانی، نوع چارت، مقیاس و رنگ‌ها دست‌نخورده می‌مانند — آن‌ها کار «چیدمان» است.",
-            style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextMuted,
-        )
+        CoineProNote(R.string.workbench_template_note, style = MaterialTheme.typography.bodySmall)
         if (templates.isEmpty()) {
             Text(
-                text = "هنوز قالبی ذخیره نشده.",
+                text = stringResource(R.string.workbench_templates_empty),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextDisabled,
             )
@@ -303,14 +296,17 @@ internal fun IndicatorTemplateSection(
                         )
                         Text(
                             // A prose count, so Persian digits.
-                            text = template.indicators.size.toPersianDigits() + " اندیکاتور",
+                            text = stringResource(
+                            R.string.workbench_template_count,
+                            template.indicators.size.toPersianDigits(),
+                        ),
                             style = MaterialTheme.typography.labelSmall,
                             color = CoineProColors.TextMuted,
                             fontWeight = FontWeight.Normal,
                         )
                     }
                     Text(
-                        text = "حذف",
+                        text = stringResource(R.string.workbench_template_delete),
                         style = MaterialTheme.typography.labelSmall,
                         color = CoineProColors.Sell,
                         modifier = Modifier
@@ -325,12 +321,12 @@ internal fun IndicatorTemplateSection(
         CoineProTextField(
             value = name,
             onValueChange = { name = it },
-            label = "نام قالب تازه",
+            label = stringResource(R.string.workbench_template_name),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             modifier = Modifier.fillMaxWidth(),
         )
         CoineProPrimaryButton(
-            text = "ذخیره‌ی " + activeCount.toPersianDigits() + " اندیکاتور روشن",
+            text = stringResource(R.string.workbench_template_save, activeCount.toPersianDigits()),
             onClick = {
                 onSave(name)
                 name = ""
@@ -379,15 +375,15 @@ private fun SourcePill(text: String, active: Boolean, onClick: () -> Unit) {
  * how a trader recognises them — «HL2» is a name in this trade and «میانگین سقف و کف» is a
  * description of it. Both are given, so neither reader has to guess.
  */
-private val BarField.persianLabel: String
+private val BarField.readerLabel: String
     @Composable get() = when (this) {
-        BarField.OPEN -> "باز"
-        BarField.HIGH -> "سقف"
-        BarField.LOW -> "کف"
-        BarField.CLOSE -> "بسته"
-        BarField.HL2 -> "میانه " + latin("HL2")
-        BarField.HLC3 -> "میانگین " + latin("HLC3")
-        BarField.OHLC4 -> "میانگین " + latin("OHLC4")
+        BarField.OPEN -> stringResource(R.string.bar_field_open)
+        BarField.HIGH -> stringResource(R.string.bar_field_high)
+        BarField.LOW -> stringResource(R.string.bar_field_low)
+        BarField.CLOSE -> stringResource(R.string.bar_field_close)
+        BarField.HL2 -> stringResource(R.string.bar_field_hl2, latin("HL2"))
+        BarField.HLC3 -> stringResource(R.string.bar_field_hlc3, latin("HLC3"))
+        BarField.OHLC4 -> stringResource(R.string.bar_field_ohlc4, latin("OHLC4"))
     }
 
 /**

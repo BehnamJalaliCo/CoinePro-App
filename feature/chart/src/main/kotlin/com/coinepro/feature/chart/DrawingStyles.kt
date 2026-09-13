@@ -173,11 +173,14 @@ private const val TEMPLATE_ID_RADIX = 36
  * restores the tool's own drawing, and the tools that are dashed by construction stay dashed at
  * this setting. Calling it "solid" would be a label that lies on a Fibonacci fan. Shared by the
  * floating toolbar and the settings sheet, so the two never name a dash differently.
+ *
+ * Resource ids rather than strings since run Ω2, for the reason [DRAWING_WIDTHS] gives: this is a
+ * top-level value and cannot read a resource, so each call site resolves the label as it draws it.
  */
-internal val LINE_STYLES: List<Pair<String, LineStyleKind>> = listOf(
-    "پیش‌فرض" to LineStyleKind.SOLID,
-    "نقطه‌چین" to LineStyleKind.DOTTED,
-    "خط‌چین" to LineStyleKind.DASHED,
-    "خط‌چین درشت" to LineStyleKind.LARGE_DASHED,
-    "نقطه‌چین تنک" to LineStyleKind.SPARSE_DOTTED,
+internal val LINE_STYLES: List<Pair<Int, LineStyleKind>> = listOf(
+    R.string.line_style_solid to LineStyleKind.SOLID,
+    R.string.line_style_dotted to LineStyleKind.DOTTED,
+    R.string.line_style_dashed to LineStyleKind.DASHED,
+    R.string.line_style_large_dashed to LineStyleKind.LARGE_DASHED,
+    R.string.line_style_sparse_dotted to LineStyleKind.SPARSE_DOTTED,
 )

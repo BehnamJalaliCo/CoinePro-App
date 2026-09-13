@@ -32,6 +32,7 @@ import com.coinepro.core.designsystem.LtrDirection
 import com.coinepro.core.marketdata.ChartInterval
 import com.coinepro.core.marketdata.of
 import androidx.compose.ui.res.stringResource
+import com.coinepro.core.designsystem.CoineProNote
 
 /**
  * Saved chart layouts.
@@ -123,10 +124,9 @@ internal fun LayoutSheetBody(
             modifier = Modifier.fillMaxWidth(),
             enabled = name.isNotBlank(),
         )
-        Text(
-            text = stringResource(R.string.layout_note),
+        CoineProNote(
+            R.string.layout_note,
             style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextMuted,
             modifier = Modifier.background(CoineProColors.Stage),
         )
         Row(

@@ -111,9 +111,13 @@ class RepaintClaimTest {
 
     @Test
     fun `every claim says something different in both the mark and the sentence under it`() {
-        val labels = RepaintClaim.entries.map { it.label }
-        val notes = RepaintClaim.entries.map { it.note }
+        // Ids rather than strings since run Ω2 — see `ChartRangeTest` for the same change and the
+        // same reason. Four distinct marks and four distinct sentences is still the property.
+        val labels = RepaintClaim.entries.map { it.labelRes }
+        val notes = RepaintClaim.entries.map { it.noteRes }
         assertEquals(labels.size, labels.toSet().size)
         assertEquals(notes.size, notes.toSet().size)
+        assertTrue("a claim points at no mark at all", labels.none { it == 0 })
+        assertTrue("a claim points at no sentence at all", notes.none { it == 0 })
     }
 }

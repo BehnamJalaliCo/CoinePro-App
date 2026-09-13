@@ -249,7 +249,7 @@ internal fun DrawingStyleSheetBody(
         )
         if (!editable && tab != DrawingSettingsTab.VISIBILITY) {
             Text(
-                text = "این ترسیم قفل است. برای تغییر رنگ یا ضخامت، اول قفلش را باز کنید.",
+                text = stringResource(R.string.style_locked),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.Warning,
             )
@@ -313,7 +313,7 @@ private fun StyleTab(
     val holdsText = DrawingActions.holdsText(drawing.toolId)
     val washes = DrawingActions.washes(drawing.toolId)
 
-    StyleLabel("رنگ")
+    StyleLabel(stringResource(R.string.style_colour))
     SwatchGrid(chosen = drawing.colour, enabled = editable, onPick = onSetColour)
     // «Custom»: six hex digits, which is the one way to name a colour the palette lacks that
     // every reader who wants one already knows.
@@ -340,15 +340,15 @@ private fun StyleTab(
         )
     }
 
-    StyleLabel("ضخامت")
+    StyleLabel(stringResource(R.string.style_width))
     // Four segments, each drawn with the stroke it sets rather than named — the reference's.
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
-        DRAWING_WIDTHS.forEach { (label, width) ->
+        DRAWING_WIDTHS.forEach { (labelRes, width) ->
             WidthSegment(
-                label = label,
+                label = stringResource(labelRes),
                 widthDp = width,
                 colour = Color(drawing.colour.toULong() shl COLOUR_SHIFT),
                 active = drawing.widthDp == width,
@@ -359,14 +359,14 @@ private fun StyleTab(
         }
     }
 
-    StyleLabel("خط")
+    StyleLabel(stringResource(R.string.style_line))
     Row(
         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
-        LINE_STYLES.forEach { (label, style) ->
+        LINE_STYLES.forEach { (labelRes, style) ->
             StylePill(
-                text = label,
+                text = stringResource(labelRes),
                 active = drawing.lineStyle == style,
                 enabled = editable,
                 onClick = { onSetLineStyle(style) },
@@ -376,7 +376,7 @@ private fun StyleTab(
 
     if (washes) {
         HorizontalDivider(color = CoineProColors.Border)
-        StyleLabel("پُرشدگی")
+        StyleLabel(stringResource(R.string.style_fill))
         SwatchGrid(
             chosen = drawing.fillColour?.let { it or ALPHA_MASK },
             enabled = editable,
@@ -414,7 +414,7 @@ private fun StyleTab(
 
     if (holdsText) {
         HorizontalDivider(color = CoineProColors.Border)
-        StyleLabel("متن")
+        StyleLabel(stringResource(R.string.style_text))
         SwatchGrid(
             chosen = drawing.textColour,
             enabled = editable,
@@ -438,7 +438,7 @@ private fun StyleTab(
     // transform clamps anyway, so a stored value from outside it cannot draw an unusable channel.
     if (drawing.toolId == DEVIATION_TOOL) {
         HorizontalDivider(color = CoineProColors.Border)
-        StyleLabel("پهنای کانال، بر حسب انحراف معیار")
+        StyleLabel(stringResource(R.string.style_deviations))
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
@@ -464,10 +464,10 @@ private fun StyleTab(
         modifier = Modifier.fillMaxWidth(),
     )
 
-    StyleLabel("قالب‌های " + (tool?.label ?: drawing.toolId))
+    StyleLabel(stringResource(R.string.style_templates_for, tool?.label ?: drawing.toolId))
     if (templates.isEmpty()) {
         Text(
-            text = "هنوز قالبی برای این ابزار ذخیره نشده. رنگ و ضخامت دلخواهتان را بگذارید و پایین ذخیره کنید.",
+            text = stringResource(R.string.style_templates_empty),
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
         )
@@ -489,12 +489,12 @@ private fun StyleTab(
     CoineProTextField(
         value = name,
         onValueChange = { name = it },
-        label = "نام قالب تازه",
+        label = stringResource(R.string.style_template_name),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
         modifier = Modifier.fillMaxWidth(),
     )
     CoineProPrimaryButton(
-        text = "ذخیره‌ی رنگ و ضخامت فعلی به‌عنوان قالب",
+        text = stringResource(R.string.style_template_save),
         onClick = {
             onSaveTemplate(name)
             name = ""
@@ -597,15 +597,25 @@ private fun VisibilityTab(
 
     HorizontalDivider(color = CoineProColors.Border)
 
-    StyleLabel("جای این ترسیم")
+    StyleLabel(stringResource(R.string.style_order))
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
-        StylePill(text = "بردن به جلو", active = false, enabled = true, onClick = onBringToFront)
-        StylePill(text = "بردن به عقب", active = false, enabled = true, onClick = onSendToBack)
         StylePill(
-            text = "حذف",
+            text = stringResource(R.string.style_bring_front),
+            active = false,
+            enabled = true,
+            onClick = onBringToFront,
+        )
+        StylePill(
+            text = stringResource(R.string.style_send_back),
+            active = false,
+            enabled = true,
+            onClick = onSendToBack,
+        )
+        StylePill(
+            text = stringResource(R.string.style_delete),
             active = false,
             enabled = !drawing.locked,
             tone = CoineProColors.Sell,
@@ -642,7 +652,12 @@ private fun SwatchGrid(
             }
         }
         onFollowLine?.let { follow ->
-            StylePill(text = "مثل خط", active = followLine, enabled = enabled, onClick = follow)
+            StylePill(
+            text = stringResource(R.string.selection_follow_line),
+            active = followLine,
+            enabled = enabled,
+            onClick = follow,
+        )
         }
     }
 }
@@ -728,7 +743,7 @@ internal fun ToolTemplateRow(
             .padding(bottom = CoineProSpacing.One),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
-        StyleLabel("قالب‌های " + tool.label)
+        StyleLabel(stringResource(R.string.style_templates_for, tool.label))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -817,7 +832,13 @@ private fun TemplateRow(
         ) {
             Icon(
                 painter = painterResource(DesignR.drawable.tv_star),
-                contentDescription = if (isDefault) "برداشتن از پیش‌فرض" else "پیش‌فرض این ابزار",
+                contentDescription = stringResource(
+                    if (isDefault) {
+                        R.string.style_template_unset_default
+                    } else {
+                        R.string.style_template_set_default
+                    },
+                ),
                 tint = if (isDefault) CoineProColors.Gold else CoineProColors.TextDisabled,
                 modifier = Modifier.size(GLYPH),
             )
@@ -831,7 +852,7 @@ private fun TemplateRow(
         ) {
             Icon(
                 painter = painterResource(DesignR.drawable.tv_trash2),
-                contentDescription = "حذف قالب",
+                contentDescription = stringResource(R.string.style_template_delete),
                 tint = CoineProColors.TextMuted,
                 modifier = Modifier.size(GLYPH),
             )
@@ -934,12 +955,16 @@ internal val DRAWING_COLOURS: List<Long> = listOf(
  *
  * A width is a measurement in density-independent pixels and «۱٫۶» in a Persian sheet reads as a
  * price with a decimal separator, not as a thickness. The names say what the reader is choosing.
+ *
+ * Resource ids rather than strings since run Ω2: this is a top-level value and cannot read a
+ * resource, so the two call sites resolve each label with `stringResource` as they draw it.
  */
-internal val DRAWING_WIDTHS: List<Pair<String, Float>> = listOf(
-    "نازک" to 1f,
-    "معمولی" to DEFAULT_DRAWING_WIDTH_DP,
-    "ضخیم" to 2.5f,
-    "خیلی ضخیم" to 4f,
+@Suppress("ktlint")
+internal val DRAWING_WIDTHS: List<Pair<Int, Float>> = listOf(
+    R.string.style_width_thin to 1f,
+    R.string.style_width_normal to DEFAULT_DRAWING_WIDTH_DP,
+    R.string.style_width_thick to 2.5f,
+    R.string.style_width_very_thick to 4f,
 )
 
 /**

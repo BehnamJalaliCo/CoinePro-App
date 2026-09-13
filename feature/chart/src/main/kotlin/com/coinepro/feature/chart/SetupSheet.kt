@@ -29,6 +29,7 @@ import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextField
+import com.coinepro.core.designsystem.CoineProNote
 
 /**
  * The setup on the chart, as numbers.
@@ -145,11 +146,7 @@ internal fun SetupSheetBody(
                     )
                 }
             }
-            Text(
-                text = stringResource(R.string.setup_lot_note),
-                style = MaterialTheme.typography.bodySmall,
-                color = CoineProColors.TextMuted,
-            )
+            CoineProNote(R.string.setup_lot_note, style = MaterialTheme.typography.bodySmall)
         }
 
         if (risk != null && risk > 0 && valid && onPaperTrade != null) {

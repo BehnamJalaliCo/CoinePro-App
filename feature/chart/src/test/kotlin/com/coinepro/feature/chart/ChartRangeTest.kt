@@ -62,10 +62,13 @@ class ChartRangeTest {
 
     @Test
     fun `every offered range says something a reader can tell apart`() {
-        val labels = ChartRange.OFFERED.map { it.label }
+        // Resource ids since run Ω2, so the check is that each range points at a *different* string
+        // and that every one of them points at something at all. What the strings say is the two
+        // resource files' business and `lint_strings` holds them to it.
+        val labels = ChartRange.OFFERED.map { it.labelRes }
         assertEquals(labels.size, labels.toSet().size)
         for (range in ChartRange.OFFERED) {
-            assertTrue("${range.name} has an empty label", range.label.isNotBlank())
+            assertTrue("${range.name} has no label at all", range.labelRes != 0)
             assertNotNull(range.interval)
         }
     }

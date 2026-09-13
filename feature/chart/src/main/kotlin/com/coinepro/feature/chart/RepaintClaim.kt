@@ -65,22 +65,28 @@ enum class RepaintClaim {
     REPAINTS,
     ;
 
-    /** The short mark, for a chip beside the study's name. */
-    val label: String
+    /**
+     * The short mark, for a chip beside the study's name.
+     *
+     * A resource id and not a string since run Ω2. This enum is read from four screens and one of
+     * them is not a composable, so the words live in `values/` and `values-fa/` and each caller
+     * resolves the id where it draws it.
+     */
+    val labelRes: Int
         get() = when (this) {
-            SETTLED -> "repaint نمی‌کند"
-            LATE -> "با تأخیر قطعی می‌شود"
-            LIVE_BAR -> "تا بسته‌شدن کندل تغییر می‌کند"
-            REPAINTS -> "عقب‌تر بازنویسی می‌شود"
+            SETTLED -> R.string.repaint_settled
+            LATE -> R.string.repaint_late
+            LIVE_BAR -> R.string.repaint_live_bar
+            REPAINTS -> R.string.repaint_repaints
         }
 
     /** The sentence under it, which is what makes the mark checkable rather than reassuring. */
-    val note: String
+    val noteRes: Int
         get() = when (this) {
-            SETTLED -> "فقط از کندل‌های بسته حساب می‌شود. آنچه رسم شده، جابه‌جا نمی‌شود."
-            LATE -> "هر نشانه چند کندل بعد قطعی می‌شود. تازه‌ترین نشانه تا آن موقع ممکن است برداشته شود."
-            LIVE_BAR -> "مقدارِ آخرین کندل تا بسته‌شدنش حرکت می‌کند. مقدارهای قبلی ثابت‌اند."
-            REPAINTS -> "با آمدن کندل‌های تازه، بخشی از آنچه قبلاً رسم شده دوباره نوشته می‌شود. برای بک‌تست به آن تکیه نکنید."
+            SETTLED -> R.string.repaint_settled_note
+            LATE -> R.string.repaint_late_note
+            LIVE_BAR -> R.string.repaint_live_bar_note
+            REPAINTS -> R.string.repaint_repaints_note
         }
 
     /** Whether this is the claim the mark is *for*. Only these two are drawn as a trust mark. */

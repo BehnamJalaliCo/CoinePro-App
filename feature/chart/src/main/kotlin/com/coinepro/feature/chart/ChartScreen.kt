@@ -228,6 +228,7 @@ import com.coinepro.core.designsystem.CoineProToast
 import com.coinepro.core.designsystem.ToastTone
 import com.coinepro.core.designsystem.CoineProCelebration
 import com.coinepro.core.designsystem.CoineProConfetti
+import androidx.annotation.StringRes
 
 /**
  * The chart screen.
@@ -1856,10 +1857,13 @@ fun ChartScreen(
 
     when (sheet) {
         ChartSheet.TYPE -> CoineProSheet(
-            title = "نوع چارت",
+            title = stringResource(R.string.chart_sheet_type),
             // Counted after the volume gate, not before. A subtitle that promises eighteen over a
             // list of sixteen is a small lie the reader catches immediately.
-            subtitle = "${ChartCatalog.chartTypeCount(state.series.hasVolume).toPersianDigits()} نوع",
+            subtitle = stringResource(
+                R.string.chart_sheet_type_subtitle,
+                ChartCatalog.chartTypeCount(state.series.hasVolume).toPersianDigits(),
+            ),
             onDismiss = { sheet = null },
         ) {
             ChartTypePicker(
@@ -1874,11 +1878,14 @@ fun ChartScreen(
         }
 
         ChartSheet.INDICATORS -> CoineProSheet(
-            title = "اندیکاتورها",
+            title = stringResource(R.string.chart_sheet_indicators),
             // Counted after the volume gate, like the chart-type subtitle above: fourteen studies
             // are arithmetic on a volume column, and a subtitle promising eighty-three over a list
             // of sixty-nine is a small lie the reader catches immediately.
-            subtitle = "${ChartCatalog.indicatorCount(state.series.hasVolume).toPersianDigits()} اندیکاتور",
+            subtitle = stringResource(
+                R.string.chart_sheet_indicators_subtitle,
+                ChartCatalog.indicatorCount(state.series.hasVolume).toPersianDigits(),
+            ),
             onDismiss = { sheet = null },
         ) {
             // No dismiss on select: switching four indicators on is four taps, and a sheet that
@@ -1960,7 +1967,7 @@ fun ChartScreen(
         }
 
         ChartSheet.LAYOUTS -> CoineProSheet(
-            title = "چیدمان‌ها",
+            title = stringResource(R.string.chart_sheet_layouts),
             onDismiss = { sheet = null },
         ) {
             LayoutSheetBody(
@@ -1992,8 +1999,11 @@ fun ChartScreen(
         }
 
         ChartSheet.INTERVAL -> CoineProSheet(
-            title = "بازه‌ی زمانی",
-            subtitle = "${Timeframe.entries.size.toPersianDigits()} بازه‌ی آماده",
+            title = stringResource(R.string.chart_sheet_interval),
+            subtitle = stringResource(
+                R.string.chart_sheet_interval_subtitle,
+                Timeframe.entries.size.toPersianDigits(),
+            ),
             onDismiss = { sheet = null },
         ) {
             IntervalSheetBody(
@@ -2017,8 +2027,8 @@ fun ChartScreen(
         }
 
         ChartSheet.SCALE -> CoineProSheet(
-            title = "مقیاس قیمت",
-            subtitle = state.scaleMode.persianLabel,
+            title = stringResource(R.string.chart_sheet_scale),
+            subtitle = stringResource(state.scaleMode.labelRes),
             onDismiss = { sheet = null },
         ) {
             PriceScaleSheetBody(
@@ -2030,8 +2040,11 @@ fun ChartScreen(
         }
 
         ChartSheet.COMPARE -> CoineProSheet(
-            title = "مقایسه با نماد دیگر",
-            subtitle = "${MAX_COMPARISONS.toPersianDigits()} نماد هم‌زمان",
+            title = stringResource(R.string.chart_sheet_compare),
+            subtitle = stringResource(
+                R.string.chart_sheet_compare_subtitle,
+                MAX_COMPARISONS.toPersianDigits(),
+            ),
             onDismiss = { sheet = null },
         ) {
             ComparisonSheetBody(
@@ -2046,7 +2059,7 @@ fun ChartScreen(
         }
 
         ChartSheet.BACKTEST -> CoineProSheet(
-            title = "بک‌تست",
+            title = stringResource(R.string.chart_sheet_backtest),
             subtitle = state.symbol,
             onDismiss = { sheet = null },
         ) {
@@ -2116,7 +2129,7 @@ fun ChartScreen(
                 onUndo = if (state.canUndo) ({ controller.undo() }) else null,
                 onRedo = if (state.canRedo) ({ controller.redo() }) else null,
                 comparisons = state.comparisons.size,
-                scaleLabel = state.scaleMode.persianLabel,
+                scaleLabel = stringResource(state.scaleMode.labelRes),
                 scaleAdjusted = state.scaleMode != PriceScaleMode.REGULAR || axisAdjusted,
                 onOpen = { sheet = it },
                 // Offered only when there is a price to alert on. A button that opens a composer
@@ -2297,8 +2310,11 @@ fun ChartScreen(
         }
 
         ChartSheet.DRAWINGS -> CoineProSheet(
-            title = "درخت ترسیم‌ها",
-            subtitle = state.drawing.drawings.size.toPersianDigits() + " ترسیم",
+            title = stringResource(R.string.chart_sheet_objects),
+            subtitle = stringResource(
+                R.string.chart_sheet_objects_subtitle,
+                state.drawing.drawings.size.toPersianDigits(),
+            ),
             onDismiss = { sheet = null },
         ) {
             // The clipboard and the way to an empty chart, above the tree. See
@@ -2520,10 +2536,13 @@ fun ChartScreen(
 
     if (confirmClear) {
         CoineProConfirmDialog(
-            title = "پاک کردن همه‌ی ترسیم‌ها",
-            message = "هر ${state.drawing.drawings.size.toPersianDigits()} ترسیم این نماد برداشته می‌شود و برنمی‌گردد. اندیکاتورها و تنظیمات نمودار دست‌نخورده می‌مانند.",
-            confirmLabel = "پاک کن",
-            dismissLabel = "بماند",
+            title = stringResource(R.string.chart_clear_title),
+            message = stringResource(
+                R.string.chart_clear_message,
+                state.drawing.drawings.size.toPersianDigits(),
+            ),
+            confirmLabel = stringResource(R.string.chart_clear_confirm),
+            dismissLabel = stringResource(R.string.chart_clear_dismiss),
             destructive = true,
             onConfirm = {
                 controller.clearDrawings()
@@ -3298,11 +3317,11 @@ internal fun IntervalSheetBody(
             HorizontalDivider(color = CoineProColors.Border)
         }
         SecondsIntervalSection(selected = selected, onSelect = onSelect)
-        INTERVAL_GROUPS.forEach { (title, frames) ->
+        INTERVAL_GROUPS.forEach { (titleRes, frames) ->
             // The reference sets its group names — TICKS, SECONDS, MINUTES — in 12 sp capitals.
             // Persian has no capitals; the size and the weight are what carry over.
             Text(
-                text = title,
+                text = stringResource(titleRes),
                 style = MaterialTheme.typography.labelMedium,
                 color = CoineProColors.TextMuted,
                 fontWeight = FontWeight.Normal,
@@ -3332,7 +3351,7 @@ internal fun IntervalSheetBody(
         HorizontalDivider(color = CoineProColors.Border)
 
         Text(
-            text = "بازه‌ی دلخواه",
+            text = stringResource(R.string.chart_custom_interval),
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextMuted,
             fontWeight = FontWeight.Normal,
@@ -3340,12 +3359,13 @@ internal fun IntervalSheetBody(
         CoineProTextField(
             value = typed,
             onValueChange = { typed = it },
-            label = "دقیقه، از ۱ تا ۱۴۴۰",
+            label = stringResource(R.string.chart_custom_interval_field),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             modifier = Modifier.fillMaxWidth(),
         )
         CoineProPrimaryButton(
-            text = custom?.let { "نمایش ${it.label}" } ?: "نمایش بازه‌ی دلخواه",
+            text = custom?.let { stringResource(R.string.chart_custom_interval_show, it.label) }
+                ?: stringResource(R.string.chart_custom_interval_show_generic),
             onClick = {
                 custom?.let {
                     onSelect(ChartInterval.Custom(it))
@@ -3356,11 +3376,7 @@ internal fun IntervalSheetBody(
             // Full width and 56 tall: the reference's «+ Add interval».
             modifier = Modifier.fillMaxWidth().height(ADD_INTERVAL_HEIGHT),
         )
-        Text(
-            text = "کندل بازه‌ی دلخواه روی همین دستگاه از کندل‌های کوتاه‌تر ساخته می‌شود و از نیمه‌شب تهران شمرده می‌شود.",
-            style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextMuted,
-        )
+        CoineProNote(R.string.chart_custom_interval_note, style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -3394,15 +3410,21 @@ private fun StarredIntervalSection(
     onStar: (String) -> Unit,
     onHide: ((String) -> Unit)?,
 ) {
-    SheetLabel("کدام بازه‌ها روی نوار زیر نمودار باشند")
+    SheetLabel(stringResource(R.string.chart_favourites_label))
     Text(
         // A prose count of a shortlist, so Persian digits — unlike the wire spellings on the pills.
-        text = starred.size.toPersianDigits() + " از " + TimeframeFavourites.MAX.toPersianDigits() +
-            " بازه سنجاق شده" +
-            if (onHide != null) ". نگه‌داشتن یک بازه، آن را از همین صفحه هم برمی‌دارد." else ".",
+        text = stringResource(
+            R.string.chart_favourites_count,
+            starred.size.toPersianDigits(),
+            TimeframeFavourites.MAX.toPersianDigits(),
+        ) + stringResource(R.string.chart_favourites_full_stop),
         style = MaterialTheme.typography.bodySmall,
         color = CoineProColors.TextMuted,
     )
+    // And the one sentence that prevents a real mistake, through the component that decides whether
+    // a tip is drawn inline or folded into an ⓘ: holding a timeframe here removes it from the page
+    // as well as from the strip, which is not recoverable by tapping the same place again.
+    if (onHide != null) CoineProNote(R.string.chart_favourites_hide_note)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -3449,9 +3471,9 @@ private fun StarredIntervalSection(
                         },
                     ),
                     contentDescription = when {
-                        struck -> "برگرداندن به فهرست"
-                        pinned -> "برداشتن از نوار"
-                        else -> "سنجاق روی نوار"
+                        struck -> stringResource(R.string.chart_favourite_restore)
+                        pinned -> stringResource(R.string.chart_favourite_unpin)
+                        else -> stringResource(R.string.chart_favourite_pin)
                     },
                     tint = when {
                         struck -> CoineProColors.TextDisabled
@@ -3498,9 +3520,11 @@ private fun PriceScaleSheetBody(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
-        SheetLabel("چه چیزی اندازه گرفته می‌شود")
+        SheetLabel(stringResource(R.string.chart_scale_measures))
         CoineProChipRow(
-            options = PriceScaleMode.entries.map { CoineProChip(id = it.name, label = it.persianLabel) },
+            options = PriceScaleMode.entries.map {
+                CoineProChip(id = it.name, label = stringResource(it.labelRes))
+            },
             selectedId = state.scaleMode.name,
             onSelect = { id ->
                 PriceScaleMode.entries.firstOrNull { it.name == id }?.let(controller::setScaleMode)
@@ -3508,7 +3532,7 @@ private fun PriceScaleSheetBody(
             compact = true,
         )
         Text(
-            text = state.scaleMode.persianNote,
+            text = stringResource(state.scaleMode.noteRes),
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
         )
@@ -3516,14 +3540,14 @@ private fun PriceScaleSheetBody(
         HorizontalDivider(color = CoineProColors.Border)
 
         SettingSwitch(
-            label = "معکوس",
-            note = "کف قیمت بالا و سقف پایین. برای خواندن جفت‌ارز وارونه.",
+            label = stringResource(R.string.chart_scale_inverted),
+            noteRes = R.string.chart_scale_inverted_note,
             checked = state.inverted,
             onChange = { controller.toggleInverted() },
         )
         SettingSwitch(
-            label = "قفل نسبت قیمت به کندل",
-            note = "بزرگ‌نمایی افقی و عمودی با هم حرکت می‌کنند، پس شیب خط روند ثابت می‌ماند.",
+            label = stringResource(R.string.chart_scale_lock),
+            noteRes = R.string.chart_scale_lock_note,
             checked = state.priceBarLock,
             onChange = controller::setPriceBarLock,
         )
@@ -3544,9 +3568,11 @@ private fun PriceScaleSheetBody(
         // about where the gutter sits but about whether two overlaid instruments share an axis,
         // which is the difference between an honest comparison and one that flatters whichever
         // series was drawn second.
-        SheetLabel("جای محور قیمت")
+        SheetLabel(stringResource(R.string.chart_scale_side))
         CoineProChipRow(
-            options = SCALE_SIDES.map { (side, label) -> CoineProChip(id = side.name, label = label) },
+            options = SCALE_SIDES.map { (side, labelRes) ->
+                CoineProChip(id = side.name, label = stringResource(labelRes))
+            },
             selectedId = state.scaleSide.name,
             onSelect = { id ->
                 ScaleSide.entries.firstOrNull { it.name == id }?.let(controller::setScaleSide)
@@ -3564,9 +3590,11 @@ private fun PriceScaleSheetBody(
         // The label carries the current offset because a zone name alone does not answer the
         // question anybody is asking, which is «this candle closed at what o'clock for me».
         if (zoneId != null) {
-            SheetLabel("منطقه‌ی زمانی نمودار")
+            SheetLabel(stringResource(R.string.chart_scale_zone))
             CoineProChipRow(
-                options = CHART_ZONES.map { (id, label) -> CoineProChip(id = id, label = label) },
+                options = CHART_ZONES.map { (id, labelRes) ->
+                    CoineProChip(id = id, label = stringResource(labelRes))
+                },
                 selectedId = zoneId,
                 onSelect = { id -> id?.let(onSelectZone) },
                 compact = true,
@@ -3575,14 +3603,14 @@ private fun PriceScaleSheetBody(
             HorizontalDivider(color = CoineProColors.Border)
         }
 
-        SheetLabel("رقم اعشار")
+        SheetLabel(stringResource(R.string.chart_scale_decimals))
         CoineProChipRow(
             // Null is «خودکار», which is not the same as zero: the axis derives a precision from
             // the range, and a chart of a coin priced at 0.00004 needs eight where gold needs two.
             options = DECIMAL_CHOICES.map { count ->
                 CoineProChip(
                     id = count?.toString() ?: AUTOMATIC_DECIMALS,
-                    label = count?.toPersianDigits() ?: "خودکار",
+                    label = count?.toPersianDigits() ?: stringResource(R.string.scale_decimals_auto),
                 )
             },
             selectedId = state.decimals?.toString() ?: AUTOMATIC_DECIMALS,
@@ -3623,9 +3651,11 @@ private fun ComparisonSheetBody(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
-        SheetLabel("چطور اندازه گرفته شود")
+        SheetLabel(stringResource(R.string.chart_compare_measure))
         CoineProChipRow(
-            options = COMPARISON_BASES.map { CoineProChip(id = it.name, label = it.persianLabel) },
+            options = COMPARISON_BASES.map {
+                CoineProChip(id = it.name, label = stringResource(it.labelRes))
+            },
             selectedId = basis.name,
             onSelect = { id ->
                 COMPARISON_BASES.firstOrNull { it.name == id }?.let(onSetBasis)
@@ -3646,18 +3676,18 @@ private fun ComparisonSheetBody(
 
         if (full) {
             Text(
-                text = ComparisonRefusal.LIMIT_REACHED.persianMessage,
+                text = ComparisonRefusal.LIMIT_REACHED.message(),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextMuted,
             )
         } else if (offered.isEmpty()) {
             Text(
-                text = "برای مقایسه، نمادی به دیده‌بان اضافه کنید.",
+                text = stringResource(R.string.chart_compare_empty),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextMuted,
             )
         } else {
-            SheetLabel("از دیده‌بان")
+            SheetLabel(stringResource(R.string.chart_compare_from_watchlist))
             offered.forEach { symbol ->
                 Row(
                     modifier = Modifier
@@ -3687,7 +3717,7 @@ private fun ComparisonSheetBody(
 
         refusal?.let { reason ->
             Text(
-                text = reason.persianMessage,
+                text = reason.message(),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.Sell,
             )
@@ -3713,12 +3743,12 @@ private fun ComparisonRow(symbol: String, colour: Color, index: Int, onRemove: (
         Text(
             // A prose count of where this line sits in the four slots, so the legend and the chip
             // row can be matched up without relying on colour alone.
-            text = "خط ${(index + 1).toPersianDigits()}",
+            text = stringResource(R.string.chart_compare_line, (index + 1).toPersianDigits()),
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextMuted,
         )
         Text(
-            text = "حذف",
+            text = stringResource(R.string.chart_compare_remove),
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.Sell,
             modifier = Modifier
@@ -3752,7 +3782,9 @@ private fun ComparisonBar(
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
         CoineProChipRow(
-            options = COMPARISON_BASES.map { CoineProChip(id = it.name, label = it.persianLabel) },
+            options = COMPARISON_BASES.map {
+                CoineProChip(id = it.name, label = stringResource(it.labelRes))
+            },
             selectedId = basis.name,
             onSelect = { id -> COMPARISON_BASES.firstOrNull { it.name == id }?.let(onSetBasis) },
             compact = true,
@@ -3786,7 +3818,7 @@ private fun ComparisonBar(
                     }
                     Icon(
                         painter = painterResource(CoineProIcons.Close),
-                        contentDescription = "حذف " + series.label,
+                        contentDescription = stringResource(R.string.chart_compare_remove_named, series.label),
                         tint = colour,
                         modifier = Modifier.size(12.dp),
                     )
@@ -3811,7 +3843,7 @@ internal fun SheetLabel(text: String) {
 @Composable
 private fun SettingSwitch(
     label: String,
-    note: String,
+    @StringRes noteRes: Int,
     checked: Boolean,
     onChange: (Boolean) -> Unit,
 ) {
@@ -3822,8 +3854,8 @@ private fun SettingSwitch(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = label, style = MaterialTheme.typography.labelMedium, color = CoineProColors.TextPrimary)
-            Text(
-                text = note,
+            CoineProNote(
+                noteRes,
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextMuted,
                 modifier = Modifier.padding(top = 4.dp),
@@ -3897,8 +3929,8 @@ private fun SecondsIntervalSection(selected: ChartInterval, onSelect: (ChartInte
 }
 
 /** The fifteen presets as a reader groups them, for the sheet behind «بیشتر». */
-private val INTERVAL_GROUPS: List<Pair<String, List<Timeframe>>> = listOf(
-    "دقیقه" to listOf(
+private val INTERVAL_GROUPS: List<Pair<Int, List<Timeframe>>> = listOf(
+    R.string.chart_interval_group_minutes to listOf(
         Timeframe.M1,
         Timeframe.M2,
         Timeframe.M3,
@@ -3908,8 +3940,8 @@ private val INTERVAL_GROUPS: List<Pair<String, List<Timeframe>>> = listOf(
         Timeframe.M30,
         Timeframe.M45,
     ),
-    "ساعت" to listOf(Timeframe.H1, Timeframe.H2, Timeframe.H3, Timeframe.H4),
-    "روز و بالاتر" to listOf(Timeframe.D1, Timeframe.W1, Timeframe.MN1),
+    R.string.chart_interval_group_hours to listOf(Timeframe.H1, Timeframe.H2, Timeframe.H3, Timeframe.H4),
+    R.string.chart_interval_group_days to listOf(Timeframe.D1, Timeframe.W1, Timeframe.MN1),
 )
 
 /**
@@ -3963,18 +3995,18 @@ internal const val CONFLATE_FROM_BARS = 800
  * a search screen, and none of the other five hundred and ninety-six answers a question anybody
  * reading these two markets has.
  */
-private val CHART_ZONES: List<Pair<String, String>> = listOf(
-    "Asia/Tehran" to "تهران",
-    "America/New_York" to "نیویورک",
-    "Europe/London" to "لندن",
-    "UTC" to "UTC",
+private val CHART_ZONES: List<Pair<String, Int>> = listOf(
+    "Asia/Tehran" to R.string.chart_zone_tehran,
+    "America/New_York" to R.string.chart_zone_new_york,
+    "Europe/London" to R.string.chart_zone_london,
+    "UTC" to R.string.chart_zone_utc,
 )
 
-private val SCALE_SIDES: List<Pair<ScaleSide, String>> = listOf(
-    ScaleSide.RIGHT to "راست",
-    ScaleSide.LEFT to "چپ",
-    ScaleSide.BOTH to "هر دو",
-    ScaleSide.MERGED to "یکی",
+private val SCALE_SIDES: List<Pair<ScaleSide, Int>> = listOf(
+    ScaleSide.RIGHT to R.string.chart_scale_side_right,
+    ScaleSide.LEFT to R.string.chart_scale_side_left,
+    ScaleSide.BOTH to R.string.chart_scale_side_both,
+    ScaleSide.MERGED to R.string.chart_scale_side_merged,
 )
 
 private val DECIMAL_CHOICES: List<Int?> = listOf(null, 0, 2, 4, 8)
@@ -4002,30 +4034,30 @@ private val COMPARISON_DOT = 10.dp
 private val SWITCH_MIN = 48.dp
 
 /** What the axis is measuring, in a word. The store keeps ids; the screen keeps the words. */
-internal val PriceScaleMode.persianLabel: String
+internal val PriceScaleMode.labelRes: Int
     get() = when (this) {
-        PriceScaleMode.REGULAR -> "عادی"
-        PriceScaleMode.LOGARITHMIC -> "لگاریتمی"
-        PriceScaleMode.PERCENT -> "درصدی"
-        PriceScaleMode.INDEXED_100 -> "شاخص ۱۰۰"
+        PriceScaleMode.REGULAR -> R.string.chart_scale_mode_regular
+        PriceScaleMode.LOGARITHMIC -> R.string.chart_scale_mode_log
+        PriceScaleMode.PERCENT -> R.string.chart_scale_mode_percent
+        PriceScaleMode.INDEXED_100 -> R.string.chart_scale_mode_indexed
     }
 
 /** One sentence on what each mode is for, because the four names do not say it on their own. */
-private val PriceScaleMode.persianNote: String
+private val PriceScaleMode.noteRes: Int
     get() = when (this) {
-        PriceScaleMode.REGULAR -> "فاصله‌های برابر روی محور، مقدارهای برابر پول."
-        PriceScaleMode.LOGARITHMIC -> "فاصله‌های برابر، درصدهای برابر. برای بازه‌های بلند که قیمت چند برابر شده."
-        PriceScaleMode.PERCENT -> "صفر روی اولین کندل دیده‌ی شما، و بقیه درصد نسبت به آن."
-        PriceScaleMode.INDEXED_100 -> "همان درصد، با مبدأ ۱۰۰ — آن‌طور که شاخص‌ها خوانده می‌شوند."
+        PriceScaleMode.REGULAR -> R.string.chart_scale_mode_regular_note
+        PriceScaleMode.LOGARITHMIC -> R.string.chart_scale_mode_log_note
+        PriceScaleMode.PERCENT -> R.string.chart_scale_mode_percent_note
+        PriceScaleMode.INDEXED_100 -> R.string.chart_scale_mode_indexed_note
     }
 
 /** How a compared instrument is expressed against this one. */
-private val ComparisonBasis.persianLabel: String
+private val ComparisonBasis.labelRes: Int
     get() = when (this) {
-        ComparisonBasis.PERCENT -> "درصد"
-        ComparisonBasis.INDEXED_100 -> "شاخص ۱۰۰"
-        ComparisonBasis.RATIO -> "نسبت"
-        ComparisonBasis.ABSOLUTE -> "قیمت خام"
+        ComparisonBasis.PERCENT -> R.string.chart_basis_percent
+        ComparisonBasis.INDEXED_100 -> R.string.chart_basis_indexed
+        ComparisonBasis.RATIO -> R.string.chart_basis_ratio
+        ComparisonBasis.ABSOLUTE -> R.string.chart_basis_absolute
     }
 
 /**
@@ -4035,14 +4067,14 @@ private val ComparisonBasis.persianLabel: String
  * tapping the same row again, and somebody who mis-tapped the chart's own symbol looking for a
  * fault that is not there.
  */
-private val ComparisonRefusal.persianMessage: String
-    get() = when (this) {
-        ComparisonRefusal.BLANK -> "نمادی انتخاب نشد."
-        ComparisonRefusal.SAME_SYMBOL -> "همین نماد روی نمودار است."
-        ComparisonRefusal.ALREADY_COMPARED -> "این نماد همین حالا روی نمودار است."
-        ComparisonRefusal.LIMIT_REACHED ->
-            "بیشتر از ${MAX_COMPARISONS.toPersianDigits()} نماد هم‌زمان خوانده نمی‌شود. یکی را حذف کنید."
-    }
+@Composable
+private fun ComparisonRefusal.message(): String = when (this) {
+    ComparisonRefusal.BLANK -> stringResource(R.string.chart_refusal_blank)
+    ComparisonRefusal.SAME_SYMBOL -> stringResource(R.string.chart_refusal_same)
+    ComparisonRefusal.ALREADY_COMPARED -> stringResource(R.string.chart_refusal_already)
+    ComparisonRefusal.LIMIT_REACHED ->
+        stringResource(R.string.chart_refusal_limit, MAX_COMPARISONS.toPersianDigits())
+}
 
 /** What the card above the chart says: the window, and its high and low. */
 /**
@@ -4218,6 +4250,10 @@ private fun ChartUnderline(
         chartExclusions(state)
     }
     val mark = remember(state.activeIndicators, signalOnChart) { repaintMark(state, signalOnChart) }
+    // The locale's own comma, resolved once. Every list in this strip is joined with it — the
+    // studies a mark is about, and the studies inside one exclusion — so a Latin build reads
+    // «pivots, swings» rather than «pivots، swings».
+    val separator = stringResource(R.string.chart_list_separator)
     val subjects = remember(state.activeIndicators, signalOnChart) { repaintSubjects(state, signalOnChart) }
     Column(
         modifier = Modifier
@@ -4241,7 +4277,9 @@ private fun ChartUnderline(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = state.range?.let { span -> state.interval.code + "  ·  " + span.label }
+                    text = state.range?.let { span ->
+                        state.interval.code + "  ·  " + stringResource(span.labelRes)
+                    }
                         ?: state.interval.code,
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextSecondary,
@@ -4305,14 +4343,21 @@ private fun ChartUnderline(
         // never read this line and apply it to the zigzag beside it.
         mark?.let { claim ->
             Text(
-                text = claim.label + " — " + subjects.joinToString("، "),
+                text = stringResource(
+                    R.string.chart_provenance_line,
+                    stringResource(claim.labelRes),
+                    // Resolved through `map` and then joined: `joinToString`'s transform is a
+                    // nullable parameter and therefore not an inline lambda, so a composable call
+                    // cannot happen inside it. `map` is inline and can.
+                    subjects.map { resolveArgument(it, separator) }.joinToString(separator),
+                ),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.Buy,
                 fontWeight = FontWeight.Normal,
                 modifier = Modifier.padding(top = CoineProSpacing.Half),
             )
             Text(
-                text = claim.note,
+                text = stringResource(claim.noteRes),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextDisabled,
                 fontWeight = FontWeight.Normal,
@@ -4320,7 +4365,15 @@ private fun ChartUnderline(
         }
         if (exclusions.isNotEmpty()) {
             Text(
-                text = exclusionsLine(exclusions),
+                text = exclusionsLine(
+                    exclusions.map { reason ->
+                        stringResource(
+                            reason.res,
+                            *reason.args.map { resolveArgument(it, separator) }.toTypedArray(),
+                        )
+                    },
+                    heading = stringResource(R.string.provenance_exclusions_line),
+                ),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextMuted,
                 fontWeight = FontWeight.Normal,
@@ -4353,7 +4406,11 @@ private fun SetupCard(order: ChartOrder, onOpen: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("ستاپ ترسیم‌شده", style = MaterialTheme.typography.labelMedium, color = CoineProColors.TextPrimary)
+            Text(
+            text = stringResource(R.string.chart_setup_card_title),
+            style = MaterialTheme.typography.labelMedium,
+            color = CoineProColors.TextPrimary,
+        )
             LtrDirection {
                 Text(
                     text = "R : R = 1 : " + MarketNumberFormatter.price(TradeFromChart.riskReward(order) ?: 0.0, 1),
@@ -4368,9 +4425,19 @@ private fun SetupCard(order: ChartOrder, onOpen: () -> Unit) {
                 .padding(top = CoineProSpacing.OneHalf),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
         ) {
-            SetupFigure("ورود", order.entry, CoineProColors.TextPrimary, Modifier.weight(1f))
-            SetupFigure("حد ضرر", order.stopLoss, CoineProColors.Sell, Modifier.weight(1f))
-            SetupFigure("هدف", order.takeProfit, tone, Modifier.weight(1f))
+            SetupFigure(
+                stringResource(R.string.setup_entry),
+                order.entry,
+                CoineProColors.TextPrimary,
+                Modifier.weight(1f),
+            )
+            SetupFigure(
+                stringResource(R.string.setup_stop),
+                order.stopLoss,
+                CoineProColors.Sell,
+                Modifier.weight(1f),
+            )
+            SetupFigure(stringResource(R.string.setup_target), order.takeProfit, tone, Modifier.weight(1f))
         }
     }
 }
@@ -4414,12 +4481,18 @@ internal fun ChartReading.biasColour(): Color = when {
 }
 
 /** «هیچ اندیکاتوری روشن نیست» / «۴ اندیکاتور · ۲ ترسیم» — Persian digits, because these are counts. */
+@Composable
 internal fun studioSummary(indicators: Int, drawings: Int): String {
+    // Both resolved before the branches, for the reason `selectionSummary` gives: a `stringResource`
+    // inside a conditional is a composable call that happens on some compositions and not others.
+    val indicatorLabel = stringResource(R.string.chart_hub_indicator_count, indicators.toPersianDigits())
+    val drawingLabel = stringResource(R.string.chart_hub_drawing_count, drawings.toPersianDigits())
+    val empty = stringResource(R.string.chart_hub_empty)
     val parts = buildList {
-        if (indicators > 0) add(indicators.toPersianDigits() + " اندیکاتور")
-        if (drawings > 0) add(drawings.toPersianDigits() + " ترسیم")
+        if (indicators > 0) add(indicatorLabel)
+        if (drawings > 0) add(drawingLabel)
     }
-    return if (parts.isEmpty()) "اندیکاتور، ابزار، بازپخش، بک‌تست و نمااسکریپت" else parts.joinToString(" · ")
+    return if (parts.isEmpty()) empty else parts.joinToString(" · ")
 }
 
 @Composable
@@ -4724,3 +4797,19 @@ private fun barClock(epochSeconds: Long): String = runCatching {
 
 /** What a secondary press on the plot asked about: the price under it, and where on screen. */
 internal data class ChartContextMenu(val price: Double, val at: Offset)
+
+/**
+ * One argument of a [ChartExclusion] or a repaint subject, as a string.
+ *
+ * Three shapes reach here and each is a different kind of thing rather than a formatting variant: a
+ * plain `String` is a name out of the catalogue and is printed as it is, an `Int` is a resource id —
+ * the signal's own subject, a claim's own sentence — and a `List<String>` is several study names
+ * that share one placeholder. Anything else is printed by `toString`, which is not a fallback worth
+ * hiding: it would be a programming mistake and it would be visible.
+ */
+@Composable
+private fun resolveArgument(value: Any, separator: String): String = when (value) {
+    is Int -> stringResource(value)
+    is List<*> -> value.joinToString(separator) { it.toString() }
+    else -> value.toString()
+}

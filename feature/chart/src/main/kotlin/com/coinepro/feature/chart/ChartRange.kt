@@ -34,21 +34,28 @@ import com.coinepro.core.marketdata.Timeframe
  * before asking for it, so it takes the longest bar the feed serves and lets the page cap decide.
  */
 enum class ChartRange(
-    /** What the pill says. Persian digits, because this is a prose duration and not a price. */
-    val label: String,
+    /**
+     * What the pill says, as a resource id.
+     *
+     * An id and not a string since run Ω2: this is an enum constructor argument and cannot read a
+     * resource, and the Persian strings that used to live here were the reason this one table
+     * decided the app's language. The Persian keeps its own digits — a span is a prose duration and
+     * not a price — and the English form is the one a reader of every terminal recognises.
+     */
+    val labelRes: Int,
     /** Roughly how long the range is, in seconds. Nominal — see [Timeframe.MN1]. */
     val seconds: Long,
     /** The bar length this range is drawn at. */
     val timeframe: Timeframe,
 ) {
-    ALL("همه", 0L, Timeframe.MN1),
-    Y5("۵ سال", 5 * YEAR_SECONDS, Timeframe.W1),
-    Y1("۱ سال", YEAR_SECONDS, Timeframe.D1),
-    M6("۶ ماه", 182 * DAY_SECONDS, Timeframe.D1),
-    M3("۳ ماه", 91 * DAY_SECONDS, Timeframe.D1),
-    M1("۱ ماه", 31 * DAY_SECONDS, Timeframe.H4),
-    D5("۵ روز", 5 * DAY_SECONDS, Timeframe.M30),
-    D1("۱ روز", DAY_SECONDS, Timeframe.M5),
+    ALL(R.string.range_all, 0L, Timeframe.MN1),
+    Y5(R.string.range_5y, 5 * YEAR_SECONDS, Timeframe.W1),
+    Y1(R.string.range_1y, YEAR_SECONDS, Timeframe.D1),
+    M6(R.string.range_6m, 182 * DAY_SECONDS, Timeframe.D1),
+    M3(R.string.range_3m, 91 * DAY_SECONDS, Timeframe.D1),
+    M1(R.string.range_1m, 31 * DAY_SECONDS, Timeframe.H4),
+    D5(R.string.range_5d, 5 * DAY_SECONDS, Timeframe.M30),
+    D1(R.string.range_1d, DAY_SECONDS, Timeframe.M5),
     ;
 
     /** The interval a tap on this pill puts the chart on. */

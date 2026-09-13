@@ -39,6 +39,8 @@ import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.R as DesignR
+import androidx.compose.ui.res.stringResource
+import com.coinepro.core.designsystem.CoineProNote
 
 /**
  * The chart's colour templates: which palette it paints with, and how to make another.
@@ -55,7 +57,7 @@ import com.coinepro.core.designsystem.R as DesignR
  * The store ships a dark and a light template and refuses to delete or overwrite either, so that a
  * reader who has made their chart unreadable always has a way back. They are stored under machine
  * names — `dark` and `light` — because a storage layer that shipped Persian would have to be
- * migrated the day that changed; the Persian is [persianName], here, where the words belong.
+ * migrated the day that changed; the words a reader sees are [displayName], here, where they belong.
  *
  * ### Making one
  *
@@ -79,7 +81,7 @@ internal fun ColourTemplateSection(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
-        SectionLabel("رنگ‌های چارت")
+        SectionLabel(stringResource(R.string.colours_section))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -89,7 +91,7 @@ internal fun ColourTemplateSection(
             // «تم برنامه» first, because it is the state a reader who has never been here is in,
             // and because it is the way back from a template that turned out to be unreadable.
             ThemeChip(
-                label = "تم برنامه",
+                label = stringResource(R.string.colours_app_theme),
                 active = selected == null,
                 onClick = { onSelect(null) },
             )
@@ -103,14 +105,12 @@ internal fun ColourTemplateSection(
             }
         }
 
-        Text(
-            text = "رنگ‌ها روی خود نمودار می‌نشیند و همراه چیدمان ذخیره می‌شود.",
-            style = MaterialTheme.typography.bodySmall,
-            color = CoineProColors.TextMuted,
-        )
+        CoineProNote(R.string.colours_note, style = MaterialTheme.typography.bodySmall)
 
         Text(
-            text = if (editing) "بستن ساخت قالب رنگ" else "ساختن قالب رنگ تازه",
+            text = stringResource(
+                if (editing) R.string.colours_close_editor else R.string.colours_open_editor,
+            ),
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.Gold,
             modifier = Modifier
@@ -157,12 +157,12 @@ private fun ColourTemplateEditor(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
-        ColourSlot("کندل صعودی", up, TEMPLATE_ACCENTS) { up = it }
-        ColourSlot("کندل نزولی", down, TEMPLATE_ACCENTS) { down = it }
-        ColourSlot("شبکه", grid, TEMPLATE_NEUTRALS) { grid = it }
-        ColourSlot("پس‌زمینه", background, TEMPLATE_NEUTRALS) { background = it }
-        ColourSlot("متن محور", text, TEMPLATE_NEUTRALS) { text = it }
-        ColourSlot("نشانگر", crosshair, TEMPLATE_NEUTRALS) { crosshair = it }
+        ColourSlot(stringResource(R.string.colours_up), up, TEMPLATE_ACCENTS) { up = it }
+        ColourSlot(stringResource(R.string.colours_down), down, TEMPLATE_ACCENTS) { down = it }
+        ColourSlot(stringResource(R.string.colours_grid), grid, TEMPLATE_NEUTRALS) { grid = it }
+        ColourSlot(stringResource(R.string.colours_background), background, TEMPLATE_NEUTRALS) { background = it }
+        ColourSlot(stringResource(R.string.colours_axis_text), text, TEMPLATE_NEUTRALS) { text = it }
+        ColourSlot(stringResource(R.string.colours_crosshair), crosshair, TEMPLATE_NEUTRALS) { crosshair = it }
 
         // The six colours as they would actually sit together, before anything is saved. A row of
         // swatches says what each one is; this says whether they work, which is the only question
@@ -172,12 +172,12 @@ private fun ColourTemplateEditor(
         CoineProTextField(
             value = name,
             onValueChange = { name = it },
-            label = "نام قالب رنگ",
+            label = stringResource(R.string.colours_name),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             modifier = Modifier.fillMaxWidth(),
         )
         CoineProPrimaryButton(
-            text = "ذخیره‌ی قالب رنگ",
+            text = stringResource(R.string.colours_save),
             onClick = {
                 onSave(
                     newColourTemplate(
@@ -268,7 +268,7 @@ private fun ColourPreview(up: Long, down: Long, grid: Long, background: Long, te
                 .background(Color(grid.toULong() shl COLOUR_SHIFT)),
         )
         Text(
-            text = "نمونه",
+            text = stringResource(R.string.colours_sample),
             style = MaterialTheme.typography.labelSmall,
             color = Color(text.toULong() shl COLOUR_SHIFT),
         )
@@ -308,14 +308,14 @@ private fun ColourTemplateChip(
             }
         }
         Text(
-            text = template.persianName,
+            text = template.displayName(),
             style = MaterialTheme.typography.labelSmall,
             color = if (active) CoineProColors.Gold else CoineProColors.TextSecondary,
         )
         onDelete?.let { delete ->
             Icon(
                 painter = painterResource(DesignR.drawable.tv_trash2),
-                contentDescription = "حذف قالب رنگ",
+                contentDescription = stringResource(R.string.colours_delete),
                 tint = CoineProColors.TextMuted,
                 modifier = Modifier
                     .size(CHIP_GLYPH)
@@ -362,15 +362,18 @@ private fun SectionLabel(text: String) {
  * What a template is called on screen.
  *
  * The two built-ins carry machine names on disk for the reason given on `ChartColourTemplate.name`,
- * and this is where they get Persian ones. Anything the reader made keeps the name they typed —
- * translating that would be the app renaming somebody's own work.
+ * and this is where they get real ones, in whichever language the app is running in. Anything the
+ * reader made keeps the name they typed — translating that would be the app renaming somebody's own
+ * work, which is why only the two ids are answered here and everything else falls through.
+ *
+ * Named `displayName` rather than `persianName` since run Ω2: it is not Persian any more.
  */
-internal val ChartColourTemplate.persianName: String
-    get() = when (id) {
-        ChartColourTemplate.BUILT_IN_DARK_ID -> "تیره"
-        ChartColourTemplate.BUILT_IN_LIGHT_ID -> "روشن"
-        else -> name
-    }
+@Composable
+internal fun ChartColourTemplate.displayName(): String = when (id) {
+    ChartColourTemplate.BUILT_IN_DARK_ID -> stringResource(R.string.colours_builtin_dark)
+    ChartColourTemplate.BUILT_IN_LIGHT_ID -> stringResource(R.string.colours_builtin_light)
+    else -> name
+}
 
 /**
  * A template ready to be written, under the name the reader typed.

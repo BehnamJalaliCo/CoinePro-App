@@ -83,6 +83,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.res.stringResource
 
 /**
  * The chart's working surface: everything you *do* to a chart, on its own page.
@@ -273,9 +274,9 @@ fun ChartStudioScreen(
                     section = StudioSection.INDICATORS,
                     open = section == StudioSection.INDICATORS,
                     detail = if (state.activeIndicators.isEmpty()) {
-                        "هیچ‌کدام روشن نیست"
+                        stringResource(R.string.studio_none_on)
                     } else {
-                        state.activeIndicators.size.toPersianDigits() + " روشن"
+                        stringResource(R.string.studio_count_on, state.activeIndicators.size.toPersianDigits())
                     },
                     onToggle = { section = if (section == StudioSection.INDICATORS) StudioSection.NONE else StudioSection.INDICATORS },
                 ) {
@@ -300,9 +301,9 @@ fun ChartStudioScreen(
                     section = StudioSection.CHAIN,
                     open = section == StudioSection.CHAIN,
                     detail = if (state.chainSources.isEmpty()) {
-                        "همه روی قیمت بسته"
+                        stringResource(R.string.studio_all_on_price)
                     } else {
-                        state.chainSources.size.toPersianDigits() + " تغییر منبع"
+                        stringResource(R.string.studio_chain_count, state.chainSources.size.toPersianDigits())
                     },
                     onToggle = { section = if (section == StudioSection.CHAIN) StudioSection.NONE else StudioSection.CHAIN },
                 ) {
@@ -319,9 +320,9 @@ fun ChartStudioScreen(
                     section = StudioSection.PATTERNS,
                     open = section == StudioSection.PATTERNS,
                     detail = if (state.patterns.isEmpty()) {
-                        "هیچ‌کدام روشن نیست"
+                        stringResource(R.string.studio_none_on)
                     } else {
-                        state.patterns.size.toPersianDigits() + " روشن"
+                        stringResource(R.string.studio_count_on, state.patterns.size.toPersianDigits())
                     },
                     onToggle = { section = if (section == StudioSection.PATTERNS) StudioSection.NONE else StudioSection.PATTERNS },
                 ) {
@@ -334,9 +335,9 @@ fun ChartStudioScreen(
                         section = StudioSection.TEMPLATES,
                         open = section == StudioSection.TEMPLATES,
                         detail = if (savedIndicatorSets.isEmpty()) {
-                            "هنوز قالبی نیست"
+                            stringResource(R.string.studio_no_templates)
                         } else {
-                            savedIndicatorSets.size.toPersianDigits() + " قالب"
+                            stringResource(R.string.studio_template_count, savedIndicatorSets.size.toPersianDigits())
                         },
                         onToggle = {
                             section = if (section == StudioSection.TEMPLATES) StudioSection.NONE else StudioSection.TEMPLATES
@@ -369,7 +370,8 @@ fun ChartStudioScreen(
                 SectionCard(
                     section = StudioSection.TOOLS,
                     open = section == StudioSection.TOOLS,
-                    detail = state.drawing.tool?.label ?: (DrawingTools.ALL.size.toPersianDigits() + " ابزار"),
+                    detail = state.drawing.tool?.label
+                ?: stringResource(R.string.studio_tool_count, DrawingTools.ALL.size.toPersianDigits()),
                     onToggle = { section = if (section == StudioSection.TOOLS) StudioSection.NONE else StudioSection.TOOLS },
                 ) {
                     // How far what the reader draws next travels — items 51 and 188. Above the
@@ -413,7 +415,7 @@ fun ChartStudioScreen(
                     SectionCard(
                         section = StudioSection.DRAWINGS,
                         open = section == StudioSection.DRAWINGS,
-                        detail = state.drawing.drawings.size.toPersianDigits() + " ترسیم",
+                        detail = stringResource(R.string.studio_drawing_count, state.drawing.drawings.size.toPersianDigits()),
                         onToggle = { section = if (section == StudioSection.DRAWINGS) StudioSection.NONE else StudioSection.DRAWINGS },
                     ) {
                         // The clipboard, and the way to an empty chart. The same row the chart's
@@ -455,12 +457,14 @@ fun ChartStudioScreen(
             }
             item {
                 ActionRow(
-                    title = "بازپخش نوار",
-                    body = "نمودار را عقب می‌برد و کندل‌به‌کندل جلو می‌آورد — تمرین تصمیم، بدون دیدن آینده.",
-                    action = if (state.replay.isOn) "در حال اجرا" else "شروع",
+                    title = stringResource(R.string.studio_replay_title),
+                    body = stringResource(R.string.studio_replay_blurb),
+                    action = stringResource(
+                if (state.replay.isOn) R.string.studio_replay_running else R.string.studio_replay_start,
+            ),
                     icon = DesignR.drawable.tv_play,
                     enabled = state.series.bars.size >= Replay.MINIMUM_BARS,
-                    disabledNote = "برای بازپخش کندل کافی نیست.",
+                    disabledNote = stringResource(R.string.studio_replay_not_enough),
                 ) {
                     controller.enterReplay()
                     onBackToChart?.invoke()
@@ -469,9 +473,9 @@ fun ChartStudioScreen(
             onOpenPanes?.let { open ->
                 item {
                     ActionRow(
-                        title = "دو نمودار هم‌زمان",
-                        body = "دو نمودار روی هم، هرکدام با نماد و بازه و اندیکاتور خودش. هم‌گام‌سازی نماد و بازه اختیاری است.",
-                        action = "باز کردن",
+                        title = stringResource(R.string.studio_panes_title),
+                        body = stringResource(R.string.studio_panes_blurb),
+                        action = stringResource(R.string.studio_open),
                         icon = DesignR.drawable.tv_layout_grid,
                         onClick = open,
                     )
@@ -482,9 +486,9 @@ fun ChartStudioScreen(
                     section = StudioSection.BACKTEST,
                     open = section == StudioSection.BACKTEST,
                     detail = if (state.series.bars.size >= Backtest.MINIMUM_BARS) {
-                        state.series.bars.size.toPersianDigits() + " کندل"
+                        stringResource(R.string.studio_bar_count, state.series.bars.size.toPersianDigits())
                     } else {
-                        "کندل کافی نیست"
+                        stringResource(R.string.studio_not_enough_bars)
                     },
                     onToggle = { section = if (section == StudioSection.BACKTEST) StudioSection.NONE else StudioSection.BACKTEST },
                 ) {
@@ -504,7 +508,7 @@ fun ChartStudioScreen(
                         )
                     } else {
                         Text(
-                            text = "بک‌تست دست‌کم " + Backtest.MINIMUM_BARS.toPersianDigits() + " کندل می‌خواهد.",
+                            text = stringResource(R.string.studio_backtest_needs, Backtest.MINIMUM_BARS.toPersianDigits()),
                             style = MaterialTheme.typography.bodySmall,
                             color = CoineProColors.TextMuted,
                         )
@@ -522,7 +526,7 @@ fun ChartStudioScreen(
                         // reach.
                         detail = eventState.visibility.kinds
                             .count { it in SERVED_EVENT_KINDS }
-                            .toPersianDigits() + " نوع روشن",
+                            .toPersianDigits().let { stringResource(R.string.studio_types_on, it) },
                         onToggle = {
                             section = if (section == StudioSection.EVENTS) {
                                 StudioSection.NONE
@@ -564,15 +568,15 @@ fun ChartStudioScreen(
             onOpenChartVision?.let { open ->
                 item {
                     ActionRow(
-                        title = "تحلیل تصویری چارت",
-                        body = "تصویر همین چارت را می‌فرستد و ساختار، سوگیری و یک ستاپ پیشنهادی را برمی‌گرداند.",
-                        action = "فرستادن",
+                        title = stringResource(R.string.studio_vision_title),
+                        body = stringResource(R.string.studio_vision_blurb),
+                        action = stringResource(R.string.studio_vision_action),
                         icon = DesignR.drawable.tv_scan_line,
                         // Asked before the request, not after it. Forwarding an interval the
                         // endpoint refuses turns a reader's own choice of bar length into a
                         // server-worded failure they cannot act on.
                         enabled = state.aiVisionRefusal == null,
-                        disabledNote = state.aiVisionRefusal.orEmpty(),
+                        disabledNote = state.aiVisionRefusal?.let { stringResource(it) }.orEmpty(),
                         onClick = open,
                     )
                 }
@@ -580,9 +584,9 @@ fun ChartStudioScreen(
             onOpenScript?.let { open ->
                 item {
                     ActionRow(
-                        title = "نمااسکریپت",
-                        body = "اندیکاتور خودتان را بنویسید و همین‌جا روی این نماد ببینید. ده اسکریپت آماده و یک دوره‌ی کوتاه همراهش است.",
-                        action = "نوشتن",
+                        title = stringResource(R.string.studio_script_title),
+                        body = stringResource(R.string.studio_script_blurb),
+                        action = stringResource(R.string.studio_script_action),
                         icon = DesignR.drawable.tv_code2,
                         onClick = open,
                     )
@@ -593,7 +597,11 @@ fun ChartStudioScreen(
                     SectionCard(
                         section = StudioSection.LAYOUTS,
                         open = section == StudioSection.LAYOUTS,
-                        detail = if (layouts.isEmpty()) "چیدمانی ذخیره نشده" else layouts.size.toPersianDigits() + " چیدمان",
+                        detail = if (layouts.isEmpty()) {
+                stringResource(R.string.studio_no_layouts)
+            } else {
+                stringResource(R.string.studio_layout_count, layouts.size.toPersianDigits())
+            },
                         onToggle = { section = if (section == StudioSection.LAYOUTS) StudioSection.NONE else StudioSection.LAYOUTS },
                     ) {
                         Column {
@@ -667,11 +675,13 @@ fun ChartStudioScreen(
 
     if (confirmClear) {
         CoineProConfirmDialog(
-            title = "پاک کردن همه‌ی ترسیم‌ها",
-            message = "هر " + state.drawing.drawings.size.toPersianDigits() +
-                " ترسیم این نماد برداشته می‌شود و برنمی‌گردد. اندیکاتورها و تنظیمات نمودار دست‌نخورده می‌مانند.",
-            confirmLabel = "پاک کن",
-            dismissLabel = "بماند",
+            title = stringResource(R.string.chart_clear_title),
+            message = stringResource(
+                R.string.chart_clear_message,
+                state.drawing.drawings.size.toPersianDigits(),
+            ),
+            confirmLabel = stringResource(R.string.chart_clear_confirm),
+            dismissLabel = stringResource(R.string.chart_clear_dismiss),
             destructive = true,
             onConfirm = {
                 controller.clearDrawings()
@@ -726,27 +736,41 @@ private fun ChartExportRow(
     val scope = rememberCoroutineScope()
     val current by rememberUpdatedState(bars)
     var outcome by remember { mutableStateOf<String?>(null) }
+    // Resolved here where there is a composition: the write runs off the main thread.
+    val savedMessage = stringResource(R.string.studio_saved)
+    val failedMessage = stringResource(R.string.studio_save_failed)
+    // The column headings and the «unknown venue» word, resolved here where there is a composition
+    // to read them from: `ChartExport` is a plain object with no `Context` and is tested without one.
+    val headers = ChartExport.HEADER_RES.map { stringResource(it) }
+    val noSourceLabel = stringResource(R.string.csv_no_source)
 
     val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(CSV_MIME)) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             val bytes = withContext(Dispatchers.Default) {
-                ChartExport.toCsv(current, symbol, interval, source).toByteArray(Charsets.UTF_8)
+                ChartExport.toCsv(
+                    bars = current,
+                    symbol = symbol,
+                    interval = interval,
+                    source = source,
+                    headers = headers,
+                    noSourceLabel = noSourceLabel,
+                ).toByteArray(Charsets.UTF_8)
             }
-            outcome = writeExport(context, uri, bytes)
+            outcome = writeExport(context, uri, bytes, savedMessage, failedMessage)
         }
     }
 
     Column {
         ActionRow(
-            title = "خروجی کندل‌ها",
-            body = "همان کندل‌هایی که روی نمودار می‌بینید، به‌صورت CSV با تاریخ میلادی و شمسی. برای اکسل فارسی آماده است.",
-            action = "ذخیره",
+            title = stringResource(R.string.studio_export_title),
+            body = stringResource(R.string.studio_export_blurb),
+            action = stringResource(R.string.studio_export_action),
             icon = DesignR.drawable.tv_chart_columns,
             // A chart with no bars has nothing to write, and a picker that opened onto an empty
             // file would be a picker that wasted the reader's decision about where to put it.
             enabled = bars.isNotEmpty(),
-            disabledNote = "هنوز کندلی روی نمودار نیست.",
+            disabledNote = stringResource(R.string.studio_export_empty),
         ) {
             save.launch(ChartExport.fileName(symbol, interval))
         }
@@ -774,14 +798,22 @@ private fun ChartExportRow(
  * so one sentence covers both. The exception is swallowed rather than rethrown, because a crash at
  * the end of an export loses the export as well as the session.
  */
-private suspend fun writeExport(context: Context, uri: Uri, bytes: ByteArray): String =
+private suspend fun writeExport(
+    context: Context,
+    uri: Uri,
+    bytes: ByteArray,
+    /** «فایل ذخیره شد.», resolved by the caller — this is not a composable. */
+    savedMessage: String,
+    /** And the other outcome. */
+    failedMessage: String,
+): String =
     withContext(Dispatchers.IO) {
         runCatching {
             context.contentResolver.openOutputStream(uri)?.use { stream -> stream.write(bytes) }
                 ?: error("no stream")
         }.fold(
-            onSuccess = { "فایل ذخیره شد." },
-            onFailure = { "فایل ذخیره نشد. جای دیگری را امتحان کنید." },
+            onSuccess = { savedMessage },
+            onFailure = { failedMessage },
         )
     }
 
@@ -793,23 +825,29 @@ private suspend fun writeExport(context: Context, uri: Uri, bytes: ByteArray): S
  */
 private const val CSV_MIME = "text/csv"
 
-private enum class StudioSection(val title: String) {
-    NONE(""),
-    TYPE("نوع چارت"),
-    INDICATORS("اندیکاتورها"),
+/**
+ * Which panel of the studio is open.
+ *
+ * [titleRes] is a resource id and `NONE` carries zero, which is the one value an id can never be —
+ * so «no panel is open» is unmistakable and `NONE` is never drawn. See run Ω2's string extraction.
+ */
+private enum class StudioSection(val titleRes: Int) {
+    NONE(0),
+    TYPE(R.string.studio_panel_type),
+    INDICATORS(R.string.studio_panel_indicators),
     /** What each indicator is computed on. See [IndicatorChainSection]. */
-    CHAIN("منبع اندیکاتورها"),
+    CHAIN(R.string.studio_panel_chain),
     /** The shapes the bars themselves make. See [CandlePatternSection]. */
-    PATTERNS("الگوهای کندلی"),
+    PATTERNS(R.string.studio_panel_patterns),
     /** Saved sets of studies — not layouts. See [IndicatorTemplateSection]. */
-    TEMPLATES("قالب‌های اندیکاتور"),
-    TOOLS("ابزار ترسیم"),
-    DRAWINGS("ترسیم‌های روی چارت"),
-    BACKTEST("بک‌تست"),
+    TEMPLATES(R.string.studio_panel_templates),
+    TOOLS(R.string.studio_panel_tools),
+    DRAWINGS(R.string.studio_panel_drawings),
+    BACKTEST(R.string.studio_panel_backtest),
 
     /** Which kinds of event are drawn on the time axis. See `ChartEventSettings`. */
-    EVENTS("رویدادها روی نمودار"),
-    LAYOUTS("چیدمان‌ها"),
+    EVENTS(R.string.studio_panel_events),
+    LAYOUTS(R.string.studio_panel_layouts),
 }
 
 /** Base thirty-six, so a millisecond clock becomes a short id rather than thirteen digits. */
@@ -839,39 +877,41 @@ private fun DrawingSyncRow(mode: DrawingSyncMode, onSelect: (DrawingSyncMode) ->
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
         Text(
-            text = "ترسیم تازه کجا دیده شود",
+            text = stringResource(R.string.studio_sync_label),
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextMuted,
             fontWeight = FontWeight.Normal,
         )
         CoineProChipRow(
-            options = DrawingSyncMode.entries.map { CoineProChip(id = it.id, label = it.persianLabel) },
+            options = DrawingSyncMode.entries.map {
+                CoineProChip(id = it.id, label = stringResource(it.labelRes))
+            },
             selectedId = mode.id,
             onSelect = { id -> DrawingSyncMode.entries.firstOrNull { it.id == id }?.let(onSelect) },
             compact = true,
         )
         Text(
-            text = mode.persianNote,
+            text = stringResource(mode.noteRes),
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextDisabled,
         )
     }
 }
 
-/** What each reach is called. The store keeps ids; the screen keeps the words. */
-private val DrawingSyncMode.persianLabel: String
+/** What each reach is called. The store keeps ids; the resources keep the words. */
+private val DrawingSyncMode.labelRes: Int
     get() = when (this) {
-        DrawingSyncMode.NONE -> "موقت"
-        DrawingSyncMode.LAYOUT -> "همین چیدمان"
-        DrawingSyncMode.GLOBAL -> "همه‌ی چیدمان‌ها"
+        DrawingSyncMode.NONE -> R.string.studio_sync_none
+        DrawingSyncMode.LAYOUT -> R.string.studio_sync_layout
+        DrawingSyncMode.GLOBAL -> R.string.studio_sync_global
     }
 
 /** One sentence on what each reach does, because three names do not say it on their own. */
-private val DrawingSyncMode.persianNote: String
+private val DrawingSyncMode.noteRes: Int
     get() = when (this) {
-        DrawingSyncMode.NONE -> "روی همین نمودار می‌ماند و با ذخیره‌ی چیدمان همراهش نمی‌رود."
-        DrawingSyncMode.LAYOUT -> "متعلق به همین چیدمان است و با آن ذخیره می‌شود."
-        DrawingSyncMode.GLOBAL -> "روی هر چیدمانی از این نماد دیده می‌شود، حتی چیدمان‌هایی که بعداً ساخته شوند."
+        DrawingSyncMode.NONE -> R.string.studio_sync_none_note
+        DrawingSyncMode.LAYOUT -> R.string.studio_sync_layout_note
+        DrawingSyncMode.GLOBAL -> R.string.studio_sync_global_note
     }
 
 @Composable
@@ -884,7 +924,7 @@ private fun StudioHeader(symbol: String, timeframe: String, onBackToChart: (() -
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "استودیوی چارت",
+                    text = stringResource(R.string.studio_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = CoineProColors.TextPrimary,
@@ -917,7 +957,7 @@ private fun StudioHeader(symbol: String, timeframe: String, onBackToChart: (() -
                         modifier = Modifier.size(15.dp),
                     )
                     Text(
-                        text = "نمودار",
+                        text = stringResource(R.string.studio_chart_tab),
                         style = MaterialTheme.typography.labelSmall,
                         color = CoineProColors.Gold,
                     )
@@ -958,7 +998,7 @@ private fun SectionCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = section.title,
+                    text = stringResource(section.titleRes),
                     style = MaterialTheme.typography.titleSmall,
                     color = CoineProColors.TextPrimary,
                 )

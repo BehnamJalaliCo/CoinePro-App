@@ -41,7 +41,17 @@ class ChartExportTest {
     }
 
     private fun csv() = underPersianLocale {
-        ChartExport.toCsv(bars, "XAUUSD", ChartInterval.Preset(Timeframe.H1), "Binance", tehran)
+        ChartExport.toCsv(
+            bars = bars,
+            symbol = "XAUUSD",
+            interval = ChartInterval.Preset(Timeframe.H1),
+            source = "Binance",
+            // Resolved by the caller in the app; named here so the test is about the *shape* of the
+            // file rather than about the wording of eight headings (run Ω2).
+            headers = HEADINGS,
+            noSourceLabel = "no source",
+            zone = tehran,
+        )
     }
 
     @Test
@@ -71,7 +81,7 @@ class ChartExportTest {
         val lines = csv().removePrefix("\uFEFF").split("\r\n").filter { it.isNotBlank() }
         // The provenance comment is one field; every row after it is the full width.
         for (line in lines.drop(1)) {
-            assertEquals(ChartExport.HEADERS.size, line.count { it == ',' } + 1)
+            assertEquals(ChartExport.HEADER_RES.size, line.count { it == ',' } + 1)
         }
     }
 
@@ -136,11 +146,13 @@ class ChartExportTest {
     @Test
     fun `a quote inside a field cannot break the row apart`() {
         val odd = ChartExport.toCsv(
-            bars.take(1),
-            "A\"B",
-            ChartInterval.Preset(Timeframe.H1),
-            "ven,ue",
-            tehran,
+            bars = bars.take(1),
+            symbol = "A\"B",
+            interval = ChartInterval.Preset(Timeframe.H1),
+            source = "ven,ue",
+            headers = HEADINGS,
+            noSourceLabel = "no source",
+            zone = tehran,
         )
         assertTrue(odd.contains("\"\""))
         val header = odd.removePrefix("\uFEFF").substringBefore("\r\n")
@@ -151,7 +163,15 @@ class ChartExportTest {
     @Test
     fun `the bars come out oldest first however they went in`() {
         val shuffled = bars.reversed()
-        val text = ChartExport.toCsv(shuffled, "X", ChartInterval.Preset(Timeframe.H1), "v", tehran)
+        val text = ChartExport.toCsv(
+            bars = shuffled,
+            symbol = "X",
+            interval = ChartInterval.Preset(Timeframe.H1),
+            source = "v",
+            headers = HEADINGS,
+            noSourceLabel = "no source",
+            zone = tehran,
+        )
         val times = text.removePrefix("\uFEFF").split("\r\n")
             .drop(2)
             .filter { it.isNotBlank() }
@@ -159,3 +179,7 @@ class ChartExportTest {
         assertEquals(times.sorted(), times)
     }
 }
+
+/** Stand-ins for the eight resolved headings. Only their count and their order matter here. */
+private val HEADINGS: List<String> =
+    listOf("time", "date", "clock", "open", "high", "low", "close", "volume")

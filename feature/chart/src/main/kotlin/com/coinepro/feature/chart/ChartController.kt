@@ -519,9 +519,15 @@ data class ChartUiState(
      */
     val aiVisionWire: String? get() = interval.wire.takeIf { it in AI_VISION_INTERVALS }
 
-    /** Why chart vision cannot read this chart, in a sentence, or null when it can. */
-    val aiVisionRefusal: String?
-        get() = if (aiVisionWire != null) null else "تحلیل تصویری روی این بازه‌ی زمانی کار نمی‌کند. یکی از بازه‌های ۱ دقیقه، ۵ دقیقه، ۱۵ دقیقه، ۱ ساعت، ۴ ساعت یا ۱ روز را انتخاب کنید."
+    /**
+     * Why chart vision cannot read this chart, as a resource id, or null when it can.
+     *
+     * An id and not a sentence since run Ω2: this is a state class read from a screen and from a
+     * unit test, and the words belong in `values/` and `values-fa/` where both languages have one.
+     * Null still means «it can read this chart», which is what every caller branches on.
+     */
+    val aiVisionRefusal: Int?
+        get() = if (aiVisionWire != null) null else R.string.chart_ai_vision_unsupported
 
     /**
      * Everything the indicators produce, computed once.

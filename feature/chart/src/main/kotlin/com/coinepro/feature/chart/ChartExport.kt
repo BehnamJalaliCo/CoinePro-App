@@ -45,22 +45,25 @@ import java.util.Locale
 object ChartExport {
 
     /**
-     * The columns, in order, in Persian.
+     * The columns, in order, as resource ids.
      *
-     * Persian because the file is opened by the reader and not by a program. The two English words
-     * inside the parentheses are the format names — `ISO`, and the OHLC letters a chart already
-     * prints in its own legend — which are read as symbols rather than as words and are what a
-     * spreadsheet's own documentation calls them.
+     * The file is opened by the reader and not by a program, so the headings are in the reader's own
+     * language — which is why they became resource ids in run Ω2 rather than the Persian strings they
+     * were. `ISO` and «شمسی»' parenthetical stay inside the strings: they are format names, read as
+     * symbols rather than as words, and are what a spreadsheet's own documentation calls them.
+     *
+     * The order is the contract. [NUMERIC_COLUMNS] indexes into it and [fieldsOf] fills it, so a
+     * column added in the middle has to be added in all three places or the test says so.
      */
-    val HEADERS: List<String> = listOf(
-        "زمان (ISO)",
-        "تاریخ (شمسی)",
-        "ساعت",
-        "باز",
-        "بیشترین",
-        "کمترین",
-        "بسته",
-        "حجم",
+    val HEADER_RES: List<Int> = listOf(
+        R.string.csv_time_iso,
+        R.string.csv_date_jalali,
+        R.string.csv_clock,
+        R.string.csv_open,
+        R.string.csv_high,
+        R.string.csv_low,
+        R.string.csv_close,
+        R.string.csv_volume,
     )
 
     /**
@@ -89,10 +92,19 @@ object ChartExport {
         symbol: String,
         interval: ChartInterval,
         source: String,
+        /**
+         * The column headings, already resolved, in [HEADER_RES]' order.
+         *
+         * Passed in rather than read here because this object has no `Context` and is unit-tested
+         * without one. The caller is a composable and has both.
+         */
+        headers: List<String>,
+        /** What to call an unknown venue in the preamble — `R.string.csv_no_source`, resolved. */
+        noSourceLabel: String,
         zone: ZoneId = ZoneId.systemDefault(),
     ): String = Csv.build(
-        preamble = listOf(listOf(provenance(symbol, interval, source))),
-        header = HEADERS,
+        preamble = listOf(listOf(provenance(symbol, interval, source, noSourceLabel))),
+        header = headers,
         rows = bars.sortedBy { it.t }.map { fieldsOf(it, zone) },
     )
 
@@ -103,8 +115,12 @@ object ChartExport {
      * out loud. The wire spelling of the interval rather than its Persian label: `H4` is what the
      * reader will type into whatever they are comparing against.
      */
-    internal fun provenance(symbol: String, interval: ChartInterval, source: String): String =
-        "# " + symbol + " · " + interval.wire + " · " + (source.ifEmpty { "بدون منبع" })
+    internal fun provenance(
+        symbol: String,
+        interval: ChartInterval,
+        source: String,
+        noSourceLabel: String,
+    ): String = "# " + symbol + " · " + interval.wire + " · " + source.ifEmpty { noSourceLabel }
 
     /** One bar as text fields, aligned with [HEADERS]. Absent values are the empty string. */
     internal fun fieldsOf(bar: Candle, zone: ZoneId): List<String> = listOf(

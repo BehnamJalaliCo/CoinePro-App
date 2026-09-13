@@ -36,35 +36,65 @@ import com.coinepro.core.marketdata.resolveCandleRequest
  * screenshot. It also means the same list can be shown twice — under the chart, and in the export's
  * own header — without the two drifting.
  */
-fun chartExclusions(state: ChartUiState): List<String> {
-    val out = mutableListOf<String>()
+fun chartExclusions(state: ChartUiState): List<ChartExclusion> {
+    val out = mutableListOf<ChartExclusion>()
     val plan = resolveCandleRequest(state.interval)
 
     // Folding first: it is the one that changes every candle on screen rather than merely limiting
     // how many there are, and a reader comparing a two-hour bar against the venue's is comparing
     // against something the venue never sent.
     if (plan.factor > 1) {
-        out += "کندل‌های این بازه روی همین دستگاه از کندل‌های " + plan.source.wire +
-            " ساخته می‌شوند و از نیمه‌شب تهران شمرده می‌شوند."
+        out += ChartExclusion(R.string.provenance_folded, listOf(plan.source.wire))
     }
     if (state.historyTruncated) {
-        out += "به همین دلیل هر بار کندل کمتری می‌آید. برای دیدن گذشته‌ی بیشتر، نمودار را به عقب بکشید."
+        out += ChartExclusion(R.string.provenance_truncated)
     }
     // The volume line is the one the TradingView complaint was actually about. It is said whenever
     // the feed carries no volume column, including on a chart with no volume study switched on —
     // the reader who is going to compare against the exchange has not switched anything on either.
     if (!state.series.isEmpty && !state.series.hasVolume) {
-        out += "این فید حجم نمی‌فرستد. اندیکاتورها و ابزارهای حجمی روی این نماد نمایش داده نمی‌شوند."
+        out += ChartExclusion(R.string.provenance_no_volume)
     }
     if (state.replay.isOn) {
-        out += "بازپخش روشن است. کندل‌های بعد از نقطه‌ی بازپخش عمداً نشان داده نمی‌شوند."
+        out += ChartExclusion(R.string.provenance_replay)
     }
     val repainting = RepaintClaims.repaintingAmong(state.activeIndicators)
     if (repainting.isNotEmpty()) {
-        out += repainting.joinToString("، ") { labelOf(it) } + ": " + RepaintClaim.REPAINTS.note
+        // The names are joined here and the claim's own sentence is the second argument, so the
+        // colon and the order between them are the resource's business and not this function's —
+        // which is what lets an English build read «zigzag: rewrites what is behind it».
+        out += ChartExclusion(
+            R.string.provenance_repainting,
+            listOf(repainting, RepaintClaim.REPAINTS.noteRes),
+        )
     }
     return out
 }
+
+/**
+ * One reason this chart differs from the venue's own, as an id and its arguments (run Ω2).
+ *
+ * ### Why not a formatted string
+ *
+ * Because [chartExclusions] is pure and unit-tested, and the words are in `values/` and `values-fa/`
+ * where a `Context` is needed to read them. Returning the *identity* of each reason rather than its
+ * Persian text keeps the function exactly as testable — better, in fact: `ChartProvenanceTest` now
+ * asserts «the volume reason is in the list» rather than «some string contains حجم», which is the
+ * thing it always meant and could not say.
+ *
+ * [args] is `List<Any>` because two of the arguments are themselves resource ids — a claim's own
+ * sentence, a study's name — and the composable that renders this resolves them on the way in. An
+ * `Int` in here is a resource id by convention; everything else is printed as it is.
+ */
+data class ChartExclusion(
+    /** The sentence's resource id. */
+    val res: Int,
+    /**
+     * What fills its placeholders. A `List<String>` is printed verbatim; a nested `Int` is a
+     * resource id and a nested `List<String>` is a list joined with the locale's own separator.
+     */
+    val args: List<Any> = emptyList(),
+)
 
 /**
  * The mark the chart may honestly carry, or null.
@@ -92,15 +122,18 @@ fun repaintMark(state: ChartUiState, signalOnChart: Boolean = false): RepaintCla
  * a claim about which of them, and the answer has to be readable — so the names are listed rather
  * than counted.
  */
-fun repaintSubjects(state: ChartUiState, signalOnChart: Boolean = false): List<String> {
-    val studies = RepaintClaims.trustedAmong(state.activeIndicators).map(::labelOf)
+fun repaintSubjects(state: ChartUiState, signalOnChart: Boolean = false): List<Any> {
+    val studies: List<Any> = RepaintClaims.trustedAmong(state.activeIndicators).map(::labelOf)
     // The signal leads, because it is the one a reader cares most about not having been quietly
     // moved — and because on most charts carrying one it is the only subject there is.
-    return if (signalOnChart) listOf(SIGNAL_SUBJECT) + studies else studies
+    //
+    // `List<Any>` for the same reason [ChartExclusion.args] is: a study's name is a string out of
+    // the catalogue and the signal's is a resource id, and the caller resolves the mixture.
+    return if (signalOnChart) listOf<Any>(SIGNAL_SUBJECT) + studies else studies
 }
 
 /** What the mark calls an AI setup drawn over the bars. */
-private const val SIGNAL_SUBJECT = "ستاپ هوش مصنوعی"
+private val SIGNAL_SUBJECT = R.string.provenance_signal_subject
 
 /**
  * An indicator's Persian name, or its id where the catalogue has never heard of it.
@@ -117,9 +150,12 @@ private fun labelOf(id: String): String =
  * Joined with a space rather than bulleted, because the strip is two lines of eleven-point text
  * under a chart and a bulleted list there would be a paragraph. Empty when there is nothing to
  * say, and the caller draws nothing at all rather than an empty heading.
+ *
+ * The sentences arrive already resolved and so does [heading] — `R.string.provenance_exclusions_line`,
+ * with its one placeholder — because this is not a composable and the export's header calls it too.
  */
-fun exclusionsLine(exclusions: List<String>): String =
-    if (exclusions.isEmpty()) "" else "آنچه در این تصویر نیست — " + exclusions.joinToString(" ")
+fun exclusionsLine(exclusions: List<String>, heading: String): String =
+    if (exclusions.isEmpty()) "" else heading.format(exclusions.joinToString(" "))
 
 /**
  * How many bars the chart is currently drawing, as prose.

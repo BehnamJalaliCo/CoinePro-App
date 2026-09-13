@@ -427,7 +427,7 @@ internal fun RangeChipRow(
                 Text(
                     // Persian prose durations, so they are never forced Latin the way a wire
                     // spelling is.
-                    text = range.label,
+                    text = stringResource(range.labelRes),
                     style = MaterialTheme.typography.labelSmall,
                     color = ink,
                     fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,

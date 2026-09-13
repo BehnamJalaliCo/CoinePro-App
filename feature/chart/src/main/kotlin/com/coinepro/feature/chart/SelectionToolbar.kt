@@ -420,7 +420,7 @@ private fun StylePanel(
                     },
             )
         }
-        DRAWING_WIDTHS.forEach { (label, width) ->
+        DRAWING_WIDTHS.forEach { (labelRes, width) ->
             val active = drawing.widthDp == width
             Box(
                 modifier = Modifier
@@ -441,7 +441,7 @@ private fun StylePanel(
                     .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
             ) {
                 Text(
-                    text = label,
+                    text = stringResource(labelRes),
                     style = MaterialTheme.typography.labelSmall,
                     color = if (active) CoineProColors.pageAccentInk else CoineProColors.TextMuted,
                 )
@@ -459,8 +459,11 @@ private fun StylePanel(
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        LINE_STYLES.forEach { (label, style) ->
-            StyleChip(label = label, active = drawing.lineStyle == style) { onSetLineStyle(style) }
+        LINE_STYLES.forEach { (labelRes, style) ->
+            StyleChip(
+                label = stringResource(labelRes),
+                active = drawing.lineStyle == style,
+            ) { onSetLineStyle(style) }
         }
     }
 }
