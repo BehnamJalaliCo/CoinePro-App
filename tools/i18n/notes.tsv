@@ -230,6 +230,7 @@ portfolio_report_empty_hint	state	feature/portfolio
 portfolio_report_peak_note	tip	feature/portfolio
 portfolio_report_ratio_note	tip	feature/portfolio
 portfolio_report_runup_note	tip	feature/portfolio
+profile_action_export_note	tip	app
 profile_action_membership_note	tip	app
 profile_action_notifications_note	tip	app
 profile_action_safety_note	tip	app

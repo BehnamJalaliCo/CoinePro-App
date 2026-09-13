@@ -17,7 +17,7 @@ false on the device in every frame of two recordings.
 | S3 | BYO Script end to end | ✅ for A, B, C, E, F, G; ❌ for D | Σ1 below | `sigma1-paste-fixes-phone-fa.png`, `sigma1-paste-templates-phone-fa.png`, `sigma1-prompt-kit-phone-{fa,en}.png`, `sigma1-my-script-phone-fa.png` |
 | S4 | `docs/DOCTRINE.md` with D1–D10, each with a CI gate | ✅ for eight; ❌ for D7 and D8, whose features are Σ3 | Σ2 below | **Gates, not pictures** — the evidence is that they run and fail: `check-haptic-policy.sh`, `check-checklist-honesty.py`, `NavigationDepthTest`, `SixtySecondsToMeaningTest`, all four in CI |
 | S5 | Retention loop | ❌ | Σ3 | — |
-| S6 | Account value: sync, export/import, guest migration | ❌ | Σ4 | — |
+| S6 | Account value: sync, export/import, guest migration | ✅ for the archive's own format and for watchlist + scripts; ❌ for layouts, the journal and server sync | `ReaderArchive` + `ReaderArchiveTest` (22) is D8's gate — write, export, wipe, import, compare, per store. The profile carries «پشتیبان‌گیری» and «بازگرداندن» for a guest, who needs them most because nothing of theirs is on a server. Import merges and never duplicates | **A round trip, so not a still.** The test is the evidence; the row's own note on the profile says what is in the file and what is not |
 | S7 | Community scripts | ❌ | Σ4 | — |
 | S8 | All of the above on tablet, parity matrix 100 % | ❌ | Σ5 | — |
 | S9 | This document, `REPORT.md`, `BLOCKED.md` | ✅ for Σ0 and Σ1 | The Σ0 and Σ1 sections below, and `REPORT.md` | **The documents are the evidence, not a subject of it** — and from 4.82.2 they are checked by `scripts/quality/check-checklist-honesty.py`, which fails on a ✅ whose Frame or Evidence cell points at nothing. It found this row |

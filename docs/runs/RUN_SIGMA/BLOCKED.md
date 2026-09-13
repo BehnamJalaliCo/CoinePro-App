@@ -73,3 +73,26 @@ feed to post into. What Σ1 leaves for it is the address format — `ScriptLink`
 — and the reason it carries an id and never source: a link that carried code would be running a
 stranger's script on the strength of a tap, from a message nobody can vouch for. With an id, the
 code arrives from the service, is shown to the reader, and is added only if they say so.
+
+## 6. The archive carries two stores of five (Σ3, item S6)
+
+**Blocked on:** nothing external. Scope, and named rather than implied.
+
+`ReaderArchive` has a field for each of the five things D8 names — the watchlist, layouts, scripts,
+the journal and the streak — and the format round-trips all of them, which is what
+`ReaderArchiveTest` holds. What the app actually puts in the file today is the **watchlist** and the
+reader's own **scripts**, because those two are the ones whose shape the archive already carries
+faithfully: a symbol is a symbol, and a script is a `.nama` file that `ScriptFile` writes and reads.
+
+A layout and a journal entry are typed records with a dozen fields each, and carrying them would
+mean a codec per store. A field that came back as a *summary* rather than as the thing would be a
+backup that looks like one, which is worse than a gap somebody can read about — so the row's own
+note on the profile says, in both languages, what is in the file and what is not.
+
+The streak is the third: the arena keeps it, and it is not in scope where the archive is assembled.
+The field exists so that the day it is, there is no format migration.
+
+**What the reader has meanwhile:** everything that cannot be refetched *and* is faithfully
+carryable. A reader moving to a new phone keeps their list and their scripts, and is told plainly
+that their layouts and journal are not in the file.
+

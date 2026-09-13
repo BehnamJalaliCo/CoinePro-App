@@ -191,4 +191,13 @@
     <string name="auth_google_unavailable">Google sign-in is not available on this platform yet. Sign in with e-mail instead.</string>
     <string name="auth_google_fingerprint_unknown">unknown</string>
     <string name="script_link_unknown">That link names a script that is not on this device.</string>
+
+    <!-- The reader's own archive (4.82.3, run Σ item S6; doctrine D8). -->
+    <string name="profile_action_export">Back up what I have made</string>
+    <string name="profile_action_export_note">Your watchlist, your scripts and your streak, as one piece of text you can keep anywhere. Layouts and the journal are not in it yet.</string>
+    <string name="profile_action_import">Restore from a backup</string>
+    <string name="profile_export_done">Copied. Paste it somewhere you will still have it.</string>
+    <string name="profile_export_empty">There is nothing to back up yet.</string>
+    <string name="profile_import_done">Restored %1$s things.</string>
+    <string name="profile_import_none">There is no backup in the clipboard.</string>
 </resources>

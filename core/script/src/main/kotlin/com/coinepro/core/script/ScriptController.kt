@@ -452,6 +452,16 @@ class ScriptController(
         save()
     }
 
+    /**
+     * Writes an imported script straight to the library, without touching the editor.
+     *
+     * The archive restores a backup, which may be a dozen scripts; loading each one into the editor
+     * on the way past would leave the reader looking at whichever happened to be last. The name is
+     * assumed already free — the caller skips the ones it has, because only it knows what «already
+     * have this» means for the reader.
+     */
+    suspend fun insertFromArchive(script: SavedScriptEntity): Long = dao.insert(script)
+
     fun delete(id: Long) {
         scope.launch {
             dao.delete(id)

@@ -34,6 +34,17 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import com.coinepro.core.common.ArchiveMerge
+import com.coinepro.core.common.ArchivedRecord
+import com.coinepro.core.common.ArchivedStreak
+import com.coinepro.core.common.ImportRule
+import com.coinepro.core.common.ReaderArchive
+import com.coinepro.core.common.ReaderArchiveFile
+import com.coinepro.core.script.ScriptDocument
+import com.coinepro.core.database.SavedScriptEntity
+import com.coinepro.core.script.ScriptFile
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -117,6 +128,7 @@ import com.coinepro.core.datastore.ThemeMode
 import com.coinepro.app.ideas.IdeasScreen
 import com.coinepro.core.datastore.UserPreferencesStore
 import com.coinepro.core.datastore.StoredProfile
+import com.coinepro.core.datastore.Watchlist
 import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.watchlistsync.WatchlistSyncController
 import com.coinepro.core.designsystem.CoineProAvatar
@@ -2098,6 +2110,15 @@ private fun MainShell(
     val copiedMessage = stringResource(R.string.toast_copied)
     val alertSavedMessage = stringResource(R.string.toast_alert_saved)
     val unknownScriptLink = stringResource(R.string.script_link_unknown)
+    val archiveExported = stringResource(R.string.profile_export_done)
+    val archiveEmpty = stringResource(R.string.profile_export_empty)
+    val archiveImportedFormat = stringResource(R.string.profile_import_done)
+    val archiveMissing = stringResource(R.string.profile_import_none)
+    // The reader's own scripts and the clipboard, for the archive. Collected here rather than at
+    // the call site because both functions are plain lambdas and neither can call a composable.
+    val savedScriptsForArchive by scriptController.saved.collectAsStateWithLifecycle()
+    val clipboardManager = LocalClipboardManager.current
+    val archiveEnglish = inEnglish()
     val deletedMessage = stringResource(R.string.toast_deleted)
     val layoutSavedMessage = stringResource(R.string.toast_layout_saved)
     val undoLabel = stringResource(R.string.action_undo)
@@ -2440,6 +2461,93 @@ private fun MainShell(
             onSymbolLaunchConsumed()
         }
     }
+    /**
+     * **Back up what the reader made** (4.82.3, run Σ item S6; doctrine D8).
+     *
+     * The clipboard rather than a file picker, for the same reason a `.nama` script uses it: the
+     * archive is text, the reader is going to paste it into a note or a message, and a document
+     * provider is three taps and a permission between them and that.
+     *
+     * What goes in is what round-trips **faithfully**: the watchlist, the reader's own scripts as
+     * whole `.nama` files, and the streak. Layouts and the journal are not in it yet — each needs
+     * its own codec, and a field that came back as a summary rather than as the thing would be a
+     * backup that looks like one. `BLOCKED.md` says so, and so does the row's own note.
+     */
+    fun exportArchive() {
+        val archive = ReaderArchive(
+            writtenAtEpochMillis = System.currentTimeMillis(),
+            watchlist = watchlist,
+            scripts = savedScriptsForArchive.map { row ->
+                ArchivedRecord(
+                    name = row.name,
+                    body = ScriptFile.write(
+                        ScriptDocument(
+                            id = row.publicId.ifEmpty { ScriptDocument.idFor(row.source, row.id) },
+                            name = row.name,
+                            description = row.description,
+                            source = row.source,
+                            colour = row.colour,
+                            tags = row.tags.split(',').map { it.trim() }.filter { it.isNotEmpty() },
+                            ownPane = row.ownPane,
+                            origin = row.presetId,
+                            updatedAt = row.updatedAtEpochMillis,
+                        ),
+                    ),
+                )
+            },
+            // The streak is on the arena's own screen and not in scope here; the field is in
+            // the format so the day it is has no migration in it. See `BLOCKED.md`.
+            streak = null,
+        )
+        if (archive.isEmpty) {
+            toaster.show(archiveEmpty)
+            return
+        }
+        clipboardManager.setText(AnnotatedString(ReaderArchiveFile.write(archive)))
+        toaster.show(archiveExported)
+    }
+
+    /**
+     * Restores a backup, merging rather than replacing.
+     *
+     * [ImportRule.MERGE] is the default and the only rule offered here, because it is the one that
+     * cannot lose anything: a reader restoring onto a phone they have been using keeps their last
+     * week, and a symbol or a script they already have is not duplicated. The other two rules exist
+     * in `ArchiveMerge` for the day there is a screen to choose between them.
+     */
+    fun importArchive() {
+        val archive = ReaderArchiveFile.read(clipboardManager.getText()?.text.orEmpty())
+        if (archive == null) {
+            toaster.show(archiveMissing)
+            return
+        }
+        shellScope.launch {
+            for (symbol in ArchiveMerge.symbols(watchlist, archive.watchlist, ImportRule.MERGE)) {
+                watchlistStore.add(Watchlist.DEFAULT_LIST_ID, symbol)
+            }
+            val mine = savedScriptsForArchive.map { it.name }.toSet()
+            for (record in archive.scripts) {
+                if (record.name in mine) continue
+                val document = ScriptFile.read(record.body) ?: continue
+                scriptController.insertFromArchive(
+                    SavedScriptEntity(
+                        name = document.name.ifBlank { record.name },
+                        source = document.source,
+                        presetId = document.origin,
+                        createdAtEpochMillis = System.currentTimeMillis(),
+                        updatedAtEpochMillis = System.currentTimeMillis(),
+                        description = document.description,
+                        colour = document.colour,
+                        tags = document.tags.joinToString(", "),
+                        ownPane = document.ownPane,
+                        publicId = document.id,
+                    ),
+                )
+            }
+            toaster.show(String.format(archiveImportedFormat, archiveCount(archive.count, archiveEnglish)))
+        }
+    }
+
     // **A shared script link** (4.82.0, run Σ item S3 C).
     //
     // The id is looked up among the reader's own scripts, which is the whole of what this app can
@@ -3409,6 +3517,22 @@ private fun MainShell(
                                 noteRes = R.string.profile_action_safety_note,
                                 icon = CoineProIcons.Secure,
                                 onClick = { navController.navigate(LAUNCH_READINESS_ROUTE) },
+                            ),
+                            // **The reader's own archive** (4.82.3, run Σ item S6; doctrine D8).
+                            //
+                            // Offered to a guest first and foremost: a signed-out reader has no
+                            // server copy of anything, so the file is the only place their work
+                            // exists off this device.
+                            ProfileAction(
+                                label = stringResource(R.string.profile_action_export),
+                                noteRes = R.string.profile_action_export_note,
+                                icon = CoineProIcons.Copy,
+                                onClick = { exportArchive() },
+                            ),
+                            ProfileAction(
+                                label = stringResource(R.string.profile_action_import),
+                                icon = CoineProIcons.Link,
+                                onClick = { importArchive() },
                             ),
                         )
                     } else {
@@ -4605,3 +4729,15 @@ private data class ScriptAlertRequest(
     val source: String,
     val condition: String,
 )
+
+/**
+ * A count in the reader's own numerals, outside a composition.
+ *
+ * `proseDigits()` is a composable — it reads the app's language from the composition — and the
+ * archive's toast is written from a coroutine, where there is none. The language is read once where
+ * there *is* a composition and handed in.
+ */
+private fun archiveCount(value: Int, english: Boolean): String =
+    if (english) value.toString() else value.toString().map { PERSIAN_DIGITS.getOrNull(it - '0') ?: it }.joinToString("")
+
+private const val PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹"
