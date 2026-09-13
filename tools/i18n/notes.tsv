@@ -234,6 +234,7 @@ profile_action_export_note	tip	app
 profile_action_membership_note	tip	app
 profile_action_notifications_note	tip	app
 profile_action_safety_note	tip	app
+profile_action_support_chat_note	tip	app
 profile_action_support_note	tip	app
 profile_identity_hint	tip	feature/profile
 profile_library_note	tip	feature/profile

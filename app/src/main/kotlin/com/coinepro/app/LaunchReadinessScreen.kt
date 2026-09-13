@@ -62,6 +62,14 @@ fun LaunchReadinessScreen(
     onRequestNotificationPermission: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
     onSendFeedback: () -> Unit,
+    /**
+     * Opens the support chat — Telegram, where a person answers.
+     *
+     * Defaulted to nothing so a caller that has not been updated draws the card exactly as it drew
+     * it before, with the feedback button alone. The screen's whole subject is what this app does
+     * and does not do; a button that opens nothing would be the one claim on it that is false.
+     */
+    onOpenSupportChat: (() -> Unit)? = null,
     versionLabel: String = "",
     /** The way into the diagnostics panel, or null on a build that has none. */
     onOpenDiagnostics: (() -> Unit)? = null,
@@ -170,11 +178,31 @@ fun LaunchReadinessScreen(
             CardTitle(R.string.safety_support_title)
             Body(R.string.safety_support_body)
             Spacer(Modifier.height(CoineProSpacing.OneHalf))
-            CoineProPrimaryButton(
-                text = stringResource(R.string.safety_send_feedback),
-                onClick = onSendFeedback,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            // The chat is the primary and the share sheet the secondary, which is the reverse of
+            // what this card offered before. A reader who has reached the safety screen is usually
+            // there because something went wrong, and «send a report» is the answer to a question
+            // they have not asked: they want to talk to somebody.
+            onOpenSupportChat?.let { open ->
+                CoineProPrimaryButton(
+                    text = stringResource(R.string.safety_open_support_chat),
+                    onClick = open,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(CoineProSpacing.One))
+            }
+            if (onOpenSupportChat == null) {
+                CoineProPrimaryButton(
+                    text = stringResource(R.string.safety_send_feedback),
+                    onClick = onSendFeedback,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                CoineProSecondaryButton(
+                    text = stringResource(R.string.safety_send_feedback),
+                    onClick = onSendFeedback,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
 
         Text(

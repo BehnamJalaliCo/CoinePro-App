@@ -55,9 +55,26 @@ internal data class TradePartner(
     val referral: String,
     /** The query parameter this venue reads a code from. Ignored while [referral] is blank. */
     val referralParameter: String,
+    /**
+     * A ready-made tracking link the venue issued to the owner, or blank.
+     *
+     * The two exchanges hand out a *code* and read it from a parameter on their own registration
+     * page. A broker's introducing-broker programme does not work that way: OneRoyal issues a whole
+     * address of its own — `vc.cabinet.oneroyal.com/…/links/go/<id>` — which lands on the cabinet,
+     * records the introduction and then sends the reader on to the form. There is no parameter to
+     * put a code in, and inventing one would mean appending something the venue does not read to an
+     * address that already carries it.
+     *
+     * So where this is set it *replaces* [signUp] outright rather than decorating it. That is also
+     * why it is a separate field instead of a different `signUp`: the plain registration page is
+     * still worth keeping in the file as the thing the link falls back to if the owner ever retires
+     * the tracking address, and as the answer to «where does this actually go».
+     */
+    val referralLink: String = "",
 ) {
     /**
-     * Where the button goes: the registration page, carrying the code when there is one.
+     * Where the button goes: the tracking link where the venue issued one, otherwise the
+     * registration page carrying the code when there is one.
      *
      * Appended by hand rather than through a URI builder because these three addresses are literals
      * in this file and neither the parameter nor the code contains anything that needs escaping —
@@ -65,11 +82,13 @@ internal data class TradePartner(
      * lines of ceremony around a string concatenation.
      */
     val url: String
-        get() = if (referral.isBlank()) {
-            signUp
-        } else {
-            val join = if ('?' in signUp) '&' else '?'
-            "$signUp$join$referralParameter=$referral"
+        get() = when {
+            referralLink.isNotBlank() -> referralLink
+            referral.isBlank() -> signUp
+            else -> {
+                val join = if ('?' in signUp) '&' else '?'
+                "$signUp$join$referralParameter=$referral"
+            }
         }
 }
 
@@ -97,6 +116,7 @@ internal val TRADE_PARTNERS: List<TradePartner> = listOf(
         signUp = "https://www.oneroyal.com/en/open-live-account/",
         referral = ONEROYAL_REFERRAL,
         referralParameter = "ib",
+        referralLink = ONEROYAL_LINK,
     ),
     TradePartner(
         id = "lbank",
@@ -133,3 +153,14 @@ internal val TRADE_PARTNERS: List<TradePartner> = listOf(
 private const val ONEROYAL_REFERRAL = ""
 private const val LBANK_REFERRAL = ""
 private const val OURBIT_REFERRAL = ""
+
+/**
+ * The owner's OneRoyal introducing-broker link, handed over directly.
+ *
+ * `/fa/` is deliberate and is the venue's own Persian cabinet, not a translation this app asked for:
+ * a reader who taps «افتتاح حساب» in a Persian app and lands on an English form has been handed to
+ * somebody who does not speak to them. The trailing number is the owner's link id, which is what
+ * credits the introduction — it is not a secret, it is printed in the address bar of the page it
+ * opens, and `scan-secrets.sh` has nothing to say about it.
+ */
+private const val ONEROYAL_LINK = "https://vc.cabinet.oneroyal.com/fa/links/go/16669"

@@ -619,3 +619,39 @@ one controller cannot tell you what a cold start does.
 | New | `SymbolChartState.markerStyles`, field 25; restore and persist in `ChartController` |
 | Tests | 2 in `SymbolChartStateStoreTest` (round trip, and a short row from before the field), 2 in `ChartSymbolStateTest` (it comes back; turning it off leaves nothing behind) |
 | Frames | none — two runs of the app are not a render |
+
+## Two wires, 4.87.0
+
+**The broker link.** `TRADE_PARTNERS` modelled every venue the same way: a registration page and a
+code to append. That is how the two exchanges work and it is not how a broker's introducing-broker
+programme works — OneRoyal issues an address of its own, and there is no parameter to put a code in.
+Modelling it as a code would have meant appending something the venue does not read to an address
+that already carries the introduction. So `referralLink` replaces the page outright where a venue
+issued one, and the plain registration page stays in the file as the answer to «where does this
+actually go» and as what the link falls back to the day the owner retires the tracking address.
+
+Both halves of getting this wrong are silent. A link that lost its tracking still opens a working
+page, so nobody notices until a month of introductions is missing; a link that gained a stray
+parameter still looks right in a diff. Neither shows in a screenshot, which is why `TradePartnersTest`
+asserts the address character for character rather than trusting a frame.
+
+**Support.** `BrandConfig.SUPPORT_URL` was written when the brand file was, and nothing in the app
+ever opened it. What a reader found instead was «پشتیبانی و بازخورد», which composed a message and
+handed it to whatever app they picked — the right shape for telling us something and the wrong shape
+for asking us something, because it ends in their own outbox with no evidence that it arrived
+anywhere. For somebody whose money is involved that silence is the worst answer available.
+
+The chat is now its own row, above the report rather than in place of it, and it carries Telegram's
+mark. The mark is not decoration: this list draws every glyph in the app's own ink, which is what
+makes it a column rather than a row of stickers, and the one thing a brand mark does that a
+question-mark glyph cannot is let somebody find the row without reading it. `ProfileAction.brandMark`
+is the exception that makes that possible, and a render is the only thing that could say whether the
+mark survived the tint.
+
+| | |
+|---|---|
+| Items | the owner's two |
+| New | `TradePartner.referralLink`, `SupportHandoff`, `ProfileAction.brandMark`, `logo_telegram` |
+| Changed | `BrandConfig.SUPPORT_URL` → `t.me/ProChart_Sup`; the safety card leads with the chat |
+| Tests | `TradePartnersTest` (4), `SupportChannelProofTest` (3) |
+| Frames | `support-profile-phone-fa.png`, `support-safety-phone-fa.png` |

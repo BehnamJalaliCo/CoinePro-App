@@ -224,3 +224,12 @@ glance, and this is a decision.
 The pinch is proved against an injected event stream, which is the strongest thing this container
 can do and is not the same as a thumb. Until the owner's thirty seconds land, S1 reads
 **⏳ owed to device** and not ✅.
+
+## The owner's two, 4.87.0 — the broker link and a way to reach a person
+
+Neither is a feature. Both are a wire that was never connected.
+
+| Item | State | Evidence | Frame |
+|---|---|---|---|
+| The OneRoyal button opens the owner's own introducing-broker link | ✅ | `https://vc.cabinet.oneroyal.com/fa/links/go/16669`, taken whole. The two exchanges hand out a *code* and read it from a parameter on their own page; a broker's IB programme issues a whole address instead, which lands on the cabinet, records the introduction and forwards to the form. `TradePartner.referralLink` replaces `signUp` rather than decorating it, and a test asserts there is nothing appended — the failure this is written against is somebody adding the code field later and the builder helpfully sticking `?ib=` onto an address that already identifies the introducer | — **not a frame**: a link is not a picture. `TradePartnersTest` (4), including the two venues whose blank code must still open their own page |
+| Support reaches a person, and wears the mark that says so | ✅ | `BrandConfig.SUPPORT_URL` had been in the source since the brand file was written and **nothing in the app opened it** — an address with no door. It is now `t.me/ProChart_Sup`, and it is a row in the account list above «ارسال بازخورد» rather than instead of it, because asking and reporting are two errands: the share sheet ends in the reader's own outbox with no sign that it arrived. The row carries Telegram's own mark in Telegram's own blue — `ProfileAction.brandMark`, the one exception to a list that tints every glyph to the app's ink, because a Telegram logo painted grey is a grey circle. A guest gets the row too, first among the rows that are not their own data | `support-profile-phone-fa.png`, `support-safety-phone-fa.png` — the safety card is scrolled to before the shutter, which is also the assertion that the button is reachable and not merely in the tree |

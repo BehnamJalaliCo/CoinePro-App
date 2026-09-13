@@ -3610,6 +3610,23 @@ private fun MainShell(
                 var composing by rememberSaveable { mutableStateOf(false) }
                 val initial = (profile.displayName ?: accountName)?.trim()?.take(1)
                     ?: stringResource(R.string.profile_initial_fallback)
+                // The support chat, built here because both lists below reach for it: a guest needs
+                // a person more than a member does, not less.
+                val supportContext = LocalContext.current
+                val supportToaster = LocalToaster.current
+                val supportUnavailable = stringResource(R.string.support_chat_unavailable)
+                val openSupport: () -> Unit = {
+                    if (!SupportHandoff.open(supportContext)) {
+                        supportToaster.show(supportUnavailable, ToastTone.FAILURE)
+                    }
+                }
+                val supportAction = ProfileAction(
+                    label = stringResource(R.string.profile_action_support_chat),
+                    noteRes = R.string.profile_action_support_chat_note,
+                    icon = DesignR.drawable.logo_telegram,
+                    brandMark = true,
+                    onClick = openSupport,
+                )
 
                 ProfileScreen(
                     profile = profile,
@@ -3667,6 +3684,10 @@ private fun MainShell(
                                 icon = CoineProIcons.Link,
                                 onClick = { importArchive() },
                             ),
+                            // A guest gets the chat too, and first among the things that are not
+                            // their own data: somebody who has not made an account is the reader
+                            // most likely to be stuck on something.
+                            supportAction,
                         )
                     } else {
                         buildList {
@@ -3740,6 +3761,16 @@ private fun MainShell(
                             // of them does — but it was *inside* «ایمنی و نسخه», two taps down a
                             // row named after something else. Reachable and honest are different
                             // properties and this product only had the second.
+                            // **The support chat, and then the report** (4.87.0).
+                            //
+                            // These are two different errands and they had been one row. «ارسال
+                            // بازخورد» composes a message and hands it to whatever app the reader
+                            // picks, which is the right shape for *telling us something* and the
+                            // wrong shape for *asking us something*: it ends in the reader's own
+                            // outbox with no sign that it arrived. The chat is above it, carries
+                            // Telegram's own mark rather than a question-mark glyph, and goes
+                            // straight to the queue a person reads.
+                            add(supportAction)
                             add(
                                 ProfileAction(
                                     label = stringResource(R.string.profile_action_support),
@@ -4522,6 +4553,7 @@ private fun MainShell(
                     onRequestNotificationPermission = onRequestNotificationPermission,
                     onOpenNotificationSettings = onOpenNotificationSettings,
                     onSendFeedback = onSendFeedback,
+                    onOpenSupportChat = { SupportHandoff.open(context) },
                     versionLabel = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                     // Null on the store build: the five taps on the version then do nothing, which
                     // is the honest behaviour for a door that leads to a room the build does not

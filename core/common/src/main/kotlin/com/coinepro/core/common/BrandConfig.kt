@@ -57,8 +57,22 @@ object BrandConfig {
     /** Where the published terms, privacy policy and account-deletion page live. */
     const val LEGAL_BASE_URL = "$WEB_URL/legal"
 
-    /** Support, which is a Telegram channel and not an e-mail address. */
-    const val SUPPORT_URL = "https://t.me/CoinePro_Admin"
+    /** The support handle on its own, for a screen that wants to show where the button goes. */
+    const val SUPPORT_HANDLE = "ProChart_Sup"
+
+    /**
+     * Support: this product's own Telegram account, where a person answers.
+     *
+     * A handle rather than an address, and deliberately so. The readers this app is written for
+     * already have Telegram open; an e-mail form is a thing they fill in and then wonder about for
+     * two days, and a support screen with a text box is a thing they have to trust. A chat is the
+     * one channel where they can see that somebody read it.
+     *
+     * The handle is the product's, not the company's: `CoinePro_Admin` was the owner's own account
+     * and this is the queue. Both halves matter — nothing in this app puts an assistant between a
+     * reader and a person, and this constant is where that promise is kept.
+     */
+    const val SUPPORT_URL = "https://t.me/$SUPPORT_HANDLE"
 
     /** `coinepro://` — the scheme with its separator, for building a link. */
     const val SCHEME_PREFIX = "$SCHEME://"

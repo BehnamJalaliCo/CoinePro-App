@@ -4,6 +4,7 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -76,6 +77,16 @@ data class ProfileAction(
      * eight is worse than no icons at all, because it breaks the column the others formed.
      */
     @DrawableRes val icon: Int? = null,
+    /**
+     * Whether [icon] is somebody else's mark, and must keep its own colours.
+     *
+     * Every other glyph in this list is line art in the app's own ink, and tinting them together is
+     * what makes them a column rather than a row of stickers. A brand mark is the exception: a
+     * Telegram logo painted grey is not a Telegram logo, it is a grey circle, and the whole reason
+     * a reader recognises the support row at a glance is that they have seen that mark ten thousand
+     * times. So this one is drawn as an image, untinted, at the same size as the rest.
+     */
+    val brandMark: Boolean = false,
     /**
      * The setting's current answer, drawn before the chevron.
      *
@@ -536,14 +547,23 @@ private fun ActionRow(action: ProfileAction) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         action.icon?.let { glyph ->
-            Icon(
-                painter = painterResource(glyph),
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                // The destructive row's glyph takes the refusal colour with its label. An icon in
-                // the ordinary tint beside red text reads as a row that is only half a warning.
-                tint = if (action.destructive) CoineProColors.Sell else CoineProColors.TextSecondary,
-            )
+            if (action.brandMark) {
+                // Somebody else's mark, in its own colours. See `ProfileAction.brandMark`.
+                Image(
+                    painter = painterResource(glyph),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                )
+            } else {
+                Icon(
+                    painter = painterResource(glyph),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    // The destructive row's glyph takes the refusal colour with its label. An icon in
+                    // the ordinary tint beside red text reads as a row that is only half a warning.
+                    tint = if (action.destructive) CoineProColors.Sell else CoineProColors.TextSecondary,
+                )
+            }
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
