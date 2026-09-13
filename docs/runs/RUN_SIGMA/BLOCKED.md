@@ -64,15 +64,18 @@ code would run a stranger's script on the strength of a tap, from a message nobo
 When the service exists, the id will fetch the code, show it to the reader, and add it only if they
 say so — every step after the tap something they can see and refuse.
 
-## 5. Sharing a script needs somewhere to share it to (Σ1 item D)
+## 5. ~~Sharing a script needs somewhere to share it to~~ — **unblocked in Σ4 (4.85.0)**
 
-**Blocked on:** S7, the community surface, which this run's own plan puts in Σ4.
+**Was blocked on:** S7, the community surface. It turned out to be blocked on nothing: the board in
+`core:community` is live — posts, categories, replies, pictures, eight thousand characters — and a
+`.nama` document is text. A shared script is a post that carries the code, and the install is a local
+read of that post. `ScriptShare`, and Σ4 in `CHECKLIST.md`.
 
-A «share script» that produced a link nobody can open is not a feature, and a community post needs a
-feed to post into. What Σ1 leaves for it is the address format — `ScriptLink`, `pro-chart.com/s/<id>`
-— and the reason it carries an id and never source: a link that carried code would be running a
-stranger's script on the strength of a tap, from a message nobody can vouch for. With an id, the
-code arrives from the service, is shown to the reader, and is added only if they say so.
+The entry stays because its reasoning was half right and the half that was right still binds: **a
+link would have been wrong even with a service behind it**, because the board refuses links
+server-side. `ScriptLink` remains what it was — an address carrying an id and never source, so a
+tapped link can never be a script that ran — and it is what the web terminal will use, where an
+address is a page rather than a deep link.
 
 ## 6. The archive carries two stores of five (Σ3, item S6)
 
@@ -96,3 +99,24 @@ The field exists so that the day it is, there is no format migration.
 carryable. A reader moving to a new phone keeps their list and their scripts, and is told plainly
 that their layouts and journal are not in the file.
 
+
+## 7. The release keystore lives in GitHub, not in this container
+
+**Blocked on:** nothing the owner has to do — a fact about where the key is.
+
+The signing key is four Actions secrets (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
+`ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, and the release workflow's `COINEPRO_RELEASE_*` pair).
+Actions secrets are decrypted inside a run and nowhere else, so **only CI can produce the installable
+APK** — `android-apk.yml` signs every push to `main` and attaches the result to a Release. That is
+the right arrangement and nothing here asks to change it.
+
+What it means in practice: an APK built in this container is *test-signed* with a throwaway key, so
+it will not install over a CI build and a reader would have to uninstall first. The build to hand the
+owner is the one on the Release page, not the one from here.
+
+**Which made the next entry matter more than it looked.** `android-apk.yml` had been failing on every
+push since 4.71.0 — eleven versions with no signed APK produced anywhere — and the cause was four
+Robolectric classes asking for an API level the hosted runner cannot supply, while the same suite
+passed in this container. Fixed in 4.85.1 by pinning the default in `robolectric.properties`, with
+`RobolectricDefaultSdkTest` to notice if it moves. The lesson is the one D10 keeps making: a check
+that is green where somebody is looking and red where nobody is has told you nothing.
