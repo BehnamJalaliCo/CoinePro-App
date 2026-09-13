@@ -108,6 +108,7 @@ import com.coinepro.core.script.ScriptPromptKit
 import androidx.compose.ui.text.AnnotatedString
 import com.coinepro.core.script.ScriptFile
 import com.coinepro.core.script.ScriptLink
+import com.coinepro.core.script.ScriptShare
 import com.coinepro.core.script.ScriptRevision
 import com.coinepro.core.script.ScriptReference
 import com.coinepro.core.script.ScriptStrategies
@@ -172,6 +173,15 @@ fun ScriptScreen(
     onOpenLink: ((String) -> Unit)? = null,
     /** The chart's symbol and timeframe, for the prompt to name. */
     timeframe: String = "",
+    /**
+     * Shares this script on the board — «هم‌رسانی» (run Σ, S3 item D).
+     *
+     * Handed the **post's body** rather than the document, because what a share is, on this board,
+     * is a post: the caller's job is to open the composer with it, not to know the format. Null
+     * where the platform has no board — TradeYar has none — and the button is then absent rather
+     * than dead.
+     */
+    onShare: ((String) -> Unit)? = null,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     val saved by controller.saved.collectAsStateWithLifecycle()
@@ -189,6 +199,7 @@ fun ScriptScreen(
     val exported = stringResource(R.string.script_export_done)
     val importFailed = stringResource(R.string.script_import_failed)
     val linkCopied = stringResource(R.string.script_link_copied)
+    val shareRefusable = stringResource(R.string.script_share_refusable)
     val context = LocalContext.current
     val toaster = LocalToaster.current
 
@@ -286,6 +297,16 @@ fun ScriptScreen(
                 onCopyLink = {
                     clipboard.setText(AnnotatedString(ScriptLink.of(controller.document().id)))
                     toaster.show(linkCopied)
+                },
+                onShare = onShare?.let { share ->
+                    {
+                        // Composed here, where the document is, and handed over as text. The
+                        // board's own rules are checked before the trip rather than after — a
+                        // refusal the reader could have been told about is a round trip spent
+                        // teaching them a rule they did not break on purpose.
+                        val body = ScriptShare.post(controller.document(), english)
+                        if (ScriptShare.refusals(body).isEmpty()) share(body) else toaster.show(shareRefusable)
+                    }
                 },
             )
             ScriptTab.LIBRARY -> LibraryTab(
@@ -410,6 +431,7 @@ private fun EditorTab(
     onExport: () -> Unit = {},
     onImport: () -> Unit = {},
     onCopyLink: () -> Unit = {},
+    onShare: (() -> Unit)? = null,
 ) = BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
     // Named for the pane the script's own-pane plots land in, so a reader with three scripts saved
     // can tell which strip belongs to which.
@@ -656,6 +678,7 @@ private fun EditorTab(
                 onExport = onExport,
                 onImport = onImport,
                 onCopyLink = onCopyLink,
+                onShare = onShare,
             )
         }
 
@@ -1718,6 +1741,8 @@ private fun MinePanel(
     onExport: () -> Unit,
     onImport: () -> Unit,
     onCopyLink: () -> Unit,
+    /** «Share on the board», or null where this build has no board to share on. */
+    onShare: (() -> Unit)? = null,
     /** Open from the start — for the proof frame, which is of the panel and not of the summary. */
     startOpen: Boolean = false,
 ) {
@@ -1816,6 +1841,16 @@ private fun MinePanel(
                 onClick = onCopyLink,
                 modifier = Modifier.fillMaxWidth().semantics { contentDescription = "script-copy-link" },
             )
+            // **Share on the board** (run Σ, S3 item D). The post carries the code rather than a
+            // link, because the board refuses links — see `ScriptShare`. The composer opens with
+            // the post already written and every word of it still the reader's to change.
+            onShare?.let { share ->
+                CoineProSecondaryButton(
+                    text = stringResource(R.string.script_share_board),
+                    onClick = share,
+                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "script-share-board" },
+                )
+            }
         }
     }
 }
@@ -1856,7 +1891,7 @@ private const val REVISION_PREVIEW = 60
  * wired to the same controller — rather than a stand-in that could drift from it.
  */
 @Composable
-fun ScriptMinePanelPreview(controller: ScriptController) {
+fun ScriptMinePanelPreview(controller: ScriptController, share: Boolean = false) {
     val state by controller.state.collectAsStateWithLifecycle()
     MinePanel(
         state = state,
@@ -1868,6 +1903,7 @@ fun ScriptMinePanelPreview(controller: ScriptController) {
         onExport = {},
         onImport = {},
         onCopyLink = {},
+        onShare = if (share) ({}) else null,
         startOpen = true,
     )
 }

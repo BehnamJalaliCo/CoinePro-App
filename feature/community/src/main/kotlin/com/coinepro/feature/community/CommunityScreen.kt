@@ -143,10 +143,29 @@ fun CommunityScreen(
      * stack or a deep link opens exactly this screen, and there it does need its name.
      */
     embedded: Boolean = false,
+    /**
+     * A post the reader arrived here to write — today, a script they shared out of the studio
+     * (run Σ, S3 item D).
+     *
+     * The composer opens with it already in, because a reader who tapped «share» has said what they
+     * want; asking them to tap «write a post» as well would be the app forgetting what it was told
+     * one screen ago. They can still edit every word of it, and the picture is theirs to attach.
+     */
+    draft: String? = null,
+    /** Called once the draft has been handed to the composer, so a rotation does not re-open it. */
+    onDraftConsumed: () -> Unit = {},
 ) {
     LaunchedEffect(controller) { controller.start() }
     val state by controller.state.collectAsStateWithLifecycle()
     var composing by rememberSaveable { mutableStateOf(false) }
+    var opening by remember { mutableStateOf(draft) }
+    LaunchedEffect(draft) {
+        if (draft != null) {
+            opening = draft
+            composing = true
+            onDraftConsumed()
+        }
+    }
     // Whether the name card is open, and what the reader was trying to do when it opened. The
     // action runs once the name is confirmed so a like that asked for a name is still a like.
     var naming by rememberSaveable { mutableStateOf(false) }
@@ -233,6 +252,7 @@ fun CommunityScreen(
         if (composing && state.named && mode != CommunityMode.LOCKED) {
             Composer(
                 posting = state.posting,
+                initial = opening,
                 refusal = state.serverText?.takeIf { state.error == CommunityError.REFUSED },
                 onChangeName = { naming = true },
                 onSubmit = { text, category, image ->
@@ -654,8 +674,10 @@ private fun Composer(
     onChangeName: () -> Unit,
     onSubmit: (String, CommunityCategory, ByteArray?) -> Unit,
     onDismissRefusal: () -> Unit,
+    /** What the composer opens with, where the reader came here to post something (run Σ, S3 D). */
+    initial: String? = null,
 ) {
-    var text by rememberSaveable { mutableStateOf("") }
+    var text by rememberSaveable { mutableStateOf(initial.orEmpty()) }
     var category by rememberSaveable { mutableStateOf(CommunityCategory.DEFAULT) }
     // The chosen photograph, already downscaled and JPEG-encoded — see `CommunityPhoto.encode`.
     //

@@ -14,11 +14,11 @@ false on the device in every frame of two recordings.
 |---|---|---|---|---|
 | S1 | Horizontal pinch on the plot zooms time; vertical does too with auto-scale on; the price gutter scales price only | ✅ code, ⏳ owed to device | `PinchZone` + `pinchZoneOf` route by **start location only**; the plot's zoom is the Euclidean distance ratio at any angle. The bug was a per-frame `1.0025.pow(Δspan)` behind a one-per-cent dead zone — arithmetically unreachable at any human finger speed. `ChartPinchTest` (6) injects two real pointers; `PinchZoneTest` (6) walks every point of the canvas | **A gesture, so not a still.** Six injected-pointer tests, one of them through the whole page to prove nothing above the plot steals the second finger. The owner's recording is what closes it |
 | S2 | Buy/Sell markers carry labels per the density rules; goldens at 4/8/16 dp | ✅ | `ChartMarker.label` + `TradeSide.action`; `SignalMarkers.detailFor` — label at ≥ 12 dp a bar, triangle 6–12, one per ten-bar swing below 6; `sizeDpFor` gives 6/8/10 dp by strength; labels skip the legend plate, the plot's edges and each other. Per-study «با برچسب / فقط مثلث / خاموش» in the Explain sheet. `SignalMarkersTest` (13) | `sigma0-markers-{16,8,4}dp-phone-fa.png`, the same three on a tablet, `sigma0-markers-16dp-phone-en.png`, `sigma0-markers-triangles-phone-fa.png` |
-| S3 | BYO Script end to end | ✅ for A, B, C, E, F, G; ❌ for D | Σ1 below | `sigma1-paste-fixes-phone-fa.png`, `sigma1-paste-templates-phone-fa.png`, `sigma1-prompt-kit-phone-{fa,en}.png`, `sigma1-my-script-phone-fa.png` |
+| S3 | BYO Script end to end | ✅ | Σ1 below | `sigma1-paste-fixes-phone-fa.png`, `sigma1-paste-templates-phone-fa.png`, `sigma1-prompt-kit-phone-{fa,en}.png`, `sigma1-my-script-phone-fa.png` |
 | S4 | `docs/DOCTRINE.md` with D1–D10, each with a CI gate | ✅ for nine; D8's row is ✅ for export and import and ❌ for server sync, and says so | Σ2 below | **Gates, not pictures** — the evidence is that they run and fail: `check-haptic-policy.sh`, `check-checklist-honesty.py`, `NavigationDepthTest`, `SixtySecondsToMeaningTest`, all four in CI |
 | S5 | Retention loop | ✅ | Σ3 below. `ReturnLoop` decides; Home draws. The card is absent on a quiet morning, which is most of what `ReturnLoopTest` (21) is about | `sigma3-return-loop-phone-fa.png`, `sigma3-return-loop-phone-en.png`, and `sigma3-return-loop-quiet-phone-fa.png` — the same fixture four minutes later, with neither card |
 | S6 | Account value: sync, export/import, guest migration | ✅ for the archive's own format and for watchlist + scripts; ❌ for layouts, the journal and server sync | `ReaderArchive` + `ReaderArchiveTest` (22) is D8's gate — write, export, wipe, import, compare, per store. The profile carries «پشتیبان‌گیری» and «بازگرداندن» for a guest, who needs them most because nothing of theirs is on a server. Import merges and never duplicates | **A round trip, so not a still.** The test is the evidence; the row's own note on the profile says what is in the file and what is not |
-| S7 | Community scripts | ❌ | Σ4 | — |
+| S7 | Community scripts | ✅ for sharing and installing on the board this app already has; ❌ for a scripts tab of its own | Σ4 below. A shared script is a post: the code in the body, the install a local read of it. No new service, because the board is real and `pro-chart.com/s/<id>` is not | `sigma4-share-mine-phone-fa.png`, `sigma4-share-thread-phone-fa.png` |
 | S8 | All of the above on tablet, parity matrix 100 % | ✅ | Σ5 below. Sixteen renders of Σ's own surfaces at four windows; two real bugs found by rendering them, both fixed with a gate each; `PARITY_MATRIX.md` regenerated and now carries a «script studio» row filled at every window | `sigma-home-loop-{pixel-tablet,tab-s9-ultra,tablet-portrait,fold-open,fold-closed}-*.png`, `sigma-studio-*`, `sigma-paste-*`, `sigma-prompt-*`, `sigma-mine-*` |
 | S9 | This document, `REPORT.md`, `BLOCKED.md` | ✅ for Σ0 and Σ1 | The Σ0 and Σ1 sections below, and `REPORT.md` | **The documents are the evidence, not a subject of it** — and from 4.82.2 they are checked by `scripts/quality/check-checklist-honesty.py`, which fails on a ✅ whose Frame or Evidence cell points at nothing. It found this row |
 
@@ -60,7 +60,7 @@ The brief's seven parts (A–G). Five are in; two are named honestly as not.
 | **C** Save as mine: name, description, colour, tags, pane, default inputs; five revisions | ✅ | `saved_scripts` grew six columns in `MIGRATION_6_7` — six `ALTER TABLE`s with defaults and **no rebuild**, so nothing is copied and nothing can be lost in the copying. `SavedScriptMigrationTest` (5) runs them against a seeded version-6 table; `ScriptDocumentControllerTest` (10) holds that everything the reader chose survives a save and a reopen | `sigma1-my-script-phone-fa.png` |
 | **C** Five revisions, kept on a save that changed the source | ✅ | Pushed in `ScriptController.save`, not on every keystroke, and not on a save that changed nothing. Stored **length-prefixed** rather than delimiter-separated: `ScriptHistoryTest` showed the lexer accepts a control character inside a string literal, so a separator would have split a record on a reader's own label and taken the rest of their versions with it | `sigma1-my-script-phone-fa.png` — the panel with its «نسخه‌های قبلی» section |
 | **C** `.nama` export, import from file or clipboard, deep-link install | ✅ export and import; ⏳ install needs a source | Export writes the document to the clipboard, because a `.nama` file is text and a document provider is three taps and a permission away from where the reader is going with it. Import reads a whole document, or falls through to the paste path for a bare script. The link is claimed in the manifest, validated twice and routed — `DeepLinkValidationTest` (4 new) — and it opens the reader's **own** script by its public id; a link from somebody else names a script that is not on this device, and until S7 exists the app says so rather than pretending to fetch | `sigma1-my-script-phone-fa.png` — «خروجی گرفتن», «ورودی گرفتن», «کپی پیوند» |
-| **D** Share → a community post with the code, a chart snapshot and a one-tap install | ❌ | Not started. `ScriptLink` is the half of it that exists. The other half is a community surface, which is S7 in Σ4 | — |
+| **D** Share → a community post with the code, a chart snapshot and a one-tap install | ✅ | `ScriptShare` — the post's body is a sentence and the `.nama` document, and «باز کردن در استودیو» appears on a post that carries one. The picture is the composer's own, which the board already had. `ScriptShareTest` (11), `ScriptShareProofTest` (3) | `sigma4-share-mine-phone-fa.png`, `sigma4-share-thread-phone-fa.png` |
 | **E** Every script gets the same confidence and Explain sheet; a hint chip where `signal()` is missing | ✅ | The Signal Layer already treats a script's verdicts like any study's. The hint appears under the editor when a script ran, drew, and said nothing — which is the moment it means something | — **a conditional row in a list**; `script-signal-hint` is its semantics tag |
 | **F** ≥ 60 Persian-named strategies with `signal()`, one line each, a default stop; the same in English | ✅ | `ScriptLibrary.ALL` — 61, across six families. Both languages render from one table, so the code either side is identical token for token (`ScriptLibraryContentTest.the two languages compute exactly the same thing`). Every one draws a stepped stop line, speaks in both directions over a 1 200-bar series, and never marks the forming bar. 15 tests | — **a data table**; the tests above are the proof, and the strategies appear in the studio's library tab |
 | **G** Thirty real assistant answers either run or produce a one-tap-fixable diagnostic | ✅ | `src/jvmTest/resources/pastes/*.txt` — thirty files, each a header plus what a chat window actually returns. Every one is required to end up running **and drawing**, or to offer a template that does. `ScriptPasteSuiteTest` (4) | — **a file-driven suite** |
@@ -71,12 +71,13 @@ The brief's seven parts (A–G). Five are in; two are named honestly as not.
 **A share link opens only what this device already has.** The address format, the manifest claim,
 the two shape checks and the routing are all real and tested; what is behind the id is not, because
 there is no service to ask. A reader who exports a script and sends themselves the link gets their
-script back. A link from somebody else says so plainly. That is the whole of what can be honestly
-built before S7.
+script back. A link from somebody else says so plainly. That stays true.
 
-**D needs a place to post to.** Sharing a script is a community surface; the run's own plan puts
-that in Σ4 (S7). What Σ1 leaves behind for it is `ScriptLink` — an address that carries an id and
-never source, so that a tapped link can never be a script that ran.
+**Item D was finished in Σ4, and not the way this section expected.** Sharing turned out not to need
+a service at all: the board is real, and a `.nama` document is text. The post carries the code —
+which is also what the board's own rules require, since it refuses links. `ScriptLink` remains what
+it was: an address that carries an id and never source, so a tapped link can never be a script that
+ran.
 
 ## Σ2, item by item — the doctrine's gates
 
@@ -127,6 +128,33 @@ and it is not made.
 **A streak is the arena's, not a login streak.** It counts days a reader played a replay round,
 which is a thing they did. A number that went up for opening the app would be a number about the
 app rather than about them.
+
+## Σ4, item by item — a script on the board
+
+The brief's S7 is «community scripts», and the plan had it waiting on a service that does not exist.
+It was waiting on the wrong thing: **the board is real**, it takes eight thousand characters and a
+picture, and a `.nama` document is text. What could not be done was the part nobody needed.
+
+| Σ4 item | State | Evidence | Frame |
+|---|---|---|---|
+| A shared script is a post, and the post carries the **code** | ✅ | `ScriptShare.post` writes a sentence a reader can act on, then the document. The sentence is first because the board cuts a post at two hundred characters in every list it appears in, and a post opening with `// nama 1` would be a wall of header in the feed | `sigma4-share-thread-phone-fa.png` |
+| **Why not a link** | ✅ | Two reasons and the second is the one that settles it: there is no service behind `pro-chart.com/s/<id>`, and **the board refuses links** — server-side, along with phone numbers and messenger handles. A share that put an address in the body would be refused at the door, today and after the service is built | — **a rule, not a picture**; `ScriptShareTest.what this run shares is not refusable` is the assertion |
+| The refusal is named before the round trip | ✅ | `ScriptShare.refusals` checks the three rules the board enforces, so a script whose own comment carries a URL is reported in the studio rather than discovered from a rejection. Deliberately not a claim to match the server: it decides, and a body this finds nothing in can still be refused for a reason this build has never heard of — which is why the refusal path keeps the reader's text in the composer | — **a check before a request**; the frame would show a button, not a rule |
+| `//@version` is not a messenger handle | ✅ | It rides in on nearly every script an assistant writes. Reporting it would put a warning on a post the board would have accepted, which teaches a reader to ignore warnings | — **a regular expression**; `ScriptShareTest.a version comment is not a messenger handle` |
+| The install: «باز کردن در استودیو» on a post that carries one | ✅ | The button appears only when the document actually reads out of the body — not guessed from a word in it — and it opens the editor with the code the reader can see above the button. Nothing is fetched and nothing runs on the tap | `sigma4-share-thread-phone-fa.png` |
+| A reader may write as much as they like above the script | ✅ | The header is looked for anywhere in the post, so the best kind of post on this board — somebody explaining what they were thinking, with the file underneath — is not refused for putting its prose first | — **a parser**; `ScriptShareTest` |
+| **Bug found: code on the board read backwards** | ✅ fixed | A post sharing a script is Persian prose with a Latin file under it, which is the shape bidi reordering gets wrong: `// nama 1` rendered «1 nama //» and `plot(rsi)` rendered «(rsi)plot». The prompt kit's fix from Σ1 moved into `BidiText.isolateCode` and now serves both. Display only — the post's own text is untouched, so a reader who copies it gets what the author wrote | `sigma4-share-thread-phone-fa.png` is the after; the before is in `REPORT.md` |
+| A scripts **tab** of its own on the board | ❌ | Not built. The board filters by five categories the server owns, and a sixth is a server change. What exists is that a shared script is a first-class post anywhere on the board | — |
+
+### What Σ4 does not claim
+
+**No ranking, no verification, no badge.** A script in a post is exactly as trustworthy as the
+person who posted it, which the reader can see. A mark here would be the app vouching for code it
+has not run.
+
+**Nothing was posted to the real board.** The composition and the reading are tested and
+photographed; what the server does with a given body is the server's, and the app reports its
+sentence rather than predicting it.
 
 ## Σ5, item by item — the big glass, and the browser
 

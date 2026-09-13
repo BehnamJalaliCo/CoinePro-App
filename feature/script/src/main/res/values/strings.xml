@@ -160,4 +160,6 @@
     <string name="script_import_failed">There is no script in the clipboard.</string>
     <string name="script_copy_link">Copy the link</string>
     <string name="script_link_copied">Link copied.</string>
+    <string name="script_share_board">Share on the board</string>
+    <string name="script_share_refusable">The board refuses links, phone numbers and handles. This script has one in it.</string>
 </resources>

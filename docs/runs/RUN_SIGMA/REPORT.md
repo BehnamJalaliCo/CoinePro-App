@@ -429,3 +429,72 @@ the Pixel Fold's two displays at their dp plus pure assertions about the posture
 | Bugs found by rendering | 2, both pre-existing, both with a gate now |
 | Gates added | `SheetShapeTest.a sheet whose body scrolls itself opens on a tablet`, `ContentWidthTest` (2) |
 | Parity matrix | regenerated; «script studio» filled at all six windows |
+
+# Σ4 — a script on the board (4.85.0)
+
+## The thing that was waiting on nothing
+
+S7 read «community scripts» and the plan had it blocked on a service. So did item D of Σ1 —
+«share → a community post with the code, a chart snapshot and a one-tap install» — which the Σ1
+checklist named as the one part it could not build.
+
+It was blocked on the wrong thing. **The board is real**: `core:community` talks to a live feed with
+posts, categories, replies, reactions, a leaderboard and pictures, eight thousand characters a post.
+A `.nama` document is text. Everything item D asks for was already there.
+
+## Why the post carries the code rather than a link
+
+The obvious shape for a one-tap install is an address — `pro-chart.com/s/<id>`, which `ScriptLink`
+already spells. Two things rule it out, and only the first is temporary.
+
+There is no service behind that address; a link that opens nothing is worse than no link. And the
+board **refuses links**, server-side, along with phone numbers and messenger handles, each with its
+own Persian sentence. A share that put an address in the body would be refused at the door — today,
+and equally after the service is built.
+
+So a shared script is a post whose body is a sentence and then the document. The document is the
+same comment-headed `.nama` file `ScriptFile` already writes, which is *also* runnable source — the
+reason that format was chosen in Σ1 turns out to be the reason this works now. The install is local:
+the thread recognises a post that carries a document and offers to open it in the studio. Nothing is
+fetched, nothing runs on the tap, and the code a reader installs is the code they can read in the
+post above the button.
+
+`ScriptShare.refusals` checks the three rules before the round trip, so a script whose own comment
+carries a URL is reported in the studio instead of discovered from a rejection. It deliberately does
+not claim to match the server — the server decides, and a body this finds nothing in can still be
+refused for a reason this build has never heard of, which is why the refusal path keeps the reader's
+text in the composer. One subtlety worth the test it has: `//@version=5` rides in on nearly every
+script an assistant writes, and reporting it as a handle would put a warning on a post the board
+would have accepted. A warning that cries wolf is worse than no warning.
+
+## The bug the frame found
+
+The first render of a shared post came back with every line reversed: `// nama 1` read «1 nama //»,
+`plot(rsi)` read «(rsi)plot». A post sharing a script is Persian prose with a Latin file under it,
+which is precisely the shape bidi reordering gets wrong — the neutral characters around a Latin run
+are pulled to its far side in a right-to-left paragraph.
+
+Run Ω-FIX solved this once, for the prompt kit, and the fix lived in `feature:script`. It moved to
+`BidiText.isolateCode` in `core:common` and now serves both. Display only, as before: an isolate is
+an invisible control character, and a reader who copies the post must get what the author wrote.
+
+## What Σ4 does not claim
+
+**A scripts tab of its own is not built.** The board filters by five categories the server owns and
+a sixth is a server change. What exists instead is that a shared script is a first-class post
+anywhere on the board.
+
+**No ranking, no verification, no badge.** A script in a post is exactly as trustworthy as the
+person who posted it, which the reader can see. A mark here would be the app vouching for code it
+has not run.
+
+**Nothing was posted to the real board from this container.** The composition and the reading are
+tested and photographed; what the server does with a given body is the server's, and the app reports
+its sentence rather than predicting it.
+
+| | |
+|---|---|
+| New | `ScriptShare`, `BidiText.isolateCode`, the share button, the open button, the pre-filled composer |
+| Tests | `ScriptShareTest` (11), `ScriptShareProofTest` (3) |
+| Bug found by the first frame | code on the board read backwards; fixed for the board and the prompt kit at once |
+| Service needed | none |

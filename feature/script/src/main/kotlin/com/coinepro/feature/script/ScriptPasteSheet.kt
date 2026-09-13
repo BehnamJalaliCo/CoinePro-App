@@ -360,28 +360,7 @@ fun ScriptPromptBody(
  * `close[1]`, `ta.rma`, `//@version` and `strategy(...)`, and it is not `«` or `،` or a full stop
  * that belongs to the Persian sentence around it.
  */
-internal fun isolatedForDisplay(prompt: String): String =
-    CODE_RUN.replace(prompt) { match ->
-        val run = match.value
-        if (run.none { it in 'A'..'Z' || it in 'a'..'z' }) return@replace run
-        // The run is trimmed back to where the code actually starts. Without this the colon in
-        // «- سری‌ها: close, open, high» is ASCII, so it joins the run and ends up on the far side
-        // of the list — the sentence's own punctuation, moved by a fix meant for the code. The
-        // slash is kept because `//@version` begins with one.
-        val start = run.indexOfFirst { it.isLetterOrDigit() || it == '/' || it == '_' }
-        run.substring(0, start) + BidiText.LRI + run.substring(start) + BidiText.PDI
-    }
-
-/**
- * A maximal run of printable ASCII, spaces between ASCII tokens included.
- *
- * The spaces matter: `close, open, high, low` is one run and one isolate, so it reads in the order
- * it was written. Isolating each name on its own left the *list* laid out right to left, and a
- * reader saw the series in reverse — which is a worse error than the one being fixed, because it
- * looks like data rather than like a rendering fault. A Persian word between two Latin ones still
- * breaks the run, which is what makes this safe to apply to the whole prompt.
- */
-private val CODE_RUN = Regex("[!-~]+(?: +[!-~]+)*")
+internal fun isolatedForDisplay(prompt: String): String = BidiText.isolateCode(prompt)
 
 /**
  * A count in the reader's own numerals: Persian in Persian prose, Latin in English.

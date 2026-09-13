@@ -45,6 +45,7 @@ import com.coinepro.core.community.CommunityPost
 import com.coinepro.core.community.CommunityReactions
 import com.coinepro.core.designsystem.CoineProAvatar
 import com.coinepro.core.designsystem.CoineProCard
+import com.coinepro.core.common.BidiText
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -165,8 +166,14 @@ internal fun CommunityPostCard(
                 post.categoryLabel?.let { label -> TopicChip(label) }
             }
 
+            // A post that shares a script is Persian prose with a whole Latin file under it, and
+            // that is the shape bidi reordering gets wrong: every line comes out with its leading
+            // token at the far end, so `// nama 1` reads «1 nama //» and `plot(rsi)` reads
+            // «(rsi)plot`. `BidiText.isolateCode` wraps each code run in an isolate — on the way to
+            // the screen only; the post's own text is untouched, and the reader who copies it gets
+            // what the author wrote (run Σ, S3 D; the same fix as the prompt kit's).
             Text(
-                text = post.content,
+                text = remember(post.content) { BidiText.isolateCode(post.content) },
                 style = MaterialTheme.typography.bodyMedium,
                 color = CoineProColors.TextSecondary,
                 maxLines = if (expanded) Int.MAX_VALUE else FEED_LINES,

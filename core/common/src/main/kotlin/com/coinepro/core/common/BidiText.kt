@@ -302,4 +302,53 @@ object BidiText {
         }
         return latin > 0 && latin > other
     }
+
+    /**
+     * [text] with every run of code wrapped in a left-to-right isolate — **for display only**.
+     *
+     * ### What it is for
+     *
+     * Persian prose with Latin code inside it is the exact shape bidi reordering gets wrong: in a
+     * right-to-left paragraph the neutral characters around a Latin run are pulled to its far side,
+     * so `//@version` renders as `version@//` and `plot(rsi)` as `(rsi)plot`. A reader comparing
+     * what is on the screen against what an assistant wrote would be comparing it against something
+     * the screen rearranged.
+     *
+     * Two callers, which is why it is here rather than in a feature: the prompt kit, whose Persian
+     * instructions are full of function names (run Σ, S3 B), and the board, where a post that
+     * shares a script is a whole file inside a right-to-left card (run Σ, S3 D).
+     *
+     * ### Display only, and never the clipboard
+     *
+     * An isolate is an invisible control character. Text carrying them would arrive in an assistant
+     * — or in a compiler — with control codes inside its code, so they are added on the way to the
+     * screen and nowhere else. The transform is exactly reversible: removing [LRI] and [PDI] gives
+     * the original back, and `ScriptPromptDisplayTest` holds that.
+     *
+     * A run qualifies when it is ASCII, unbroken by a space, and contains at least one letter:
+     * `close[1]`, `ta.rma`, `//@version`, `plot(rsi, title = "RSI")`. It is not `«`, `،` or a full
+     * stop belonging to the Persian sentence around it.
+     */
+    fun isolateCode(text: String): String =
+        CODE_RUN.replace(text) { match ->
+            val run = match.value
+            if (run.none { it in 'A'..'Z' || it in 'a'..'z' }) return@replace run
+            // Trimmed back to where the code actually starts. Without this the colon in
+            // «سری‌ها: close, open, high» is ASCII, so it joins the run and ends up on the far side
+            // of the list — the sentence's own punctuation, moved by a fix meant for the code. The
+            // slash is kept because `//@version` begins with one.
+            val start = run.indexOfFirst { it.isLetterOrDigit() || it == '/' || it == '_' }
+            run.substring(0, start) + LRI + run.substring(start) + PDI
+        }
+
+    /**
+     * A maximal run of printable ASCII, spaces between ASCII tokens included.
+     *
+     * The spaces matter: `close, open, high, low` is one run and one isolate, so it reads in the
+     * order it was written. Isolating each name on its own left the *list* laid out right to left
+     * and a reader saw the series in reverse — a worse error than the one being fixed, because it
+     * looks like data rather than like a rendering fault. A Persian word between two Latin ones
+     * still breaks the run, which is what makes this safe to apply to a whole page.
+     */
+    private val CODE_RUN = Regex("[!-~]+(?: +[!-~]+)*")
 }

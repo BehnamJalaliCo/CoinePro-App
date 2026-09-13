@@ -151,4 +151,6 @@
     <string name="script_import_failed">اسکریپتی در حافظه‌ی موقت نیست.</string>
     <string name="script_copy_link">کپی پیوند</string>
     <string name="script_link_copied">پیوند کپی شد.</string>
+    <string name="script_share_board">هم‌رسانی در انجمن</string>
+    <string name="script_share_refusable">انجمن پیوند، شماره تلفن و آی‌دی را نمی‌پذیرد. این اسکریپت یکی از این‌ها را دارد.</string>
 </resources>

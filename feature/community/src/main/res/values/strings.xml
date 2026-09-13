@@ -76,4 +76,5 @@
     <string name="community_like">Like</string>
     <string name="community_reply">Reply</string>
     <string name="community_best_badge">Best answer</string>
+    <string name="community_open_script">Open “%1$s” in the studio</string>
 </resources>

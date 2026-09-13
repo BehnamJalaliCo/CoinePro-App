@@ -41,10 +41,13 @@ import com.coinepro.core.designsystem.CoineProErrorState
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProListHeader
 import com.coinepro.core.designsystem.CoineProPrimaryButton
+import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.rowMotion
+import com.coinepro.core.script.ScriptDocument
+import com.coinepro.core.script.ScriptShare
 import com.coinepro.core.model.AvatarBase
 import com.coinepro.core.model.AvatarRing
 import com.coinepro.core.model.AvatarSpec
@@ -88,6 +91,14 @@ fun CommunityThreadScreen(
     postId: Long,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Opens a script somebody shared in this post, in the studio (run Σ, S3 item D).
+     *
+     * The document is read out of the post's own body — nothing is fetched and nothing runs on the
+     * tap. Null where the host has no studio to open, which is how this screen stays usable in a
+     * build that does not carry one.
+     */
+    onOpenScript: ((ScriptDocument) -> Unit)? = null,
 ) {
     val feed by controller.state.collectAsStateWithLifecycle()
     LaunchedEffect(postId) { controller.openThread(postId) }
@@ -176,6 +187,25 @@ fun CommunityThreadScreen(
                         image = rememberPostImage(controller, thread.post),
                         onReact = { emoji -> controller.react(thread.post.id, emoji) },
                     )
+                }
+
+                // **A script somebody shared** (run Σ, S3 item D).
+                //
+                // The button appears only when the post actually carries a document — read out of
+                // the body, not guessed from a word in it — and it opens the editor with the code
+                // the reader can see above the button. Nothing is fetched and nothing runs: the
+                // install is local, and the reader chooses whether to press play.
+                val shared = onOpenScript?.let { open ->
+                    ScriptShare.scriptIn(thread.post.content)?.let { document -> document to open }
+                }
+                shared?.let { (document, open) ->
+                    item("shared-script") {
+                        CoineProSecondaryButton(
+                            text = stringResource(R.string.community_open_script, document.name),
+                            onClick = { open(document) },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
 
                 item("replies-heading") {

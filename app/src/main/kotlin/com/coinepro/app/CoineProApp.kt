@@ -2182,6 +2182,15 @@ private fun MainShell(
     DisposableEffect(Unit) {
         onDispose { shellScope.launch { lastVisitStore.visited(System.currentTimeMillis()) } }
     }
+
+    // **A script on its way to the board** (run Σ, S3 item D).
+    //
+    // The post's body, held here for exactly one hop: the studio composes it, the shell carries
+    // it to the board's composer, and the composer clears it. Not a navigation argument — a
+    // whole script is thousands of characters and a route is a URL — and not a store, because
+    // it is not state anybody wants back after a restart.
+    var scriptToShare by remember { mutableStateOf<String?>(null) }
+
     val deletedMessage = stringResource(R.string.toast_deleted)
     val layoutSavedMessage = stringResource(R.string.toast_layout_saved)
     val undoLabel = stringResource(R.string.action_undo)
@@ -3049,6 +3058,10 @@ private fun MainShell(
                         // The prompt kit names the reader's own chart, so an assistant writing for
                         // gold on the hourly writes different lengths than one writing for nothing.
                         timeframe = chartState.interval.label,
+                        onShare = { body ->
+                            scriptToShare = body
+                            navController.navigate(COMMUNITY_ROUTE) { launchSingleTop = true }
+                        },
                     )
                 },
             )
@@ -3364,7 +3377,23 @@ private fun MainShell(
                 controller = communityController,
                 onOpenThread = { navController.navigate(communityThreadRoute(it)) },
                 embedded = embedded,
+                draft = scriptToShare,
+                onDraftConsumed = { scriptToShare = null },
             )
+        }
+
+        /**
+         * Opens a script somebody shared in a post, in the studio.
+         *
+         * The same door the deep link uses, and for the same reason it stops where it does: the
+         * document is opened in the editor and nothing is added to the chart. What a post can do is
+         * put code in front of a reader; whether it draws anything is their decision, one tap away.
+         */
+        val openSharedScript: (ScriptDocument) -> Unit = { document ->
+            scriptController.openDocument(document)
+            navController.navigate(scriptRoute(defaultScriptSymbol(activePlatform, watchlist))) {
+                launchSingleTop = true
+            }
         }
 
         // Forward pushes, back pulls, tabs cross-fade, and the pop is seekable so the system's
@@ -4100,6 +4129,10 @@ private fun MainShell(
                     onChart = chartStateForScript.scripts.mapTo(mutableSetOf()) { it.name },
                     mainChart = { modifier -> ChartMirror(chartController, modifier) },
                     timeframe = chartStateForScript.interval.label,
+                    onShare = { body ->
+                        scriptToShare = body
+                        navController.navigate(COMMUNITY_ROUTE) { launchSingleTop = true }
+                    },
                 )
             }
             composable(
@@ -4253,6 +4286,7 @@ private fun MainShell(
                     controller = communityController,
                     postId = entry.arguments?.getLong("pid") ?: 0L,
                     onClose = { navController.popBackStack() },
+                    onOpenScript = openSharedScript,
                 )
             }
             composable(CALENDAR_ROUTE) {

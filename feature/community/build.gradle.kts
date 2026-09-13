@@ -22,6 +22,9 @@ dependencies {
     implementation(project(":core:community"))
     implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
+    // The script document format, so a post that carries one can be recognised and opened (run Σ,
+    // S3 item D). Pure Kotlin, no Android: this module depends on the *format*, never on the studio.
+    implementation(project(":namascript"))
     implementation(libs.kotlinx.coroutines.core)
     // The system photo picker, for the composer's «عکس». `PickVisualMedia` is the contract Android
     // added precisely so an app can ask for one image without asking for permission to read every
