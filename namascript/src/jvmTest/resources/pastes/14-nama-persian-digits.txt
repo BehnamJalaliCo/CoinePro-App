@@ -1,0 +1,3 @@
+// expect: runs
+span = input(۲۰, title = "دوره", min = ۲, max = ۲۰۰)
+plot(ta.sma(close, span), title = "میانگین")

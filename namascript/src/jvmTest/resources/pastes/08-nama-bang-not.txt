@@ -1,0 +1,5 @@
+// expect: runs
+trend = close > ta.ema(close, 50)
+plot(ta.ema(close, 50), title = "Trend")
+signal(trend and confirmed, text = "Above the average")
+signal(!trend and confirmed, buy = false, text = "Below the average")

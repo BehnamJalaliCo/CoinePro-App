@@ -1,0 +1,6 @@
+// expect: runs
+//@version=5
+indicator("Smoothed range", overlay=false)
+atrLen = input.int(14, "ATR length", minval=1)
+smoothed = ta.rma(ta.tr, atrLen)
+plot(smoothed, "ATR", linewidth=2)

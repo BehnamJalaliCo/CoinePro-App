@@ -1,0 +1,5 @@
+// expect: runs
+indicator("My RSI", overlay=false)
+r = ta.rsi(close, 14)
+plot(r, "RSI", pane = "own")
+signal(ta.crossover(r, 30), text = "RSI came back")

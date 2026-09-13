@@ -1,0 +1,5 @@
+// expect: runs
+k = ta.stoch(14, 3)
+plot(k, title = "Stochastic", pane = "own")
+hline(80)
+hline(20)

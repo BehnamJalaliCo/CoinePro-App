@@ -1,0 +1,4 @@
+// expect: clean
+var highest = high
+highest := math.max(highest, high)
+plot(highest, title = "بالاترین", color = color.gold, stepped = true)

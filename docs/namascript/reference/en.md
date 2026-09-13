@@ -59,7 +59,7 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 | `ta.vortex_plus(14)` | The positive Vortex line. | number series |
 | `ta.vortex_minus(14)` | The negative Vortex line. | number series |
 
-## نوسان (تلاطم)
+## Volatility
 
 | Call | What it gives | Returns |
 | --- | --- | --- |
@@ -75,7 +75,7 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 | `ta.env_lower(close, 20, 1)` | The lower envelope. | number series |
 | `ta.env_basis(close, 20, 1)` | The envelope's middle. | number series |
 
-## باندها
+## Bands
 
 | Call | What it gives | Returns |
 | --- | --- | --- |
@@ -85,7 +85,7 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 | `ta.donchian_upper(20)` | The Donchian channel's top. For a breakout read it one bar back: ta.donchian_upper(20)[1]. | number series |
 | `ta.donchian_lower(20)` | The Donchian channel's bottom. | number series |
 
-## روند و جهت
+## Trend and direction
 
 | Call | What it gives | Returns |
 | --- | --- | --- |
@@ -97,7 +97,7 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 | `ta.stoch_k(14, 3)` | The stochastic %K line. | number series |
 | `ta.stoch_d(14, 3)` | The stochastic %D line; the average of %K. | number series |
 
-## ایچیموکو
+## Ichimoku
 
 | Call | What it gives | Returns |
 | --- | --- | --- |
@@ -120,7 +120,7 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 | `ta.klinger(34, 55, 13)` | The Klinger volume oscillator. | number series |
 | `ta.klinger_signal(34, 55, 13)` | The Klinger signal line. | number series |
 
-## آمار
+## Statistics
 
 | Call | What it gives | Returns |
 | --- | --- | --- |
@@ -132,7 +132,7 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 | `ta.roc(close, 12)` | Percent change from a number of bars ago. | number series |
 | `ta.cum(volume)` | The cumulative sum from the first bar. | number series |
 
-## منطق کندل‌ها
+## Bar logic
 
 | Call | What it gives | Returns |
 | --- | --- | --- |
@@ -143,7 +143,7 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 | `ta.pivothigh(5, 5)` | A local top: higher than n bars before and n after. Sits on the bar that confirms it and never moves. | number series |
 | `ta.pivotlow(5, 5)` | A local bottom, by the same rule. | number series |
 
-## تقاطع‌ها
+## Crossings
 
 | Call | What it gives | Returns |
 | --- | --- | --- |
@@ -165,29 +165,29 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 | `math.sign(x)` | The sign: −1, 0 or 1. | number or series |
 | `math.pow(a, b)` | A power. | number or series |
 
-## شرط و جای‌گزینی
+## Conditions and substitution
 
 | Call | What it gives | Returns |
 | --- | --- | --- |
 | `iff(condition, a, b)` | On each bar, a if the condition holds, otherwise b. | number series |
 | `nz(series, 0)` | Puts the given number wherever a bar has no value. | number series |
 
-## ورودی کاربر
+## Reader inputs
 
 | Call | What it gives | Returns |
 | --- | --- | --- |
 | `input(14, title = "طول", min = 2, max = 200)` | A number the reader can change from the panel under the chart; step sets the slider's step. | number |
 
-## خروجی روی نمودار
+## Output on the chart
 
 | Call | What it gives | Returns |
 | --- | --- | --- |
-| `plot(series, title = "نام", color = color.gold, width = 1.5, dashed = false, stepped = false, pane = "auto")` | Draws a number series as a line. | همان سری |
-| `hline(70, title = "اشباع خرید", color = color.grey)` | A horizontal level. | همان عدد |
-| `marker(condition, title = "ورود", style = "up", color = color.green)` | A mark on every bar the condition holds. | همان شرط |
+| `plot(series, title = "نام", color = color.gold, width = 1.5, dashed = false, stepped = false, pane = "auto")` | Draws a number series as a line. | the same series |
+| `hline(70, title = "اشباع خرید", color = color.grey)` | A horizontal level. | the same number |
+| `marker(condition, title = "ورود", style = "up", color = color.green)` | A mark on every bar the condition holds. | the same condition |
 | `signal(condition, entry, stop, target = target, buy = true)` | The trade idea from the last bar the condition held, with its risk-to-reward. | true/false |
 | `signal(condition, buy = true, strength = 1, text = "متن")` | The trade idea from the last bar the condition held, with its risk-to-reward. | true/false |
-| `log("متن")` | A line in the studio's log. | درست |
+| `log("متن")` | A line in the studio's log. | true |
 
 ## Averages and trend (4.50)
 
@@ -269,10 +269,10 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 | Call | What it gives | Returns |
 | --- | --- | --- |
 | `input(14, title = "طول", min = 1, max = 100, step = 1)` | A number the reader can change from the panel under the chart; step sets the slider's step. | number |
-| `input.string("ema", title = "نوع", options = "ema,sma,wma")` | A choice among the options, shown as chips in the panel. | رشته |
+| `input.string("ema", title = "نوع", options = "ema,sma,wma")` | A choice among the options, shown as chips in the panel. | text |
 | `input.source("close", title = "منبع")` | A choice of price series: close, open, high, low, hl2, hlc3, ohlc4 or volume. | number series |
 | `input.color(color.gold, title = "رنگ خط")` | A colour input, from the named colours. | colour |
-| `input.timeframe("240", title = "تایم‌فریم")` | A timeframe choice, for request.security. | رشته |
+| `input.timeframe("240", title = "تایم‌فریم")` | A timeframe choice, for request.security. | text |
 | `request.security("240", close)` | The expression computed on a coarser timeframe (a multiple of the chart's), each chart bar taking the last completed higher bar's value — no repainting. | number or series |
 
 ## Text and absence (4.61)
@@ -280,15 +280,15 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 | Call | What it gives | Returns |
 | --- | --- | --- |
 | `na(x)` | Absent on every bar; nz(na, 0) fills it and no comparison with it is ever decided. | condition series |
-| `str.tostring(x)` | The number as price-style text; a series by its last bar. | رشته |
+| `str.tostring(x)` | The number as price-style text; a series by its last bar. | text |
 | `str.length("abc")` | How many characters the text has. | number |
-| `str.upper("abc")` | The text in upper case. | رشته |
-| `str.lower("ABC")` | The text in lower case. | رشته |
+| `str.upper("abc")` | The text in upper case. | text |
+| `str.lower("ABC")` | The text in lower case. | text |
 | `str.contains("abc", "b")` | True when the second text occurs inside the first. | true/false |
 | `str.startswith("abc", "a")` | True when the text starts with the part given. | true/false |
 | `str.endswith("abc", "c")` | True when the text ends with the part given. | true/false |
-| `str.replace_all("a-b", "-", "+")` | Every occurrence of the second text replaced by the third. | رشته |
-| `str.format("{0} / {1}", close, open)` | Fills {0}, {1}, … with the arguments that follow the pattern. | رشته |
+| `str.replace_all("a-b", "-", "+")` | Every occurrence of the second text replaced by the third. | text |
+| `str.format("{0} / {1}", close, open)` | Fills {0}, {1}, … with the arguments that follow the pattern. | text |
 
 ## Drawing on the chart (4.61)
 

@@ -27,6 +27,40 @@ class ReferenceDocsTest {
     }
 
     @Test
+    fun `every group has an English heading`() {
+        // The heading used to be translated by a private table in this test, which meant a group
+        // added later simply kept its Persian heading in the English reference and nothing said so.
+        val untranslated = ScriptReference.ALL_GROUPS.map { it.title }.filter { it !in ScriptReferenceEn.TITLES }
+        assertEquals("groups with no English heading", emptyList<String>(), untranslated)
+    }
+
+    @Test
+    fun `the English reference carries no Persian prose`() {
+        for (group in ScriptReferenceEn.ALL_GROUPS) {
+            assertTrue("a Persian heading survived: ${group.title}", group.title.none { it in '؀'..'ۿ' })
+            for (function in group.functions) {
+                assertTrue(
+                    "a Persian line survived on ${function.signature}: ${function.summary}",
+                    function.summary.none { it in '؀'..'ۿ' },
+                )
+                assertTrue("a Persian return survived on ${function.signature}", function.returns.none { it in '؀'..'ۿ' })
+            }
+        }
+        for (series in ScriptReferenceEn.SERIES) {
+            assertTrue("a Persian line survived on ${series.signature}", series.summary.none { it in '؀'..'ۿ' })
+        }
+    }
+
+    @Test
+    fun `translating never touches the code`() {
+        // The signature is typed into the editor verbatim. Everything else in an entry is prose.
+        assertEquals(
+            ScriptReference.ALL_GROUPS.flatMap { group -> group.functions.map { it.signature } },
+            ScriptReferenceEn.ALL_GROUPS.flatMap { group -> group.functions.map { it.signature } },
+        )
+    }
+
+    @Test
     fun `every built-in the interpreter answers to is in the reference`() {
         val source = File("src/commonMain/kotlin/com/coinepro/core/script/Builtins.kt").readText()
         val bound = Regex("""^\s+"([a-z_.]+)"(?:, "([a-z_.]+)")? ->""", RegexOption.MULTILINE)
@@ -88,30 +122,9 @@ class ReferenceDocsTest {
         }
     }
 
-    private fun englishTitle(persian: String): String = GROUP_TITLES[persian] ?: persian
+    private fun englishTitle(persian: String): String = ScriptReferenceEn.TITLES[persian] ?: persian
 
     private companion object {
-        val GROUP_TITLES = mapOf(
-            "میانگین‌ها" to "Averages",
-            "نوسان‌نماها" to "Oscillators",
-            "باندها و کانال‌ها" to "Bands and channels",
-            "روند" to "Trend",
-            "حجم" to "Volume",
-            "پنجره‌ها و منطق" to "Windows and logic",
-            "ریاضی" to "Math",
-            "کمکی" to "Helpers",
-            "ورودی و خروجی" to "Input and output",
-            "میانگین‌ها و روند (۴٫۵۰)" to "Averages and trend (4.50)",
-            "نوسان‌نماها (۴٫۵۰)" to "Oscillators (4.50)",
-            "حجم (۴٫۵۰)" to "Volume (4.50)",
-            "ریاضی (۴٫۵۰)" to "Math (4.50)",
-            "ورودی، خروجی، هشدار (۴٫۵۰)" to "Input, output, alerts (4.50)",
-            "ورودی‌ها و تایم‌فریم (۴٫۵۶)" to "Inputs and timeframes (4.56)",
-            "متن و غیبت (۴٫۶۱)" to "Text and absence (4.61)",
-            "ترسیم روی چارت (۴٫۶۱)" to "Drawing on the chart (4.61)",
-            "استراتژی (۴٫۶۱)" to "Strategy (4.61)",
-        )
-
         /** Bound names that are aliases of a documented one, or internal. */
         val UNDOCUMENTED_ON_PURPOSE = setOf("up", "down")
     }

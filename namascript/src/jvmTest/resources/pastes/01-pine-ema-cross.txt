@@ -1,0 +1,9 @@
+// expect: runs
+//@version=5
+indicator("EMA Cross", overlay=true)
+fastLen = input.int(9, "Fast", minval=1)
+slowLen = input.int(21, "Slow", minval=1)
+fast = ta.ema(close, fastLen)
+slow = ta.ema(close, slowLen)
+plot(fast, "Fast", color=color.orange)
+plot(slow, "Slow", color=color.blue)

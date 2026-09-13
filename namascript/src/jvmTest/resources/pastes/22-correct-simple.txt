@@ -1,0 +1,4 @@
+// expect: clean
+length = input(20, title = "دوره", min = 2, max = 200)
+average = ta.ema(close, length)
+plot(average, title = "میانگین", color = color.gold)

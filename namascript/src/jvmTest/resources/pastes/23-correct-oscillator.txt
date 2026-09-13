@@ -1,0 +1,5 @@
+// expect: clean
+r = ta.rsi(close, 14)
+plot(r, title = "RSI", pane = "own")
+hline(30, title = "کف")
+hline(70, title = "سقف")

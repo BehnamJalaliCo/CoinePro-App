@@ -1,0 +1,7 @@
+// expect: runs
+//@version=5
+strategy("MA strategy", overlay=true)
+fast = ta.sma(close, 20)
+slow = ta.sma(close, 50)
+plot(fast)
+plot(slow)

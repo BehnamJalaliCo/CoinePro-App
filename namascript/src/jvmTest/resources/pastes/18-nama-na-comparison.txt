@@ -1,0 +1,5 @@
+// expect: runs
+pivot = ta.pivothigh(5, 5)
+found = pivot != na
+plot(close, title = "Price")
+signal(found and confirmed, text = "A pivot formed")

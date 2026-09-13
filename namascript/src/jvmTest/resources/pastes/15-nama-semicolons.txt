@@ -1,0 +1,5 @@
+// expect: runs
+fast = ta.ema(close, 9);
+slow = ta.ema(close, 21);
+plot(fast, title = "Fast");
+plot(slow, title = "Slow");

@@ -1,0 +1,6 @@
+// expect: runs
+fast = ema(close, 12)
+slow = sma(close, 26)
+plot(fast, title = "Fast")
+plot(slow, title = "Slow")
+signal(crossover(fast, slow) and confirmed, text = "Crossed up")

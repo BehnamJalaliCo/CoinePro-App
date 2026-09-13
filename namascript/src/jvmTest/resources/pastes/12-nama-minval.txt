@@ -1,0 +1,3 @@
+// expect: runs
+span = input(20, title = "Length", minval = 2, maxval = 200)
+plot(ta.sma(close, span), title = "Average")

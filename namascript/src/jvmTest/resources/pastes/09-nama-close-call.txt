@@ -1,0 +1,4 @@
+// expect: runs
+change = close - close(1)
+plot(change, title = "Change", pane = "own")
+signal(change > 0 and confirmed, text = "Up bar")

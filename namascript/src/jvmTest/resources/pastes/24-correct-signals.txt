@@ -1,0 +1,7 @@
+// expect: clean
+fast = ta.ema(close, 9)
+slow = ta.ema(close, 21)
+plot(fast, title = "تند")
+plot(slow, title = "کند")
+signal(ta.crossover(fast, slow) and confirmed, text = "میانگین تند از کند رد شد")
+signal(ta.crossunder(fast, slow) and confirmed, buy = false, text = "میانگین تند زیر کند رفت")

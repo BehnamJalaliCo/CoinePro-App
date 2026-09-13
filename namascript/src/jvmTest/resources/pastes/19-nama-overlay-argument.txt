@@ -1,0 +1,3 @@
+// expect: runs
+band = ta.bb_upper(close, 20, 2)
+plot(band, title = "Upper", overlay = true, color = color.red)

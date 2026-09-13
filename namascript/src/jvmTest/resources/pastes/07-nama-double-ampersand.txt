@@ -1,0 +1,6 @@
+// expect: runs
+fast = ta.ema(close, 9)
+slow = ta.ema(close, 21)
+strong = close > fast && fast > slow
+plot(fast, title = "Fast")
+signal(strong && confirmed, text = "Stacked up")

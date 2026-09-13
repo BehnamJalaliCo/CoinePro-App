@@ -17,6 +17,11 @@ object ScriptReferenceEn {
         "عدد یا سری" to "number or series",
         "درست/نادرست" to "true/false",
         "رنگ" to "colour",
+        "رشته" to "text",
+        "درست" to "true",
+        "همان سری" to "the same series",
+        "همان عدد" to "the same number",
+        "همان شرط" to "the same condition",
     )
 
     val SUMMARIES: Map<String, String> = mapOf(
@@ -214,8 +219,67 @@ object ScriptReferenceEn {
         "log" to "A line in the studio's log.",
     )
 
+    /**
+     * The English heading for each group of [ScriptReference].
+     *
+     * Keyed by the Persian title, which is the group's identity — there is no id — so a renamed
+     * heading shows up as a missing translation rather than as a heading that silently stays
+     * Persian in the English reference. `ReferenceDocsTest` fails on any group missing from here.
+     */
+    val TITLES: Map<String, String> = mapOf(
+        "میانگین‌ها" to "Averages",
+        "نوسان‌نماها" to "Oscillators",
+        "نوسان (تلاطم)" to "Volatility",
+        "باندها" to "Bands",
+        "روند و جهت" to "Trend and direction",
+        "ایچیموکو" to "Ichimoku",
+        "حجم" to "Volume",
+        "آمار" to "Statistics",
+        "منطق کندل‌ها" to "Bar logic",
+        "تقاطع‌ها" to "Crossings",
+        "ریاضی" to "Math",
+        "شرط و جای‌گزینی" to "Conditions and substitution",
+        "ورودی کاربر" to "Reader inputs",
+        "خروجی روی نمودار" to "Output on the chart",
+        "میانگین‌ها و روند (۴٫۵۰)" to "Averages and trend (4.50)",
+        "نوسان‌نماها (۴٫۵۰)" to "Oscillators (4.50)",
+        "حجم (۴٫۵۰)" to "Volume (4.50)",
+        "ریاضی (۴٫۵۰)" to "Math (4.50)",
+        "ورودی، خروجی، هشدار (۴٫۵۰)" to "Input, output, alerts (4.50)",
+        "ورودی‌ها و تایم‌فریم (۴٫۵۶)" to "Inputs and timeframes (4.56)",
+        "متن و غیبت (۴٫۶۱)" to "Text and absence (4.61)",
+        "ترسیم روی چارت (۴٫۶۱)" to "Drawing on the chart (4.61)",
+        "استراتژی (۴٫۶۱)" to "Strategy (4.61)",
+    )
+
     /** The English line for a Persian entry, by the name before its parenthesis. */
     fun summaryFor(function: ScriptFunction): String? = SUMMARIES[nameOf(function.signature)]
 
+    /** The English heading for a group, or its Persian one where nobody has translated it yet. */
+    fun titleFor(group: ScriptReferenceGroup): String = TITLES[group.title] ?: group.title
+
     fun nameOf(signature: String): String = signature.substringBefore('(').trim()
+
+    /** [ScriptReference.SERIES], read in English. */
+    val SERIES: List<ScriptFunction> get() = ScriptReference.SERIES.map(::translate)
+
+    /** [ScriptReference.GROUPS], read in English — the core language, without the later additions. */
+    val GROUPS: List<ScriptReferenceGroup> get() = ScriptReference.GROUPS.map(::translate)
+
+    /** [ScriptReference.ALL_GROUPS], read in English. */
+    val ALL_GROUPS: List<ScriptReferenceGroup> get() = ScriptReference.ALL_GROUPS.map(::translate)
+
+    /**
+     * The same entry with its prose swapped, and its signature left exactly as it is.
+     *
+     * The signature is code — `ta.sma(close, 20)` is typed into the editor verbatim — so it is the
+     * one field that must never be translated, in either direction.
+     */
+    private fun translate(function: ScriptFunction): ScriptFunction = function.copy(
+        summary = summaryFor(function) ?: function.summary,
+        returns = RETURNS[function.returns] ?: function.returns,
+    )
+
+    private fun translate(group: ScriptReferenceGroup): ScriptReferenceGroup =
+        ScriptReferenceGroup(titleFor(group), group.functions.map(::translate))
 }

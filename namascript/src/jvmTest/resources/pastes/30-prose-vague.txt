@@ -1,0 +1,2 @@
+// expect: template
+something that tells me when to buy

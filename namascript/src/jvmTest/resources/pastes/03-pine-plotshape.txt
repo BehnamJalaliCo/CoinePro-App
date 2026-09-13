@@ -1,0 +1,8 @@
+// expect: runs
+//@version=5
+indicator("Cross marks", overlay=true)
+fast = ta.ema(close, 9)
+slow = ta.ema(close, 21)
+plotshape(ta.crossover(fast, slow), style=shape.triangleup, location=location.belowbar, color=color.green)
+plotshape(ta.crossunder(fast, slow), style=shape.triangledown, location=location.abovebar, color=color.red)
+plot(fast)

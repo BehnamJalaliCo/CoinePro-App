@@ -1,0 +1,2 @@
+// expect: template
+buy when price breaks the highest high of the last 20 bars

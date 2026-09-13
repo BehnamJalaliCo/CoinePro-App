@@ -1,0 +1,8 @@
+// expect: runs
+//@version=5
+indicator("Everything wrong", overlay=true)
+len = input.int(20, "Length", minval=1)
+avg = sma(close, len);
+band = ta.rma(ta.tr, 14) * 2
+plot(avg, "Average", linewidth=2, color=color.orange)
+plotshape(close > avg && close(1) <= avg, style=shape.triangleup, color=color.green)

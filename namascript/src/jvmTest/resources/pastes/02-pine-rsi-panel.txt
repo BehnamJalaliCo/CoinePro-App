@@ -1,0 +1,8 @@
+// expect: runs
+//@version=5
+indicator("RSI", overlay=false)
+len = input.int(14, "Length")
+r = ta.rsi(close, len)
+plot(r, "RSI", color=color.purple)
+hline(70)
+hline(30)

@@ -1,0 +1,3 @@
+// expect: runs
+average = ta.ema(close, 34)
+plot(average, title = "Average", linewidth = 2, color = color.gold)
