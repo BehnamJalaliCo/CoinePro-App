@@ -690,3 +690,27 @@ milliseconds creeping a few pixels, which is the same fault from the other end.
 | Tests | `LaunchSplashTest` (4) — the order, the bounded hold, the reduced-motion still, and three frames |
 | Frames | `launch-draw-320ms.png`, `launch-draw-620ms.png`, `launch-landed.png` |
 | Owed to a device | how it *feels*. A container renders frames; it does not drop them the way a phone under first-composition load does |
+
+## 4.87.2 — the picture 4.86.1 did not have
+
+«نسخه ۴.۸۶.۱ پروف نداشت؟» It did not, and the checklist said so rather than pretending otherwise:
+what a study draws on the candles surviving a cold start is a fact about *two runs* of the app, and
+the rule here is that a ✅ points at a frame or states why it cannot. Four tests were the evidence.
+
+The rule is right and the conclusion was too quick. A frame can carry it, on one condition: the map
+the chart is drawn from must not be written by the test. It is set through `setMarkerStyle` the way
+a reader sets it in the Explain sheet, written to a real `SymbolChartStateStore` over a preferences
+file, read back by a **second controller that has never seen the first** — which is all a cold start
+is — and only then handed to the renderer. A frame of a chart with triangles on it, drawn from
+`mapOf("ema" to TRIANGLES)` typed into the test, would have been a photograph of the test's own
+argument.
+
+Two frames, because one proves nothing without the other: an untouched store beside a configured
+one. The default frame carries «خرید» and «فروش» on their pills; the restored frame carries the
+triangles alone. If the restore ever breaks, the second frame becomes the first.
+
+| | |
+|---|---|
+| New | `MarkerStylePersistenceProofTest` (2) |
+| Frames | `sigma-marker-style-default-phone-fa.png`, `sigma-marker-style-restored-phone-fa.png` |
+| Changed | the 4.86.1 checklist row now points at them instead of explaining their absence |
