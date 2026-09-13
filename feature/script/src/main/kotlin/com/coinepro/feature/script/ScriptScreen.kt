@@ -44,6 +44,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.SpanStyle
@@ -75,12 +77,14 @@ import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.database.SavedScriptEntity
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSegmentedControl
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.LocalToaster
 import com.coinepro.core.designsystem.LtrDirection
 import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.TeachingSurface
@@ -100,6 +104,7 @@ import com.coinepro.core.script.ScriptLesson
 import com.coinepro.core.script.ScriptLessons
 import com.coinepro.core.script.ScriptPreset
 import com.coinepro.core.script.ScriptPresets
+import com.coinepro.core.script.ScriptPromptKit
 import com.coinepro.core.script.ScriptReference
 import com.coinepro.core.script.ScriptStrategies
 import com.coinepro.core.script.ScriptStrategy
@@ -153,6 +158,16 @@ fun ScriptScreen(
      * an editor that previews and an editor that edits the thing you are looking at.
      */
     mainChart: (@Composable (Modifier) -> Unit)? = null,
+    /**
+     * Opens a link outside the app — the two assistants on the prompt kit (run Σ, S3 B).
+     *
+     * A parameter rather than an Intent fired from here, because this module has no business
+     * knowing what a browser is and because the caller is the one that can tell the reader when
+     * there is nothing on the device that can open it.
+     */
+    onOpenLink: ((String) -> Unit)? = null,
+    /** The chart's symbol and timeframe, for the prompt to name. */
+    timeframe: String = "",
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     val saved by controller.saved.collectAsStateWithLifecycle()
@@ -163,6 +178,30 @@ fun ScriptScreen(
     // Whether this composition has already decided where to land. One shot, and saveable, so a
     // rotation does not throw the reader back to the library out of a script they are editing.
     var landed by rememberSaveable { mutableStateOf(false) }
+    var promptOpen by rememberSaveable { mutableStateOf(false) }
+    val clipboard = LocalClipboardManager.current
+    val emptyClipboard = stringResource(R.string.script_paste_empty)
+    val noAssistant = stringResource(R.string.script_prompt_no_assistant)
+    val context = LocalContext.current
+    val toaster = LocalToaster.current
+
+    /**
+     * Reads the clipboard and hands it to the controller.
+     *
+     * Reading rather than offering a text box: the reader has already copied the assistant's answer
+     * — that is what «paste» means to them — and a screen that then asked them to paste it into a
+     * field before pressing a second button would be asking for the same gesture twice. An empty
+     * clipboard is the one case that needs saying out loud, because nothing visible would happen.
+     */
+    fun readClipboard() {
+        val text = clipboard.getText()?.text.orEmpty()
+        if (text.isBlank()) {
+            toaster.show(emptyClipboard)
+            return
+        }
+        controller.paste(text)
+        tab = ScriptTab.EDITOR
+    }
 
     // The controller runs against whatever the chart is showing. Re-running on a new series rather
     // than leaving the old drawing on the new bars: an overlay computed from yesterday's candles
@@ -215,6 +254,8 @@ fun ScriptScreen(
                 onAddToChart = onAddToChart,
                 onChart = onChart,
                 mainChart = mainChart,
+                onPaste = { readClipboard() },
+                onPromptKit = { promptOpen = true },
             )
             ScriptTab.LIBRARY -> LibraryTab(
                 saved = saved,
@@ -255,6 +296,42 @@ fun ScriptScreen(
                 },
             )
         }
+    }
+
+    // **Bring your own script**, hoisted here because both sheets can be opened from more than one
+    // tab and because a sheet inside a `when` branch dies when the reader changes tab underneath it.
+    state.paste?.let { paste ->
+        ScriptPasteSheet(
+            paste = paste,
+            onDismiss = controller::dismissPaste,
+            onUndo = controller::undoPaste,
+            onUseTemplate = { template ->
+                controller.openTemplate(template)
+                tab = ScriptTab.EDITOR
+            },
+        )
+    }
+    if (promptOpen) {
+        ScriptPromptSheet(
+            prompt = remember(symbol, timeframe, english) {
+                ScriptPromptKit.prompt(symbol = symbol, timeframe = timeframe, english = english)
+            },
+            version = ScriptPromptKit.VERSION,
+            onDismiss = { promptOpen = false },
+            onOpenAssistant = { link ->
+                if (onOpenLink != null) {
+                    onOpenLink(link)
+                } else if (!context.openLink(link)) {
+                    // A device with no browser is unusual and real — a locked kiosk build. Saying
+                    // so beats a button that does nothing; the prompt is already on the clipboard.
+                    toaster.show(noAssistant)
+                }
+            },
+            onPasteResult = {
+                promptOpen = false
+                readClipboard()
+            },
+        )
     }
 }
 
@@ -297,6 +374,8 @@ private fun EditorTab(
     onAddToChart: ((String, String, Map<String, Double>) -> String)? = null,
     onChart: Set<String> = emptySet(),
     mainChart: (@Composable (Modifier) -> Unit)? = null,
+    onPaste: () -> Unit = {},
+    onPromptKit: () -> Unit = {},
 ) = BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
     // Named for the pane the script's own-pane plots land in, so a reader with three scripts saved
     // can tell which strip belongs to which.
@@ -365,6 +444,43 @@ private fun EditorTab(
         if (!split) item { preview(Modifier.fillMaxWidth().height(PREVIEW_HEIGHT)) }
 
         item { CodeField(source = state.source, onChange = controller::edit, failure = state.failure) }
+
+        // **Bring your own script** (run Σ, S3). Two buttons, side by side, above the snippets:
+        // this is now the main way a script arrives, and it is on the first screen rather than
+        // behind a menu.
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
+                CoineProSecondaryButton(
+                    text = stringResource(R.string.script_paste_action),
+                    onClick = onPaste,
+                    modifier = Modifier.weight(1f).semantics { contentDescription = "script-paste" },
+                )
+                CoineProSecondaryButton(
+                    text = stringResource(R.string.script_prompt_open),
+                    onClick = onPromptKit,
+                    modifier = Modifier.weight(1f).semantics { contentDescription = "script-prompt-kit" },
+                )
+            }
+        }
+
+        // **«با signal() نشانه‌ها را کنترل کنید»** — the trust hint (run Σ, S3 E).
+        //
+        // Only where the script ran, drew something, and said nothing: a script with no `signal(...)`
+        // is a picture, and the reader who wrote it almost certainly wanted the buy and sell marks
+        // and the confidence percentage that come with one. Shown once it is relevant rather than in
+        // the help, because the moment a script first draws is the moment that sentence lands.
+        val drewWithoutSignal = state.result?.error == null &&
+            state.result?.verdicts?.isEmpty() == true &&
+            state.result?.plots?.isNotEmpty() == true
+        if (drewWithoutSignal) {
+            item {
+                CoineProCard(modifier = Modifier.fillMaxWidth().semantics { contentDescription = "script-signal-hint" }) {
+                    // The id, not the string: `NotePolicy` — not this screen — decides whether a
+                    // tip is drawn as text or folded into an ⓘ.
+                    CoineProNote(R.string.script_paste_signal_hint, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
 
         // Snippets: a working script in one tap, for a reader who has the idea and not the syntax.
         item { SnippetRow(onInsert = { snippet -> controller.edit((state.source.trimEnd() + "\n\n" + snippet).trimStart()) }) }
@@ -1499,3 +1615,20 @@ private const val TARGET_SANDBOX = "sandbox"
 
 private const val SPLIT_ON = "split"
 private const val SPLIT_OFF = "code"
+
+/**
+ * Opens a link outside the app. False where nothing on the device can.
+ *
+ * The same shape as `feature:account`'s, and deliberately not shared with it: this is four lines
+ * and a module dependency for the sake of them would be the wrong trade. It reports the failure
+ * rather than swallowing it, because the caller has something to say about it.
+ */
+private fun android.content.Context.openLink(url: String): Boolean = try {
+    startActivity(
+        android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+    )
+    true
+} catch (_: android.content.ActivityNotFoundException) {
+    false
+}

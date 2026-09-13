@@ -75,3 +75,100 @@ choice.
 | Goldens re-recorded | none — the golden charts carry no Signal Layer, so no marker moved |
 | New features | S1 is a bug; S2 is the one feature in this version |
 | Owed to device | S1's acceptance, and the two new Macrobenchmark scenarios |
+
+# Σ1 — bring your own script (4.82.0)
+
+## What this phase is actually about
+
+From this version the *main* way a script arrives is that somebody asked an assistant for one and
+pasted the answer in. That is not a case to be tolerated at the edge of the studio; it is the front
+door, and the whole of Σ1 is about what happens in the three seconds after the paste.
+
+## The paste table, and the test that nearly wasn't written
+
+Twenty textual repairs, each for a mistake an assistant actually makes: Pine's `indicator(...)`
+header, `&&` for `and`, a bare `sma(close, 20)`, `close(1)` for `close[1]`, `ta.rma`, Pine's
+`shape.triangleup` and `minval=`, typographic quotes, Persian numerals inside code, and a script
+that computes something and draws nothing.
+
+The admission test for a rule is that **applying it to a correct script must be a no-op**, and the
+test that enforces it runs the whole conformance suite — three hundred–odd files — plus the twelve
+templates, the eleven presets and the twelve library strategies through `repair()` and requires
+every one to come back byte-identical.
+
+That test earned its place immediately. Four of the first twenty rules failed it:
+
+| Rule | What it "fixed" | Why it was wrong |
+|---|---|---|
+| `declare-with-equals` | `x := y` → `x = y` | `:=` is NamaScript's own reassignment — `sem_reassign_series.nama` |
+| `drop-var` | `var x = …` → `x = …` | `var` and `varip` are this language's, and they mean something |
+| `plotshape-to-marker` | `plotshape(` → `marker(` | `plotshape` is a documented alias with Pine's shape names |
+| `hline-to-level` | `hline(` → `level(` | `level(...)` **does not exist**; `hline` is the real name |
+
+The last one is worth dwelling on, because the same mistake was in three other places at once: the
+prompt kit taught `level(...)` and `ownPane = true`, and two of the twelve templates called them.
+All four files had been written from the same wrong memory of the language, and none of them had
+been run. They are all run now.
+
+The same test also found that every rule could see into string literals, which meant «Persian
+numerals in code» would have rewritten the numerals in a reader's own `text = "۳ کندل"` label. Every
+rule is now blind to strings and to comments, with the two header rules opting back in because a
+header *is* a comment.
+
+## Sixty-one strategies, generated in two languages from one table
+
+The brief asks for sixty with `signal()` and a default stop, and the same sixty in English. Writing
+a hundred and twenty scripts by hand would mean keeping a hundred and twenty in step; they would not
+stay in step. So each entry carries only the parts that differ — the titles, the sentence each
+signal says — and `source(english)` assembles the one shape they all share. The test that matters is
+`the two languages compute exactly the same thing`: both renderings with every quoted string blanked
+out must be identical character for character.
+
+Three things the tests caught in the content:
+
+* `volume-spike` never fired, because the fixture's volume was bounded and had no spike in it. A
+  fixture with no spike cannot tell a working volume study from a silent one. The fixture now has
+  them.
+* `golden-cross` fired only one way, because a two-hundred-period average on four hundred bars
+  crosses about once. The fixture is twelve hundred bars now — a fixture shorter than the slowest
+  study in the library cannot tell a one-sided strategy from a one-sided sample.
+* Every condition ends with `and confirmed`, which is the fault every script in the old library had:
+  an arrow painted on the forming bar can be gone a minute later, and a reader scrolling back sees
+  arrows only on the turns that worked.
+
+## The prompt, and the invisible characters that must not travel with it
+
+The prompt is generated from `ScriptReference` rather than written beside it, so the third place the
+language gets described — the one that always goes stale — does not exist.
+
+Rendering it was its own problem. It is Persian sentences with Latin code inside them, which is
+exactly what bidi reordering mangles: forced left-to-right, every Persian full stop landed at the
+wrong end; left to the paragraph's own direction, `//@version` rendered as `version@//` and the list
+of series read backwards. The fix is per-line direction plus an LRI isolate around each ASCII run —
+**applied on the way to the screen only**. The clipboard gets the raw prompt, because an isolate is
+a control character and one pasted into an assistant would sit inside `ta.ema(close, 20)`.
+`ScriptPromptDisplayTest` holds that stripping the isolates gives the prompt back exactly.
+
+## What is not here
+
+Two of the brief's seven parts, and they are in `CHECKLIST.md` and `BLOCKED.md` as ❌ rather than
+folded into a ✅:
+
+* **Save as mine (C)** is a model with no home. `ScriptDocument`, `ScriptFile` and `ScriptLink` are
+  written and tested — twenty cases, including an exported `.nama` file that is itself a runnable
+  script and a link reader that refuses nine hostile forms — but `saved_scripts` has no columns for
+  a colour, tags, a description or a history, and adding them is a hand-written Room migration.
+* **Share (D)** needs a community surface to share into, which is S7 in Σ4. What Σ1 leaves for it is
+  the address format, and the reason it carries an id and never source: a link that carried code
+  would be running a stranger's script on the strength of a tap.
+
+## Counts
+
+| | |
+|---|---|
+| Repairs in the table | 20 |
+| Templates | 12 |
+| Strategies in the library | 61, over six families, in two languages |
+| Assistant answers in the paste suite | 30 |
+| New tests | 100 in `:namascript`, 8 in `:core:script`, 7 in `:feature:script`, 4 proof frames |
+

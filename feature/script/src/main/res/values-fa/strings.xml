@@ -104,4 +104,35 @@
     <string name="script_snippet_label_source">label.new(bar_index, high, \"close \" + str.tostring(close), color = color.gold)\nline.new(bar_index - 20, ta.lowest(low, 20), bar_index, ta.lowest(low, 20), color = color.blue)</string>
     <string name="script_snippet_strategy">استراتژی ساده</string>
     <string name="script_snippet_strategy_source">fast = ta.ema(close, 9)\nslow = ta.ema(close, 21)\nstrategy.entry(\"L\", strategy.long, when = ta.crossover(fast, slow))\nstrategy.entry(\"S\", strategy.short, when = ta.crossunder(fast, slow))</string>
+
+    <string name="script_paste_title">چسباندن اسکریپت</string>
+    <string name="script_paste_action">چسباندن</string>
+    <string name="script_paste_hint">هر چیزی را اینجا بچسبانید — نمااسکریپت، اسکریپت تریدینگ‌ویو، یا فقط یک جمله که چه می‌خواهید.</string>
+    <string name="script_paste_read">بخوانش</string>
+    <string name="script_paste_dialect_nama">به عنوان نمااسکریپت خوانده شد</string>
+    <string name="script_paste_dialect_pine">به عنوان اسکریپت تریدینگ‌ویو خوانده و ترجمه شد</string>
+    <string name="script_paste_dialect_prose">به عنوان توضیح خوانده شد</string>
+    <string name="script_paste_fixed_one">یک مورد اصلاح شد</string>
+    <string name="script_paste_fixed_many">%1$s مورد اصلاح شد</string>
+    <string name="script_paste_clean">چیزی برای اصلاح نبود.</string>
+    <string name="script_paste_undo">برگرداندن اصلاح‌ها</string>
+    <string name="script_paste_keep">همین خوب است</string>
+    <string name="script_paste_line">خط %1$s</string>
+    <string name="script_paste_lines">خط‌های %1$s</string>
+    <string name="script_paste_unsupported">این اسکریپت چیزهایی دارد که در نمااسکریپت نیست. آن‌ها به صورت توضیح باقی ماندند:</string>
+    <string name="script_paste_templates">کدام‌یک را می‌خواستید؟</string>
+    <string name="script_paste_use_template">همین را بسازید</string>
+    <string name="script_paste_empty">چیزی در حافظه‌ی موقت نیست.</string>
+    <string name="script_paste_signal_hint">با signal() تعیین کنید نشانه‌های خرید و فروش کجا بنشینند.</string>
+
+    <string name="script_prompt_title">گرفتن اسکریپت از هوش مصنوعی</string>
+    <string name="script_prompt_open">گرفتن اسکریپت از هوش مصنوعی</string>
+    <string name="script_prompt_explain">این را کپی کنید و به هر دستیاری بدهید. نمااسکریپت را یادش می‌دهد، چارت شما را نام می‌برد و فقط کد می‌خواهد — پس چیزی که برمی‌گردد معمولاً همان بار اول اجرا می‌شود.</string>
+    <string name="script_prompt_copy">کپی متن</string>
+    <string name="script_prompt_copied">کپی شد. در دستیار بچسبانید.</string>
+    <string name="script_prompt_chatgpt">باز کردن ChatGPT</string>
+    <string name="script_prompt_claude">باز کردن Claude</string>
+    <string name="script_prompt_paste_result">چسباندن جواب</string>
+    <string name="script_prompt_version">نسخه‌ی متن %1$s</string>
+    <string name="script_prompt_no_assistant">هیچ برنامه‌ای روی این دستگاه نمی‌تواند آن پیوند را باز کند.</string>
 </resources>

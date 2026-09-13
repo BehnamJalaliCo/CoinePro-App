@@ -2838,6 +2838,9 @@ private fun MainShell(
                             chartControllers.controllerFor(activeChartSymbol).putScript(name, source, overrides)
                         },
                         onChart = chartState.scripts.mapTo(mutableSetOf()) { it.name },
+                        // The prompt kit names the reader's own chart, so an assistant writing for
+                        // gold on the hourly writes different lengths than one writing for nothing.
+                        timeframe = chartState.interval.label,
                     )
                 },
             )
@@ -3865,6 +3868,7 @@ private fun MainShell(
                     },
                     onChart = chartStateForScript.scripts.mapTo(mutableSetOf()) { it.name },
                     mainChart = { modifier -> ChartMirror(chartController, modifier) },
+                    timeframe = chartStateForScript.interval.label,
                 )
             }
             composable(

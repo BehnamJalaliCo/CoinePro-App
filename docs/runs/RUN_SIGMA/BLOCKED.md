@@ -45,3 +45,33 @@ correctly does not zoom time at all.
 noisy study for an afternoon should not find it silenced next week. The study's *settings* — its
 period, its colour — are the ones that persist, and they still do. If the owner wants it remembered,
 it is one map in the workspace store and the seam is `setMarkerStyle`.
+
+## 4. «Save as mine» is a model with no home yet (Σ1 item C)
+
+**Blocked on:** nothing external. It is scope, and it is named here rather than being folded into a
+claim.
+
+`ScriptDocument`, `ScriptFile` and `ScriptLink` are written and tested: a document with a name, a
+description, a colour, tags, a pane, default inputs and five revisions; a `.nama` file whose header
+is comment lines, so an exported file is itself a runnable script; and a link reader that refuses
+every hostile form the test throws at it. `ScriptDocumentTest` is twenty cases.
+
+What does not exist is the wiring. `saved_scripts` stores a name, a source, a preset id and a blob
+of input overrides — that is all it has ever stored — so a document needs four more columns and a
+migration written out by hand, which is what that table's own documentation requires because there
+is no server copy to refetch. On top of that sits a «My scripts» screen that can show a colour, a
+set of tags and a revision list.
+
+**What the reader has meanwhile:** the studio's existing save, unchanged since 4.73.0 — a name and a
+source. The new types are not half-connected to it; they are simply not connected, which is the
+state that cannot mislead anybody.
+
+## 5. Sharing a script needs somewhere to share it to (Σ1 item D)
+
+**Blocked on:** S7, the community surface, which this run's own plan puts in Σ4.
+
+A «share script» that produced a link nobody can open is not a feature, and a community post needs a
+feed to post into. What Σ1 leaves for it is the address format — `ScriptLink`, `pro-chart.com/s/<id>`
+— and the reason it carries an id and never source: a link that carried code would be running a
+stranger's script on the strength of a tap, from a message nobody can vouch for. With an id, the
+code arrives from the service, is shown to the reader, and is added only if they say so.

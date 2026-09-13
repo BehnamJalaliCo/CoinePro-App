@@ -35,6 +35,17 @@ data class ScriptEditorState(
     val running: Boolean = false,
     /** Whether the last run re-used the previous result and evaluated only the tail. */
     val incremental: Boolean = false,
+    /**
+     * What the last paste was and what was done to it, until the reader dismisses it (run Σ, S3 A).
+     *
+     * Held in state rather than handed to a dialog, because the diff is the *explanation* of why the
+     * text in the editor is not the text they pasted. A reader who pastes an assistant's answer and
+     * sees different code has to be told what changed, in their language, with the option to put it
+     * back — and a banner that survives a rotation is the only place that fits.
+     */
+    val paste: ScriptPaste.Paste? = null,
+    /** Exactly what the reader pasted, so the repairs can be undone in one tap. */
+    val pastedRaw: String? = null,
 ) {
     /** Whether saving would write anything. A blank script is not worth a row. */
     val canSave: Boolean get() = source.isNotBlank()
@@ -140,6 +151,76 @@ class ScriptController(
     fun setInput(name: String, value: Double) {
         if (!value.isFinite()) return
         _state.update { it.copy(overrides = it.overrides + (name to value)) }
+        run()
+    }
+
+    /**
+     * **Paste** — reads [text], repairs what can be repaired, and loads the result (run Σ, S3 A).
+     *
+     * Reads and repairs; it does not run. A paste that quietly ran would be a paste that quietly
+     * ran somebody else's code, and «اجرا» is one tap away. What the reader gets instead is the
+     * repaired text, a list of what changed, and — for a sentence rather than code — a picker.
+     *
+     * The editor is *replaced* rather than appended to. A reader pasting into a script they were
+     * writing means «this instead», and a paste box that concatenated two scripts would produce
+     * something neither of them asked for; [pastedRaw] is what makes that recoverable.
+     */
+    fun paste(text: String) {
+        val read = ScriptPaste.read(text)
+        _state.update {
+            it.copy(
+                source = if (read.dialect == ScriptPaste.Dialect.PROSE) it.source else read.fixed,
+                dirty = true,
+                syntax = if (read.dialect == ScriptPaste.Dialect.PROSE) it.syntax else NamaScript.check(read.fixed),
+                paste = read,
+                pastedRaw = text,
+                // A pasted script is not the saved one it landed on top of. Keeping the row id
+                // would make the next «ذخیره» overwrite a script the reader did not mean to touch.
+                savedId = null,
+                presetId = null,
+                result = null,
+            )
+        }
+    }
+
+    /**
+     * Puts back exactly what was pasted, repairs and all undone.
+     *
+     * The brief's «undoable», and the reason the repairs can be applied without asking first: a
+     * one-tap fix a reader cannot reverse is a fix they have to read carefully before accepting,
+     * which is the thing this whole feature exists to spare them.
+     */
+    fun undoPaste() {
+        val raw = _state.value.pastedRaw ?: return
+        _state.update {
+            it.copy(source = raw, dirty = true, syntax = NamaScript.check(raw), paste = null, pastedRaw = null)
+        }
+    }
+
+    /** Dismisses the paste banner, keeping the repaired text. */
+    fun dismissPaste() = _state.update { it.copy(paste = null, pastedRaw = null) }
+
+    /**
+     * Takes one of the templates a prose paste matched, filled with the numbers that sentence named.
+     *
+     * The sentence itself is kept as [ScriptEditorState.pastedRaw] so «برگردان» still answers with
+     * what the reader typed — which for a template is the only version of their intention that
+     * exists in their own words.
+     */
+    fun openTemplate(template: ScriptTemplate, sentence: String = _state.value.pastedRaw.orEmpty()) {
+        val source = template.source(ScriptTemplates.numbersIn(sentence))
+        _state.update {
+            it.copy(
+                name = template.title,
+                source = source,
+                savedId = null,
+                presetId = null,
+                overrides = emptyMap(),
+                dirty = true,
+                syntax = NamaScript.check(source),
+                paste = null,
+            )
+        }
         run()
     }
 

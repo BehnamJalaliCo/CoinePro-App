@@ -108,4 +108,39 @@
     <string name="script_snippet_label_source">label.new(bar_index, high, \"close \" + str.tostring(close), color = color.gold)\nline.new(bar_index - 20, ta.lowest(low, 20), bar_index, ta.lowest(low, 20), color = color.blue)</string>
     <string name="script_snippet_strategy">A simple strategy</string>
     <string name="script_snippet_strategy_source">fast = ta.ema(close, 9)\nslow = ta.ema(close, 21)\nstrategy.entry(\"L\", strategy.long, when = ta.crossover(fast, slow))\nstrategy.entry(\"S\", strategy.short, when = ta.crossunder(fast, slow))</string>
+
+    <!--
+      Bring your own script (4.82.0, run Σ item S3). Two surfaces: the paste sheet, which is where
+      an assistant's answer lands, and the prompt kit, which is where the reader gets one.
+    -->
+    <string name="script_paste_title">Paste a script</string>
+    <string name="script_paste_action">Paste</string>
+    <string name="script_paste_hint">Paste anything here — NamaScript, a TradingView script, or just a sentence saying what you want.</string>
+    <string name="script_paste_read">Read it</string>
+    <string name="script_paste_dialect_nama">Read as NamaScript</string>
+    <string name="script_paste_dialect_pine">Read as a TradingView script and translated</string>
+    <string name="script_paste_dialect_prose">Read as a description</string>
+    <string name="script_paste_fixed_one">One thing was fixed</string>
+    <string name="script_paste_fixed_many">%1$s things were fixed</string>
+    <string name="script_paste_clean">Nothing needed fixing.</string>
+    <string name="script_paste_undo">Undo the fixes</string>
+    <string name="script_paste_keep">Keep them</string>
+    <string name="script_paste_line">Line %1$s</string>
+    <string name="script_paste_lines">Lines %1$s</string>
+    <string name="script_paste_unsupported">This script uses things NamaScript does not have. They were left as comments:</string>
+    <string name="script_paste_templates">Which of these did you mean?</string>
+    <string name="script_paste_use_template">Use this</string>
+    <string name="script_paste_empty">There is nothing in the clipboard.</string>
+    <string name="script_paste_signal_hint">Add signal() to choose where the buy and sell marks go.</string>
+
+    <string name="script_prompt_title">Get a script from an AI</string>
+    <string name="script_prompt_open">Get a script from an AI</string>
+    <string name="script_prompt_explain">Copy this and give it to any assistant. It teaches NamaScript, names your chart, and asks for code only — so what comes back usually runs on the first try.</string>
+    <string name="script_prompt_copy">Copy the prompt</string>
+    <string name="script_prompt_copied">Copied. Paste it into the assistant.</string>
+    <string name="script_prompt_chatgpt">Open ChatGPT</string>
+    <string name="script_prompt_claude">Open Claude</string>
+    <string name="script_prompt_paste_result">Paste the result</string>
+    <string name="script_prompt_version">Prompt version %1$s</string>
+    <string name="script_prompt_no_assistant">No app on this device can open that link.</string>
 </resources>
