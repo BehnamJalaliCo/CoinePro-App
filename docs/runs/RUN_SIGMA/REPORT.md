@@ -594,3 +594,28 @@ true, and now has a test.
 | New | `CoineProCodeBlock`, `ScriptShare.split`, `ScriptPromptKit.spec`, `ScriptInstallStore`, two-column Home |
 | Tests | `GuestMigrationTest` (3), `ContentWidthTest` (4), 4 new in `ScriptShareTest`, 4 in `ScriptPromptKitTest`, 2 in `ScriptShareProofTest` |
 | Frames | the thread with its code block and its install button, the prompt kit, tablet Home in two columns, the guest's backup rows |
+
+## What a study draws on the candles, kept
+
+The 4.86.0 review closed all seven Σ-FIX items and left one line assigned to this side rather than
+to a device or a backend: marker style was session state, like the legend's eye.
+
+It is now field 25 of the per-symbol record. The field was appended rather than inserted, so a row
+written by any earlier build decodes as an empty map — which is not a loss, because an empty map is
+precisely «nobody has configured this chart», the state in which every study is labelled. The
+restore drops ids the build no longer arranges and forgives a style name it no longer knows, the
+same forgiveness the indicator colours and widths beside it already had.
+
+The part worth naming is the removal. The default is deliberately not stored: `LABELS` is absent
+rather than written, which makes every read of the map one branch instead of a lookup. That means
+turning the labels *back on* is a delete, and a fix that only persisted the setting — without
+persisting its removal — would leave a reader who changed their mind looking at triangles again
+tomorrow. `ChartSymbolStateTest` holds both directions with two controllers over one store, because
+one controller cannot tell you what a cold start does.
+
+| | |
+|---|---|
+| Items | the one non-device, non-backend line of the 4.86.0 review |
+| New | `SymbolChartState.markerStyles`, field 25; restore and persist in `ChartController` |
+| Tests | 2 in `SymbolChartStateStoreTest` (round trip, and a short row from before the field), 2 in `ChartSymbolStateTest` (it comes back; turning it off leaves nothing behind) |
+| Frames | none — two runs of the app are not a render |

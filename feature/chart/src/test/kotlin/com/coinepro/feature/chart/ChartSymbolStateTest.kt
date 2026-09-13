@@ -3,6 +3,7 @@ package com.coinepro.feature.chart
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
+import com.coinepro.core.chart.MarkerStyle
 import com.coinepro.core.chart.PriceScaleMode
 import com.coinepro.core.datastore.ChartLayout
 import com.coinepro.core.datastore.ChartLayoutStore
@@ -319,6 +320,53 @@ class ChartSymbolStateTest {
         assertEquals("LOGARITHMIC", saved.scaleMode)
         assertEquals(10L, saved.createdAt)
         assertEquals(20L, saved.updatedAt)
+    }
+
+    @Test
+    fun `what a study draws on the candles is still that when the app is opened again`() = runTest {
+        // The one item of the 4.86.0 review that was mine: marker style was session state, like the
+        // legend's eye, so a reader who had learned which way a triangle points turned the labels
+        // off every single cold start. Two controllers over one store is the only way to say that;
+        // asserting on the store alone would pass with a restore that never reads the field.
+        val states = SymbolChartStateStore(FakePreferences())
+        val first = controller(TestScope(StandardTestDispatcher(testScheduler)), states = states)
+        first.start()
+        advanceUntilIdle()
+        first.setMarkerStyle("rsi", MarkerStyle.TRIANGLES)
+        first.setMarkerStyle("macd", MarkerStyle.OFF)
+        advanceUntilIdle()
+
+        val second = controller(TestScope(StandardTestDispatcher(testScheduler)), states = states)
+        second.start()
+        advanceUntilIdle()
+
+        assertEquals(
+            mapOf("rsi" to MarkerStyle.TRIANGLES, "macd" to MarkerStyle.OFF),
+            second.state.value.markerStyles,
+        )
+    }
+
+    @Test
+    fun `turning the labels back on leaves nothing behind to restore`() = runTest {
+        // The default is not stored — that is what makes «nothing configured» one branch rather
+        // than a lookup — so the way back to it is a removal, and a removal that only touched the
+        // running state would come back as TRIANGLES tomorrow morning.
+        val states = SymbolChartStateStore(FakePreferences())
+        val first = controller(TestScope(StandardTestDispatcher(testScheduler)), states = states)
+        first.start()
+        advanceUntilIdle()
+        first.setMarkerStyle("rsi", MarkerStyle.TRIANGLES)
+        advanceUntilIdle()
+        first.setMarkerStyle("rsi", MarkerStyle.LABELS)
+        advanceUntilIdle()
+
+        assertEquals(emptyMap<String, String>(), states.state("BTCUSDT").first()?.markerStyles)
+
+        val second = controller(TestScope(StandardTestDispatcher(testScheduler)), states = states)
+        second.start()
+        advanceUntilIdle()
+
+        assertTrue(second.state.value.markerStyles.isEmpty())
     }
 
     @Test

@@ -246,6 +246,29 @@ class SymbolChartStateStoreTest {
 
         assertEquals(styled, store.state("XAUUSD").first())
     }
+
+    @Test
+    fun `what a study draws on the candles survives a cold start`() = runTest {
+        // Run Σ-FIX+. This was session state beside the legend's eye, on the reasoning that «what I
+        // want to see right now» is not configuration. A reader who has learned which way a
+        // triangle points turns the labels off once — and a setting that comes back every cold
+        // start is one they have to turn off forever.
+        val store = SymbolChartStateStore(FakeStatePreferences())
+        val marked = gold().copy(markerStyles = mapOf("ema" to "TRIANGLES", "rsi" to "OFF"))
+        store.put(marked)
+
+        assertEquals(marked, store.state("XAUUSD").first())
+    }
+
+    @Test
+    fun `a row written before the field existed reads as every study labelled`() = runTest {
+        // The format's whole migration story: a short record takes the default, and the default
+        // here is an empty map, which is every study drawing its «خرید» and «فروش».
+        val store = SymbolChartStateStore(FakeStatePreferences())
+        store.put(gold())
+
+        assertEquals(emptyMap<String, String>(), store.state("XAUUSD").first()?.markerStyles)
+    }
 }
 
 private class FakeStatePreferences(initial: Preferences = emptyPreferences()) : DataStore<Preferences> {

@@ -1580,6 +1580,15 @@ class ChartController(
                 readingsOpen = saved.readingsOpen,
                 indicatorColours = saved.indicatorColours.filterKeys(::arrangeable),
                 indicatorWidths = saved.indicatorWidths.filterKeys(::arrangeable),
+                // Sparse on the way back as on the way out: a name this build no longer knows —
+                // a fourth style somebody added and removed — reads as the default rather than
+                // throwing, which is the same forgiveness every other stored enum here gets.
+                markerStyles = saved.markerStyles
+                    .filterKeys(::arrangeable)
+                    .mapNotNull { (id, name) ->
+                        MarkerStyle.entries.firstOrNull { it.name == name }?.let { id to it }
+                    }
+                    .toMap(),
                 scripts = saved.scripts.map { row ->
                     ChartScript(
                         instanceId = row.instanceId,
@@ -1698,6 +1707,7 @@ class ChartController(
             indicatorParams = current.indicatorParams,
             indicatorColours = current.indicatorColours,
             indicatorWidths = current.indicatorWidths,
+            markerStyles = current.markerStyles.mapValues { (_, style) -> style.name },
             scaleMode = current.scaleMode.name,
             logScale = current.logScale,
             updatedAt = System.currentTimeMillis(),
@@ -2267,11 +2277,17 @@ class ChartController(
      * reach for: a reader who has learned which way a triangle points wants the candles back and
      * does not want the study silenced. See `MarkerStyle`.
      */
-    fun setMarkerStyle(id: String, style: MarkerStyle) = _state.update { old ->
-        // The default is not stored, so a map with nothing in it is a chart nobody has configured
-        // and every read of it is one branch rather than a lookup.
-        val styles = if (style == MarkerStyle.LABELS) old.markerStyles - id else old.markerStyles + (id to style)
-        if (styles == old.markerStyles) old else old.copy(markerStyles = styles)
+    fun setMarkerStyle(id: String, style: MarkerStyle) {
+        _state.update { old ->
+            // The default is not stored, so a map with nothing in it is a chart nobody has
+            // configured and every read of it is one branch rather than a lookup.
+            val styles = if (style == MarkerStyle.LABELS) old.markerStyles - id else old.markerStyles + (id to style)
+            if (styles == old.markerStyles) old else old.copy(markerStyles = styles)
+        }
+        // Kept across runs (run Σ-FIX+). A reader who has learned which way a triangle points turns
+        // the labels off once; a setting that came back every cold start is one they turn off
+        // forever, which is the difference between a preference and a nag.
+        persistSymbolState()
     }
 
     fun toggleIndicatorHidden(id: String) = _state.update { old ->

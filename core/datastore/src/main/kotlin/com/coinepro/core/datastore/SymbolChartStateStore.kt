@@ -166,6 +166,21 @@ data class SymbolChartState(
     /** The stroke width the reader gave an indicator, by id, in dp. Sparse, like the colours. */
     val indicatorWidths: Map<String, Float> = emptyMap(),
     /**
+     * What each study draws on the candles — `LABELS`, `TRIANGLES`, `OFF` — keyed by indicator id.
+     *
+     * Kept per symbol and across runs (run Σ-FIX+). It was session state, beside the legend's eye,
+     * on the reasoning that «what I want to see right now» is not configuration. The owner's review
+     * disagreed and is right: a reader who has learned which way a triangle points turns the labels
+     * off *once*, and a setting that comes back every cold start is one they have to turn off
+     * forever.
+     *
+     * Sparse, like the periods and the colours: an absent entry is `LABELS`, which is what a chart
+     * nobody has configured draws. Strings rather than the enum, for the reason the class note
+     * gives — this module has no `core:chart` on it, and a stored name survives a renamed constant
+     * as an unrecognised value rather than as a crash.
+     */
+    val markerStyles: Map<String, String> = emptyMap(),
+    /**
      * Whether the reading-and-tools panel under the plot was left open (run G).
      *
      * False is the shipped default and the reason this field exists: the panel opened itself on
@@ -366,6 +381,12 @@ class SymbolChartStateStore(private val dataStore: DataStore<Preferences>) {
                 // Twenty-four: the scripts, each Base64'd so a reader's own text cannot contain
                 // this format's frame. See `ChartScriptCodec`.
                 ChartScriptCodec.encode(state.scripts),
+                // Twenty-five: what each study draws on the candles, id and style alternating.
+                state.markerStyles
+                    .filterKeys { !hasSeparator(it) }
+                    .filterValues { !hasSeparator(it) }
+                    .flatMap { (id, style) -> listOf(id, style) }
+                    .joinToString(UNIT),
             ).joinToString(RECORD)
         }
 
@@ -428,6 +449,10 @@ class SymbolChartStateStore(private val dataStore: DataStore<Preferences>) {
                 // the new default and is what a reader who has never touched the panel should get.
                 readingsOpen = parts.getOrNull(23) == "1",
                 scripts = ChartScriptCodec.decode(parts.getOrNull(24)),
+                // A row written before this field existed is short here, and short means empty —
+                // which is every study drawing its labels, the default a reader who never touched
+                // the setting already had.
+                markerStyles = pairs(parts.getOrNull(25)) { it.takeIf(String::isNotBlank) },
             )
         }
 

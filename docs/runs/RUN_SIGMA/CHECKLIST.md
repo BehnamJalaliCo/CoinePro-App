@@ -203,6 +203,22 @@ something else; the board's own like is server-side and stays the social number 
 **Nothing here was run on a device.** Still Robolectric at the panels' real dp, and S1 still reads
 ⏳ owed to device.
 
+## The one item of the 4.86.0 review that was mine
+
+The review of 4.86.0 closed all seven Σ-FIX items and left a table of what remains. Everything on it
+is owed to a device or to a backend except one line: «ذخیره‌شدن سبک مارکر بین اجراها» — what a study
+draws on the candles was session state, like the legend's eye, and the review asked whether it should
+be.
+
+| Item | State | Evidence | Frame |
+|---|---|---|---|
+| Marker style survives a cold start | ✅ | `markerStyles` is field 25 of the per-symbol record — appended, so a row written by an older build reads as an empty map, which is the same chart it was: every study labelled. The restore forgives a name this build no longer knows and drops ids that are neither in the catalogue nor owned by a script, exactly as the colours and widths beside it do. The default is still *not stored*, so turning the labels back on removes the row rather than writing `LABELS` — and that removal persists too, which is the half a session-only fix gets wrong in the other direction | — **no frame**: this is a fact about two runs of the app, and a single render cannot show it. `ChartSymbolStateTest` (2) builds a second controller over the same store, which is what a cold start is |
+
+A reader who has learned which way a triangle points turns the labels off once. A setting that came
+back every morning is one they turn off forever, which is the difference between a preference and a
+nag. That is the whole argument, and it is why this was not left as the legend's eye: the eye is a
+glance, and this is a decision.
+
 ## What Σ0 does **not** claim
 
 The pinch is proved against an injected event stream, which is the strongest thing this container
