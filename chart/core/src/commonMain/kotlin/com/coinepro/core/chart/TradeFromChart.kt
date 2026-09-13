@@ -3,7 +3,25 @@ package com.coinepro.core.chart
 import kotlin.math.abs
 
 /** Which way a setup faces. */
-enum class TradeSide { BUY, SELL }
+enum class TradeSide {
+    BUY,
+    SELL,
+    ;
+
+    /**
+     * The word a reader sees beside a marker on the chart — «خرید» / «فروش» (run Σ, S2).
+     *
+     * Both languages live here, beside the type, for the reason [MarketState.label] gives: this
+     * module has no resources and compiles for the JVM and the web, and a `strings.xml` keyed by the
+     * same enum would be a second place to get the pairing wrong. It is a *verdict*, not a
+     * description — «خرید» and not «سیگنال خرید» — because it is printed under a triangle on a
+     * candle and a reader has about a tenth of a second for it.
+     */
+    fun action(english: Boolean): String = when (this) {
+        BUY -> if (english) "Buy" else "خرید"
+        SELL -> if (english) "Sell" else "فروش"
+    }
+}
 
 /**
  * A trade laid out on the chart: where to get in, where to be wrong, where to take profit.

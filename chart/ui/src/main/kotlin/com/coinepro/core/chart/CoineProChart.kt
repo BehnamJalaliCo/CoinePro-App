@@ -107,6 +107,7 @@ import kotlin.math.pow
 import kotlin.math.round
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * The price chart.
@@ -1629,47 +1630,57 @@ fun CoineProChart(
                                 )
                             }
                             .pointerInput(Unit) {
-                                // Stage two of the zoom: a pinch that means one axis, or both,
-                                // depending on which way the fingers went.
+                                // Stage two of the zoom: the pinch, routed by **where it started**.
                                 //
-                                // ### Why this is a separate handler and not a parameter
+                                // ### The bug this replaces, and why it only showed up one way
                                 //
-                                // `detectTransformGestures` hands its callback a single `zoom`,
-                                // computed from the ratio of the *centroid size* — the mean
-                                // distance of the pointers from their centre. That number is a
-                                // radius, and a radius has thrown away the direction. Fingers
-                                // separating sideways and fingers separating vertically produce
-                                // the same scalar, so a gesture built on it can only ever mean
-                                // "closer", and the chart magnifies uniformly like a photograph.
+                                // «pinch افقی روی چارت کار نمی‌کند، عمودی کار می‌کند.» Both halves
+                                // of that are explained by one line. The time axis was driven by
+                                // `1.0025.pow(spanX - lastX)` — 1.0025 to the power of the
+                                // pixels the fingers opened *this frame* — and the result was then
+                                // put through a dead zone of one per cent. On a 120 Hz phone a
+                                // finger separating at a brisk five hundred pixels a second moves
+                                // about two pixels of half-span per frame, which is a ratio of
+                                // 1.005: under the dead zone, every frame, for the whole gesture.
+                                // The price axis used a plain `spanY / lastY`, so the same two
+                                // pixels on a hundred-pixel span was 1.02 and sailed through. One
+                                // axis worked and the other was arithmetically unreachable.
                                 //
-                                // On a desk that is survivable, because the price gutter and the
-                                // date strip are both a mouse-drag away. On a phone it is the
-                                // difference between a chart and a picture of a chart: the reader
-                                // holding the glass in one hand has two fingers and no third
-                                // gesture, and "let me see this swing taller without changing how
-                                // many bars I can see" is the most common thing they want.
+                                // ### The routing rule, which is now the only rule
                                 //
-                                // So the spans are measured per axis here — the mean horizontal
-                                // distance from the centroid, and the mean vertical one — and each
-                                // ratio drives its own scale. A pinch that widens horizontally and
-                                // not vertically changes the bar count and leaves the candles
-                                // exactly as tall. A pinch that grows in both, which is what a
-                                // reader who simply wants "closer" does, still changes both, so
-                                // nothing anybody had learned has been taken away.
+                                // **Where the gesture starts decides what it drives, and the angle
+                                // of the fingers never does.** Start on the plot and it is a time
+                                // zoom; start in the price gutter and it is the price scale; start
+                                // on the date strip and it is the time scale. See [pinchZoneOf].
+                                //
+                                // The old code discriminated by orientation in two places — the
+                                // horizontal branch only fired when the fingers were far enough
+                                // apart *horizontally*, and the vertical branch fired anywhere at
+                                // all, gutter or not. So a reader pinching at forty-five degrees
+                                // got both axes, a reader pinching vertically on the candles got
+                                // the price scale when they had asked to see more bars, and the
+                                // one gesture the brief names first was the one that could not be
+                                // made to fire.
+                                //
+                                // On the plot the zoom is the **Euclidean** ratio — the mean
+                                // distance of the pointers from their centroid, at any angle — so
+                                // there is a single number and it cannot be zero for a pinch that
+                                // is genuinely happening. With a manual price scale the same ratio
+                                // moves the price too, because a reader who has taken the price
+                                // axis off auto has said they want to control it and expects it to
+                                // follow the picture; on auto, the price rescales itself to the
+                                // bars that are now visible, which is the reference's behaviour.
                                 //
                                 // Watched on the Final pass and consuming nothing, for the same
                                 // reason the momentum observer below does: the transform gesture
                                 // above is a working multi-touch implementation and there is no
-                                // reason to rewrite it in order to read two more numbers off the
+                                // reason to rewrite it in order to read one more number off the
                                 // same pointers.
                                 awaitEachGesture {
                                     val first = awaitFirstDown(requireUnconsumed = false)
-                                    // A pinch that starts in the price gutter scales the price and
-                                    // only the price — the brief's, and the reference's.
                                     val startFrame = frameOf(size.width.toFloat())
-                                    val onGutter = startFrame.inGutter(first.position.x, 0f)
-                                    var lastX = 0f
-                                    var lastY = 0f
+                                    val zone = pinchZoneOf(startFrame, timeAxisTop[0], first.position)
+                                    var lastSpan = 0f
                                     var timeResidue = 1f
                                     while (true) {
                                         val event = awaitPointerEvent(PointerEventPass.Final)
@@ -1677,33 +1688,39 @@ fun CoineProChart(
                                         if (down == 0) break
                                         // One finger is a pan, and tracking mode is a reading of a
                                         // single bar that a rescale would answer for a different
-                                        // one. Either way the spans are forgotten rather than
+                                        // one. Either way the span is forgotten rather than
                                         // carried, so putting a second finger down starts a fresh
                                         // measurement instead of jumping by whatever changed while
                                         // the gesture was not a pinch.
                                         if (down < 2 || tracking) {
-                                            lastX = 0f
-                                            lastY = 0f
+                                            lastSpan = 0f
                                             timeResidue = 1f
                                             continue
                                         }
-                                        val spanX = event.axisSpan(vertical = false)
-                                        val spanY = event.axisSpan(vertical = true)
-                                        val floor = PINCH_AXIS_FLOOR_DP.toPx()
-                                        // An axis the fingers barely straddle carries no signal —
-                                        // two fingers side by side have a vertical span of almost
-                                        // nothing, and a ratio of two nearly-zero numbers is noise
-                                        // that would make the price scale jitter for the whole
-                                        // gesture. Below the floor that axis simply does not move,
-                                        // which is also exactly the behaviour a reader pinching
-                                        // horizontally is asking for.
-                                        if (!onGutter && lastX >= floor && spanX >= floor) {
-                                            // The brief's rate: the bar spacing grows by
-                                            // 1.0025 to the power of the pixels the fingers
-                                            // opened, so the same finger travel is the same zoom
-                                            // at every scale.
-                                            val ratio = PINCH_BASE.pow(spanX - lastX)
-                                            if (abs(ratio - 1f) > ZOOM_DEADZONE) {
+                                        val span = event.pinchSpan()
+                                        val floor = PINCH_SPAN_FLOOR_DP.toPx()
+                                        // Fingers this close together are one touch as far as the
+                                        // ratio is concerned, and a ratio of two nearly-zero
+                                        // numbers is noise that would make the scale jitter for the
+                                        // whole gesture.
+                                        if (lastSpan < floor || span < floor) {
+                                            lastSpan = span
+                                            continue
+                                        }
+                                        val ratio = span / lastSpan
+                                        lastSpan = span
+                                        if (!ratio.isFinite() || abs(ratio - 1f) <= ZOOM_DEADZONE) continue
+                                        when (zone) {
+                                            PinchZone.PRICE -> {
+                                                // Inverted, because `priceZoom` above one *widens*
+                                                // the range and so flattens the candles: fingers
+                                                // moving apart have to shrink it. Bounded by the
+                                                // viewport at a quarter and eight, and a double tap
+                                                // on the gutter puts it back.
+                                                viewport = viewport.priceZoomedBy(1f / ratio)
+                                                invalidate(Invalidation.FULL)
+                                            }
+                                            PinchZone.PLOT, PinchZone.TIME -> {
                                                 // Accumulated, because the bar count is a whole
                                                 // number: a slow pinch whose every frame rounds
                                                 // back to the count it started on would move
@@ -1716,7 +1733,7 @@ fun CoineProChart(
                                                 val plot = drawn().plotWidth
                                                 val centroidX = event.changes.filter { it.pressed }
                                                     .map { it.position.x }.average().toFloat()
-                                                val focal = if (plot > 0f) {
+                                                val focal = if (plot > 0f && zone == PinchZone.PLOT) {
                                                     ((centroidX - startFrame.left) / plot).coerceIn(0f, 1f)
                                                 } else {
                                                     null
@@ -1728,22 +1745,20 @@ fun CoineProChart(
                                                     timeResidue = 1f
                                                     invalidate(Invalidation.FULL)
                                                 }
+                                                // A manual price scale follows the picture. On auto
+                                                // — `priceZoom == 1f` — the range is recomputed from
+                                                // the bars now visible, so touching it here would
+                                                // fight the autoscale. `priceBarLock` already does
+                                                // this inside `zoomedBy`, so it is not done twice.
+                                                if (zone == PinchZone.PLOT &&
+                                                    !viewport.priceBarLock &&
+                                                    viewport.priceZoom != 1f
+                                                ) {
+                                                    viewport = viewport.priceZoomedBy(ratio)
+                                                    invalidate(Invalidation.FULL)
+                                                }
                                             }
                                         }
-                                        if (lastY >= floor && spanY >= floor) {
-                                            val ratio = spanY / lastY
-                                            if (abs(ratio - 1f) > ZOOM_DEADZONE) {
-                                                // Inverted, because `priceZoom` above one *widens*
-                                                // the range and so flattens the candles: fingers
-                                                // moving apart vertically have to shrink it.
-                                                // Bounded by the viewport at a quarter and eight,
-                                                // and a double tap on the gutter puts it back.
-                                                viewport = viewport.priceZoomedBy(1f / ratio)
-                                                invalidate(Invalidation.FULL)
-                                            }
-                                        }
-                                        lastX = spanX
-                                        lastY = spanY
                                     }
                                 }
                             }
@@ -2924,7 +2939,15 @@ fun CoineProChart(
                         measurer = measurer,
                     )
                     decoration.levels.forEach { drawLevel(view, it, plotWidth, measurer) }
-                    decoration.markers.forEach { drawMarker(view, it, density.density) }
+                    drawMarkers(
+                        view = view,
+                        markers = decoration.markers,
+                        series = display,
+                        density = density.density,
+                        showLegend = decoration.showLegend,
+                        palette = palette,
+                        measurer = measurer,
+                    )
                 }
                         }
                     }
@@ -5330,16 +5353,75 @@ private fun DrawScope.drawLevel(
 }
 
 /**
- * One marker, clear of the bar it belongs to.
+ * Every marker on the plot, at the detail this zoom has room for (run Σ, S2).
+ *
+ * ### Why the whole set rather than one at a time
+ *
+ * Because two of the three rules are about the *set*. «Thin to one per swing below six points a
+ * bar» is a decision across the markers, and «labels never overlap each other, the legend or the
+ * price tag» is a decision about the ones already placed. A per-marker function could enforce
+ * neither, which is why the labels are here and the loop moved with them.
+ *
+ * The arithmetic — which detail, what size, which marks survive the thinning — is
+ * `SignalMarkers`, in `:chart-core`, where a unit test can reach it. This places what it decides.
+ */
+private fun DrawScope.drawMarkers(
+    view: ChartViewport,
+    markers: List<ChartMarker>,
+    series: CandleSeries,
+    density: Float,
+    showLegend: Boolean,
+    palette: ChartPalette,
+    measurer: TextMeasurer,
+) {
+    if (markers.isEmpty()) return
+    val spacingDp = view.barWidth / density
+    val detail = SignalMarkers.detailFor(spacingDp)
+    val drawn = if (detail == MarkerDetail.THINNED) SignalMarkers.thin(markers, series) else markers
+    // What a label may not cover. The legend plate is the top-left quarter of the plot and it is
+    // opaque, so a word under it is a word nobody reads; the price gutter is off the plot entirely
+    // and a label that would reach it is dropped rather than clipped, because half a word is worse
+    // than none. The taken list grows as labels are placed: the first marker to claim a piece of
+    // glass keeps it, which on markers in bar order means the older signal wins and the newer one
+    // quietly loses its word rather than both being illegible.
+    val legendGuard = if (showLegend) {
+        Rect(0f, 0f, view.plotWidth * LEGEND_GUARD_WIDTH, view.plotHeight * LEGEND_GUARD_HEIGHT)
+    } else {
+        null
+    }
+    val taken = mutableListOf<Rect>()
+    for (marker in drawn) {
+        val placed = drawMarker(view, marker, density, detail, palette, measurer, legendGuard, taken)
+        if (placed != null) taken += placed
+    }
+}
+
+/**
+ * One marker, clear of the bar it belongs to, with its word where there is room for it.
  *
  * Offset above the high or below the low rather than drawn at the price, because a marker on the
- * high hides the high — and on a swing study the high is the thing being pointed at.
+ * high hides the high — and on a swing study the high is the thing being pointed at. The label goes
+ * further out still, on the far side of the glyph, for the same reason.
+ *
+ * Returns the rectangle its label claimed, or null where it drew none.
  */
-private fun DrawScope.drawMarker(view: ChartViewport, marker: ChartMarker, density: Float) {
+private fun DrawScope.drawMarker(
+    view: ChartViewport,
+    marker: ChartMarker,
+    density: Float,
+    detail: MarkerDetail,
+    palette: ChartPalette,
+    measurer: TextMeasurer,
+    legendGuard: Rect?,
+    taken: List<Rect>,
+): Rect? {
+    if (detail == MarkerDetail.HIDDEN) return null
     val x = view.xOfTime(marker.time)
-    if (x < 0f || x > view.plotWidth) return
+    if (x < 0f || x > view.plotWidth) return null
     val clearance = MARKER_CLEARANCE * density
-    val size = MARKER_SIZE * density
+    // The glyph's size says how loudly the study spoke — see `SignalMarkers.sizeDpFor`. A marker
+    // that is not a signal carries a strength of one and keeps the size it always had.
+    val size = SignalMarkers.sizeDpFor(marker.strength) * density
     val anchor = view.yOf(marker.price) + if (marker.above) -clearance else clearance
     val colour = Color(marker.colour.toInt())
     when (marker.glyph) {
@@ -5357,7 +5439,45 @@ private fun DrawScope.drawMarker(view: ChartViewport, marker: ChartMarker, densi
             drawPath(triangle, colour)
         }
     }
+    val label = marker.label?.takeIf { detail == MarkerDetail.LABEL && it.isNotBlank() } ?: return null
+    // The word is the *stage* colour on a plate of the marker's own, which is the same arrangement
+    // the price tag and the alert chip use: a coloured word on a coloured plate of the same hue is
+    // four characters at a contrast ratio of about two, and this is four characters on a candle.
+    val measured = measurer.measure(label, markerLabelStyle(palette.stage))
+    val padding = MARKER_LABEL_PADDING_DP * density
+    val width = measured.size.width + padding * 2
+    val height = measured.size.height + padding
+    val left = x - width / 2
+    // The word is on the far side of the glyph from the bar: below a buy, above a sell, so it never
+    // lands between the mark and the candle it is about.
+    val top = if (marker.above) anchor - size / 2 - height - padding else anchor + size / 2 + padding
+    val rect = Rect(left, top, left + width, top + height)
+    if (rect.left < 0f || rect.right > view.plotWidth) return null
+    if (rect.top < 0f || rect.bottom > view.plotHeight) return null
+    if (legendGuard != null && rect.overlaps(legendGuard)) return null
+    if (taken.any { it.overlaps(rect) }) return null
+    drawRoundRect(
+        color = colour.copy(alpha = MARKER_LABEL_PLATE_ALPHA),
+        topLeft = Offset(rect.left, rect.top),
+        size = Size(rect.width, rect.height),
+        cornerRadius = CornerRadius(MARKER_LABEL_RADIUS_DP * density, MARKER_LABEL_RADIUS_DP * density),
+    )
+    drawText(measured, topLeft = Offset(rect.left + padding, rect.top + padding / 2))
+    return rect
 }
+
+/**
+ * The marker label's type: 11 sp Medium.
+ *
+ * Medium rather than Regular because it is four characters on a busy ground and has to survive a
+ * candle behind it. The colour is the stage's, over a plate in the marker's own — see the call site
+ * for why it is not the other way round.
+ */
+private fun markerLabelStyle(colour: Color): TextStyle = TextStyle(
+    color = colour,
+    fontSize = MARKER_LABEL_SP.sp,
+    fontWeight = FontWeight.Medium,
+)
 
 /**
  * The setup, anchored to the bar the position opened on.
@@ -6707,17 +6827,43 @@ private const val MARKER_CLEARANCE = 8f
  */
 private const val MARKER_SIZE = 6f
 
+/** The marker label: 11 sp Medium, on a 4 dp plate in the marker's own colour. */
+private const val MARKER_LABEL_SP = 11f
+private const val MARKER_LABEL_PADDING_DP = 4f
+private const val MARKER_LABEL_RADIUS_DP = 4f
+
+/**
+ * The plate behind the word, as a share of the marker's colour.
+ *
+ * Eighty-five per cent: opaque enough that a candle behind it does not read through the four
+ * characters, and short of solid so the plate still belongs to the chart rather than sitting on top
+ * of it like a sticker.
+ */
+private const val MARKER_LABEL_PLATE_ALPHA = 0.85f
+
+/**
+ * How much of the plot the legend plate is assumed to cover, for the label guard.
+ *
+ * The plate's real size depends on how many studies are on and how tall the reader's system font is,
+ * and the draw pass has no way to ask it. These are its worst case — the budget it is allowed
+ * (`LEGEND_BUDGET`) and a generous width — and erring outwards costs at most a word near the
+ * top-left corner, where an un-guarded label would have been unreadable anyway.
+ */
+private const val LEGEND_GUARD_WIDTH = 0.62f
+private const val LEGEND_GUARD_HEIGHT = 0.3f
+
 /** Below this a pinch is a drag with slightly uneven fingers, not an intent to zoom. */
 private const val ZOOM_DEADZONE = 0.01f
 
 /**
- * How far the fingers must straddle an axis before a pinch is allowed to scale it.
+ * How far apart the fingers must be before a pinch is measured at all.
  *
- * Two fingers held side by side have a vertical span of a few pixels, and the ratio of two
- * near-zero numbers is noise. Below this the axis is left alone — which is also the right answer
- * for the gesture, because a reader whose fingers are level is asking about time.
+ * Two fingers this close are one touch as far as a ratio is concerned, and the ratio of two
+ * near-zero numbers is noise that would make the scale jitter for the whole gesture. It is a
+ * *distance* now rather than a per-axis span — see `PinchZone`: the axis a pinch drives is decided
+ * by where it started, so there is nothing left for an axis floor to discriminate.
  */
-private val PINCH_AXIS_FLOOR_DP = 12.dp
+private val PINCH_SPAN_FLOOR_DP = 12.dp
 
 /** How long the handle takes to grow under a finger, and to come back down after it lifts. */
 private const val HANDLE_GRAB_MS = 200
@@ -6736,19 +6882,55 @@ private val PLACE_PULSE_STROKE = 2.dp
  * radius and so cannot tell a horizontal pinch from a vertical one. See the pinch observer in
  * [CoineProChart] for why that distinction is the whole feature.
  */
-private fun PointerEvent.axisSpan(vertical: Boolean): Float {
+private fun PointerEvent.pinchSpan(): Float {
     val centroid = calculateCentroid(useCurrent = true)
     if (centroid == Offset.Unspecified) return 0f
     var total = 0f
     var counted = 0
     changes.forEach { change ->
         if (change.pressed) {
-            val position = change.position
-            total += abs(if (vertical) position.y - centroid.y else position.x - centroid.x)
+            val dx = change.position.x - centroid.x
+            val dy = change.position.y - centroid.y
+            total += sqrt(dx * dx + dy * dy)
             counted++
         }
     }
     return if (counted == 0) 0f else total / counted
+}
+
+/**
+ * What a two-finger gesture drives, decided by **where it started** (run Σ, S1).
+ *
+ * The plot zooms time, the price gutter scales price, the date strip scales time. Nothing else is
+ * consulted — in particular not the angle between the fingers, which is what the code this replaces
+ * used and what made a horizontal pinch unreachable. See the pinch handler in [CoineProChart].
+ *
+ * A gesture that begins in a gutter keeps that gutter for its whole life even if the fingers wander
+ * onto the plot, which is the same rule every scroll container uses: the surface the gesture claimed
+ * is the surface it belongs to until the fingers lift.
+ */
+internal enum class PinchZone {
+    /** The candles. Time zoom, and the price too when the price scale is manual. */
+    PLOT,
+
+    /** The price ladder, on whichever side it is drawn. Price only. */
+    PRICE,
+
+    /** The date strip along the foot. Time only, and not anchored on the fingers. */
+    TIME,
+}
+
+/**
+ * Which zone [start] is in, for a canvas whose plot is [frame] and whose date strip begins at
+ * [timeAxisTop] (zero or less when there is no strip).
+ *
+ * The time axis is tested first: it spans the full width, gutters included, so a corner belongs to
+ * the strip rather than to the ladder above it.
+ */
+internal fun pinchZoneOf(frame: PlotFrame, timeAxisTop: Float, start: Offset): PinchZone = when {
+    timeAxisTop > 0f && start.y >= timeAxisTop -> PinchZone.TIME
+    frame.inGutter(start.x, 0f) -> PinchZone.PRICE
+    else -> PinchZone.PLOT
 }
 
 /**
@@ -6792,8 +6974,6 @@ private const val LIVE_CLOSE_MS = 150
 private const val TICK_FLASH_MS = 200
 private const val TICK_FLASH_MIX = 0.35f
 
-/** The pinch rate: bar spacing × 1.0025 per pixel of finger travel. */
-private const val PINCH_BASE = 1.0025f
 
 /** The magnifier over a dragged handle: twice the size, a wide short lens, rounded like a plate. */
 private const val MAGNIFIER_ZOOM = 2f

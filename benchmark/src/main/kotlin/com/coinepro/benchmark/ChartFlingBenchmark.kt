@@ -2,6 +2,7 @@ package com.coinepro.benchmark
 
 import android.content.Intent
 import android.net.Uri
+import android.view.MotionEvent
 import androidx.benchmark.macro.CompilationMode
 import androidx.benchmark.macro.FrameTimingMetric
 import androidx.benchmark.macro.MacrobenchmarkScope
@@ -18,6 +19,13 @@ private const val TARGET_PACKAGE = "com.coinepro.app"
 
 /** The chart the benchmark opens: the deepest history the app ships, on the busiest market. */
 private const val CHART_LINK = "coinepro://market/BTCUSDT"
+
+/** How many samples one pinch is driven through. Forty, the same as the UiAutomator pinch above. */
+private const val PINCH_STEPS = 40
+
+/** How far from the centre each finger starts and ends, as a share of the screen's short side. */
+private const val PINCH_NEAR = 0.05f
+private const val PINCH_FAR = 0.22f
 
 /**
  * Frame times while the chart is flung, pinched and panned — the numbers Phase 4 is judged on.
@@ -47,6 +55,36 @@ class ChartFlingBenchmark {
         repeat(3) {
             pinch(open = false)
             pinch(open = true)
+        }
+    }
+
+    /**
+     * **The gesture the owner reported as broken** (run Σ, S1).
+     *
+     * Two fingers separating and closing along a horizontal line through the plot, which is what
+     * «بیشتر کندل ببینم» is with a phone in one hand. It is a scenario of its own rather than a mode
+     * of [pinchZoom] because the two are different work for the renderer: a time zoom rebuilds the
+     * bar layout and every study on it, a price zoom only re-maps y, and averaging them into one
+     * number would hide a regression in either.
+     *
+     * `UiObject2.pinchOpen` cannot stand in for this. It pinches along the object's own widest axis
+     * and against its bounds, so on a full-screen object it spends part of its travel on the price
+     * gutter — which, correctly, does not zoom time at all.
+     */
+    @Test
+    fun horizontalPinch() = measure {
+        repeat(3) {
+            plotPinch(vertical = false, open = true)
+            plotPinch(vertical = false, open = false)
+        }
+    }
+
+    /** The same, upright. On the plot this is also a time zoom — see `PinchZone`. */
+    @Test
+    fun verticalPinch() = measure {
+        repeat(3) {
+            plotPinch(vertical = true, open = true)
+            plotPinch(vertical = true, open = false)
         }
     }
 
@@ -94,6 +132,51 @@ class ChartFlingBenchmark {
         val root = device.findObject(By.pkg(TARGET_PACKAGE).depth(0)) ?: return
         if (open) root.pinchOpen(0.4f, 40) else root.pinchClose(0.4f, 40)
         device.waitForIdle()
+    }
+
+    /**
+     * A two-finger pinch on the **plot**, along one axis, with an explicit pointer path.
+     *
+     * Both pointers are kept clear of the price gutter and of the date strip, so the gesture is
+     * routed to the time zoom by where it started — the rule `PinchZone` states. The travel is a
+     * fifth of the screen each way over [PINCH_STEPS] samples, which at the default sampling is
+     * about a third of a second: fast enough to be a real pinch, slow enough that every frame in
+     * between is one the metric sees.
+     */
+    private fun MacrobenchmarkScope.plotPinch(vertical: Boolean, open: Boolean) {
+        val width = device.displayWidth
+        val height = device.displayHeight
+        // The plot is the top seventy per cent of the page and the gutter is the right eighth; the
+        // centre of what is left is a candle on every reader mode.
+        val centreX = (width * 0.42f).toInt()
+        val centreY = (height * 0.30f).toInt()
+        val near = (if (vertical) height else width) * PINCH_NEAR
+        val far = (if (vertical) height else width) * PINCH_FAR
+        val from = if (open) near else far
+        val to = if (open) far else near
+        val first = Array(PINCH_STEPS) { step ->
+            val reach = from + (to - from) * step / (PINCH_STEPS - 1f)
+            pointerAt(
+                x = if (vertical) centreX else centreX - reach.toInt(),
+                y = if (vertical) centreY - reach.toInt() else centreY,
+            )
+        }
+        val second = Array(PINCH_STEPS) { step ->
+            val reach = from + (to - from) * step / (PINCH_STEPS - 1f)
+            pointerAt(
+                x = if (vertical) centreX else centreX + reach.toInt(),
+                y = if (vertical) centreY + reach.toInt() else centreY,
+            )
+        }
+        device.performMultiPointerGesture(first, second)
+        device.waitForIdle()
+    }
+
+    private fun pointerAt(x: Int, y: Int): MotionEvent.PointerCoords = MotionEvent.PointerCoords().also {
+        it.x = x.toFloat()
+        it.y = y.toFloat()
+        it.pressure = 1f
+        it.size = 1f
     }
 
     private fun MacrobenchmarkScope.drag() {

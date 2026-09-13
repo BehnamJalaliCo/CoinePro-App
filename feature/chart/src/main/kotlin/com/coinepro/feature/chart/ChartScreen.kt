@@ -152,6 +152,7 @@ import com.coinepro.core.chart.TradeSide
 import com.coinepro.core.chart.ComparisonBasis
 import com.coinepro.core.chart.ComparisonSeries
 import com.coinepro.core.chart.MAX_COMPARISONS
+import com.coinepro.core.chart.MarkerStyle
 import com.coinepro.core.chart.PriceScaleMode
 import com.coinepro.core.chart.decimalsFor
 import com.coinepro.core.chart.formatPrice
@@ -1748,6 +1749,10 @@ fun ChartScreen(
             },
             onPractise = { controller.enterReplay() },
             onSelect = { id -> explaining = id },
+            // What this study draws on the candles (run Σ, S2). Offered only for a study — the
+            // chart's own card has no marks of its own to configure.
+            markerStyle = explaining?.let { state.markerStyles[it] } ?: MarkerStyle.LABELS,
+            onSetMarkerStyle = explaining?.let { id -> { style -> controller.setMarkerStyle(id, style) } },
         )
     }
     val rasadPanel = ChartSidePanel(
@@ -2528,6 +2533,8 @@ fun ChartScreen(
                 }.takeIf { !state.replay.isOn && state.series.bars.size >= Replay.MINIMUM_BARS },
                 onSelect = { explaining = it },
                 onShowTimeframes = controller::readAcrossTimeframes,
+                markerStyle = explaining?.let { state.markerStyles[it] } ?: MarkerStyle.LABELS,
+                onSetMarkerStyle = explaining?.let { id -> { style -> controller.setMarkerStyle(id, style) } },
             )
         }
 

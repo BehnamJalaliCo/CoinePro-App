@@ -640,6 +640,10 @@
     <string name="chart_confidence_r">نتیجه‌ی میانگین: %1$s برابر ریسک.</string>
     <string name="chart_confidence_bars">%1$s کندل</string>
     <string name="chart_explain_stop">حد ضرر پیشنهادی: زیر %1$s</string>
+    <string name="chart_marker_style">روی کندل‌ها</string>
+    <string name="chart_marker_labels">با برچسب</string>
+    <string name="chart_marker_triangles">فقط مثلث</string>
+    <string name="chart_marker_off">خاموش</string>
     <string name="chart_explain_alert">روی سیگنال بعدی هشدار بسازید</string>
     <string name="chart_explain_practise">در ریپلی تمرین کنید</string>
     <string name="chart_explain_not_advice">خوانشی از گذشته است، نه توصیه.</string>

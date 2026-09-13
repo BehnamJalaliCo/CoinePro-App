@@ -128,6 +128,30 @@ data class ChartMarker(
     val colour: Long,
     val glyph: MarkerGlyph,
     val text: String? = null,
+    /**
+     * The word printed beside the glyph — «خرید» / «فروش» (run Σ, S2).
+     *
+     * Separate from [text], which a candle-pattern marker fills with the pattern's *name* and which
+     * nothing draws. This is a verdict and it is drawn; a pattern name is a caption for a sheet.
+     * Null on every marker that is not a signal, and then the glyph stands alone as it always has.
+     *
+     * ### Why a triangle was not enough
+     *
+     * «برچسب خرید/فروش روی فلش‌ها.» A triangle is a direction and the reader has to be told, once,
+     * which direction means what — and an app whose whole thesis is that a chart should say what it
+     * means cannot put an unlabelled arrow on a candle and call that saying it. The label costs
+     * nothing at the zoom a reader is actually looking at a signal from and is dropped at the zoom
+     * where it would be a smear; see `SignalMarkers.detailFor`.
+     */
+    val label: String? = null,
+    /**
+     * How loudly the study said it, 0..1 — [SignalEvent.strength], carried through.
+     *
+     * It picks the glyph's size: a marker for a cross that barely happened should not be the same
+     * object on the glass as one for a cross that went a long way past the line. Defaulted to one so
+     * every marker that is not a signal keeps the size it had.
+     */
+    val strength: Float = 1f,
 )
 
 /**

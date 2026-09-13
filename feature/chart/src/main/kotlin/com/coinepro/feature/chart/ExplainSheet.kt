@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.chart.ConfidenceEngine
 import com.coinepro.core.chart.ConfidenceReport
+import com.coinepro.core.chart.MarkerStyle
 import com.coinepro.core.chart.MarketState
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
@@ -37,6 +38,7 @@ import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.onPageAccent
+import com.coinepro.core.designsystem.pageAccent
 import com.coinepro.core.designsystem.pageAccentInk
 import com.coinepro.core.designsystem.numeric
 import kotlin.math.roundToInt
@@ -79,6 +81,16 @@ fun ExplainSheetBody(
     onSelect: (String) -> Unit,
     /** Ask for this study on the other bar lengths. Null where nothing can fetch them. */
     onShowTimeframes: ((String) -> Unit)? = null,
+    /**
+     * What this study draws on the candles, and how to change it (run Σ, S2).
+     *
+     * Null on a caller with nothing to set — a fixture, a preview — and then the row is absent
+     * rather than inert. The sheet is where it belongs because this is a setting *about one study*
+     * and this is the one surface that is about one study; putting it in the appearance sheet would
+     * make it a chart-wide switch, which is exactly what it must not be.
+     */
+    markerStyle: MarkerStyle = MarkerStyle.LABELS,
+    onSetMarkerStyle: ((MarkerStyle) -> Unit)? = null,
 ) {
     val english = inEnglish()
     Column(
@@ -174,6 +186,30 @@ fun ExplainSheetBody(
             )
         }
 
+        // 5. What it puts on the candles. Three chips, because the middle one is the setting people
+        // reach for: a reader who has learned which way a triangle points wants the candles back and
+        // does not want the study silenced.
+        onSetMarkerStyle?.let { set ->
+            HorizontalDivider(color = CoineProColors.BorderSubtle)
+            Text(
+                text = stringResource(R.string.chart_marker_style),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                modifier = Modifier.semantics { contentDescription = MARKER_STYLE_ROW },
+            ) {
+                for (option in MarkerStyle.entries) {
+                    MarkerStyleChip(
+                        option = option,
+                        selected = option == markerStyle,
+                        onClick = { set(option) },
+                    )
+                }
+            }
+        }
+
         // **The same study, on the bigger picture.**
         //
         // Asked for rather than shown: each row is a request for bars this chart does not hold, and
@@ -229,6 +265,29 @@ fun ExplainSheetBody(
             color = CoineProColors.TextMuted,
         )
     }
+}
+
+/** One of the three answers to «what does this study draw on the candles». */
+@Composable
+private fun MarkerStyleChip(option: MarkerStyle, selected: Boolean, onClick: () -> Unit) {
+    val label = stringResource(
+        when (option) {
+            MarkerStyle.LABELS -> R.string.chart_marker_labels
+            MarkerStyle.TRIANGLES -> R.string.chart_marker_triangles
+            MarkerStyle.OFF -> R.string.chart_marker_off
+        },
+    )
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        color = if (selected) CoineProColors.onPageAccent else CoineProColors.TextSecondary,
+        modifier = Modifier
+            .clip(CoineProPillShape)
+            .background(if (selected) CoineProColors.pageAccent else CoineProColors.SurfaceElevated)
+            .clickable(onClick = onClick)
+            .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half)
+            .semantics { contentDescription = "marker-style-${option.name.lowercase()}" },
+    )
 }
 
 /**
@@ -415,3 +474,6 @@ private fun formatR(value: Double): String {
 
 private val STATE_DOT = 8.dp
 private val OUTCOME_DOT = 6.dp
+
+/** What a test looks for to find the three marker-style chips. */
+private const val MARKER_STYLE_ROW = "marker-style-row"

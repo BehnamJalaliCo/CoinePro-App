@@ -6,6 +6,7 @@ import com.coinepro.core.chart.ChartMarker
 import com.coinepro.core.chart.ConfidenceEngine
 import com.coinepro.core.chart.ConfidenceReport
 import com.coinepro.core.chart.MarkerGlyph
+import com.coinepro.core.chart.MarkerStyle
 import com.coinepro.core.chart.MarketState
 import com.coinepro.core.chart.NoteShape
 import com.coinepro.core.chart.SetupScore
@@ -59,6 +60,16 @@ data class ChartSignalLayer(
      * nothing answered», and the sheet says which.
      */
     val across: Map<String, List<TimeframeRead>> = emptyMap(),
+    /**
+     * Which language this layer was read in.
+     *
+     * Carried rather than asked for again, because the markers on the candles are labelled «خرید» /
+     * «فروش» (run Σ, S2) and they are built from a `ChartUiState` getter that has no composition
+     * around it to read a locale from. The engine already knows — it was given `english` to write
+     * the sentences with — so it stamps what it used, and the label and the sentence can never end
+     * up in two different languages on one chart.
+     */
+    val english: Boolean = false,
 ) {
     val isEmpty: Boolean get() = reads.isEmpty()
 
@@ -184,6 +195,7 @@ object ChartSignalEngine {
             horizon = horizon,
             authored = authored,
             names = names,
+            english = english,
         )
     }
 
@@ -230,21 +242,40 @@ object ChartSignalEngine {
      * it are the same colour, which is the only thing that makes a chart with three studies on it
      * readable.
      */
-    fun markersFor(layer: ChartSignalLayer, series: CandleSeries, hidden: Set<String> = emptySet()): List<ChartMarker> {
+    fun markersFor(
+        layer: ChartSignalLayer,
+        series: CandleSeries,
+        hidden: Set<String> = emptySet(),
+        /**
+         * What the reader has asked for on each study's marks, by id (run Σ, S2).
+         *
+         * Absent means [MarkerStyle.LABELS], which is the default and the whole point: a first
+         * chart says «خرید» under its triangles without anybody choosing anything.
+         * [MarkerStyle.OFF] drops the study's marks here rather than at the draw pass, so a silenced
+         * study costs the renderer nothing and the reader keeps its pill, its score and its sheet.
+         */
+        styles: Map<String, MarkerStyle> = emptyMap(),
+    ): List<ChartMarker> {
         if (layer.isEmpty || series.isEmpty) return emptyList()
         val marks = mutableListOf<ChartMarker>()
         for (read in layer.reads) {
             if (read.id in hidden) continue
+            if (styles[read.id] == MarkerStyle.OFF) continue
+            val labelled = styles[read.id] != MarkerStyle.TRIANGLES
             val colour = ChartCatalog.INDICATORS.firstOrNull { it.id == read.id }?.colour ?: SCRIPT_MARK_COLOUR
             for (event in read.events.takeLast(MARKERS_PER_STUDY)) {
                 val bar = series.bars.getOrNull(event.bar) ?: continue
                 val buy = event.side == TradeSide.BUY
                 marks += ChartMarker(
                     time = bar.t,
+                    // Under the low for a buy and over the high for a sell, which is where the label
+                    // goes too: a word printed across the body hides the bar it is about.
                     price = if (buy) bar.l else bar.h,
                     above = !buy,
                     colour = colour,
                     glyph = if (buy) MarkerGlyph.ARROW_UP else MarkerGlyph.ARROW_DOWN,
+                    label = if (labelled) event.side.action(layer.english) else null,
+                    strength = event.strength,
                 )
             }
         }

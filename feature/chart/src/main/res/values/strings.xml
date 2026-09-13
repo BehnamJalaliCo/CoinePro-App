@@ -620,6 +620,10 @@
     <string name="chart_confidence_r">Average result: %1$s times the risk.</string>
     <string name="chart_confidence_bars">%1$s bars</string>
     <string name="chart_explain_stop">Suggested stop: below %1$s</string>
+    <string name="chart_marker_style">On the candles</string>
+    <string name="chart_marker_labels">Labels</string>
+    <string name="chart_marker_triangles">Triangles only</string>
+    <string name="chart_marker_off">Off</string>
     <string name="chart_explain_alert">Alert me on the next signal</string>
     <string name="chart_explain_practise">Practise this in replay</string>
     <string name="chart_explain_not_advice">A reading of the past, not advice.</string>

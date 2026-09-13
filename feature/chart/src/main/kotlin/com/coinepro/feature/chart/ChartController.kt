@@ -38,6 +38,7 @@ import com.coinepro.core.chart.IndicatorPane
 import com.coinepro.core.chart.IndicatorSource
 import com.coinepro.core.chart.LineStyleKind
 import com.coinepro.core.chart.MagnetMode
+import com.coinepro.core.chart.MarkerStyle
 import com.coinepro.core.chart.MAX_COMPARISONS
 import com.coinepro.core.chart.ObjectTree
 import com.coinepro.core.chart.PriceChannel
@@ -237,6 +238,16 @@ data class ChartUiState(
      * Visibility tab. Hidden, not off: the period and the style are kept for the way back.
      */
     val hiddenIndicators: Set<String> = emptySet(),
+    /**
+     * What the reader has asked for on each study's marks — labels, triangles, or nothing (run Σ).
+     *
+     * Absent is [MarkerStyle.LABELS], so a chart nobody has configured says «خرید» under its
+     * triangles. Beside [hiddenIndicators] and session-scoped like it: both are «what I want to see
+     * right now», not «how this study is set up», and a reader who silences a noisy study for an
+     * afternoon should not find it silenced next week. The study's *settings* — its period, its
+     * colour — are the ones that persist.
+     */
+    val markerStyles: Map<String, MarkerStyle> = emptyMap(),
     /**
      * The NamaScript scripts running on this chart, in the order the reader added them (4.73.0).
      *
@@ -945,7 +956,7 @@ data class ChartUiState(
             // that study's colour. They are appended rather than merged for the same reason the
             // patterns are — they belong to a different question — and an eye switched off on a
             // study takes its marks with it, which is what `hiddenIndicators` is doing here.
-            val signalled = ChartSignalEngine.markersFor(signals, visibleSeries, hiddenIndicators)
+            val signalled = ChartSignalEngine.markersFor(signals, visibleSeries, hiddenIndicators, markerStyles)
             if (scripted.isEmpty() && patterned.isEmpty() && signalled.isEmpty()) return derived.markers
             return derived.markers + scripted + patterned + signalled
         }
@@ -2249,6 +2260,20 @@ class ChartController(
     }
 
     /** Draw or stop drawing one switched-on indicator. The legend's eye and the Visibility tab. */
+    /**
+     * What to draw on the candles for one study (run Σ, S2).
+     *
+     * Three states rather than a switch, because the middle one is the setting readers actually
+     * reach for: a reader who has learned which way a triangle points wants the candles back and
+     * does not want the study silenced. See `MarkerStyle`.
+     */
+    fun setMarkerStyle(id: String, style: MarkerStyle) = _state.update { old ->
+        // The default is not stored, so a map with nothing in it is a chart nobody has configured
+        // and every read of it is one branch rather than a lookup.
+        val styles = if (style == MarkerStyle.LABELS) old.markerStyles - id else old.markerStyles + (id to style)
+        if (styles == old.markerStyles) old else old.copy(markerStyles = styles)
+    }
+
     fun toggleIndicatorHidden(id: String) = _state.update { old ->
         old.copy(hiddenIndicators = if (id in old.hiddenIndicators) old.hiddenIndicators - id else old.hiddenIndicators + id)
     }
