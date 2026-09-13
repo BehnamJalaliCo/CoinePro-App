@@ -20,10 +20,13 @@ import com.coinepro.core.designsystem.CoineProFold
 import com.coinepro.core.designsystem.LocalCoineProFold
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
@@ -262,7 +265,34 @@ class MainActivity : FragmentActivity() {
             // during the first two seconds does not start the launch again, and a plain Box so the
             // app underneath composes — and loads — while the sheet is still up.
             var launched by rememberSaveable { mutableStateOf(false) }
+            // **When the app underneath is allowed to compose** (4.87.1).
+            //
+            // It used to be «immediately», and that was the stutter the owner reported. The first
+            // composition of this tree is the most expensive thing the app ever does — every
+            // controller, every store's first read — and it ran on the same main thread that owed
+            // the launch sheet a frame every eight milliseconds. A wall-clock animation does not
+            // slow down when that thread is busy; it skips.
+            //
+            // So the sheet draws its lockup alone, and the app composes during the *hold* that
+            // follows, where nothing is moving and a dropped frame cannot be seen. The sheet then
+            // waits for one frame of the composed app before it fades — bounded, so a slow phone
+            // gets a half-drawn chart rather than a white screen.
+            //
+            // `launched` is in the condition as well, because a rotation restores it as true and the
+            // app must compose whether or not a sheet is there to say so.
+            var composeApp by remember { mutableStateOf(false) }
+            var appDrawn by remember { mutableStateOf(false) }
+            if (composeApp || launched) {
+                LaunchedEffect(Unit) {
+                    // One frame after this tree exists. `withFrameNanos` resumes in the frame
+                    // callback, so by the time it returns the composition has been through layout
+                    // and draw at least once — which is the claim the sheet is waiting on.
+                    withFrameNanos { }
+                    appDrawn = true
+                }
+            }
             Box {
+            if (composeApp || launched) {
             // One collection of the dismissal set for the whole app. Around `CoineProApp` rather
             // than inside it, so no screen has to be handed a store it does not otherwise use.
             CompositionLocalProvider(
@@ -363,7 +393,14 @@ class MainActivity : FragmentActivity() {
             )
             }
             }
-            if (!launched) LaunchSplash(onFinished = { launched = true })
+            }
+            if (!launched) {
+                LaunchSplash(
+                    onFinished = { launched = true },
+                    onDrawn = { composeApp = true },
+                    appReady = appDrawn,
+                )
+            }
             // **The one question the app asks** (run Ω3), between the splash and the chart.
             //
             // Over the app rather than in the back stack, for the same reason the splash is: the

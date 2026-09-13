@@ -655,3 +655,38 @@ mark survived the tint.
 | Changed | `BrandConfig.SUPPORT_URL` → `t.me/ProChart_Sup`; the safety card leads with the chat |
 | Tests | `TradePartnersTest` (4), `SupportChannelProofTest` (3) |
 | Frames | `support-profile-phone-fa.png`, `support-safety-phone-fa.png` |
+
+## 4.87.1 — a note that asks, and a launch that does not catch
+
+The support note said what we are rather than what to do. «با یک آدم حرف می‌زنید، نه با ربات» is
+true and it is an answer to a question nobody asked at that moment; the row now says «نظرها،
+پیشنهادها و انتقادهایتان را برای ما بفرستید». The claim about a person did not go anywhere — it is
+the title of the row and the mark beside it — but the second line of a settings row is where a
+reader looks for the verb.
+
+The launch is the more interesting one, because the obvious diagnosis is wrong. A stuttering
+animation looks like a problem with the animation, and this one was mostly a problem with what was
+happening behind it: the entire app composed underneath the sheet while the sheet was moving. That
+is the most expensive composition this app ever does, it is on the main thread, and the sheet's
+clock is a wall clock — so a blocked thread does not slow the wipe down, it makes it jump. «گیر
+داره» is exactly what a wall-clock animation looks like when the thread is busy.
+
+So the order changed rather than the curve: draw the lockup with nothing else running, say so, let
+the app compose during a **hold** where nothing is moving and a dropped frame cannot be seen, then
+fade. The hold is bounded at 900 ms, because the failure mode of waiting is a white screen with a
+logo on it, and a chart that arrives half-drawn is better than that.
+
+The curve was wrong too, in the way that is easy to miss: it was constant-speed with a dead stretch
+in the middle of it — the mark finished at 0.36, the name started at 0.34, and between 0.72 and 0.86
+nothing happened at all. A reveal that stops twice reads as a stall at a perfect sixty frames. The
+phases now overlap, and — deliberately the opposite of the obvious arrangement — the **clock is
+linear and each phase is eased on its own**. An eased clock spends its speed at the front: under a
+decelerating curve the mark was done a quarter of the way in and the name spent four hundred
+milliseconds creeping a few pixels, which is the same fault from the other end.
+
+| | |
+|---|---|
+| Changed | `profile_action_support_chat_note` and `safety_support_body`; `LaunchSplash` phases, easing and hand-over; `MainActivity` composes the app on `onDrawn` |
+| Tests | `LaunchSplashTest` (4) — the order, the bounded hold, the reduced-motion still, and three frames |
+| Frames | `launch-draw-320ms.png`, `launch-draw-620ms.png`, `launch-landed.png` |
+| Owed to a device | how it *feels*. A container renders frames; it does not drop them the way a phone under first-composition load does |

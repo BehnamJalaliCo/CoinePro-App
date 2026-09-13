@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import com.coinepro.core.designsystem.CoineProMotionSpecs
 import com.coinepro.core.designsystem.PRO_CHART_FA
 import com.coinepro.core.designsystem.brandWipe
 import com.coinepro.core.designsystem.ProChartMark
@@ -48,18 +49,39 @@ import kotlinx.coroutines.delay
  *
  * ### How it moves
  *
- * One clock, [SPLASH_MS] long, and everything is read off it:
+ * One clock, [DRAW_MS] long and linear, and everything is read off it — each phase eased on its own
+ * rather than the clock eased for all of them, for the reason [smooth] gives:
  *
- *  * the **mark** wipes in from left to right over the first third while easing up from 88 % to
+ *  * the **mark** wipes in from left to right over the first half while easing up from 92 % to
  *    full size — a shape being drawn rather than a picture being faded;
  *  * the **name** wipes in from its reading edge — the right in Persian, the left in English —
- *    over the middle third, after the mark has landed;
- *  * the whole sheet **holds** and then fades over the last [FADE_MS], and the app underneath, which
- *    has been composing the whole time, is simply there.
+ *    starting *before the mark has finished*, so the two motions hand over rather than queue;
+ *  * both carry a short alpha rise with the wipe, so a frame lost to the app composing underneath
+ *    reads as a softer edge rather than as a stopped clip;
+ *  * then the sheet holds, still, until the app underneath has drawn a frame, and fades over
+ *    [FADE_MS].
  *
  * A wipe rather than a blur or a glow, because the house rules allow neither and because a wipe
  * is what "streaming in" looks like; and one progress value rather than a chain of animations,
  * because a chain is the kind of thing that leaves a frame behind when the reader rotates the phone.
+ *
+ * ### Why it used to stutter
+ *
+ * Two reasons, and only the second is about the animation.
+ *
+ * The first is that **the whole app was composing underneath while this was moving.** A launch is
+ * the most expensive composition this app ever does — every controller, every store's first read —
+ * and it happens on the same main thread that has to produce a frame every eight milliseconds for
+ * the wipe. The wipe is driven from a wall clock, so a blocked thread does not slow it down: it
+ * *skips*, which is precisely what «گیر داره» looks like. The sheet now draws its lockup first and
+ * the app composes during the **hold**, where nothing is moving and a lost frame is invisible.
+ * Waiting is still cheap because it is only a hold, not a longer launch.
+ *
+ * The second is that the clock ran at a constant speed with a dead stretch in it: the mark
+ * finished at 0.36, the name started at 0.34, and from 0.72 to 0.86 nothing at all happened. A
+ * constant-speed reveal that stops twice reads as a stall even at a perfect sixty frames. The
+ * phases now overlap and each is eased on its own, so both the mark and the name accelerate in and
+ * settle out, and neither waits for the other.
  *
  * ### Reduced motion
  *
@@ -84,22 +106,53 @@ fun LaunchSplash(
     modifier: Modifier = Modifier,
     /** Whether to draw the sheet in or show it finished. The device's animation setting, by default. */
     moving: Boolean = continuousMotionAllowed(),
+    /**
+     * Called once the lockup has finished drawing, before the sheet fades.
+     *
+     * This is the signal the launch was missing: it tells the caller that the expensive part of the
+     * animation is over and the main thread is free, so the app can compose under a *still* sheet
+     * rather than under a moving one. See the note on stuttering above. Defaulted to nothing, so a
+     * screenshot render or a preview needs to know none of this.
+     */
+    onDrawn: () -> Unit = {},
+    /**
+     * Whether the app underneath has drawn a frame and the sheet may go.
+     *
+     * The hold is bounded by [HOLD_CAP_MS] regardless: a launch that waits forever on a slow first
+     * composition is a white screen, which is worse than a chart that arrives half-drawn.
+     */
+    appReady: Boolean = true,
 ) {
     val finished by rememberUpdatedState(onFinished)
+    val drawn by rememberUpdatedState(onDrawn)
+    val ready by rememberUpdatedState(appReady)
     val progress = remember { Animatable(if (moving) 0f else 1f) }
+    val fade = remember { Animatable(0f) }
     LaunchedEffect(moving) {
         if (moving) {
-            progress.animateTo(1f, tween(SPLASH_MS, easing = LinearEasing))
+            progress.animateTo(1f, tween(DRAW_MS, easing = LinearEasing))
         } else {
             delay(STILL_MS.toLong())
         }
+        // The lockup is complete. Everything from here happens under a sheet that is not moving.
+        drawn()
+        // A hold, not a wait: the app is composing and the reader is looking at a finished mark.
+        // `HOLD_MIN_MS` keeps the lockup on screen long enough to be read even on a fast phone,
+        // where the app is ready before the mark has landed.
+        val until = HOLD_CAP_MS
+        var waited = 0
+        while (waited < until && (waited < HOLD_MIN_MS || !ready)) {
+            delay(HOLD_STEP_MS.toLong())
+            waited += HOLD_STEP_MS
+        }
+        if (moving) fade.animateTo(1f, tween(FADE_MS, easing = FADE_EASING))
         finished()
     }
     DarkSystemBarIcons()
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val lockupOnly = booleanResource(DesignR.bool.prochart_wordmark_is_lockup)
     val t = progress.value
-    val sheetAlpha = if (moving) 1f - phase(t, FADE_FROM, 1f) else 1f
+    val sheetAlpha = 1f - fade.value
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -113,25 +166,32 @@ fun LaunchSplash(
             verticalArrangement = Arrangement.spacedBy(LOCKUP_GAP),
         ) {
             if (!lockupOnly) {
-                val drawn = phase(t, 0f, MARK_UNTIL)
+                val drawnFraction = smooth(phase(t, 0f, MARK_UNTIL))
                 ProChartMark(
                     tint = Color.Black,
                     modifier = Modifier
                         .height(MARK_HEIGHT)
                         .width(MARK_HEIGHT)
                         .graphicsLayer {
-                            val scale = MARK_SCALE_FROM + (1f - MARK_SCALE_FROM) * drawn
+                            val scale = MARK_SCALE_FROM + (1f - MARK_SCALE_FROM) * drawnFraction
                             scaleX = scale
                             scaleY = scale
+                            // The alpha rise is the frame-drop insurance: a wipe alone has a hard
+                            // edge, and a hard edge that jumps two hundred pixels is a stutter. The
+                            // same jump under a rising alpha is a shape arriving.
+                            alpha = ease(drawnFraction, ALPHA_OVER)
                         }
-                        .brandWipe(drawn, fromLeft = true),
+                        .brandWipe(drawnFraction, fromLeft = true),
                 )
             }
-            val named = if (lockupOnly) phase(t, 0f, NAME_UNTIL) else phase(t, NAME_FROM, NAME_UNTIL)
+            val named = smooth(
+                if (lockupOnly) phase(t, 0f, NAME_UNTIL) else phase(t, NAME_FROM, NAME_UNTIL),
+            )
             ProChartWordmark(
                 tint = Color.Black,
                 modifier = Modifier
                     .width(if (lockupOnly) LOCKUP_WIDTH else NAME_WIDTH)
+                    .graphicsLayer { alpha = ease(named, ALPHA_OVER) }
                     // The Latin lockup reads left to right whatever the page does.
                     .brandWipe(named, fromLeft = !rtl || lockupOnly),
             )
@@ -167,18 +227,56 @@ private fun DarkSystemBarIcons() {
 private fun phase(t: Float, from: Float, to: Float): Float =
     ((t - from) / (to - from)).coerceIn(0f, 1f)
 
-/** The whole launch, and the still shown instead when animations are off. */
-private const val SPLASH_MS = 1800
+/**
+ * Smoothstep: in slowly, out slowly, and the same shape in both directions.
+ *
+ * **Each phase is eased, and the clock itself is linear** — which is the opposite of the obvious
+ * arrangement and is the one that works. An eased clock spends its speed at the front: under a
+ * decelerating curve the mark was finished a quarter of the way in and the name spent its last four
+ * hundred milliseconds creeping a few pixels, which is the same «گیر» read from the other end.
+ * Easing each phase instead gives the mark and the name each their own arrival, inside a clock whose
+ * halves are where the numbers say they are.
+ */
+private fun smooth(fraction: Float): Float {
+    val x = fraction.coerceIn(0f, 1f)
+    return x * x * (3f - 2f * x)
+}
+
+/** The alpha for a wipe that is [fraction] of the way across, full by [over]. */
+private fun ease(fraction: Float, over: Float): Float = smooth((fraction / over).coerceIn(0f, 1f))
+
+/** The draw-in, and the still shown instead when animations are off. */
+private const val DRAW_MS = 980
 private const val STILL_MS = 900
-private const val FADE_MS = 250
+private const val FADE_MS = 280
 
-/** Phases of the one clock, as fractions of [SPLASH_MS]. */
-private const val MARK_UNTIL = 0.36f
-private const val NAME_FROM = 0.34f
-private const val NAME_UNTIL = 0.72f
-private const val FADE_FROM = 1f - FADE_MS.toFloat() / SPLASH_MS
+/**
+ * The hold between the lockup landing and the sheet going.
+ *
+ * [HOLD_MIN_MS] is the floor: on a fast phone the app is ready before the mark is, and a sheet that
+ * vanished the instant it finished drawing would be a flash rather than a launch. [HOLD_CAP_MS] is
+ * the ceiling, and it is what stops a slow first composition from becoming a white screen —
+ * the app arrives half-drawn, which is what it did before this hold existed.
+ */
+private const val HOLD_MIN_MS = 260
+private const val HOLD_CAP_MS = 900
+private const val HOLD_STEP_MS = 20
 
-private const val MARK_SCALE_FROM = 0.88f
+/** Phases of the one clock, as fractions of [DRAW_MS]. Overlapped: no dead stretch. */
+private const val MARK_UNTIL = 0.58f
+private const val NAME_FROM = 0.40f
+private const val NAME_UNTIL = 1f
+
+/** How much of a wipe an element spends coming up to full opacity. */
+private const val ALPHA_OVER = 0.45f
+
+/**
+ * The sheet's way out: the house `Exit` curve, accelerating away, because a sheet that lingers at
+ * ten per cent opacity over a drawn chart is a grey veil rather than a transition.
+ */
+private val FADE_EASING = CoineProMotionSpecs.Exit
+
+private const val MARK_SCALE_FROM = 0.92f
 
 private val MARK_HEIGHT = 96.dp
 private val NAME_WIDTH = 176.dp

@@ -44,8 +44,9 @@ import com.coinepro.core.designsystem.R as DesignR
  * and handed it to whatever app they picked — a good way to file a report and a poor way to ask
  * something, because it ends in their own outbox with no sign that it arrived anywhere.
  *
- * So the row is now a chat, it is above the report rather than instead of it, and it carries
- * Telegram's own mark. The mark is the point of the frame: a brand glyph is how somebody finds a
+ * So the row is now a chat, it is above the report rather than instead of it, it asks for what the
+ * owner wants readers to send — «نظرها، پیشنهادها و انتقادهایتان» — and it carries Telegram's own
+ * mark. The mark is the point of the frame: a brand glyph is how somebody finds a
  * row without reading it, and this list draws every other glyph in the app's own ink — a Telegram
  * logo tinted grey is a grey circle. `ProfileAction.brandMark` is the exception, and a render is
  * the only thing that can say whether it survived the tint.
@@ -80,7 +81,7 @@ class SupportChannelProofTest {
                 actions = listOf(
                     ProfileAction(
                         label = "پشتیبانی در تلگرام",
-                        note = "با یک آدم حرف می‌زنید، نه با ربات.",
+                        note = "نظرها، پیشنهادها و انتقادهایتان را برای ما بفرستید.",
                         icon = DesignR.drawable.logo_telegram,
                         brandMark = true,
                     ) {},
