@@ -19,7 +19,7 @@ false on the device in every frame of two recordings.
 | S5 | Retention loop | ✅ | Σ3 below. `ReturnLoop` decides; Home draws. The card is absent on a quiet morning, which is most of what `ReturnLoopTest` (21) is about | `sigma3-return-loop-phone-fa.png`, `sigma3-return-loop-phone-en.png`, and `sigma3-return-loop-quiet-phone-fa.png` — the same fixture four minutes later, with neither card |
 | S6 | Account value: sync, export/import, guest migration | ✅ for the archive's own format and for watchlist + scripts; ❌ for layouts, the journal and server sync | `ReaderArchive` + `ReaderArchiveTest` (22) is D8's gate — write, export, wipe, import, compare, per store. The profile carries «پشتیبان‌گیری» and «بازگرداندن» for a guest, who needs them most because nothing of theirs is on a server. Import merges and never duplicates | **A round trip, so not a still.** The test is the evidence; the row's own note on the profile says what is in the file and what is not |
 | S7 | Community scripts | ❌ | Σ4 | — |
-| S8 | All of the above on tablet, parity matrix 100 % | ❌ | Σ5 | — |
+| S8 | All of the above on tablet, parity matrix 100 % | ✅ | Σ5 below. Sixteen renders of Σ's own surfaces at four windows; two real bugs found by rendering them, both fixed with a gate each; `PARITY_MATRIX.md` regenerated and now carries a «script studio» row filled at every window | `sigma-home-loop-{pixel-tablet,tab-s9-ultra,tablet-portrait,fold-open,fold-closed}-*.png`, `sigma-studio-*`, `sigma-paste-*`, `sigma-prompt-*`, `sigma-mine-*` |
 | S9 | This document, `REPORT.md`, `BLOCKED.md` | ✅ for Σ0 and Σ1 | The Σ0 and Σ1 sections below, and `REPORT.md` | **The documents are the evidence, not a subject of it** — and from 4.82.2 they are checked by `scripts/quality/check-checklist-honesty.py`, which fails on a ✅ whose Frame or Evidence cell points at nothing. It found this row |
 
 ## Σ0, item by item
@@ -127,6 +127,28 @@ and it is not made.
 **A streak is the arena's, not a login streak.** It counts days a reader played a replay round,
 which is a thing they did. A number that went up for opening the app would be a number about the
 app rather than about them.
+
+## Σ5, item by item — the big glass, and the browser
+
+| Σ5 item | State | Evidence | Frame |
+|---|---|---|---|
+| Every Σ surface rendered on a tablet, both foldings, both languages | ✅ | `SigmaTabletProofTest` — 19 renders at Pixel Tablet (1280×800), Galaxy Tab S9 Ultra (1973×1232), tablet portrait (800×1280) and the Pixel Fold open and closed. These were the first time any of Σ1's or Σ3's surfaces had been measured above 411 dp | `sigma-home-loop-*.png`, `sigma-studio-*.png`, `sigma-paste-*.png`, `sigma-prompt-*.png`, `sigma-mine-*.png` |
+| **Bug found: every scrolling sheet crashed on a tablet** | ✅ fixed | `CoineProSheet`'s dialog branch wrapped the body in a `verticalScroll`, and a scrolling container measures its child with an unbounded height. Any sheet whose body scrolls itself — the paste panel, the alert editor, the screener's filters, the webhook sheet — threw «Vertically scrollable component was measured with an infinity maximum height» the moment it opened above 840 dp, and had done since the dialog branch was written. The phone's `ModalBottomSheet` does not scroll its content either, so the fix is the same contract in a narrower window | **A gate**: `SheetShapeTest.a sheet whose body scrolls itself opens on a tablet` |
+| **Bug found: the dashboard column filled a twelve-inch panel** | ✅ fixed | Home is a list of cards, and every card was the full width of the device: a row with its symbol at one edge and its figure at the other, and a "do it" button 1973 dp wide. Capped at `CONTENT_MAX_WIDTH` (720 dp) and centred; a phone is narrower than the cap, so nothing on a phone moved | **A gate**: `ContentWidthTest`, two assertions that are opposites — capped on the widest panel, untouched on the phone — because a "fix" that narrowed the phone would be the worse bug. Frames: `sigma-home-loop-tab-s9-ultra-fa-dark.png` |
+| The paste and prompt sheets are the capped dialog, not a strip | ✅ | `CoineProSheet` already swapped shape at `showsTwoPanes`; `SheetShapeTest` asserts the cap. The frames render the same body inside the same cap, because a `Dialog` draws into its own window and an off-device capture of the activity comes back empty | `sigma-paste-pixel-tablet-fa-dark.png`, `sigma-prompt-tab-s9-ultra-en-light.png` |
+| Parity matrix regenerated, with a row for the studio | ✅ | `gen_parity_matrix.py` reads the qualifiers out of the test sources rather than a list beside them, so the matrix cannot claim a render that does not exist. «script studio» is filled at all six windows; the consistency gate fails when the committed copy is stale | — **a generated document**; `docs/qa/PARITY_MATRIX.md` is the evidence |
+| The web plan updated for BYO Script and the return loop | ✅ | `docs/web/PLAN.md` §3b — every Σ surface, where it lives, and what a browser would have to add. The answer is «nothing» for eleven of them and «nine lines» for `LastVisitStore`, because the decisions were written in `commonMain` and the screens draw them | **A plan is not a picture** — what it claims is where each type lives, and the two `ArchitectureTest`s are what hold that: no Android type may enter `chart-core/src/commonMain` or `namascript/src/commonMain`, and the build fails when one does |
+
+### What Σ5 does not claim
+
+**Nothing here was run on a tablet.** These are Robolectric renders at the panels' real dp, which is
+what found both bugs and is not the same as a device. The hinge in particular cannot be rendered at
+all — `PARITY_MATRIX.md` says so in its own words, and the fold columns are the two displays at
+their dp plus pure assertions about the posture.
+
+**The studio's editor is the one surface the web will not get free.** A text field with selection,
+an IME and a soft keyboard is real platform behaviour; §3b says so rather than leaving it to be
+discovered.
 
 ## What Σ0 does **not** claim
 

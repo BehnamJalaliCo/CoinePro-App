@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +34,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -52,6 +54,7 @@ import com.coinepro.core.common.DailyChallenge
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.SinceLastVisit
 import com.coinepro.core.common.PersianDateTime
+import com.coinepro.core.designsystem.CONTENT_MAX_WIDTH
 import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProAgentOrb
 import com.coinepro.core.designsystem.CoineProAssetLogo
@@ -239,7 +242,16 @@ fun HomeScreen(
         modifier = Modifier.fillMaxSize().background(CoineProColors.Stage),
     ) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            // Capped and centred on a tablet (run Σ, S8). Home is a column of cards, and a column
+            // of cards stretched across twelve inches of glass puts a row's name at one edge and
+            // its number at the other; the «since your last visit» card was the one that made it
+            // obvious, with three symbols and three percentages nearly two thousand dp apart.
+            // On a phone the cap is wider than the screen, so nothing moves.
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .widthIn(max = CONTENT_MAX_WIDTH)
+                .fillMaxSize()
+                .testTag(HOME_LIST),
             contentPadding = PaddingValues(
                 horizontal = CoineProSpacing.Gutter,
                 vertical = CoineProSpacing.Gutter,
@@ -1193,3 +1205,12 @@ private fun ChallengeCard(challenge: DailyChallenge, streak: Int, onDo: (Challen
         }
     }
 }
+
+/**
+ * The list Home is, so a test can measure how wide it was allowed to become (run Σ, S8).
+ *
+ * `ContentWidthTest` is the caller. A tag rather than a text match, because the thing being measured
+ * is the column itself and not any one card in it — and a text node is as wide as its own sentence,
+ * which is a number that says nothing about the layout.
+ */
+const val HOME_LIST = "home-list"

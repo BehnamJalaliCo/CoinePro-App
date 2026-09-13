@@ -42,8 +42,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Surface
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.widthIn
@@ -95,7 +93,14 @@ fun CoineProSheet(
                 color = CoineProColors.Surface,
                 border = BorderStroke(1.dp, CoineProColors.Border),
             ) {
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                // Deliberately **not** scrolling here (run Σ, S8). A container that scrolls measures
+                // its child with an unbounded height, and a body that scrolls itself — the paste
+                // panel, the alert editor, the screener's filters, half a dozen others — then throws
+                // rather than drawing: «Vertically scrollable component was measured with an
+                // infinity maximum height». On the phone the `ModalBottomSheet` below does not
+                // scroll either, so a body either scrolls itself or is short enough to fit; the
+                // tablet now holds to the same contract, in a narrower window.
+                Column {
                     CoineProSheetBody(title = title, subtitle = subtitle, onClose = onDismiss, content = content)
                 }
             }
@@ -516,3 +521,15 @@ internal const val SHEET_SCRIM_ALPHA = 0.4f
 
 /** The scrim behind a sheet that previews its changes on the chart: twenty per cent. */
 const val SHEET_PREVIEW_SCRIM_ALPHA = 0.2f
+
+/**
+ * The widest a single column of content gets before it stops being readable (run Σ, S8).
+ *
+ * A list of cards that fills a 1973 dp panel puts a row's label at one edge and its figure at the
+ * other, half a metre of glass apart, and turns a button into a pill the width of the device. The
+ * dashboard screens cap at this and centre what is left; the chart, which *wants* every pixel, does
+ * not. Seven hundred and twenty because it is about twice the sheet's cap and still one eyeful.
+ *
+ * On a phone it costs nothing: 411 dp is already narrower.
+ */
+val CONTENT_MAX_WIDTH = 720.dp

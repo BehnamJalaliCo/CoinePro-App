@@ -362,3 +362,70 @@ and nothing syncs to a server. S6's row and D8's row both say so.
 | Tests | `ReturnLoopTest` (21), `ReaderArchiveTest` (22), `ReturnLoopProofTest` (3 frames) |
 | Principles with a gate | 10 of 10 — D8's is honest about covering only half of its rule |
 | Frames | `sigma3-return-loop-phone-fa.png`, `-phone-en.png`, `-quiet-phone-fa.png` |
+
+# Σ5 — the big glass, and what rendering it found (4.84.0)
+
+## Two bugs, both of which had been there for months
+
+S8's line is «all of the above on tablet, parity matrix 100 %», and the honest way to do it is not
+to reason about layout — it is to render the surfaces at the panels' real dp and look. Nineteen
+renders later, two things were broken, and neither was new:
+
+**Every sheet whose body scrolls crashed above 840 dp.** `CoineProSheet` becomes a capped dialog on
+an expanded window, and that branch wrapped the body in a `verticalScroll`. A scrolling container
+measures its child with an unbounded height, so a body that scrolls itself throws — «Vertically
+scrollable component was measured with an infinity maximum height». That is the paste panel, the
+alert editor, the screener's filters, the webhook sheet and several more: not a cosmetic defect, a
+crash on open, on every tablet, since the dialog branch was written. Nothing caught it because no
+sheet body had ever been rendered above phone width.
+
+The fix is one word: the dialog does not scroll. The phone's `ModalBottomSheet` does not scroll its
+content either — a body either scrolls itself or is short enough to fit — so this is the same
+contract in a narrower window rather than a new rule. `SheetShapeTest` now opens a scrolling body at
+1280 dp, which is the test that would have caught it.
+
+**The dashboard filled a twelve-inch panel.** Home is a column of cards, and every card was the full
+width of the device: on a Galaxy Tab S9 Ultra, a watchlist row with its symbol at one edge and its
+percentage at the other, nearly two thousand dp apart, and a «انجامش بدهید» button the width of the
+glass. The «since your last visit» card — three symbols, three figures, one row each — is simply
+what made it impossible to keep looking past.
+
+Capped at `CONTENT_MAX_WIDTH` (720 dp) and centred. A phone is narrower than the cap, so nothing on
+a phone moved, and `ContentWidthTest` asserts both halves: capped on the widest panel, untouched at
+411 dp. The second assertion is the one that matters — a «fix» that narrowed the phone would be a
+worse bug than the one being fixed, and it would look fine in a diff.
+
+## Why the parity matrix is generated
+
+`gen_parity_matrix.py` reads `@Config(qualifiers = …)` out of the test sources. A matrix typed by
+hand says what somebody hoped; this one cannot claim a render that does not exist, and the
+consistency gate fails when the committed copy is stale. Σ's surfaces now have their own row —
+«script studio» — filled at all six windows, and Home's return-loop frames join the watchlist row.
+
+## The web plan, and the rule that made it short
+
+`docs/web/PLAN.md` §3b lists every surface Σ built. For eleven of them the answer to «what would a
+browser need» is *nothing*: `ScriptPaste`, `PineTranslator`, `ScriptTemplates`, `ScriptPromptKit`,
+`ScriptLibrary`, `ScriptDocument`, `ReturnLoop`, `ReaderArchive` and the rest are all `commonMain`.
+`LastVisitStore` is nine lines of `localStorage`. The share link needs the service the phone is
+already waiting for, and on the web that address is not a deep link at all — it is a page, and the
+natural home for S7's community surface.
+
+That is not web-mindedness for its own sake. `ReturnLoop` returns `null` rather than a card;
+`ScriptPaste` returns a list of fixes rather than a sheet; the library returns source rather than a
+chart. Writing the decisions away from the screens is what made all of them testable off a device —
+which is the only reason run Σ has gates at all.
+
+## What Σ5 does not claim
+
+Robolectric renders at a panel's dp are not a tablet. They found both bugs, which is the argument
+for them, and they are still not a device. The hinge cannot be rendered at all: the fold columns are
+the Pixel Fold's two displays at their dp plus pure assertions about the posture, and
+`PARITY_MATRIX.md` says so in its own words.
+
+| | |
+|---|---|
+| Renders added | 19, at four windows, both languages |
+| Bugs found by rendering | 2, both pre-existing, both with a gate now |
+| Gates added | `SheetShapeTest.a sheet whose body scrolls itself opens on a tablet`, `ContentWidthTest` (2) |
+| Parity matrix | regenerated; «script studio» filled at all six windows |

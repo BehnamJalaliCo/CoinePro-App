@@ -2,6 +2,9 @@ package com.coinepro.app
 
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
@@ -69,6 +72,38 @@ class SheetShapeTest {
         rule.onNodeWithText(TITLE).assertIsDisplayed()
         val width = rule.onNodeWithTag(TAG).getUnclippedBoundsInRoot().width
         assertTrue("sheet is $width wide", width >= 400.dp)
+    }
+
+    /**
+     * A body that scrolls itself opens on a tablet (run Σ, S8).
+     *
+     * The dialog branch used to wrap the body in a `verticalScroll`, and a scrolling container
+     * measures its child with an unbounded height. Every sheet whose body scrolls — the script
+     * paste panel, the alert editor, the screener's filters, the webhook sheet — therefore threw
+     * «Vertically scrollable component was measured with an infinity maximum height» the moment it
+     * was opened on a tablet, while being perfectly fine on the phone. Nothing caught it, because
+     * the sheet bodies were only ever rendered at phone widths.
+     *
+     * The phone's `ModalBottomSheet` does not scroll its content either: a body either scrolls
+     * itself or is short enough to fit. This is that same contract, asserted at the width that
+     * broke it.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-sw800dp-w1280dp-h800dp-xhdpi")
+    fun `a sheet whose body scrolls itself opens on a tablet`() {
+        rule.setContent {
+            CoineProTheme {
+                Box(Modifier.fillMaxSize()) {
+                    CoineProSheet(title = TITLE, onDismiss = {}, modifier = Modifier.testTag(TAG)) {
+                        Column(Modifier.verticalScroll(rememberScrollState())) {
+                            repeat(40) { Text("row $it") }
+                        }
+                    }
+                }
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithText(TITLE).assertIsDisplayed()
     }
 
     private companion object {

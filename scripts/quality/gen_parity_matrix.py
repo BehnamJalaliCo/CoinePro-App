@@ -39,6 +39,8 @@ TEST_FILES = [
     ROOT / "app/src/test/kotlin/com/coinepro/app/TouchTargetTest.kt",
     ROOT / "app/src/test/kotlin/com/coinepro/app/SheetShapeTest.kt",
     ROOT / "app/src/test/kotlin/com/coinepro/app/TabletProofTest.kt",
+    ROOT / "app/src/test/kotlin/com/coinepro/app/SigmaTabletProofTest.kt",
+    ROOT / "app/src/test/kotlin/com/coinepro/app/ContentWidthTest.kt",
 ]
 
 # Pure-JVM tests that pin a window decision without rendering it.
@@ -70,6 +72,11 @@ SCREENS = [
     ("alerts", ("alert",)),
     ("screener", ("screener",)),
     ("terminal / trade", ("terminal", "trade", "order", "dom", "ladder")),
+    # Run Σ's own surfaces: the studio and the two sheets a reader writes a script in,
+    # and the return loop at the top of Home. Listed after the screens above so that a
+    # studio frame is not swallowed by "chart" — it is reached from the chart and is not
+    # one.
+    ("script studio", ("studio", "paste", "prompt", "mine", "script")),
 ]
 
 CONST_RE = re.compile(r'const val ([A-Z_0-9]+) = "([^"]+)"')

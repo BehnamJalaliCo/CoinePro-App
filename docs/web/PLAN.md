@@ -56,6 +56,36 @@ clock, a locale, a formatter or a random. Every input is a parameter, including 
 also why both are testable to the degree they are — `ArenaTest`'s «the same day gives the same
 challenge» is, read another way, the web-parity test written a year early.
 
+## 3b. Run Σ's surfaces, and what a browser would need for each (run Σ, S8)
+
+Σ1 and Σ3 added a language, a repair table, a library, a document format, a share link and a return
+loop. The pattern held: everything that decides is in `commonMain`, and what is left is a screen.
+
+| surface | where it lives | what the web has to add |
+| --- | --- | --- |
+| `ScriptPaste` — dialect detection and the twenty repairs | `:namascript`, `commonMain` | nothing. Regular expressions over a string, masked for comments and literals, with both languages in the file |
+| `PineTranslator` | `:namascript`, `commonMain` | nothing |
+| `ScriptTemplates` — twelve, matched on keywords | `:namascript`, `commonMain` | nothing. The digit reader handles Persian and Latin figures in shared code |
+| `ScriptPromptKit` — the prompt, versioned | `:namascript`, `commonMain` | nothing. It is generated from `ScriptReference`, so it cannot go stale on either platform |
+| `ScriptLibrary` — sixty-one strategies | `:namascript`, `commonMain` | nothing. One table, both languages, identical code token for token |
+| `ScriptDocument` / `ScriptFile` / `ScriptLink` | `:namascript`, `commonMain` | nothing for the format. The **link** needs the same thing the phone is waiting for: a service behind `pro-chart.com/s/<id>`. On the web that address is not a deep link at all — it is a page, and it is the natural place for the community surface S7 describes |
+| `ReturnLoop` — «since your last visit», the challenge, the streak | `:core:common`, pure Kotlin | nothing. The challenge's walk is written-out arithmetic over the epoch day for the same reason the Arena's is: «the same for everybody» has to mean the same in a browser |
+| `ReaderArchive` / `ReaderArchiveFile` | `:core:common`, pure Kotlin | nothing for the format; a file picker for the import. A browser's is `<input type=file>`, and the export is a `Blob` download rather than the clipboard |
+| `LastVisitStore` | `:core:datastore`, Android `DataStore` | **a second implementation** — two longs in `localStorage`, or in the account once there is one. This is the only piece of Σ3 that does not cross, and it is nine lines |
+| `ScriptScreen`, `ScriptPasteBody`, `ScriptPromptBody`, `MinePanel` | `feature:script`, Compose | the §3 move. All four are bodies over values; the editor's own text field is the one piece with real platform behaviour (selection, an IME, a soft keyboard), and a browser's `<textarea>` behaves differently enough that it is worth saying so here rather than discovering it |
+| The two Home cards | `feature:home`, Compose | the §3 move, and nothing else: they render a `SinceLastVisit` and a `DailyChallenge` and call back with a `ChallengeSurface` |
+
+**The rule this run kept:** a decision goes in shared code and a screen draws it. `ReturnLoop`
+returns `null` rather than a card; `ScriptPaste` returns a list of fixes rather than a sheet; the
+library returns source rather than a chart. That is not web-mindedness for its own sake — it is what
+made every one of them testable off a device, which is why Σ has gates at all.
+
+**What the width work changed, and why the web gets it free.** S8 capped the dashboard column at
+`CONTENT_MAX_WIDTH` and centred it, because a list of cards across a 1973 dp panel puts a row's name
+at one edge and its number at the other. A browser window is the same problem with a mouse in it,
+and the app's rule — decide from the space given, never from «is this a phone» — means a maximised
+desktop window gets the same treatment without a line of new code.
+
 ## 4. What the server side needs
 
 None of this exists on `pro-chart.com` today (the host does not answer — `DOMAINS.md`). In the order it has to be built:
