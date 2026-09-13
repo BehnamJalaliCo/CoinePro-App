@@ -3702,7 +3702,12 @@ private fun MainShell(
                     previewCandles = previewCandles,
                     // A tap answers the question most taps are asking, for everybody but the reader
                     // who asked for the whole surface. See `ReaderMode.opensPreviewOnTap`.
-                    previewOnTap = readerMode.opensPreviewOnTap,
+                    //
+                    // And never on two panes (run Ω5): the preview exists because opening a chart
+                    // costs a route and four seconds, and on a tablet it costs neither — the chart
+                    // appears *beside* the list with the list still on screen, which is the preview's
+                    // own argument, better. A sheet over a two-pane layout would cover the answer.
+                    previewOnTap = readerMode.opensPreviewOnTap && !twoPane,
                     onMilestoneAlert = onMilestoneAlertArmed,
                     // The day's figures, which is what the gainers, losers and «داغ» tabs are made
                     // of. Passed as the store rather than a table so the screen starts and stops

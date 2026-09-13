@@ -30,6 +30,13 @@ import com.coinepro.feature.alerts.AlertsController
 import com.coinepro.feature.chart.ChartController
 import com.coinepro.feature.chart.ChartLayoutPreset
 import com.coinepro.feature.chart.ChartPanesScreen
+import com.coinepro.core.chart.Arena
+import com.coinepro.core.chart.ArenaChallenge
+import com.coinepro.core.chart.ArenaTrade
+import com.coinepro.feature.chart.ArenaSession
+import com.coinepro.core.marketdata.MarketMood
+import com.coinepro.core.marketdata.MarketTicker
+import com.coinepro.feature.home.HomeScreen
 import com.coinepro.feature.chart.ChartScreen
 import com.coinepro.feature.chart.ChartSidePanel
 import com.coinepro.feature.chart.ChartWorkspaceStore
@@ -424,6 +431,164 @@ class TabletProofTest {
                 ScriptScreen(controller = controller, symbol = "XAUUSD", series = series)
             },
         )
+    }
+
+    /**
+     * **Explain, docked** (run Ω5).
+     *
+     * The brief's own words: «Explain as a side panel». It is the same `ExplainSheetBody` the phone
+     * opens as a sheet — written as a body rather than a sheet from the day it landed, precisely so
+     * a tablet could dock it beside the chart it is explaining rather than over it.
+     */
+    @Composable
+    private fun PanelExplain() {
+        ChartScreen(controller = signalledController(), initialSidePanel = "explain")
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_1280)
+    fun panelExplainPixelTabletFaDark() = proof("panel-explain-pixel-tablet-fa-dark") { PanelExplain() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_1280)
+    fun panelExplainPixelTabletEnLight() = proof("panel-explain-pixel-tablet-en-light", darkTheme = false) { PanelExplain() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_S9U)
+    fun panelExplainTabS9UltraFaDark() = proof("panel-explain-tab-s9-ultra-fa-dark") { PanelExplain() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_S9U)
+    fun panelExplainTabS9UltraEnLight() = proof("panel-explain-tab-s9-ultra-en-light", darkTheme = false) { PanelExplain() }
+
+    /** **رصد, docked** (run Ω5). Three sentences beside the chart they are about. */
+    @Composable
+    private fun PanelRasad() {
+        ChartScreen(controller = signalledController(), initialSidePanel = "rasad")
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_1280)
+    fun panelRasadPixelTabletFaDark() = proof("panel-rasad-pixel-tablet-fa-dark") { PanelRasad() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_1280)
+    fun panelRasadPixelTabletEnLight() = proof("panel-rasad-pixel-tablet-en-light", darkTheme = false) { PanelRasad() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_S9U)
+    fun panelRasadTabS9UltraFaDark() = proof("panel-rasad-tab-s9-ultra-fa-dark") { PanelRasad() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_S9U)
+    fun panelRasadTabS9UltraEnLight() = proof("panel-rasad-tab-s9-ultra-en-light", darkTheme = false) { PanelRasad() }
+
+    /**
+     * **The Arena's result, beside the chart it scored** (run Ω5).
+     *
+     * On a phone the result covers the plot, which is right: the five minutes are over and there is
+     * nothing behind it to look at. On a tablet there is — the chart, with the reader's own trades
+     * still on it — so the two are read together.
+     */
+    @Composable
+    private fun PanelArena() {
+        val session = remember {
+            ArenaSession(
+                challenge = ArenaChallenge(symbol = "BTCUSDT", startBar = 120, epochDay = 20_000L),
+                epochDay = 20_000L,
+            ).apply {
+                start()
+                finish(
+                    Arena.score(
+                        listOf(
+                            ArenaTrade(hadStop = true, rMultiple = 1.8),
+                            ArenaTrade(hadStop = true, rMultiple = -1.0),
+                            ArenaTrade(hadStop = false, rMultiple = 0.4),
+                        ),
+                    ),
+                )
+            }
+        }
+        ChartScreen(
+            controller = signalledController(),
+            arena = session,
+            arenaStreak = 4,
+            arenaBest = 82,
+            initialSidePanel = "arena",
+        )
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_1280)
+    fun panelArenaPixelTabletFaDark() = proof("panel-arena-pixel-tablet-fa-dark") { PanelArena() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_1280)
+    fun panelArenaPixelTabletEnLight() = proof("panel-arena-pixel-tablet-en-light", darkTheme = false) { PanelArena() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_S9U)
+    fun panelArenaTabS9UltraFaDark() = proof("panel-arena-tab-s9-ultra-fa-dark") { PanelArena() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_S9U)
+    fun panelArenaTabS9UltraEnLight() = proof("panel-arena-tab-s9-ultra-en-light", darkTheme = false) { PanelArena() }
+
+    /**
+     * **The board's mood, at tablet width** (run Ω5).
+     *
+     * The one Ω4 surface that is not a chart panel. It is a Home card and needs no second layout —
+     * what it needs is a render wide enough to show that the split bar, the counts and the two chip
+     * rows do not stretch into a stripe across a 1280 dp page.
+     */
+    @Composable
+    private fun HomeMood() {
+        HomeScreen(
+            state = ScreenshotFixtures.marketState(),
+            onRetry = {},
+            sparklines = ScreenshotFixtures.sparklineStore(scope),
+            displayName = "بهنام",
+            watchlist = listOf("BTCUSDT", "ETHUSDT"),
+            mood = MarketMood(
+                breadth = 68,
+                advancing = 312,
+                declining = 147,
+                movers = moodTickers,
+                unusual = moodTickers.take(2),
+            ),
+        )
+    }
+
+    /** Three markets with a day behind them, for the strip to have something to name. */
+    private val moodTickers = listOf(
+        MarketTicker(symbol = "BTCUSDT", last = 91_248.0, changePercent24h = 6.4, turnover24h = 9.0e8),
+        MarketTicker(symbol = "ETHUSDT", last = 3_120.0, changePercent24h = -4.1, turnover24h = 4.0e8),
+        MarketTicker(symbol = "SOLUSDT", last = 184.0, changePercent24h = 3.2, turnover24h = 2.0e8),
+    )
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_1280)
+    fun homeMoodPixelTabletFaDark() = proof("home-mood-pixel-tablet-fa-dark") { HomeMood() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_1280)
+    fun homeMoodPixelTabletEnLight() = proof("home-mood-pixel-tablet-en-light", darkTheme = false) { HomeMood() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_S9U)
+    fun homeMoodTabS9UltraFaDark() = proof("home-mood-tab-s9-ultra-fa-dark") { HomeMood() }
+
+    @Test
+    @Config(sdk = [34], qualifiers = EN_S9U)
+    fun homeMoodTabS9UltraEnLight() = proof("home-mood-tab-s9-ultra-en-light", darkTheme = false) { HomeMood() }
+
+    /** A chart with two studies and a script on it, so the Signal Layer has something to say. */
+    @Composable
+    private fun signalledController() = remember {
+        ScreenshotFixtures.chartController(scope).also {
+            it.toggleIndicator("ema")
+            it.toggleIndicator("rsi")
+        }
     }
 
     private fun proof(name: String, darkTheme: Boolean = true, content: @Composable () -> Unit) {

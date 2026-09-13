@@ -356,3 +356,80 @@ the row the reader pressed was showing — rather than a percent from the moment
 | Goldens re-recorded | 54 (the chart page gained رصد's line) |
 | New string pairs | 26 |
 | Gates | all five |
+
+---
+
+## Ω5 — the tablet, and the map to the web (4.79.0)
+
+### Three panels, no second layout
+
+Explain, رصد and the Arena result dock beside the plot rather than covering it. That cost three
+`ChartSidePanel` declarations and nothing else, because all three were written as sheet *bodies*
+rather than sheets from the day each landed — `ExplainSheetBody`, `RasadSheetBody`,
+`ArenaResultBody`. On a phone a bottom sheet is the right shape: there is one column and the sheet is
+the second. On a tablet a sheet that covers the chart it is explaining is the wrong shape for exactly
+the same content. Same composable, two homes, nothing to keep in step.
+
+The Arena's is the clearest case. On a phone the result covering the plot is right — the five minutes
+are over and there is nothing behind it to look at. On a tablet there is: the chart the reader was
+just scored on, with their own trades still marked on it, and the score is worth more read against it.
+
+### The preview steps aside on two panes
+
+`previewOnTap` is false where the layout is list-detail. The preview exists because opening a chart
+costs a route and four seconds on this audience's connection; beside a two-pane layout it costs
+neither — the chart appears next to the list with the list still on screen, which is the preview's own
+argument, better. A sheet there would cover the answer.
+
+### A frame that caught a real defect
+
+The mood strip's tablet render showed the header, the counts and both chip rows — and no bar between
+them. The two halves of the split bar asked for the row's full *width* where they should have asked
+for its full *height*, so each measured against the weight rather than inside it and came out zero
+points tall. It was invisible on the phone too; nobody had looked at it against a ruler. This is what
+the render tests are for, and it is why the parity matrix is a count of renders rather than a
+checklist of intentions.
+
+### The map to the web
+
+`docs/web/PLAN.md` §3a. Five of the seven Ω1–Ω4 pieces are already in `:chart-core` with no Android
+on them — `SignalSpec`, `ConfidenceEngine`, `RasadCoach`, `Arena`, and the types the layer is made
+of. `ChartSignalLayer` is a bag of those same types sitting in the feature module only because that
+is where it was written; moving it down is a file move. `MarketMood` goes wherever the web's own
+ticker type does. `ShareCard` is the one surface that does not cross, and the document says so
+plainly: it draws with `android.graphics` because it has to work from a background thread with a
+context and no composition, and on the web the same card is a canvas with `ShareCardContent` as the
+contract both sides fill.
+
+The Arena's daily pick is a written-out multiplicative hash rather than a platform `Random`, and that
+was a decision taken *for* this document: «the same challenge for everybody» has to hold across a
+phone, a JVM test and a browser, and only arithmetic spelled out in common code does.
+`ArenaTest`'s «the same day gives the same challenge» is the web-parity test written a year early.
+
+### Numbers
+
+| | |
+|---|---|
+| New renders | 16 (`panelExplain` 4, `panelRasad` 4, `panelArena` 4, `homeMood` 4, each Fa-dark and En-light at Pixel Tablet and Tab S9 Ultra) |
+| Parity matrix | tablet columns 20 → **26** renders each; regenerated from the tests |
+| Defects the frames caught | 1 (the mood strip's split bar, zero points tall on every window) |
+| Gates | all five |
+
+### E6's last two rows, closed
+
+**«Zero explanatory prose» was a mechanism waiting for a decision.** The decision is `NotePolicy`,
+and reading it back: of the fifty-five notes `feature:chart` registers, exactly **one** is drawn
+inline — `setup_paper_trade_note`, which is about putting real money on a level — and the other
+fifty-four fold into an ⓘ with their full text one tap away. The three surfaces the row named were
+each checked: the timeframe sheet's seconds note goes through `CoineProNote`, so do the pane-sync
+notes, and the studio's five `studio_*_blurb` strings are a card's own content rather than a tip
+under a control, which is why they were renamed off the `_body` suffix in the first place. The lint
+fails the build on a demoted key that a source resolves itself, so the policy cannot be bypassed at a
+call site.
+
+**The before/after pairs exist.** `scripts/quality/gen_before_after.py` takes the commit a run began
+at and writes one sheet per changed golden — the frame as it was on the left, as it is on the right,
+at half width. Fifty-four sheets for run Ω, 1.9 MB as WEBP against nine as PNG, with an index naming
+the `git show` that gets each full-resolution *before* back. The pair for `chart-fa-411` is the run
+in one image: the disclosure at the foot of the page on the left, رصد's line and no disclosure on the
+right.

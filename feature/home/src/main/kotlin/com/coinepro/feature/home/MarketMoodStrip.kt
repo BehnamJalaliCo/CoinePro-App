@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -137,16 +138,20 @@ private fun BreadthBlock(breadth: Int, advancing: Int, declining: Int, lean: Mar
                 .height(BAR_HEIGHT)
                 .clip(CoineProPillShape),
         ) {
+            // `fillMaxHeight`, not `fillMaxWidth`: the weight is what sets each half's width, and a
+            // child that also asks for the row's full width measures against the weight rather than
+            // inside it. Without the height the two boxes are zero points tall and the bar is a
+            // sliver of nothing — which is what the first tablet frame showed.
             Box(
                 modifier = Modifier
                     .weight(breadth.coerceIn(1, 99).toFloat())
-                    .fillMaxWidth()
+                    .fillMaxHeight()
                     .background(CoineProColors.MarketUp),
             )
             Box(
                 modifier = Modifier
                     .weight((100 - breadth).coerceIn(1, 99).toFloat())
-                    .fillMaxWidth()
+                    .fillMaxHeight()
                     .background(CoineProColors.MarketDown),
             )
         }

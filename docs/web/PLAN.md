@@ -33,6 +33,29 @@ The two things that could break the compile and were looked at: `String.format` 
 
 **What the page does not have**, at first: the guest gateway, the KYC flow, copy trading, the account pages, push notifications. Those stay on the phone until the account API is behind the gateway (§4 below).
 
+## 3a. Run Ω's four surfaces, and where each of them already is (run Ω5)
+
+The brief's §Ω5 item 2 asks this document to say how the Signal Layer, Confidence, رصد and the Arena
+map to the web terminal. The answer is shorter than expected, and deliberately so: **three of the
+four are already in `:chart-core`**, which is the module with no Android on it, and the fourth is a
+Compose surface over them.
+
+| surface | where it lives | what the web has to add |
+| --- | --- | --- |
+| `SignalSpec` — what a study is saying | `:chart-core`, `commonMain` | nothing. Four rules over eighty-three built-ins, pure arithmetic, both languages in the file |
+| `ConfidenceEngine` — the base rate and its sample size | `:chart-core`, `commonMain` | nothing. A walk over the bars the chart already holds |
+| `ChartSignalEngine` / `ChartSignalLayer` — the chart's whole answer | `feature:chart` | **a move.** It is a bag of `:chart-core` types (`SignalRead`, `SetupScore`, `ConfidenceReport`) with no Android in it, and it sits in the feature module only because that is where it was written. Moving it down is a file move and an import change, and the day the web target exists is the day to do it |
+| `RasadCoach` — the three sentences | `:chart-core`, `commonMain` | nothing. It was written there for exactly this; it takes a `CandleSeries`, the reads and the score, and returns strings |
+| `Arena` — the daily challenge and the score | `:chart-core`, `commonMain` | nothing. The daily pick is a written-out multiplicative hash rather than a platform `Random`, **because of this document**: a challenge that is «the same for everybody» has to be the same on a phone, in a JVM test and in a browser, and only arithmetic spelled out in common code is |
+| `ExplainSheetBody`, `RasadSheetBody`, `ArenaResultBody` | `feature:chart`, Compose | the §3 move. All three are *bodies* rather than sheets — written that way so a tablet could dock them — so each is already a plain composable over values, with `stringResource` as its only Android dependency |
+| `MarketMood` — the board's lean | `:core:marketdata` | a move, or a copy of forty lines. It reads `MarketTicker` and returns counts; the web's own feed layer will have its own ticker type, and the honest answer is that this one function goes wherever that type does |
+| `ShareCard` — the 1080 × 1080 square | `:core:designsystem`, Android `Canvas` | **a second implementation.** This is the one surface in run Ω that does not cross: it draws with `android.graphics` and `StaticLayout` because it has to work from a background thread with a context and no composition. On the web the same card is a `<canvas>` or an offscreen Compose render, and `ShareCardContent` — which is a data class of strings and a bitmap — is the contract both sides fill |
+
+**What this run did *not* do, so the web stays possible:** nothing in `RasadCoach` or `Arena` calls a
+clock, a locale, a formatter or a random. Every input is a parameter, including the date. That is
+also why both are testable to the degree they are — `ArenaTest`'s «the same day gives the same
+challenge» is, read another way, the web-parity test written a year early.
+
 ## 4. What the server side needs
 
 None of this exists on `pro-chart.com` today (the host does not answer — `DOMAINS.md`). In the order it has to be built:

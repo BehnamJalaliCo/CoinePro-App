@@ -1690,9 +1690,75 @@ fun ChartScreen(
             onOpenStyle = { id -> styling = id },
         )
     }
+    // **Explain and رصد, docked rather than covering the chart** (run Ω5).
+    //
+    // Both are already *bodies* rather than sheets — `ExplainSheetBody` and `RasadSheetBody` — and
+    // that was deliberate from the day each was written, for exactly this: on a phone a bottom sheet
+    // is the right shape because there is one column, and on a tablet a sheet that covers the chart
+    // it is explaining is the wrong shape for the same content. Same composable, two homes.
+    //
+    // `ChartWorkbench` draws neither column on a phone, so this list costs the device the page was
+    // designed for nothing at all.
+    val explainPanel = ChartSidePanel(
+        id = "explain",
+        labelRes = R.string.chart_explain_title,
+        icon = DesignR.drawable.tv_help_circle,
+    ) {
+        ExplainSheetBody(
+            // The pill the reader last opened, or the chart's own score when they have opened none.
+            // Null is the Setup score's own card, which is the right thing for a panel that is
+            // simply *there* rather than opened by a tap on a study.
+            id = explaining,
+            layer = state.signals,
+            onSetHorizon = controller::setConfidenceHorizon,
+            // The same rule the sheet's own copy follows: offered only where there is a composer
+            // and a price to alert on.
+            onAddAlert = onCreateAlert?.let { create ->
+                state.lastPrice?.let { price -> { create(state.symbol, price) } }
+            },
+            onPractise = { controller.enterReplay() },
+            onSelect = { id -> explaining = id },
+        )
+    }
+    val rasadPanel = ChartSidePanel(
+        id = "rasad",
+        labelRes = R.string.rasad_name,
+        icon = DesignR.drawable.icon_sparkle,
+    ) {
+        RasadSheetBody(
+            series = state.visibleSeries,
+            reads = state.signals.reads,
+            setup = state.signals.setup,
+            lastTrade = lastPaperTrade,
+            onCreateAlert = onCreateAlert?.let { arm ->
+                { suggestion -> arm(state.symbol, suggestion.price) }
+            },
+        )
+    }
+    // **The Arena's result, beside the chart it scored** (run Ω5).
+    //
+    // On a phone the result is a sheet over the plot, which is right there: the five minutes are
+    // over and there is nothing behind it to look at. On a tablet there is — the chart the reader
+    // was just scored on, with their own trades still marked on it — so the result docks and the two
+    // are read together.
+    val arenaPanel = arena?.score?.let { result ->
+        ChartSidePanel(
+            id = "arena",
+            labelRes = R.string.arena_name,
+            icon = DesignR.drawable.icon_crown_simple,
+        ) {
+            ArenaResultBody(
+                score = result,
+                symbol = state.symbol,
+                streak = arenaStreak,
+                best = arenaBest,
+                onShare = onShareArena?.let { share -> { share(result) } },
+            )
+        }
+    }
     ChartWorkbench(
         modifier = Modifier.fillMaxSize(),
-        sidePanels = listOf(objectTreePanel) + sidePanels,
+        sidePanels = listOfNotNull(objectTreePanel, explainPanel, rasadPanel, arenaPanel) + sidePanels,
         initialSidePanel = initialSidePanel,
         // The rail is the drawing tools as a column beside the plot on a roomy window. In Simple
         // mode there is no column, for the same reason the band loses its pencil: fifty drawing

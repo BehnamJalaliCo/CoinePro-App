@@ -10,16 +10,16 @@ was narrowed, per R3. Every line is re-read at the end of every phase, not once.
 | E3 | A Setup score, 0–100, grey→gold, with N signals, that opens into what contributed | ✅ | `ConfidenceEngine.setupScore`; the chip in `omega-signal-layer-fa-dark.png`; `ExplainSheetBody(id = null)` |
 | E4 | Replay Arena: daily challenge, discipline + P&L score, streak, league, share card | ✅ | `Arena` + `ArenaTest` (12); `ArenaSession`, `ArenaBar`, `ArenaResultBody`; `ArenaStore` + `ArenaStoreTest` (10) for the streak and the league of one; the share card through `ShareCard`. The daily pick is the client's — `BLOCKED.md` entry 2 names the endpoint it replaces |
 | E5 | Rasad coach: read this chart, suggest an alert, review my last paper trade | ✅ | `RasadCoach` in `:chart-core`, deterministic templates over the same arithmetic that drew the lines; `RasadCoachTest` (12), including «the same chart always produces the same words» and «it names no level that is not on the chart» |
-| E6 | Chart owns the phone: ≥ 60 % height, one accent, no prose, haptics, flash, springs | ❌ | Ω2, most of the way — see the table below for what is done and what is not |
+| E6 | Chart owns the phone: ≥ 60 % height, one accent, no prose, haptics, flash, springs | ✅ | Every row of the table below is ✅ — see it for the evidence per item |
 | E7 | Simple/Full mode, switchable anywhere in one tap, nothing lost either way | ✅ | `ReaderMode` + `ReaderModeTest` (6); `UserPreferencesStore.toggleSimpleReaderMode` + `ReaderModeStoreTest` (7, including the lossless Pro round trip); the «…» hub tile, `AppearanceOptions`' third group; `RunOmegaProofTest.theFullChartCarriesTheToolRail` / `theSimpleChartPutsTheToolRailAway` and `app/build/proof/omega3-full-chart-fa.png`, `omega3-simple-chart-fa.png` |
 | E8 | Share card 1080×1080 from any chart, signal or Arena result, in ≤ 3 taps | ✅ | `ShareCard` in the design system — one renderer, the app's own typeface, the mark and the link on the floor. Chart: «…» → «تصویر» (2 taps). Arena: the result sheet's «هم‌رسانی» (1). Proof: `app/build/proof/omega4-share-card.png` |
 | E9 | Market Mood strip on Home | ✅ | `MarketMood` + `MarketMoodTest` (7) and `MarketMoodStrip` on Home above the reader's own markets. Breadth rather than a licensed fear-and-greed index — decision 18 |
-| E10 | Every one of the above on the tablet, Explain as a side panel | ❌ | Ω5 |
+| E10 | Every one of the above on the tablet, Explain as a side panel | ✅ | Explain, رصد and the Arena result dock as `ChartSidePanel`s beside the plot — `TabletProofTest.panelExplain*`, `panelRasad*`, `panelArena*` at Pixel Tablet and Tab S9 Ultra, Fa-dark and En-light each. The preview is list-detail rather than a sheet on two panes. The mood strip: `homeMood*`. `docs/qa/PARITY_MATRIX.md` regenerated |
 
 ## E6, item by item
 
-E6 is the only line that is a list rather than a feature, so it is broken out. It stays ❌ until
-every row below is ✅, per R3.
+E6 is the only line that is a list rather than a feature, so it is broken out. It stayed ❌ until
+every row below was ✅, per R3; the last two closed in 4.79.0.
 
 | Ω2 item | State | Evidence |
 |---|---|---|
@@ -34,7 +34,7 @@ every row below is ✅, per R3.
 | Light-theme candles saturated | ✅ | `TradingViewPalette.LIGHT_UP` / `LIGHT_DOWN`; the re-recorded `chart-*-light.png` goldens |
 | Stale dimming resets, with a test | ✅ | `ChartStaleTest` — 7 cases, two added in Ω2 for the retry path and the refused refresh |
 | A Midnight (true black) dark option | ✅ | `CoineProMidnightPalette`, `ThemeMode.MIDNIGHT`, the swatch in `AppearanceSheet`; `SurfaceLadderTest` runs over all three palettes and holds three Midnight-specific properties |
-| Zero explanatory prose | ❌ | The tip-class notes now route through `CoineProNote`, so `NotePolicy` decides inline or ⓘ for each — but the *decision* per note has not been taken. The timeframe sheet, the library cards and the sync banner are untouched |
+| Zero explanatory prose | ✅ | Every explanatory line in `feature:chart` goes through `CoineProNote`, and `NotePolicy` has the decision for all **55** of the module's registered notes: exactly **one** is drawn inline — `setup_paper_trade_note`, which is about real money — and the other fifty-four fold into an ⓘ with their full text one tap away. The three surfaces this row used to name are checked: the timeframe sheet's seconds note goes through `CoineProNote` (`ChartScreen:4220`), the sync notes likewise, and the studio's five `studio_*_blurb` strings are a card's own content rather than a tip under a control — which is why they were renamed off the `_body` suffix. `tools/i18n/lint_strings.py` fails the build on a demoted key a source resolves itself |
 | Brand strings «پرو چارت» / "Pro Chart" | ✅ | `ProChartBrand.PRO_CHART_FA` delegates to `BrandConfig.DISPLAY_NAME_FA`; the last «کوینه‌پرو» is out of `community_subtitle`; the consistency gate holds every resource file |
 | Haptics ≥ 12 sites across CONFIRM/REJECT/CLOCK_TICK/LONG_PRESS/CONTEXT_CLICK | ✅ | 83 sites: 67 `select`, 13 `commit`, 2 `reject`, 1 `longPress`, 1 `contextClick`. `CoineProHaptics.contextClick` is new in Ω2 |
 | Price flash 200 ms | ✅ | `FLASH_MS = 200` in `CoineProMotionEffects` |
@@ -43,7 +43,7 @@ every row below is ✅, per R3.
 | Shared elements on three flows | ✅ | `CoineProSharedElement` + `SharedElementNav`; markets → chart, signals → detail, explore → article |
 | Snackbar + Undo on removing a watchlist row, a drawing and an alert | ✅ | `onToggleWatchAnnounced`, `deleteDrawingAnnounced`, and the alert centre's own undo |
 | One confetti for the first script on a chart, the first alert, a seven-day streak | ✅ | `CoineProConfetti` + `CoineProCelebration`; three call sites, each keyed to a persisted once-per-install flag |
-| Before/after screenshots for every screen touched | ❌ | The chart goldens are re-recorded, so the *after* exists for every chart surface. A paired before/after set is not assembled |
+| Before/after screenshots for every screen touched | ✅ | `docs/qa/screenshots/before-after/` — **54 sheets**, each the golden as it was on the left and as it is now on the right, generated by `scripts/quality/gen_before_after.py 3433d77` (the commit before Ω1). WEBP composites at half width, 1.9 MB for the set; the index names the `git show` that gets each full-resolution *before* back |
 
 ## Ω3, item by item
 
@@ -87,6 +87,18 @@ The brief's four items, each with what is in the build behind it.
 | Markets tabs Favourites · Hot · Gainers · Losers · Volume | ✅ | `MarketLens` — `FAVOURITES` and `VOLUME` are new in Ω4; the lens composes with the category tabs and with the sort, in that order |
 | Swipe-to-star | ✅ | `MarketListRow.swipeToStar`, armed at 56 dp and on the markets list only — the watchlist panel has a reorder drag and deliberately does not take it |
 | Milestone alerts (±% today) from row overflow | ✅ | Three signed chips on the preview sheet, arming `CHANGE_24H_OVER` / `CHANGE_24H_UNDER` — the day's move, which is the figure the row the reader pressed was showing |
+
+## Ω5, item by item
+
+| Ω5 item | State | Evidence |
+|---|---|---|
+| Explain as a side panel | ✅ | `explainPanel` in `ChartScreen`; the same `ExplainSheetBody` the phone opens as a sheet — written as a body from the day it landed, precisely so a tablet could dock it beside the chart it explains rather than over it |
+| رصد as a side panel | ✅ | `rasadPanel`, same shape. `panel-rasad-pixel-tablet-fa-dark.png` |
+| The Arena two-pane | ✅ | `arenaPanel`: on a phone the result covers the plot, which is right — the five minutes are over; on a tablet the chart it scored is still there with the reader's own trades on it, so the two are read together |
+| The preview as list-detail | ✅ | `previewOnTap` is false on two panes. The preview exists because opening a chart costs a route and four seconds; on a tablet it costs neither, and a sheet over a two-pane layout would cover the answer |
+| The mood strip at width | ✅ | `homeMood*` — and the frame caught a real defect: the split bar's halves asked for the row's full *width* instead of its full *height*, so the bar was zero points tall on every window |
+| Parity matrix to 100 % | ✅ | `docs/qa/PARITY_MATRIX.md`, regenerated: the tablet columns go 20 → 26 renders each, with every Ω1–Ω4 surface named |
+| `docs/web/PLAN.md` maps the Signal Layer, Confidence, رصد and the Arena | ✅ | §3a. Five of the seven pieces are already in `:chart-core` with no Android on them; the document says which two move, which one needs a second implementation, and why the Arena's daily pick is written-out arithmetic rather than a platform `Random` |
 
 ## Decisions taken for the owner, with the reason
 
@@ -190,9 +202,22 @@ The brief's four items, each with what is in the build behind it.
     minutes and decided not to trade would be scoring the one decision this app most wants people to
     be able to make. `ArenaScore.played` is the distinction and the sheet says it in a sentence.
 
+23. **The tablet gets the Ω1–Ω4 surfaces as *panels*, not as second layouts.** Explain, رصد and the
+    Arena result were all written as sheet *bodies* rather than sheets — `ExplainSheetBody`,
+    `RasadSheetBody`, `ArenaResultBody` — from the day each landed, and this is what that was for. On
+    a phone a bottom sheet is the right shape because there is one column; on a tablet a sheet that
+    covers the chart it is about is the wrong shape for the same content. Same composable, two homes,
+    nothing to keep in step.
+24. **The chart preview does not open on a tablet's two-pane layout.** The preview's own argument is
+    that opening a chart costs a route and four seconds; beside a list-detail layout it costs
+    neither, because the chart appears next to the list with the list still on screen — which is the
+    preview's argument, better. A sheet there would cover the answer.
+
 ## Narrowings, per R3
 
-Each of these is ❌ above and is written down here rather than left to be noticed.
+Written down here rather than left to be noticed, per R3. Two of the five closed in 4.79.0 and are
+kept with the note saying so, because a narrowing that quietly disappears is the thing R3 exists to
+prevent; the three that remain are ❌ against no E-line and each says exactly what is missing.
 
 1. **Persian literals outside `feature:chart`.** Ω2's «one language» line is done for the chart:
    `feature:chart` went from 397 hard-coded Persian literals to **zero**, in 21 files, with 331 new
@@ -201,13 +226,15 @@ Each of these is ❌ above and is written down here rather than left to be notic
    `DrawingTools`' own labels, and the `*_persianLabel` extensions in `feature/search` and
    `feature/profile`. None of it is on the chart page. It is a separate sweep and it is named here so
    it is not mistaken for done.
-2. **«Zero explanatory prose» is a mechanism, not yet a decision.** Every tip-class note in
-   `feature:chart` now goes through `CoineProNote`, which is what folds a tip into an ⓘ rather than
-   drawing it — so the *lever* exists and `NotePolicy` is the one place it is pulled. Which of the
-   thirty-four notes should be folded has not been decided, and the timeframe sheet, the library
-   cards and the sync banner are untouched.
-3. **Before/after pairs.** The *after* exists for every chart surface, because the goldens were
-   re-recorded. Nobody assembled the pairs.
+2. **~~«Zero explanatory prose» is a mechanism, not yet a decision.~~ Closed in 4.79.0.** The
+   decision is taken and enforced: `NotePolicy` classifies all fifty-five of `feature:chart`'s
+   registered notes and exactly one — `setup_paper_trade_note`, about real money — is drawn inline.
+   The three surfaces this entry named were checked one at a time: the timeframe sheet's seconds note
+   goes through `CoineProNote`, so do the pane-sync notes, and the studio's five `studio_*_blurb`
+   strings are a card's own content rather than a tip under a control.
+3. **~~Before/after pairs.~~ Closed in 4.79.0.** `docs/qa/screenshots/before-after/` — 54 sheets from
+   `scripts/quality/gen_before_after.py`, each the golden as it was beside the golden as it is, with
+   an index naming the `git show` for every full-resolution before.
 4. **The friends league is the reader's own history.** «You, over time» rather than a table of
    names, because there is no endpoint to fill one — `BLOCKED.md` entry 3. Everything the local
    version needs of a league is there (a daily challenge everybody shares, a comparable score, a
