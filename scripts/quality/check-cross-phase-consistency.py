@@ -706,6 +706,112 @@ def check_tool_names_are_bilingual() -> None:
         )
 
 
+def check_state_surfaces() -> None:
+    """Every empty state carries a mark, and every state drawable is small enough to ship.
+
+    ### Why this is a gate and not a review note
+
+    An empty screen and a failed screen are the two surfaces nobody designs and everybody sees, and
+    they have one property that decides whether an app looks finished: a reader must be able to tell
+    them apart *before* reading a word. `CoineProErrorState` always draws the warning glyph in the
+    refusal tint, so it cannot get this wrong. `CoineProEmptyState` takes its mark from the caller,
+    so it can — and a sentence alone in the middle of a black page is exactly what a screen that
+    failed to load looks like.
+
+    So: every empty state names its screen's glyph. Five call sites did not, which is five screens
+    that reported «nothing here» in the same shape a crash would have.
+
+    The second half is the size. The brief allows an illustration of at most 8 KB; every mark in this
+    app is a vector under a kilobyte, and this check is what stops the first PNG mascot arriving on
+    an empty screen and taking a hundred kilobytes of APK with it."""
+    offenders: list[str] = []
+    sources = (
+        list(ROOT.glob("app/src/main/**/*.kt"))
+        + list(ROOT.glob("feature/*/src/main/**/*.kt"))
+        + list(ROOT.glob("core/*/src/main/**/*.kt"))
+        + list(ROOT.glob("chart/ui/src/**/*.kt"))
+    )
+    for path in sources:
+        text = path.read_text(encoding="utf-8")
+        for match in re.finditer(r"CoineProEmptyState\(", text):
+            index = match.end() - 1
+            depth = 0
+            while index < len(text):
+                if text[index] == "(":
+                    depth += 1
+                elif text[index] == ")":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                index += 1
+            body = text[match.end():index]
+            # The declaration itself is where the parameter is named; every other call must pass it.
+            if "icon" not in body and "@DrawableRes" not in body:
+                line = text[: match.start()].count("\n") + 1
+                offenders.append(f"{path.relative_to(ROOT)}:{line}")
+    require(
+        not offenders,
+        "an empty state with no mark, which reads as a screen that failed:\n" + "\n".join(offenders),
+    )
+
+    # Only the drawables an empty or error screen would reach for. The brand mark and the asset
+    # logos are bigger and are not this: one is the app's identity, the others are a coin's own
+    # artwork, and neither is an illustration somebody drew for a screen with nothing on it.
+    oversized: list[str] = []
+    for path in ROOT.glob("core/designsystem/src/main/res/drawable*/*"):
+        illustration = path.stem.startswith(("empty_", "state_", "illustration_"))
+        raster = path.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
+        if illustration and raster and path.stat().st_size > 8192:
+            oversized.append(f"{path.relative_to(ROOT)}: {path.stat().st_size} bytes")
+    require(not oversized, "a state illustration over 8 KB:\n" + "\n".join(oversized))
+
+
+def check_coach_marks() -> None:
+    """One teaching strip per screen, each of them used, each of them two lines.
+
+    ### The rule, and why one is the number
+
+    The brief's own words: «one 2-line tooltip per screen, once». Two of them on one screen is a
+    tutorial, and a tutorial is what a reader dismisses without reading — at which point the app has
+    spent its one chance to say the thing that mattered. A surface named in `TeachingSurface` and
+    drawn nowhere is the opposite failure and is just as quiet: two strings written, translated and
+    shipped for a banner nobody will ever see.
+
+    «Once» is `TeachingDismissals`, which the app backs with the persisted store, so it is not
+    checkable from here — what is checkable is that the count per surface stays at one and that the
+    lead and the pitfall stay short enough to be two lines on a phone rather than a paragraph."""
+    uses: dict[str, int] = {}
+    sources = (
+        list(ROOT.glob("app/src/main/**/*.kt"))
+        + list(ROOT.glob("feature/*/src/main/**/*.kt"))
+        + list(ROOT.glob("core/*/src/main/**/*.kt"))
+    )
+    for path in sources:
+        if "CoineProTeaching.kt" in path.name:
+            continue
+        for match in re.finditer(r"CoineProTeachingStrip\(\s*TeachingSurface\.([A-Z_]+)", path.read_text(encoding="utf-8")):
+            uses[match.group(1)] = uses.get(match.group(1), 0) + 1
+
+    teaching = read("core/designsystem/src/main/kotlin/com/coinepro/core/designsystem/CoineProTeaching.kt")
+    declared = re.findall(r'^    ([A-Z_]+)\("[a-z_]+", R\.string\.teaching_', teaching, re.M)
+    require(len(declared) >= 20, f"the teaching surfaces read as {len(declared)}, which is not all of them")
+
+    twice = [f"{name} ×{count}" for name, count in sorted(uses.items()) if count > 1]
+    require(not twice, "a screen with more than one teaching strip on it:\n" + "\n".join(twice))
+
+    unused = sorted(set(declared) - set(uses))
+    require(not unused, "a teaching surface with two strings and no screen:\n" + "\n".join(unused))
+
+    # Two lines on a 360 dp phone at bodySmall is roughly 110 characters. The Persian copy is the
+    # binding one: it is the product's default language and it sets more characters per line.
+    strings = read("core/designsystem/src/main/res/values-fa/strings.xml")
+    overlong: list[str] = []
+    for key, text in re.findall(r'<string name="(teaching_[a-z_]+)">(.*?)</string>', strings, re.S):
+        if len(text.strip()) > 150:
+            overlong.append(f"{key}: {len(text.strip())} characters")
+    require(not overlong, "a teaching line that is a paragraph rather than a line:\n" + "\n".join(overlong))
+
+
 def main() -> None:
     check_module_map()
     check_parity_matrix()
@@ -716,6 +822,8 @@ def main() -> None:
     check_persian_locale_is_persian()
     check_string_lint()
     check_icon_sources()
+    check_state_surfaces()
+    check_coach_marks()
     check_grid()
     check_no_secret_logging()
     check_assets_clean()

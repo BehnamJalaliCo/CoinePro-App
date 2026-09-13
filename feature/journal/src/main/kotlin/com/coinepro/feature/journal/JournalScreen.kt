@@ -59,6 +59,8 @@ import com.coinepro.core.symbols.SymbolSearch
 import com.coinepro.core.designsystem.CoineProToggleChip
 import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.designsystem.rowMotion
+import com.coinepro.core.designsystem.CoineProIcons
+import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.journal.Journal
 import com.coinepro.core.journal.JournalController
 import com.coinepro.core.journal.JournalStats
@@ -285,12 +287,18 @@ fun JournalScreen(
         when {
             state.entries.isEmpty() -> item {
                 CoineProEmptyState(
+                    // The screen's own mark, for the reason `CoineProEmptyState` gives: a sentence
+                    // alone in the middle of a page is indistinguishable from a page that failed.
+                    icon = DesignR.drawable.tv_tool_note,
                     message = stringResource(R.string.journal_empty),
                     hint = stringResource(R.string.journal_empty_hint),
                 )
             }
             shown.isEmpty() -> item {
                 CoineProEmptyState(
+                    // The filter's own glyph rather than the journal's: nothing is missing here, a
+                    // filter is simply narrower than the entries behind it.
+                    icon = CoineProIcons.Filter,
                     message = stringResource(R.string.journal_no_match),
                     hint = stringResource(R.string.journal_no_match_hint),
                     action = stringResource(R.string.journal_clear_filter),

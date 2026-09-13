@@ -11,8 +11,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.coinepro.core.designsystem.CoineProTheme
+import com.coinepro.core.datastore.ReaderMode
 import com.coinepro.core.designsystem.LocalTeachingDismissals
 import com.coinepro.feature.chart.ChartController
 import com.coinepro.feature.chart.ChartScreen
@@ -126,6 +128,80 @@ class RunOmegaProofTest {
         )
     }
 
+    /**
+     * **The one question, photographed** (run Ω3).
+     *
+     * Three answers and a way out, on one screen, above the fold at 411 dp. The frame is the proof
+     * that it fits; the assertions are the proof that every answer is reachable — a first-run screen
+     * with a card off the bottom of the glass is a first-run screen that cannot be answered.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = FA_PHONE)
+    fun theFirstRunAsksOneQuestionAndOffersAWayOut() {
+        proof("omega3-first-run-fa") {
+            FirstRunQuestion(onChoose = {}, onSkip = {})
+        }
+        for (mode in ReaderMode.entries) {
+            assertEquals(
+                "the first-run question does not offer ${mode.id}",
+                1,
+                composeRule.onAllNodesWithContentDescription(mode.id).fetchSemanticsNodes().size,
+            )
+        }
+        assertEquals(
+            "there is no way past the question",
+            1,
+            composeRule.onAllNodesWithContentDescription("first-run-skip").fetchSemanticsNodes().size,
+        )
+    }
+
+    /**
+     * **The full chart keeps its apparatus** (run Ω3).
+     *
+     * The tool rail is the clearest of the five things Simple mode puts away and the only one with a
+     * semantics tag of its own, so it is what the pair of tests below measures. At tablet width the
+     * chart draws the rail beside the plot — `ChartWorkbench` decides that on the glass it was given
+     * — which is why these two run at 1280 dp rather than on the phone.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = FA_1280)
+    fun theFullChartCarriesTheToolRail() {
+        val controller = charted()
+        proof("omega3-full-chart-fa") {
+            val ready = remember { controller }
+            ChartScreen(controller = ready, readerMode = ReaderMode.TRADER)
+        }
+        assertEquals(
+            "the full chart lost its tool rail",
+            1,
+            composeRule.onAllNodesWithContentDescription("chart-tool-rail").fetchSemanticsNodes().size,
+        )
+    }
+
+    /**
+     * **The simple chart puts it away, and nothing else changes** (run Ω3).
+     *
+     * Same composable, same controller, same candles, one parameter. That is the whole claim of
+     * `ReaderMode`: there is no second screen to keep in step, so the simple page cannot fall behind
+     * the full one — and this frame beside the one above is what that looks like.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = FA_1280)
+    fun theSimpleChartPutsTheToolRailAway() {
+        val controller = charted()
+        proof("omega3-simple-chart-fa") {
+            val ready = remember { controller }
+            ChartScreen(controller = ready, readerMode = ReaderMode.SIMPLE)
+        }
+        assertEquals(
+            "the simple chart still draws the tool rail",
+            0,
+            composeRule.onAllNodesWithContentDescription("chart-tool-rail").fetchSemanticsNodes().size,
+        )
+        // And the chart itself is untouched: the same studies, the same reading, the same score.
+        assertTrue("the simple chart lost the Signal Layer", controller.state.value.signals.reads.isNotEmpty())
+    }
+
     private fun proof(name: String, darkTheme: Boolean = true, content: @Composable () -> Unit) {
         composeRule.setContent {
             CompositionLocalProvider(LocalTeachingDismissals provides AllTeachingDismissed) {
@@ -156,5 +232,6 @@ class RunOmegaProofTest {
         val OUTPUT = File("build/proof")
         const val FA_PHONE = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi"
         const val EN_PHONE = "en-rUS-w411dp-h914dp-xxhdpi"
+        const val FA_1280 = "fa-rIR-ldrtl-w1280dp-h800dp-xhdpi"
     }
 }

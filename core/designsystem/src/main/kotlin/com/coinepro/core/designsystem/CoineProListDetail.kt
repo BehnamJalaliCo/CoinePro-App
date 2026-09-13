@@ -226,6 +226,12 @@ fun CoineProDetailPlaceholder(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize().padding(CoineProSpacing.Three),
         contentAlignment = Alignment.Center,
     ) {
-        CoineProEmptyState(message = stringResource(R.string.pane_detail_empty))
+        // The pane's mark is the chart's, because the detail pane of every list-detail layout in
+        // this app holds a chart. A pane with a sentence and nothing else reads, on a tablet, as
+        // half a screen that failed to draw.
+        CoineProEmptyState(
+            icon = CoineProIcons.Chart,
+            message = stringResource(R.string.pane_detail_empty),
+        )
     }
 }

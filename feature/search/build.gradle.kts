@@ -16,6 +16,11 @@ android {
 
 dependencies {
     implementation(project(":core:marketdata"))
+    // The preview's own chart: `Candle`, `CandleSeries` and `ChartReading`, which is the reading the
+    // sheet's one summary line is. The engine module and not `:chart-ui` — this sheet draws a line,
+    // not a terminal, and pulling the Compose chart in for it would put the whole plot, its
+    // drawings and its viewport on the markets tab's classpath.
+    implementation(project(":chart-core"))
     // api rather than implementation: `SurfaceAccess` carries a `MarketPlatform`, and it is a
     // parameter of `SearchScreen`, so whoever builds one needs the type.
     api(project(":core:model"))

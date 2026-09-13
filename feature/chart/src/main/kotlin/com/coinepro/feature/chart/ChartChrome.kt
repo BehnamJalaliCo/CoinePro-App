@@ -735,6 +735,22 @@ internal fun ChartMoreSheetBody(
     onTrade: (() -> Unit)? = null,
     /** Enter bar replay. Null off a series too short to rewind, or while already replaying. */
     onReplay: (() -> Unit)? = null,
+    /**
+     * Whether this chart is currently drawn simply — the rail, the ladder, replay and the workbench
+     * off. Decides which way [onToggleSimple] reads, and nothing else.
+     *
+     * A boolean and not the mode: which of three modes a reader is in is the appearance page's
+     * business, and this sheet's only question is which of two words to put on one tile.
+     */
+    simplified: Boolean = false,
+    /**
+     * Flip that, in one tap (run Ω3).
+     *
+     * It is on the hub rather than buried in settings because the moment somebody wants it is the
+     * moment they are looking at a chart with too much on it, and a preference two screens away is
+     * one they never find. Null where the caller has no way to store the answer.
+     */
+    onToggleSimple: (() -> Unit)? = null,
     /** The «Help Center» row at the foot of the sheet. */
     onHelpCenter: (() -> Unit)? = null,
 ) {
@@ -852,7 +868,7 @@ internal fun ChartMoreSheetBody(
         // MORE — the phone app's second section: what belongs to the page rather than to the
         // chart. Drawn only when there is something in it; a heading over nothing is a promise.
         if (onEvents != null || onOpenStudio != null || onOpenTerminal != null ||
-            onAskAi != null || onOpenDepth != null || onReadings != null
+            onAskAi != null || onOpenDepth != null || onReadings != null || onToggleSimple != null
         ) {
             SheetLabel(stringResource(R.string.chart_hub_more))
             HubGrid(columns = 2, outlined = false) {
@@ -870,6 +886,25 @@ internal fun ChartMoreSheetBody(
                     HubTile(
                         icon = DesignR.drawable.tv_tool_sine,
                         label = stringResource(R.string.chart_reading_title),
+                        onClick = it,
+                    )
+                }
+                // Beside the reading, and that is the right neighbour for it: both are about how
+                // much of this chart is being read to the reader rather than about opening another
+                // screen. The eye closes as the page simplifies, so the tile shows its own state
+                // without a second line under it.
+                onToggleSimple?.let {
+                    HubTile(
+                        icon = if (simplified) {
+                            DesignR.drawable.icon_eye
+                        } else {
+                            DesignR.drawable.icon_eye_slash
+                        },
+                        label = if (simplified) {
+                            stringResource(R.string.chart_hub_show_everything)
+                        } else {
+                            stringResource(R.string.chart_hub_simplify)
+                        },
                         onClick = it,
                     )
                 }

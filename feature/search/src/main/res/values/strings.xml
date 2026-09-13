@@ -109,6 +109,14 @@
     <!-- Long-press preview -->
     <string name="preview_alert">Alert</string>
     <string name="preview_chart">Chart</string>
+    <string name="preview_range_day">1D</string>
+    <string name="preview_range_week">1W</string>
+    <string name="preview_range_month">1M</string>
+    <string name="preview_range_quarter">3M</string>
+    <string name="preview_range_year">1Y</string>
+    <string name="preview_range_all">All</string>
+    <string name="preview_range_waiting">Gathering that span…</string>
+    <string name="preview_reading">%1$s · strength %2$s · swing %3$s</string>
     <string name="markets_category_empty">This platform carries no %1$s markets.</string>
     <string name="markets_none">No markets in the list yet.</string>
 </resources>

@@ -38,6 +38,62 @@ class UserPreferencesStore(
     }
 
     /**
+     * How much of the app this reader has asked to see. See [ReaderMode].
+     *
+     * Absent resolves to [ReaderMode.TRADER], so an install that predates the setting keeps the whole
+     * chrome it already had rather than being cut down on upgrade.
+     */
+    val readerMode: Flow<ReaderMode> = dataStore.data.map { preferences ->
+        ReaderMode.fromId(preferences[READER_MODE])
+    }
+
+    /**
+     * Whether the first-run question has been answered at all.
+     *
+     * Distinct from [readerMode] resolving to a default, and the first launch needs the difference:
+     * a fresh install must be asked, and an install that predates the question must not be — see
+     * [ReaderMode]'s own note. `false` for both until somebody answers, which is why the shell also
+     * checks whether there is any stored state at all before it asks.
+     */
+    val readerModeChosen: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[READER_MODE] != null
+    }
+
+    suspend fun setReaderMode(mode: ReaderMode) {
+        dataStore.edit { preferences ->
+            // Remembered on the way past, so the chart's own toggle can put a reader back exactly
+            // where they were. Writing it here rather than only in [toggleSimpleReaderMode] means
+            // the appearance page and the toggle agree about what «full» means for this reader.
+            if (mode != ReaderMode.SIMPLE) preferences[READER_MODE_FULL] = mode.id
+            preferences[READER_MODE] = mode.id
+        }
+    }
+
+    /**
+     * The chart hub's one-tap «simpler» / «show everything», and why it needs a second key.
+     *
+     * A toggle with one key can only go back to a constant, so a [ReaderMode.PRO] reader who
+     * simplifies the chart for one look would come back as a [ReaderMode.TRADER] and find their
+     * workbench gone — the app quietly demoting somebody for using a control. [READER_MODE_FULL]
+     * holds the mode they were in, so the round trip is lossless and the tap is reversible, which
+     * is the whole claim the toggle makes.
+     */
+    suspend fun toggleSimpleReaderMode() {
+        dataStore.edit { preferences ->
+            val current = ReaderMode.fromId(preferences[READER_MODE])
+            if (current == ReaderMode.SIMPLE) {
+                preferences[READER_MODE] = ReaderMode.fromId(preferences[READER_MODE_FULL])
+                    .takeIf { it != ReaderMode.SIMPLE }
+                    .let { it ?: ReaderMode.TRADER }
+                    .id
+            } else {
+                preferences[READER_MODE_FULL] = current.id
+                preferences[READER_MODE] = ReaderMode.SIMPLE.id
+            }
+        }
+    }
+
+    /**
      * Which colour a rise is drawn in. See [MarketColorScheme] for why this is not about taste.
      *
      * Device-wide like the theme, and for the same reason: it is how this reader reads a chart,
@@ -111,6 +167,10 @@ class UserPreferencesStore(
         val LAST_ROOT = stringPreferencesKey("last_root_route")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val MARKET_COLORS = stringPreferencesKey("market_colors")
+        val READER_MODE = stringPreferencesKey("reader_mode")
+
+        /** The last non-simple mode, so [toggleSimpleReaderMode] can come back to it. */
+        val READER_MODE_FULL = stringPreferencesKey("reader_mode_full")
         val APP_LOCK = booleanPreferencesKey("app_lock_enabled")
     }
 }

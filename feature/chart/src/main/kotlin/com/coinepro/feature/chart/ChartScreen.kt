@@ -229,6 +229,7 @@ import com.coinepro.core.designsystem.ToastTone
 import com.coinepro.core.designsystem.CoineProCelebration
 import com.coinepro.core.designsystem.CoineProConfetti
 import androidx.annotation.StringRes
+import com.coinepro.core.datastore.ReaderMode
 
 /**
  * The chart screen.
@@ -384,6 +385,30 @@ fun ChartScreen(
      * matters; making them leave it, find the alerts screen and type the number back in is asking
      * them to do the app's arithmetic.
      */
+    /**
+     * How much of this chart's chrome to draw (run Ω3). See [ReaderMode].
+     *
+     * ### Why it is a filter over the callbacks rather than a second screen
+     *
+     * Every advanced entry on this page is already optional — `onOpenDepth`, `onOpenStudio`,
+     * `onOpenScript` and the workbench's `tools` slot are all nullable, and the chrome draws nothing
+     * for a null. That is not a coincidence: they are nullable because a build without a depth feed
+     * or without an editor route has to draw a page that makes sense, and «this reader asked for a
+     * simpler page» is the same question with a different answer.
+     *
+     * So Simple mode is *not* a variant of this screen. It is this screen with four handlers unset,
+     * which means there is no second layout to keep in step, nothing is unreachable — the controls
+     * are still built and still tested — and switching back is one recomposition.
+     */
+    readerMode: ReaderMode = ReaderMode.TRADER,
+    /**
+     * Flip between the simple page and the full one, in one tap from the «…» hub (run Ω3).
+     *
+     * The round trip is lossless — the store remembers which full mode the reader came from — which
+     * is what makes the tap safe to try. Null where nothing can store the answer, and the tile is
+     * then not drawn rather than drawn doing nothing.
+     */
+    onToggleSimple: (() -> Unit)? = null,
     onCreateAlert: ((symbol: String, price: Double) -> Unit)? = null,
     /**
      * The alerts already set on this symbol, drawn on the plot (run Ω2).
@@ -1528,7 +1553,9 @@ fun ChartScreen(
             )
         }
         state.setup?.let { order -> SetupCard(order, onOpen = { sheet = ChartSheet.SETUP }) }
-        onOpenStudio?.let { open ->
+        // The same gate as the hub's tile, and it has to be the same one: a mode that hides the
+        // workbench from the «…» sheet and leaves a row for it under the chart reads as a bug.
+        onOpenStudio?.takeIf { readerMode.showsWorkbench }?.let { open ->
             StudioRow(
                 summary = studioSummary(state.activeIndicators.size, state.drawing.drawings.size),
                 onOpen = open,
@@ -1597,15 +1624,22 @@ fun ChartScreen(
         modifier = Modifier.fillMaxSize(),
         sidePanels = listOf(objectTreePanel) + sidePanels,
         initialSidePanel = initialSidePanel,
-        tools = { railModifier ->
-            ChartToolRailColumn(
-                state = state,
-                controller = controller,
-                templates = armedTemplates,
-                defaultTemplateId = armedDefault?.id,
-                onHelp = onHelp,
-                modifier = railModifier,
-            )
+        // The rail is the drawing tools as a column beside the plot on a roomy window. In Simple
+        // mode there is no column, for the same reason the band loses its pencil: fifty drawing
+        // tools is the answer to a question a first chart has not asked.
+        tools = if (readerMode.showsAdvancedChrome) {
+            { railModifier ->
+                ChartToolRailColumn(
+                    state = state,
+                    controller = controller,
+                    templates = armedTemplates,
+                    defaultTemplateId = armedDefault?.id,
+                    onHelp = onHelp,
+                    modifier = railModifier,
+                )
+            }
+        } else {
+            null
         },
         readings = { ChartReadingsColumn { analysisBlocks() } },
     ) { workbenchModifier, columns ->
@@ -1778,7 +1812,7 @@ fun ChartScreen(
             // to open the tools and to show that one is armed, and the permanent column does both
             // better — a button that opens a sheet duplicating a column already on screen is the
             // kind of leftover that makes a tablet layout look ported rather than designed.
-            showDraw = !columns.hasTools,
+            showDraw = !columns.hasTools && readerMode.showsAdvancedChrome,
             indicators = state.activeIndicators.size,
             drawings = state.drawing.drawings.size,
             onOpen = { sheet = it },
@@ -2158,7 +2192,7 @@ fun ChartScreen(
                         ask(state.symbol)
                     }
                 },
-                onOpenStudio = onOpenStudio?.let { open ->
+                onOpenStudio = onOpenStudio?.takeIf { readerMode.showsWorkbench }?.let { open ->
                     {
                         sheet = null
                         open()
@@ -2172,6 +2206,15 @@ fun ChartScreen(
                 // to sit at the foot of the chart page. Offered only where there is a reading to
                 // show: under sixty bars `ChartReading.of` refuses to name a market it cannot read.
                 onReadings = { sheet = ChartSheet.READINGS }.takeIf { reading != null || state.setup != null },
+                simplified = !readerMode.showsAdvancedChrome,
+                // The sheet closes behind it: the tap's whole result is the page underneath
+                // changing, and a sheet left open over it hides the one thing it did.
+                onToggleSimple = onToggleSimple?.let { toggle ->
+                    {
+                        sheet = null
+                        toggle()
+                    }
+                },
                 // Counted over what a backend serves rather than over all five, so the figure on
                 // the closed row is one the reader can actually reach. See `SERVED_EVENT_KINDS`.
                 eventKinds = eventState.visibility.kinds.count { it in SERVED_EVENT_KINDS },
@@ -2185,7 +2228,7 @@ fun ChartScreen(
                         open()
                     }
                 },
-                onOpenDepth = onOpenDepth?.let { open ->
+                onOpenDepth = onOpenDepth?.takeIf { readerMode.showsAdvancedChrome }?.let { open ->
                     {
                         sheet = null
                         open()
@@ -2202,7 +2245,11 @@ fun ChartScreen(
                 onReplay = {
                     controller.enterReplay()
                     sheet = null
-                }.takeIf { !state.replay.isOn && state.series.bars.size >= Replay.MINIMUM_BARS },
+                }.takeIf {
+                    readerMode.showsAdvancedChrome &&
+                        !state.replay.isOn &&
+                        state.series.bars.size >= Replay.MINIMUM_BARS
+                },
                 onHelpCenter = {
                     sheet = null
                     onHelp(CHART_HELP_ID)

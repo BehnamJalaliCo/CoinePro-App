@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.datastore.MarketColorScheme
+import com.coinepro.core.datastore.ReaderMode
 import com.coinepro.core.datastore.ThemeMode
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProNote
@@ -71,6 +72,17 @@ fun AppearanceSheet(
      */
     language: AppLanguage = AppLanguage.Default,
     onSelectLanguage: (AppLanguage) -> Unit = {},
+    /**
+     * How much of the chart's chrome this reader asked for. See [ReaderMode].
+     *
+     * It belongs on this sheet and not in a page of its own: «how much to show» is the same class of
+     * question as which palette and which language — how the app should look and read to *this*
+     * person — and the reader who has come here to change one has come to the right place for it.
+     * The chart's «…» hub carries the same choice as a one-tap flip, for the moment somebody is
+     * looking at a page with too much on it and is not going to go hunting through settings.
+     */
+    readerMode: ReaderMode = ReaderMode.TRADER,
+    onSelectReaderMode: (ReaderMode) -> Unit = {},
 ) {
     CoineProSheet(
         title = stringResource(R.string.appearance_title),
@@ -85,6 +97,8 @@ fun AppearanceSheet(
             onSelectColours = onSelectColours,
             language = language,
             onSelectLanguage = onSelectLanguage,
+            readerMode = readerMode,
+            onSelectReaderMode = onSelectReaderMode,
         )
     }
 }
@@ -98,6 +112,8 @@ fun ColumnScope.AppearanceOptions(
     onSelectColours: (MarketColorScheme) -> Unit = {},
     language: AppLanguage = AppLanguage.Default,
     onSelectLanguage: (AppLanguage) -> Unit = {},
+    readerMode: ReaderMode = ReaderMode.TRADER,
+    onSelectReaderMode: (ReaderMode) -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -129,6 +145,26 @@ fun ColumnScope.AppearanceOptions(
                 onSelect = { onSelectColours(scheme) },
             )
         }
+
+        // Third, between the two that are about drawing and the one that is about words, because
+        // that is what it is: how much of the chart's apparatus to put on the screen.
+        Text(
+            text = stringResource(R.string.appearance_reader),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+            modifier = Modifier.padding(top = CoineProSpacing.Row),
+        )
+        ReaderMode.entries.forEach { mode ->
+            ReaderModeOption(
+                mode = mode,
+                selected = mode == readerMode,
+                onSelect = { onSelectReaderMode(mode) },
+            )
+        }
+        // One line under the group rather than one under each card, and it earns its place by the
+        // R7 bar: without it a reader reads three cards as three tiers and believes picking the
+        // first one takes something away from them. It says the one thing that is not visible.
+        CoineProNote(R.string.appearance_reader_note, style = MaterialTheme.typography.bodySmall)
 
         // Last, and under the same roof as the other two, because all three answer the same
         // question — how this app should look and read to *this* person — and a reader who has
@@ -333,6 +369,66 @@ private fun ThemeOption(
     }
 }
 
+/**
+ * One of the three, named and no more.
+ *
+ * The same filled-and-bordered card the palette and the language use, for the reason stated on
+ * [LanguageOption]: these are answers to one question and a fourth visual language for the third of
+ * them would make the sheet read as unrelated settings sharing a screen.
+ *
+ * No line under each name. What a reader needs to know here is not what each mode contains — the
+ * chart in front of them says that better than a sentence can — but that the choice is reversible
+ * and costs them nothing, and that is said once under the group.
+ */
+@Composable
+private fun ReaderModeOption(
+    mode: ReaderMode,
+    selected: Boolean,
+    onSelect: () -> Unit,
+) {
+    val haptics = rememberCoineProHaptics()
+    val accent = CoineProColors.Gold
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .background(
+                if (selected) {
+                    CoineProTint.fill(accent, CoineProColors.SurfaceElevated)
+                } else {
+                    CoineProColors.Surface
+                },
+            )
+            .border(
+                width = 1.dp,
+                color = if (selected) CoineProTint.edge(accent) else CoineProColors.Border,
+                shape = MaterialTheme.shapes.medium,
+            )
+            .clickable {
+                haptics.select()
+                onSelect()
+            }
+            .padding(horizontal = CoineProSpacing.CardHorizontal, vertical = CoineProSpacing.Row),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Row),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(mode.labelRes()),
+            style = MaterialTheme.typography.bodyMedium,
+            color = CoineProColors.TextPrimary,
+            modifier = Modifier.weight(1f),
+        )
+        if (selected) {
+            Icon(
+                painter = painterResource(CoineProIcons.Success),
+                contentDescription = null,
+                tint = accent,
+                modifier = Modifier.size(SWATCH_CHECK),
+            )
+        }
+    }
+}
+
 @Composable
 private fun ThemeSwatch(mode: ThemeMode) {
     Box(
@@ -379,6 +475,19 @@ fun ThemeMode.labelRes(): Int = when (this) {
     ThemeMode.DARK -> R.string.appearance_dark
     ThemeMode.MIDNIGHT -> R.string.appearance_midnight
     ThemeMode.LIGHT -> R.string.appearance_light
+}
+
+/**
+ * The short name of a reader mode, for this sheet and for the profile row that shows the answer.
+ *
+ * Public for the reason [ThemeMode.labelRes] is: the row lives in the app module and the wording
+ * lives here, once.
+ */
+@StringRes
+fun ReaderMode.labelRes(): Int = when (this) {
+    ReaderMode.SIMPLE -> R.string.appearance_reader_simple
+    ReaderMode.TRADER -> R.string.appearance_reader_trader
+    ReaderMode.PRO -> R.string.appearance_reader_pro
 }
 
 @StringRes

@@ -532,6 +532,8 @@
     <string name="chart_interval_seconds">ثانیه — ساخته‌شده روی همین گوشی</string>
     <string name="chart_interval_seconds_note">کندل زیر یک دقیقه از جریان زنده‌ی قیمت روی همین گوشی ساخته می‌شود. بار اول خالی باز می‌شود و با هر معامله پر می‌شود، و هرچه بسازد برای دفعه‌ی بعد می‌ماند.</string>
     <string name="chart_hub_more">بیشتر</string>
+    <string name="chart_hub_simplify">نمای ساده‌تر</string>
+    <string name="chart_hub_show_everything">نمایش همه</string>
     <string name="chart_hub_help">مرکز راهنما</string>
     <string name="chart_hub_trade">معامله با کارگزار</string>
     <string name="chart_partners_title">معامله با کارگزار</string>

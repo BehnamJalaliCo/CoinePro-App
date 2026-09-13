@@ -512,6 +512,8 @@
     <string name="chart_interval_seconds">Seconds — built on this phone</string>
     <string name="chart_interval_seconds_note">Bars under a minute are built from the live price stream on this phone. The chart opens empty the first time and fills with every trade, and whatever it builds is kept for next time.</string>
     <string name="chart_hub_more">More</string>
+    <string name="chart_hub_simplify">Simpler view</string>
+    <string name="chart_hub_show_everything">Show everything</string>
     <string name="chart_hub_help">Help Center</string>
     <string name="chart_hub_trade">Trade with your broker</string>
     <string name="chart_partners_title">Trade with a broker</string>

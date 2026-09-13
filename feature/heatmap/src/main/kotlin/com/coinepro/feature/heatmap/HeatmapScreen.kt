@@ -251,6 +251,7 @@ fun HeatmapScreen(
                     assets.isEmpty() && loading -> HeatmapSkeleton(Modifier.fillMaxSize())
 
                     drawn.isEmpty() -> CoineProEmptyState(
+                        icon = CoineProIcons.Heatmap,
                         message = stringResource(R.string.heatmap_empty),
                         hint = stringResource(R.string.heatmap_empty_hint),
                         modifier = Modifier.align(Alignment.Center),

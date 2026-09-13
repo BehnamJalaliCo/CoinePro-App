@@ -95,6 +95,7 @@ import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
+import com.coinepro.core.datastore.ReaderMode
 import com.coinepro.core.designsystem.CoineProNavigationRail
 import com.coinepro.core.symbols.SymbolArtwork
 import com.coinepro.core.symbols.SymbolCategory
@@ -132,6 +133,7 @@ import com.coinepro.core.designsystem.CoineProOfflineBar
 import com.coinepro.core.designsystem.CoineProPriceFeedBar
 import com.coinepro.core.designsystem.PriceFeedReading
 import com.coinepro.core.designsystem.CoineProToast
+import com.coinepro.core.designsystem.LocalTeachingDismissals
 import com.coinepro.core.designsystem.LocalToaster
 import com.coinepro.core.designsystem.ToastTone
 import com.coinepro.core.designsystem.CoineProToastHost
@@ -294,6 +296,7 @@ import com.coinepro.feature.profile.AvatarComposerSheet
 import com.coinepro.feature.profile.ProfileAction
 import com.coinepro.feature.profile.ProfileScreen
 import com.coinepro.feature.script.ScriptScreen
+import com.coinepro.feature.search.MarketPreviewCandles
 import com.coinepro.feature.search.MarketsScreen
 import com.coinepro.feature.search.MarketsSignalStrip
 import com.coinepro.feature.search.SearchScreen
@@ -458,6 +461,14 @@ private const val ACTIVITY_ROUTE = "activity"
  * for the same length of time.
  */
 private const val ALERT_TOAST_MILLIS = 3_000L
+
+/**
+ * The dismissal key behind the guest's one sign-up offer.
+ *
+ * Stored in the same place the teaching banners keep theirs, so it survives a relaunch and a reader
+ * who ignored the offer is not asked again on their next save. See `savedToast`.
+ */
+private const val GUEST_KEEP_KEY = "guest_keep"
 
 /**
  * The alerts on one symbol, as lines the chart can draw and drag (run Ω2).
@@ -1225,6 +1236,9 @@ fun CoineProApp(
     // `false` initially, which is also the stored default. Starting `true` would flash a lock
     // screen at every reader who has never turned it on.
     val appLockEnabled by userPreferencesStore.appLockEnabled.collectAsStateWithLifecycle(false)
+    // The middle as the initial, which is also what `fromId` answers for an unset key, so the first
+    // frame of a chart is never the Simple one being widened a moment later.
+    val readerMode by userPreferencesStore.readerMode.collectAsStateWithLifecycle(ReaderMode.TRADER)
 
     /**
      * Which tab the app opens on: the one the reader was last on, or the watchlist.
@@ -1406,6 +1420,9 @@ fun CoineProApp(
                 onSetAppLockEnabled = { on -> scope.launch { userPreferencesStore.setAppLockEnabled(on) } },
                 themeMode = themeMode,
                 onSetThemeMode = { mode -> scope.launch { userPreferencesStore.setThemeMode(mode) } },
+                readerMode = readerMode,
+                onSetReaderMode = { mode -> scope.launch { userPreferencesStore.setReaderMode(mode) } },
+                onToggleSimpleReaderMode = { scope.launch { userPreferencesStore.toggleSimpleReaderMode() } },
                 marketColors = marketColors,
                 onSetMarketColors = { scheme -> scope.launch { userPreferencesStore.setMarketColors(scheme) } },
                 online = online,
@@ -1615,6 +1632,9 @@ fun CoineProApp(
                         onSetAppLockEnabled = { on -> scope.launch { userPreferencesStore.setAppLockEnabled(on) } },
                         themeMode = themeMode,
                         onSetThemeMode = { mode -> scope.launch { userPreferencesStore.setThemeMode(mode) } },
+                        readerMode = readerMode,
+                        onSetReaderMode = { mode -> scope.launch { userPreferencesStore.setReaderMode(mode) } },
+                        onToggleSimpleReaderMode = { scope.launch { userPreferencesStore.toggleSimpleReaderMode() } },
                         marketColors = marketColors,
                         onSetMarketColors = { scheme -> scope.launch { userPreferencesStore.setMarketColors(scheme) } },
                         online = online,
@@ -1919,6 +1939,24 @@ private fun MainShell(
     /** Which palette this reader pinned, and how to change it. See [ThemeMode]. */
     themeMode: ThemeMode,
     onSetThemeMode: (ThemeMode) -> Unit,
+    /**
+     * How much of the chart's chrome this reader asked for, and how to change it (run Ω3).
+     *
+     * Threaded through the shell rather than read in `feature:chart` for the reason every other
+     * preference is: the store is the app's, and a feature module that opens its own DataStore is a
+     * second source of truth for the same key. See [ReaderMode].
+     */
+    readerMode: ReaderMode,
+    onSetReaderMode: (ReaderMode) -> Unit,
+    /**
+     * The chart hub's one tap between the simple page and the full one.
+     *
+     * Separate from [onSetReaderMode] because it is not the same decision: the appearance page picks
+     * one of three, and this flips to Simple and back to whichever of the other two the reader was
+     * in. `UserPreferencesStore.toggleSimpleReaderMode` is where that memory lives, and it has to
+     * live there rather than here — a remembered value in a composition is lost with it.
+     */
+    onToggleSimpleReaderMode: () -> Unit,
     /** Which colour a rise is drawn in. See `MarketColorScheme`. */
     marketColors: MarketColorScheme,
     onSetMarketColors: (MarketColorScheme) -> Unit,
@@ -1991,6 +2029,10 @@ private fun MainShell(
     val layoutSavedMessage = stringResource(R.string.toast_layout_saved)
     val undoLabel = stringResource(R.string.action_undo)
     val unstarredMessage = stringResource(R.string.toast_unstarred)
+    // «نگهش دار» — the action on a guest's save toast, and the only sign-up prompt in the app that
+    // is not a menu row. See `savedToast`.
+    val keepLabel = stringResource(R.string.action_keep_this)
+    val keepDismissals = LocalTeachingDismissals.current
     val openChartLabel = stringResource(R.string.alert_toast_open)
 
     /**
@@ -2021,12 +2063,43 @@ private fun MainShell(
             )
         }
     }
+    /**
+     * **The one place a guest is asked to sign up** (run Ω3, brief item 3).
+     *
+     * Not at a door. A guest has the whole product — the live catalogue, the chart, the Signal
+     * Layer, Explain, the watchlist, alerts, layouts, the paper account — and every one of those is
+     * stored on this phone and needs no account to work. So there is nothing to gate, and gating
+     * anything would be charging admission for something already built.
+     *
+     * What an account *does* buy is that the thing they just saved outlives this phone. That is a
+     * true sentence exactly at the moment of a save, and nowhere else, so it is offered there: as
+     * the action on the toast that already says the save happened, in the same breath rather than as
+     * an interruption. One offer per install — [GUEST_KEEP_KEY] is marked the moment it is shown, by
+     * the same dismissal store the teaching banners use — because an offer repeated on every save
+     * is a wall built out of toasts.
+     */
+    val savedToast: (String) -> CoineProToast = { message ->
+        val offer = guest && onSignIn != null && keepDismissals.ready &&
+            GUEST_KEEP_KEY !in keepDismissals.dismissed
+        if (offer) {
+            keepDismissals.dismiss(GUEST_KEEP_KEY)
+            CoineProToast(
+                message = message,
+                tone = ToastTone.SUCCESS,
+                durationMillis = ALERT_TOAST_MILLIS,
+                actionLabel = keepLabel,
+                onAction = onSignIn,
+            )
+        } else {
+            CoineProToast(message = message, tone = ToastTone.SUCCESS, durationMillis = ALERT_TOAST_MILLIS)
+        }
+    }
     // The layout callbacks, with a sentence added. Wrapped once here rather than at the two
     // screens that take them, so the chart and the studio cannot disagree about whether saving
     // says anything.
     val onSaveLayoutAnnounced: (ChartLayout) -> Unit = { layout ->
         onSaveLayout(layout)
-        toaster.show(layoutSavedMessage, ToastTone.SUCCESS)
+        toaster.show(savedToast(layoutSavedMessage))
     }
     // Deleting one offers it straight back rather than asking first.
     //
@@ -2051,6 +2124,10 @@ private fun MainShell(
     // forex line beside a crypto price. The scope is the composition's: leaving the app cancels
     // whatever is in flight.
     val sparklineStore = remember(candleGateway) { SparklineStore(candleGateway, sparklineScope) }
+    // The preview sheet's span chips (run Ω3). One per feed, held so a reader flipping between a
+    // week and a month asks the server once for each — and rebuilt on a platform switch, which is
+    // what stops one venue's history being drawn under the other's ticker.
+    val previewCandles = remember(candleGateway) { MarketPreviewCandles(candleGateway) }
     // The charts, held here rather than inside their own destinations. See `ChartControllers`:
     // one controller per destination is what made every drawing tool in the app inert.
     val chartControllers = rememberChartControllers(
@@ -2601,6 +2678,11 @@ private fun MainShell(
             }
             ChartScreen(
                 sidePanels = sidePanels,
+                // How much of the chart's chrome this reader asked for, and the hub's one-tap way
+                // to change their mind. See `ReaderMode`: nothing is gated, so the tap is a
+                // statement about what to draw and it is reversible.
+                readerMode = readerMode,
+                onToggleSimple = onToggleSimpleReaderMode,
                 scriptLibrary = scriptLibrary,
                 onCreateScriptAlert = { symbol, name, source, condition ->
                     scriptAlert = ScriptAlertRequest(symbol, name, source, condition)
@@ -3235,7 +3317,7 @@ private fun MainShell(
                             // screen they were on come back and has no way to tell whether the
                             // alert was made. The list behind it is the proof, but it is below the
                             // fold on a full list.
-                            toaster.show(CoineProToast(alertSavedMessage, ToastTone.SUCCESS, durationMillis = ALERT_TOAST_MILLIS))
+                            toaster.show(savedToast(alertSavedMessage))
                         },
                         onDismiss = { composing = false },
                     )
@@ -3368,6 +3450,10 @@ private fun MainShell(
                 MarketsScreen(
                     controller = marketSearchController,
                     sparklines = sparklineStore,
+                    previewCandles = previewCandles,
+                    // A tap answers the question most taps are asking, for everybody but the reader
+                    // who asked for the whole surface. See `ReaderMode.opensPreviewOnTap`.
+                    previewOnTap = readerMode.opensPreviewOnTap,
                     // The day's figures, which is what the gainers, losers and «داغ» tabs are made
                     // of. Passed as the store rather than a table so the screen starts and stops
                     // the poll with its own lifetime — it is reference counted, so the heat map
@@ -3440,6 +3526,7 @@ private fun MainShell(
                     // Read, never requested: the preview draws whatever line the markets tab has
                     // already fetched for a symbol and asks for nothing of its own.
                     sparklines = sparklineStore,
+                    previewCandles = previewCandles,
                     onCreateAlert = { symbol, price -> alertFromChart = symbol to price },
                 )
             }
@@ -3928,6 +4015,11 @@ private fun MainShell(
                 AppLanguageStore.set(appearanceContext, chosen)
                 (appearanceContext as? Activity)?.recreate()
             },
+            readerMode = readerMode,
+            // Left open, like the colour choice and unlike the theme: a reader trying the three sees
+            // nothing change on this sheet, so dismissing it would be dismissing the only place they
+            // can compare them from.
+            onSelectReaderMode = onSetReaderMode,
         )
     }
 
@@ -3957,7 +4049,7 @@ private fun MainShell(
             )
             localAlertScheduler.sync(hasActiveAlerts = true)
             scriptAlert = null
-            toaster.show(CoineProToast(alertSavedMessage, ToastTone.SUCCESS, durationMillis = ALERT_TOAST_MILLIS))
+            toaster.show(savedToast(alertSavedMessage))
         }
     }
 
@@ -3973,7 +4065,7 @@ private fun MainShell(
                     localAlertScheduler.sync(hasActiveAlerts = true)
                 }
                 alertFromChart = null
-                toaster.show(CoineProToast(alertSavedMessage, ToastTone.SUCCESS, durationMillis = ALERT_TOAST_MILLIS))
+                toaster.show(savedToast(alertSavedMessage))
             },
             onDismiss = { alertFromChart = null },
         )

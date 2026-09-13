@@ -162,6 +162,22 @@ fun MarketsScreen(
     /** The open signals strip at the foot. Null on a build with nothing to link to. */
     openSignals: MarketsSignalStrip? = null,
     /**
+     * The preview's own chart — six spans and a scrub, without leaving this list (run Ω3).
+     *
+     * Optional, and null is the sheet this screen had before: a price, a pill and the day the rows
+     * already hold. Hoisted rather than built here because it caches, and a cache built inside a
+     * composable is a cache thrown away on the first recomposition that changes a key.
+     */
+    previewCandles: MarketPreviewCandles? = null,
+    /**
+     * Whether a tap on a row opens the preview or the chart (run Ω3). See `ReaderMode`.
+     *
+     * A long press opens the preview either way, so nothing is lost to a reader who has this off —
+     * and nothing is hidden from one who has it on, because the sheet's own «چارت» is the tap they
+     * would have made.
+     */
+    previewOnTap: Boolean = false,
+    /**
      * Arms an alert on a symbol at the price the preview is showing.
      *
      * The **price comes from here** rather than being looked up again by the caller. This screen's
@@ -389,7 +405,13 @@ fun MarketsScreen(
                         MarketListRow(
                             modifier = rowMotion(fades = false),
                             row = row,
-                            onClick = { onOpenSymbol(row.meta.symbol) },
+                            onClick = {
+                                if (previewOnTap && previewCandles != null) {
+                                    preview = row.meta.symbol
+                                } else {
+                                    onOpenSymbol(row.meta.symbol)
+                                }
+                            },
                             starred = onToggleWatch?.let { row.meta.symbol.uppercase() in watched },
                             onToggleStar = onToggleWatch?.let { toggle ->
                                 { toggle(row.meta.symbol) }
@@ -442,6 +464,7 @@ fun MarketsScreen(
                     preview = null
                     onOpenSymbol(row.meta.symbol)
                 },
+                candles = previewCandles,
                 onToggleStar = onToggleWatch?.let { toggle -> { toggle(row.meta.symbol) } },
                 // Two conditions, and the second is the row's own: an alert needs a level to fire
                 // at, and a market this feed has not quoted has none. The action is dropped rather

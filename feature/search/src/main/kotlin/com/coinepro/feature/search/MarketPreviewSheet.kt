@@ -173,6 +173,14 @@ internal fun MarketPreviewSheet(
     onOpenChart: () -> Unit,
     onToggleStar: (() -> Unit)? = null,
     onCreateAlert: (() -> Unit)? = null,
+    /**
+     * The span chips, the scrub and the reading — the chart preview (run Ω3). See [MarketPreviewChart].
+     *
+     * Null keeps this sheet exactly what it was: a price, a pill and the day the list already had,
+     * costing nothing. It is null on a build with no candle feed to ask, and the sheet is then the
+     * honest short version rather than a set of chips that answer with nothing.
+     */
+    candles: MarketPreviewCandles? = null,
 ) {
     // The sheet's body is a small transition — 180ms on the design direction's own ladder — and it
     // collapses to nothing when the device has animations turned off. `CoineProMotionSpecs` is not
@@ -256,9 +264,17 @@ internal fun MarketPreviewSheet(
                     else -> Unit
                 }
             }
-            // No line, no box. An empty 40dp rectangle where a shape belongs reads as a chart that
-            // failed to draw, and this sheet never asked for one — see `previewOf`.
-            if (state.line.isNotEmpty()) {
+            // Where there is a feed to ask, the day's line becomes a chart with six spans and a
+            // scrub on it. Where there is not, the sheet is the one-line version it always was.
+            if (candles != null) {
+                MarketPreviewChart(
+                    symbol = state.symbol,
+                    fallback = state.line,
+                    candles = candles,
+                )
+            } else if (state.line.isNotEmpty()) {
+                // No line, no box. An empty 40dp rectangle where a shape belongs reads as a chart
+                // that failed to draw, and this sheet never asked for one — see `previewOf`.
                 CoineProSparkline(
                     values = state.line,
                     modifier = Modifier.fillMaxWidth().height(48.dp),

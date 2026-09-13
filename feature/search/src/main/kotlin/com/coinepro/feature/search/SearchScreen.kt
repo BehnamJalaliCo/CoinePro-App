@@ -137,6 +137,8 @@ fun SearchScreen(
      * disabling it, and so does a market this feed has not quoted — see [MarketsScreen].
      */
     onCreateAlert: ((String, Double) -> Unit)? = null,
+    /** The preview's span chips and scrub. Null keeps the short sheet — see [MarketsScreen]. */
+    previewCandles: MarketPreviewCandles? = null,
 ) {
     LaunchedEffect(controller) { controller.start() }
     val state by controller.state.collectAsStateWithLifecycle()
@@ -303,6 +305,7 @@ fun SearchScreen(
                     preview = null
                     onOpenSymbol?.invoke(row.meta.symbol)
                 },
+                candles = previewCandles,
                 onToggleStar = onToggleWatch?.let { toggle -> { toggle(row.meta.symbol) } },
                 onCreateAlert = onCreateAlert?.let { arm ->
                     row.quote?.price?.let { price ->

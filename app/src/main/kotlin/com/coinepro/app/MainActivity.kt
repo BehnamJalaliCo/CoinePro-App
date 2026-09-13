@@ -109,6 +109,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.coinepro.core.datastore.ReaderMode
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @AndroidEntryPoint
 /**
@@ -343,6 +345,28 @@ class MainActivity : FragmentActivity() {
             }
             }
             if (!launched) LaunchSplash(onFinished = { launched = true })
+            // **The one question the app asks** (run Ω3), between the splash and the chart.
+            //
+            // Over the app rather than in the back stack, for the same reason the splash is: the
+            // chart underneath is loading its candles while the question is on screen, so answering
+            // it lands on a chart that is already drawn rather than on a spinner. It is also why it
+            // is not a navigation destination — a question that could be reached with the back
+            // button is a question that can be reached twice.
+            //
+            // Nothing is asked while the splash is up, so a fresh install sees the mark, then the
+            // question, then its chart. And nothing is asked at all once `readerModeChosen` is true,
+            // which is a property of the stored answer rather than of a counter.
+            val readerModeChosen by userPreferencesStore.readerModeChosen
+                .collectAsStateWithLifecycle(initialValue = true)
+            if (launched && !readerModeChosen) {
+                FirstRunQuestion(
+                    onChoose = { mode -> lifecycleScope.launch { userPreferencesStore.setReaderMode(mode) } },
+                    // «بعداً» stores the default rather than leaving the flag unset, and that is
+                    // deliberate: a reader who declined the question should not be asked it again on
+                    // the next launch, which is the behaviour an unset flag would give them.
+                    onSkip = { lifecycleScope.launch { userPreferencesStore.setReaderMode(ReaderMode.TRADER) } },
+                )
+            }
             }
         }
     }

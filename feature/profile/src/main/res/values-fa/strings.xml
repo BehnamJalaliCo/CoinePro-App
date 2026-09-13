@@ -109,6 +109,11 @@
     <string name="profile_library_intervals">تایم‌فریم‌های ستاره‌دار</string>
     <string name="profile_library_alerts">هشدارهای قیمت</string>
     <string name="profile_library_scripts">اسکریپت‌های ذخیره‌شده</string>
+    <string name="appearance_reader">چه‌قدر نشان داده شود</string>
+    <string name="appearance_reader_simple">ساده</string>
+    <string name="appearance_reader_trader">معامله‌گر</string>
+    <string name="appearance_reader_pro">حرفه‌ای</string>
+    <string name="appearance_reader_note">هیچ چیزی حذف نمی‌شود. تنها چیزی که عوض می‌شود این است که چارت چه‌قدر را روی صفحه می‌گذارد، و هر وقت بخواهید از همین‌جا یا از خود چارت عوضش می‌کنید.</string>
     <string name="appearance_language">زبان</string>
     <string name="appearance_language_note">با تغییر زبان، صفحه یک بار از نو ساخته می‌شود.</string>
     <string name="appearance_theme_system_short">سیستم</string>

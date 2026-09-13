@@ -57,6 +57,7 @@ import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.CoineProThinkingDots
+import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.portfolio.ClosedTrade
 import com.coinepro.core.portfolio.MonthlyPerformance
 import com.coinepro.core.portfolio.PortfolioController
@@ -108,6 +109,7 @@ fun PortfolioReportScreen(
             state.loading && state.trades.isEmpty() -> Centre { CoineProThinkingDots() }
             state.trades.isEmpty() -> Centre {
                 CoineProEmptyState(
+                    icon = CoineProIcons.Portfolio,
                     message = stringResource(R.string.portfolio_report_empty),
                     hint = stringResource(R.string.portfolio_report_empty_hint),
                 )

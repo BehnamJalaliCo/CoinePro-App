@@ -145,3 +145,104 @@ resources and those were Kotlin: «نمودار» where the glossary says «چا
 | New tests | 12 (`PageAccentTest` 5, `SurfaceLadderTest` +3, `ChartStaleTest` +2, `ChartProvenanceTest` rewritten to identities, `ChartRangeTest`/`RepaintClaimTest` to ids) |
 | Goldens re-recorded | 40 (the light candles, the A/L minis, the legend's V) |
 | Gates | all five |
+
+---
+
+## Ω3 — one question, one filter, and a chart in the list (4.77.0)
+
+### The question
+
+One screen between the splash and the app, three cards and a way out. It asks about *how much to
+show*, not about experience, and the wording is the point: «تازه‌کارم» is something a person is
+willing to say about themselves where «سطح دانش شما» is a test. Simple is first, deliberately — the
+reader this screen exists for is the beginner, and putting them last would put the app's own
+preference above the question's purpose.
+
+Nothing it sets is a gate. `ReaderMode` is a statement about what to draw, it lives beside
+`ThemeMode` rather than anywhere near an entitlement, and `ReaderModeTest` holds that: five cases,
+including «the modes widen in one direction and never cross», which fails if a narrower mode ever
+carries something a wider one does not.
+
+### Simple mode is four handlers unset
+
+The chart page did not grow a variant. Every advanced entry on it was *already* nullable —
+`onOpenDepth`, `onOpenStudio`, `onOpenScript` and `ChartWorkbench.tools` — because a build without a
+depth feed has to draw a page that makes sense, and «this reader asked for a simpler page» turned out
+to be the same question with a different answer. So Simple mode is `ChartScreen` with those unset,
+plus the band's pencil and the studio row under the plot on the same flag. Five reads of one
+property, no second layout, and every control still built and still tested.
+
+`RunOmegaProofTest` photographs both at 1280 dp and asserts the difference on the one thing with a
+semantics tag of its own: `chart-tool-rail`, present in Trader and absent in Simple, same controller,
+same candles, one parameter.
+
+### The toggle, and the second key it needed
+
+The «…» hub carries the flip, beside «خوانش بازار», because the moment somebody wants a simpler page
+is the moment they are looking at one with too much on it — and a preference two screens away is one
+they never find. The appearance sheet carries the full three-way choice, under its own heading,
+between the palette and the language.
+
+A toggle with one stored key can only return to a constant, which would have meant a Pro reader who
+simplified the chart for one look coming back as a Trader with their workbench gone: the app quietly
+demoting somebody for using a control. `reader_mode_full` holds the mode they came from, and
+`setReaderMode` writes it on the way past too, so the settings page and the toggle agree about what
+«full» means for this reader. `ReaderModeStoreTest` holds the round trip from both directions,
+including the case where Simple was chosen on the settings page rather than by the toggle.
+
+### The chart preview
+
+A long press on a market used to answer «what is this one doing» with a price, a pill and one day of
+closes. Any other question meant opening the chart, which is a route, a candle request and a terminal
+layout — four seconds on this audience's connection, which is long enough that most people do not
+ask.
+
+The sheet now carries six spans, a line a finger can run along, and one line saying what the market
+is doing. The spans are `PreviewRange`, and each is drawn at a bar length both backends serve
+directly so a chip is one request rather than a fold: `PreviewRangeTest` holds that every chip covers
+the period it is named after, within the rounding a round bar count allows, and that no span draws
+more points than a phone can stroke in one pass.
+
+The scrub ticks **per detent, not per bar**. A year is 365 bars across a phone and a buzz per bar is
+a vibration rather than feedback; twenty detents is a scale a thumb reads as separate events, and it
+is a property of the hand rather than of the data, which is why it is a constant.
+
+The summary line is `ChartReading.of` over the span's own candles — the same arithmetic the chart's
+own reading panel uses, so the sheet and the chart behind it cannot disagree.
+
+And a tap on a market row opens it, for everybody except a Pro reader. That is the brief's «setting
+to skip for pros», and it is the setting they already have rather than a fourth switch asking the
+same question in different words.
+
+### Sign-up, at a save and nowhere else
+
+A guest has the live catalogue, the chart, the Signal Layer, Explain, the watchlist, alerts, layouts
+and the paper account. All of it is stored on this phone, so there is nothing to gate and gating
+anything would be charging admission for something already built.
+
+What an account buys is that the thing they just saved outlives this phone, which is a true sentence
+exactly at the moment of a save. So it is the action on the toast that already says the save
+happened — «نگهش دار», once per install, marked in the same dismissal store the teaching strips use.
+The two remaining `GuestGate`s are the two server-fed surfaces, which have no local answer to gate.
+
+### The states nobody designs
+
+`CoineProEmptyState` and `CoineProErrorState` were already the only two and already shared one
+private `StateBlock`, so the API allows exactly one action by construction. What had drifted was the
+mark: five empty states passed no icon, which draws a sentence alone in the middle of a page — which
+is precisely what a screen that failed to load looks like. They have their screen's glyph now.
+
+Two new checks in the consistency gate keep it: `check_state_surfaces` fails on an empty state with
+no mark and on a state illustration over 8 KB, and `check_coach_marks` holds the brief's «one 2-line
+tooltip per screen» — exactly one strip per surface, no surface with strings and no screen, and no
+teaching line over 150 characters.
+
+### Numbers
+
+| | |
+|---|---|
+| New tests | 18 (`ReaderModeTest` 6, `ReaderModeStoreTest` 7, `PreviewRangeTest` 6 — and 3 new proof cases in `RunOmegaProofTest`) |
+| New gate checks | 2 (`check_state_surfaces`, `check_coach_marks`) |
+| Proof frames | 3 (`omega3-first-run-fa`, `omega3-full-chart-fa`, `omega3-simple-chart-fa`) |
+| New string pairs | 14 |
+| Gates | all five |

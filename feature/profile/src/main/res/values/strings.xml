@@ -106,6 +106,11 @@
     <string name="profile_library_intervals">Starred timeframes</string>
     <string name="profile_library_alerts">Price alerts</string>
     <string name="profile_library_scripts">Saved scripts</string>
+    <string name="appearance_reader">How much to show</string>
+    <string name="appearance_reader_simple">Simple</string>
+    <string name="appearance_reader_trader">Trader</string>
+    <string name="appearance_reader_pro">Pro</string>
+    <string name="appearance_reader_note">Nothing is taken away. This is only about what the chart puts on the screen, and you can change it here or from the chart itself whenever you like.</string>
     <string name="appearance_language">Language</string>
     <string name="appearance_language_note">Changing the language rebuilds the screen once.</string>
     <string name="appearance_theme_system_short">System</string>
