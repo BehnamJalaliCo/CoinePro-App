@@ -55,6 +55,16 @@ jobs:
       - name: Enforce Kotlin style
         run: bash scripts/quality/check-kotlin-style.sh
 
+      # The doctrine's own gates (docs/DOCTRINE.md). A principle nobody can fail is a slogan, so
+      # each of the ten has something that runs; these are the two that are scripts rather than
+      # tests. D3 and D4 are `SixtySecondsToMeaningTest` and `NavigationDepthTest`, which the unit
+      # test job already runs.
+      - name: Doctrine D6 — every confirmation is a haptic
+        run: bash scripts/quality/check-haptic-policy.sh
+
+      - name: Doctrine D10 — no ✅ without a frame or a test
+        run: python3 scripts/quality/check-checklist-honesty.py
+
       # `docs/legal/` is the only place the two documents are written; the app reads committed
       # copies of them. Without this check a revision nobody re-synced ships an out-of-date
       # document to readers while the published site shows the new one.

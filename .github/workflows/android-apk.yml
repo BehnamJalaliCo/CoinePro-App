@@ -135,6 +135,10 @@ jobs:
           python3 scripts/quality/check-benchmark-thresholds.py --allow-missing
           bash scripts/quality/check-motion-policy.sh
           bash scripts/quality/check-kotlin-style.sh
+          # The doctrine's two script gates — docs/DOCTRINE.md D6 and D10. The other eight are
+          # tests, and `testDebugUnitTest` below runs them.
+          bash scripts/quality/check-haptic-policy.sh
+          python3 scripts/quality/check-checklist-honesty.py
           bash scripts/security/scan-secrets.sh
           # The version arithmetic exists in two languages; this asserts the two agree.
           python3 scripts/release/version.py --check

@@ -211,3 +211,73 @@ can be shown it before anything is added.
 | New columns on `saved_scripts` | 6, by `ALTER TABLE`, no rebuild |
 | New tests | 5 migration, 10 controller, 3 history, 4 deep-link, 1 proof frame |
 
+# Σ2 — the doctrine's gates (4.82.2)
+
+Four of the ten principles had no gate. `docs/DOCTRINE.md` said so in its own status column, which
+is the only reason they were findable rather than assumed — and which is the doctrine working on
+itself before anything else in this phase did.
+
+## D10, and what it found in the first hour
+
+`check-checklist-honesty.py` walks every `docs/runs/**/CHECKLIST.md` and fails a ✅ whose Evidence or
+Frame cell points at nothing. `—` counts as nothing: a dash is the shape a blank takes once somebody
+has been told not to leave one.
+
+It failed twice on this run's own checklist. First on S9 — «this document, `REPORT.md`,
+`BLOCKED.md`», ✅ with a bare dash for a frame, written by the same hand that wrote the rule. Then on
+a Σ2 row whose Frame cell said «**A gate**», which is three words and not an explanation. Both are
+fixed above, and neither would have been noticed by reading.
+
+That is the whole argument for D10 being a script rather than a habit: the failure mode is not
+dishonesty, it is a cell somebody filled in while thinking about something else.
+
+## D4, and a bug in the test rather than the app
+
+`NavigationDepthTest` reads every `composable(route = …)` **out of `CoineProApp.kt`** rather than
+from a list beside it. A second list is one that can be shorter than the graph without anything
+failing, which is exactly the hole D4 exists to close.
+
+It reported five unreachable routes. Four were real and correctly deeper — a portfolio report, the
+two legal documents, and diagnostics, which is not in the store build's menu because it is not for
+readers — and each now carries a sentence saying so, with a test that the sentence is long enough to
+be one. The fifth, `AI_PATTERN`, was the test's fault: `"ai"` and `"ai?symbol={symbol}"` are one
+screen and the comparison said otherwise. A gate that reports a false positive on its first run is a
+gate nobody will trust on its tenth, so the query is stripped before the comparison.
+
+## D6, three claims instead of one
+
+The brief said «the `CoineProHaptics` call-site count», which on its own is a number that only ever
+goes up. `check-haptic-policy.sh` holds the two claims underneath it as well:
+
+* **One vocabulary.** Nothing outside `CoineProHaptics` may call `performHapticFeedback` or reach
+  for `LocalHapticFeedback`. There are five words; a sixth invented at a call site is a buzz a
+  reader cannot learn, and it looks like every other line in review. There are currently none.
+* **The primitives keep theirs.** Five components — the buttons, the confirm dialog, the market row,
+  pull-to-refresh — carry the haptics that every screen using them inherits. One of those losing its
+  call would silence hundreds of call sites in a single edit with nothing else failing.
+* **The count does not collapse.** A floor of forty against the ninety-five that exist.
+
+## D3, which is not a stopwatch
+
+Sixty seconds depends on a device, a network and a person, and no unit test holds it. What
+`SixtySecondsToMeaningTest` holds is everything that makes sixty seconds possible: the start
+destination is not a sign-in wall, the chart route asks for no session, and the **default** studies
+produce a sentence and a **non-neutral** state on a two-hundred-bar first fetch and on a forty-bar
+half-loaded one, in both languages.
+
+The non-neutral assertion is the one with teeth. A default set where every study shrugs is a chart
+that has told a new reader nothing, and it would look perfectly reasonable in a diff.
+
+## What Σ2 does not claim
+
+D7 and D8 are still ❌, and they stay ❌ until Σ3 builds the features they are about. A gate over a
+feature that does not exist is a green check measuring nothing — which is the exact failure D10 is
+for.
+
+| | |
+|---|---|
+| Gates added | 2 scripts, 2 test classes (12 tests) |
+| Wired into | `android-ci.yml` as named steps, `android-apk.yml` in its gate block |
+| Principles with a gate | 8 of 10 |
+| Found by the new gates, in their own repository | 2 hollow checklist cells, 4 undocumented deep routes |
+

@@ -15,12 +15,12 @@ false on the device in every frame of two recordings.
 | S1 | Horizontal pinch on the plot zooms time; vertical does too with auto-scale on; the price gutter scales price only | ✅ code, ⏳ owed to device | `PinchZone` + `pinchZoneOf` route by **start location only**; the plot's zoom is the Euclidean distance ratio at any angle. The bug was a per-frame `1.0025.pow(Δspan)` behind a one-per-cent dead zone — arithmetically unreachable at any human finger speed. `ChartPinchTest` (6) injects two real pointers; `PinchZoneTest` (6) walks every point of the canvas | **A gesture, so not a still.** Six injected-pointer tests, one of them through the whole page to prove nothing above the plot steals the second finger. The owner's recording is what closes it |
 | S2 | Buy/Sell markers carry labels per the density rules; goldens at 4/8/16 dp | ✅ | `ChartMarker.label` + `TradeSide.action`; `SignalMarkers.detailFor` — label at ≥ 12 dp a bar, triangle 6–12, one per ten-bar swing below 6; `sizeDpFor` gives 6/8/10 dp by strength; labels skip the legend plate, the plot's edges and each other. Per-study «با برچسب / فقط مثلث / خاموش» in the Explain sheet. `SignalMarkersTest` (13) | `sigma0-markers-{16,8,4}dp-phone-fa.png`, the same three on a tablet, `sigma0-markers-16dp-phone-en.png`, `sigma0-markers-triangles-phone-fa.png` |
 | S3 | BYO Script end to end | ✅ for A, B, C, E, F, G; ❌ for D | Σ1 below | `sigma1-paste-fixes-phone-fa.png`, `sigma1-paste-templates-phone-fa.png`, `sigma1-prompt-kit-phone-{fa,en}.png`, `sigma1-my-script-phone-fa.png` |
-| S4 | `docs/DOCTRINE.md` with D1–D10, each with a CI gate | ❌ | Σ2 | — |
+| S4 | `docs/DOCTRINE.md` with D1–D10, each with a CI gate | ✅ for eight; ❌ for D7 and D8, whose features are Σ3 | Σ2 below | **Gates, not pictures** — the evidence is that they run and fail: `check-haptic-policy.sh`, `check-checklist-honesty.py`, `NavigationDepthTest`, `SixtySecondsToMeaningTest`, all four in CI |
 | S5 | Retention loop | ❌ | Σ3 | — |
 | S6 | Account value: sync, export/import, guest migration | ❌ | Σ4 | — |
 | S7 | Community scripts | ❌ | Σ4 | — |
 | S8 | All of the above on tablet, parity matrix 100 % | ❌ | Σ5 | — |
-| S9 | This document, `REPORT.md`, `BLOCKED.md` | ✅ for Σ0 | The Σ0 rows above and `REPORT.md`'s Σ0 section | — |
+| S9 | This document, `REPORT.md`, `BLOCKED.md` | ✅ for Σ0 and Σ1 | The Σ0 and Σ1 sections below, and `REPORT.md` | **The documents are the evidence, not a subject of it** — and from 4.82.2 they are checked by `scripts/quality/check-checklist-honesty.py`, which fails on a ✅ whose Frame or Evidence cell points at nothing. It found this row |
 
 ## Σ0, item by item
 
@@ -77,6 +77,26 @@ built before S7.
 **D needs a place to post to.** Sharing a script is a community surface; the run's own plan puts
 that in Σ4 (S7). What Σ1 leaves behind for it is `ScriptLink` — an address that carries an id and
 never source, so that a tapped link can never be a script that ran.
+
+## Σ2, item by item — the doctrine's gates
+
+Four principles were intentions. `docs/DOCTRINE.md` said so in its own status column, which is the
+only reason this was findable at all.
+
+| Σ2 item | State | Evidence | Frame |
+|---|---|---|---|
+| **D3** Sixty seconds to meaning, as a step count rather than a stopwatch | ✅ | `SixtySecondsToMeaningTest` (7). Sixty seconds is not a thing a unit test holds; what it holds is everything that makes it possible — the start destination is not a sign-in wall, the chart route asks for no session, and the **default** studies produce a sentence and a **non-neutral** state on a two-hundred-bar first fetch. The neutral check is the one with teeth: a default set where every study shrugs is a chart that has told the reader nothing, and it would look fine in a diff | **A gate, so not a still.** The forty-bar case is the half-loaded chart a reader actually sees first |
+| **D4** Nothing more than one layer from the chart | ✅ | `NavigationDepthTest` (5) reads every `composable(route = …)` **out of `CoineProApp.kt`** rather than from a list beside it — a second list can be shorter than the graph without anything failing, which is the hole D4 exists to close. It found five routes the menu cannot reach; three are correctly deeper (a portfolio report, the two legal documents) and one is deliberately absent from the store menu (diagnostics). The fifth was a bug in the test, not the app: `AI_ROUTE` and `AI_PATTERN` are one screen and differ by a query | **A gate.** Every exemption carries a sentence, and a test checks the sentence is long enough to be one |
+| **D6** Every confirmation is a haptic | ✅ | `check-haptic-policy.sh`. Three claims: nothing outside `CoineProHaptics` calls the platform's haptics (a sixth weight invented at a call site is a buzz nobody can learn — there are currently none), the five primitives a screen relies on each still take them, and the call-site count has a floor of forty against the ninety-five that exist, so a refactor cannot silence the app in one edit | **A gate, not a picture** — it fails in CI when the vocabulary widens |
+| **D10** No ✅ without a frame or a test | ✅ | `check-checklist-honesty.py` walks every `docs/runs/**/CHECKLIST.md`. A ✅ needs a non-empty Evidence cell and a Frame cell that either names an image or explains, in a sentence, why the claim is not the kind a still frame carries. `—` is treated as blank, because a dash is the shape a blank takes once somebody has been told not to leave one. **It failed on RUN Σ's own S9 row the first time it ran** | **A gate**, and the one that grades the others |
+| All four wired into CI | ✅ | `android-ci.yml` runs the two scripts as named steps; `android-apk.yml` runs them in its gate block. D3 and D4 are tests, so `testDebugUnitTest` already carries them | — **CI configuration**; the workflow files are the evidence |
+
+### What Σ2 does not claim
+
+**D7 and D8 have no gate because they have no feature.** A Home test in three data states needs a
+Home that has «since your last visit» on it, and a round-trip test per store needs the export to
+exist. Σ3 builds both. Writing a gate over a feature that is not there would be a green check
+measuring nothing, which is the exact failure D10 is about.
 
 ## What Σ0 does **not** claim
 
