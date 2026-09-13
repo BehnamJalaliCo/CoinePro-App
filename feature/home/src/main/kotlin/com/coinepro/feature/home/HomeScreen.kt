@@ -78,6 +78,7 @@ import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.marketdata.MarketConnectionState
 import com.coinepro.core.marketdata.MarketDataOrigin
 import com.coinepro.core.marketdata.MarketDataState
+import com.coinepro.core.marketdata.MarketMood
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.coinepro.core.marketdata.SparklineStore
 import com.coinepro.core.model.AvatarSpec
@@ -176,6 +177,13 @@ fun HomeScreen(
      * many there are and goes there.
      */
     onOpenPortfolio: (() -> Unit)? = null,
+    /**
+     * What the whole board did today (run Ω4). See [MarketMoodStrip].
+     *
+     * Empty is the default and draws nothing: CoinePro-FX has no day-figures route at all, and a
+     * strip of dashes on the first screen of the app would be worse than no strip.
+     */
+    mood: MarketMood = MarketMood(),
 ) {
     val quotes = state.quotes.values.sortedWith(
         compareBy<MarketQuote>({ marketRank(it) }, { it.instrument.symbol }),
@@ -259,6 +267,17 @@ fun HomeScreen(
                         onOpenPortfolio = onOpenPortfolio,
                     )
                 }
+            }
+
+            // **The board, above the reader's own markets and below their own money.**
+            //
+            // Home's order is a hierarchy of whose news it is: the account first, then the actions,
+            // then the world. The strip is the world, and it comes before the six markets the reader
+            // starred because those are a *subset* of it — a reader who sees «بیشتر نزولی» over the
+            // board and then their own three reds has an explanation rather than three bad
+            // surprises.
+            if (!mood.isEmpty) {
+                item { MarketMoodStrip(mood = mood, onOpenSymbol = onOpenSymbol) }
             }
 
             item {

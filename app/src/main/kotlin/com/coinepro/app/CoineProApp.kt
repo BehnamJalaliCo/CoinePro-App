@@ -29,6 +29,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -79,6 +81,7 @@ import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.chartevents.ChartEventController
 import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.datastore.ActivePlatformStore
+import com.coinepro.core.datastore.ArenaStore
 import com.coinepro.core.datastore.ChartLayout
 import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartLayoutStore
@@ -195,6 +198,7 @@ import com.coinepro.core.marketdata.NoChartTicks
 import com.coinepro.core.marketdata.chartTicks
 import com.coinepro.core.marketdata.MarketDataState
 import com.coinepro.core.marketdata.MarketDataSymbols
+import com.coinepro.core.marketdata.MarketMood
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketTickerStore
 import com.coinepro.core.marketdata.PriceFeedStatus
@@ -207,7 +211,19 @@ import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.SignalDirection
 import com.coinepro.core.navigation.AppDestination
+import com.coinepro.core.chart.Arena
+import com.coinepro.core.chart.ArenaChallenge
+import com.coinepro.core.chart.ArenaTrade
+import com.coinepro.core.chart.markRevengeTrades
+import com.coinepro.core.datastore.ArenaResult
+import com.coinepro.core.datastore.best
+import com.coinepro.core.datastore.streak
+import com.coinepro.core.designsystem.ShareCard
+import com.coinepro.core.designsystem.ShareCardContent
+import com.coinepro.core.designsystem.ShareCardTone
+import com.coinepro.feature.chart.ArenaSession
 import com.coinepro.core.chart.ChartAlertLine
+import com.coinepro.core.chart.TradeFacts
 import com.coinepro.core.notifications.AlertFrequency
 import com.coinepro.core.notifications.AlertRepeat
 import com.coinepro.core.notifications.AlertTrigger
@@ -218,6 +234,7 @@ import com.coinepro.core.notifications.NotificationController
 import com.coinepro.core.notifications.NotificationSettings
 import com.coinepro.core.orderbook.OrderBookController
 import com.coinepro.core.orderbook.OrderBookGateway
+import com.coinepro.core.papertrade.PaperCloseReason
 import com.coinepro.core.papertrade.PaperOrderRequest
 import com.coinepro.core.papertrade.PaperOrderType
 import com.coinepro.core.papertrade.PaperSide
@@ -250,6 +267,7 @@ import com.coinepro.feature.chart.ChartController
 import com.coinepro.feature.chart.ChartPanesScreen
 import com.coinepro.feature.chart.ChartMirror
 import com.coinepro.feature.chart.ChartScriptSource
+import com.coinepro.feature.chart.ChartShare
 import com.coinepro.feature.chart.ChartScreen
 import com.coinepro.feature.chart.ChartStudioScreen
 import com.coinepro.feature.chart.ChartWorkspaceStore
@@ -836,6 +854,8 @@ fun CoineProApp(
      * left, and the second pane opens on nothing every time.
      */
     chartWorkspaceStore: ChartWorkspaceStore,
+    /** The reader's own Arena history, for the streak and the league of one. See [ArenaStore]. */
+    arenaStore: ArenaStore,
     /** The reader's saved screens. One file for both platforms — a filter is not per backend. */
     screenerStore: ScreenerStore,
     journalController: JournalController,
@@ -1332,6 +1352,7 @@ fun CoineProApp(
                 intervalFavouritesStore = intervalFavouritesStore,
                 indicatorFavouritesStore = indicatorFavouritesStore,
                 chartWorkspaceStore = chartWorkspaceStore,
+                arenaStore = arenaStore,
                 portfolioController = portfolioControllers.getValue(activePlatform),
                 academyController = academyController,
                 communityController = communityController,
@@ -1558,6 +1579,7 @@ fun CoineProApp(
                         intervalFavouritesStore = intervalFavouritesStore,
                 indicatorFavouritesStore = indicatorFavouritesStore,
                         chartWorkspaceStore = chartWorkspaceStore,
+                        arenaStore = arenaStore,
                         portfolioController = portfolioControllers.getValue(activePlatform),
                         academyController = academyController,
                         // The community is the app's own and needs no account, so a guest has it.
@@ -1827,6 +1849,8 @@ private fun MainShell(
      * left, and the second pane opens on nothing every time.
      */
     chartWorkspaceStore: ChartWorkspaceStore,
+    /** The reader's own Arena history, for the streak and the league of one. See [ArenaStore]. */
+    arenaStore: ArenaStore,
     portfolioController: PortfolioController,
     academyController: AcademyController,
     /** The app's own board. On both platforms and for a guest: it belongs to neither account. */
@@ -2093,6 +2117,40 @@ private fun MainShell(
         } else {
             CoineProToast(message = message, tone = ToastTone.SUCCESS, durationMillis = ALERT_TOAST_MILLIS)
         }
+    }
+    /**
+     * **A milestone alert, armed in one tap from a market row** (run Ω4).
+     *
+     * `CHANGE_24H_OVER` / `CHANGE_24H_UNDER` rather than the percent-from-here conditions, and the
+     * difference is the whole feature: a percent-from-here alert is about the moment the reader
+     * pressed the chip, and «±۵٪ امروز» is about the *day*, which is the figure the row they pressed
+     * it from was showing. The two would disagree by whatever the market had already done by the
+     * time they looked.
+     *
+     * [AlertFrequency.ONCE], which is the store's own default and the right one here: «tell me if
+     * this moves five per cent today» is answered the first time it does, and a market that crosses,
+     * falls back and crosses again would otherwise report the same piece of news three times — which
+     * is how a reader learns to mute the channel. Re-arming it is one tap on the same chip.
+     */
+    val onMilestoneAlertArmed: (String, Boolean, Double) -> Unit = { symbol, up, percent ->
+        shellScope.launch {
+            localAlertStore.add(
+                LocalPriceAlert(
+                    id = java.util.UUID.randomUUID().toString().replace("-", "").take(12),
+                    symbol = symbol,
+                    condition = if (up) {
+                        LocalAlertCondition.CHANGE_24H_OVER
+                    } else {
+                        LocalAlertCondition.CHANGE_24H_UNDER
+                    },
+                    value = percent,
+                    frequency = AlertFrequency.ONCE,
+                    createdAtEpochMillis = System.currentTimeMillis(),
+                ),
+            )
+            localAlertScheduler.sync(hasActiveAlerts = true)
+        }
+        toaster.show(savedToast(alertSavedMessage))
     }
     // The layout callbacks, with a sentence added. Wrapped once here rather than at the two
     // screens that take them, so the chart and the studio cannot disagree about whether saving
@@ -2609,10 +2667,99 @@ private fun MainShell(
             // previous symbol's trade painted over this symbol's bars.
             val paperBook by paperTradeController.state.collectAsStateWithLifecycle()
             val openPosition = paperBook.book.positionFor(activeChartSymbol)
+            // **What رصد reviews** (run Ω4): the reader's last finished rehearsal trade, on this
+            // instrument, reduced to the facts a review is about.
+            //
+            // On this instrument and not the account's last trade anywhere: «معامله‌ی آخرم» asked
+            // while looking at gold means the last gold trade, and a review of a bitcoin trade under
+            // a gold chart is the coach answering a question nobody asked.
+            val lastRehearsal = remember(paperBook.book.closed, activeChartSymbol) {
+                paperBook.book.closed
+                    .lastOrNull { it.symbol.equals(activeChartSymbol, ignoreCase = true) }
+                    ?.let { trade ->
+                        val byStop = trade.reason == PaperCloseReason.STOP_LOSS
+                        TradeFacts(
+                            entry = trade.entry,
+                            exit = trade.exit,
+                            // The book keeps the stop's price only where the stop is what closed the
+                            // trade. Everywhere else the record does not say, which is a third answer
+                            // and not a «no» — see `TradeFacts.hadStop`.
+                            stop = trade.exit.takeIf { byStop },
+                            hadStop = true.takeIf { byStop },
+                            closedByStop = byStop,
+                            closedEarly = trade.reason == PaperCloseReason.MANUAL ||
+                                trade.reason == PaperCloseReason.REVERSE,
+                            // A stop-out is minus one unit of risk by definition, whatever the
+                            // prices were. Nothing else here has a risk to divide by, and an invented
+                            // denominator would put a number on the one sentence that must not carry
+                            // one it cannot defend.
+                            rMultiple = (-1.0).takeIf { byStop },
+                        )
+                    }
+            }
             // The panels a wide window docks beside the plot. Each is the screen the phone
             // reaches by a route, composed here because the chart cannot see the modules that
             // own them; the chart decides whether there is room. See `ChartSidePanel`.
             val chartState by chartController.state.collectAsStateWithLifecycle()
+
+            // **میدان — today's challenge** (run Ω4).
+            //
+            // The same instrument and the same window for everybody, picked from the date, because
+            // no backend serves «today's challenge» and a shared score has to be about the same
+            // question. `BLOCKED.md` entry 2 names the endpoint; when it exists it replaces
+            // `Arena.challengeFor` and nothing else here moves.
+            val arenaToday = remember { java.time.LocalDate.now().toEpochDay() }
+            val shellContext = LocalContext.current
+            // Hoisted, because the share runs on a coroutine after the sheet has closed and a
+            // composition local read there is a read of a composition that is no longer present.
+            val arenaShareSubtitle = stringResource(ChartR.string.arena_result_title)
+            val arenaShareDiscipline = stringResource(ChartR.string.arena_share_discipline)
+            val arenaShareProfit = stringResource(ChartR.string.arena_share_profit)
+            val arenaShareRtl = !inEnglish()
+            val arenaHistory by arenaStore.results.collectAsStateWithLifecycle(initialValue = emptyList())
+            var arenaSession by remember { mutableStateOf<ArenaSession?>(null) }
+            var arenaPending by remember { mutableStateOf<ArenaChallenge?>(null) }
+            // Where the paper book stood when the clock started, so the score is over the trades of
+            // *this* session rather than of the reader's whole rehearsal account.
+            var arenaMark by remember { mutableIntStateOf(0) }
+            val arenaChallenge = remember(arenaToday, catalogue, chartState.series.bars.size) {
+                Arena.challengeFor(
+                    epochDay = arenaToday,
+                    // Sorted, because the pick is an index into this list and two phones must agree
+                    // about what the list is. The catalogue's own order is the feed's.
+                    symbols = catalogue.map { it.symbol }.sorted(),
+                    historyBars = chartState.series.bars.size,
+                )
+            }
+            // **The stop each position actually carried**, observed while it was open.
+            //
+            // The book keeps a closed trade's *reason* but not its stop, so a take-profit arrives
+            // with nothing to measure a result against — and the Arena's profit half is in units of
+            // risk. Rather than invent a denominator, the shell watches the open positions and
+            // remembers the stop that was really set; a position that never had one is absent here
+            // and scores no risk-multiple at all, which is the honest answer and is also what the
+            // discipline half is already counting.
+            val arenaStops = remember { mutableStateMapOf<Long, Double>() }
+            LaunchedEffect(paperBook.book.positions) {
+                for (position in paperBook.book.positions) {
+                    position.stopLoss?.let { arenaStops[position.id] = it }
+                }
+            }
+
+            // The chart has to be on the challenge's instrument and have its bars before the clock
+            // can start; navigating is asynchronous and loading is slower still, so the start is a
+            // request and this is what completes it.
+            LaunchedEffect(arenaPending, activeChartSymbol, chartState.series.bars.size) {
+                val pending = arenaPending ?: return@LaunchedEffect
+                if (!activeChartSymbol.equals(pending.symbol, ignoreCase = true)) return@LaunchedEffect
+                if (chartState.series.bars.size <= pending.startBar) return@LaunchedEffect
+                chartController.enterReplay()
+                chartController.replayGoTo(pending.startBar)
+                arenaMark = paperBook.book.closed.size
+                arenaSession = ArenaSession(challenge = pending, epochDay = arenaToday)
+                arenaPending = null
+            }
+
             val sidePanels = listOf(
                 ChartSidePanel("watchlist", ChartR.string.chart_panel_watchlist, DesignR.drawable.icon_star) {
                     WatchlistScreen(
@@ -2683,6 +2830,96 @@ private fun MainShell(
                 // statement about what to draw and it is reversible.
                 readerMode = readerMode,
                 onToggleSimple = onToggleSimpleReaderMode,
+                lastPaperTrade = lastRehearsal,
+                arena = arenaSession,
+                // Offered only where the day's challenge can actually be set — `challengeFor`
+                // answers null rather than a window with nothing in front of it.
+                onStartArena = arenaChallenge?.let { challenge ->
+                    {
+                        if (activeChartSymbol.equals(challenge.symbol, ignoreCase = true)) {
+                            arenaPending = challenge
+                        } else {
+                            // The challenge names the instrument; the chart goes to it. Replacing
+                            // rather than stacking, for the reason every symbol switch here does.
+                            arenaPending = challenge
+                            navController.navigate(chartRoute(challenge.symbol)) {
+                                popUpTo(CHART_PATTERN) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
+                    }
+                },
+                // The score is over the trades this session closed, which is the tail of the paper
+                // book past the mark taken when the clock started.
+                onScoreArena = {
+                    val closed = paperBook.book.closed.drop(arenaMark)
+                    Arena.score(
+                        markRevengeTrades(
+                            trades = closed.map { trade ->
+                                val stop = arenaStops[trade.id]
+                                ArenaTrade(
+                                    hadStop = stop != null,
+                                    // The result over what was risked, in the instrument's own
+                                    // units: (exit − entry) against (entry − stop), signed by the
+                                    // side. Null without a stop, because there is nothing to divide
+                                    // by — and a trade with no stop has already cost its share of
+                                    // the discipline half.
+                                    rMultiple = stop?.let { level ->
+                                        val risk = kotlin.math.abs(trade.entry - level)
+                                        if (risk <= 0.0) {
+                                            null
+                                        } else {
+                                            (trade.exit - trade.entry) * trade.side.direction / risk
+                                        }
+                                    },
+                                )
+                            },
+                            // Seconds, because `REVENGE_WINDOW_SECONDS` is in seconds and the book
+                            // keeps milliseconds.
+                            opened = closed.map { it.openedAtEpochMillis / 1_000 },
+                            closed = closed.map { it.closedAtEpochMillis / 1_000 },
+                            results = closed.map { it.net },
+                        ),
+                    )
+                },
+                onArenaFinished = { result ->
+                    val session = arenaSession
+                    if (session != null) {
+                        shellScope.launch {
+                            arenaStore.record(
+                                ArenaResult(
+                                    epochDay = session.epochDay,
+                                    symbol = session.challenge.symbol,
+                                    total = result.total,
+                                    discipline = result.discipline,
+                                    profit = result.profit,
+                                ),
+                            )
+                        }
+                    }
+                },
+                onShareArena = { result ->
+                    shellScope.launch {
+                        val card = ShareCard.render(
+                            context = shellContext,
+                            dark = true,
+                            rtl = arenaShareRtl,
+                            content = ShareCardContent(
+                                title = BidiText.isolateLtr(activeChartSymbol),
+                                subtitle = arenaShareSubtitle,
+                                headline = BidiText.isolateLtr("${result.total}/100"),
+                                tone = ShareCardTone.NEUTRAL,
+                                lines = listOf(
+                                    String.format(arenaShareDiscipline, result.discipline),
+                                    String.format(arenaShareProfit, result.profit),
+                                ),
+                            ),
+                        )
+                        ChartShare.share(shellContext, card, activeChartSymbol)
+                    }
+                },
+                arenaStreak = arenaHistory.streak(arenaToday),
+                arenaBest = arenaHistory.best()?.total,
                 scriptLibrary = scriptLibrary,
                 onCreateScriptAlert = { symbol, name, source, condition ->
                     scriptAlert = ScriptAlertRequest(symbol, name, source, condition)
@@ -2926,7 +3163,19 @@ private fun MainShell(
                 LaunchedEffect(portfolioController) { portfolioController.start() }
                 val equityState by portfolioController.state.collectAsStateWithLifecycle()
 
+                // **The board's own mood** (run Ω4), computed from the day's table the markets tab
+                // already polls — reference counted, so Home reading it costs no second request.
+                //
+                // Filtered to the symbols this app has artwork for, because a strip is a list and
+                // the rule holds everywhere: no lettered discs, no blank squares. `catalogue` is
+                // that filter, already applied once for the shell.
+                val moodTable by marketTickerStore.state.collectAsStateWithLifecycle()
+                val covered = remember(catalogue) { catalogue.mapTo(HashSet()) { it.symbol.uppercase() } }
+                val mood = remember(moodTable.table, covered) {
+                    MarketMood.of(moodTable.table, covered)
+                }
                 HomeScreen(
+                    mood = mood,
                     sparklines = sparklineStore,
                     state = marketState,
                     // The reader's own name if they chose one, the server's otherwise. Without this
@@ -3454,6 +3703,7 @@ private fun MainShell(
                     // A tap answers the question most taps are asking, for everybody but the reader
                     // who asked for the whole surface. See `ReaderMode.opensPreviewOnTap`.
                     previewOnTap = readerMode.opensPreviewOnTap,
+                    onMilestoneAlert = onMilestoneAlertArmed,
                     // The day's figures, which is what the gainers, losers and «داغ» tabs are made
                     // of. Passed as the store rather than a table so the screen starts and stops
                     // the poll with its own lifetime — it is reference counted, so the heat map
@@ -3527,6 +3777,7 @@ private fun MainShell(
                     // already fetched for a symbol and asks for nothing of its own.
                     sparklines = sparklineStore,
                     previewCandles = previewCandles,
+                    onMilestoneAlert = onMilestoneAlertArmed,
                     onCreateAlert = { symbol, price -> alertFromChart = symbol to price },
                 )
             }

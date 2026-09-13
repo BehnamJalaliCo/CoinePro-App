@@ -736,6 +736,22 @@ internal fun ChartMoreSheetBody(
     /** Enter bar replay. Null off a series too short to rewind, or while already replaying. */
     onReplay: (() -> Unit)? = null,
     /**
+     * **میدان** — today's challenge (run Ω4). Null where there is not enough history to set one.
+     *
+     * Beside replay, because it *is* replay with a question attached: the engine has existed since
+     * run E and almost nobody opens it, for the reason almost nobody opens a backtester — it is a
+     * tool with nothing to answer.
+     */
+    onArena: (() -> Unit)? = null,
+    /**
+     * **رصد** — the chart read out loud (run Ω4). Null on a chart with too few bars to read.
+     *
+     * First in the MORE section on the tablet and the phone alike, above «خوانش بازار», because the
+     * two answer the same question at two depths and this is the shallower one: the reading is three
+     * numbers in words, the coach is three sentences about what they add up to.
+     */
+    onRasad: (() -> Unit)? = null,
+    /**
      * Whether this chart is currently drawn simply — the rail, the ladder, replay and the workbench
      * off. Decides which way [onToggleSimple] reads, and nothing else.
      *
@@ -846,6 +862,13 @@ internal fun ChartMoreSheetBody(
                 label = stringResource(R.string.chart_hub_replay),
                 onClick = onReplay,
             )
+            onArena?.let {
+                HubTile(
+                    icon = DesignR.drawable.icon_crown_simple,
+                    label = stringResource(R.string.arena_name),
+                    onClick = it,
+                )
+            }
         }
         HubGrid(columns = HUB_APPARATUS_COLUMNS, outlined = false) {
             HubTile(
@@ -868,7 +891,8 @@ internal fun ChartMoreSheetBody(
         // MORE — the phone app's second section: what belongs to the page rather than to the
         // chart. Drawn only when there is something in it; a heading over nothing is a promise.
         if (onEvents != null || onOpenStudio != null || onOpenTerminal != null ||
-            onAskAi != null || onOpenDepth != null || onReadings != null || onToggleSimple != null
+            onAskAi != null || onOpenDepth != null || onReadings != null || onToggleSimple != null ||
+            onRasad != null
         ) {
             SheetLabel(stringResource(R.string.chart_hub_more))
             HubGrid(columns = 2, outlined = false) {
@@ -879,6 +903,13 @@ internal fun ChartMoreSheetBody(
                     HubTile(
                         icon = DesignR.drawable.icon_sparkle,
                         label = stringResource(R.string.chart_more_ask_ai),
+                        onClick = it,
+                    )
+                }
+                onRasad?.let {
+                    HubTile(
+                        icon = DesignR.drawable.icon_sparkle,
+                        label = stringResource(R.string.rasad_name),
                         onClick = it,
                     )
                 }

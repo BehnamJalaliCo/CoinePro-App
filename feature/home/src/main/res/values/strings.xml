@@ -80,4 +80,11 @@
     <string name="home_holdings_count">%1$s holdings · portfolio</string>
     <string name="home_shortcut_news">News</string>
     <string name="home_value_missing_note">No balance has arrived yet.</string>
+    <string name="mood_title">The board today</string>
+    <string name="mood_lean_up">Mostly up</string>
+    <string name="mood_lean_down">Mostly down</string>
+    <string name="mood_lean_mixed">Mixed</string>
+    <string name="mood_counts">%1$s markets up, %2$s down</string>
+    <string name="mood_movers">Biggest moves</string>
+    <string name="mood_busy">Busy and moving</string>
 </resources>

@@ -36,6 +36,8 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.MarketNumberFormatter
+import com.coinepro.core.designsystem.CoineProPillShape
+import com.coinepro.core.designsystem.numeric
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProMotionSpecs
 import com.coinepro.core.designsystem.CoineProPercentPill
@@ -181,6 +183,21 @@ internal fun MarketPreviewSheet(
      * honest short version rather than a set of chips that answer with nothing.
      */
     candles: MarketPreviewCandles? = null,
+    /**
+     * A milestone alert on today's move: «tell me if this is ±N % on the day» (run Ω4).
+     *
+     * ### Why this is not the price composer with a percentage in it
+     *
+     * A price alert is a decision about a level — the reader has looked at the chart and chosen one.
+     * A milestone is the opposite: it is «I am not watching this, tell me if something happens»,
+     * about a market they have not opened, and asking them to type a number for it is asking them to
+     * do arithmetic in order to say «anything unusual».
+     *
+     * So it is three chips and no field, and each is one alert in one direction rather than a pair:
+     * two rows in the alert centre for one tap is the app deciding on the reader's behalf that they
+     * wanted both, and «+۵٪» and «−۵٪» as separate chips is the same choice said out loud.
+     */
+    onMilestoneAlert: ((up: Boolean, percent: Double) -> Unit)? = null,
 ) {
     // The sheet's body is a small transition — 180ms on the design direction's own ladder — and it
     // collapses to nothing when the device has animations turned off. `CoineProMotionSpecs` is not
@@ -323,6 +340,21 @@ internal fun MarketPreviewSheet(
                     modifier = Modifier.weight(1f),
                 )
             }
+            onMilestoneAlert?.let { arm ->
+                Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+                    Text(
+                        text = stringResource(R.string.preview_milestone),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CoineProColors.TextMuted,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+                        for (percent in MILESTONES) {
+                            MilestoneChip(percent = percent, up = true, onClick = { arm(true, percent) })
+                            MilestoneChip(percent = percent, up = false, onClick = { arm(false, percent) })
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -397,3 +429,40 @@ private const val EM_DASH = "—"
  */
 private const val STATE_RESPONSE_MS = 120
 private const val SMALL_TRANSITION_MS = 180
+
+/**
+ * One milestone: a signed percentage, in the market's own colour for its direction.
+ *
+ * Green and red here are the market's and mean exactly what they mean everywhere else on this
+ * screen — «up» and «down» — which is why these are the one control in the app painted in them. The
+ * chip is not an *action* colour; it is a direction the reader is choosing.
+ */
+@Composable
+private fun MilestoneChip(percent: Double, up: Boolean, onClick: () -> Unit) {
+    val haptics = rememberCoineProHaptics()
+    val ink = if (up) CoineProColors.MarketUp else CoineProColors.MarketDown
+    Text(
+        text = BidiText.isolateLtr(MarketNumberFormatter.signedPercent(if (up) percent else -percent)),
+        style = MaterialTheme.typography.labelSmall.numeric(),
+        color = ink,
+        maxLines = 1,
+        modifier = Modifier
+            .clip(CoineProPillShape)
+            .background(CoineProColors.SurfaceElevated)
+            .clickable {
+                haptics.commit()
+                onClick()
+            }
+            .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half),
+    )
+}
+
+/**
+ * The three sizes a milestone comes in.
+ *
+ * Three and not a field. Five per cent is «something happened», ten is «something happened that the
+ * news will be about», and three is the smallest move that is not noise on the instruments this app
+ * carries — below it a forex pair triggers on an ordinary session and the alert teaches the reader
+ * to ignore alerts.
+ */
+private val MILESTONES = listOf(3.0, 5.0, 10.0)

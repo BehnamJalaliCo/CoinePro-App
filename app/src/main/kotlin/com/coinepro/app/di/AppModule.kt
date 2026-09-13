@@ -161,6 +161,7 @@ import com.coinepro.core.webhook.WebhookDispatcher
 import com.coinepro.core.webhook.WebhookStore
 import com.coinepro.feature.alerts.AlertsController
 import com.coinepro.feature.alerts.StoredWebhooks
+import com.coinepro.core.datastore.ArenaStore
 import com.coinepro.feature.chart.ChartWorkspaceStore
 import com.coinepro.feature.screener.CandleScreenerBarSource
 import com.coinepro.feature.screener.MarketTickerScreenerSource
@@ -724,6 +725,16 @@ object AppModule {
     @Singleton
     fun chartWorkspaceStore(dataStore: DataStore<Preferences>): ChartWorkspaceStore =
         ChartWorkspaceStore(dataStore)
+
+    /**
+     * The reader's own Arena history — one row per day they played (run Ω4).
+     *
+     * The same `DataStore` as the chart's other preferences, for the reason above: it is one
+     * reader's own record, and there is no server to keep it on. See `ArenaStore`.
+     */
+    @Provides
+    @Singleton
+    fun arenaStore(dataStore: DataStore<Preferences>): ArenaStore = ArenaStore(dataStore)
 
     /**
      * The reader's own name and face.

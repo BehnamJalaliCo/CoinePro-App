@@ -178,6 +178,13 @@ fun MarketsScreen(
      */
     previewOnTap: Boolean = false,
     /**
+     * Arms a milestone alert on today's move from the preview sheet (run Ω4).
+     *
+     * Null drops the chips rather than disabling them, for the reason every other nullable callback
+     * on this screen is nullable: only the caller knows whether there is an alert store to write to.
+     */
+    onMilestoneAlert: ((symbol: String, up: Boolean, percent: Double) -> Unit)? = null,
+    /**
      * Arms an alert on a symbol at the price the preview is showing.
      *
      * The **price comes from here** rather than being looked up again by the caller. This screen's
@@ -249,7 +256,7 @@ fun MarketsScreen(
                 else -> tab.category == null || row.meta.category == tab.category
             }
         }
-        arrangeMarkets(rows = visible, tickers = tickerState, lens = lens, sort = sort)
+        arrangeMarkets(rows = visible, tickers = tickerState, lens = lens, sort = sort, watched = watched)
     }
     val panel = tab == MarketsTab.WATCHLIST && watchlistStore != null
 
@@ -417,6 +424,10 @@ fun MarketsScreen(
                                 { toggle(row.meta.symbol) }
                             },
                             onLongClick = { preview = row.meta.symbol },
+                            // The markets list is the one surface this is safe on: it scrolls
+                            // vertically and has no horizontal gesture of its own. The watchlist
+                            // panel deliberately does not take it — it has a reorder drag.
+                            swipeToStar = true,
                             trailing = {
                                 MarketFigures(
                                     row = row,
@@ -465,6 +476,12 @@ fun MarketsScreen(
                     onOpenSymbol(row.meta.symbol)
                 },
                 candles = previewCandles,
+                onMilestoneAlert = onMilestoneAlert?.let { arm ->
+                    { up, percent ->
+                        preview = null
+                        arm(row.meta.symbol, up, percent)
+                    }
+                },
                 onToggleStar = onToggleWatch?.let { toggle -> { toggle(row.meta.symbol) } },
                 // Two conditions, and the second is the row's own: an alert needs a level to fire
                 // at, and a market this feed has not quoted has none. The action is dropped rather

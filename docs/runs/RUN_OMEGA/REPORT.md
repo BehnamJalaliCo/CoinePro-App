@@ -246,3 +246,113 @@ teaching line over 150 characters.
 | Proof frames | 3 (`omega3-first-run-fa`, `omega3-full-chart-fa`, `omega3-simple-chart-fa`) |
 | New string pairs | 14 |
 | Gates | all five |
+
+---
+
+## Ω4 — a coach, a challenge, the board's mood, and something to post (4.78.0)
+
+### رصد, the coach that cannot lie
+
+The Signal Layer got most of the way to «چارتی که حرف می‌زند»: every study says what it is saying and
+prints the base rate behind it. What it did not do is *compose*. Four studies on a chart is four
+sentences, and deciding which of them is the story is exactly the skill the reader does not have yet.
+
+Rasad says three, in one order, always: what the market is doing, where the prices that matter are,
+and what the chart's own studies make of it. Nothing calls a model. Every sentence is a template
+filled from the same arithmetic that drew the lines — `ChartReading` for the trend,
+`Structure.supportResistance` for the levels, the Signal Layer's own reads and score — so the coach
+and the chart cannot disagree, the same chart always produces the same words, and there is no
+sentence it can emit that a reader cannot check against the picture. `RasadCoachTest` holds both
+halves of that: «the same chart always produces the same words», and «it names no level that is not
+on the chart», which parses every number out of the level sentence and requires each to be one
+`Structure` actually found.
+
+It lives in `:chart-core`, which has no Android on it, so it ships to the web terminal with the
+engine rather than being rewritten against it.
+
+On the page it is **one line** — the trend sentence, in a row the height of a chip, under the Now
+strip. Three permanent lines of prose under the plot is the explanatory text run Ω2 spent a version
+removing. The other two, the suggested alert and the review of the reader's last rehearsal trade are
+behind it.
+
+Two decisions in the review are worth naming. The risk comes first and the result last, because a
+winning trade taken without a stop is a worse trade than a losing one taken with a stop and every
+review that leads with the profit teaches the opposite. And a record that does not say *whether*
+there was a stop is not read as one that says there was none: the app's own book keeps the stop's
+price only where the stop is what closed the trade, so a take-profit arrives with none attached, and
+a coach that read that as «you traded without a stop» would be scolding somebody for a gap in a
+database.
+
+### میدان, the daily challenge
+
+The replay engine has existed since run E and almost nobody opens it, for the reason almost nobody
+opens a backtester: it is a tool with no question attached. The Arena attaches one — the same
+instrument and the same window for everybody on a given day, five minutes, a paper account, and a
+score.
+
+The challenge is **computed from the date**, because no backend serves one and `BLOCKED.md` entry 2
+names the endpoint. `Arena.challengeFor` is a written-out multiplicative hash rather than a platform
+`Random`, so a phone, a JVM test and the web terminal give the same answer; `ArenaTest` holds that,
+and that the window always has both a past and a future.
+
+**Sixty of the hundred points are for how the trades were taken.** A five-minute replay scored on
+profit alone teaches the one thing this product argues against. The profit half is capped at three
+units of risk, so a reader who caught a ten-R move cannot out-score a disciplined session six times
+over. `ArenaTest`'s «a disciplined loss beats an undisciplined win» is that argument as one
+assertion, and it would fail on any weighting that got it wrong.
+
+The Arena is a **mode of the chart**, not a screen: one band above the command band and one sheet at
+the end. A second screen would be a second copy of the replay bar, the paper ticket and the setup
+card, and the reader would be rehearsing on a chart that is not the one they trade on.
+
+The streak is counted back over the rows rather than stored beside them, and *not having played yet
+today does not break it* — a count that resets at midnight is a mechanic for making people anxious
+rather than a record of what they did. The league is «you, over time» until there is somebody to
+compare against.
+
+### The board's mood
+
+One strip on Home, above the reader's own markets and below their own money. The brief asks for
+fear/greed; there is a published index by that name, it is somebody else's number and no backend
+here serves it, so this measures **breadth** — the share of the board that is up today — and is
+named for what it is. Under it, the biggest moves and «شلوغ و در حرکت», which is what «unusual
+volume» honestly reduces to with one day's table and no per-symbol history.
+
+Every part is independently absent. `MarketMoodTest` holds the one that would be invisible: a market
+with no figure is not counted into the denominator, because a half-loaded table of four hundred
+markets would otherwise drag every reading to the middle and report «مختلط» on a day the board is
+flying.
+
+### Something worth posting
+
+`ShareCard` draws a 1080 × 1080 square rather than screenshotting a screen. A phone screenshot is
+1080 × 2400, carries the reader's status bar, and is unreadable at the size a feed shows it — and
+every surface that shows a shared image crops to a square, so what survives the crop has to be
+designed. The card carries the plot in its top, the instrument, the move in a direction colour,
+رصد's own sentences, and the mark and the host on the floor. The link is printed as text and not
+embedded: a card travels through screenshots and re-encodings that strip every byte that is not a
+pixel.
+
+Two decisions came out of the first frame. The paragraphs take the *card's* direction rather than
+each string's, or «BTC/USDT» and «+4.20%» hang left while the Persian sentences hang right and one
+card reads as two. And the figures are bidi-isolated at the call site, or a signed percentage inside
+a right-to-left paragraph comes out as «4.20%+», with the sign at the wrong end.
+
+### The markets board
+
+Two more lenses — «دنبال‌شده‌ها» and «پرمعامله‌ترین» — composing with the category tabs and the sort
+in that order. Swipe-to-star on the markets list, armed at 56 dp and deliberately not on the
+watchlist panel, which has a reorder drag of its own. And milestone alerts: three signed chips on the
+preview sheet arming `CHANGE_24H_OVER` / `CHANGE_24H_UNDER`, which is the *day's* move — the figure
+the row the reader pressed was showing — rather than a percent from the moment they pressed it.
+
+### Numbers
+
+| | |
+|---|---|
+| New tests | 41 (`RasadCoachTest` 12, `ArenaTest` 12, `ArenaStoreTest` 10, `MarketMoodTest` 7) |
+| New pure modules of engine | 3 (`RasadCoach`, `Arena` in `:chart-core`; `MarketMood` in `:core:marketdata`) |
+| Proof frames | 1 (`omega4-share-card.png`, which is the artefact rather than a picture of one) |
+| Goldens re-recorded | 54 (the chart page gained رصد's line) |
+| New string pairs | 26 |
+| Gates | all five |

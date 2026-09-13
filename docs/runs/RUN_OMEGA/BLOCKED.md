@@ -33,18 +33,21 @@ one pass rather than discovering the incantation.
 
 **Blocked on:** an endpoint. Neither backend serves «today's symbol and window».
 
-**Implemented instead** (Ω4, when it lands): the client picks deterministically from a date seed, so
+**Implemented instead** (Ω4, shipped): `Arena.challengeFor` picks deterministically from the date, so
 every reader on a given day gets the same symbol and the same window and a shared score is
-comparable. The seam is one function; when the endpoint exists it replaces the seed and nothing else
-moves. This entry is written now so the seam is designed for it rather than retrofitted.
+comparable. `ArenaTest` holds that property — the same day always gives the same challenge, and the
+window always has both a past and a future. The seam is that one function; when the endpoint exists
+it replaces the pick and nothing else moves.
 
 ## 3. The friends league has no server either
 
 **Blocked on:** the same absence.
 
-**Implemented instead** (Ω4): the reader's own history, locally, with the league drawn as «you, over
-time» until there is somebody to compare against. A leaderboard of one is worse than no leaderboard,
-so it is not drawn as one.
+**Implemented instead** (Ω4, shipped): `ArenaStore` keeps the reader's own history on the phone — one
+row per day, the streak counted back over the rows rather than stored beside them — and the result
+sheet draws «you, over time»: today's score, the streak, and the reader's own best. A leaderboard of
+one is worse than no leaderboard, so it is not drawn as one. The store stays when the endpoint
+arrives: a reader's own record is the thing they look at most and it has to survive being offline.
 
 ## 4. The news-image proxy does not exist
 

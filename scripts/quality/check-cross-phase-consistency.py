@@ -192,6 +192,13 @@ def check_learned_surfaces() -> None:
         # at the foot of the chart page, moved into the hub in run Ω2 so the plot could have the row
         # back. Unchanged on a wide window, where they are a column beside the plot.
         "READINGS",
+        # Run Ω4's coach: the chart read out loud in three sentences, plus the alert it suggests and
+        # the review of the reader's last rehearsal trade. Opened from the one line under the Now
+        # strip and from the hub. See `RasadSheetBody`.
+        "RASAD",
+        # Run Ω4's Arena result: the two halves of the score, what they were made of, and the
+        # streak. Opened by the five-minute clock running out and by «تمام». See `ArenaResultBody`.
+        "ARENA",
     ]
     require(
         entries == expected_sheets,

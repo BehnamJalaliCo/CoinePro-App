@@ -28,6 +28,8 @@
     <string name="markets_column_turnover">ارزش معاملات</string>
     <string name="markets_lens_all">همه‌ی بازارها</string>
     <string name="markets_lens_hot">داغ</string>
+    <string name="markets_lens_favourites">دنبال‌شده‌ها</string>
+    <string name="markets_lens_volume">پرمعامله‌ترین</string>
     <string name="markets_lens_gainers">بیشترین رشد</string>
     <string name="markets_lens_losers">بیشترین افت</string>
     <string name="markets_lens_empty">امروز هیچ بازاری در این فهرست نیست.</string>
@@ -110,6 +112,7 @@
     <!-- ── پیش‌نمایش با فشار طولانی ──────────────────────────────────────────────────────── -->
     <string name="preview_alert">هشدار</string>
     <string name="preview_chart">چارت</string>
+    <string name="preview_milestone">اگر امروز این‌قدر حرکت کرد خبرم کنید</string>
     <string name="preview_range_day">1D</string>
     <string name="preview_range_week">1W</string>
     <string name="preview_range_month">1M</string>

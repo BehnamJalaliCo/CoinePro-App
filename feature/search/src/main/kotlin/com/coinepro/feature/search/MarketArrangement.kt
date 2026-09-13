@@ -22,9 +22,31 @@ import kotlin.math.abs
  */
 internal enum class MarketLens(val labelRes: Int) {
     NONE(R.string.markets_lens_all),
+
+    /**
+     * The reader's own list, as a lens rather than a screen (run Ω4).
+     *
+     * The watchlist has a tab of its own and always will — this is the same markets the reader
+     * starred, seen through whichever sort and category they are already in, which the tab cannot
+     * do. «کریپتو» plus «دنبال‌شده‌ها» sorted by turnover is a question neither the tab nor the
+     * catalogue can ask.
+     *
+     * It needs the reader's stars, which no other lens does — see [arrangeMarkets]'s `watched`.
+     */
+    FAVOURITES(R.string.markets_lens_favourites),
     HOT(R.string.markets_lens_hot),
     GAINERS(R.string.markets_lens_gainers),
     LOSERS(R.string.markets_lens_losers),
+
+    /**
+     * Most money through it today, whichever way it went (run Ω4).
+     *
+     * Turnover and never volume, for the reason [MarketSortKey] gives at length: a count of the base
+     * asset ranks a count of bitcoin against a count of dogecoin and puts the cheapest token on the
+     * board at the top. This lens is the one place a reader asks «what is everyone trading», and it
+     * has to be the quote-currency figure or it answers a different question.
+     */
+    VOLUME(R.string.markets_lens_volume),
 }
 
 /**
@@ -94,9 +116,23 @@ internal fun arrangeMarkets(
     tickers: MarketTickerStore.MarketTickerState,
     lens: MarketLens,
     sort: MarketSort?,
+    /**
+     * The symbols this reader has starred, upper-cased, for [MarketLens.FAVOURITES].
+     *
+     * Empty is a real answer and not a missing one: a reader with no stars looking through the
+     * favourites lens sees nothing, which is the truth, and the screen's own empty state says so.
+     */
+    watched: Set<String> = emptySet(),
 ): List<MarketSearchRow> {
     val lensed = when (lens) {
         MarketLens.NONE -> rows
+        // No sort of its own: the reader's list has *their* order until they ask for another, and
+        // rearranging what somebody curated is the one list in this app that must not be touched.
+        MarketLens.FAVOURITES -> rows.filter { it.meta.symbol.uppercase() in watched }
+        MarketLens.VOLUME -> rows
+            .withFigure(tickers) { it.turnover24h }
+            .sortedByDescending { it.second }
+            .map { it.first }
         MarketLens.GAINERS -> rows
             .withFigure(tickers) { it.changePercent24h }
             .filter { it.second > 0.0 }

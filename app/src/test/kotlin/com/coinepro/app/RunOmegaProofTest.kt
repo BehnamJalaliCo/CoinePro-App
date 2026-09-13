@@ -14,6 +14,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.coinepro.core.designsystem.CoineProTheme
+import com.coinepro.core.designsystem.ShareCard
+import com.coinepro.core.designsystem.ShareCardContent
+import com.coinepro.core.designsystem.ShareCardTone
+import com.coinepro.core.chart.RasadCoach
+import com.coinepro.core.common.BidiText
 import com.coinepro.core.datastore.ReaderMode
 import com.coinepro.core.designsystem.LocalTeachingDismissals
 import com.coinepro.feature.chart.ChartController
@@ -200,6 +205,48 @@ class RunOmegaProofTest {
         )
         // And the chart itself is untouched: the same studies, the same reading, the same score.
         assertTrue("the simple chart lost the Signal Layer", controller.state.value.signals.reads.isNotEmpty())
+    }
+
+    /**
+     * **The share card, rendered** (run Ω4).
+     *
+     * Not a screenshot of a screen — `ShareCard` draws the square itself, so this is the only proof
+     * frame in this file that is the artefact rather than a picture of one. What it has to hold is
+     * the shape: 1080 × 1080, the app's own typeface, a headline in a direction colour, رصد's
+     * sentences, and the mark and the link on the floor whatever the content is.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = FA_PHONE)
+    fun theShareCardIsASquareWithWordsOnIt() {
+        val controller = charted()
+        val series = controller.state.value.visibleSeries
+        val card = ShareCard.render(
+            context = composeRule.activity,
+            content = ShareCardContent(
+                // Isolated exactly as the chart's own call site does. Without the isolate a signed
+                // figure inside a right-to-left paragraph comes out as «4.20%+» — the sign at the
+                // wrong end — which is the failure this frame exists to catch.
+                title = BidiText.isolateLtr("BTC/USDT"),
+                subtitle = BidiText.isolateLtr("H1"),
+                headline = BidiText.isolateLtr("+4.20%"),
+                tone = ShareCardTone.UP,
+                lines = RasadCoach.readChart(series, controller.state.value.signals.reads),
+            ),
+            // The card is drawn for a Persian reader, which is what puts the ticker, the headline
+            // and the sentences on one margin instead of two.
+            rtl = true,
+        )
+        assertEquals("a share card must be square", ShareCard.SIZE, card.width)
+        assertEquals("a share card must be square", ShareCard.SIZE, card.height)
+        // Not a blank square. A card whose text failed to lay out is a black PNG, which no assertion
+        // about its size would catch.
+        val pixels = IntArray(card.width * card.height)
+        card.getPixels(pixels, 0, card.width, 0, 0, card.width, card.height)
+        assertTrue("the card is a single flat colour — nothing was drawn on it", pixels.toSet().size > 4)
+        OUTPUT.mkdirs()
+        File(OUTPUT, "omega4-share-card.png").outputStream().use {
+            card.compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
     }
 
     private fun proof(name: String, darkTheme: Boolean = true, content: @Composable () -> Unit) {

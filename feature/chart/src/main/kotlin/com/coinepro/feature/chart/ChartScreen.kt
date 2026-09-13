@@ -143,6 +143,10 @@ import com.coinepro.core.papertrade.PaperPosition
 import com.coinepro.core.chart.ToolRail
 import com.coinepro.core.chart.axisFontSizeSp
 import com.coinepro.core.chart.timeAxisHeight
+import androidx.compose.ui.graphics.asAndroidBitmap
+import com.coinepro.core.chart.ArenaScore
+import com.coinepro.core.chart.RasadCoach
+import com.coinepro.core.chart.TradeFacts
 import com.coinepro.core.chart.TradeFromChart
 import com.coinepro.core.chart.TradeSide
 import com.coinepro.core.chart.ComparisonBasis
@@ -177,6 +181,10 @@ import com.coinepro.core.designsystem.sharedElement
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
+import com.coinepro.core.designsystem.ShareCard
+import com.coinepro.core.designsystem.ShareCardContent
+import com.coinepro.core.designsystem.ShareCardTone
+import com.coinepro.core.designsystem.LocalCoineProPalette
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProMotionSpecs
@@ -409,6 +417,35 @@ fun ChartScreen(
      * then not drawn rather than drawn doing nothing.
      */
     onToggleSimple: (() -> Unit)? = null,
+    /**
+     * The reader's last finished rehearsal trade, for رصد to review (run Ω4).
+     *
+     * A flat [TradeFacts] rather than the app's own paper-trade row, and hoisted rather than read
+     * here, for the reason [alerts] is: `feature:chart` has no business knowing what a paper account
+     * is. What a review is about is a price, a stop and an outcome.
+     */
+    lastPaperTrade: TradeFacts? = null,
+    /**
+     * **میدان** — today's challenge, played on this chart (run Ω4). See [ArenaSession].
+     *
+     * Null is the ordinary chart, which is the state this screen is in almost always. Non-null adds
+     * one band above the command band and one sheet at the end, and changes nothing else: a reader
+     * in the Arena is trading the chart they trade on, which is the whole point of a rehearsal.
+     */
+    arena: ArenaSession? = null,
+    /**
+     * Scores the session — the app's, because the score is over the *paper account's* trades and
+     * this module does not know what one is. Called when the clock runs out or the reader stops.
+     */
+    onScoreArena: (() -> ArenaScore)? = null,
+    /** Records the finished session and shares it. Null where there is nothing to record into. */
+    onArenaFinished: ((ArenaScore) -> Unit)? = null,
+    onShareArena: ((ArenaScore) -> Unit)? = null,
+    /** Starts today's challenge. Null where the shell cannot set one on this chart. */
+    onStartArena: (() -> Unit)? = null,
+    /** How many days in a row, and the reader's best, for the result sheet. */
+    arenaStreak: Int = 0,
+    arenaBest: Int? = null,
     onCreateAlert: ((symbol: String, price: Double) -> Unit)? = null,
     /**
      * The alerts already set on this symbol, drawn on the plot (run Ω2).
@@ -920,6 +957,39 @@ fun ChartScreen(
     val chartLayer = rememberGraphicsLayer()
     val shareScope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    // **What a shared card says** (run Ω4). Hoisted here rather than built inside the share lambda
+    // because every one of these is a `stringResource` or a composition read, and the lambda runs on
+    // a coroutine after the sheet has closed — reading a composition local there is reading a
+    // composition that is no longer there.
+    val shareOnDark = LocalCoineProPalette.current.isDark
+    val shareRtl = !inEnglish()
+    val shareTitle = BidiText.isolateLtr(state.symbol)
+    // The trader's own name for the bar length — `H1`, never «۱ ساعت»: this is a caption on a
+    // control-like line, and the app reserves Persian numerals for prose.
+    val shareSubtitle = state.interval.code
+    val shareLast = state.lastPrice
+    // The move across the loaded window, which is what the picture on the card shows — see
+    // `ChartState.changePercent` for why it is named after the window rather than the session.
+    val shareChange = state.changePercent
+    val shareHeadline = when {
+        shareChange != null -> BidiText.isolateLtr(MarketNumberFormatter.signedPercent(shareChange))
+        shareLast != null -> BidiText.isolateLtr(MarketNumberFormatter.priceAuto(shareLast))
+        else -> ""
+    }
+    val shareTone = when {
+        shareChange == null -> ShareCardTone.NEUTRAL
+        shareChange >= 0.0 -> ShareCardTone.UP
+        else -> ShareCardTone.DOWN
+    }
+    // رصد's own sentences, so the card says the same thing the page does. A card with a picture and
+    // no words is a picture of some candles.
+    val shareLines = RasadCoach.readChart(
+        series = state.visibleSeries,
+        reads = state.signals.reads,
+        setup = state.signals.setup,
+        english = inEnglish(),
+    )
 
     val focusRequester = remember { FocusRequester() }
     // Requested once, so a keyboard works without the reader first tapping the chart. It is
@@ -1725,6 +1795,14 @@ fun ChartScreen(
             },
         )
 
+        // **رصد, one line under the strip** (run Ω4).
+        //
+        // The strip says what each study is saying; this says what the *chart* is saying, which is a
+        // different question and the one a reader actually arrives with. One line — the trend
+        // sentence — and the other two are behind it: three permanent lines of prose under the plot
+        // is exactly the explanatory text run Ω2 spent a version removing.
+        RasadLine(series = state.visibleSeries, onOpen = { sheet = ChartSheet.RASAD })
+
         // No teaching banner on this screen, and it is the only screen in the app without one.
         //
         // The banner is a good mechanism and it stays everywhere else: one sentence, in place, put
@@ -1795,6 +1873,36 @@ fun ChartScreen(
         // The band slides down and out for the 200 ms before the fullscreen window opens, and
         // back in when it closes — the reference's, and the one thing that makes the mode read as
         // the page growing rather than a second page appearing.
+        // **The Arena's clock** (run Ω4), above the band and nowhere else. See `ArenaBar`.
+        arena?.let { session ->
+            ArenaBar(
+                session = session,
+                onFinish = {
+                    if (!session.running) {
+                        session.start()
+                    } else {
+                        val result = onScoreArena?.invoke() ?: ArenaScore.UNPLAYED
+                        session.finish(result)
+                        onArenaFinished?.invoke(result)
+                        sheet = ChartSheet.ARENA
+                    }
+                },
+            )
+            // One second at a time on the composition's own clock. Keyed on `running` so pressing
+            // «تمام» stops it immediately rather than letting one more tick land after the score.
+            LaunchedEffect(session, session.running) {
+                while (session.running) {
+                    delay(1_000)
+                    if (session.tick()) {
+                        val result = onScoreArena?.invoke() ?: ArenaScore.UNPLAYED
+                        session.finish(result)
+                        onArenaFinished?.invoke(result)
+                        sheet = ChartSheet.ARENA
+                    }
+                }
+            }
+        }
+
         AnimatedVisibility(
             visible = !fullscreenRequested,
             enter = slideInVertically(CoineProMotionSpecs.defaultSpatialFor()) { it } + fadeIn(tween(FULLSCREEN_SLIDE_MS)),
@@ -2183,7 +2291,25 @@ fun ChartScreen(
                 onShare = {
                     sheet = null
                     shareScope.launch {
-                        ChartShare.share(context, chartLayer.toImageBitmap(), state.symbol)
+                        // **A card, not a screenshot** (run Ω4). The plot goes into the top of a
+                        // 1080 × 1080 square with the instrument, the bar length, رصد's own first
+                        // sentence and the mark — because what a reader posts is cropped to a square
+                        // by every surface that shows it, and a chart with no words on it is a
+                        // picture of some candles.
+                        val card = ShareCard.render(
+                            context = context,
+                            dark = shareOnDark,
+                            rtl = shareRtl,
+                            content = ShareCardContent(
+                                title = shareTitle,
+                                subtitle = shareSubtitle,
+                                headline = shareHeadline,
+                                tone = shareTone,
+                                lines = shareLines,
+                                image = chartLayer.toImageBitmap().asAndroidBitmap(),
+                            ),
+                        )
+                        ChartShare.share(context, card, state.symbol)
                     }
                 },
                 onAskAi = onAskAi?.let { ask ->
@@ -2205,6 +2331,8 @@ fun ChartScreen(
                 // The trend reading, the open setup and the way into the studio — the row that used
                 // to sit at the foot of the chart page. Offered only where there is a reading to
                 // show: under sixty bars `ChartReading.of` refuses to name a market it cannot read.
+                onRasad = { sheet = ChartSheet.RASAD }
+                    .takeIf { state.visibleSeries.size >= RasadCoach.MINIMUM_BARS },
                 onReadings = { sheet = ChartSheet.READINGS }.takeIf { reading != null || state.setup != null },
                 simplified = !readerMode.showsAdvancedChrome,
                 // The sheet closes behind it: the tap's whole result is the page underneath
@@ -2250,6 +2378,10 @@ fun ChartScreen(
                         !state.replay.isOn &&
                         state.series.bars.size >= Replay.MINIMUM_BARS
                 },
+                // Offered where the shell can set one and the reader is not already in one. The
+                // challenge needs history behind it and history in front — see `Arena.challengeFor`,
+                // which answers null rather than a challenge that cannot be played.
+                onArena = onStartArena?.takeIf { arena == null },
                 onHelpCenter = {
                     sheet = null
                     onHelp(CHART_HELP_ID)
@@ -2317,6 +2449,54 @@ fun ChartScreen(
                 )
                 analysisBlocks()
                 Spacer(Modifier.height(CoineProSpacing.Two))
+            }
+        }
+
+        // **رصد** (run Ω4): the chart read out loud, plus the two things the coach can do about it.
+        ChartSheet.RASAD -> CoineProSheet(
+            title = stringResource(R.string.rasad_title),
+            onDismiss = { sheet = null },
+        ) {
+            RasadSheetBody(
+                series = state.visibleSeries,
+                reads = state.signals.reads,
+                setup = state.signals.setup,
+                // Offered only where the shell has handed this screen a finished rehearsal trade.
+                // A review of a trade nobody made is a paragraph about nothing.
+                lastTrade = lastPaperTrade,
+                // The same hoisted composer the price gutter uses — the chart says which price, the
+                // app asks the rest. See `onCreateAlert`.
+                onCreateAlert = onCreateAlert?.let { arm ->
+                    { suggestion ->
+                        sheet = null
+                        arm(state.symbol, suggestion.price)
+                    }
+                },
+            )
+        }
+
+        // **میدان's result** (run Ω4): the two halves of the score, what they were made of, and
+        // the streak. Opened by the clock running out and by «تمام», which are the same thing.
+        ChartSheet.ARENA -> CoineProSheet(
+            title = stringResource(R.string.arena_result_title),
+            onDismiss = { sheet = null },
+        ) {
+            val result = arena?.score
+            if (result == null) {
+                Text(
+                    text = stringResource(R.string.arena_unavailable),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CoineProColors.TextMuted,
+                    modifier = Modifier.padding(CoineProSpacing.Gutter),
+                )
+            } else {
+                ArenaResultBody(
+                    score = result,
+                    symbol = state.symbol,
+                    streak = arenaStreak,
+                    best = arenaBest,
+                    onShare = onShareArena?.let { share -> { share(result) } },
+                )
             }
         }
 
@@ -2923,7 +3103,7 @@ internal fun rememberHelpCatalog(wanted: Boolean): HelpCatalog? {
  * used to own a permanent band under the plot, and it is all behind that one word now. Internal
  * rather than private because `ChartChrome.kt` names these in the callbacks it hands back.
  */
-internal enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP, BACKTEST, LAYOUTS, INTERVAL, SCALE, COMPARE, EVENTS, MORE, PARTNERS, EXPLAIN, READINGS }
+internal enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP, BACKTEST, LAYOUTS, INTERVAL, SCALE, COMPARE, EVENTS, MORE, PARTNERS, EXPLAIN, READINGS, RASAD, ARENA }
 
 /**
  * Binds the stores and starts the controller, in that order and in one effect.

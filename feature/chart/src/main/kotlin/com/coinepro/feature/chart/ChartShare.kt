@@ -27,10 +27,25 @@ import java.io.File
  * And the URI is granted read permission for one intent rather than the file being made world
  * readable. The app the reader picks can open it; nothing else can.
  */
-internal object ChartShare {
+/**
+ * Public because the Arena's result card is written by the shell rather than by this screen — see
+ * `ArenaResultBody`'s share action. One writer for both, so the cache directory and the per-intent
+ * grant cannot be got right twice and wrong once.
+ */
+object ChartShare {
 
     /** Returns false when the image could not be written — the caller says nothing rather than lying. */
-    fun share(context: Context, image: ImageBitmap, symbol: String): Boolean = runCatching {
+    fun share(context: Context, image: ImageBitmap, symbol: String): Boolean =
+        share(context, image.asAndroidBitmap(), symbol)
+
+    /**
+     * The same, for an image this app *drew* rather than captured — the 1080 × 1080 share card.
+     *
+     * One writer and one intent for both, because everything below the pixels is identical and the
+     * two interesting decisions — the single-file cache directory and the per-intent grant — are
+     * exactly the ones that must not be made twice.
+     */
+    fun share(context: Context, image: Bitmap, symbol: String): Boolean = runCatching {
         val directory = File(context.cacheDir, "shared").apply {
             // Cleared, not appended to. One shared image at a time is all this feature needs, and
             // the alternative is a hidden folder that only grows.
@@ -39,7 +54,7 @@ internal object ChartShare {
         }
         val file = File(directory, "${symbol.filter(Char::isLetterOrDigit).ifEmpty { "chart" }}.png")
         file.outputStream().use { stream ->
-            image.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, stream)
+            image.compress(Bitmap.CompressFormat.PNG, 100, stream)
         }
 
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.shared", file)

@@ -35,6 +35,12 @@ import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.datastore.WatchlistColumn
 import com.coinepro.core.datastore.WatchlistColumnUnit
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.pointer.pointerInput
 import com.coinepro.core.datastore.WatchlistFlag
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.SharedKeys
@@ -100,14 +106,56 @@ internal fun MarketListRow(
     /** Null where the list offers no starring, so no grey star appears that cannot be pressed. */
     starred: Boolean? = null,
     onToggleStar: (() -> Unit)? = null,
+    /**
+     * Whether a sideways drag across the row stars it (run Ω4).
+     *
+     * ### Why this is opt-in and not simply on wherever [onToggleStar] is
+     *
+     * A swipe is only safe on a surface with no horizontal gesture of its own, and this row is used
+     * in three places that differ exactly there: the markets list scrolls vertically and takes it,
+     * the watchlist panel has a *drag handle* and a reorder gesture and must not, and the row's own
+     * figure block is horizontally scrollable on a narrow phone — which is why the drag is read on
+     * the row and consumed only past [SWIPE_ARM], far enough that a flick through the columns is
+     * still a flick through the columns.
+     *
+     * It is a shortcut and never the only way: the star is still on the row, and a reader who never
+     * discovers the swipe loses nothing at all.
+     */
+    swipeToStar: Boolean = false,
     /** The reorder grip, drawn only while the list is in the reader's own order. */
     handle: (@Composable () -> Unit)? = null,
     trailing: @Composable RowScope.() -> Unit,
 ) {
     val haptics = rememberCoineProHaptics()
+    // How far the finger has travelled on this row, reset the moment it lifts. Held rather than
+    // animated: the row does not slide. A row that translates under the finger promises a reveal
+    // behind it — a delete, an archive — and there is nothing behind this one; the whole gesture is
+    // «star it», answered by the star filling and a buzz.
+    var travelled by remember(row.meta.symbol) { mutableFloatStateOf(0f) }
+    val swipe = if (swipeToStar && onToggleStar != null) {
+        Modifier.pointerInput(row.meta.symbol) {
+            detectHorizontalDragGestures(
+                onDragEnd = { travelled = 0f },
+                onDragCancel = { travelled = 0f },
+            ) { change, amount ->
+                travelled += amount
+                if (abs(travelled) >= SWIPE_ARM.toPx()) {
+                    change.consume()
+                    // Reset first, so one long drag is one star rather than a star per frame past
+                    // the threshold — the failure that turns a swipe into a toggle nobody can land.
+                    travelled = 0f
+                    haptics.commit()
+                    onToggleStar()
+                }
+            }
+        }
+    } else {
+        Modifier
+    }
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .then(swipe)
             // Every row the same height whether or not the feed has quoted it yet. Without this a
             // list of forty markets where six are still waiting breathes as the prices land, and
             // the reader's thumb lands on the row below the one they aimed at. The watchlist's
@@ -488,3 +536,13 @@ private const val EmDash = "—"
 
 /** The sparkline cell's height — the reference draws its lines 24 dp tall. */
 private val SPARKLINE_HEIGHT = 24.dp
+
+/**
+ * How far a finger must travel across a row before it stars it.
+ *
+ * Fifty-six points is about a thumb's width and is deliberately past the distance a *scroll* takes
+ * to be recognised, so the vertical list keeps its gesture and the row's own scrollable figure block
+ * keeps its. Under thirty this fires on the horizontal component of an ordinary flick down the list,
+ * which is a reader's watchlist filling up with markets they were only scrolling past.
+ */
+private val SWIPE_ARM = 56.dp

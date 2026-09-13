@@ -5,15 +5,15 @@ was narrowed, per R3. Every line is re-read at the end of every phase, not once.
 
 | # | The line | State | Evidence |
 |---|---|---|---|
-| E1 | First run: one question, then BTCUSDT H1 with the Signal Layer and Rasad's three sentences | ❌ | The question is done — `FirstRunQuestion`, `MainActivity` between the splash and the shell, `RunOmegaProofTest.theFirstRunAsksOneQuestionAndOffersAWayOut`, `app/build/proof/omega3-first-run-fa.png` — and the chart behind it has carried the Signal Layer since Ω1. **Rasad's three sentences are Ω4**, so the line stays ❌ |
+| E1 | First run: one question, then BTCUSDT H1 with the Signal Layer and Rasad's three sentences | ✅ | `FirstRunQuestion` between the splash and the shell (`omega3-first-run-fa.png`); the Signal Layer on the chart behind it since Ω1; رصد's first sentence in a row under the Now strip and all three behind it — `RasadLine`, `RasadSheetBody`, `RasadCoachTest` (12) |
 | E2 | Every built-in and every script exposes state, markers, confidence % with N, and a sentence; the legend row opens Explain | ✅ | `SignalSpec`, `ConfidenceEngine`, `ChartSignalEngine`; `SignalLayerTest` (16), `ChartSignalEngineTest` (7), `sem_signal_verdict.nama`; `app/build/proof/omega-signal-layer-fa-dark.png`, `omega-explain-sheet-fa-dark.png` |
 | E3 | A Setup score, 0–100, grey→gold, with N signals, that opens into what contributed | ✅ | `ConfidenceEngine.setupScore`; the chip in `omega-signal-layer-fa-dark.png`; `ExplainSheetBody(id = null)` |
-| E4 | Replay Arena: daily challenge, discipline + P&L score, streak, league, share card | ❌ | Ω4 |
-| E5 | Rasad coach: read this chart, suggest an alert, review my last paper trade | ❌ | Ω4 |
+| E4 | Replay Arena: daily challenge, discipline + P&L score, streak, league, share card | ✅ | `Arena` + `ArenaTest` (12); `ArenaSession`, `ArenaBar`, `ArenaResultBody`; `ArenaStore` + `ArenaStoreTest` (10) for the streak and the league of one; the share card through `ShareCard`. The daily pick is the client's — `BLOCKED.md` entry 2 names the endpoint it replaces |
+| E5 | Rasad coach: read this chart, suggest an alert, review my last paper trade | ✅ | `RasadCoach` in `:chart-core`, deterministic templates over the same arithmetic that drew the lines; `RasadCoachTest` (12), including «the same chart always produces the same words» and «it names no level that is not on the chart» |
 | E6 | Chart owns the phone: ≥ 60 % height, one accent, no prose, haptics, flash, springs | ❌ | Ω2, most of the way — see the table below for what is done and what is not |
 | E7 | Simple/Full mode, switchable anywhere in one tap, nothing lost either way | ✅ | `ReaderMode` + `ReaderModeTest` (6); `UserPreferencesStore.toggleSimpleReaderMode` + `ReaderModeStoreTest` (7, including the lossless Pro round trip); the «…» hub tile, `AppearanceOptions`' third group; `RunOmegaProofTest.theFullChartCarriesTheToolRail` / `theSimpleChartPutsTheToolRailAway` and `app/build/proof/omega3-full-chart-fa.png`, `omega3-simple-chart-fa.png` |
-| E8 | Share card 1080×1080 from any chart, signal or Arena result, in ≤ 3 taps | ❌ | Ω4 |
-| E9 | Market Mood strip on Home | ❌ | Ω4 |
+| E8 | Share card 1080×1080 from any chart, signal or Arena result, in ≤ 3 taps | ✅ | `ShareCard` in the design system — one renderer, the app's own typeface, the mark and the link on the floor. Chart: «…» → «تصویر» (2 taps). Arena: the result sheet's «هم‌رسانی» (1). Proof: `app/build/proof/omega4-share-card.png` |
+| E9 | Market Mood strip on Home | ✅ | `MarketMood` + `MarketMoodTest` (7) and `MarketMoodStrip` on Home above the reader's own markets. Breadth rather than a licensed fear-and-greed index — decision 18 |
 | E10 | Every one of the above on the tablet, Explain as a side panel | ❌ | Ω5 |
 
 ## E6, item by item
@@ -63,6 +63,30 @@ The brief's four items, each with what is in the build behind it.
 | A setting to skip the preview for pros | ✅ | `ReaderMode.opensPreviewOnTap` — false for `PRO` only. It is the setting the reader already has rather than a fourth switch asking the same question |
 | Sign-up asked only when saving something | ✅ | `savedToast` in `CoineProApp`: a guest's alert-saved and layout-saved toast carries «نگهش دار» as its action, once per install, marked in the same dismissal store the teaching strips use. Nothing else in the app asks a guest for an account — the two remaining `GuestGate`s are the two server-fed surfaces, which have no local answer to gate |
 | Empty / error / offline states unified: one sentence, one action, ≤ 8 KB illustration | ✅ | `CoineProEmptyState` / `CoineProErrorState` are the only two, they share one private `StateBlock`, and the API allows exactly one action. Five empty states had no mark and now have one; `check_state_surfaces` in the consistency gate fails on an empty state with no mark and on a state illustration over 8 KB. Offline is one bar for the whole app, `CoineProOfflineBar` |
+
+## Ω4, item by item
+
+| Ω4 item | State | Evidence |
+|---|---|---|
+| Replay Arena: a daily challenge, the same for everybody | ✅ | `Arena.challengeFor` picks the instrument and the window from the date, with no platform `Random` in it so a phone, a JVM test and the web terminal agree. `ArenaTest` holds the determinism and that the window always has both a past and a future |
+| Five-minute timer | ✅ | `ArenaSession` + `ArenaBar`: `m:ss`, a rule under it, and the market's own red under a minute rather than a third colour invented for a clock |
+| Paper orders | ✅ | The chart's own ticket and setup card. The Arena is a *mode* of the chart, not a screen — see decision 19 |
+| Score = discipline + P&L | ✅ | `Arena.score`: 60 for how the trades were taken, 40 for what they made, capped, printed apart. `ArenaTest`'s «a disciplined loss beats an undisciplined win» is the whole argument as one assertion |
+| Result screen | ✅ | `ArenaResultBody`: the total, the two halves with their denominators, the working («۲ از ۳ معامله حد ضرر داشت»), and «no trades» treated as an absence rather than a zero |
+| Streak | ✅ | `ArenaStore.streak`, counted back over the rows rather than stored beside them, and today not counting does not break it — `ArenaStoreTest` |
+| Friends league | ✅ (local) | «You, over time»: the reader's own history and their best. `BLOCKED.md` entry 3 — a leaderboard of one is worse than none |
+| Share card | ✅ | The result sheet's «هم‌رسانی» renders a `ShareCard` and hands it to the system share sheet |
+| Rasad: «read this chart» | ✅ | `RasadCoach.readChart` — three sentences, always three, in one order |
+| Rasad: «suggest an alert» | ✅ | `RasadCoach.suggestAlert` — a level the market has respected, never a round number, and never at the price it is already at |
+| Rasad: «review my last paper trade» | ✅ | `RasadCoach.reviewTrade` — risk first, plan second, result last, and a record that does not say whether there was a stop is not read as one that says there was none |
+| No engineering errors to the UI | ✅ | Nothing in `RasadCoach` can fail: every input is a value, every branch returns a sentence, and a series too short returns an empty list the sheet has copy for |
+| Market Mood strip on Home | ✅ | `MarketMoodStrip`: the board's lean as a split bar with the counts under it, the biggest moves, and «busy and moving». Every part independently absent — see decision 20 |
+| Graceful partial rendering | ✅ | `MarketMood`'s fields are independently nullable or empty and the strip draws what it has; `MarketMoodTest` holds that an unquoted market is not counted as neither up nor down |
+| Share card 1080×1080 with watermark and link | ✅ | `ShareCard` — drawn, not screenshotted; the mark in the accent and the host as readable text on the floor, because a card travels through re-encodings and only pixels arrive |
+| Android share sheet, ≤ 3 taps | ✅ | `ChartShare`, one cache file and a per-intent grant. Chart: 2 taps. Arena: 1 |
+| Markets tabs Favourites · Hot · Gainers · Losers · Volume | ✅ | `MarketLens` — `FAVOURITES` and `VOLUME` are new in Ω4; the lens composes with the category tabs and with the sort, in that order |
+| Swipe-to-star | ✅ | `MarketListRow.swipeToStar`, armed at 56 dp and on the markets list only — the watchlist panel has a reorder drag and deliberately does not take it |
+| Milestone alerts (±% today) from row overflow | ✅ | Three signed chips on the preview sheet, arming `CHANGE_24H_OVER` / `CHANGE_24H_UNDER` — the day's move, which is the figure the row the reader pressed was showing |
 
 ## Decisions taken for the owner, with the reason
 
@@ -139,6 +163,33 @@ The brief's four items, each with what is in the build behind it.
     control that acts on something the reader has put there is repair, not chrome, and taking it away
     would make a script they own unmaintainable rather than the surface uncluttered.
 
+18. **The mood strip measures breadth and is named for it, not «fear and greed».** The brief asks
+    for fear/greed. There is a published index by that name, it is somebody else's number, it covers
+    crypto only, and no backend here serves it — so a figure this app computed and *called*
+    fear-and-greed would be a familiar name on an unfamiliar number, and a reader who has seen the
+    real one would find them disagreeing and would be right to. Breadth is the oldest sentiment
+    measure there is, it comes off the same table the rows do, and «بازار امروز · بیشتر صعودی» says
+    exactly what it knows. `docs/backend/FEEDS.md` carries the seam for the licensed index.
+19. **The Arena is a mode of the chart, not a screen.** Everything it needs is already on the chart
+    page and already tested there — the replay engine, the paper ticket, the setup card, the plot. A
+    second screen would be a second copy drifting from the first, and the reader would be rehearsing
+    on a chart that is not the one they trade on, which is the one thing a rehearsal must never be.
+    So it is one band above the command band and one sheet at the end.
+20. **«Unusual volume» is drawn as «busy and moving», because that is what it measures.** Unusual
+    properly means today's turnover against *this instrument's own* recent normal, and that needs a
+    per-symbol history of daily turnover neither backend serves and this app does not keep. What is
+    in hand is one day's table, so the strip takes the intersection of the top of the board on
+    turnover and on movement, and the heading says «شلوغ و در حرکت» rather than «غیرعادی». The
+    alternative — printing «unusual» over an approximation of it — is the same mistake as the index.
+21. **The Arena's risk multiple comes from the stop that was really set, not from an assumption.**
+    The paper book keeps a closed trade's *reason* but not its stop, so a take-profit arrives with
+    nothing to divide by. Rather than invent a denominator, the shell watches the open positions and
+    records the stop each one actually carried; a position that never had one scores no multiple at
+    all — which is the honest answer and is already what the discipline half is counting.
+22. **A day with no trades in it is an absence, not a zero.** «۰ از ۱۰۰» to somebody who watched five
+    minutes and decided not to trade would be scoring the one decision this app most wants people to
+    be able to make. `ArenaScore.played` is the distinction and the sheet says it in a sentence.
+
 ## Narrowings, per R3
 
 Each of these is ❌ above and is written down here rather than left to be noticed.
@@ -157,7 +208,11 @@ Each of these is ❌ above and is written down here rather than left to be notic
    cards and the sync banner are untouched.
 3. **Before/after pairs.** The *after* exists for every chart surface, because the goldens were
    re-recorded. Nobody assembled the pairs.
-4. **The preview sheet itself has no proof frame.** A Material bottom sheet renders into a window of
+4. **The friends league is the reader's own history.** «You, over time» rather than a table of
+   names, because there is no endpoint to fill one — `BLOCKED.md` entry 3. Everything the local
+   version needs of a league is there (a daily challenge everybody shares, a comparable score, a
+   streak, a share card), and the row that says «you were third» is the only part missing.
+5. **The preview sheet itself has no proof frame.** A Material bottom sheet renders into a window of
    its own and the capture rig photographs the activity's decor view — the same limitation run K's
    indicator frame ran into, and the reason the Explain frame is the sheet's *body*. The preview's
    body is `internal` to `feature:search`, which has no Robolectric rig of its own, so the evidence

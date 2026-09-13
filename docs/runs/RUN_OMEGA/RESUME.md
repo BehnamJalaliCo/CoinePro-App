@@ -9,37 +9,37 @@ report and it is the only file that says what to do *next*.
 |---|---|
 | Ω1 — Signal Layer & Explain | **done**, 4.75.0 `5750f44` |
 | Ω2 — chart owns the screen, one design language, feedback | **done bar two items**, 4.76.0 `f66edd4`, 4.76.1 `15ca1d3` |
-| Ω3 — Simple/Full mode, first run, Chart Preview | **done**, this commit |
-| Ω4 — Arena, Rasad, Market Mood, share cards | **not started** |
+| Ω3 — Simple/Full mode, first run, Chart Preview | **done**, 4.77.0 `d5ff453` |
+| Ω4 — Arena, Rasad, Market Mood, share cards | **done**, 4.78.0 |
 | Ω5 — tablet parity, web readiness doc | **not started** |
 
-`CHECKLIST.md` is current. E2, E3 and **E7** are ✅; E6 and the new Ω3 table are broken out item by
-item; E1 is ❌ on one clause only — Rasad's three sentences, which are Ω4. Seventeen recorded
-decisions, four narrowings.
+`CHECKLIST.md` is current. **E1–E5 and E7–E9 are ✅.** Two lines are open: E6, which is broken out
+item by item and has two rows left (the per-note prose decision and the before/after pairs), and E10,
+which is Ω5. Twenty-two recorded decisions, five narrowings.
 
 ## Start here
 
-**Ω4, item 1: the Replay Arena.** It is the biggest single piece left and everything it needs is
-already in the build:
+**Ω5 — the tablet, and the web readiness doc.** Two items and the first is the larger:
 
-* `Replay` in `:chart-core` is the rewind engine — `Replay.enter` wants thirty bars, `MINIMUM_BARS`
-  — and `ChartController.enterReplay` already drives it from the chart's own hub.
-* `PaperTradeController` + `PaperFills.marketable` is the order book the Arena scores. A limit at the
-  drawn entry, the stop and the target both carried: see the `onPaperTrade` lambda in `CoineProApp`,
-  which already builds exactly the request the Arena wants.
-* The daily challenge has **no endpoint** — `BLOCKED.md` entry 2 — so the client picks from a date
-  seed. Write that as one function so the endpoint replaces the seed and nothing else moves.
-* The discipline half of the score is the interesting half: «SL respected, no revenge trades» is
-  computable from the paper trades of one session, and `ReplayReport` already carries the
-  stop-vs-early-close split the brief's «discipline» means. Read its own note first — it explains why
-  a strategy backtest can never report it.
-* The share card is 1080×1080 and `ChartShare.share` already turns the chart layer into a bitmap and
-  hands it to the Android share sheet. The card is a second renderer over the same seam.
-
-Then Ω4 item 2, **Rasad**: deterministic templates over `ChartSignalLayer` — which is exactly what
-`SignalSpec`'s sixteen phrasings already are, so «read this chart» is three of those sentences
-composed, not a new engine. This is also the clause that keeps E1 at ❌, so it closes two lines at
-once.
+1. **Every Ω1–Ω4 surface in the adaptive tablet layout.** What Ω1–Ω4 added and what each needs:
+   * **The Now strip and رصد's line** are in the chart's own column, so they are already on the
+     tablet — check them at 1280 dp, where the line has three times the width and should carry more
+     of the sentence rather than the same truncation.
+   * **Explain as a side panel.** The brief is explicit. `ChartSidePanel` is the mechanism and
+     `ExplainSheetBody` is already the sheet's *body* rather than the sheet, precisely so it can
+     dock — see the note in `RunOmegaProofTest` on why the proof frame is the body.
+   * **رصد** is the same shape: `RasadSheetBody` docks beside the plot rather than opening over it.
+   * **The Arena** wants two panes — the chart and the result — rather than a sheet that covers the
+     chart the reader is being scored on.
+   * **The chart preview** is list-detail: `CoineProListDetail` already does markets → chart, and
+     the preview is the same relationship one level shallower.
+   * **The mood strip** is a Home card and needs nothing but a check at width.
+   Then `docs/qa/PARITY.md` to 100 %.
+2. **`docs/web/PLAN.md`**: how the Signal Layer, Confidence, رصد and the Arena map to the future
+   Compose-Multiplatform terminal. All four are already in `:chart-core` with no Android on the
+   classpath and `ArchitectureTest` holding that, so this is a document rather than a port — say
+   which types cross, which five `expect` declarations the web target has to fill, and that the
+   Arena's daily pick is arithmetic rather than a platform `Random` for exactly this reason.
 
 ## The two Ω2 rows still ❌, and why they are not a blocker
 

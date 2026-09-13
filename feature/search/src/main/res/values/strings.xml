@@ -27,6 +27,8 @@
     <string name="markets_column_turnover">Turnover</string>
     <string name="markets_lens_all">All markets</string>
     <string name="markets_lens_hot">Hot</string>
+    <string name="markets_lens_favourites">Starred</string>
+    <string name="markets_lens_volume">Most traded</string>
     <string name="markets_lens_gainers">Gainers</string>
     <string name="markets_lens_losers">Losers</string>
     <string name="markets_lens_empty">No market qualifies for this list today.</string>
@@ -109,6 +111,7 @@
     <!-- Long-press preview -->
     <string name="preview_alert">Alert</string>
     <string name="preview_chart">Chart</string>
+    <string name="preview_milestone">Tell me if it moves this much today</string>
     <string name="preview_range_day">1D</string>
     <string name="preview_range_week">1W</string>
     <string name="preview_range_month">1M</string>

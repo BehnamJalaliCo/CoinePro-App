@@ -139,6 +139,13 @@ fun SearchScreen(
     onCreateAlert: ((String, Double) -> Unit)? = null,
     /** The preview's span chips and scrub. Null keeps the short sheet — see [MarketsScreen]. */
     previewCandles: MarketPreviewCandles? = null,
+    /**
+     * Arms a milestone alert on today's move from the preview sheet (run Ω4).
+     *
+     * Null drops the chips rather than disabling them, for the reason every other nullable callback
+     * on this screen is nullable: only the caller knows whether there is an alert store to write to.
+     */
+    onMilestoneAlert: ((symbol: String, up: Boolean, percent: Double) -> Unit)? = null,
 ) {
     LaunchedEffect(controller) { controller.start() }
     val state by controller.state.collectAsStateWithLifecycle()
@@ -306,6 +313,12 @@ fun SearchScreen(
                     onOpenSymbol?.invoke(row.meta.symbol)
                 },
                 candles = previewCandles,
+                onMilestoneAlert = onMilestoneAlert?.let { arm ->
+                    { up, percent ->
+                        preview = null
+                        arm(row.meta.symbol, up, percent)
+                    }
+                },
                 onToggleStar = onToggleWatch?.let { toggle -> { toggle(row.meta.symbol) } },
                 onCreateAlert = onCreateAlert?.let { arm ->
                     row.quote?.price?.let { price ->

@@ -74,4 +74,11 @@
     <string name="home_holdings_count">%1$s دارایی · پرتفوی</string>
     <string name="home_shortcut_news">اخبار</string>
     <string name="home_value_missing_note">هنوز موجودی‌ای دریافت نشده.</string>
+    <string name="mood_title">بازار امروز</string>
+    <string name="mood_lean_up">بیشتر صعودی</string>
+    <string name="mood_lean_down">بیشتر نزولی</string>
+    <string name="mood_lean_mixed">مختلط</string>
+    <string name="mood_counts">%1$s بازار بالا، %2$s پایین</string>
+    <string name="mood_movers">بیشترین حرکت</string>
+    <string name="mood_busy">شلوغ و در حرکت</string>
 </resources>
