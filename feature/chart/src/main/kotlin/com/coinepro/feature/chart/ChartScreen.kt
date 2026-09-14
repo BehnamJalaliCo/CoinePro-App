@@ -2021,7 +2021,20 @@ fun ChartScreen(
             // to open the tools and to show that one is armed, and the permanent column does both
             // better — a button that opens a sheet duplicating a column already on screen is the
             // kind of leftover that makes a tablet layout look ported rather than designed.
-            showDraw = !columns.hasTools && readerMode.showsAdvancedChrome,
+            // **Simple mode changes defaults, never the toolbar** (run Τ, item 2; the owner's
+            // decision, overriding Ω3).
+            //
+            // It used to read `&& readerMode.showsAdvancedChrome`, so a reader who answered
+            // «تازه‌کارم» on the first run lost the pencil from the portrait bar — while landscape,
+            // which builds its strip elsewhere, kept it. A beginner who cannot find the drawing
+            // tools does not conclude that this app has a simple mode; they conclude it cannot draw
+            // a trend line. Hiding a control is how a product teaches somebody that it is missing
+            // something, which is the opposite of what a beginner mode is for.
+            //
+            // What remains is the one condition that was never about the reader: the button is
+            // dropped where a permanent tool column is already on screen beside the plot, because
+            // then it opens a sheet duplicating a column the reader can see.
+            showDraw = !columns.hasTools,
             indicators = state.activeIndicators.size,
             drawings = state.drawing.drawings.size,
             onOpen = { sheet = it },

@@ -453,8 +453,10 @@ class ChartPixelsTest {
     }
 
     @Test
-    fun `the exponential curve coasts about a second from a hard flick and never speeds up`() {
-        // The design brief's curve: exponential decay, tuned so an ordinary flick lasts about 1.2 s.
+    fun `the exponential curve carries a hard flick TradingView's distance and never speeds up`() {
+        // Retuned in run Τ against the owner's frame-by-frame measurement of TradingView on the
+        // same phone: friction is now 1.4 per second, so distance — which is what the eye reads —
+        // is `v / f` rather than a quarter of it. See `KineticScroll.EXPONENTIAL_FRICTION`.
         val scroll = KineticScroll(PHONE_DENSITY, FlingCurve.EXPONENTIAL)
         scroll.start(4_000f)
         assertTrue(scroll.isRunning)
@@ -473,9 +475,13 @@ class ChartPixelsTest {
         }
         assertFalse(scroll.isRunning)
         val millis = frames * 16
-        assertTrue("a hard flick coasted for ${millis}ms", millis in 1_000..1_700)
-        // v / f, to the frame.
-        assertEquals(4_000f / 3.8f, travelled, 2f)
+        assertTrue("a hard flick coasted for ${millis}ms", millis in 1_800..2_800)
+        // `v / f`, to the frame. This twin spends the whole curve rather than stopping at the
+        // cut-off — it is the JVM reading of the same physics, not the same implementation — so it
+        // covers the cut-off's own tail as well and the Compose spec's figure is this less
+        // `MIN_VELOCITY / f`. Either way a 4 000 px/s flick is measured in thousands of pixels
+        // rather than the eleven hundred it covered before run Τ.
+        assertEquals(4_000f / 1.25f, travelled, 2f)
     }
 
     @Test
@@ -540,7 +546,7 @@ class ChartPixelsTest {
     }
 
     @Test
-    fun `an ordinary flick coasts about one point two seconds`() {
+    fun `an ordinary flick coasts about two seconds, as TradingView's does`() {
         val scroll = KineticScroll(PHONE_DENSITY, FlingCurve.EXPONENTIAL)
         scroll.start(2_000f)
         var now = 0L
@@ -552,6 +558,9 @@ class ChartPixelsTest {
             frames++
         }
         val millis = frames * 16
-        assertTrue("an ordinary flick coasted for ${millis}ms", millis in 1_000..1_400)
+        // `ln(2000/150)/1.4` ≈ 1.85 s. The brief asked for 1.2 s *and* a screen and a half of
+        // travel from a harder flick; distance is `v/f` and duration is `ln(v/cut-off)/f`, so one
+        // number cannot do both. The distance is what the reader complained about.
+        assertTrue("an ordinary flick coasted for ${millis}ms", millis in 1_500..2_300)
     }
 }

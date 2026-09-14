@@ -714,3 +714,45 @@ triangles alone. If the restore ever breaks, the second frame becomes the first.
 | New | `MarkerStylePersistenceProofTest` (2) |
 | Frames | `sigma-marker-style-default-phone-fa.png`, `sigma-marker-style-restored-phone-fa.png` |
 | Changed | the 4.86.1 checklist row now points at them instead of explaining their absence |
+
+## RUN Τ — a measurement that named the wrong culprit, and found the right one
+
+The report was frame-by-frame and its symptom was exact: the same finger, on the same phone, left
+TradingView at about 4 300 px/s and this app at about 800, and this app's motion died in a third of
+a second and then crept for another fifth at a pixel a frame. Its three suspects were all about the
+*velocity* — divided by density, read from predicted events, or gated by the wrong threshold.
+
+The first thing run Τ built was not a fix but a measurement: `ChartFlingRegressionTest` pushes a
+synthetic 3 000 px/s flick through the real pointer pipeline and reads the window the chart lands
+on. The chart covered 97 % of what the decay curve predicts from 3 000 px/s. So the velocity
+arrives intact — nothing divides by density, and the predictor is not in this path at all; it
+belongs to the freehand drawing tool. Two of the three suspects were ruled out by the first thing
+that measured them, which is the argument for writing the measurement first.
+
+What was actually wrong is one constant. A flick on an exponential decay covers `v / f`, so friction
+*is* distance, and friction was 3.8 per second: a 4 300 px/s release covers 1 130 px at 3.8 — a
+single screen — where TradingView covered about 2 900. The chart was never slow to start; it was
+always slow to *arrive*. Friction is now 1.25.
+
+The creep was the third suspect and that one was right, though not for the reason given. The
+cut-off was 20 px/s, which at 120 Hz is a sixth of a pixel a frame: the fling did not creep for two
+hundred milliseconds, it crept for as long as anybody could be bothered to film. It is now 240 px/s
+— two pixels a frame at 120 Hz exactly, because the tail's length is `ln(240 / cut-off) / f` and
+anything below two pixels a frame is a tail by the brief's own definition. Raising it costs
+distance, which is why friction went to 1.25 rather than the 1.5 the measurement alone implies.
+
+The tracker now also gets every sample the digitiser took — `change.historical` as well as the
+frame's own point — which the synthetic test cannot show a difference for and a real 240 Hz
+digitiser can.
+
+**The pencil** was one condition. `showDraw` read `!columns.hasTools && readerMode.showsAdvancedChrome`,
+and Simple mode also suppresses the permanent tool column, so a reader who answered «تازه‌کارم» had
+no way to a drawing tool in portrait at all — while landscape, which builds its strip elsewhere,
+kept one. Simple mode now changes defaults and nothing else.
+
+| | |
+|---|---|
+| Changed | `EXPONENTIAL_FRICTION` 3.8 → 1.25, `MIN_VELOCITY` 20 → 240, the velocity tracker's samples, `showDraw` |
+| Tests | `ChartFlingRegressionTest` (2), `ChartFlingTest` (4), `ChartToolbarTest` (6), `ChartPixelsTest` retuned |
+| Frames | `tau-toolbar-simple-portrait-fa.png`, `tau-toolbar-simple-landscape-fa.png` |
+| Owed to a device | the feel of the flick — three flicks of increasing speed on BTCUSDT H1 |

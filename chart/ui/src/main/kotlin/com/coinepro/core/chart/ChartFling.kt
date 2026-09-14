@@ -9,16 +9,21 @@ import kotlin.math.abs
 import kotlin.math.min
 
 /**
- * The curve a chart flick coasts on: Compose's own [exponentialDecay], tuned to the brief.
+ * The curve a chart flick coasts on: Compose's own [exponentialDecay], matched to TradingView.
  *
- * Velocity decays as `e^(−f·t)` with `f = 4.2 × frictionMultiplier`; the multiplier below puts
- * `f` at 3.8 per second, so a hard flick of 4 000 px/s coasts to the cut-off in ln(200)/3.8 ≈
- * 1.4 s and an ordinary one of 2 000 px/s in ≈ 1.2 s — the brief's «about 1.2 s». Compose's
- * default multiplier of 1.35 gave 0.9 s, which read as the chart stopping short. `KineticScroll`
- * in `:chart-core` is the same curve written out for the JVM tests; this is the spec the chart
- * actually flings on.
+ * Velocity decays as `e^(−f·t)` with `f = 4.2 × frictionMultiplier`, and a flick covers `v / f`
+ * pixels — so this constant *is* the distance one flick travels. It was 3.8, which put a hard
+ * 4 300 px/s release at 1 130 px: one screen. The owner measured the same finger in TradingView on
+ * the same phone covering about 2 900 px over two seconds, which is `f ≈ 1.5`; the number shipped is
+ * 1.25, because the cut-off that ends the creep also costs distance and the friction pays it back.
+ * See
+ * `KineticScroll.EXPONENTIAL_FRICTION` in `:chart-core` for the full arithmetic and for what the
+ * measurement ruled *out* — the velocity reaching this curve was never the problem.
+ *
+ * `KineticScroll` is the same curve written out for the JVM tests; this is the spec the chart
+ * actually flings on, and the two are kept at the same numbers deliberately.
  */
-internal const val FLING_FRICTION_MULTIPLIER = 3.8f / 4.2f
+internal const val FLING_FRICTION_MULTIPLIER = 1.25f / 4.2f
 
 internal fun chartFlingSpec(): DecayAnimationSpec<Float> =
     exponentialDecay(frictionMultiplier = FLING_FRICTION_MULTIPLIER, absVelocityThreshold = KineticScroll.MIN_VELOCITY)

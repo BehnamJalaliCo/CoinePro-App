@@ -1797,6 +1797,21 @@ fun CoineProChart(
                                         val change = event.changes.firstOrNull { it.id == down.id }
                                         if (change != null && change.pressed) {
                                             if (change.type != PointerType.Touch) flingable = false
+                                            // **Every sample the digitiser took, not one a frame.**
+                                            //
+                                            // Android batches motion events and hands Compose the
+                                            // in-between points in `historical`; a handler that
+                                            // reads only `position` is sampling a 240 Hz finger at
+                                            // the display's rate and throwing the rest away. That
+                                            // costs nothing when the finger moves steadily and it
+                                            // costs exactly the wrong thing at the end of a flick,
+                                            // where the last few milliseconds are what the reader
+                                            // meant. They are added in order, before the frame's
+                                            // own point, because a velocity tracker is a fit over a
+                                            // time series and an out-of-order sample is noise.
+                                            change.historical.forEach { past ->
+                                                tracker.addPosition(past.uptimeMillis, past.position)
+                                            }
                                             tracker.addPosition(change.uptimeMillis, change.position)
                                         }
                                         if (event.changes.none { it.pressed }) break

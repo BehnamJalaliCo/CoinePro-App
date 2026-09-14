@@ -5,19 +5,33 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The fling on Compose's `exponentialDecay`: the brief's durations, and the contract the chart's
- * frame loop relies on. Pure JVM — the spec is arithmetic.
+ * The fling on Compose's `exponentialDecay`: the distances run Τ is about, and the contract the
+ * chart's frame loop relies on. Pure JVM — the spec is arithmetic.
+ *
+ * The numbers here were retuned in run Τ against the owner's frame-by-frame measurement of
+ * TradingView on the same phone with the same finger. Friction went from 3.8 to 1.4 per second,
+ * which is the distance a flick covers, and the cut-off from 20 px/s to 150 — see
+ * `KineticScroll.MIN_VELOCITY` for what twenty looked like on a 120 Hz screen.
  */
 class ChartFlingTest {
 
     @Test
-    fun `an ordinary flick coasts about one point two seconds and a hard one about one point four`() {
+    fun `a flick covers velocity over friction, which is what the eye actually measures`() {
+        // Distance is the complaint and distance is the assertion. `(v − cut-off) / f`: at
+        // 4 300 px/s — the speed the owner's finger produced in TradingView — that is about
+        // 3 250 px, against the 2 900 px TradingView itself covered.
         val fling = ChartFling()
-        fling.start(2_000f)
-        assertTrue(fling.isRunning)
-        assertTrue("${fling.durationMillis} ms", kotlin.math.abs(fling.durationMillis - 1_212L) <= 40L)
-        fling.start(4_000f)
-        assertTrue("${fling.durationMillis} ms", kotlin.math.abs(fling.durationMillis - 1_394L) <= 40L)
+        fling.start(4_300f)
+        var now = 0L
+        assertEquals(0f, fling.tick(now), 0f)
+        var travelled = 0f
+        var frames = 0
+        while (fling.isRunning && frames < 2_000) {
+            now += FRAME_NANOS
+            travelled += fling.tick(now)
+            frames++
+        }
+        assertEquals((4_300f - KineticScroll.MIN_VELOCITY) / FRICTION, travelled, 30f)
     }
 
     @Test
@@ -26,30 +40,77 @@ class ChartFlingTest {
         fling.start(3_000f)
         var now = 0L
         assertEquals(0f, fling.tick(now), 0f)
-        var previous = Float.MAX_VALUE
+        val steps = mutableListOf<Float>()
         var travelled = 0f
         var frames = 0
-        while (fling.isRunning && frames < 1_000) {
-            now += 16_000_000L
+        while (fling.isRunning && frames < 2_000) {
+            now += FRAME_NANOS
             val step = fling.tick(now)
-            assertTrue("a fling must never speed up: $step after $previous", step <= previous + 1e-3f)
-            previous = step
+            steps += step
             travelled += step
             frames++
         }
+        // **Measured in groups of eight frames, not frame to frame.**
+        //
+        // Compose reads the decay curve off a clock in whole milliseconds, and a 120 Hz frame is
+        // 8⅓ of them — so frames cover 8, 8, 9, 8, 8, 9 … milliseconds of the curve and every third
+        // or fourth step is about five per cent longer than the one before it. At the start of a
+        // flick that is six tenths of a pixel and at the end of one it is nothing, but it is real,
+        // and a frame-to-frame assertion would be asserting the clock rather than the physics.
+        // Sixty-six milliseconds of travel has no such artefact in it: each group must be shorter
+        // than the one before, which is what «never speeds up» means to a reader.
+        val groups = steps.chunked(GROUP).map { it.sum() }
+        groups.indices.drop(1).forEach { i ->
+            assertTrue(
+                "a fling must never speed up: group $i covered ${groups[i]} after ${groups[i - 1]}",
+                groups[i] <= groups[i - 1] + 1e-3f,
+            )
+        }
         assertTrue(!fling.isRunning)
-        // v / f, less the tail under the cut-off: 3 000 / 3.8 ≈ 789 px, minus 20 / 3.8.
-        assertEquals(3_000f / 3.8f - 20f / 3.8f, travelled, 8f)
-        assertEquals(0f, fling.tick(now + 16_000_000L), 0f)
+        assertEquals((3_000f - KineticScroll.MIN_VELOCITY) / FRICTION, travelled, 20f)
+        assertEquals(0f, fling.tick(now + FRAME_NANOS), 0f)
     }
 
     @Test
-    fun `a leftward flick moves left, and a velocity under the cut-off starts nothing`() {
+    fun `it stops rather than creeping a pixel a frame`() {
+        // The other half of what the owner filmed: «۲،۲،۲،۲،۱،۱،۱،۲،۱،۱» — two hundred milliseconds
+        // of one pixel a frame after the motion was over, which reads as the chart catching on
+        // something. The cut-off is what ends it, and it is set to exactly two pixels a frame at
+        // 120 Hz so that the tail cannot exist: the last step the reader sees is a real one.
+        val fling = ChartFling()
+        fling.start(3_000f)
+        var now = 0L
+        fling.tick(now)
+        val steps = mutableListOf<Float>()
+        var frames = 0
+        while (fling.isRunning && frames < 2_000) {
+            now += FRAME_NANOS
+            steps += fling.tick(now)
+            frames++
+        }
+        val tail = steps.takeLastWhile { kotlin.math.abs(it) < 2f }
+        assertTrue("the fling crept for ${tail.size} frames: $tail", tail.size <= 3)
+    }
+
+    @Test
+    fun `a leftward flick moves left, and a release slower than a drag starts nothing`() {
         val fling = ChartFling()
         fling.start(-1_200f)
         fling.tick(0L)
-        assertTrue(fling.tick(16_000_000L) < 0f)
-        fling.start(10f)
+        assertTrue(fling.tick(FRAME_NANOS) < 0f)
+        // A hundred and forty is under the cut-off: a finger that slow was placing the chart, not
+        // throwing it, and momentum on top of a placement is the chart moving after the reader
+        // stopped.
+        fling.start(140f)
         assertTrue(!fling.isRunning)
+    }
+
+    private companion object {
+        /** One frame at 120 Hz, which is the rate this chart asks the panel for. */
+        const val FRAME_NANOS = 8_333_333L
+        const val FRICTION = 1.25f
+
+        /** Frames per group — 66 ms, long enough to swallow the millisecond clock's sawtooth. */
+        const val GROUP = 8
     }
 }

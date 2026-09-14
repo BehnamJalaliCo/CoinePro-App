@@ -497,10 +497,19 @@ fun placeTagRows(
  *
  * ### The cut-off
  *
- * [MIN_VELOCITY] is **twenty pixels a second**. At 60Hz that is a third of a pixel per frame: below
- * it the chart would not be moving, it would be shimmering, and every frame spent there is a frame
- * spent recomputing a price scale that produced the same picture. A release that slow starts
- * nothing.
+ * [MIN_VELOCITY] is **two hundred and forty pixels a second**, and it used to be twenty. Twenty is
+ * a sixth of a pixel per frame at 120 Hz, and the owner's frame-by-frame measurement is what that
+ * looks like from the outside: after every flick the chart crept for two hundred milliseconds at
+ * one pixel a frame — «۲،۲،۲،۲،۱،۱،۱،۲،۱،۱» — which the eye reads as the chart *catching* rather
+ * than as the chart stopping.
+ *
+ * Two hundred and forty is exactly two pixels a frame at 120 Hz, and that number is the brief's:
+ * «no sub-2 px/frame tail longer than 3 frames». It has to be the cut-off itself rather than
+ * something near it, because the tail's length is `ln(240/cut-off)/f` frames — at 150 px/s the
+ * chart would still spend a third of a second between two pixels and one and a quarter, which is
+ * the same fault a third shorter. The same number gates [start]: a release slower than this was a
+ * placement, not a throw, and momentum on top of a placement is the chart moving after the reader
+ * has stopped.
  */
 class KineticScroll(density: Float = 1f, private val curve: FlingCurve = FLING_CURVE) {
 
@@ -604,7 +613,7 @@ class KineticScroll(density: Float = 1f, private val curve: FlingCurve = FLING_C
 
     companion object {
         /** Below this many pixels a second the fling is over before it starts. See the class KDoc. */
-        const val MIN_VELOCITY = 20f
+        const val MIN_VELOCITY = 240f
 
         /**
          * Which curve a chart flick coasts on.
@@ -616,14 +625,33 @@ class KineticScroll(density: Float = 1f, private val curve: FlingCurve = FLING_C
          */
         val FLING_CURVE: FlingCurve = FlingCurve.EXPONENTIAL
 
-        /** 4.2 × 1.35, per second. See [FlingCurve.EXPONENTIAL]. */
         /**
-         * The friction of `exponentialDecay`: velocity × e^(−f·t). At 3.8 a hard flick of
-         * 4 000 px/s coasts to [MIN_VELOCITY] in ln(200)/3.8 ≈ 1.4 s and an ordinary one of
-         * 2 000 px/s in ≈ 1.2 s — the brief's «about 1.2 s». Compose's own multiplier of 1.35
-         * over 4.2 gave 0.9 s, which read as the chart stopping short.
+         * The friction of `exponentialDecay`: velocity × e^(−f·t), and the number run Τ was about.
+         *
+         * A flick travels `v / f` pixels, so friction is not a feel setting — it is the distance
+         * one flick covers, and the whole complaint was distance. The owner measured TradingView on
+         * the same phone with the same finger: it left the glass at about 4 300 px/s and covered
+         * roughly 2 900 px over about two seconds, which is `f ≈ 1.5`. At 3.8 the same release
+         * covered 1 130 px — a single screen — and that is what «کند» was. It was not the velocity:
+         * `ChartFlingRegressionTest` drives a synthetic 3 000 px/s flick through the real event
+         * stream and the chart travels 97 % of what the curve predicts, so nothing is dividing by
+         * density and nothing is reading predicted events.
+         *
+         * The number shipped is **1.25**, a little below the measurement, and the reason is
+         * [MIN_VELOCITY]: a flick covers `(v − cut-off) / f`, so raising the cut-off to two pixels
+         * a frame to kill the creep takes distance away, and the friction gives it back. At 1.25
+         * every acceptance figure in the brief lands — a 3 000 px/s flick covers 2 210 px, two
+         * screens on the owner's phone against the screen and a half asked for; an 800 px/s one
+         * covers 450 px, four tenths of a screen; a 4 300 px/s one covers 3 250 px against
+         * TradingView's 2 900.
+         *
+         * What no friction can satisfy is the brief's *duration* alongside its distances:
+         * `ln(3000/240)/1.25` is two seconds, not the 1.4 the brief also asks for. Distance is
+         * `v/f` and duration is `ln(v/cut-off)/f`; asking for more of the first and less of the
+         * second is asking f to move both ways. TradingView — the thing being matched — takes two
+         * seconds itself, so the distance is what was kept.
          */
-        private const val EXPONENTIAL_FRICTION = 3.8f
+        private const val EXPONENTIAL_FRICTION = 1.25f
     }
 }
 
