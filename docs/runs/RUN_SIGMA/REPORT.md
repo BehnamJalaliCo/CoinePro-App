@@ -756,3 +756,55 @@ kept one. Simple mode now changes defaults and nothing else.
 | Tests | `ChartFlingRegressionTest` (2), `ChartFlingTest` (4), `ChartToolbarTest` (6), `ChartPixelsTest` retuned |
 | Frames | `tau-toolbar-simple-portrait-fa.png`, `tau-toolbar-simple-landscape-fa.png` |
 | Owed to a device | the feel of the flick — three flicks of increasing speed on BTCUSDT H1 |
+
+## RUN Τ2 — an empty box, a number that is honest, and a swipe I will not guess at
+
+**The box.** The first guess was wrong and the render said so. `SymbolNeighbours` had a field called
+`isEmpty` that meant «there is no previous and no next», and the wheel returned on it — so a ring of
+one hid the cell. That is a real fault and it is not the owner's: fixing it brought the pill back
+**still empty**, exactly as photographed.
+
+What it actually was is a measurement. Asked where the ticker had gone, the semantics tree answered
+`size=210 x 1`. The wheel lays out five rows of eighteen points inside a pill of thirty-six, and a
+`Column` measured against that pill hands the first row eighteen, the second eighteen, and the
+third — the one carrying the instrument the chart is on — whatever is left, which is nothing. A
+ticker one pixel tall draws no pixels. `requiredHeight` takes the column out from under the pill's
+constraint, which is what a wheel *is*, and the `Box` above clips it back to the window.
+
+The test that existed before this would not have caught it, and neither would the one I wrote first:
+both asked whether the ticker was in the tree, and it always was. The assertion is now its height.
+Two smaller things came with it — the `cannotTurn` rename above, and the cell growing to 104 points
+for a long ticker, because eighty cut `DOGEUSDT` to «DOGEUSD», which reads as a different instrument
+rather than as a clipped one.
+
+**The market count.** The owner asked for every market whose logo we have and LBank supports. The app
+is already doing exactly that, and the number is the artwork's: `report-market-coverage.py` asks the
+exchange and counts — 1 333 USDT pairs listed, 1 007 traded in a day, a mark in this repository for
+**178** of them, which is the 189 on screen once the other quote currencies are counted. Those 178
+carry **half** of LBank's turnover. The missing 829 are leveraged tokens, tokenised equities and
+micro-caps, and not one of them has a vector in any of the three archives the app converts from, nor
+does the site's `/assets/logo/` fallback answer for them. So the way to raise the number is a
+hundred more marks, and the script prints the uncovered markets in turnover order so they can be
+sourced in the order that buys the most book. What the app must not do is list them anyway: a grey
+disc with a letter in it is the one defect the house rules name outright.
+
+**The swipe.** Run Τ taught something worth remembering: the report's three suspects were all about
+velocity and the cause was a friction constant, and the only reason that came out is that the first
+thing built was a measurement rather than a fix. So the same here. `ChartPanCostProbeTest` times the
+two kinds of drag frame — one that crosses a bar, which recomposes the chart and invalidates every
+cached layer, and one that moves the picture inside a bar, which only redraws. **93.9 ms against
+98.3 ms.** A bar step costs five per cent more than not stepping, so the pan is not dominated by
+recomposition and not by invalidation, and both of those were the plausible culprits.
+
+What the rest of that 94 ms is, this container cannot say: it is Robolectric rasterising a million
+pixels in software, on a JVM with no warm JIT and no GPU. It is not a phone and the number is not a
+phone's. **So the swipe stays ❌ and owed to a device** — a Perfetto or Macrobenchmark trace from
+the owner's own handset — rather than being answered with a refactor of the hottest file in the app
+on a hunch. The last run is what that costs.
+
+| | |
+|---|---|
+| Changed | `SymbolNeighbours.isEmpty` → `cannotTurn`; the band's wheel keeps the name |
+| New | `report-market-coverage.py`, `SymbolWheelBandTest` (2), `ChartPanCostProbeTest` |
+| Frames | `tau2-wheel-ring-fa.png`, `tau2-wheel-one-fa.png` |
+| Owed to a device | the swipe: 93.9 ms vs 98.3 ms says what it is *not*; a trace says what it is |

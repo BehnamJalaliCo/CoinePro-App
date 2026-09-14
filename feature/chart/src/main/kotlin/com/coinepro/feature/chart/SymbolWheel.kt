@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
@@ -106,8 +107,17 @@ internal data class SymbolNeighbours(
     /** How many symbols the ring holds. */
     val total: Int,
 ) {
-    /** Whether there is anything to draw at all. */
-    val isEmpty: Boolean get() = previous == null && next == null
+    /**
+     * Whether the ring has anywhere to turn to.
+     *
+     * **Not the same question as «is there anything to draw».** A ring of one has no neighbour and
+     * still has a name, and the wheel used to take this as its cue to render nothing at all — so a
+     * reader whose list narrowed to a single market (a platform filter, a feed with one quote, a
+     * catalogue that had not arrived yet) got an empty box beside the timeframe, or no box. The
+     * instrument the chart is on is the *first* thing that cell owes the reader; turning is the
+     * second.
+     */
+    val cannotTurn: Boolean get() = previous == null && next == null
 }
 
 /**
@@ -210,7 +220,10 @@ internal fun SymbolWheelBar(
     modifier: Modifier = Modifier,
 ) {
     val ring = remember(symbols, current) { symbolNeighbours(symbols, current) }
-    if (ring.isEmpty) return
+    // This one *is* a strip of neighbours — it has no centre cell of its own — so with nowhere to
+    // turn there is genuinely nothing to draw. The command band's wheel is the opposite case and
+    // reads `cannotTurn` rather than returning on it.
+    if (ring.cannotTurn) return
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -409,7 +422,18 @@ internal fun SymbolScrollWheel(
     onTravel: (Float) -> Unit = {},
 ) {
     val ring = remember(symbols, current) { symbolNeighbours(symbols, current) }
-    if (ring.isEmpty) return
+    // **The name first, the turning second** (run Τ2, the owner's empty box).
+    //
+    // This used to return on a ring with no neighbours, and the two ways that showed up on a phone
+    // were both wrong: no cell at all where the reader's list had narrowed to one market, and — when
+    // something else in the band held the row open — a pill with its carets and no ticker in it. A
+    // control that draws a frame around nothing is worse than one that is absent, because the reader
+    // goes looking for what is missing from it.
+    //
+    // So the only thing that removes the wheel now is having no name to put in it. A ring of one
+    // draws that one, with both carets dimmed, which says «this is the only market here» in the
+    // control's own language.
+    if (current.isBlank()) return
     val haptics = rememberCoineProHaptics()
     // One row of travel is one step. Taken from the row height rather than from a number of its
     // own, so the tickers move at the speed the finger does — a threshold larger than the row
@@ -580,7 +604,11 @@ internal fun SymbolScrollWheel(
         ) {
             Box(
                 modifier = Modifier
-                    .width(WHEEL_SCROLL_WIDTH)
+                    // A band rather than a fixed width: `BTCUSDT` is seven characters and
+                    // `DOGEUSDT` is eight, and eighty points fits the first and cuts the last —
+                    // «DOGEUSD», which reads as a different instrument rather than as a clipped
+                    // one. The floor keeps a short ticker from shrinking the cell into the carets.
+                    .widthIn(min = WHEEL_SCROLL_WIDTH, max = WHEEL_SCROLL_WIDTH_MAX)
                     .fillMaxHeight()
                     .clipToBounds(),
                 contentAlignment = Alignment.Center,
@@ -589,7 +617,24 @@ internal fun SymbolScrollWheel(
                 // beyond it fainter still — which is the wheel's curvature written as alpha. Per
                 // row rather than as a gradient over the cell, because the gradient gate is
                 // right: a wash on a control is decoration, and a row's own ink is not.
-                Column(modifier = Modifier.graphicsLayer { translationY = travel.floatValue }) {
+                // **Five rows in a two-row window, and every row at its full height.**
+                //
+                // This is what the owner's empty box actually was. The pill is 36 dp and a row is
+                // 18, so a `Column` measured against the pill hands the first row 18, the second
+                // 18, and the third — the one carrying the instrument the chart is on — whatever is
+                // left, which is nothing. The semantics said it plainly once somebody asked:
+                // `size=210 x 1`. A ticker one pixel tall draws no pixels, so the cell rendered its
+                // frame, its carets and a blank space where the name goes.
+                //
+                // `requiredHeight` takes the column out from under the pill's constraint — it is a
+                // wheel, and a wheel is *meant* to be taller than its window — and the `Box` above
+                // clips it back to the pill. The centring then puts the third row on the centre
+                // line, which is where the reader reads it.
+                Column(
+                    modifier = Modifier
+                        .requiredHeight(WHEEL_SCROLL_ROW * WHEEL_ROWS)
+                        .graphicsLayer { translationY = travel.floatValue },
+                ) {
                     WheelSide(symbolStep(symbols, current, -2), onSelect, far = true, reveal = reveal)
                     WheelSide(ring.previous, onSelect, far = false, reveal = reveal)
                     WheelCurrent(symbol = current)
@@ -864,6 +909,9 @@ private const val OVERLAY_ALPHA = 0.92f
  */
 private val WHEEL_SCROLL_ROW = 18.dp
 
+/** How many rows the wheel lays out: the current one, a neighbour each side, and their neighbours. */
+private const val WHEEL_ROWS = 5
+
 /** The touch target is the toolbar's own height; the pill inside it is shorter. */
 private val WHEEL_SCROLL_HEIGHT = 44.dp
 
@@ -885,4 +933,7 @@ private val WHEEL_CARET_GAP = 1.dp
 
 /** Eighty points, which is where the phone app cuts `IMXUSDT` to `IMXUSD` before the interval. */
 private val WHEEL_SCROLL_WIDTH = 80.dp
+
+/** As wide as the cell may grow for a long ticker. Eight characters of 16 sp bold Latin. */
+private val WHEEL_SCROLL_WIDTH_MAX = 104.dp
 

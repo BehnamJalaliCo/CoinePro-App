@@ -49,20 +49,24 @@ class SymbolWheelTest {
 
         assertNull(ring.previous)
         assertEquals("BTCUSDT", ring.next)
-        assertFalse(ring.isEmpty)
+        assertFalse(ring.cannotTurn)
     }
 
     @Test
-    fun `a list of one has nowhere to go and draws nothing at all`() {
+    fun `a list of one has nowhere to go and still has a name`() {
+        // Run Τ2: this used to be «draws nothing at all», and on the owner's phone that was an
+        // empty box beside the timeframe. Nowhere to turn is not nothing to say — the wheel draws
+        // the one market with both carets dimmed. `cannotTurn` is the strip's cue, not the pill's.
         val ring = symbolNeighbours(listOf("XAUUSD"), "XAUUSD")
 
-        assertTrue(ring.isEmpty)
+        assertTrue(ring.cannotTurn)
         assertEquals(1, ring.position)
+        assertEquals(1, ring.total)
     }
 
     @Test
     fun `an empty watchlist draws nothing`() {
-        assertTrue(symbolNeighbours(emptyList(), "XAUUSD").isEmpty)
+        assertTrue(symbolNeighbours(emptyList(), "XAUUSD").cannotTurn)
     }
 
     @Test
