@@ -207,7 +207,7 @@ class IndicatorRemovalProofTest {
         const val FA_PHONE = "fa-rIR-ldrtl-w411dp-h914dp-420dpi"
         const val SYMBOL = "BTCUSDT"
         const val STUDY = "sr"
-        const val BARS = 60
+        const val BARS = 180
         const val OPEN_CONTROLS = "کنترل‌های اندیکاتورها"
         const val REMOVE = "حذف"
     }
