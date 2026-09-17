@@ -334,9 +334,10 @@ private fun AppDestination.icon(selected: Boolean): Int = when (this) {
     AppDestination.WATCHLIST ->
         if (selected) DesignR.drawable.brand_watchlist_fill else DesignR.drawable.brand_watchlist
     AppDestination.CHART -> if (selected) CoineProIcons.Filled.Chart else CoineProIcons.Chart
-    // The compass, which is the one glyph in the set that means "look around" rather than
-    // "here is a list" — Explore replaced the markets tab and it is not the same promise.
-    AppDestination.EXPLORE ->
+    // The compass: «look around», which is what a briefing is. It was Explore's glyph and it
+    // stays, because the promise has not changed — a screen that reads the board for you is the
+    // same invitation as a screen that lets you read it, and رَصد is the one that answers first.
+    AppDestination.RASAD ->
         if (selected) DesignR.drawable.icon_compass_fill else DesignR.drawable.icon_compass
     // The four-pointed burst, and **not** the nav set's signal glyph. That one is a pair of
     // faders, which at 24 dp is two vertical bars with a knob on each — a shape a reader cannot
@@ -344,7 +345,7 @@ private fun AppDestination.icon(selected: Boolean): Int = when (this) {
     // bar has to avoid. The burst is the mark this app already uses for a signal, it is the only
     // radial shape in the bar, and it reads as "something worth looking at" rather than as a
     // second chart.
-    AppDestination.IDEAS ->
+    AppDestination.COMMUNITY ->
         if (selected) DesignR.drawable.brand_signal_fill else DesignR.drawable.brand_signal
     // Four bars, unweighted. The menu is a directory and the one tab whose selected state does not
     // need to compete: nothing on it is live, and a filled variant would make the quietest

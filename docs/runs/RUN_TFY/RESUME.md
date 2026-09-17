@@ -8,7 +8,11 @@ Written at the end of every session, whatever state the run is in. Read it befor
   rows; T2 and T4 are ❌ and the rows say exactly which clause was not met and why it cannot be.
 * **Phase Φ — done and shipped as 4.91.0.** Twelve rows; F1, F5 and F8 are ❌ in part and each row
   says exactly which clause and why. `BLOCKED.md` has the four things owed to a backend.
-* **Phase Υ — not started.**
+* **Phase Υ — done and shipped as 4.92.0.** Seven rows; U2 and U6 are ❌ in part and each row says
+  exactly which clause was narrowed and why. `BLOCKED.md` §5 has the three pulse figures and the
+  watchlist's market cap.
+* **The run is complete.** Every E-line in the brief has a row in the checklist, every ✅ names a
+  frame or says why a still cannot carry it, and every ❌ names the clause it did not meet.
 
 ## What Τ changed
 
@@ -47,7 +51,32 @@ Written at the end of every session, whatever state the run is in. Read it befor
 * From earlier runs and still open: the 30-second pinch recording (Σ0 S1), a tablet recording, and
   the Perfetto or Macrobenchmark trace that closes RUN Τ2 item 3.
 
+## What Υ changed
+
+| File | What |
+|---|---|
+| `app/src/main/kotlin/com/coinepro/app/WelcomeSlides.kt` | U1 — five auto-advancing slides, art drawn in Compose, buttons fixed under them |
+| `app/src/main/kotlin/com/coinepro/app/StarterPreferences.kt` | U2 — theme · language · quote · up colour, each already answered |
+| `app/src/main/kotlin/com/coinepro/app/MainActivity.kt` | The launch ladder: welcome → starter → the mode question |
+| `core/datastore/.../UserPreferencesStore.kt`, `QuoteCurrency.kt` | `welcomeSeen`, `startPreferencesSet`, `quoteCurrency` |
+| `core/marketdata/.../MarketPulse.kt` | U3 — the four figures, three of them null with the reason on the field |
+| `feature/search/.../MarketsHeader.kt` | U3–U5 — `MarketPulseRow`, `MarketPulseSheet`, `MarketNewsTicker`, `MarketsPage`, `MarketsTabRow`, `offeredPages` |
+| `feature/search/.../MarketsScreen.kt` | The two header strips became one; the pulse, the ticker and Explore's three doors above it |
+| `feature/search/.../MarketArrangement.kt` | `MarketLens.MOVERS`, for the برنده/بازنده tab |
+| `feature/news/.../NewsScreen.kt` | `initialStoryId`, so the ticker opens *that* story |
+| `app/.../CoineProApp.kt` | `NEWS_PATTERN` and `compareRoute`; the markets call site's six new arguments |
+| `core/datastore/.../WatchlistStore.kt` | U6 — `duplicate` and `moveList` |
+| `feature/search/.../WatchlistPanel.kt`, `WatchlistSheets.kt` | U6 — the ▾ picker, «+», «تحلیل», and duplicate/reorder in the manage sheet |
+| `feature/chart/.../ChartPanesScreen.kt` | U6 — `compareSymbols`, which wins over the stored arrangement and writes nothing down |
+| `core/navigation/.../AppDestination.kt` | U7 — `RASAD("home")` and `COMMUNITY("ideas")`; routes unchanged |
+| `scripts/quality/check-cross-phase-consistency.py` | The gate's expected destination list, updated with the reasoning |
+| Tests | `MarketPulseTest` (6), `MarketsPageTest` (6), `WatchlistStoreTest` (+3), `NavigationDepthTest` (+1), `UpsilonProofTest` (12, eleven frames) |
+
 ## Next
 
-Phase Υ, in the brief's order: U1 the welcome slides, U2 the preferences screen, U3 the market pulse
-row, U4 the news ticker, U5 the market tabs, U6 the watchlists, U7 the bottom navigation.
+**Nothing is queued.** The run is finished and 4.92.0 is on `main`. What remains is the device work
+above, which only the owner can do, and whatever the next brief says.
+
+If a Υ surface needs revisiting, the two places to start are `MarketPulse`'s class note — which is
+where the argument for shipping three dashes lives — and `WatchlistColumn.DEFAULT`'s note, which
+carries the row-width arithmetic that refused U6's rank column.

@@ -148,6 +148,19 @@ fun ChartPanesScreen(
     symbolChartStates: SymbolChartStateStore? = null,
     chartLayoutStore: ChartLayoutStore? = null,
     onBack: (() -> Unit)? = null,
+    /**
+     * The markets to open side by side, when this screen was entered as a comparison
+     * (run ΤΦΥ, U6 — «تحلیل» on a watchlist).
+     *
+     * Empty is every other way in, and then the screen behaves exactly as it always has: the first
+     * pane is the chart the reader split from and the rest come back from the workspace.
+     *
+     * When it is not empty it **wins over the stored arrangement**, and nothing here writes it
+     * down. A reader who asked to compare four markets from a list is asking about those four now;
+     * the panes they arranged by hand are still theirs the next time they split a chart, which is
+     * the only reason it is safe to ignore them here.
+     */
+    compareSymbols: List<String> = emptyList(),
 ) {
     val scope = rememberCoroutineScope()
     val maxPanes = maxPanesFor(coineProWindowClass())
@@ -159,8 +172,20 @@ fun ChartPanesScreen(
      * reason `ChartScreen` keeps its own starred timeframes that way. A wire symbol is letters and
      * digits, so a comma can never appear inside one.
      */
-    var encoded by rememberSaveable(firstSymbol) {
-        mutableStateOf(List(CoineProWindowClass.PHONE_MAX_PANES) { firstSymbol }.joinToString(","))
+    // Keyed on the comparison as well as the first symbol, so asking to compare a second list
+    // re-seeds the panes instead of leaving the first list's markets on screen.
+    val comparison = remember(compareSymbols, maxPanes) {
+        compareSymbols.filter(String::isNotBlank).distinct().take(maxPanes)
+    }
+    var encoded by rememberSaveable(firstSymbol, comparison.joinToString(",")) {
+        mutableStateOf(
+            comparison
+                // At least two, or it is not a comparison: one market asked for against three of
+                // itself is the split view, and the reader asked for something else.
+                .takeIf { it.size >= 2 }
+                ?.joinToString(",")
+                ?: List(CoineProWindowClass.PHONE_MAX_PANES) { firstSymbol }.joinToString(","),
+        )
     }
     val symbols = remember(encoded) { encoded.split(',').filter(String::isNotBlank) }
     var sync by remember { mutableStateOf(PaneSync.OFF) }
@@ -183,6 +208,10 @@ fun ChartPanesScreen(
         val store = workspace ?: return@LaunchedEffect
         sync = runCatching { store.paneSync.first() }.getOrDefault(PaneSync.OFF)
         layout = runCatching { store.paneLayout.first() }.getOrNull()?.let(ChartLayoutPreset::byId)
+        // The sync switches and the layout are the reader's settings and are restored either way.
+        // The *symbols* are not, when this screen was opened as a comparison: the reader named
+        // them a moment ago and the stored arrangement would overwrite them a frame later.
+        if (comparison.size >= 2) return@LaunchedEffect
         val saved = runCatching { store.extraPaneSymbols.first() }.getOrDefault(emptyList())
         // Clamped against *this* window and not against what was stored. A reader who arranged six
         // panes on a tablet and then opened the app on a phone gets two, and their six come back

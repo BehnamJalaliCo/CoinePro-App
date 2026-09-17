@@ -131,6 +131,7 @@ import com.coinepro.core.marketdata.CandleArchive
 import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.network.NetworkStatus
 import com.coinepro.core.datastore.MarketColorScheme
+import com.coinepro.core.datastore.QuoteCurrency
 import com.coinepro.core.datastore.ThemeMode
 import com.coinepro.app.ideas.IdeasScreen
 import com.coinepro.core.datastore.UserPreferencesStore
@@ -227,6 +228,7 @@ import com.coinepro.core.marketdata.MarketTickerStore
 import com.coinepro.core.marketdata.PriceFeedStatus
 import com.coinepro.core.marketdata.PriceFeedTier
 import com.coinepro.core.marketdata.SparklineStore
+import com.coinepro.core.marketintel.MarketImpact
 import com.coinepro.core.marketintel.MarketIntelController
 import com.coinepro.core.membership.MembershipController
 import com.coinepro.core.model.AvatarSpec
@@ -338,6 +340,7 @@ import com.coinepro.feature.profile.ProfileAction
 import com.coinepro.feature.profile.ProfileScreen
 import com.coinepro.feature.profile.foundingMemberFact
 import com.coinepro.feature.script.ScriptScreen
+import com.coinepro.feature.search.MarketHeadline
 import com.coinepro.feature.search.MarketPreviewCandles
 import com.coinepro.feature.search.MarketsScreen
 import com.coinepro.feature.search.MarketsSignalStrip
@@ -385,6 +388,31 @@ private const val ACADEMY_ROUTE = "academy"
 private const val TERMINAL_ROUTE = "terminal"
 private const val LESSON_PATTERN = "academy/lesson/{slug}"
 private const val NEWS_ROUTE = "market/news"
+
+/**
+ * How many headlines the markets ticker carries.
+ *
+ * Six. The row scrolls, so a seventh is not a clipping problem — it is a scroll nobody makes, and
+ * six is already more than a reader reads on the way to a market list.
+ */
+private const val TICKER_HEADLINES = 6
+
+/**
+ * The news screen, with the story the markets ticker was tapped on (run ΤΦΥ, U4).
+ *
+ * An optional query argument rather than a second destination, because it is the same screen either
+ * way: a reader who arrives from the ticker and backs out of the article is on the news list, which
+ * is exactly where a reader who arrived from the menu starts. Navigating to the bare [NEWS_ROUTE]
+ * still matches this, so every existing entry into news is unchanged.
+ *
+ * It is the **registered** route, so the places that compare against `currentRoute` — the title,
+ * the accent, the back-stack sets — match this and not [NEWS_ROUTE].
+ */
+private const val NEWS_PATTERN = "market/news?story={story}"
+
+/** The news screen opened at one story. See [NEWS_PATTERN]. */
+private fun newsRoute(storyId: String): String = "market/news?story=" + Uri.encode(storyId)
+
 private const val CALENDAR_ROUTE = "market/calendar"
 
 /**
@@ -429,7 +457,18 @@ private fun aiRouteFor(symbol: String) = "ai?symbol=" + Uri.encode(symbol)
  * that holds both, and a saved back stack naming `signals` must still open the signals screen by
  * itself rather than a tabbed page scrolled to it.
  */
-private val IDEAS_ROUTE = AppDestination.IDEAS.route
+private val IDEAS_ROUTE = AppDestination.COMMUNITY.route
+
+/**
+ * Explore, which is a route and no longer a tab (run ΤΦΥ, U7).
+ *
+ * It kept its whole screen and lost its seat: Explore is the markets catalogue with more on it, and
+ * the markets surface now carries that content under its own tabs. A constant here for the same
+ * reason `MARKETS_ROUTE` is one — the enum is the bar, and a route that is not on the bar is a
+ * plain string that deep links, saved back stacks and the markets tabs all still resolve.
+ */
+private const val EXPLORE_ROUTE = "explore"
+
 
 /**
  * The board, and one thread on it.
@@ -578,7 +617,7 @@ private const val STUDIO_PATTERN = "chart/{symbol}/studio"
  * single chart they came from, and a flag on `chart/{symbol}` would have made "back" mean
  * "close the app" for anyone who arrived here first.
  */
-private const val PANES_PATTERN = "chart/{symbol}/panes"
+private const val PANES_PATTERN = "chart/{symbol}/panes?compare={compare}"
 
 /**
  * The order-book ladder for the symbol the reader is charting.
@@ -644,7 +683,7 @@ internal fun surfaceRoute(id: String, platform: MarketPlatform, watchlist: List<
         "watchlist" -> WATCHLIST_ROUTE
         "news" -> NEWS_ROUTE
         "calendar" -> CALENDAR_ROUTE
-        "explore" -> AppDestination.EXPLORE.route
+        "explore" -> EXPLORE_ROUTE
         "markets" -> MARKETS_ROUTE
         "community" -> COMMUNITY_ROUTE
         "portfolio" -> PORTFOLIO_ROUTE
@@ -714,6 +753,16 @@ internal fun menuRoute(id: String, platform: MarketPlatform, watchlist: List<Str
 
 /** The two-chart screen, on the symbol its upper pane opens with. */
 private fun panesRoute(symbol: String) = "chart/" + Uri.encode(symbol) + "/panes"
+
+/**
+ * The panes screen, opened as a comparison of named markets (run ΤΦΥ, U6 — «تحلیل»).
+ *
+ * The first market is the path segment, so an existing `chart/{symbol}/panes` link still lands
+ * exactly where it did; the rest ride the optional query. See `ChartPanesScreen.compareSymbols`,
+ * which explains why a comparison wins over the stored arrangement.
+ */
+private fun compareRoute(symbols: List<String>): String =
+    panesRoute(symbols.first()) + "?compare=" + Uri.encode(symbols.joinToString(","))
 
 /** The depth ladder, on the symbol the chart had in front of the reader when they pressed it. */
 private fun domRoute(symbol: String) = "chart/" + Uri.encode(symbol) + "/dom"
@@ -820,7 +869,7 @@ private val SELF_TITLED: Set<String> = setOf(
     SCRIPT_PATTERN,
     SIGNAL_DETAIL_PATTERN,
     PORTFOLIO_ROUTE,
-    NEWS_ROUTE,
+    NEWS_PATTERN,
     CALENDAR_ROUTE,
     ACTIVITY_ROUTE,
     MARKET_SEARCH_ROUTE,
@@ -837,7 +886,7 @@ private val SELF_TITLED: Set<String> = setOf(
     // it — «کلمه‌ی pro chart رو از بالای کاوش حذف بکن». A brand name is not a screen title: it says
     // nothing about where the reader is, and putting it above a page that has already named itself
     // spends the bar's whole height saying which app this is to somebody holding it.
-    AppDestination.EXPLORE.route,
+    EXPLORE_ROUTE,
     // The chart tab is a redirect and draws nothing at all, so the brand would flash over an empty
     // frame for the one composition before the chart replaces it.
     AppDestination.CHART.route,
@@ -846,7 +895,7 @@ private val SELF_TITLED: Set<String> = setOf(
 private fun accentFor(route: String?): PageAccent = when (route) {
     MARKET_SEARCH_ROUTE,
     CHART_PATTERN,
-    NEWS_ROUTE,
+    NEWS_PATTERN,
     CALENDAR_ROUTE,
     AI_VISION_ROUTE,
     AI_ASSISTANT_ROUTE,
@@ -857,7 +906,7 @@ private fun accentFor(route: String?): PageAccent = when (route) {
     HEATMAP_ROUTE,
     SCREENER_ROUTE,
     WATCHLIST_ROUTE,
-    AppDestination.EXPLORE.route,
+    EXPLORE_ROUTE,
     AppDestination.CHART.route,
     // The pattern and not the bare route: `currentRoute` is the *registered* route of the entry,
     // and this destination is registered with its optional symbol query on it. Matching `"ai"`
@@ -1364,6 +1413,25 @@ fun CoineProApp(
     val online by networkStatus.online.collectAsStateWithLifecycle(initialValue = true)
     val marketColors by userPreferencesStore.marketColors
         .collectAsStateWithLifecycle(MarketColorScheme.GREEN_UP)
+    // What a list quotes in (U2). Tether initially, which is also the stored default, so the first
+    // frame of a markets list is never redrawn a moment later in a different unit.
+    val quoteCurrency by userPreferencesStore.quoteCurrency
+        .collectAsStateWithLifecycle(QuoteCurrency.Default)
+    // **What the reader said they think in, reaching the list** (run ΤΦΥ, U2).
+    //
+    // Written onto every platform's controller rather than the active one, so switching backend
+    // does not arrive at a list still preferring nothing. The reload is the point — the preference
+    // is applied when the universe is read — and it is cheap: the catalogue is one request and the
+    // screens that show it were going to ask for it anyway. See `SymbolUniverse.preferring`, which
+    // is a no-op on every listing either backend serves today.
+    LaunchedEffect(quoteCurrency, marketSearchControllers) {
+        marketSearchControllers.values.forEach { controller ->
+            if (controller.preferredQuote != quoteCurrency.code) {
+                controller.preferredQuote = quoteCurrency.code
+                controller.refresh()
+            }
+        }
+    }
     // `false` initially, which is also the stored default. Starting `true` would flash a lock
     // screen at every reader who has never turned it on.
     val appLockEnabled by userPreferencesStore.appLockEnabled.collectAsStateWithLifecycle(false)
@@ -1562,6 +1630,8 @@ fun CoineProApp(
                 onToggleSimpleReaderMode = { scope.launch { userPreferencesStore.toggleSimpleReaderMode() } },
                 marketColors = marketColors,
                 onSetMarketColors = { scheme -> scope.launch { userPreferencesStore.setMarketColors(scheme) } },
+                quoteCurrency = quoteCurrency,
+                onSetQuoteCurrency = { chosen -> scope.launch { userPreferencesStore.setQuoteCurrency(chosen) } },
                 online = online,
             )
             // Signing in is the email flow's job now. The other two states are not sign-in at all —
@@ -1781,6 +1851,8 @@ fun CoineProApp(
                         onToggleSimpleReaderMode = { scope.launch { userPreferencesStore.toggleSimpleReaderMode() } },
                         marketColors = marketColors,
                         onSetMarketColors = { scheme -> scope.launch { userPreferencesStore.setMarketColors(scheme) } },
+                        quoteCurrency = quoteCurrency,
+                        onSetQuoteCurrency = { chosen -> scope.launch { userPreferencesStore.setQuoteCurrency(chosen) } },
                         online = online,
                         launchSymbol = launchSymbol,
                         launchTimeframe = launchTimeframe,
@@ -2116,6 +2188,9 @@ private fun MainShell(
     /** Which colour a rise is drawn in. See `MarketColorScheme`. */
     marketColors: MarketColorScheme,
     onSetMarketColors: (MarketColorScheme) -> Unit,
+    /** What a list quotes prices in (U2). See `QuoteCurrency` — it prefers a pair, it never converts. */
+    quoteCurrency: QuoteCurrency,
+    onSetQuoteCurrency: (QuoteCurrency) -> Unit,
     /** Whether the phone has a network at all. See [CoineProOfflineBar]. */
     online: Boolean,
     platforms: List<MarketPlatform>,
@@ -2544,7 +2619,7 @@ private fun MainShell(
         // The lesson names itself in its own heading, so the bar carries the section instead.
         ACADEMY_ROUTE, LESSON_PATTERN -> R.string.screen_academy
         TERMINAL_ROUTE -> R.string.screen_terminal
-        NEWS_ROUTE -> R.string.screen_news
+        NEWS_PATTERN -> R.string.screen_news
         CALENDAR_ROUTE -> R.string.screen_calendar
         LAUNCH_READINESS_ROUTE -> R.string.screen_launch_readiness
         else -> R.string.app_name
@@ -3061,6 +3136,7 @@ private fun MainShell(
                         sparklines = sparklineStore,
                         onOpenSymbol = { symbol -> navController.navigate(chartRoute(symbol)) },
                         watchlistSync = watchlistSyncController,
+                        onCompare = { symbols -> navController.navigate(compareRoute(symbols)) },
                     )
                 },
                 ChartSidePanel("depth", ChartR.string.chart_panel_depth, DesignR.drawable.tv_chart_columns) {
@@ -4094,6 +4170,11 @@ private fun MainShell(
             }
             sharedComposable(MARKETS_ROUTE) {
                 val signals by signalController.state.collectAsStateWithLifecycle()
+                // The newsroom, for the ticker over the list (run ΤΦΥ, U4). Collected here and
+                // never refreshed from this screen: the controller is a singleton the news screen
+                // and Explore already poll, so the ticker draws whatever is in hand and costs this
+                // surface no request at all. Empty draws no ticker.
+                val marketIntel by marketIntelController.state.collectAsStateWithLifecycle()
                 // The instrument in the detail pane, or null where there is only one pane and a
                 // row tap is still a navigation. Saveable, so a rotation on a tablet does not
                 // close the chart the reader is looking at.
@@ -4129,6 +4210,29 @@ private fun MainShell(
                         if (twoPane) pairedSymbol = symbol else navController.navigate(chartRoute(symbol))
                     },
                     onOpenSearch = { navController.navigate(MARKET_SEARCH_ROUTE) },
+                    // **The day's headlines, above the list** (run ΤΦΥ, U4). Mapped to the plain
+                    // four fields the ticker takes rather than handed the newsroom's own model, so
+                    // the markets surface still owes nothing to `feature:news` — see
+                    // `MarketNewsTicker`. Six, because a seventh is a scroll nobody makes.
+                    headlines = remember(marketIntel.news) {
+                        marketIntel.news.take(TICKER_HEADLINES).map { story ->
+                            MarketHeadline(
+                                id = story.id,
+                                title = story.title,
+                                important = story.impact == MarketImpact.HIGH,
+                            )
+                        }
+                    },
+                    // The story itself, not the news list. See `NEWS_PATTERN`.
+                    onOpenHeadline = { id -> navController.navigate(newsRoute(id)) },
+                    // What is left of Explore, one tap from the surface whose subject they are
+                    // (run ΤΦΥ, U7). The bottom bar is five destinations now and Explore is not
+                    // one of them; its three rooms are all still here.
+                    onOpenNews = { navController.navigate(NEWS_ROUTE) },
+                    onOpenCalendar = { navController.navigate(CALENDAR_ROUTE) },
+                    onOpenHeatmap = { navController.navigate(HEATMAP_ROUTE) },
+                    // «تحلیل» on the watchlist tab: the reader's list, side by side (run ΤΦΥ, U6).
+                    onCompare = { symbols -> navController.navigate(compareRoute(symbols)) },
                     // The same hoisted composer the chart uses, at the price the preview showed —
                     // the shell's live map carries only the subscribed handful, and looking the
                     // price up again here would find nothing for most of the list.
@@ -4284,11 +4388,24 @@ private fun MainShell(
             }
             composable(
                 route = PANES_PATTERN,
-                arguments = listOf(navArgument("symbol") { type = NavType.StringType }),
+                arguments = listOf(
+                    navArgument("symbol") { type = NavType.StringType },
+                    navArgument("compare") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                ),
             ) { entry ->
                 val symbol = entry.arguments?.getString("symbol").orEmpty()
                 ChartPanesScreen(
                     firstSymbol = symbol,
+                    // Empty on every other way in, and then the panes come back from the workspace
+                    // exactly as they always have. See `compareRoute`.
+                    compareSymbols = entry.arguments?.getString("compare")
+                        ?.split(',')
+                        ?.filter(String::isNotBlank)
+                        .orEmpty(),
                     // The same holder both other chart routes use, so a pane opened on a symbol
                     // the reader has already charted arrives with that symbol's drawings and its
                     // own timeframe rather than on the defaults.
@@ -4339,7 +4456,16 @@ private fun MainShell(
                     onPickPrice = { price -> alertFromChart = activeChartSymbol to price },
                 )
             }
-            composable(NEWS_ROUTE) {
+            composable(
+                route = NEWS_PATTERN,
+                arguments = listOf(
+                    navArgument("story") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                ),
+            ) { newsEntry ->
                 // A guest reads the public headline route, which needs no account and which their
                 // own home screen was already showing twelve of. Pointing them at the members'
                 // screen would hand them a 401 worded as an outage, on content the server
@@ -4364,6 +4490,9 @@ private fun MainShell(
                 NewsScreen(
                     platform = activePlatform,
                     controller = marketIntelController,
+                    // The story the markets ticker was tapped on, or null on every other way in.
+                    // See `NewsScreen.initialStoryId`.
+                    initialStoryId = newsEntry.arguments?.getString("story"),
                     // Both, so «فارکس» and «کریپتو» are two tabs on this screen rather than a
                     // reason to switch the whole app over. See `NewsScreen.readers`.
                     readers = marketIntelControllers,
@@ -4373,7 +4502,7 @@ private fun MainShell(
                     announcements = announcementsController,
                 )
             }
-            sharedComposable(AppDestination.EXPLORE.route) {
+            sharedComposable(EXPLORE_ROUTE) {
                 ExploreScreen(
                     controller = marketSearchController,
                     intel = marketIntelController,
@@ -4588,6 +4717,8 @@ private fun MainShell(
                     onCreateAlert = { symbol ->
                         alertFromChart = symbol to (marketState.quotes[symbol.uppercase()]?.price ?: 0.0)
                     },
+                    // «تحلیل» — the same comparison the markets tab's watchlist offers (U6).
+                    onCompare = { symbols -> navController.navigate(compareRoute(symbols)) },
                 )
             }
             composable(ACTIVITY_ROUTE) {
@@ -4705,6 +4836,8 @@ private fun MainShell(
             // nothing change on this sheet, so dismissing it would be dismissing the only place they
             // can compare them from.
             onSelectReaderMode = onSetReaderMode,
+            quote = quoteCurrency,
+            onSelectQuote = onSetQuoteCurrency,
         )
     }
 

@@ -471,6 +471,72 @@ class WatchlistStoreTest {
         assertEquals("default", AlertScope.Watchlist.DEFAULT_LIST_ID)
         assertEquals("default", Watchlist.DEFAULT_LIST_ID)
     }
+
+    @Test
+    fun `a duplicate copies the markets and their order, and nothing else`() = runTest {
+        val store = WatchlistStore(FakeDataStore())
+        val source = store.create("گاوها")
+        store.add(source, "SOLUSDT")
+        store.add(source, "BTCUSDT")
+        store.setSort(source, WatchlistSort(WatchlistColumn.CHANGE_PERCENT, descending = true))
+        store.flag(source, "BTCUSDT", WatchlistFlag.GREEN)
+
+        val copy = store.duplicate(source, "گاوها (نسخه‌ی تازه)")
+        assertTrue("a duplicate of a list that exists must produce an id", copy.isNotEmpty())
+
+        val lists = store.lists().first()
+        val made = lists.first { it.id == copy }
+        // The markets, in the reader's order — the whole point of copying a list.
+        assertEquals(listOf("SOLUSDT", "BTCUSDT"), made.symbols)
+        assertEquals("گاوها (نسخه‌ی تازه)", made.name)
+        // And not the settings. See `duplicate`: a copy is the start of a variation, and a colour
+        // scheme set for a different purpose makes it look finished before it is started.
+        val settings = store.settings(copy).first()
+        assertTrue("the flags belong to the list they were set on", settings.flags.isEmpty())
+        assertTrue("a copy starts in the reader's own order", settings.sort.isManual)
+        // The original is untouched, which is the other half of "copy".
+        assertEquals(listOf("SOLUSDT", "BTCUSDT"), lists.first { it.id == source }.symbols)
+    }
+
+    @Test
+    fun `duplicating a list that is not there is a no-op rather than a crash`() = runTest {
+        val store = WatchlistStore(FakeDataStore())
+        val before = store.lists().first().size
+        assertEquals("", store.duplicate("list_nothing", "هرچه"))
+        assertEquals(before, store.lists().first().size)
+    }
+
+    @Test
+    fun `the lists can be reordered, and an impossible move changes nothing`() = runTest {
+        val store = WatchlistStore(FakeDataStore())
+        val first = store.create("یک")
+        val second = store.create("دو")
+        // The default list is made on first read and sits at the head, so the two made here are
+        // behind it. Read rather than assumed: the order is what this test is about.
+        val before = store.lists().first().map { it.id }
+        assertEquals(listOf(Watchlist.DEFAULT_LIST_ID, first, second), before)
+
+        store.moveList(2, 1)
+        assertEquals(
+            listOf(Watchlist.DEFAULT_LIST_ID, second, first),
+            store.lists().first().map { it.id },
+        )
+
+        // The default list keeps the first seat — `readLists` puts it there on every read — so a
+        // move into or out of it is refused rather than written and undone a moment later.
+        store.moveList(2, 0)
+        assertEquals(
+            listOf(Watchlist.DEFAULT_LIST_ID, second, first),
+            store.lists().first().map { it.id },
+        )
+
+        // Off the end. The control can ask for anything, so this is a no-op and not an exception.
+        store.moveList(1, 99)
+        assertEquals(
+            listOf(Watchlist.DEFAULT_LIST_ID, second, first),
+            store.lists().first().map { it.id },
+        )
+    }
 }
 
 /** Enough of DataStore to exercise the store without a file on disk. */

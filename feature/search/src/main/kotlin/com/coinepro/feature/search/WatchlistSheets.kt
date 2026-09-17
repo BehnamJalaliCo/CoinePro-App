@@ -83,6 +83,13 @@ internal fun WatchlistSheets(
     when (sheet) {
         null -> Unit
         WatchlistSheet.Lists -> ListsSheet(store = store, lists = lists, onDismiss = onDismiss)
+        WatchlistSheet.Picker -> PickerSheet(
+            store = store,
+            lists = lists,
+            activeId = activeId,
+            onManage = { onOpen(WatchlistSheet.Lists) },
+            onDismiss = onDismiss,
+        )
         WatchlistSheet.Columns -> ColumnsSheet(
             store = store,
             listId = activeId,
@@ -194,6 +201,8 @@ private fun ListsSheet(store: WatchlistStore, lists: List<Watchlist>, onDismiss:
                     // Persian default in an English app would have the reader deleting a word they
                     // never typed.
                     val shown = list.localName()
+                    val index = lists.indexOf(list)
+                    val copyName = stringResource(R.string.watchlist_copy_name, shown)
                     ListRow(
                         list = list,
                         onRename = {
@@ -201,6 +210,34 @@ private fun ListsSheet(store: WatchlistStore, lists: List<Watchlist>, onDismiss:
                             renaming = list.id
                         },
                         onDelete = onDelete,
+                        // Null at the ceiling rather than a control that answers a press with
+                        // nothing. See `WatchlistStore.duplicate`, which refuses the same way.
+                        onDuplicate = if (lists.size >= WatchlistStore.MAX_LISTS) {
+                            null
+                        } else {
+                            {
+                                scope.launch {
+                                    val id = store.duplicate(list.id, copyName)
+                                    if (id.isNotEmpty()) store.setActiveList(id)
+                                }
+                            }
+                        },
+                        // Two arrows rather than a drag. The manage sheet holds at most
+                        // [WatchlistStore.MAX_LISTS] rows and a long-press-and-drag inside a bottom
+                        // sheet fights the sheet's own dismiss gesture — which is the one
+                        // interaction a reader cannot recover from by trying again.
+                        // One rather than zero: the seat at the head belongs to the default list,
+                        // which `readLists` puts there on every read. See `WatchlistStore.moveList`.
+                        onMoveUp = if (index <= 1) {
+                            null
+                        } else {
+                            { scope.launch { store.moveList(index, index - 1) } }
+                        },
+                        onMoveDown = if (index < 1 || index >= lists.lastIndex) {
+                            null
+                        } else {
+                            { scope.launch { store.moveList(index, index + 1) } }
+                        },
                     )
                 }
             }
@@ -226,9 +263,89 @@ private fun ListsSheet(store: WatchlistStore, lists: List<Watchlist>, onDismiss:
     }
 }
 
+/**
+ * **Which list** (run ΤΦΥ, U6).
+ *
+ * The rows are the lists, the live one is marked, and choosing one closes the sheet. Nothing here
+ * renames or deletes anything: a reader who opened this came to switch lists, and a delete under
+ * the thumb that was reaching for a name is the one mistake this sheet must not make. «مدیریت
+ * فهرست‌ها» at the foot is the way to all of that.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PickerSheet(
+    store: WatchlistStore,
+    lists: List<Watchlist>,
+    activeId: String,
+    onManage: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    CoineProSheet(title = stringResource(R.string.watchlist_pick_list), onDismiss = onDismiss) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = CoineProSpacing.Gutter)
+                .padding(bottom = CoineProSpacing.Three),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        ) {
+            lists.forEach { list ->
+                val live = list.id == activeId
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(CoineProShapes.small)
+                        .background(
+                            if (live) CoineProColors.AccentFill else CoineProColors.SurfaceElevated,
+                        )
+                        .clickable {
+                            onDismiss()
+                            scope.launch { store.setActiveList(list.id) }
+                        }
+                        .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+                ) {
+                    Text(
+                        text = list.localName(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (live) CoineProColors.OnAccent else CoineProColors.TextPrimary,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        // A prose count, so Persian digits. See the same call in `Controls`.
+                        text = stringResource(
+                            R.string.watchlist_symbol_count,
+                            list.symbols.size.proseDigits(),
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (live) CoineProColors.OnAccent else CoineProColors.TextMuted,
+                        fontWeight = FontWeight.Normal,
+                        maxLines = 1,
+                    )
+                }
+            }
+            MoreRow(
+                icon = DesignR.drawable.icon_sliders_horizontal,
+                label = stringResource(R.string.watchlist_manage),
+                onClick = onManage,
+            )
+        }
+    }
+}
+
 /** One list in the manage sheet: its name, how many symbols it holds, and what can be done to it. */
 @Composable
-private fun ListRow(list: Watchlist, onRename: () -> Unit, onDelete: (() -> Unit)?) {
+private fun ListRow(
+    list: Watchlist,
+    onRename: () -> Unit,
+    onDelete: (() -> Unit)?,
+    /** Copies the list's markets under a new name. Null at [WatchlistStore.MAX_LISTS]. */
+    onDuplicate: (() -> Unit)? = null,
+    /** Moves the list up or down the picker. Null at each end, rather than an inert arrow. */
+    onMoveUp: (() -> Unit)? = null,
+    onMoveDown: (() -> Unit)? = null,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -253,6 +370,27 @@ private fun ListRow(list: Watchlist, onRename: () -> Unit, onDelete: (() -> Unit
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextMuted,
                 fontWeight = FontWeight.Normal,
+            )
+        }
+        if (onMoveUp != null) {
+            IconAction(
+                icon = CoineProIcons.ChevronUp,
+                label = stringResource(R.string.watchlist_move_up),
+                onClick = onMoveUp,
+            )
+        }
+        if (onMoveDown != null) {
+            IconAction(
+                icon = CoineProIcons.ChevronDown,
+                label = stringResource(R.string.watchlist_move_down),
+                onClick = onMoveDown,
+            )
+        }
+        if (onDuplicate != null) {
+            IconAction(
+                icon = DesignR.drawable.icon_copy,
+                label = stringResource(R.string.watchlist_duplicate),
+                onClick = onDuplicate,
             )
         }
         IconAction(

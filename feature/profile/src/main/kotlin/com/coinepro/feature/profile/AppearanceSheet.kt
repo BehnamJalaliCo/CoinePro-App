@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -30,9 +31,11 @@ import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.datastore.MarketColorScheme
+import com.coinepro.core.datastore.QuoteCurrency
 import com.coinepro.core.datastore.ReaderMode
 import com.coinepro.core.datastore.ThemeMode
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProDarkPalette
 import com.coinepro.core.designsystem.CoineProIcons
@@ -41,6 +44,7 @@ import com.coinepro.core.designsystem.CoineProMidnightPalette
 import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSheetBody
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.numeric
 import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 
@@ -83,6 +87,16 @@ fun AppearanceSheet(
      */
     readerMode: ReaderMode = ReaderMode.TRADER,
     onSelectReaderMode: (ReaderMode) -> Unit = {},
+    /**
+     * What a list quotes prices in (run ΤΦΥ, U2). See [QuoteCurrency] for what it does and does not
+     * do — it prefers a pair, it never converts a figure.
+     *
+     * Here because U2 asks the question once on the first run and a question asked once has to live
+     * somewhere afterwards, and this sheet is where every other «how should it look and read to me»
+     * answer already is.
+     */
+    quote: QuoteCurrency = QuoteCurrency.Default,
+    onSelectQuote: (QuoteCurrency) -> Unit = {},
 ) {
     CoineProSheet(
         title = stringResource(R.string.appearance_title),
@@ -99,6 +113,8 @@ fun AppearanceSheet(
             onSelectLanguage = onSelectLanguage,
             readerMode = readerMode,
             onSelectReaderMode = onSelectReaderMode,
+            quote = quote,
+            onSelectQuote = onSelectQuote,
         )
     }
 }
@@ -114,6 +130,8 @@ fun ColumnScope.AppearanceOptions(
     onSelectLanguage: (AppLanguage) -> Unit = {},
     readerMode: ReaderMode = ReaderMode.TRADER,
     onSelectReaderMode: (ReaderMode) -> Unit = {},
+    quote: QuoteCurrency = QuoteCurrency.Default,
+    onSelectQuote: (QuoteCurrency) -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -165,6 +183,27 @@ fun ColumnScope.AppearanceOptions(
         // R7 bar: without it a reader reads three cards as three tiers and believes picking the
         // first one takes something away from them. It says the one thing that is not visible.
         CoineProNote(R.string.appearance_reader_note, style = MaterialTheme.typography.bodySmall)
+
+        // Fourth: the unit a list quotes in. Under its own heading and under the same roof as the
+        // rest, because U2 asks it on the first run and a question asked once has to be findable
+        // afterwards or it is a setting nobody can change their mind about.
+        Text(
+            text = stringResource(R.string.appearance_quote),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+            modifier = Modifier.padding(top = CoineProSpacing.Row),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
+            QuoteCurrency.entries.forEach { currency ->
+                QuoteOption(
+                    currency = currency,
+                    selected = currency == quote,
+                    onSelect = { onSelectQuote(currency) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        CoineProNote(R.string.appearance_quote_note, style = MaterialTheme.typography.bodySmall)
 
         // Last, and under the same roof as the other two, because all three answer the same
         // question — how this app should look and read to *this* person — and a reader who has
@@ -253,6 +292,46 @@ private fun LanguageOption(language: AppLanguage, selected: Boolean, onSelect: (
  * candle beside a red one is the answer at a glance. They are drawn from the same two palette
  * colours the chart uses, so the swatch cannot drift from what the chart will actually do.
  */
+/**
+ * One quote currency, as a pill.
+ *
+ * A row of four rather than four stacked cards: these are three-letter codes with nothing to
+ * explain, and the theme and reader-mode options above are cards because each of *those* carries a
+ * sentence. A card holding «USD» and nothing else would be four rows of air.
+ */
+@Composable
+private fun QuoteOption(
+    currency: QuoteCurrency,
+    selected: Boolean,
+    onSelect: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val haptics = rememberCoineProHaptics()
+    Box(
+        modifier = modifier
+            .clip(CoineProPillShape)
+            .background(if (selected) CoineProColors.AccentFill else Color.Transparent)
+            .border(
+                width = 1.dp,
+                color = if (selected) Color.Transparent else CoineProColors.Border,
+                shape = CoineProPillShape,
+            )
+            .clickable {
+                haptics.select()
+                onSelect()
+            }
+            .padding(vertical = CoineProSpacing.One),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = currency.code,
+            style = MaterialTheme.typography.labelMedium.numeric(),
+            color = if (selected) CoineProColors.OnAccent else CoineProColors.TextPrimary,
+            maxLines = 1,
+        )
+    }
+}
+
 @Composable
 private fun ColourOption(
     scheme: MarketColorScheme,

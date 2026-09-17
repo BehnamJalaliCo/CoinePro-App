@@ -22,9 +22,10 @@ package com.coinepro.core.navigation
  *    lands when they have no other question.
  *  * [CHART] — *show me the chart.* Unchanged, and deliberately: the chart is this app's strongest
  *    surface and the benchmark the rest is being brought up to.
- *  * [EXPLORE] — *what is happening?* The market, ranked, with the news, the calendar and the heat
- *    map behind it.
- *  * [IDEAS] — *is there an opportunity?* Signals and the community board are two answers to one
+ *  * [RASAD] — *what is happening?* The briefing: an assistant that reads the board and says three
+ *    sentences about it. The position was Explore, and run ΤΦΥ (U5, U7) moved that screen's content
+ *    under the markets tabs, because it was the markets screen with more on it.
+ *  * [COMMUNITY] — *is there an opportunity?* Signals and the community board are two answers to one
  *    question and had a tab each; they are one destination with two faces now.
  *  * [MENU] — *what else is there?* The directory. It is what stops this list from growing again.
  *
@@ -38,7 +39,11 @@ package com.coinepro.core.navigation
  * "do some AI", they ask a question about *the thing in front of them*. It is contextual now — on
  * the chart, on a symbol, on a signal — with the full assistant still in the menu.
  *
- * **Signals** and **Community** merged into [IDEAS] rather than being removed.
+ * **Signals** and **Community** merged into [COMMUNITY] rather than being removed.
+ *
+ * **Explore** left in run ΤΦΥ (U7). Its catalogue is the markets surface's tabs and its three
+ * rooms — news, the calendar, the heat map — are drawn above those tabs. The route is still
+ * registered and still resolves.
  *
  * Removing a destination from this bar removes it from the bar and nothing else. Every route named
  * above still exists in the graph, still resolves from a saved back stack, and still answers a deep
@@ -62,35 +67,38 @@ enum class AppDestination(
     CHART("chart-tab", R.string.nav_chart, "C"),
 
     /**
-     * The markets, plus what is moving them.
+     * **رَصد** — the briefing, and the one seat this product's differentiator was not holding.
      *
-     * It replaced `MARKETS` in this position rather than being added beside it, and both halves of
-     * that are deliberate. **Added** would have made another tab, and the premise of this bar is
-     * that a reader learns five positions and they do not move. **This position** because Explore
-     * is the markets screen with more on it: the same catalogue, ranked the same way, with the
-     * day's move and a spark line on each card, plus the doors to news, the calendar and the heat
-     * map that a reader previously had to go looking for.
+     * The position used to be Explore: the catalogue with the day's move and a spark line on each
+     * card, plus the doors to news, the calendar and the heat map. That was a good screen in the
+     * wrong place, and run ΤΦΥ (U5, U7) says why: **it is the markets screen with more on it**, and
+     * the markets screen now carries the same content under its own tabs — «برتر», «پرطرفدار»,
+     * «حجم», «فارکس», «فلزات». Two doors onto one catalogue is one door too many, and the one that
+     * had to go is the one that was not the catalogue.
      *
-     * The full list did not go anywhere — Explore's own «همه‌ی بازارها» opens it, and the menu keeps
-     * its row. A strip of cards is a taste of a catalogue and not the catalogue, and a reader who
-     * came for all of them must not have to discover that the screen they used yesterday still
-     * exists.
+     * What takes the seat is the thing no other terminal has: an assistant that reads the board and
+     * says three sentences about it. It was on the home screen, which left this bar in run Ω2 for
+     * being a dashboard — and it took the briefing down with it, which was the mistake. The route is
+     * `home`, unchanged, so a saved back stack and a deep link both still resolve; what changes is
+     * that the screen is in the bar under the name of the thing a reader actually opens it for.
      *
-     * The route is `explore` rather than `markets`: they are different destinations and a saved
-     * back stack holding one must not resolve to the other.
+     * `explore` is still a route and still registered. It is reached from the markets surface now
+     * rather than from the bar — see `EXPLORE_ROUTE` in `CoineProApp.kt`.
      */
-    EXPLORE("explore", R.string.nav_explore, "E"),
+    RASAD("home", R.string.nav_rasad, "R"),
 
     /**
-     * Signals and the community board, which are one question with two answers.
+     * **انجمن** — the board, with the signal list as its second face.
      *
-     * They had a tab each, and the pair took a third of the bar to say "somebody thinks there is
-     * an opportunity here" twice — once from a model and once from another reader. A new route
-     * rather than reusing `signals`: this destination is neither of the two screens, it is the
-     * frame that holds both, and a saved back stack that names `signals` must still open the
-     * signals screen on its own rather than a tabbed page scrolled to it.
+     * The route and the frame are unchanged; the **name** is not. It was «ایده‌ها», which is a word
+     * for the pair and a word for neither: a reader looking for what other readers are saying does
+     * not look for «ideas», they look for the forum. Run ΤΦΥ (U7) names it what it is and opens it
+     * on the board, and the signal list is the switch beside it — one tap, where it has always been.
+     *
+     * A route of its own rather than a redirect, still: `signals` and `community` are both routes,
+     * and a saved back stack naming one must open that screen alone rather than a tabbed page.
      */
-    IDEAS("ideas", R.string.nav_ideas, "I"),
+    COMMUNITY("ideas", R.string.nav_community, "C"),
 
     /**
      * Everything else, grouped.

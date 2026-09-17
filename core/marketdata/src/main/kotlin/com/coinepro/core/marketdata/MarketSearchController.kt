@@ -9,6 +9,7 @@ import com.coinepro.core.symbols.SymbolCategory
 import com.coinepro.core.symbols.SymbolMatch
 import com.coinepro.core.symbols.SymbolMeta
 import com.coinepro.core.symbols.SymbolSearch
+import com.coinepro.core.symbols.SymbolUniverse
 import com.coinepro.core.symbols.UniverseSymbol
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -128,6 +129,21 @@ class MarketSearchController(
      */
     private val universe: SymbolUniverseGateway? = null,
 ) {
+    /**
+     * What the reader said they think in, from the starter screen (run ΤΦΥ, U2).
+     *
+     * Applied to the **universe** and nowhere else: it decides which of two listings of one asset
+     * on one venue reaches the list, and it never converts a figure. Null — and the default on
+     * every platform either backend serves today — leaves every listing where it is. See
+     * `SymbolUniverse.preferring`.
+     *
+     * A settable property rather than a constructor argument because this object is a singleton
+     * that outlives every screen and the answer is a stored preference the reader can change at
+     * MENU → ظاهر. The shell writes it and calls [refresh]; a flow collected here would give this
+     * object a lifecycle it does not have.
+     */
+    var preferredQuote: String? = null
+
     private val _state = MutableStateFlow(MarketSearchState())
     val state: StateFlow<MarketSearchState> = _state.asStateFlow()
 
@@ -190,7 +206,10 @@ class MarketSearchController(
             // The universe first, and its failure is not this load's failure: a markets tab with
             // the bundled three hundred in it and no prices is a screen a reader can use, and a
             // markets tab that refuses to draw because one path 404s is not.
-            val listed = universe?.let { source -> runCatching { source.load() }.getOrNull() }.orEmpty()
+            val listed = SymbolUniverse.preferring(
+                universe?.let { source -> runCatching { source.load() }.getOrNull() }.orEmpty(),
+                preferredQuote,
+            )
             listings = listed.associateBy { it.id.uppercase() }
             runCatching { gateway.load() }
                 .onSuccess { loaded ->

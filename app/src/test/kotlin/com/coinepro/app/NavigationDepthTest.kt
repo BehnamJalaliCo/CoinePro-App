@@ -134,6 +134,37 @@ class NavigationDepthTest {
         assertEquals("searchable surfaces the menu cannot reach", emptyList<String>(), unreachable)
     }
 
+    /**
+     * **U7 — the bar is the five the owner named, and nothing lost its way in** (run ΤΦΥ).
+     *
+     * The bar became دیده‌بان · چارت · رَصد · انجمن · منو, which cost Explore its seat. That is the
+     * change worth a test of its own: a destination removed from a bar is the easiest way in this
+     * app to make a screen unreachable, because the bar is the one place a route needs nothing to
+     * link to it.
+     *
+     * So this pins the set *and* the consequence — Explore and its three rooms are still one layer
+     * away — rather than only the set, which would pass on a build that had quietly orphaned them.
+     */
+    @Test
+    fun `the bar is five destinations and Explore's rooms survived losing theirs`() {
+        assertEquals(
+            listOf("watchlist", "chart-tab", "home", "ideas", "menu"),
+            AppDestination.entries.map { it.route },
+        )
+        val values = routeValues()
+        val reachable = (menuDestinations() + bottomBarRoutes()).map(::withoutQuery).toSet()
+        // Explore itself, and the three screens it used to be the only door to. The markets
+        // surface draws all three above its tabs — see `ExploreDoors` — and this is the part of
+        // that claim a unit test can hold: they are still in the menu's reach, so a reader who
+        // never finds the row still has a way.
+        val rooms = listOf("EXPLORE_ROUTE", "NEWS_ROUTE", "CALENDAR_ROUTE", "HEATMAP_ROUTE")
+        val lost = rooms
+            .mapNotNull { name -> values[name]?.let { name to it } }
+            .filterNot { (_, route) -> withoutQuery(route) in reachable }
+            .map { (name, route) -> "$name ($route)" }
+        assertEquals("Explore's rooms are unreachable now that its tab is gone", emptyList<String>(), lost)
+    }
+
     /** The bottom bar's own destinations: zero steps, by definition. */
     private fun bottomBarRoutes(): Set<String> = AppDestination.entries.map { it.route }.toSet()
 

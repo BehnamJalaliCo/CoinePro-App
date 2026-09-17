@@ -117,14 +117,18 @@ def check_bottom_navigation() -> None:
         # far. The tab is a different destination that redirects into it, and giving the two the
         # same name would break every saved back stack that holds one.
         ("CHART", "chart-tab"),
-        # Explore took this position from MARKETS: it is the same catalogue with the day's move,
-        # a spark line and the news, calendar and heat-map doors on it, and the full list is one
-        # tap away from it.
-        ("EXPLORE", "explore"),
-        # Signals and the board, which are two answers to one question and had a tab each. A route
-        # of its own rather than a redirect: `signals` and `community` are still routes, and a
-        # saved back stack naming one must open that screen alone rather than a tabbed page.
-        ("IDEAS", "ideas"),
+        # **رَصد**, on the route the home screen already had. Explore held this position and was a
+        # good screen in the wrong place: it is the markets catalogue with more on it, and since
+        # run ΤΦΥ the markets screen carries that content under its own tabs. What takes the seat is
+        # the briefing — the one thing no other terminal has — which left the bar in run Ω2 along
+        # with the dashboard it was sitting on. `explore` is still a route, reached from the
+        # markets surface.
+        ("RASAD", "home"),
+        # The board, on the route the pair already had. It was «ایده‌ها», which names neither of the
+        # two screens it holds; a reader looking for what other readers said looks for the forum.
+        # A route of its own rather than a redirect, still: `signals` and `community` are both
+        # routes, and a saved back stack naming one must open that screen alone.
+        ("COMMUNITY", "ideas"),
         # The directory, and the pressure valve that stops this list from growing a sixth entry
         # the next time a feature ships. Same route the menu already had.
         ("MENU", "menu"),

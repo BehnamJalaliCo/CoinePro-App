@@ -47,6 +47,17 @@ internal enum class MarketLens(val labelRes: Int) {
      * has to be the quote-currency figure or it answers a different question.
      */
     VOLUME(R.string.markets_lens_volume),
+
+    /**
+     * **برنده/بازنده** — the day's biggest moves, both ways, in one list (run ΤΦΥ, U5).
+     *
+     * Not a third lens beside [GAINERS] and [LOSERS] so much as the question those two split in
+     * half. «What moved today» is one question, and a reader asking it wants the eight per cent up
+     * and the nine per cent down next to each other — which is what a market screen's «movers» row
+     * has always been. The two one-sided lenses stay: «only the ones that are up» is also a real
+     * question, and the sortable headings answer it from here in one tap.
+     */
+    MOVERS(R.string.markets_lens_movers),
 }
 
 /**
@@ -144,6 +155,13 @@ internal fun arrangeMarkets(
             .sortedBy { it.second }
             .map { it.first }
         MarketLens.HOT -> hottest(rows, tickers)
+        // Both directions, ordered by the size of the move. A market with no figure is left out
+        // rather than sorted as zero — it has not moved as far as we know, and «as far as we know»
+        // is not a place on a list of the day's biggest moves.
+        MarketLens.MOVERS -> rows
+            .withFigure(tickers) { it.changePercent24h }
+            .sortedByDescending { kotlin.math.abs(it.second) }
+            .map { it.first }
     }
     if (sort == null) return lensed
 

@@ -119,4 +119,6 @@
     <string name="profile_standing_founding">Member badge</string>
     <string name="profile_standing_founding_value">Founding member</string>
     <string name="profile_standing_founding_detail">Here from day one</string>
+    <string name="appearance_quote">Prices in</string>
+    <string name="appearance_quote_note">Chooses which pair a list prefers. Nothing is converted.</string>
 </resources>

@@ -1,7 +1,6 @@
 package com.coinepro.feature.search
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,8 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -37,7 +34,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -56,7 +52,6 @@ import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPercentText
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPullToRefresh
-import com.coinepro.core.designsystem.CoineProSegmentTabs
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProSparkline
@@ -67,13 +62,13 @@ import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.designsystem.numeric
 import com.coinepro.core.designsystem.rowMotion
+import com.coinepro.core.marketdata.MarketPulse
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketSearchRow
 import com.coinepro.core.marketdata.MarketTicker
 import com.coinepro.core.marketdata.MarketTickerStore
 import com.coinepro.core.marketdata.SparklineStore
 import com.coinepro.core.symbols.MarketHours
-import com.coinepro.core.symbols.SymbolCategory
 import com.coinepro.core.symbols.SymbolUniverse
 import com.coinepro.core.watchlistsync.WatchlistSyncController
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -99,16 +94,22 @@ import kotlinx.coroutines.flow.MutableStateFlow
  * own colour flags, its own columns and several of itself. It shares this screen's row so the two
  * cannot look like two apps — see [MarketListRow].
  *
- * **The tabs are two axes, not one.** The category strip says what kind of thing a row is; the
- * lens strip under it — «داغ», «بیشترین رشد», «بیشترین افت» — says where something is happening,
- * which is the question a reader actually opens this screen with and the one four hundred markets
- * in catalogue order cannot answer. They compose, so «کریپتو» plus «بیشترین افت» is a list neither
- * strip could produce alone. See [MarketLens] and [arrangeMarkets].
+ * **One strip of tabs, not two** (run ΤΦΥ, U5). This screen carried a category tray — «همه»,
+ * «کریپتو», «فارکس», «فلزات», «دیده‌بان» — and a lens row under it, and a reader had to work out
+ * that the two composed before either was useful. What ships is seven underlined tabs: «برتر»,
+ * «پرطرفدار», «دیده‌بان», «برنده/بازنده», «حجم», «فارکس», «فلزات». Some of them are a family and
+ * some are an ordering, and that is an implementation detail nobody has to learn. See [MarketsPage]
+ * and [arrangeMarkets].
  *
- * That second strip is **absent, not empty, where it cannot be filled.** It is drawn from
- * [MarketTickerStore], and CoinePro-FX has no such route at all — so on that platform the lens
- * strip and the sortable headings simply are not there. A tab that can never fill is worse than no
- * tab: it teaches the reader that the app is broken rather than that the data is elsewhere.
+ * A tab is **absent, not empty, where it cannot be filled.** The ordering tabs are drawn from
+ * [MarketTickerStore], and CoinePro-FX has no such route at all — so on that platform they, and the
+ * sortable headings, simply are not there; the family tabs are offered only where the catalogue
+ * holds that family. A tab that can never fill is worse than no tab: it teaches the reader that the
+ * app is broken rather than that the data is elsewhere. See [offeredPages].
+ *
+ * Above the tabs sit the day's four figures ([MarketPulseRow], U3), the headlines
+ * ([MarketNewsTicker], U4) and what is left of Explore ([ExploreDoors], U7) — the three rooms that
+ * lost their bottom-bar destination when the bar became دیده‌بان · چارت · رَصد · انجمن · منو.
  *
  * **Holding a row opens [MarketPreviewSheet]** rather than the chart. The chart is a route, a
  * candle request and a layout; the question a reader scanning this list is actually asking is what
@@ -201,6 +202,27 @@ fun MarketsScreen(
      * button, and only the caller knows whether there is a composer to open.
      */
     onCreateAlert: ((String, Double) -> Unit)? = null,
+    /**
+     * The day's headlines, for the ticker under the pulse (run ΤΦΥ, U4).
+     *
+     * Plain values rather than the news module's own model, and [onOpenHeadline] rather than a
+     * route: this screen has no business depending on `feature:news`, and a ticker that did would
+     * drag a reading page, an image loader and a body parser into a row that wants four fields.
+     * Empty draws nothing at all.
+     */
+    headlines: List<MarketHeadline> = emptyList(),
+    onOpenHeadline: ((String) -> Unit)? = null,
+    /**
+     * «تحلیل» on the watchlist tab: the reader's list, side by side (run ΤΦΥ, U6).
+     *
+     * Passed straight through to [WatchlistPanel], which supplies the symbols in the reader's own
+     * order. Null drops the control rather than disabling it.
+     */
+    onCompare: ((List<String>) -> Unit)? = null,
+    /** Explore's remaining doors, moved here off the bottom bar (run ΤΦΥ, U7). Null drops each one. */
+    onOpenNews: (() -> Unit)? = null,
+    onOpenCalendar: (() -> Unit)? = null,
+    onOpenHeatmap: (() -> Unit)? = null,
 ) {
     LaunchedEffect(controller) { controller.start() }
     // Reference counted in the store, so leaving this screen does not stop the poll for whatever
@@ -218,24 +240,25 @@ fun MarketsScreen(
         tickers?.state ?: MutableStateFlow(MarketTickerStore.MarketTickerState())
     }
     val tickerState by tickerFlow.collectAsStateWithLifecycle()
-    var tab by rememberSaveable { mutableStateOf(MarketsTab.ALL) }
+    // One axis now, not two (U5). The tab carries both the family it narrows to and the order it
+    // puts what is left in — see [MarketsPage].
+    var page by rememberSaveable { mutableStateOf(MarketsPage.TOP) }
     // Held as the two primitives rather than as a `MarketSort?`, because `rememberSaveable` can put
     // an enum and a boolean into a Bundle on its own and cannot put a data class there without a
     // Saver written for it. Enums survive process death; a hand-written Saver is a second place for
     // this to go wrong on a rotation.
-    var lensChoice by rememberSaveable { mutableStateOf(MarketLens.NONE) }
     var sortKey by rememberSaveable { mutableStateOf<MarketSortKey?>(null) }
     var sortDescending by rememberSaveable { mutableStateOf(true) }
-    // The whole second axis, gated on the platform in one place.
+    // The whole ordering axis, gated on the platform in one place.
     //
     // Not `tickers != null`: a store built over `UnsupportedMarketTickerGateway` exists, answers,
-    // and answers with nothing forever. Reading `supported` here is what keeps the lens strip off
-    // CoinePro-FX rather than putting four tabs there that can only ever be empty. It also
-    // *neutralises a restored choice*, which is the case a rotation cannot produce but a platform
-    // switch can: a reader who left «داغ» selected on TradeYar comes back to the plain list rather
-    // than to a saved state the new platform cannot honour.
+    // and answers with nothing forever. Reading `supported` here is what keeps «پرطرفدار»,
+    // «برنده/بازنده» and «حجم» off CoinePro-FX rather than putting three tabs there that can only
+    // ever be empty. It also *neutralises a restored choice*, which is the case a rotation cannot
+    // produce but a platform switch can: a reader who left «حجم» selected on TradeYar comes back to
+    // «برتر» rather than to a saved state the new platform cannot honour.
     val arranged = tickers?.supported == true
-    val lens = if (arranged) lensChoice else MarketLens.NONE
+    val lens = if (arranged) page.lens else MarketLens.NONE
     val sort = if (arranged) sortKey?.let { MarketSort(it, sortDescending) } else null
     // The symbol, not the row: the row is looked up again from the live results on every frame, so
     // the price inside the sheet ticks with the one in the list behind it instead of freezing at
@@ -248,13 +271,17 @@ fun MarketsScreen(
     var filter by remember { mutableStateOf(MarketFilter()) }
     var filtersOpen by remember { mutableStateOf(false) }
     var loaded by remember { mutableIntStateOf(SymbolUniverse.PAGE) }
+    // Which pulse cell is being explained, or null. Owned here rather than hoisted to the shell,
+    // because the explanation is a fact about *this app's inputs* — what each figure would need and
+    // why three of them read «—» — and nothing outside this file knows it. See [MarketPulseSheet].
+    var pulseCell by remember { mutableStateOf<MarketPulseCell?>(null) }
 
     // The category chip and the watchlist tab are different filters over one list, so they are
     // applied here rather than pushed into the controller: the controller's category is what the
     // *search* screen uses, and a tab that quietly rewrote it would change the other screen too.
     // Hoisted out of the filter block: the rows need it too, to draw each star's state.
     val watched = remember(watchlist) { watchlist.map { it.uppercase() }.toSet() }
-    val rows = remember(state.results, tab, watched, tickerState, lens, sort, filter) {
+    val rows = remember(state.results, page, watched, tickerState, lens, sort, filter) {
         // The category first, then the day's figures. The order matters for one reason that is not
         // about arithmetic: `state.results` is the catalogue, which `MarketCatalogGateway` has
         // already filtered through `SymbolArtwork.covers`, so arranging *these* rows can never
@@ -262,9 +289,9 @@ fun MarketsScreen(
         // instead — eight hundred rows, filtered by nothing — would put lettered discs in a list
         // this app does not allow them in.
         val visible = state.results.filter { row ->
-            when (tab) {
-                MarketsTab.WATCHLIST -> row.meta.symbol.uppercase() in watched
-                else -> tab.category == null || row.meta.category == tab.category
+            when {
+                page.panel -> row.meta.symbol.uppercase() in watched
+                else -> page.category == null || row.meta.category == page.category
             }
         }
         val arranged = arrangeMarkets(
@@ -280,7 +307,7 @@ fun MarketsScreen(
             tickerState.tickerFor(row)?.changePercent24h ?: row.quote?.changePercent
         }
     }
-    val panel = tab == MarketsTab.WATCHLIST && watchlistStore != null
+    val panel = page.panel && watchlistStore != null
 
     // **Only the categories this platform actually carries.**
     //
@@ -293,18 +320,18 @@ fun MarketsScreen(
     // backend carries what and it is right the day either of them adds a family. «همه» and the
     // watchlist are always drawn: the first is the list itself and the second is the reader's own,
     // which is allowed to be empty and has copy that says so.
-    val offered = remember(state.results) {
-        val families = state.results.mapTo(HashSet()) { it.meta.category }
-        MarketsTab.entries.filter { candidate ->
-            candidate.category == null || candidate.category in families
-        }
+    val offered = remember(state.results, arranged) {
+        offeredPages(
+            families = state.results.mapTo(HashSet()) { it.meta.category },
+            hasFigures = arranged,
+        )
     }
     // A tab that has just gone away — the platform switched under the reader — must not leave the
     // list filtered by it, which would be an invisible filter with no chip to unset.
-    LaunchedEffect(offered) { if (tab !in offered) tab = MarketsTab.ALL }
+    LaunchedEffect(offered) { if (page !in offered) page = MarketsPage.TOP }
     // A new list is a new first page. Without this, changing a tab on a list the reader had scrolled
     // a thousand rows into would compose a thousand rows of the *new* list before drawing a frame.
-    LaunchedEffect(tab, filter, lens, sort) { loaded = SymbolUniverse.PAGE }
+    LaunchedEffect(page, filter, sort) { loaded = SymbolUniverse.PAGE }
 
     Column(modifier = modifier.fillMaxSize().background(CoineProColors.Stage)) {
         Header(
@@ -315,32 +342,44 @@ fun MarketsScreen(
             onOpenFilters = if (panel) null else ({ filtersOpen = true }),
         )
         CoineProTeachingStrip(TeachingSurface.MARKETS)
-        // The shared strip. This screen had grown a byte-for-byte copy of it — same tray, same
-        // raised block, same weights — which is one more place for the next change to be applied
-        // once and forgotten once. It is also how this row ended up without the tick every other
-        // control in the app answers a tap with.
-        CoineProSegmentTabs(
-            options = offered.map { it to stringResource(it.labelRes) },
-            selected = tab,
-            onSelect = { tab = it },
-        )
-        // The second axis, and only where there is a route to fill it. It is deliberately below the
-        // categories rather than merged into them: five Persian labels already fill that tray edge
-        // to edge, and a lens is a different question from a category — one narrows what a row *is*
-        // and the other narrows what it *did today*.
-        if (arranged && !panel) {
-            LensChips(
-                selected = lensChoice,
-                onSelect = { chosen ->
-                    lensChoice = chosen
-                    // The sort goes with it. A sort is a refinement of whatever list is on screen,
-                    // and carrying «ارزش معاملات ↓» from the losers into «همه‌ی بازارها» would answer
-                    // a tap on a lens with a list ordered by something the reader chose for a
-                    // different one.
-                    sortKey = null
-                },
-            )
+        // **The pulse, the headlines, then the tabs** (U3, U4, U5), in that order and above
+        // everything else on the screen. A reader opens this surface asking «how is the market»
+        // before they ask about any one row, and the four figures answer it without a scroll.
+        //
+        // The pulse is computed from the table this screen is already polling, so it costs no
+        // request of its own — and three of its four cells read «—», which is the honest state
+        // rather than a loading one. See `MarketPulse`.
+        // **Absent where not one of the four could ever be filled**, which is the same rule the tabs
+        // are drawn by. Three of the cells are «—» on every platform and that is a fact worth
+        // saying; four of them, on a platform with no ticker route at all, is a row of nothing —
+        // and a row of nothing teaches the reader that the app is broken rather than that the data
+        // is elsewhere. On CoinePro-FX the pulse is simply not there.
+        if (arranged) {
+            val pulse = remember(tickerState.table) { MarketPulse.of(tickerState.table) }
+            MarketPulseRow(pulse = pulse, onOpen = { pulseCell = it })
         }
+        if (onOpenHeadline != null) {
+            MarketNewsTicker(headlines = headlines, onOpen = onOpenHeadline)
+        }
+        ExploreDoors(
+            onOpenNews = onOpenNews,
+            onOpenCalendar = onOpenCalendar,
+            onOpenHeatmap = onOpenHeatmap,
+        )
+        // One strip where there were two. The tray plus the lens row said one thing in two
+        // registers and made the reader learn that they composed; seven underlined tabs say it
+        // once. See [MarketsPage].
+        MarketsTabRow(
+            pages = offered,
+            selected = page,
+            onSelect = { chosen ->
+                page = chosen
+                // The sort goes with it. A sort is a refinement of whatever list is on screen, and
+                // carrying «ارزش معاملات ↓» from «برنده/بازنده» into «برتر» would answer a tap on a
+                // tab with a list ordered by something the reader chose for a different one.
+                sortKey = null
+            },
+        )
         // The panel draws its own headings, over whichever columns the reader chose. Two heading
         // strips, one of them describing a layout that is not on screen, would be worse than none.
         if (!panel) {
@@ -369,6 +408,7 @@ fun MarketsScreen(
                 onRequestLine = sparklines::request,
                 onOpenSymbol = onOpenSymbol,
                 watchlistSync = watchlistSync,
+                onCompare = onCompare,
                 modifier = Modifier.weight(1f),
             )
             // Rows-to-be rather than a spinner: the reader sees the shape of the list that is
@@ -409,7 +449,7 @@ fun MarketsScreen(
             rows.isEmpty() -> Centred {
                 Text(
                     text = when {
-                        tab == MarketsTab.WATCHLIST -> stringResource(R.string.markets_watchlist_empty)
+                        page.panel -> stringResource(R.string.markets_watchlist_empty)
                         // The table arrived and nothing in it qualifies — a real answer, and a
                         // different one from "no market matches that name".
                         lens != MarketLens.NONE -> stringResource(R.string.markets_lens_empty)
@@ -420,9 +460,9 @@ fun MarketsScreen(
                         // A filter the reader set is the likeliest reason a list is empty, and it
                         // is the one they can undo. It is named before the tab for that reason.
                         !filter.isEmpty -> stringResource(R.string.markets_filter_empty)
-                        tab.category != null -> stringResource(
+                        page.category != null -> stringResource(
                             R.string.markets_category_empty,
-                            stringResource(tab.labelRes),
+                            stringResource(page.labelRes),
                         )
                         else -> stringResource(R.string.markets_none)
                     },
@@ -504,6 +544,14 @@ fun MarketsScreen(
         openSignals?.let { SignalStrip(it) }
     }
 
+    pulseCell?.let { cell ->
+        MarketPulseSheet(
+            cell = cell,
+            pulse = remember(tickerState.table) { MarketPulse.of(tickerState.table) },
+            onDismiss = { pulseCell = null },
+        )
+    }
+
     if (filtersOpen) {
         MarketFilterSheet(
             filter = filter,
@@ -567,23 +615,62 @@ fun MarketsScreen(
 /** The open-signal line at the foot of the list. */
 data class MarketsSignalStrip(val count: Int, val summary: String, val onClick: () -> Unit)
 
-/**
- * The strip over the market list.
- *
- * [category] is what the tab narrows to, and null means it narrows by something else — «همه»
- * narrows by nothing and the watchlist by the reader's own stars. It is here rather than in a
- * `when` so that one fact — which tabs a catalogue can fill — is read off the same place the
- * filter uses. See `offered`.
- */
 /** The key of the row that asks for the next page. Stable, so it is not re-created per page. */
 private const val MORE_KEY = "markets-next-page"
 
-private enum class MarketsTab(val labelRes: Int, val category: SymbolCategory? = null) {
-    ALL(R.string.search_category_all),
-    CRYPTO(R.string.search_category_crypto, SymbolCategory.CRYPTO),
-    FOREX(R.string.search_category_forex, SymbolCategory.FOREX),
-    METAL(R.string.search_category_metal, SymbolCategory.METAL),
-    WATCHLIST(R.string.markets_watchlist),
+/**
+ * **What is left of Explore** (run ΤΦΥ, U7).
+ *
+ * The bottom bar is five destinations — دیده‌بان · چارت · رَصد · انجمن · منو — and Explore is not
+ * one of them any more. Its three rooms are not gone: news, the economic calendar and the heat map
+ * are all reached from here, one tap from the surface whose subject they are.
+ *
+ * Three pills rather than a menu, because three is few enough to show and a menu that has to be
+ * opened to see what is in it is a door the reader never finds. Each one is dropped rather than
+ * disabled where the caller has nothing behind it, and the row is absent when all three are.
+ */
+@Composable
+private fun ExploreDoors(
+    onOpenNews: (() -> Unit)?,
+    onOpenCalendar: (() -> Unit)?,
+    onOpenHeatmap: (() -> Unit)?,
+) {
+    if (onOpenNews == null && onOpenCalendar == null && onOpenHeatmap == null) return
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.Half),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+    ) {
+        Door(R.string.markets_door_news, onOpenNews)
+        Door(R.string.markets_door_calendar, onOpenCalendar)
+        Door(R.string.markets_door_heatmap, onOpenHeatmap)
+    }
+}
+
+@Composable
+private fun RowScope.Door(labelRes: Int, onClick: (() -> Unit)?) {
+    if (onClick == null) return
+    val haptics = rememberCoineProHaptics()
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .clip(CoineProPillShape)
+            .background(CoineProColors.SurfaceElevated)
+            .clickable {
+                haptics.select()
+                onClick()
+            }
+            .padding(vertical = CoineProSpacing.Half),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = stringResource(labelRes),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextSecondary,
+            maxLines = 1,
+        )
+    }
 }
 
 @Composable
@@ -651,56 +738,6 @@ private fun Header(
                 contentDescription = stringResource(R.string.search_title),
                 tint = CoineProColors.TextSecondary,
                 modifier = Modifier.size(17.dp),
-            )
-        }
-    }
-}
-
-/**
- * The lens strip: where something is happening today.
- *
- * Pills rather than a second [CoineProSegmentTabs] tray, and that is a legibility decision rather
- * than a decorative one. Two filled trays stacked read as two equal filters over one list, and
- * these are not equal — the categories are the primary axis and always have been, and the lens
- * refines whichever of them is open. A row of pills under a tray says that; two trays do not.
- *
- * It scrolls because «همه‌ی بازارها» and «بیشترین رشد» together are wider than a 360dp phone, and a
- * row of four pills that clipped its last one would hide the losers.
- */
-@Composable
-private fun LensChips(selected: MarketLens, onSelect: (MarketLens) -> Unit) {
-    val haptics = rememberCoineProHaptics()
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
-        // Two of gutter at each end, so the first pill sits under the first tab above it and the
-        // last one can clear the edge instead of looking cut off.
-        contentPadding = PaddingValues(
-            start = CoineProSpacing.Two,
-            end = CoineProSpacing.Two,
-            top = CoineProSpacing.One,
-        ),
-    ) {
-        items(MarketLens.entries) { lens ->
-            val active = lens == selected
-            Text(
-                text = stringResource(lens.labelRes),
-                style = MaterialTheme.typography.labelSmall,
-                color = if (active) CoineProColors.OnAccent else CoineProColors.TextSecondary,
-                maxLines = 1,
-                modifier = Modifier
-                    .clickable {
-                        // Only a change is worth a tick, which is the rule the tab strip above
-                        // states: a buzz for pressing the pill you are already on teaches the
-                        // reader to distrust the ones that mean something.
-                        if (!active) haptics.select()
-                        onSelect(lens)
-                    }
-                    .background(
-                        color = if (active) CoineProColors.Accent else Color.Transparent,
-                        shape = CoineProPillShape,
-                    )
-                    .border(1.dp, CoineProColors.Border, CoineProPillShape)
-                    .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.Half),
             )
         }
     }

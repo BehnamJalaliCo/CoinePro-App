@@ -165,6 +165,20 @@ fun NewsScreen(
      * and the screenshot tests pass, and what a build with one configured platform gets.
      */
     readers: Map<MarketPlatform, MarketIntelController> = emptyMap(),
+    /**
+     * A story to open straight away, from the markets ticker (run ΤΦΥ, U4).
+     *
+     * The ticker's whole claim is that a tap opens **that** headline, so the shell needs a way to
+     * say which — and this is it, seeded into the same `openArticleId` a press on a card sets. It
+     * is resolved against the feed exactly like any other id, so a story that has aged out of the
+     * two-hour window lands on the page's own «این خبر دیگر در دسترس نیست», which is the truth,
+     * rather than on a blank list.
+     *
+     * Read once, at the first composition. It is a starting position, not a state the caller owns:
+     * a reader who backs out of the article is on the list, and a recomposition must not put them
+     * back in the story they just left.
+     */
+    initialStoryId: String? = null,
 ) {
     // Which newsroom is on screen. Saveable, so a rotation does not send a reader back to the tab
     // the shell happened to be on.
@@ -185,7 +199,7 @@ fun NewsScreen(
     // only ever as alive as the reader's own two lists, so unsaving a story that had already aged
     // out of the feed would make the page the reader was reading disappear under them — which is
     // the opposite of what pressing unsave asks for.
-    var openArticleId by rememberSaveable { mutableStateOf<String?>(null) }
+    var openArticleId by rememberSaveable { mutableStateOf(initialStoryId) }
     var openArticle by remember { mutableStateOf<NewsStory?>(null) }
     // Saveable, so a reader who rotates the phone while reading an outage notice is still reading
     // it afterwards. It is one boolean rather than a copy of the list because the list itself is

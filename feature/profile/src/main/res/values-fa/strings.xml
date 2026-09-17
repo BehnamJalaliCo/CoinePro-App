@@ -122,4 +122,6 @@
     <string name="profile_standing_founding">نشان عضویت</string>
     <string name="profile_standing_founding_value">عضو بنیان‌گذار</string>
     <string name="profile_standing_founding_detail">از روز اول با ما</string>
+    <string name="appearance_quote">قیمت‌ها به</string>
+    <string name="appearance_quote_note">تعیین می‌کند فهرست کدام جفت را ترجیح دهد. هیچ رقمی تبدیل نمی‌شود.</string>
 </resources>

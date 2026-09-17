@@ -124,7 +124,11 @@ INFORMAL_PERSIAN = (
     ),
 )
 
-INFORMAL_ALLOWED_PREFIXES = ("home_agent_",)
+# Rasad speaks informally on purpose, and so does the one button that ends the welcome.
+# «بزن بریم» is the owner's own wording for it (run ΤΦΥ, U2): a warm imperative on the last
+# screen before the app opens, which is the one place this product is allowed to sound like a
+# person rather than a terminal. It is a key, not a prefix with room in it.
+INFORMAL_ALLOWED_PREFIXES = ("home_agent_", "starter_done")
 
 HAMZA_ON_HEH = re.compile("[ٔۀ]")
 

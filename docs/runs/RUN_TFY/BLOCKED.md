@@ -92,3 +92,49 @@ Not new, and not code. `docs/qa/DEVICE_PROOFS.md` §1b and §3: three flicks of 
 BTCUSDT H1, recorded at 120 fps, and the three `flickVelocity` scenarios run on a phone. Nothing in
 a container with no GPU can answer either. RUN Τ2 item 3 has been waiting on the same trace since it
 was written.
+
+---
+
+## 5. Three of the four pulse figures, and the watchlist's market cap (U3, U6)
+
+**What the brief asks for.** A row at the top of the markets surface reading «ارزش کل بازار · حجم ۲۴
+ساعت · سهم بیت‌کوین · شاخص ترس و طمع», with «any value that cannot be computed rendered as «—» and
+the missing input named here». And a watchlist row carrying a market capitalisation beside the
+ticker.
+
+**What shipped.** The row, with one real figure and three dashes, and every cell — dash or not —
+opening a sentence that says what it is measured over or what it would need. The three are not
+placeholders and they are not a loading state.
+
+**What each one actually needs, one line each.**
+
+* **ارزش کل بازار** and **سهم بیت‌کوین** need a **circulating supply per asset**. Market cap is price ×
+  supply and dominance is one cap over the sum of them, so the two are the same missing field. What
+  this app receives per symbol is a last price, a 24-hour change and a turnover; there is no supply
+  anywhere on either wire. A capitalisation derived from turnover would carry a name people know and
+  mean something else, which is worse than a dash.
+* **شاخص ترس و طمع** is a **published index that belongs to somebody else**. Neither backend carries
+  it. `MarketMood`'s own note has said since it was written why this app will not compute a number of
+  its own and print that name over it: a reader who has seen the real index would compare the two and
+  find them disagreeing. What *is* printed, under its own name and never in that cell, is breadth —
+  the share of the board that is up today, which this app can measure from the table it already has.
+* **حجم ۲۴ ساعت** is computed and is **one venue's book**, not the world's. `MarketPulse.turnoverIsVenueOnly`
+  is true whenever the figure exists, and the sheet says so rather than letting it be read as global
+  volume.
+* The **watchlist's market-cap column** is the first bullet again. It is not drawn at all rather than
+  drawn as a column of dashes, because a column every row of which is empty is a column that costs
+  width — and width is exactly what that row does not have (see U6's note on the 32 dp).
+
+**What the owner must provide.** Any one of three, in order of how little it costs:
+
+1. A **supply figure per symbol** on the existing symbols route — `circulating_supply` beside
+   `tick_size` would be enough for both the cap and the dominance, computed client-side from prices
+   this app already holds.
+2. A **`/v1/market/global`**-shaped route returning `total_market_cap`, `total_volume_24h` and
+   `btc_dominance` as the venue or an aggregator computes them.
+3. A **fear-and-greed reading** proxied through either backend — the published one, attributed —
+   rather than computed. It is the only one of the four that must not be derived locally.
+
+Each arrives as a non-null field on `MarketPulse` and the row draws it. Nothing else changes: the
+four cells are already in their places and the frame `upsilon-pulse-full-phone-fa.png` is what that
+day looks like.

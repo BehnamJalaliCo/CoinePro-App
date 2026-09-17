@@ -190,6 +190,39 @@ object SymbolUniverse {
     }
 
     /**
+     * One listing per asset, preferring the quote the reader asked for (run ΤΦΥ, U2).
+     *
+     * An asset quoted against several units — `BTC/USDT` and `BTC/USDC` on the same book — is one
+     * market to a reader and two rows to a venue. This keeps the one they said they think in, and
+     * where the asset is not quoted in it at all, keeps whatever the venue does quote. A reader who
+     * chose rial does not lose a list; they get the venue's own units, which is the only honest
+     * answer when no rial market exists.
+     *
+     * It is a **listing preference and never a conversion**: no figure is re-denominated, because a
+     * price that quietly changed units is the worst thing a market screen can do. See
+     * `QuoteCurrency`.
+     *
+     * An empty or unknown quote is «no opinion» and returns the list untouched, which is also what
+     * every asset with one listing gets — and today that is nearly all of them, because both venues
+     * quote essentially their whole book against one unit.
+     */
+    fun preferring(symbols: List<UniverseSymbol>, quote: String?): List<UniverseSymbol> {
+        val wanted = quote?.trim()?.uppercase().orEmpty()
+        if (wanted.isEmpty()) return symbols
+        // Grouped by base *and venue*: the same ticker on two books is two markets, and collapsing
+        // them would hide one venue's price behind another's.
+        val duplicated = symbols
+            .groupBy { (it.base?.uppercase() ?: it.id.uppercase()) to it.venue }
+            .filterValues { it.size > 1 }
+        if (duplicated.isEmpty()) return symbols
+        val dropped = duplicated.values.flatMapTo(HashSet()) { group ->
+            val keep = group.firstOrNull { it.quote?.uppercase() == wanted } ?: return@flatMapTo emptyList()
+            group.filterNot { it === keep }.map { it.id }
+        }
+        return if (dropped.isEmpty()) symbols else symbols.filterNot { it.id in dropped }
+    }
+
+    /**
      * Search the **whole** universe, ranked by how well it matched and then by turnover.
      *
      * Not by `SymbolRanking` alone, which is what `SymbolSearch` falls back to: a universe with live

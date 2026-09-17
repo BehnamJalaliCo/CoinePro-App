@@ -2164,7 +2164,7 @@ class ScreenshotRenderTest {
         Row(modifier = Modifier.fillMaxSize().background(CoineProColors.Stage)) {
             CoineProNavigationRail(
                 items = railItems(),
-                selectedKey = AppDestination.EXPLORE.route,
+                selectedKey = AppDestination.RASAD.route,
                 onSelect = {},
                 header = {
                     CoineProRailHeader {
@@ -2223,9 +2223,9 @@ class ScreenshotRenderTest {
         AppDestination.WATCHLIST ->
             if (selected) DesignR.drawable.brand_watchlist_fill else DesignR.drawable.brand_watchlist
         AppDestination.CHART -> if (selected) CoineProIcons.Filled.Chart else CoineProIcons.Chart
-        AppDestination.EXPLORE ->
+        AppDestination.RASAD ->
             if (selected) DesignR.drawable.icon_compass_fill else DesignR.drawable.icon_compass
-        AppDestination.IDEAS ->
+        AppDestination.COMMUNITY ->
             if (selected) DesignR.drawable.brand_signal_fill else DesignR.drawable.brand_signal
         AppDestination.MENU -> DesignR.drawable.icon_list_bullets
     }

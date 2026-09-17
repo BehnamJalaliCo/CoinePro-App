@@ -55,14 +55,24 @@ class AppDestinationTest {
 
     @Test
     fun `the roots that left the bar did not take their routes with them`() {
-        // Removing a destination from the bar removes it from the bar and nothing else: `home`,
-        // `signals`, `ai` and `community` are still screens in the graph, still resolve from a
-        // saved back stack written by an older build, and are still reachable from the menu or
-        // the Ideas tab. This pins the *other* half of that — none of the four may quietly come
-        // back as a tab without somebody deciding to.
+        // Removing a destination from the bar removes it from the bar and nothing else: `signals`,
+        // `ai`, `community` and `explore` are still screens in the graph, still resolve from a
+        // saved back stack written by an older build, and are still reachable from the menu, from
+        // the انجمن tab or from the markets surface. This pins the *other* half of that — none of
+        // them may quietly come back as a tab without somebody deciding to.
+        //
+        // **`home` is not on this list any more**, and that is run ΤΦΥ's U7 rather than a slip.
+        // The route belongs to رَصد — the briefing — which took the seat Explore had. It left the
+        // bar in run Ω2 attached to a home screen that was a dashboard, and the briefing went down
+        // with it, which was the mistake. The route is unchanged, so every saved back stack and
+        // every deep link naming `home` resolves exactly as it did.
         val routes = AppDestination.entries.map { it.route }
-        for (gone in listOf("home", "signals", "ai", "community")) {
+        for (gone in listOf("signals", "ai", "community", "explore")) {
             assertTrue("$gone is a route, not a tab", gone !in routes)
         }
+        // And the two that changed name in U7 kept the routes they had, which is the whole reason
+        // the rename was safe. `COMMUNITY` is «انجمن» and is still `ideas`.
+        assertEquals("home", AppDestination.RASAD.route)
+        assertEquals("ideas", AppDestination.COMMUNITY.route)
     }
 }

@@ -247,8 +247,15 @@ class FoldMetricsTest {
          * child at the target and reports the footprint, the same trick the chart legend's buttons
          * use. So the control got a legal thumb target, the plate went away, and the fold moved
          * *down* rather than up: six more points of the first row on every phone.
+         *
+         * **105 since 4.92.0**, and the fourteen points are U6's. The lists lived in a
+         * `CoineProChipRow` — a scrolling tray of filled chips, each with its own count badge and
+         * its own vertical padding — and that tray is now a name, a caret and three icon actions on
+         * the line the count was already on. Nothing left the screen: every one of the five list
+         * actions is still one tap away, and the control row got *shorter* because a picker says
+         * «which list» in one word where a tray had to draw all of them.
          */
-        val CHROME_TARGET = 119.dp
+        val CHROME_TARGET = 105.dp
         const val CHROME_DRIFT_DP = 1.0f
 
         /** «Watchlist pre-row chrome <= 125dp», from the owner's own list. */

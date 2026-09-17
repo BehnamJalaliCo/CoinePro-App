@@ -1,5 +1,6 @@
 package com.coinepro.app
 
+import android.app.Activity
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -117,6 +118,10 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.coinepro.core.datastore.ReaderMode
+import com.coinepro.core.datastore.ThemeMode
+import com.coinepro.core.datastore.QuoteCurrency
+import androidx.compose.ui.platform.LocalContext
+import com.coinepro.core.datastore.MarketColorScheme
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @AndroidEntryPoint
@@ -417,7 +422,55 @@ class MainActivity : FragmentActivity() {
             // which is a property of the stored answer rather than of a counter.
             val readerModeChosen by userPreferencesStore.readerModeChosen
                 .collectAsStateWithLifecycle(initialValue = true)
-            if (launched && !readerModeChosen) {
+            // **Three screens, in order, and each is shown at most once** (run ΤΦΥ, U1 and U2).
+            //
+            // The slides say what the app *is*, the preferences ask how it should be drawn, and the
+            // mode question asks how much of it to show. They are three separate stored answers, so
+            // an upgrade cannot introduce the app to a reader who has been using it for a year, and
+            // a reader who skipped one is not asked the others again.
+            //
+            // Over the app rather than in the back stack, for the same reason the question below is:
+            // the chart underneath is loading its candles the whole time, and none of these three
+            // can be reached twice with the back button.
+            val welcomeSeen by userPreferencesStore.welcomeSeen
+                .collectAsStateWithLifecycle(initialValue = true)
+            val startPreferencesSet by userPreferencesStore.startPreferencesSet
+                .collectAsStateWithLifecycle(initialValue = true)
+            val starterTheme by userPreferencesStore.themeMode
+                .collectAsStateWithLifecycle(initialValue = ThemeMode.SYSTEM)
+            val starterQuote by userPreferencesStore.quoteCurrency
+                .collectAsStateWithLifecycle(initialValue = QuoteCurrency.Default)
+            val starterColours by userPreferencesStore.marketColors
+                .collectAsStateWithLifecycle(initialValue = MarketColorScheme.GREEN_UP)
+            if (launched && !welcomeSeen) {
+                WelcomeSlides(
+                    onStart = { lifecycleScope.launch { userPreferencesStore.setWelcomeSeen() } },
+                    // Sign-in is a destination inside the app rather than a screen of its own here:
+                    // the slides close and the menu's own «ورود» is one tap from where they land. A
+                    // second sign-in flow drawn over the splash would be a second place for it to
+                    // go wrong, and a reader who has an account is not a reader who needs the door
+                    // painted twice.
+                    onSignIn = { lifecycleScope.launch { userPreferencesStore.setWelcomeSeen() } },
+                )
+            } else if (launched && !startPreferencesSet) {
+                val starterContext = LocalContext.current
+                StarterPreferences(
+                    theme = starterTheme,
+                    onTheme = { mode -> lifecycleScope.launch { userPreferencesStore.setThemeMode(mode) } },
+                    language = AppLanguageStore.current(starterContext),
+                    onLanguage = { chosen ->
+                        AppLanguageStore.set(starterContext, chosen)
+                        // The locale is applied in `attachBaseContext`, so nothing already composed
+                        // picks it up — the same recreate the appearance row does.
+                        (starterContext as? Activity)?.recreate()
+                    },
+                    quote = starterQuote,
+                    onQuote = { chosen -> lifecycleScope.launch { userPreferencesStore.setQuoteCurrency(chosen) } },
+                    colours = starterColours,
+                    onColours = { chosen -> lifecycleScope.launch { userPreferencesStore.setMarketColors(chosen) } },
+                    onDone = { lifecycleScope.launch { userPreferencesStore.setStartPreferencesSet() } },
+                )
+            } else if (launched && !readerModeChosen) {
                 FirstRunQuestion(
                     onChoose = { mode -> lifecycleScope.launch { userPreferencesStore.setReaderMode(mode) } },
                     // «بعداً» stores the default rather than leaving the flag unset, and that is

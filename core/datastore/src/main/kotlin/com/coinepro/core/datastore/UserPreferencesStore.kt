@@ -131,6 +131,60 @@ class UserPreferencesStore(
     }
 
     /**
+     * Whether this reader has been through the welcome slides (U1).
+     *
+     * Separate from [readerModeChosen] on purpose. The slides say what the app *is*; the mode
+     * question asks what the reader wants to see; and the preferences screen between them asks how
+     * they want it drawn. Three different questions with three different answers, and folding them
+     * into one flag would mean an upgrade either showing the slides to somebody who has used the
+     * app for a year or never showing them to somebody who skipped the mode question.
+     *
+     * **An existing install has already seen them, by definition**: an app that pushed five
+     * introductory slides at somebody on an ordinary Tuesday upgrade would be introducing itself to
+     * a reader who knows it. So absent resolves to *seen* for anybody who has answered the mode
+     * question, and only a genuinely fresh install — nothing stored at all — is shown them.
+     */
+    val welcomeSeen: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[WELCOME_SEEN] == true || preferences[READER_MODE] != null
+    }
+
+    suspend fun setWelcomeSeen() {
+        dataStore.edit { preferences -> preferences[WELCOME_SEEN] = true }
+    }
+
+    /**
+     * Whether the opening preferences screen has been answered (U2).
+     *
+     * Same rule as [welcomeSeen] and for the same reason: an install that predates it has a theme,
+     * a language and an up-colour already, chosen or defaulted, and asking again would be the app
+     * forgetting a reader it has.
+     */
+    val startPreferencesSet: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[START_PREFS] == true || preferences[READER_MODE] != null
+    }
+
+    suspend fun setStartPreferencesSet() {
+        dataStore.edit { preferences -> preferences[START_PREFS] = true }
+    }
+
+    /**
+     * What a price is quoted in on the lists this reader reads (U2).
+     *
+     * **A display preference, never a conversion.** The app does not hold exchange rates and is not
+     * going to invent them: what this changes is which quote leg a list prefers when a market is
+     * listed against several — `BTC/USDT` over `BTC/USDC` for a reader on tether — and what the
+     * column heading says. A figure is never re-denominated behind a reader's back; a price in
+     * dollars is labelled in dollars.
+     */
+    val quoteCurrency: Flow<QuoteCurrency> = dataStore.data.map { preferences ->
+        QuoteCurrency.fromId(preferences[QUOTE_CURRENCY])
+    }
+
+    suspend fun setQuoteCurrency(currency: QuoteCurrency) {
+        dataStore.edit { preferences -> preferences[QUOTE_CURRENCY] = currency.id }
+    }
+
+    /**
      * The bottom-bar destination the reader was last on, or null on a first launch.
      *
      * ### Why the app remembers this at all
@@ -172,5 +226,8 @@ class UserPreferencesStore(
         /** The last non-simple mode, so [toggleSimpleReaderMode] can come back to it. */
         val READER_MODE_FULL = stringPreferencesKey("reader_mode_full")
         val APP_LOCK = booleanPreferencesKey("app_lock_enabled")
+        val WELCOME_SEEN = booleanPreferencesKey("welcome_seen")
+        val START_PREFS = booleanPreferencesKey("start_preferences_set")
+        val QUOTE_CURRENCY = stringPreferencesKey("quote_currency")
     }
 }

@@ -45,6 +45,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.AppLanguage
@@ -124,6 +126,15 @@ fun WatchlistPanel(
     watchlistSync: WatchlistSyncController? = null,
     /** Starts a price alert from a row's menu. Null where this build has no alert composer. */
     onCreateAlert: ((String) -> Unit)? = null,
+    /**
+     * Opens this list's markets side by side — «تحلیل» (run ΤΦΥ, U6).
+     *
+     * Handed the list **in the reader's own order**, so the panes come out in the order the rows
+     * are in rather than in whatever order the comparison screen would have guessed. Null where
+     * the host has no chart to send them to — the guest shell — and then the control is not drawn
+     * at all rather than drawn and inert.
+     */
+    onCompare: ((List<String>) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -231,6 +242,18 @@ fun WatchlistPanel(
                 editing = !editing
             },
             onOverflow = { sheet = WatchlistSheet.More },
+            onOpenPicker = { sheet = WatchlistSheet.Picker },
+            // Null at the ceiling rather than a «+» that answers a press with nothing. The manage
+            // sheet behind «•••» says why, in words.
+            onCreateList = if (lists.size >= WatchlistStore.MAX_LISTS) {
+                null
+            } else {
+                { sheet = WatchlistSheet.Lists }
+            },
+            // Two markets is the floor. See the note on the control.
+            onCompare = onCompare?.takeIf { order.size >= 2 }?.let { compare ->
+                { compare(order) }
+            },
         )
         // **No residue once it is dismissed.** See `CoineProTeachingStrip`: on a terminal surface
         // the «این چیست؟» link is twenty-eight points that never come back, above the rows this
@@ -380,8 +403,18 @@ fun WatchlistPanel(
  * this screen has and should not be a state it can represent.
  */
 internal sealed interface WatchlistSheet {
-    /** Make, rename and delete lists. */
+    /** Make, rename, duplicate, reorder and delete lists. */
     data object Lists : WatchlistSheet
+
+    /**
+     * Which list to look at (run ΤΦΥ, U6).
+     *
+     * Separate from [Lists], and the separation is the point: this one is opened on every other
+     * visit and answers one question with one tap, while [Lists] is the workshop behind «•••».
+     * Putting the rename and delete controls on the picker would put a destructive action under
+     * the thumb of somebody who came to switch lists.
+     */
+    data object Picker : WatchlistSheet
 
     /** Choose the columns for the list on screen. */
     data object Columns : WatchlistSheet
@@ -441,7 +474,14 @@ private fun Controls(
     editing: Boolean,
     onToggleEditing: () -> Unit,
     onOverflow: () -> Unit,
+    /** Opens the list picker. */
+    onOpenPicker: () -> Unit,
+    /** Makes a new list. Null once the reader is at [WatchlistStore.MAX_LISTS]. */
+    onCreateList: (() -> Unit)?,
+    /** Opens this list's markets side by side. Null below two of them. */
+    onCompare: (() -> Unit)?,
 ) {
+    val haptics = rememberCoineProHaptics()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -449,14 +489,44 @@ private fun Controls(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
-        CoineProChipRow(
-            options = lists.map { CoineProChip(id = it.id, label = it.localName(), count = it.symbols.size) },
-            selectedId = activeId,
-            onSelect = { id -> id?.let(onSelectList) },
-            modifier = Modifier.weight(1f, fill = false),
-            compact = true,
-            neutral = true,
-        )
+        // **Which list, as a name and a caret** (run ΤΦΥ, U6).
+        //
+        // A chip row was here, and it read correctly with two lists and not at all with six: the
+        // chips took the whole line, the selected one scrolled out of sight, and there was no
+        // single place that said which list you were looking at. A picker says it in one word.
+        //
+        // It opens a sheet rather than a dropdown, for the reason every other choice in this app
+        // does: a menu anchored to a control at the top of the screen puts its rows under the
+        // thumb that is already covering them.
+        Row(
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .clip(CoineProShapes.small)
+                .clickable {
+                    haptics.select()
+                    onOpenPicker()
+                }
+                .padding(horizontal = CoineProSpacing.Half, vertical = CoineProSpacing.Half),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        ) {
+            Text(
+                text = lists.firstOrNull { it.id == activeId }?.localName()
+                    ?: stringResource(R.string.markets_watchlist),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = CoineProColors.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            Icon(
+                painter = painterResource(CoineProIcons.ChevronDown),
+                contentDescription = stringResource(R.string.watchlist_pick_list),
+                tint = CoineProColors.TextMuted,
+                modifier = Modifier.size(14.dp),
+            )
+        }
         Text(
             // A prose count, so Persian digits — unlike every figure in the table below it.
             text = stringResource(R.string.watchlist_symbol_count, count.proseDigits()),
@@ -465,6 +535,26 @@ private fun Controls(
             maxLines = 1,
         )
         Spacer(modifier = Modifier.weight(1f))
+        // A new list, one tap from the list it will sit beside. It was three levels down — «•••»,
+        // «مدیریت فهرست‌ها», a text field — which is the right depth for renaming and the wrong one
+        // for the action a reader takes on their second visit.
+        if (onCreateList != null) {
+            IconAction(
+                icon = CoineProIcons.Add,
+                label = stringResource(R.string.watchlist_create),
+                onClick = onCreateList,
+            )
+        }
+        // **«تحلیل» — the list, side by side** (run ΤΦΥ, U6). Null below two markets rather than
+        // inert: one market against itself is the split view, and the reader asked for something
+        // else. See `ChartPanesScreen.compareSymbols`.
+        if (onCompare != null) {
+            IconAction(
+                icon = DesignR.drawable.tv_layout_grid,
+                label = stringResource(R.string.watchlist_compare),
+                onClick = onCompare,
+            )
+        }
         if (onFlagSort != null && flags.isNotEmpty()) {
             // The sort control for the colour column, drawn as the colour column is: a dot, not a
             // word. It was «برچسب» in text and it read as a stray label rather than as a control —

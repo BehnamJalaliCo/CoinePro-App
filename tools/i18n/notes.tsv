@@ -50,6 +50,7 @@ appearance_dark_note	tip	feature/profile
 appearance_language_note	tip	feature/profile
 appearance_light_note	tip	feature/profile
 appearance_midnight_note	tip	feature/profile
+appearance_quote_note	tip	feature/profile
 appearance_reader_note	tip	feature/profile
 appearance_system_note	tip	feature/profile
 assistant_empty_body	state	feature/ai-assistant
@@ -290,6 +291,11 @@ watchlist_sync_note	tip	core/watchlistsync
 webhooks_name_hint	label	feature/alerts
 webhooks_secret_hint	visible	feature/alerts
 webhooks_url_hint	visible	feature/alerts
+welcome_alerts_body	tip	app
+welcome_chart_body	tip	app
+welcome_free_body	tip	app
+welcome_practice_body	tip	app
+welcome_tools_body	tip	app
 widget_configure_body	state	app
 workbench_chain_note	tip	feature/chart
 workbench_patterns_note	tip	feature/chart

@@ -172,3 +172,137 @@ portfolio; and `connections` joins the search's `absent` set so its section is n
 One narrowing, and the checklist row says so: F5 lists «forex KYC» and this app has no
 forex-specific KYC. It has one account-verification screen, which the crypto venue requires, so it
 stays.
+
+---
+
+# PHASE Υ — the first five minutes, and the screen a reader lands on
+
+**Version 4.92.0.** Seven items, no device work owed.
+
+## The shape of the change
+
+Phase Φ made the markets surface hold every symbol the venue serves. Phase Υ is about the two
+moments either side of it: the four minutes before a reader has seen anything, and the screen they
+land on afterwards.
+
+Three of the seven items are new screens (U1, U2, and the pulse row of U3). Three are rearrangements
+of surfaces that existed and were in the wrong shape (U5's tabs, U6's list picker, U7's bar). One —
+U4's ticker — is a new row over a feed the app already polls.
+
+## What replaced what, and why
+
+### One strip of tabs where there were two (U5)
+
+The markets screen carried a **category tray** — همه · کریپتو · فارکس · فلزات · دیده‌بان — and a
+**lens row** under it — داغ · بیشترین رشد · بیشترین افت · ارزش معاملات. They composed, which was the
+design, and a reader had to understand that before either was useful. Two filled trays over a list
+is a lot of chrome to ask one question.
+
+`MarketsPage` is seven underlined tabs: برتر · پرطرفدار · دیده‌بان · برنده/بازنده · حجم · فارکس ·
+فلزات. Some carry a family and some carry an ordering, and the fact that those are different
+mechanisms underneath is an implementation detail nobody has to learn. Underlined rather than
+filled, because with seven across a phone the label that reads *where you are* fits and the pill
+that reads *filter applied* does not.
+
+The rule that survived intact is **absent, not empty**: `offeredPages` drops the three ordering tabs
+on a platform with no ticker route and the family tabs on a catalogue that holds no such family.
+That rule is the one this screen already had, and it is there because a tab that opens onto
+«بازاری با این نام پیدا نشد» teaches the reader that the app is broken rather than that the data is
+elsewhere — which is exactly what was reported when the tray was five fixed tabs.
+
+The sortable column headings did not move, so «only the ones that are up» — the thing the two
+one-sided lenses answered — is one tap on the change column from برنده/بازنده.
+
+### A pulse row that is honest about three of its four figures (U3)
+
+This is the item the rest of the phase is measured against, because it is the one where the brief
+asks for numbers this app does not have.
+
+What arrives per symbol is a last price, a 24-hour change and a turnover. From that, one of the four
+cells can be computed: the day's turnover across the venue's book, which `MarketPulse.turnoverIsVenueOnly`
+marks as the venue's rather than the world's. The other three cannot:
+
+* **Capitalisation** is price × circulating supply, and no supply figure exists on either wire.
+* **Dominance** is one capitalisation over the sum of all of them — the same missing field.
+* **Fear and greed** is a published index belonging to somebody else, carried by neither backend.
+
+So the row draws four cells, three of them «—», and every dash opens a sentence saying which input
+is missing. `BLOCKED.md` §5 names the three routes that would fill them, in order of how little they
+cost.
+
+The alternative — hiding the cells until the data arrives — was rejected for a reason worth stating:
+a row that grew a field at a time as backends caught up would be a row whose shape changed under a
+reader. `upsilon-pulse-full-phone-fa.png` is what the same composition looks like with all four
+figures in it, and nothing about its geometry differs.
+
+Breadth — the share of the board that is up today — is the one mood figure this app *can* measure.
+It is printed under its own name in the explanation and never in the gauge's cell, because it is a
+different number from the index and `MarketMood`'s own note has said since it was written why this
+app will not compute one and print that name over it.
+
+### A list picker where there was a chip row (U6)
+
+The watchlist's lists lived in a `CoineProChipRow`. That read correctly with two lists and not at
+all with six: the chips took the whole line, the live one scrolled out of sight, and there was no
+single place on the screen that said which list you were looking at.
+
+It is a **name and a caret** now, with «+» beside it, «•••» after it and «تحلیل» between them. The
+five actions the brief names are all real: rename and delete were already in the manage sheet;
+`WatchlistStore.duplicate` and `WatchlistStore.moveList` are new.
+
+`duplicate` copies the **symbols and their order** and nothing else. The flags and the chosen columns
+stay with the original, because a duplicate is nearly always the start of a variation — the same
+markets, about to be pruned — and carrying a colour scheme set for a different purpose into it makes
+the new list look finished before it is started.
+
+`moveList` refuses a move into or out of the first seat, and that is not a limitation of the
+function: `readLists` puts the default list at the head of every read whether it is stored there or
+not, because it is the one list that always exists and the one every unqualified alert points at. A
+move written and silently undone on the next read would be worse than an arrow that is not drawn.
+
+«تحلیل» opens `ChartPanesScreen` with the list's markets in the reader's own order, through a new
+optional `compare` query on the panes route. A comparison **wins over the stored arrangement and
+writes nothing down**: a reader who asked to compare four markets is asking about those four now,
+and the panes they arranged by hand are still theirs the next time they split a chart.
+
+### A bar of five, and nothing lost behind it (U7)
+
+`AppDestination.EXPLORE` became `RASAD("home")` and `IDEAS` became `COMMUNITY("ideas")`. **The routes
+did not change**, which is the whole reason this is safe: every saved back stack, every deep link
+and every `menuRoute` still resolves to the same screen.
+
+Explore lost its seat because it was the markets screen with more on it, and after U5 the markets
+screen carries the same content under its own tabs. Its three rooms — news, the calendar, the heat
+map — are three pills above those tabs, and `NavigationDepthTest` now asserts that all four routes
+are still one layer from the chart rather than trusting the pills to be enough.
+
+رَصد takes the seat because the briefing is the thing no other terminal has. It left the bar in run
+Ω2 attached to a home screen that was a dashboard, and the briefing went down with it, which was the
+mistake.
+
+### A ticker that opens the story (U4)
+
+`MarketNewsTicker` takes plain values — an id, a title, a flag — rather than `feature:news`'s model,
+because the markets surface has no business depending on that module and a ticker that did would
+drag a reading page, an image loader and a body parser into a row that wants four fields (R6).
+
+The tap opens **that headline** rather than the news list. `NEWS_PATTERN` gained an optional `story`
+argument and `NewsScreen` an `initialStoryId`, seeded into the same state a press on a card sets and
+resolved against the feed exactly like any other id — so a story that has aged out of the two-hour
+window lands on the page's own «این خبر دیگر در دسترس نیست», which is the truth, rather than on a
+blank list.
+
+## The two narrowings, said plainly
+
+**U2 asks four questions, not five.** The brief's list includes notifications. This app asks for that
+permission at the moment it first has something to notify about, which is the ask people grant;
+asking on screen two, before a reader has a single alert, is the ask people decline. That is a
+reading of the line rather than an implementation of it, so the checklist row is ❌ for it.
+
+**U6 draws neither a rank nor a market cap on the watchlist row.** The market cap is `BLOCKED.md` §5
+again — the same missing supply figure. The rank is refused on arithmetic, and the arithmetic is in
+`WatchlistColumn.DEFAULT`'s own note: a 393 dp phone gives the row 361 usable points, the leading
+block spends 151 and the four default columns spend 208, which lands at 359. A 24 dp rank column and
+its 8 dp gap is 32 points that do not exist. What falls off the far end of a right-to-left row is the
+**left** end of the last column — the sign and the integer of the move — and that was a shipped bug
+once. It is not being reintroduced to print a number the row is already in.

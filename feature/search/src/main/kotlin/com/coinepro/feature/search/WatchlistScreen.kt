@@ -94,6 +94,8 @@ fun WatchlistScreen(
      * only the caller knows whether this build has an alert composer behind it.
      */
     onCreateAlert: ((String) -> Unit)? = null,
+    /** «تحلیل» — the list side by side. See `WatchlistPanel.onCompare`. */
+    onCompare: ((List<String>) -> Unit)? = null,
 ) {
     LaunchedEffect(controller) { controller.start() }
     val state by controller.state.collectAsStateWithLifecycle()
@@ -133,6 +135,7 @@ fun WatchlistScreen(
                 onOpenSymbol = onOpenSymbol,
                 watchlistSync = watchlistSync,
                 onCreateAlert = onCreateAlert,
+                onCompare = onCompare,
                 modifier = Modifier.weight(1f),
             )
         }

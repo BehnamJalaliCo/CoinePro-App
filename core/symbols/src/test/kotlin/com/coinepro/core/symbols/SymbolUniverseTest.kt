@@ -155,4 +155,45 @@ class SymbolUniverseTest {
         assertFalse(row.copy(status = SymbolStatus.DELISTED).tradable)
         assertFalse(row.copy(status = SymbolStatus.PAUSED).tradable)
     }
+
+    @Test
+    fun `the preferred quote keeps one listing per asset and never invents one`() {
+        // Two books of the same coin on one venue — the case a reader sees as one market and the
+        // exchange lists twice.
+        val usdt = SymbolUniverse.of(SymbolClassifier.classify("BTCUSDT"), venue = "LBank")
+        val usdc = SymbolUniverse.of(SymbolClassifier.classify("BTCUSDC"), venue = "LBank")
+        // And one asset that is not quoted in the preferred unit at all.
+        val gold = SymbolUniverse.of(SymbolClassifier.classify("XAUUSD"), venue = "CoinePro FX")
+
+        val kept = SymbolUniverse.preferring(listOf(usdt, usdc, gold), "USDT")
+        assertEquals(listOf("BTCUSDT", "XAUUSD"), kept.map { it.id })
+
+        // The other way round, to prove it is choosing rather than always keeping the first.
+        assertEquals(
+            listOf("BTCUSDC", "XAUUSD"),
+            SymbolUniverse.preferring(listOf(usdt, usdc, gold), "USDC").map { it.id },
+        )
+    }
+
+    @Test
+    fun `a quote nothing is listed in leaves every listing where it is`() {
+        val usdt = SymbolUniverse.of(SymbolClassifier.classify("BTCUSDT"), venue = "LBank")
+        val usdc = SymbolUniverse.of(SymbolClassifier.classify("BTCUSDC"), venue = "LBank")
+        // Rial, which has no market on either backend. A reader who chose it is saying which
+        // currency their head is in; they must not lose the list for it.
+        val kept = SymbolUniverse.preferring(listOf(usdt, usdc), "IRR")
+        assertEquals(listOf("BTCUSDT", "BTCUSDC"), kept.map { it.id })
+        // And «no opinion» is the whole list, untouched.
+        assertEquals(2, SymbolUniverse.preferring(listOf(usdt, usdc), null).size)
+        assertEquals(2, SymbolUniverse.preferring(listOf(usdt, usdc), "  ").size)
+    }
+
+    @Test
+    fun `the same ticker on two venues is two markets and both survive`() {
+        // Collapsing these would hide one venue's price behind another's, which is the opposite of
+        // what a markets list is for.
+        val lbank = SymbolUniverse.of(SymbolClassifier.classify("BTCUSDT"), venue = "LBank")
+        val other = SymbolUniverse.of(SymbolClassifier.classify("BTCUSDC"), venue = "CoinePro FX")
+        assertEquals(2, SymbolUniverse.preferring(listOf(lbank, other), "USDT").size)
+    }
 }

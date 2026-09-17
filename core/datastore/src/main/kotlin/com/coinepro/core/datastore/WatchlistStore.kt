@@ -597,6 +597,69 @@ class WatchlistStore(
     }
 
     /**
+     * Copies a list — its symbols, in its order — under a new name and a new id (run ΤΦΥ, U6).
+     *
+     * The **symbols only**, and that is the decision worth stating: the flags and the chosen
+     * columns stay with the original. A duplicate is nearly always the start of a variation — the
+     * same markets, about to be pruned or reordered — and carrying a colour scheme the reader set
+     * for a different purpose into it is a second list that looks finished before it is started.
+     *
+     * Returns the new list's id, or an empty string when there is nothing to copy or the reader is
+     * already at [MAX_LISTS]. It does not switch to it: the caller decides, exactly as with
+     * [create].
+     */
+    suspend fun duplicate(id: String, name: String): String {
+        val cleaned = cleanName(name) ?: return ""
+        var created = ""
+        dataStore.edit { preferences ->
+            val lists = readLists(preferences)
+            if (lists.size >= MAX_LISTS) return@edit
+            val source = lists.firstOrNull { it.id == id } ?: return@edit
+            val timestamp = now()
+            created = "list_" + UUID.randomUUID().toString().replace("-", "").take(12)
+            writeLists(
+                preferences,
+                lists + Watchlist(
+                    id = created,
+                    name = cleaned,
+                    symbols = source.symbols,
+                    createdAt = timestamp,
+                    updatedAt = timestamp,
+                ),
+            )
+        }
+        return created
+    }
+
+    /**
+     * Moves one list to another position in the picker (run ΤΦΥ, U6).
+     *
+     * The order of the lists is the reader's, exactly as the order of the symbols inside one is —
+     * and for the same reason: the list they open every morning belongs first, and which one that
+     * is, is not something this app can work out.
+     *
+     * **The default list keeps the first seat**, and that is not a limitation of this function — it
+     * is [readLists], which puts that list at the head of every read whether it is stored there or
+     * not, because it is the one list that always exists and the one every unqualified alert points
+     * at. So a move into or out of position zero is refused rather than written and silently undone
+     * on the next read; the caller does not offer the arrow. Everything after it reorders freely.
+     *
+     * Out-of-range indices are a no-op rather than an exception: the caller is a control that can
+     * ask for anything, and a storage layer throwing at the end of a gesture is a crash for a
+     * mistake nobody made.
+     */
+    suspend fun moveList(from: Int, to: Int) {
+        if (from == to) return
+        if (from == 0 || to == 0) return
+        editLists { lists ->
+            if (from !in lists.indices || to !in lists.indices) return@editLists null
+            val moved = lists.toMutableList()
+            moved.add(to, moved.removeAt(from))
+            moved
+        }
+    }
+
+    /**
      * Renames one list, keeping its id and everything pointing at it.
      *
      * The default list may be renamed like any other — it is only its *deletion* that would break
