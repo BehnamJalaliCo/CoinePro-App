@@ -631,4 +631,5 @@
     <string name="chart_explain_title">What the chart says</string>
     <string name="chart_explain_timeframes">Show on other timeframes</string>
     <string name="chart_explain_timeframes_none">No other bar length answered for this symbol.</string>
+    <string name="chart_share_founding">Founding member</string>
 </resources>

@@ -92,6 +92,8 @@ import com.coinepro.core.auth.sessionForShell
 import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.BrandConfig
+import com.coinepro.core.common.Entitlements
+import com.coinepro.core.common.FeatureFlags
 import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.chartevents.ChartEventController
 import com.coinepro.core.copytrade.CopyTradeController
@@ -109,6 +111,7 @@ import com.coinepro.core.datastore.DrawingSyncStore
 import com.coinepro.core.datastore.ChartEventPrefsStore
 import com.coinepro.core.datastore.TimeZonePrefStore
 import com.coinepro.core.datastore.IndicatorFavouritesStore
+import com.coinepro.core.datastore.RecentSearchStore
 import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
@@ -173,6 +176,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import com.coinepro.feature.chart.ChartSidePanel
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.feature.chart.R as ChartR
+import com.coinepro.feature.profile.R as ProfileR
 import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.CoineProWindowClass
@@ -217,6 +221,7 @@ import com.coinepro.core.marketdata.chartTicks
 import com.coinepro.core.marketdata.MarketDataState
 import com.coinepro.core.marketdata.MarketDataSymbols
 import com.coinepro.core.marketdata.MarketMood
+import com.coinepro.core.marketdata.BundledSymbolUniverseGateway
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketTickerStore
 import com.coinepro.core.marketdata.PriceFeedStatus
@@ -331,6 +336,7 @@ import com.coinepro.feature.portfolio.PortfolioScreen
 import com.coinepro.feature.profile.AvatarComposerSheet
 import com.coinepro.feature.profile.ProfileAction
 import com.coinepro.feature.profile.ProfileScreen
+import com.coinepro.feature.profile.foundingMemberFact
 import com.coinepro.feature.script.ScriptScreen
 import com.coinepro.feature.search.MarketPreviewCandles
 import com.coinepro.feature.search.MarketsScreen
@@ -872,6 +878,18 @@ private fun accentFor(route: String?): PageAccent = when (route) {
 
     else -> PageAccent.BRAND
 }
+/**
+ * Whether this build offers a way to **place a trade** on [platform] (F5).
+ *
+ * The crypto venue always does: LBank is where this app's prices come from and where its orders go.
+ * The forex side does only while `FeatureFlags.forexTrading` is on, and with it off every door to
+ * it — the broker links, the MetaTrader connection, copy trading, the connections screen itself —
+ * is **absent** rather than dimmed. A greyed row is an advertisement for something the reader
+ * cannot have.
+ */
+private fun tradingOffered(platform: MarketPlatform): Boolean =
+    platform != MarketPlatform.COINEPRO_FX || FeatureFlags.forexTrading
+
 private fun lessonRoute(slug: String) = "academy/lesson/" + Uri.encode(slug)
 
 @Composable
@@ -927,6 +945,7 @@ fun CoineProApp(
     chartEventPrefsStore: ChartEventPrefsStore,
     intervalFavouritesStore: IntervalFavouritesStore,
     indicatorFavouritesStore: IndicatorFavouritesStore,
+    recentSearchStore: RecentSearchStore,
     /**
      * How the chart screen itself is arranged: the split with the watchlist, and what the two
      * panes tie together. Without it a drag on the divider is forgotten the moment the chart is
@@ -1107,6 +1126,10 @@ fun CoineProApp(
     // Read here rather than inside the shell, because both branches need it: a guest has a profile
     // in this app and it is the same profile they keep when they sign in.
     val profile by profileStore.profile.collectAsStateWithLifecycle(initialValue = StoredProfile())
+    // **The founding mark, written once** (F10). Here rather than on a screen, because it records
+    // *when somebody arrived*, not what they looked at — and because the store refuses to write it
+    // a second time, running it on every composition of the shell is free.
+    LaunchedEffect(Unit) { profileStore.noteFoundingMember(Entitlements.foundingMember) }
 
     // Sign-in, sign-out and the platform the session belongs to. No email, no token, no name: the
     // question a log answers here is *whether* there is a session and on which backend, and the
@@ -1439,6 +1462,7 @@ fun CoineProApp(
                 chartEventPrefsStore = chartEventPrefsStore,
                 intervalFavouritesStore = intervalFavouritesStore,
                 indicatorFavouritesStore = indicatorFavouritesStore,
+                recentSearchStore = recentSearchStore,
                 chartWorkspaceStore = chartWorkspaceStore,
                 arenaStore = arenaStore,
                 portfolioController = portfolioControllers.getValue(activePlatform),
@@ -1609,6 +1633,9 @@ fun CoineProApp(
                             gateway = guestCatalog,
                             scope = scope,
                             liveQuotes = guestFeed.quotes,
+                            // No authenticated universe behind a guest, and no reason for their
+                            // markets tab to be a different screen because of it (F1).
+                            universe = BundledSymbolUniverseGateway,
                         )
                     }
                     // The guest's own screener, on the guest's own catalogue and candles. The
@@ -1670,6 +1697,7 @@ fun CoineProApp(
                         chartEventPrefsStore = chartEventPrefsStore,
                         intervalFavouritesStore = intervalFavouritesStore,
                 indicatorFavouritesStore = indicatorFavouritesStore,
+                recentSearchStore = recentSearchStore,
                         chartWorkspaceStore = chartWorkspaceStore,
                         arenaStore = arenaStore,
                         portfolioController = portfolioControllers.getValue(activePlatform),
@@ -1939,6 +1967,7 @@ private fun MainShell(
     chartEventPrefsStore: ChartEventPrefsStore,
     intervalFavouritesStore: IntervalFavouritesStore,
     indicatorFavouritesStore: IndicatorFavouritesStore,
+    recentSearchStore: RecentSearchStore,
     /**
      * How the chart screen itself is arranged: the split with the watchlist, and what the two
      * panes tie together. Without it a drag on the divider is forgotten the moment the chart is
@@ -2093,11 +2122,12 @@ private fun MainShell(
     activePlatform: MarketPlatform,
     onSelectPlatform: (MarketPlatform) -> Unit,
 ) {
-    // The platform's live universe, classified once per feed and filtered to the symbols the app
-    // has artwork for. Three screens take it: the symbol fields on the journal and the paper
-    // ticket, and the chart's wheel when the watchlist is too short to turn through.
+    // The platform's live universe, classified once per feed. Three screens take it: the symbol
+    // fields on the journal and the paper ticket, and the chart's wheel when the watchlist is too
+    // short to turn through. `lists` rather than `covers` since F1 — a market with no mark is drawn
+    // as a monogram now, not hidden.
     val catalogue: List<SymbolMeta> = remember(marketState.quotes.keys) {
-        SymbolClassifier.classifyAll(marketState.quotes.keys.toList()).filter(SymbolArtwork::covers)
+        SymbolClassifier.classifyAll(marketState.quotes.keys.toList()).filter(SymbolArtwork::lists)
     }
     // The watchlist this platform can show. One list is stored for both platforms — a star is a
     // star — but a forex tab listing BTCUSDT rows that never quote, and a crypto chart tab
@@ -2111,7 +2141,7 @@ private fun MainShell(
     // Item 2: the wheel is always there. The watchlist when the reader has starred two or more
     // markets; the platform's popular markets in the catalogue's own browse order otherwise.
     val wheelSymbols: List<String> = remember(watchlist, catalogue) {
-        if (watchlist.count(SymbolArtwork::covers) >= 2) {
+        if (watchlist.count(SymbolArtwork::lists) >= 2) {
             watchlist
         } else {
             SymbolSearch.search(catalogue, "").take(WHEEL_FALLBACK_SIZE).map { it.meta.symbol }
@@ -2975,6 +3005,10 @@ private fun MainShell(
             val arenaShareDiscipline = stringResource(ChartR.string.arena_share_discipline)
             val arenaShareProfit = stringResource(ChartR.string.arena_share_profit)
             val arenaShareRtl = !inEnglish()
+            // The founding mark, for the foot of the card (F10). Null for a reader without one, so
+            // the card is exactly the card it was.
+            val arenaShareBadge = stringResource(ProfileR.string.profile_standing_founding_value)
+                .takeIf { profile.foundingMember }
             val arenaHistory by arenaStore.results.collectAsStateWithLifecycle(initialValue = emptyList())
             var arenaSession by remember { mutableStateOf<ArenaSession?>(null) }
             var arenaPending by remember { mutableStateOf<ArenaChallenge?>(null) }
@@ -3090,6 +3124,7 @@ private fun MainShell(
                     }
             }
             ChartScreen(
+                foundingMember = profile.foundingMember,
                 sidePanels = sidePanels,
                 // The arrow the app bar used to hold. The bar is not drawn over this route any
                 // more — see `showTopBar` — and this is the same `popBackStack` it called, handed
@@ -3183,6 +3218,7 @@ private fun MainShell(
                                     String.format(arenaShareDiscipline, result.discipline),
                                     String.format(arenaShareProfit, result.profit),
                                 ),
+                                badge = arenaShareBadge,
                             ),
                         )
                         ChartShare.share(shellContext, card, activeChartSymbol)
@@ -3327,7 +3363,10 @@ private fun MainShell(
                 } else {
                     null
                 },
-                onOpenCopyTrading = if (activePlatform == MarketPlatform.COINEPRO_FX) {
+                // …and only while this build has a forex account to copy into (F5).
+                onOpenCopyTrading = if (activePlatform == MarketPlatform.COINEPRO_FX &&
+                    FeatureFlags.forexTrading
+                ) {
                     { navController.navigate(COPY_TRADE_ROUTE) }
                 } else {
                     null
@@ -3389,6 +3428,7 @@ private fun MainShell(
                 controller = communityController,
                 onOpenThread = { navController.navigate(communityThreadRoute(it)) },
                 embedded = embedded,
+                foundingMember = profile.foundingMember,
                 draft = scriptToShare,
                 onDraftConsumed = { scriptToShare = null },
             )
@@ -3633,6 +3673,9 @@ private fun MainShell(
                     accountName = accountName,
                     email = accountEmail,
                     guest = guest,
+                    // The founding mark, and nothing else on this card yet: the rest of a reader's
+                    // standing is the server's and this build asks for none of it here (F10).
+                    standing = listOfNotNull(foundingMemberFact(profile.foundingMember)),
                     planLabel = subscription?.planLabel,
                     platformLabel = stringResource(activePlatform.labelRes()),
                     // Three figures, and every one of them is about this reader: what they chose
@@ -4134,6 +4177,9 @@ private fun MainShell(
                             if (!assistantAvailable) add("ai-assistant")
                             if (!aiSignalsAvailable) add("ai")
                             if (!terminalController.isConfigured) add("terminal")
+                            // The connections screen is a broker or an exchange login, and on a
+                            // platform this build offers no way to trade on there is neither (F5).
+                            if (!tradingOffered(activePlatform)) add("connections")
                         },
                     ),
                     onOpenSurface = { id ->
@@ -4146,6 +4192,7 @@ private fun MainShell(
                     previewCandles = previewCandles,
                     onMilestoneAlert = onMilestoneAlertArmed,
                     onCreateAlert = { symbol, price -> alertFromChart = symbol to price },
+                    recentSearches = recentSearchStore,
                 )
             }
             sharedComposable(
@@ -4412,7 +4459,13 @@ private fun MainShell(
                     platform = activePlatform,
                     // Null for a guest, on the three that read a signed-in route. Everything else
                     // on this screen is local to the phone and opens for anybody.
-                    onOpenConnections = if (guest) null else ({ navController.navigate(CONNECTIONS_ROUTE) }),
+                    // Null for a guest, and null on a platform this build offers no way to trade
+                    // on (F5) — the row is absent rather than opening a screen with nothing on it.
+                    onOpenConnections = if (guest || !tradingOffered(activePlatform)) {
+                        null
+                    } else {
+                        ({ navController.navigate(CONNECTIONS_ROUTE) })
+                    },
                     onOpenNews = { navController.navigate(NEWS_ROUTE) },
                     // Open to a guest now. The week's economic calendar is public information and
                     // the app reads it from the published file when the server sends nothing — so
@@ -4453,7 +4506,11 @@ private fun MainShell(
             composable(PORTFOLIO_ROUTE) {
                 PortfolioScreen(
                     controller = portfolioController,
-                    onOpenConnections = { navController.navigate(CONNECTIONS_ROUTE) },
+                    onOpenConnections = if (tradingOffered(activePlatform)) {
+                        { navController.navigate(CONNECTIONS_ROUTE) }
+                    } else {
+                        null
+                    },
                     onOpenReport = { navController.navigate(PORTFOLIO_REPORT_ROUTE) },
                 )
             }
@@ -4477,6 +4534,7 @@ private fun MainShell(
                             if (!terminalController.isConfigured) add("terminal")
                             if (!hasAcademy) add("academy")
                             if (!accountDeletionAvailable) add("delete")
+                            if (!tradingOffered(activePlatform)) add("connections")
                         },
                     ),
                     onOpen = { id -> navController.navigate(menuRoute(id, activePlatform, watchlist)) },

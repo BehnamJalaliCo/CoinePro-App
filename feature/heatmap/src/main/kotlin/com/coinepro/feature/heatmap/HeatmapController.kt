@@ -212,7 +212,7 @@ class HeatmapController(
         // candle route is the only source of a price at all.
         val pending = search.state.value.results
             .map(MarketSearchRow::meta)
-            .filter(SymbolArtwork::covers)
+            .filter(SymbolArtwork::lists)
             .sortedBy(SymbolRanking::rank)
             .take(RESOLUTION_BUDGET)
             .map(SymbolMeta::symbol)

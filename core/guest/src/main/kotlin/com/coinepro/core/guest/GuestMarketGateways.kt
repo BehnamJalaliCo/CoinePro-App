@@ -48,7 +48,7 @@ class GuestMarketCatalogGateway(
         // The same filter the catalogue below applies, on the same list. These two halves used to
         // disagree — `markets` was filtered and `quotes` was the raw feed — so a caller reading the
         // quotes got symbols the catalogue had already refused.
-        val quotes = prices.quotes.filter { SymbolArtwork.covers(it.symbol) }.associate { quote ->
+        val quotes = prices.quotes.filter { SymbolArtwork.lists(it.symbol) }.associate { quote ->
             quote.symbol to MarketQuote(
                 instrument = Instrument(
                     symbol = quote.symbol,
@@ -71,7 +71,7 @@ class GuestMarketCatalogGateway(
                 // The same rule the signed-in catalogue follows, and it has to be the same rule: a
                 // market with no artwork is not listed. A guest seeing lettered grey discs beside
                 // real logos is the first impression this app gets, once.
-                .filter(SymbolArtwork::covers),
+                .filter(SymbolArtwork::lists),
             quotes = quotes,
             serverTimeEpochMillis = prices.ageMillis?.let { at - it },
         )

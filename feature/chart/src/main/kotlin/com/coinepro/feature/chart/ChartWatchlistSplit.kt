@@ -76,7 +76,7 @@ internal fun WatchlistTickerRow(
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shown = remember(symbols) { symbols.filter { SymbolArtwork.covers(it) } }
+    val shown = remember(symbols) { symbols.filter { SymbolArtwork.lists(it) } }
     if (shown.isEmpty()) return
     val listState = rememberLazyListState()
     val haptics = rememberCoineProHaptics()

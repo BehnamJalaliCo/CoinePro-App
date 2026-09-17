@@ -70,7 +70,7 @@ class NetworkMarketCatalogGateway private constructor(
                 // a grey disc with a "D" in it — does not read as "this is DOGE" beside forty real
                 // logos; it reads as a broken image, and a screenful of them reads as a broken app.
                 // Leaving out the long tail nobody asked for costs less than presenting it badly.
-                .filter(SymbolArtwork::covers),
+                .filter(SymbolArtwork::lists),
             quotes = quotes,
             serverTimeEpochMillis = response.serverTimeMs,
         )

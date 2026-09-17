@@ -144,6 +144,13 @@ fun CommunityScreen(
      */
     embedded: Boolean = false,
     /**
+     * Whether this reader carries the founding-member mark (F10).
+     *
+     * Drawn on their **own** posts only, because the mark is stored on this phone and so is known
+     * about exactly one person. See `CommunityPostCard.founding`.
+     */
+    foundingMember: Boolean = false,
+    /**
      * A post the reader arrived here to write — today, a script they shared out of the studio
      * (run Σ, S3 item D).
      *
@@ -358,6 +365,8 @@ fun CommunityScreen(
                 )
 
                 CommunityMode.POSTS -> PostList(
+                    founding = foundingMember,
+                    mine = state.displayName,
                     // Handed the controller, not a picture: a card fetches its own when it scrolls
                     // into view, because a feed that loaded twenty photographs to show three would
                     // spend a reader's data on cards they never reach. See `rememberPostImage`.
@@ -487,6 +496,9 @@ private fun PostList(
     onLoadMore: () -> Unit,
     onReport: (Long) -> Unit,
     onCopy: (CommunityPost) -> Unit,
+    /** Whether the reader carries the founding mark, and the name their own posts are under. */
+    founding: Boolean = false,
+    mine: String? = null,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -506,6 +518,7 @@ private fun PostList(
                 onLike = { onLike(post.id) },
                 onReport = { onReport(post.id) },
                 onCopy = { onCopy(post) },
+                founding = founding && mine != null && post.author == mine,
             )
         }
         // An explicit control rather than a scroll trigger. The route pages at twenty with no total

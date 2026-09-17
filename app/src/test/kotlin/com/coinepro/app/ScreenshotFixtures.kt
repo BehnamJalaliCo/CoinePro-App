@@ -1620,6 +1620,18 @@ object ScreenshotFixtures {
     fun alertSymbols(): List<String> =
         listOf("BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD", "EURUSD", "GBPUSD", "XAGUSD", "USDJPY")
 
+    /**
+     * A venue that quotes nothing at all.
+     *
+     * The case F1 is about, and it is not hypothetical: CoinePro-FX answers `ws/snapshot` with
+     * nineteen symbols and `v1/symbols` with its own web page. A screen handed this and a universe
+     * gateway draws the bundled table, which is what a reader on that platform actually sees.
+     */
+    fun emptyCatalog(): MarketCatalogGateway = object : MarketCatalogGateway {
+        override suspend fun load(): MarketCatalog =
+            MarketCatalog(markets = emptyList(), quotes = emptyMap(), serverTimeEpochMillis = null)
+    }
+
     fun searchCatalog(): MarketCatalogGateway {
         val symbols = listOf(
             "AAVEUSDT", "ADAUSDT", "ALGOUSDT", "APTUSDT", "ARBUSDT", "ATOMUSDT", "AVAXUSDT",
@@ -1642,11 +1654,11 @@ object ScreenshotFixtures {
         return object : MarketCatalogGateway {
             override suspend fun load(): MarketCatalog {
                 // The same filter the real gateway applies, and it is here rather than assumed
-                // because the render is what the visual review looks at. Without it the sheet
-                // showed US30, GER40, UK100 and JPN225 as lettered grey discs — a state the app
-                // cannot produce, since `MarketCatalogGateway` drops anything without artwork —
-                // and a screenshot that shows something the app cannot do is not a gate.
-                val metas = symbols.map(SymbolClassifier::classify).filter(SymbolArtwork::covers)
+                // because the render is what the visual review looks at: a screenshot that shows
+                // something the app cannot do is not a gate. Since F1 that filter passes everything
+                // — a market with no mark is drawn as a monogram — so what this now pins is that
+                // the fixture and `MarketCatalogGateway` still ask the same question.
+                val metas = symbols.map(SymbolClassifier::classify).filter(SymbolArtwork::lists)
                 return MarketCatalog(
                     markets = metas,
                     quotes = metas.mapNotNull { meta ->

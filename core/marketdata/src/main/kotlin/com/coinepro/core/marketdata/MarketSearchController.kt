@@ -9,6 +9,7 @@ import com.coinepro.core.symbols.SymbolCategory
 import com.coinepro.core.symbols.SymbolMatch
 import com.coinepro.core.symbols.SymbolMeta
 import com.coinepro.core.symbols.SymbolSearch
+import com.coinepro.core.symbols.UniverseSymbol
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -26,7 +27,21 @@ data class MarketSearchRow(
     val field: MatchField,
     /** The span of [SymbolMeta.symbol] or [SymbolMeta.description] that matched, when contiguous. */
     val highlight: IntRange?,
-)
+    /**
+     * The listing this row came from — venue, turnover, tick size, status.
+     *
+     * Null for a row the snapshot produced and the universe never named, which on a venue with no
+     * `v1/symbols` is most of them. A screen reads it for the filter sheet's venue and turnover
+     * columns and must treat null as «not said», never as zero: see `SymbolUniverseGateway`.
+     */
+    val listing: UniverseSymbol? = null,
+) {
+    /** What the row is worth in a day, where anything said so. */
+    val turnover24h: Double? get() = listing?.turnover24h
+
+    /** Which venue quotes it, or null where nothing named one. */
+    val venue: String? get() = listing?.venue
+}
 
 data class MarketSearchState(
     val query: String = "",
@@ -100,12 +115,27 @@ class MarketSearchController(
      * simply do not tick.
      */
     private val liveQuotes: Flow<Map<String, MarketQuote>>? = null,
+    /**
+     * The whole universe, where this build can ask for one (F1).
+     *
+     * The catalogue answers «what is quoted right now», which on CoinePro-FX is nineteen symbols.
+     * The universe answers «what markets are there», and the difference is the difference between a
+     * markets tab and a watchlist. Both are loaded; the universe supplies the rows the catalogue
+     * never mentioned and the catalogue supplies their prices.
+     *
+     * Null is a real answer — the guest shell has no gateway to hand — and this class then behaves
+     * exactly as it did before the universe existed.
+     */
+    private val universe: SymbolUniverseGateway? = null,
 ) {
     private val _state = MutableStateFlow(MarketSearchState())
     val state: StateFlow<MarketSearchState> = _state.asStateFlow()
 
     private var catalog: List<SymbolMeta> = emptyList()
     private var catalogQuotes: Map<String, MarketQuote> = emptyMap()
+
+    /** The universe by ticker, so a row can be given its listing without a scan. */
+    private var listings: Map<String, UniverseSymbol> = emptyMap()
     private var loadJob: Job? = null
     private var queryJob: Job? = null
     private var liveJob: Job? = null
@@ -157,9 +187,14 @@ class MarketSearchController(
         loadJob?.cancel()
         _state.update { it.copy(loading = true, error = null) }
         loadJob = scope.launch {
+            // The universe first, and its failure is not this load's failure: a markets tab with
+            // the bundled three hundred in it and no prices is a screen a reader can use, and a
+            // markets tab that refuses to draw because one path 404s is not.
+            val listed = universe?.let { source -> runCatching { source.load() }.getOrNull() }.orEmpty()
+            listings = listed.associateBy { it.id.uppercase() }
             runCatching { gateway.load() }
                 .onSuccess { loaded ->
-                    catalog = loaded.markets
+                    catalog = withUniverse(loaded.markets, listed)
                     catalogQuotes = loaded.quotes
                     val published = loaded.quotes.mapKeys { (ticker, _) -> ticker.uppercase() }
                     _state.update {
@@ -173,11 +208,38 @@ class MarketSearchController(
                     recompute()
                 }
                 .onFailure { failure ->
+                    // A universe with no prices is still a markets list. The snapshot failing used
+                    // to empty the screen; now it empties the *price column*, which is the honest
+                    // reading of what actually went wrong.
+                    if (listed.isNotEmpty()) {
+                        catalog = withUniverse(emptyList(), listed)
+                        _state.update {
+                            it.copy(loading = false, error = null, catalogSize = catalog.size)
+                        }
+                        recompute()
+                        return@launch
+                    }
                     _state.update {
                         it.copy(loading = false, error = failure.toUiMessage(MessageKey.MARKETS_UNAVAILABLE))
                     }
                 }
         }
+    }
+
+    /**
+     * The snapshot's markets, plus every market the universe named that it did not.
+     *
+     * The snapshot's own row wins where both have one: it is what this venue is quoting today and
+     * its classification has already been through the app's own aliases. What the universe adds is
+     * the long tail — on a venue answering with nineteen symbols, that is the entire markets tab.
+     */
+    private fun withUniverse(
+        quoted: List<SymbolMeta>,
+        listed: List<UniverseSymbol>,
+    ): List<SymbolMeta> {
+        if (listed.isEmpty()) return quoted
+        val known = quoted.mapTo(HashSet(quoted.size)) { it.symbol.uppercase() }
+        return quoted + listed.filterNot { it.id.uppercase() in known }.map { it.meta }
     }
 
     fun setQuery(query: String) {
@@ -214,6 +276,7 @@ class MarketSearchController(
         quote = quoteFor(match.meta),
         field = match.field,
         highlight = match.range,
+        listing = listings[match.meta.symbol.uppercase()],
     )
 
     /**
@@ -228,10 +291,13 @@ class MarketSearchController(
 
     private companion object {
         /**
-         * Long enough to skip the intermediate states of a fast typist, short enough that the list
-         * still feels attached to the keyboard. Below about 50ms it re-ranks on every key for no
-         * benefit; above about 150ms the results visibly lag the text.
+         * The brief's number (F3), and the catalogue it now ranks is why it went up from eighty.
+         *
+         * Eighty was measured against a few hundred rows. Since F1 this searches the whole universe
+         * — the venue's list *plus* the bundled three hundred, thousands of rows on LBank — and a
+         * re-rank of that on every keystroke of a fast typist is work thrown away before anybody
+         * sees it. Two hundred milliseconds is one word of typing, not one letter.
          */
-        const val DEBOUNCE_MS = 80L
+        const val DEBOUNCE_MS = 200L
     }
 }

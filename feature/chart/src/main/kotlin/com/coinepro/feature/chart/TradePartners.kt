@@ -1,6 +1,7 @@
 package com.coinepro.feature.chart
 
 import androidx.annotation.DrawableRes
+import com.coinepro.core.common.FeatureFlags
 import com.coinepro.core.designsystem.R as DesignR
 
 /**
@@ -141,6 +142,23 @@ internal val TRADE_PARTNERS: List<TradePartner> = listOf(
         referralParameter = "inviteCode",
     ),
 )
+
+/**
+ * The partners this build actually offers (F5).
+ *
+ * With `FeatureFlags.forexTrading` off, the introducing-broker account and the second exchange are
+ * **absent** rather than dimmed: this build's position is «خانه‌ی تحلیل کریپتو — با یک نگاه به طلا و
+ * دلار», and an «open a forex account» card under that sentence is the app arguing with itself.
+ *
+ * LBank stays either way. It is where this app's crypto prices come from and where its crypto
+ * orders go, so it is not a partner list entry that happens to be on — it is the venue (F6).
+ *
+ * A function rather than a filtered constant because the flag is written once at process start and
+ * a `val` would capture whatever it was when this file was first touched, which in a test is the
+ * other value.
+ */
+internal fun tradePartners(): List<TradePartner> =
+    if (FeatureFlags.forexTrading) TRADE_PARTNERS else TRADE_PARTNERS.filter { it.id == "lbank" }
 
 /**
  * The owner's codes, in one place so supplying them is three edits and no thinking.

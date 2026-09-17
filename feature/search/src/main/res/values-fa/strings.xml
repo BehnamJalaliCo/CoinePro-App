@@ -123,4 +123,25 @@
     <string name="preview_reading">%1$s · قدرت %2$s · نوسان %3$s</string>
     <string name="markets_category_empty">این پلتفرم بازار «%1$s» ندارد.</string>
     <string name="markets_none">هنوز بازاری در فهرست نیست.</string>
+    <string name="search_recent">اخیر</string>
+    <string name="search_recent_clear">پاک کردن</string>
+    <string name="markets_filter_title">فیلتر بازارها</string>
+    <string name="markets_filter">فیلتر</string>
+    <string name="markets_filter_type">نوع بازار</string>
+    <string name="markets_filter_venue">محل معامله</string>
+    <string name="markets_filter_change">تغییر ۲۴ ساعت</string>
+    <string name="markets_filter_turnover">ارزش معاملات</string>
+    <string name="markets_filter_clear">پاک کردن همه</string>
+    <string name="markets_filter_up_5">رشد ۵٪ به بالا</string>
+    <string name="markets_filter_up">صعودی</string>
+    <string name="markets_filter_down">نزولی</string>
+    <string name="markets_filter_down_5">افت ۵٪ به بالا</string>
+    <string name="markets_filter_turnover_1m">بالای ۱ میلیون دلار</string>
+    <string name="markets_filter_turnover_10m">بالای ۱۰ میلیون دلار</string>
+    <string name="markets_filter_turnover_100m">بالای ۱۰۰ میلیون دلار</string>
+    <string name="markets_filter_type_index">شاخص‌ها</string>
+    <string name="markets_filter_type_energy">انرژی</string>
+    <string name="markets_filter_type_other">سایر</string>
+    <string name="markets_filter_empty">بازاری با این فیلتر پیدا نشد.</string>
+    <string name="markets_count">%1$s بازار</string>
 </resources>

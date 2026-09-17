@@ -73,6 +73,7 @@ import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.PaperLedgerPrefStore
 import com.coinepro.core.datastore.ProfileStore
+import com.coinepro.core.datastore.RecentSearchStore
 import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.datastore.TimeZonePrefStore
 import com.coinepro.core.datastore.UserPreferencesStore
@@ -110,6 +111,8 @@ import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketSnapshotGateway
 import com.coinepro.core.marketdata.NetworkAcademyTokenStore
 import com.coinepro.core.marketdata.NetworkMarketCatalogGateway
+import com.coinepro.core.marketdata.NetworkSymbolUniverseGateway
+import com.coinepro.core.marketdata.SymbolUniverseGateway
 import com.coinepro.core.marketdata.NetworkMarketTickerGateway
 import com.coinepro.core.marketdata.NetworkMarketSnapshotGateway
 import com.coinepro.core.marketdata.TradeYarCandleGateway
@@ -651,6 +654,12 @@ object AppModule {
     @Singleton
     fun indicatorFavouritesStore(dataStore: DataStore<Preferences>): IndicatorFavouritesStore =
         IndicatorFavouritesStore(dataStore)
+
+    /** The markets this reader opened from search before — the strip above an empty field (F3). */
+    @Provides
+    @Singleton
+    fun recentSearchStore(dataStore: DataStore<Preferences>): RecentSearchStore =
+        RecentSearchStore(dataStore)
 
     /**
      * Which teaching banners the reader has already read and put away.
@@ -1645,6 +1654,31 @@ object AppModule {
         NetworkMarketCatalogGateway.create(retrofit, MarketPlatform.TRADEYAR)
 
     /**
+     * The universe behind the catalogue — every market a venue lists, not only what it is quoting.
+     *
+     * It takes the catalogue gateway as its own fallback rather than being tried beside it, so the
+     * ordering — `v1/symbols`, then the snapshot, then the bundled table — is stated once, in
+     * `NetworkSymbolUniverseGateway`, instead of at every call site.
+     */
+    @Provides
+    @Singleton
+    @ForexPlatform
+    fun forexSymbolUniverseGateway(
+        @ForexPlatform retrofit: Retrofit,
+        @ForexPlatform catalogue: MarketCatalogGateway,
+    ): SymbolUniverseGateway =
+        NetworkSymbolUniverseGateway.create(retrofit, catalogue, MarketPlatform.COINEPRO_FX)
+
+    @Provides
+    @Singleton
+    @CryptoPlatform
+    fun cryptoSymbolUniverseGateway(
+        @CryptoPlatform retrofit: Retrofit,
+        @CryptoPlatform catalogue: MarketCatalogGateway,
+    ): SymbolUniverseGateway =
+        NetworkSymbolUniverseGateway.create(retrofit, catalogue, MarketPlatform.TRADEYAR)
+
+    /**
      * The day's figures, per platform — and both platforms have them now.
      *
      * This used to hand back an `UnsupportedMarketTickerGateway` for CoinePro-FX, because that
@@ -1713,20 +1747,30 @@ object AppModule {
     @ForexPlatform
     fun forexMarketSearchController(
         @ForexPlatform gateway: MarketCatalogGateway,
+        @ForexPlatform universe: SymbolUniverseGateway,
         @ForexPlatform feed: MarketDataController,
         scope: CoroutineScope,
-    ): MarketSearchController =
-        MarketSearchController(gateway, scope, feed.state.map { it.quotes }.distinctUntilChanged())
+    ): MarketSearchController = MarketSearchController(
+        gateway = gateway,
+        scope = scope,
+        liveQuotes = feed.state.map { it.quotes }.distinctUntilChanged(),
+        universe = universe,
+    )
 
     @Provides
     @Singleton
     @CryptoPlatform
     fun cryptoMarketSearchController(
         @CryptoPlatform gateway: MarketCatalogGateway,
+        @CryptoPlatform universe: SymbolUniverseGateway,
         @CryptoPlatform feed: MarketDataController,
         scope: CoroutineScope,
-    ): MarketSearchController =
-        MarketSearchController(gateway, scope, feed.state.map { it.quotes }.distinctUntilChanged())
+    ): MarketSearchController = MarketSearchController(
+        gateway = gateway,
+        scope = scope,
+        liveQuotes = feed.state.map { it.quotes }.distinctUntilChanged(),
+        universe = universe,
+    )
 
     @Provides
     @Singleton

@@ -441,7 +441,7 @@ internal fun WireQuoteDto.toDomain(nowMs: Long, platform: MarketPlatform): Marke
     //
     // This is the *market list* path. A position a reader actually holds must still be shown
     // whatever its logo, and the portfolio screen will not come through here.
-    if (!SymbolArtwork.covers(normalizedSymbol)) return null
+    if (!SymbolArtwork.lists(normalizedSymbol)) return null
     val normalizedPrice = price?.takeIf { it > 0 } ?: run {
         val normalizedBid = bid ?: return null
         val normalizedAsk = ask ?: return null

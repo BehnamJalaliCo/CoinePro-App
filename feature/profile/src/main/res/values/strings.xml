@@ -74,7 +74,7 @@
     <string name="profile_standing_verification_submitted">Submitted %1$s</string>
     <string name="profile_standing_verification_level">Level %1$s</string>
     <string name="profile_standing_plan">Plan</string>
-    <string name="profile_standing_plan_vip">VIP plan</string>
+    <string name="profile_standing_plan_vip">Plan</string>
     <string name="profile_standing_plan_expires">Until %1$s</string>
     <string name="profile_standing_plan_expires_in">Until %1$s, %2$s days left</string>
     <string name="profile_standing_email">Email</string>
@@ -116,4 +116,7 @@
     <string name="appearance_theme_system_short">System</string>
     <string name="appearance_theme_light_short">Light</string>
     <string name="appearance_theme_dark_short">Dark</string>
+    <string name="profile_standing_founding">Member badge</string>
+    <string name="profile_standing_founding_value">Founding member</string>
+    <string name="profile_standing_founding_detail">Here from day one</string>
 </resources>

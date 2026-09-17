@@ -122,4 +122,25 @@
     <string name="preview_reading">%1$s · strength %2$s · swing %3$s</string>
     <string name="markets_category_empty">This platform carries no %1$s markets.</string>
     <string name="markets_none">No markets in the list yet.</string>
+    <string name="search_recent">Recent</string>
+    <string name="search_recent_clear">Clear</string>
+    <string name="markets_filter_title">Filter markets</string>
+    <string name="markets_filter">Filter</string>
+    <string name="markets_filter_type">Market type</string>
+    <string name="markets_filter_venue">Traded on</string>
+    <string name="markets_filter_change">24h change</string>
+    <string name="markets_filter_turnover">Turnover</string>
+    <string name="markets_filter_clear">Clear all</string>
+    <string name="markets_filter_up_5">Up 5%+</string>
+    <string name="markets_filter_up">Up</string>
+    <string name="markets_filter_down">Down</string>
+    <string name="markets_filter_down_5">Down 5%+</string>
+    <string name="markets_filter_turnover_1m">Over $1M</string>
+    <string name="markets_filter_turnover_10m">Over $10M</string>
+    <string name="markets_filter_turnover_100m">Over $100M</string>
+    <string name="markets_filter_type_index">Indices</string>
+    <string name="markets_filter_type_energy">Energy</string>
+    <string name="markets_filter_type_other">Other</string>
+    <string name="markets_filter_empty">No market matches this filter.</string>
+    <string name="markets_count">%1$s markets</string>
 </resources>

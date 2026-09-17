@@ -467,12 +467,23 @@ fun CoineProAssetToken(
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
+            // A three-letter monogram at the one-letter size overflows a 42 dp disc, and a disc with
+            // a clipped ticker in it is worse than one with a small one. The step down is by the
+            // label's own length rather than by a measurement, because there are exactly two cases.
+            style = if (label.length >= WIDE_MONOGRAM) {
+                MaterialTheme.typography.labelSmall
+            } else {
+                MaterialTheme.typography.labelMedium
+            },
             color = tint,
             textAlign = TextAlign.Center,
+            maxLines = 1,
         )
     }
 }
+
+/** From this many characters a monogram takes the smaller size. See [CoineProAssetToken]. */
+private const val WIDE_MONOGRAM = 3
 
 /**
  * The assistant's mark: the brand metal turned once around a circle.

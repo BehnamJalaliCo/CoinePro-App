@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import java.util.Locale
 
 /**
  * Brand palette, sampled from the CoinePro mark, plus the theme-dependent colours read against it.
@@ -188,8 +189,14 @@ object CoineProColors {
      * The asset's own colour, for the round token beside its name.
      *
      * These are the assets' published brand colours, so a reader who knows them from any other
-     * exchange finds the same row here. Anything unrecognised falls back to neutral rather than
-     * being assigned a colour, because a colour nobody chose still looks like it means something.
+     * exchange finds the same row here. Anything unrecognised gets [monogramHue] — a colour derived
+     * from its own ticker — rather than the neutral grey this used to return.
+     *
+     * The grey was right while the catalogue hid every market it had no artwork for. It is wrong now
+     * that it lists them (F1): grey is the colour of «no answer», and a screenful of identical grey
+     * discs is the broken-image problem the artwork filter existed to prevent, arriving by the other
+     * door. A hue that is a function of the ticker at least tells two neighbouring rows apart and is
+     * the same on every launch, which is what a reader scanning a list actually uses a mark for.
      *
      * In the light theme each one is pulled toward black before use: several of them — Solana's
      * green above all — are chosen to glow on a dark ground and vanish on white.
@@ -199,7 +206,7 @@ object CoineProColors {
     @Composable
     @ReadOnlyComposable
     fun assetTint(symbol: String): Color {
-        val brand = when (symbol.removeSuffix("USDT").removeSuffix("USD")) {
+        val brand = when (val base = symbol.removeSuffix("USDT").removeSuffix("USD")) {
             "XAU" -> InstrumentGold
             "XAG" -> InstrumentSilver
             "BTC" -> Color(0xFFF7931A)
@@ -210,9 +217,57 @@ object CoineProColors {
             "ADA" -> Color(0xFF4C7BEF)
             "TON" -> Color(0xFF35A9EA)
             "DOGE" -> Color(0xFFC2A633)
-            else -> return LocalCoineProPalette.current.textSecondary
+            else -> monogramHue(base)
         }
         val shift = LocalCoineProPalette.current.assetInkShift
         return if (shift == 0f) brand else lerp(brand, Color.Black, shift)
     }
+
+    /**
+     * A colour a ticker can be recognised by, derived from the ticker and nothing else.
+     *
+     * **Stable**: the same string gives the same colour on every launch, every device and every
+     * build, because the hash is written out here rather than taken from `String.hashCode`, whose
+     * value is a platform's business and not a contract.
+     *
+     * **Legible**: saturation and lightness are fixed, so every monogram in a list carries the same
+     * weight and none of them competes with the gold action.
+     *
+     * **Never mistakable for a price.** Two bands of the wheel are left out — the greens around 120°
+     * and the reds around 0° — because those two colours mean «up» and «down» on every other surface
+     * in this app, and a coin whose disc happened to land on signal green beside a falling price is
+     * a row that says two things at once. What is left is 260° of hue, which is plenty: two tickers
+     * collide in colour about as often as two collide in their first letter, and the letter is
+     * printed on the disc.
+     */
+    fun monogramHue(ticker: String): Color {
+        val clean = ticker.uppercase(Locale.US).filter { it.isLetterOrDigit() }
+        if (clean.isEmpty()) return Color(0xFF8E9BA8)
+        // FNV-1a, 32-bit. Small, well spread for short strings, and written down so it cannot change
+        // underneath a reader who has learned that their coin is the teal one.
+        var hash = FNV_OFFSET
+        for (character in clean) {
+            hash = (hash xor character.code.toLong()) * FNV_PRIME and 0xFFFFFFFFL
+        }
+        val index = (hash % HUE_SPAN).toInt()
+        val hue = if (index < WARM_SPAN) WARM_FROM + index else COOL_FROM + (index - WARM_SPAN)
+        return Color.hsl(hue.toFloat(), MONOGRAM_SATURATION, MONOGRAM_LIGHTNESS)
+    }
+
+    private const val FNV_OFFSET = 2_166_136_261L
+    private const val FNV_PRIME = 16_777_619L
+
+    /** Amber through yellow-green: 20° to 100°, stopping short of the signal green. */
+    private const val WARM_FROM = 20
+    private const val WARM_SPAN = 80
+
+    /** Teal through violet to magenta: 160° to 340°, stopping short of the signal red. */
+    private const val COOL_FROM = 160
+    private const val COOL_SPAN = 180
+
+    private const val HUE_SPAN = (WARM_SPAN + COOL_SPAN).toLong()
+
+    /** Enough colour to tell two discs apart, not enough to shout over a price. */
+    private const val MONOGRAM_SATURATION = 0.52f
+    private const val MONOGRAM_LIGHTNESS = 0.62f
 }

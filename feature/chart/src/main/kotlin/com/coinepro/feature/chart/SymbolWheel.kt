@@ -129,7 +129,7 @@ internal data class SymbolNeighbours(
  * — «۰ از ۹» is a lie and «۱ از ۹» is a different one.
  */
 internal fun symbolNeighbours(symbols: List<String>, current: String): SymbolNeighbours {
-    val ring = symbols.filter(SymbolArtwork::covers).distinctBy(String::uppercase)
+    val ring = symbols.filter(SymbolArtwork::lists).distinctBy(String::uppercase)
     if (ring.isEmpty()) return SymbolNeighbours(null, null, 0, 0)
     val index = ring.indexOfFirst { it.equals(current, ignoreCase = true) }
     if (index < 0) {
@@ -170,7 +170,7 @@ internal fun symbolNeighbours(symbols: List<String>, current: String): SymbolNei
  * their watchlist rather than do nothing.
  */
 internal fun symbolStep(symbols: List<String>, current: String, steps: Int): String? {
-    val ring = symbols.filter(SymbolArtwork::covers).distinctBy(String::uppercase)
+    val ring = symbols.filter(SymbolArtwork::lists).distinctBy(String::uppercase)
     if (ring.isEmpty() || steps == 0) return null
     val index = ring.indexOfFirst { it.equals(current, ignoreCase = true) }
     if (index < 0) return if (steps > 0) ring.first() else ring.last()

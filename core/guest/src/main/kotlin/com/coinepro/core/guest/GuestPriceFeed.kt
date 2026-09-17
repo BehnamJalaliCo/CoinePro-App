@@ -157,7 +157,7 @@ class GuestPriceFeed(
             prices.quotes.forEach { row ->
                 // The same filter the catalogue applies. A market with no artwork never reaches a
                 // list here either — see the house rule, and `GuestMarketCatalogGateway`.
-                if (!SymbolArtwork.covers(row.symbol)) return@forEach
+                if (!SymbolArtwork.lists(row.symbol)) return@forEach
                 val key = row.symbol.uppercase()
                 val previous = get(key)
                 val unchanged = previous != null &&

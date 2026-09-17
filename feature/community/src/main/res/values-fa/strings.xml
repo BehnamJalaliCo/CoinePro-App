@@ -90,4 +90,5 @@
     <string name="community_open_script">«%1$s» را در استودیو باز کنید</string>
     <string name="community_add_script">«%1$s» را به چارت من اضافه کنید</string>
     <string name="community_script_installed">شما این را اضافه کرده‌اید</string>
+    <string name="community_founding_member">عضو بنیان‌گذار</string>
 </resources>

@@ -100,12 +100,16 @@ class SymbolWheelTest {
     }
 
     @Test
-    fun `a symbol this app has no artwork for never reaches the band`() {
-        // The house rule, applied here as everywhere: no blank squares and no lettered discs.
+    fun `a symbol this app has no artwork for is still a place on the band`() {
+        // **The house rule reversed** (run ΤΦΥ, F1). It was «no blank squares and no lettered
+        // discs», which meant the wheel skipped any market this repository had no mark for — and a
+        // reader who starred such a market found the chart's own wheel refusing to turn to it. What
+        // replaces the blank square is a monogram; the wheel turns to everything on the list now,
+        // which is the list the reader made.
         val ring = symbolNeighbours(listOf("XAUUSD", "ZZZQQQ", "BTCUSDT"), "XAUUSD")
 
-        assertEquals(2, ring.total)
-        assertEquals("BTCUSDT", ring.next)
+        assertEquals(3, ring.total)
+        assertEquals("ZZZQQQ", ring.next)
     }
 
     // ── the flick, which is item 7 ────────────────────────────────────────────────────────────
@@ -152,8 +156,11 @@ class SymbolWheelTest {
     }
 
     @Test
-    fun `a symbol with no artwork is not a place the flick can land`() {
-        assertEquals("BTCUSDT", symbolStep(listOf("XAUUSD", "ZZZQQQ", "BTCUSDT"), "XAUUSD", 1))
+    fun `a symbol with no artwork is a place the flick can land`() {
+        // The same reversal, on the gesture. A flick lands on the next entry in the reader's own
+        // list, and «the next one, unless we happen to have its logo» was never a rule a thumb
+        // could learn.
+        assertEquals("ZZZQQQ", symbolStep(listOf("XAUUSD", "ZZZQQQ", "BTCUSDT"), "XAUUSD", 1))
     }
 
     // ── one name at rest (run Ω-FIX item 2) ──────────────────────────────────────────────────

@@ -1125,7 +1125,7 @@ class AlertsController(
         val source = catalogOf()
         if (source !== catalogSource) {
             catalogSource = source
-            catalogCache = SymbolClassifier.classifyAll(source).filter { SymbolArtwork.covers(it) }
+            catalogCache = SymbolClassifier.classifyAll(source).filter { SymbolArtwork.lists(it) }
         }
         return catalogCache
     }

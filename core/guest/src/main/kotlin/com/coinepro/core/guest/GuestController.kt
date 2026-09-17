@@ -144,7 +144,7 @@ class GuestController(
                         // coin with no mark, `HYPE` among them, arrived on the first screen a
                         // stranger ever sees, as a blank disc beside real logos. That is the exact
                         // failure `SymbolArtwork.covers` exists to prevent, and it is worst here.
-                        .filter { SymbolArtwork.covers(it.symbol) }
+                        .filter { SymbolArtwork.lists(it.symbol) }
                         .sortedByDescending { it.volume24h ?: 0.0 }
                         .take(visibleCount)
                     polled = chosen.map(GuestQuote::symbol)

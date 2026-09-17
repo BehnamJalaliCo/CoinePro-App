@@ -36,6 +36,20 @@ data class StoredProfile(
      * feature.
      */
     val balanceHidden: Boolean = false,
+    /**
+     * Whether this reader arrived while the whole app was free (F10).
+     *
+     * «عضو بنیان‌گذار — از روز اول با ما». Written once, the first time the app runs with
+     * `Entitlements.foundingMember` true, and never written again — so somebody who installs after
+     * the free period does not get it, and somebody who has it does not lose it when the period
+     * ends. That «never again» is the whole mechanism: see [ProfileStore.noteFoundingMember].
+     *
+     * Local, like everything else in this store, and therefore lost on a reinstall — which for a
+     * badge is the wrong place for it to live long-term. The address that will hold it is named in
+     * `docs/runs/RUN_TFY/BLOCKED.md`; until one exists, a local mark that is right on this phone
+     * beats no mark at all.
+     */
+    val foundingMember: Boolean = false,
 )
 
 /**
@@ -62,7 +76,22 @@ class ProfileStore(private val dataStore: DataStore<Preferences>) {
             avatar = AvatarSpec.decode(preferences[AVATAR]),
             tagline = preferences[TAGLINE]?.takeIf(String::isNotBlank),
             balanceHidden = preferences[BALANCE_HIDDEN] == true,
+            foundingMember = preferences[FOUNDING_MEMBER] == true,
         )
+    }
+
+    /**
+     * Records that this reader was here while everything was free — once, and only while it is.
+     *
+     * Idempotent and one-directional: it writes `true` the first time it is called during the free
+     * period and never writes `false`. Called from the app's own start-up rather than from a screen,
+     * because the badge is about *when somebody arrived*, not about what they looked at.
+     */
+    suspend fun noteFoundingMember(eligible: Boolean) {
+        if (!eligible) return
+        dataStore.edit { preferences ->
+            if (preferences[FOUNDING_MEMBER] != true) preferences[FOUNDING_MEMBER] = true
+        }
     }
 
     suspend fun setDisplayName(name: String?) {
@@ -102,6 +131,9 @@ class ProfileStore(private val dataStore: DataStore<Preferences>) {
             // The privacy choice goes too. It is a statement about one person's circumstances, and
             // leaving it set would tell the next reader something about the last one.
             preferences.remove(BALANCE_HIDDEN)
+            // The badge goes too. It belongs to a person, not to a phone, and leaving it would
+            // hand the next reader a standing they did not earn.
+            preferences.remove(FOUNDING_MEMBER)
         }
     }
 
@@ -110,6 +142,7 @@ class ProfileStore(private val dataStore: DataStore<Preferences>) {
         val TAGLINE = stringPreferencesKey("profile_tagline")
         val AVATAR = stringPreferencesKey("profile_avatar")
         val BALANCE_HIDDEN = booleanPreferencesKey("profile_balance_hidden")
+        val FOUNDING_MEMBER = booleanPreferencesKey("profile_founding_member")
 
         /** Enough for a real name in either script, short enough to fit a row without eliding. */
         const val MAX_NAME = 40

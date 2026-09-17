@@ -3,9 +3,11 @@ package com.coinepro.core.marketdata
 import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.QuoteSource
+import com.coinepro.core.symbols.SymbolArtwork
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -95,22 +97,33 @@ class MarketDataControllerTest {
     }
 
     @Test
-    fun a_symbol_the_app_cannot_draw_is_not_offered_as_a_market() {
-        // This reverses an earlier rule, and the reversal is the owner's: the app used to accept
-        // any symbol either feed sent and draw a lettered grey disc for the ones it had no mark
-        // for. Beside forty real logos that does not read as a symbol, it reads as a broken image.
+    fun a_symbol_the_app_cannot_draw_is_still_offered_as_a_market() {
+        // **This rule has now been reversed twice, and both reversals were the owner's.**
         //
-        // The cost is real and is worth writing down: a genuinely new listing is now invisible
-        // until `download-tv-logos.py` has been run and the app rebuilt. That is a slower path than
-        // "the server added it, so it appears" — and it is the trade the owner asked for, because
-        // what it removes is a long tail nobody opened the app to see.
+        // It began as «accept whatever the feed sends». It became «accept only what we have a mark
+        // for», because a lettered grey disc beside forty real logos reads as a broken image rather
+        // than as a symbol — and the cost, written down at the time, was that a genuinely new
+        // listing stayed invisible until somebody ran the logo script and shipped a release.
+        //
+        // Run ΤΦΥ (F1) measured that cost: LBank lists 1 333 tether pairs and this repository holds
+        // a mark for 178. The rule was not trimming a long tail nobody opened the app to see; it was
+        // hiding seven markets in eight in a product whose subject is the list of markets. What
+        // replaces the grey disc is a monogram carrying three letters of the ticker on a hue that is
+        // a function of that ticker — see `SymbolArtwork` and `CoineProColors.monogramHue`.
+        //
+        // The old rule is one constant away, and this test says which one.
+        assertFalse(
+            "the artwork filter is back on — see SymbolArtwork.ARTWORK_GATES_LISTING",
+            SymbolArtwork.ARTWORK_GATES_LISTING,
+        )
         for (platform in MarketPlatform.entries) {
-            assertNull(
-                platform.name,
-                WireQuoteDto(symbol = "SOMETHINGNEW", price = 1.0, ts = 100L, source = "lbank")
-                    .toDomain(nowMs = 100L, platform = platform),
-            )
+            val quote = WireQuoteDto(symbol = "SOMETHINGNEW", price = 1.0, ts = 100L, source = "lbank")
+                .toDomain(nowMs = 100L, platform = platform)
+            assertNotNull("${'$'}{platform.name}: a listing with no mark was dropped", quote)
+            assertEquals("SOMETHINGNEW", quote?.instrument?.symbol)
         }
+        // And the question a *renderer* asks is untouched: we still know we have no mark for it.
+        assertFalse(SymbolArtwork.covers("SOMETHINGNEW"))
     }
 
     @Test

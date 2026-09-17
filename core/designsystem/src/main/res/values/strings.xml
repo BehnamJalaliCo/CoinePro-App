@@ -169,4 +169,7 @@
     <string name="legend_controls_open">Indicator controls</string>
     <string name="legend_controls_close">Close the controls</string>
     <string name="legend_back">Back</string>
+    <string name="brand_positioning">Crypto analysis, with an eye on gold and the dollar</string>
+    <string name="brand_positioning_free">The full app, free for everyone — no limits, no ads</string>
+    <string name="free_banner_dismiss">Close</string>
 </resources>

@@ -76,7 +76,7 @@
     <string name="profile_standing_verification_submitted">ارسال‌شده در %1$s</string>
     <string name="profile_standing_verification_level">سطح %1$s</string>
     <string name="profile_standing_plan">اشتراک</string>
-    <string name="profile_standing_plan_vip">اشتراک ویژه</string>
+    <string name="profile_standing_plan_vip">اشتراک</string>
     <string name="profile_standing_plan_expires">تا %1$s</string>
     <string name="profile_standing_plan_expires_in">تا %1$s، %2$s روز مانده</string>
     <string name="profile_standing_email">ایمیل</string>
@@ -119,4 +119,7 @@
     <string name="appearance_theme_system_short">سیستم</string>
     <string name="appearance_theme_light_short">روشن</string>
     <string name="appearance_theme_dark_short">تیره</string>
+    <string name="profile_standing_founding">نشان عضویت</string>
+    <string name="profile_standing_founding_value">عضو بنیان‌گذار</string>
+    <string name="profile_standing_founding_detail">از روز اول با ما</string>
 </resources>

@@ -42,7 +42,7 @@ fun heatmapAssetsFrom(
     period: HeatmapPeriod = HeatmapPeriod.MONTH,
     resolved: Set<String> = bars.keys + tickers.keys,
 ): List<HeatmapAsset> = rows.mapNotNull { row ->
-    if (!SymbolArtwork.covers(row.meta)) return@mapNotNull null
+    if (!SymbolArtwork.lists(row.meta)) return@mapNotNull null
     HeatmapFacts.assetOf(
         meta = row.meta,
         quote = row.quote,

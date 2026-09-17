@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -63,6 +65,7 @@ import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.designsystem.resolve
+import com.coinepro.core.designsystem.numeric
 import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.marketdata.MarketSearchRow
@@ -71,6 +74,7 @@ import com.coinepro.core.marketdata.MarketTickerStore
 import com.coinepro.core.marketdata.SparklineStore
 import com.coinepro.core.symbols.MarketHours
 import com.coinepro.core.symbols.SymbolCategory
+import com.coinepro.core.symbols.SymbolUniverse
 import com.coinepro.core.watchlistsync.WatchlistSyncController
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -237,13 +241,20 @@ fun MarketsScreen(
     // the price inside the sheet ticks with the one in the list behind it instead of freezing at
     // whatever it was when the finger went down. Saveable, so a rotation does not close it.
     var preview by rememberSaveable { mutableStateOf<String?>(null) }
+    // F2's filter sheet, and F2's page. Neither is `rememberSaveable`: a filter is a narrowing the
+    // reader can see the effect of and would have to undo after a rotation to get their list back,
+    // and a page count restored without the rows under it is a claim about a list that has not
+    // loaded. Both come back at their defaults, which is the list itself.
+    var filter by remember { mutableStateOf(MarketFilter()) }
+    var filtersOpen by remember { mutableStateOf(false) }
+    var loaded by remember { mutableIntStateOf(SymbolUniverse.PAGE) }
 
     // The category chip and the watchlist tab are different filters over one list, so they are
     // applied here rather than pushed into the controller: the controller's category is what the
     // *search* screen uses, and a tab that quietly rewrote it would change the other screen too.
     // Hoisted out of the filter block: the rows need it too, to draw each star's state.
     val watched = remember(watchlist) { watchlist.map { it.uppercase() }.toSet() }
-    val rows = remember(state.results, tab, watched, tickerState, lens, sort) {
+    val rows = remember(state.results, tab, watched, tickerState, lens, sort, filter) {
         // The category first, then the day's figures. The order matters for one reason that is not
         // about arithmetic: `state.results` is the catalogue, which `MarketCatalogGateway` has
         // already filtered through `SymbolArtwork.covers`, so arranging *these* rows can never
@@ -256,7 +267,18 @@ fun MarketsScreen(
                 else -> tab.category == null || row.meta.category == tab.category
             }
         }
-        arrangeMarkets(rows = visible, tickers = tickerState, lens = lens, sort = sort, watched = watched)
+        val arranged = arrangeMarkets(
+            rows = visible,
+            tickers = tickerState,
+            lens = lens,
+            sort = sort,
+            watched = watched,
+        )
+        // The filter last, over the arranged list, so the rank a row is numbered with is its place
+        // in *this* list rather than its place in one the reader cannot see.
+        applyFilter(arranged, filter) { row ->
+            tickerState.tickerFor(row)?.changePercent24h ?: row.quote?.changePercent
+        }
     }
     val panel = tab == MarketsTab.WATCHLIST && watchlistStore != null
 
@@ -280,9 +302,18 @@ fun MarketsScreen(
     // A tab that has just gone away — the platform switched under the reader — must not leave the
     // list filtered by it, which would be an invisible filter with no chip to unset.
     LaunchedEffect(offered) { if (tab !in offered) tab = MarketsTab.ALL }
+    // A new list is a new first page. Without this, changing a tab on a list the reader had scrolled
+    // a thousand rows into would compose a thousand rows of the *new* list before drawing a frame.
+    LaunchedEffect(tab, filter, lens, sort) { loaded = SymbolUniverse.PAGE }
 
     Column(modifier = modifier.fillMaxSize().background(CoineProColors.Stage)) {
-        Header(onOpenSearch = onOpenSearch)
+        Header(
+            onOpenSearch = onOpenSearch,
+            filters = filter.count,
+            // Absent on the watchlist, which is the reader's own list in the reader's own order:
+            // a turnover floor over it would be the app hiding something they put there by hand.
+            onOpenFilters = if (panel) null else ({ filtersOpen = true }),
+        )
         CoineProTeachingStrip(TeachingSurface.MARKETS)
         // The shared strip. This screen had grown a byte-for-byte copy of it — same tray, same
         // raised block, same weights — which is one more place for the next change to be applied
@@ -386,6 +417,9 @@ fun MarketsScreen(
                         // screen's «بازاری با این نام پیدا نشد» was answering a question the
                         // reader never asked. The tab is the only filter left that can empty the
                         // list, and it is named.
+                        // A filter the reader set is the likeliest reason a list is empty, and it
+                        // is the one they can undo. It is named before the tab for that reason.
+                        !filter.isEmpty -> stringResource(R.string.markets_filter_empty)
                         tab.category != null -> stringResource(
                             R.string.markets_category_empty,
                             stringResource(tab.labelRes),
@@ -405,13 +439,23 @@ fun MarketsScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = CoineProSpacing.One),
                 ) {
-                    items(rows, key = { it.meta.symbol }) { row ->
+                    // **A page at a time** (F2). `rows` is the whole universe — thousands on LBank
+                    // once F1 stopped hiding the markets with no artwork — and a `LazyColumn` given
+                    // all of them still allocates an item for every one of them and keys them all.
+                    // What is handed over is the first [SymbolUniverse.PAGE] and one more page each
+                    // time the reader reaches the end.
+                    val page = rows.take(loaded)
+                    itemsIndexed(page, key = { _, row -> row.meta.symbol }) { index, row ->
                         // Asked for as the row appears, not for the whole catalogue up front — a
                         // thousand markets would be a thousand requests nobody looked at.
                         LaunchedEffect(row.meta.symbol) { sparklines.request(row.meta.symbol) }
                         MarketListRow(
                             modifier = rowMotion(fades = false),
                             row = row,
+                            // The row's place in this list. Numbered on the markets tab, where the
+                            // order is a ranking, and never on a search result or the watchlist,
+                            // where it is not.
+                            rank = index + 1,
                             onClick = {
                                 if (previewOnTap && previewCandles != null) {
                                     preview = row.meta.symbol
@@ -443,11 +487,33 @@ fun MarketsScreen(
                             color = CoineProColors.BorderSubtle,
                         )
                     }
+                    if (loaded < rows.size) {
+                        // The next page is asked for by the *last row appearing*, not by a button
+                        // and not by a scroll-position listener. A listener recomputes on every
+                        // frame of the fling; this composes once, when the reader actually reaches
+                        // the end, and costs nothing until then.
+                        item(key = MORE_KEY) {
+                            LaunchedEffect(loaded) { loaded += SymbolUniverse.PAGE }
+                            CoineProSkeletonRows(count = 3)
+                        }
+                    }
                 }
             }
         }
 
         openSignals?.let { SignalStrip(it) }
+    }
+
+    if (filtersOpen) {
+        MarketFilterSheet(
+            filter = filter,
+            // Offered from the *unfiltered* list, so choosing «crypto» does not make «forex»
+            // disappear from the sheet that put it there.
+            types = remember(state.results) { typesOf(state.results) },
+            venues = remember(state.results) { venuesOf(state.results) },
+            onChange = { filter = it },
+            onDismiss = { filtersOpen = false },
+        )
     }
 
     // Read from `rows` rather than from `state.results`, so a preview cannot outlive the tab it was
@@ -509,6 +575,9 @@ data class MarketsSignalStrip(val count: Int, val summary: String, val onClick: 
  * `when` so that one fact — which tabs a catalogue can fill — is read off the same place the
  * filter uses. See `offered`.
  */
+/** The key of the row that asks for the next page. Stable, so it is not re-created per page. */
+private const val MORE_KEY = "markets-next-page"
+
 private enum class MarketsTab(val labelRes: Int, val category: SymbolCategory? = null) {
     ALL(R.string.search_category_all),
     CRYPTO(R.string.search_category_crypto, SymbolCategory.CRYPTO),
@@ -518,12 +587,23 @@ private enum class MarketsTab(val labelRes: Int, val category: SymbolCategory? =
 }
 
 @Composable
-private fun Header(onOpenSearch: () -> Unit) {
+private fun Header(
+    onOpenSearch: () -> Unit,
+    /**
+     * How many filter questions are answered, or null on a tab that has no filter (F2).
+     *
+     * A number rather than a boolean, because «filtered» and «filtered three ways» are different
+     * facts to a reader looking at a short list and wondering where the rest went.
+     */
+    filters: Int? = null,
+    onOpenFilters: (() -> Unit)? = null,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = CoineProSpacing.Two, end = CoineProSpacing.Two, top = CoineProSpacing.OneHalf, bottom = CoineProSpacing.One),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
         Text(
             text = stringResource(R.string.markets_title),
@@ -531,6 +611,33 @@ private fun Header(onOpenSearch: () -> Unit) {
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f),
         )
+        if (onOpenFilters != null) {
+            val active = (filters ?: 0) > 0
+            Row(
+                modifier = Modifier
+                    .height(34.dp)
+                    .clip(CoineProShapes.small)
+                    .background(if (active) CoineProColors.AccentFill else CoineProColors.SurfaceElevated)
+                    .clickable(onClick = onOpenFilters)
+                    .padding(horizontal = CoineProSpacing.One),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            ) {
+                Icon(
+                    painter = painterResource(DesignR.drawable.icon_sliders_horizontal),
+                    contentDescription = stringResource(R.string.markets_filter),
+                    tint = if (active) CoineProColors.OnAccent else CoineProColors.TextSecondary,
+                    modifier = Modifier.size(17.dp),
+                )
+                if (active) {
+                    Text(
+                        text = filters.toString(),
+                        style = MaterialTheme.typography.labelSmall.numeric(),
+                        color = CoineProColors.OnAccent,
+                    )
+                }
+            }
+        }
         Box(
             modifier = Modifier
                 .size(34.dp)

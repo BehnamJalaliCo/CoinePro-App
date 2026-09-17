@@ -71,7 +71,7 @@ internal fun TradePartnersSheetBody(
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextMuted,
         )
-        TRADE_PARTNERS.forEach { partner ->
+        tradePartners().forEach { partner ->
             PartnerCard(partner) { openPartner(context, partner.url) }
         }
         Text(

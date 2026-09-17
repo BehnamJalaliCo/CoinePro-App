@@ -99,18 +99,29 @@ fun CoineProAssetLogo(
 }
 
 /**
- * The letter shown when no logo exists, taken from the wire symbol rather than any display name.
+ * The monogram shown when no logo exists, taken from the wire symbol rather than any display name.
  *
  * A translated name yields an Arabic-script letter in Persian that no exchange shows and that
  * renders as a bare stroke at token size. Both metals start with X in their wire symbols, so a
  * first letter would label gold and silver identically; their element symbols are what every
  * terminal shows anyway.
+ *
+ * ### Why three characters and not one
+ *
+ * One was right while the catalogue listed only markets it had artwork for, because almost nothing
+ * ever reached this. Listing the whole universe (F1) puts hundreds of monograms on screen, and a
+ * single letter makes `PEPE`, `PENDLE`, `PYTH` and `PAXG` four discs that differ only in hue — which
+ * asks a reader to learn a colour code nobody published. Three characters is what every exchange
+ * prints on a token it has no mark for, and it is enough to read the row without the subtitle.
  */
 fun initialFor(symbol: String): String = when (val base = baseOf(symbol)) {
     "XAU" -> "Au"
     "XAG" -> "Ag"
-    else -> base.take(1).uppercase(Locale.US)
+    else -> base.take(MONOGRAM_LETTERS).uppercase(Locale.US)
 }
+
+/** How much of a ticker a monogram carries. See [initialFor]. */
+private const val MONOGRAM_LETTERS = 3
 
 /**
  * The instrument behind a market symbol — `BTCUSDT` and `BTCUSD` both give `BTC`.

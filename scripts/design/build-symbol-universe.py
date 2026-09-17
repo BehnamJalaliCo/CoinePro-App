@@ -1,0 +1,211 @@
+#!/usr/bin/env python3
+"""Write the bundled symbol universe — the list the app falls back to when the venue is silent.
+
+`core:symbols` has to be able to answer «what markets are there» with no network at all: on first
+run before any snapshot lands, in a search that must cover the whole universe rather than the loaded
+page, and on a venue that answers with nineteen symbols when the product's subject is hundreds. That
+fallback is this file's output, and it is generated rather than hand-written for the same reason
+`AssetLogoTable` is: a three-hundred-row table typed by hand is a three-hundred-row table that
+disagrees with itself within a month.
+
+**What it does not do.** It does not decide what the app lists. Whatever the venue actually sends
+wins, always — `SymbolUniverse.merge` puts live rows over bundled ones. This is the floor, not the
+catalogue.
+
+Usage:
+
+    python3 scripts/design/build-symbol-universe.py            # fetches, writes the Kotlin
+    python3 scripts/design/build-symbol-universe.py --check    # fails if the file is stale
+
+The ranking comes from CoinGecko's market-cap list, which is the only public ordering that is not
+one exchange's opinion of itself. The fetch is the *only* network this repository's build ever does,
+it happens when a person runs this script and never during a Gradle build, and the output is
+committed — so a clone with no internet builds exactly what CI builds.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import pathlib
+import re
+import sys
+import urllib.request
+from datetime import date
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+OUT = ROOT / "core/symbols/src/main/kotlin/com/coinepro/core/symbols/BundledUniverse.kt"
+NAMES = ROOT / "core/symbols/src/main/kotlin/com/coinepro/core/symbols/SymbolNames.kt"
+RANKING = ROOT / "core/symbols/src/main/kotlin/com/coinepro/core/symbols/SymbolRanking.kt"
+
+WANTED = 300
+PAGES = 3
+PER_PAGE = 250
+API = (
+    "https://api.coingecko.com/api/v3/coins/markets"
+    "?vs_currency=usd&order=market_cap_desc&per_page={per}&page={page}"
+)
+
+# A ticker we can put on a row. Anything else — a placeholder with an underscore, a name longer than
+# any column, a symbol that is not a symbol — is left out rather than shipped as a puzzle.
+TICKER = re.compile(r"^[A-Z0-9]{2,10}$")
+
+# Quoted in tether, because that is the pair every venue in this app's scope actually lists.
+QUOTE = "USDT"
+
+
+def kotlin_map(path: pathlib.Path, name: str) -> dict[str, str]:
+    """Read one `val NAME: Map<String, String> = mapOf(...)` out of a Kotlin source file."""
+    source = path.read_text(encoding="utf-8")
+    match = re.search(rf"val {name}: Map<String, String> = mapOf\((.*?)\n    \)", source, re.S)
+    if not match:
+        raise SystemExit(f"{path.name} no longer declares {name}")
+    return dict(re.findall(r'"([^"]+)" to "([^"]*)"', match.group(1)))
+
+
+def kotlin_list(path: pathlib.Path, name: str) -> list[str]:
+    """Read one `val NAME = listOf(...)` of string literals."""
+    source = path.read_text(encoding="utf-8")
+    match = re.search(rf"val {name} = listOf\((.*?)\n    \)", source, re.S)
+    if not match:
+        raise SystemExit(f"{path.name} no longer declares {name}")
+    return re.findall(r'"([^"]+)"', match.group(1))
+
+
+def fetch() -> list[dict]:
+    rows: list[dict] = []
+    for page in range(1, PAGES + 1):
+        url = API.format(per=PER_PAGE, page=page)
+        with urllib.request.urlopen(url, timeout=60) as response:
+            batch = json.loads(response.read().decode("utf-8"))
+        if not isinstance(batch, list):
+            raise SystemExit(f"the ranking answered {batch!r}")
+        rows.extend(batch)
+        if len(batch) < PER_PAGE:
+            break
+    return rows
+
+
+def crypto_rows(raw: list[dict], persian: dict[str, str], english: dict[str, str]) -> list[tuple]:
+    seen: set[str] = set()
+    out: list[tuple] = []
+    for coin in raw:
+        base = str(coin.get("symbol", "")).upper()
+        if not TICKER.match(base) or base in seen:
+            continue
+        # `USDTUSDT` is not a market. Tether against itself is the one row the ranking contains
+        # that this app cannot quote.
+        if base == QUOTE:
+            continue
+        seen.add(base)
+        name_en = english.get(base) or str(coin.get("name", base)).strip() or base
+        # The Persian name only where this app has one. A transliteration invented here would be a
+        # name no exchange shows and no reader searches for, which is worse than the ticker.
+        name_fa = persian.get(base, "")
+        out.append((base, name_en, name_fa))
+        if len(out) == WANTED:
+            break
+    return out
+
+
+def render(crypto: list[tuple], forex: list[str], stamp: str) -> str:
+    lines = [
+        "package com.coinepro.core.symbols",
+        "",
+        "/**",
+        " * The universe the app can name with no network at all.",
+        " *",
+        " * **Generated by `scripts/design/build-symbol-universe.py` — do not edit by hand.**",
+        " *",
+        " * Ranked by market capitalisation on " + stamp + ", which is a public ordering rather than",
+        " * any one venue's opinion of itself. It is a **floor, not a catalogue**: whatever a venue",
+        " * actually quotes wins over every row here, and `SymbolUniverse.merge` is where that happens.",
+        " *",
+        " * It exists because three things in this app must work before any response arrives — the",
+        " * first frame of the markets list, a search that covers the whole universe rather than the",
+        " * page that happens to be loaded, and a venue that answers with nineteen symbols. The third",
+        " * is not hypothetical; see `docs/runs/RUN_TFY/BLOCKED.md`.",
+        " *",
+        " * A Persian name is present only where this app already had one. Inventing a transliteration",
+        " * here would produce a name no exchange shows and no reader types, which is worse for search",
+        " * than the ticker alone — so the field is empty and the row falls back to its English name.",
+        " */",
+        "object BundledUniverse {",
+        "",
+        "    /** One bundled market: the ticker, its English name, and its Persian name where known. */",
+        "    data class Row(val base: String, val nameEn: String, val nameFa: String)",
+        "",
+        "    /** The quote leg every bundled crypto row is written against. */",
+        '    const val QUOTE: String = "' + QUOTE + '"',
+        "",
+        "    /** " + str(len(crypto)) + " coins, largest first. The index in this list is the bundled rank. */",
+        "    val CRYPTO: List<Row> = listOf(",
+    ]
+    for base, name_en, name_fa in crypto:
+        lines.append(
+            '        Row("%s", "%s", "%s"),' % (base, name_en.replace('"', "'"), name_fa)
+        )
+    lines += [
+        "    )",
+        "",
+        "    /**",
+        "     * The non-crypto set, most traded first.",
+        "     *",
+        "     * Taken from `SymbolRanking`'s own majors so the two orderings cannot drift apart. Every",
+        "     * one of these is a market this app has a flag, a metal mark or an index mark for.",
+        "     */",
+        "    val FOREX: List<String> = listOf(",
+    ]
+    for i in range(0, len(forex), 8):
+        chunk = ", ".join('"%s"' % s for s in forex[i:i + 8])
+        lines.append("        " + chunk + ",")
+    lines += [
+        "    )",
+        "}",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true", help="fail if the committed file is stale")
+    args = parser.parse_args()
+
+    forex = kotlin_list(RANKING, "FOREX_MAJORS")
+    if args.check:
+        if not OUT.exists():
+            print(f"{OUT.relative_to(ROOT)} is missing", file=sys.stderr)
+            return 1
+        text = OUT.read_text(encoding="utf-8")
+        rows = len(re.findall(r"^        Row\(", text, re.M))
+        listed = re.search(r"val FOREX: List<String> = listOf\((.*?)\n    \)", text, re.S)
+        bundled_forex = re.findall(r'"([^"]+)"', listed.group(1)) if listed else []
+        problems = []
+        if rows != WANTED:
+            problems.append(f"{rows} crypto rows, expected {WANTED}")
+        if bundled_forex != forex:
+            problems.append("the non-crypto set no longer matches SymbolRanking.FOREX_MAJORS")
+        if problems:
+            for problem in problems:
+                print(f"bundled universe: {problem}", file=sys.stderr)
+            return 1
+        print(f"Bundled universe is current: {rows} coins + {len(bundled_forex)} other markets.")
+        return 0
+
+    persian = kotlin_map(NAMES, "CRYPTO")
+    english = kotlin_map(NAMES, "CRYPTO_EN")
+    crypto = crypto_rows(fetch(), persian, english)
+    if len(crypto) < WANTED:
+        raise SystemExit(f"only {len(crypto)} usable tickers came back; wanted {WANTED}")
+    OUT.write_text(render(crypto, forex, date.today().isoformat()), encoding="utf-8")
+    named = sum(1 for _, _, fa in crypto if fa)
+    print(
+        f"{OUT.relative_to(ROOT)} -> {len(crypto)} coins ({named} with a Persian name) "
+        f"+ {len(forex)} other markets"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

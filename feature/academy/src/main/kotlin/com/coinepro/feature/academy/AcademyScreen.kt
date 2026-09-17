@@ -48,6 +48,7 @@ import com.coinepro.core.academy.AcademyLevel
 import com.coinepro.core.academy.AcademyProfile
 import com.coinepro.core.academy.LessonSummary
 import com.coinepro.core.academy.LockReason
+import com.coinepro.core.common.Entitlements
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -56,6 +57,7 @@ import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.CoineProFreeBanner
 import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.designsystem.CoineProCelebration
 import com.coinepro.core.designsystem.CoineProConfetti
@@ -106,6 +108,8 @@ fun AcademyScreen(
             verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Stack),
         ) {
             item { CoineProTeachingStrip(TeachingSurface.ACADEMY, gutter = false) }
+            // Where the levels used to end (F9). One sentence, once, and then never again.
+            item { CoineProFreeBanner(key = "academy") }
             state.profile?.let { profile ->
                 item { ProfileHeader(profile) }
                 item {
@@ -322,8 +326,27 @@ private fun LevelHeader(level: AcademyLevel) {
  * an outlined one, locked is dimmed and does not respond to a tap. A locked node that opens a
  * screen saying "locked" is a tap that taught the reader nothing.
  */
+/**
+ * Whether the app should draw this lesson as shut (F8).
+ *
+ * A **tier** lock is the one this run opens. While everything is free, a tier flag on a lesson is a
+ * claim about what the server will do, and the only way to know is to ask — so the node is live, the
+ * reader taps it, and `LessonScreen` shows the wall only if the request actually comes back
+ * refused. A door the app painted shut on a stale field is worse than a wall the server admits to.
+ *
+ * A **phone** lock is untouched: it is not a tier, it is an account without a number on it, and it
+ * is the reader's to fix in one screen. Drawing it open would send them into a refusal they could
+ * have been told about.
+ */
+private fun LessonSummary.shut(): Boolean = when {
+    !locked -> false
+    lockReason == LockReason.TIER && Entitlements.attemptsLockedContent -> false
+    else -> true
+}
+
 @Composable
 private fun LessonNode(lesson: LessonSummary, alignEnd: Boolean, onClick: () -> Unit) {
+    val shut = lesson.shut()
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (alignEnd) Arrangement.End else Arrangement.Start,
@@ -332,7 +355,7 @@ private fun LessonNode(lesson: LessonSummary, alignEnd: Boolean, onClick: () -> 
         Row(
             modifier = Modifier
                 .fillMaxWidth(NODE_WIDTH_FRACTION)
-                .then(if (lesson.locked) Modifier else Modifier.clickable(onClick = onClick)),
+                .then(if (shut) Modifier else Modifier.clickable(onClick = onClick)),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -341,11 +364,14 @@ private fun LessonNode(lesson: LessonSummary, alignEnd: Boolean, onClick: () -> 
                 Text(
                     text = lesson.title,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (lesson.locked) CoineProColors.TextMuted else CoineProColors.TextPrimary,
+                    color = if (shut) CoineProColors.TextMuted else CoineProColors.TextPrimary,
                 )
                 val note = when {
                     lesson.lockReason == LockReason.PHONE -> stringResource(R.string.academy_locked_phone)
-                    lesson.lockReason == LockReason.TIER -> stringResource(R.string.academy_locked_tier)
+                    // Named only while it still holds. With the tier walls open the line would be
+                    // telling a reader they cannot open something they can.
+                    lesson.lockReason == LockReason.TIER && shut ->
+                        stringResource(R.string.academy_locked_tier)
                     lesson.hasVideo -> stringResource(R.string.academy_has_video)
                     else -> null
                 }
@@ -353,7 +379,7 @@ private fun LessonNode(lesson: LessonSummary, alignEnd: Boolean, onClick: () -> 
                     Text(
                         text = it,
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (lesson.locked) CoineProColors.Warning else CoineProColors.TextMuted,
+                        color = if (shut) CoineProColors.Warning else CoineProColors.TextMuted,
                         fontWeight = FontWeight.Normal,
                     )
                 }
@@ -365,6 +391,7 @@ private fun LessonNode(lesson: LessonSummary, alignEnd: Boolean, onClick: () -> 
 @Composable
 private fun Disc(lesson: LessonSummary) {
     val done = lesson.completed
+    val shut = lesson.shut()
     Box(
         modifier = Modifier
             .size(40.dp)
@@ -374,7 +401,7 @@ private fun Disc(lesson: LessonSummary) {
                 width = 1.dp,
                 color = when {
                     done -> CoineProColors.Gold
-                    lesson.locked -> CoineProColors.Border
+                    shut -> CoineProColors.Border
                     else -> CoineProColors.Gold
                 },
                 shape = CircleShape,
@@ -384,13 +411,13 @@ private fun Disc(lesson: LessonSummary) {
         Text(
             text = when {
                 done -> "✓"
-                lesson.locked -> "🔒"
+                shut -> "🔒"
                 else -> (lesson.order).proseDigits()
             },
             style = MaterialTheme.typography.labelMedium,
             color = when {
                 done -> CoineProColors.OnAccent
-                lesson.locked -> CoineProColors.TextMuted
+                shut -> CoineProColors.TextMuted
                 else -> CoineProColors.TextPrimary
             },
             textAlign = TextAlign.Center,

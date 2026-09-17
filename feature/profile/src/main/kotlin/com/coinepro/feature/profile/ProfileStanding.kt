@@ -146,6 +146,29 @@ fun planFact(
 )
 
 /**
+ * The founding-member mark (F10).
+ *
+ * «عضو بنیان‌گذار — از روز اول با ما». Shown only to a reader who has it, and never as an empty row
+ * saying they do not: a standing card is a list of facts about somebody, and «you are not a founding
+ * member» is not a fact about them, it is a advertisement for a period that has closed.
+ *
+ * It is not a plan and it is not a tier. Nothing is unlocked by it and nothing is charged for it —
+ * it says when somebody arrived, which is the one thing about this period worth keeping after it
+ * ends.
+ */
+@Composable
+fun foundingMemberFact(founding: Boolean): ProfileFact? = if (!founding) {
+    null
+} else {
+    ProfileFact(
+        label = stringResource(R.string.profile_standing_founding),
+        value = stringResource(R.string.profile_standing_founding_value),
+        tone = ProfileFactTone.SETTLED,
+        detail = stringResource(R.string.profile_standing_founding_detail),
+    )
+}
+
+/**
  * A win rate, for the detail line of a record row.
  *
  * A market figure and therefore Latin, isolated so the per-cent sign does not swap ends with the

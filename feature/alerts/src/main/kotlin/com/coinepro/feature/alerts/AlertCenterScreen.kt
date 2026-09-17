@@ -384,14 +384,14 @@ private fun AlertRow.metaLine(): String {
  * The disc at the leading edge of a row.
  *
  * A watchlist alert has no one instrument, so it gets the screen's own glyph rather than the logo
- * of whichever symbol happens to be first in the list. A symbol with no artwork gets the same
- * treatment: this app does not put a lettered disc in a list, and the picker never offers one — the
- * guard is here because an alert can outlive the catalogue entry it was made from.
+ * of whichever symbol happens to be first in the list. A symbol alert always gets its instrument:
+ * `CoineProAssetLogo` draws the mark where there is one and a monogram where there is not, so the
+ * artwork guard that used to sit here would now be hiding the answer rather than a blank square.
  */
 @Composable
 private fun AlertMark(scope: AlertScope, size: Dp = 34.dp) {
     val ticker = (scope as? AlertScope.Symbol)?.ticker
-    if (ticker != null && SymbolArtwork.covers(ticker)) {
+    if (ticker != null) {
         CoineProAssetLogo(symbol = ticker, size = size)
         return
     }

@@ -92,6 +92,11 @@ FORBIDDEN_VARIANTS = (
     ("en", r"\bProvider truth\b", "Broker & exchange status"),
     ("en", r"\bSTALE\b", "Stale"),
     ("en", r"\bInterval\b(?! [a-z])", "Timeframe"),
+    # F11: the product charges nobody and sells nothing, so no surface calls a reader «VIP».
+    # The string *keys* keep the word — a key is not copy — and this entry comes out on the
+    # day `FeatureFlags.allUnlocked` does.
+    ("en", r"\bVIP\b", "«Member», «Plan», or drop it"),
+    ("fa", r"(?<![\u0620-\u064A\u066E-\u06D5])وی\u200Cآی\u200Cپی(?![\u0620-\u064A\u066E-\u06D5])", "«عضو»، «اشتراک»، یا حذفش"),
 )
 
 # The glossary's retired words that also appear in Kotlin literals (the tool rail's tiles, say).

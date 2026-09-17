@@ -10,18 +10,40 @@ package com.coinepro.core.symbols
  * module that has to act on it is `core:marketdata`, and a market catalogue has no business
  * depending on a design system.
  *
- * ### Why a symbol without a logo is not listed at all
+ * ### Artwork decides how a market is drawn, not whether it exists
  *
- * The owner's instruction, and it is the right one. The app used to draw a lettered token for
- * anything it had no mark for — a grey disc with a "D" in it. On a row beside forty real logos that
- * does not read as "this is DOGE"; it reads as a broken image, and a screen with six of them reads
- * as a broken app. Offering a market the product cannot present properly is worse than not offering
- * it, especially when what is being left out is the long tail nobody asked for.
+ * It used to decide both, and the reasoning was sound as far as it went. The app drew a lettered
+ * token for anything it had no mark for — a grey disc with a "D" in it — and beside forty real
+ * logos that does not read as "this is DOGE", it reads as a broken image. So [covers] became the
+ * filter at the catalogue and at the live feed alike, and the lettered token became a defensive
+ * fallback nothing reached.
  *
- * So the catalogue filters on [covers], and the lettered token becomes what it should always have
- * been: a defensive fallback that nothing in normal operation reaches.
+ * **The owner has overruled it (run ΤΦΥ, F1), and the measurement is why.** LBank lists 1 333 tether
+ * pairs and this repository holds a mark for 178 of them. The rule was not trimming a long tail
+ * nobody asked for; it was hiding seven markets in eight, in a product whose subject is the list of
+ * markets. What replaces it is a monogram carrying three letters of the ticker, on a disc whose hue
+ * is a stable function of that ticker — a weaker row than a real logo and a far better one than no
+ * row, because the reader can find the market, chart it, alert on it and search for it.
+ *
+ * [lists] is that decision and [ARTWORK_GATES_LISTING] is the one constant behind it, so the old
+ * rule is a word away rather than a project. [covers] keeps its own meaning: «do we have a mark»,
+ * asked by the thing that draws.
  */
 object SymbolArtwork {
+
+    /**
+     * Whether a market with no artwork is kept off every list.
+     *
+     * False since run ΤΦΥ. Tests drive [lists] with it both ways, so turning it back on is one
+     * constant and not an archaeology exercise.
+     */
+    const val ARTWORK_GATES_LISTING: Boolean = false
+
+    /** Whether this market may appear in a list at all. See the class KDoc. */
+    fun lists(symbol: String): Boolean = !ARTWORK_GATES_LISTING || covers(symbol)
+
+    /** The same, on an already-classified symbol. */
+    fun lists(meta: SymbolMeta): Boolean = !ARTWORK_GATES_LISTING || covers(meta)
 
     /** Crypto bases with a mark — TradingView's or Binance's. */
     val BASES: Set<String> = setOf(

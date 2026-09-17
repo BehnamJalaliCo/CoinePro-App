@@ -59,6 +59,7 @@ import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.CoineProTextStyles
 import com.coinepro.core.designsystem.R as DesignR
+import com.coinepro.core.designsystem.CoineProFreeBanner
 import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.designsystem.rowMotion
@@ -151,6 +152,8 @@ fun SignalsScreen(
         // stray «این صفحه چیست؟» under an otherwise empty action row reads as a control nobody
         // placed. On this screen's own route there is a heading for it to sit under.
         CoineProTeachingStrip(TeachingSurface.SIGNALS, restorable = !embedded)
+        // The signal history was the other surface a tier used to cut short (F9).
+        CoineProFreeBanner(key = "signals")
         CoineProSegmentTabs(
             options = SignalStatusFilter.entries.map { it to stringResource(it.labelRes()) },
             selected = state.status,

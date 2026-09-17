@@ -162,4 +162,7 @@
     <string name="legend_controls_open">کنترل‌های اندیکاتورها</string>
     <string name="legend_controls_close">بستن کنترل‌ها</string>
     <string name="legend_back">بازگشت</string>
+    <string name="brand_positioning">خانه‌ی تحلیل کریپتو — با یک نگاه به طلا و دلار</string>
+    <string name="brand_positioning_free">نسخه‌ی کامل، رایگان برای همه — بدون محدودیت، بدون آگهی</string>
+    <string name="free_banner_dismiss">بستن</string>
 </resources>

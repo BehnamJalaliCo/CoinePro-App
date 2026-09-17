@@ -116,6 +116,16 @@ internal fun CommunityPostCard(
      * post without one rather than a post with a hole in it.
      */
     image: ImageBitmap? = null,
+    /**
+     * Whether this post is the reader's own and the reader carries the founding mark (F10).
+     *
+     * **Their own posts only, and that is a limit rather than a choice.** The badge lives on this
+     * phone — see `ProfileStore.foundingMember` — so the app knows it about exactly one person: the
+     * one holding it. A board where a stranger's mark depended on which device you read it from
+     * would be worse than one with no marks at all. The address that would make it everybody's is
+     * named in `docs/runs/RUN_TFY/BLOCKED.md`.
+     */
+    founding: Boolean = false,
 ) {
     CoineProCard(
         modifier = modifier.fillMaxWidth(),
@@ -151,6 +161,16 @@ internal fun CommunityPostCard(
                         textAlign = TextAlign.Right,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    if (founding) {
+                        Text(
+                            text = stringResource(R.string.community_founding_member),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = CoineProColors.Accent,
+                            maxLines = 1,
+                            textAlign = TextAlign.Right,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                     post.createdAt?.let { moment ->
                         Text(
                             text = PersianDateTime.moment(moment),

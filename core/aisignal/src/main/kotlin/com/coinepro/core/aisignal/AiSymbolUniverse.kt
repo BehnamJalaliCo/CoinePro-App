@@ -47,9 +47,9 @@ enum class AiSymbolOrigin {
  * the server allows that the catalogue has never heard of is still offered, classified from its
  * ticker. The server's list decides membership; the catalogue only decides how a member is drawn.
  *
- * `SymbolArtwork.covers` filters throughout, at the catalogue and at the server list alike: a symbol
- * with no artwork is a blank square or a lettered disc in a list of real logos, and this app does
- * not ship those.
+ * `SymbolArtwork.lists` filters throughout, at the catalogue and at the server list alike. Since F1
+ * that filter passes everything: a market with no mark is drawn as a monogram rather than hidden,
+ * and the one constant behind it is `SymbolArtwork.ARTWORK_GATES_LISTING`.
  */
 data class AiSymbolUniverse(
     val markets: List<SymbolMeta>,
@@ -99,7 +99,7 @@ data class AiSymbolUniverse(
                     .mapNotNull(AiSignalProductScope::normalizeSymbol)
                     .distinct()
                     .map { known[it] ?: SymbolClassifier.classify(it) }
-                    .filter(SymbolArtwork::covers)
+                    .filter(SymbolArtwork::lists)
                 if (allowed.isNotEmpty()) {
                     return AiSymbolUniverse(allowed.ranked(), AiSymbolOrigin.SERVER, loading)
                 }
@@ -116,7 +116,7 @@ data class AiSymbolUniverse(
 
         private fun List<String>.toMarkets(): List<SymbolMeta> = mapNotNull { raw ->
             AiSignalProductScope.normalizeSymbol(raw)?.let(SymbolClassifier::classify)
-        }.filter(SymbolArtwork::covers).ranked()
+        }.filter(SymbolArtwork::lists).ranked()
 
         /**
          * Popular first, then by liquidity.

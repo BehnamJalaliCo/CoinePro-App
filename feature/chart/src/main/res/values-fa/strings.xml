@@ -651,4 +651,5 @@
     <string name="chart_explain_title">چارت چه می‌گوید</string>
     <string name="chart_explain_timeframes">روی تایم‌فریم‌های دیگر</string>
     <string name="chart_explain_timeframes_none">هیچ تایم‌فریم دیگری برای این نماد جواب نداد.</string>
+    <string name="chart_share_founding">عضو بنیان‌گذار</string>
 </resources>

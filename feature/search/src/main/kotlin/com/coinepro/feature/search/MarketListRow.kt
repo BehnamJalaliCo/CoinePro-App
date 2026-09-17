@@ -124,6 +124,18 @@ internal fun MarketListRow(
     swipeToStar: Boolean = false,
     /** The reorder grip, drawn only while the list is in the reader's own order. */
     handle: (@Composable () -> Unit)? = null,
+    /**
+     * This row's place in the list, drawn ahead of the logo (F2).
+     *
+     * Null on every list whose order is not a ranking — the watchlist, which is the reader's own
+     * order, and a search result, which is ordered by what was typed. Numbering those would be a
+     * claim that row 3 is bigger than row 4, which in neither case is true.
+     *
+     * Latin digits, because it is a market figure and the house rule is that market figures are
+     * Latin. It is drawn in a fixed-width column so the tickers below it line up whether the number
+     * is 7 or 4 213.
+     */
+    rank: Int? = null,
     trailing: @Composable RowScope.() -> Unit,
 ) {
     val haptics = rememberCoineProHaptics()
@@ -218,6 +230,16 @@ internal fun MarketListRow(
                     }
                     .size(18.dp),
                 tint = if (starred) CoineProColors.Accent else CoineProColors.TextDisabled,
+            )
+        }
+        rank?.let { place ->
+            Text(
+                text = place.toString(),
+                style = MaterialTheme.typography.labelSmall.numeric(),
+                color = CoineProColors.TextDisabled,
+                maxLines = 1,
+                textAlign = TextAlign.End,
+                modifier = Modifier.width(RankColumn),
             )
         }
         // The disc travels to the chart's header when this row is tapped, so what opens is
@@ -533,6 +555,14 @@ internal val MarketRowHeight = 58.dp
 
 /** What a cell with no figure says. Not a zero, which would be a claim. */
 private const val EmDash = "—"
+
+/**
+ * The rank column's width — four Latin digits at label size, right-aligned.
+ *
+ * Fixed rather than wrapped so the logo and every ticker under it line up down the list. A column
+ * that grows at row 1 000 is a list that shifts sideways while the reader is scrolling it.
+ */
+private val RankColumn = 24.dp
 
 /** The sparkline cell's height — the reference draws its lines 24 dp tall. */
 private val SPARKLINE_HEIGHT = 24.dp

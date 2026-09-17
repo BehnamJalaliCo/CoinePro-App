@@ -149,6 +149,16 @@ object ShareCard {
             textAlign = Paint.Align.RIGHT
         }
         val floor = (SIZE - MARGIN).toFloat()
+        content.badge?.takeIf { it.isNotBlank() }?.let { badge ->
+            val badgePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+                typeface = regular
+                textSize = MARK_SIZE
+                color = palette.textMuted.toArgb()
+                textAlign = if (rtl) Paint.Align.RIGHT else Paint.Align.LEFT
+            }
+            val edge = if (rtl) (SIZE - MARGIN).toFloat() else MARGIN.toFloat()
+            canvas.drawText(badge, edge, floor - MARK_SIZE - GAP_TIGHT, badgePaint)
+        }
         // The mark takes the card's leading edge and the link the trailing one, so the footer hangs
         // the same way the text above it does.
         if (rtl) {
@@ -250,4 +260,14 @@ data class ShareCardContent(
     val mark: String = BrandConfig.DISPLAY_NAME,
     /** Where to go to see this. Printed as readable text — see [ShareCard]'s note. */
     val link: String = BrandConfig.WEB_HOST,
+    /**
+     * The founding-member mark, where this reader carries one (F10).
+     *
+     * Null for everybody else and on every card made by a build with the walls back up, because a
+     * badge nobody can earn any more is a line on a picture that says nothing about the person who
+     * shared it. It sits above the brand on the footer rather than beside it: the brand is the
+     * card's signature and the badge is the reader's, and two accents on one line read as a logo
+     * with a subtitle.
+     */
+    val badge: String? = null,
 )

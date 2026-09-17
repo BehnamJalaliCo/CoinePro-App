@@ -260,6 +260,14 @@ import com.coinepro.core.datastore.ReaderMode
 @Composable
 fun ChartScreen(
     controller: ChartController,
+    /**
+     * Whether this reader carries the founding-member mark (F10).
+     *
+     * It appears on a **shared card** and nowhere on the chart itself: a badge printed over a price
+     * is a claim about the reader on a picture about the market. Defaulted false, so a preview, a
+     * render test and the two-pane host all draw exactly the card they drew before.
+     */
+    foundingMember: Boolean = false,
     signal: SignalOverlay? = null,
     /**
      * The reader's open position on this instrument, drawn from the candle it opened on.
@@ -981,6 +989,9 @@ fun ChartScreen(
     // because every one of these is a `stringResource` or a composition read, and the lambda runs on
     // a coroutine after the sheet has closed — reading a composition local there is reading a
     // composition that is no longer there.
+    // The founding mark on the foot of a shared card (F10). Null for a reader without one, so the
+    // card is byte-for-byte the card it was.
+    val shareBadge = stringResource(R.string.chart_share_founding).takeIf { foundingMember }
     val shareOnDark = LocalCoineProPalette.current.isDark
     val shareRtl = !inEnglish()
     val shareTitle = BidiText.isolateLtr(state.symbol)
@@ -2425,6 +2436,7 @@ fun ChartScreen(
                                 tone = shareTone,
                                 lines = shareLines,
                                 image = chartLayer.toImageBitmap().asAndroidBitmap(),
+                                badge = shareBadge,
                             ),
                         )
                         ChartShare.share(context, card, state.symbol)

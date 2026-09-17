@@ -25,6 +25,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -37,6 +38,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -53,6 +55,7 @@ import com.coinepro.core.designsystem.CoineProMarketRow
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProShapes
+import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTeachingStrip
 import com.coinepro.core.designsystem.CoineProTextField
@@ -62,6 +65,7 @@ import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.designsystem.resolve
 import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.marketdata.MarketSearchController
+import com.coinepro.core.datastore.RecentSearchStore
 import com.coinepro.core.marketdata.MarketSearchRow
 import com.coinepro.core.marketdata.SparklineStore
 import com.coinepro.core.model.MarketQuote
@@ -69,6 +73,7 @@ import com.coinepro.core.symbols.MarketHours
 import com.coinepro.core.symbols.MatchField
 import com.coinepro.core.symbols.SymbolCategory
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 
 /**
  * Search across everything the active platform quotes.
@@ -146,9 +151,32 @@ fun SearchScreen(
      * on this screen is nullable: only the caller knows whether there is an alert store to write to.
      */
     onMilestoneAlert: ((symbol: String, up: Boolean, percent: Double) -> Unit)? = null,
+    /**
+     * The markets this reader opened from here before (F3).
+     *
+     * This screen's own documentation has promised «the recent list when the field is empty» since
+     * it was written and there was no such list — an empty field showed the browse ranking, which is
+     * the markets tab one tap away. Null keeps that behaviour, which is what the guest shell and
+     * every render test get.
+     */
+    recentSearches: RecentSearchStore? = null,
 ) {
     LaunchedEffect(controller) { controller.start() }
     val state by controller.state.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    // A flow either way, so the collection is unconditional — the same rule the sparkline store
+    // above follows, and for the same reason: a composable call on one branch of a condition is
+    // what corrupts a slot table the day a caller passes a store where there was none.
+    val recentSource = remember(recentSearches) { recentSearches?.recent() ?: MutableStateFlow(emptyList()) }
+    val recent by recentSource.collectAsStateWithLifecycle(emptyList())
+    // Opening a market from search is what puts it on the recent list. Wrapped here rather than at
+    // every call site, so a row, a chip and the preview sheet's «چارت» all record the same thing.
+    val openSymbol: ((String) -> Unit)? = onOpenSymbol?.let { open ->
+        { symbol: String ->
+            recentSearches?.let { store -> scope.launch { store.record(symbol) } }
+            open(symbol)
+        }
+    }
     // Resolved to a flow first so the collection itself is unconditional. Reading the state inside
     // an `if` would put a composable call on one branch of a condition, which is the shape that
     // corrupts a slot table the day somebody passes a store where there was none.
@@ -240,6 +268,17 @@ fun SearchScreen(
                 // How many markets there are. Worth its row: the answer used to be eight, and a
                 // reader has no other way to tell that it is now the whole book.
                 if (!state.searching) {
+                    if (recent.isNotEmpty()) {
+                        item(key = "__recent") {
+                            RecentRow(
+                                symbols = recent,
+                                onOpen = { symbol -> openSymbol?.invoke(symbol) },
+                                onClear = {
+                                    recentSearches?.let { store -> scope.launch { store.clear() } }
+                                },
+                            )
+                        }
+                    }
                     item {
                         SectionHeader(
                             title = stringResource(R.string.search_count, state.catalogSize),
@@ -282,12 +321,12 @@ fun SearchScreen(
                     }
                     MarketRow(
                         row = row,
-                        onOpenSymbol = onOpenSymbol,
+                        onOpenSymbol = openSymbol,
                         watchlist = watchlist,
                         onToggleWatch = onToggleWatch,
                         // Only where there is a chart to fall back to. A preview whose one
                         // full-size action goes nowhere is a sheet that ends in a dead end.
-                        onLongClick = onOpenSymbol?.let { { preview = row.meta.symbol } },
+                        onLongClick = openSymbol?.let { { preview = row.meta.symbol } },
                     )
                 }
             }
@@ -368,6 +407,81 @@ private fun CategoryChips(selected: SymbolCategory?, onSelect: (SymbolCategory?)
                     .border(1.dp, CoineProColors.Border, CoineProPillShape)
                     .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
             )
+        }
+    }
+}
+
+/**
+ * The markets this reader opened from here, newest first (F3).
+ *
+ * Chips rather than rows, and above the browse list rather than inside it. A recent market is a
+ * shortcut, not a result: it has no rank, no price worth a column and no reason to be as tall as
+ * the rows underneath it. Four of them fit across a phone, and the strip scrolls.
+ */
+@Composable
+private fun RecentRow(symbols: List<String>, onOpen: (String) -> Unit, onClear: () -> Unit) {
+    val haptics = rememberCoineProHaptics()
+    Column(modifier = Modifier.padding(top = CoineProSpacing.One)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = CoineProSpacing.Gutter),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.search_recent),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = stringResource(R.string.search_recent_clear),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextSecondary,
+                modifier = Modifier
+                    .clip(CoineProShapes.small)
+                    .clickable {
+                        haptics.commit()
+                        onClear()
+                    }
+                    .padding(horizontal = CoineProSpacing.Half, vertical = CoineProSpacing.Half),
+            )
+        }
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+            contentPadding = PaddingValues(
+                start = CoineProSpacing.Gutter,
+                end = CoineProSpacing.Gutter,
+                top = CoineProSpacing.Half,
+            ),
+        ) {
+            items(symbols, key = { it }) { symbol ->
+                Row(
+                    modifier = Modifier
+                        .clip(CoineProPillShape)
+                        .background(CoineProColors.SurfaceElevated)
+                        .clickable {
+                            haptics.select()
+                            onOpen(symbol)
+                        }
+                        .padding(
+                            start = CoineProSpacing.Half,
+                            end = CoineProSpacing.One,
+                            top = CoineProSpacing.Half,
+                            bottom = CoineProSpacing.Half,
+                        ),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                ) {
+                    CoineProAssetLogo(symbol = symbol, size = 20.dp)
+                    Text(
+                        text = symbol,
+                        style = MaterialTheme.typography.labelSmall.copy(textDirection = TextDirection.Ltr),
+                        color = CoineProColors.TextPrimary,
+                        maxLines = 1,
+                    )
+                }
+            }
         }
     }
 }
