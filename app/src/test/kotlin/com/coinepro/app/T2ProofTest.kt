@@ -13,10 +13,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.designsystem.LocalTeachingDismissals
 import com.coinepro.core.marketdata.MarketPulse
 import com.coinepro.core.model.MarketPlatform
+import com.coinepro.core.notifications.LocalPriceAlert
+import com.coinepro.feature.notifications.AlertComposerBody
 import com.coinepro.feature.menu.MENU_NO_TRADING_TAG
 import com.coinepro.feature.menu.MenuAccess
 import com.coinepro.feature.menu.MenuScreen
@@ -34,6 +38,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import com.coinepro.feature.menu.R as MenuR
+import com.coinepro.feature.notifications.R as NotificationsR
 import com.coinepro.feature.search.R as SearchR
 
 /**
@@ -131,6 +136,54 @@ class T2ProofTest {
         )
     }
 
+    // ------------------------------------------------------------------ B9, until I see it
+
+    @Test
+    @Config(sdk = [34], qualifiers = PHONE)
+    fun `choosing until I see it offers an interval and says what it will do`() {
+        render {
+            AlertComposerBody(symbol = "BTCUSDT", onCreate = {}, onCancel = {}, currentPrice = 64_000.0)
+        }
+        // The interval is absent until the policy is chosen — an interval beside «once» is a
+        // control with nothing to control — so the frame is taken after the tap rather than before.
+        val policy = composeRule.activity.getString(NotificationsR.string.alert_repeat_until_ack)
+        composeRule.onNodeWithText(policy).performClick()
+        composeRule.waitForIdle()
+        capture("t2-b9-until-seen-phone-fa-dark")
+
+        // What the still cannot carry: that the interval chips are **absent until the policy is
+        // chosen**. An interval beside «once is enough» is a control with nothing to control, and a
+        // frame taken after the tap cannot show what was not there before it.
+        val chosen = composeRule.activity.getString(
+            NotificationsR.string.alert_repeat_minutes,
+            LocalPriceAlert.DEFAULT_REPEAT_MINUTES.toString().toPersianDigits(),
+        )
+        assertTrue(
+            "«$chosen» is not on the composer after choosing the repeat",
+            composeRule.onAllNodesWithText(chosen).fetchSemanticsNodes().isNotEmpty(),
+        )
+
+        // And the sentence under them is a tip rather than a printed line, which is the note policy
+        // this repository enforces — `tools/i18n/notes.tsv` classes it, and a note resolved to a
+        // string instead of handed to `CoineProNote` fails `lint_strings`.
+        assertEquals(
+            "the interval chips did not all appear",
+            UNTIL_SEEN_INTERVALS,
+            listOf(5, 15, 30, 60).count { minutes ->
+                composeRule.onAllNodesWithText(
+                    composeRule.activity.getString(
+                        NotificationsR.string.alert_repeat_minutes,
+                        minutes.toString().toPersianDigits(),
+                    ),
+                ).fetchSemanticsNodes().isNotEmpty()
+            },
+        )
+    }
+
+    /** The prose digits the composer prints. Persian here, because these qualifiers are Persian. */
+    private fun String.toPersianDigits(): String =
+        map { char -> if (char in '0'..'9') PERSIAN_DIGITS[char - '0'] else char }.joinToString("")
+
     // ------------------------------------------------------------------ the rig
 
     private fun render(dark: Boolean = true, content: @Composable () -> Unit) {
@@ -178,5 +231,11 @@ class T2ProofTest {
          * of a state the app cannot reach is a picture of a different product.
          */
         val PULSE = MarketPulse(turnover24h = 1_430_000_000.0, breadth = 54, markets = 312)
+
+        /** ۰–۹, for reading back a count the composer printed in Persian. */
+        const val PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹"
+
+        /** Five, fifteen, thirty, sixty. See `AlertComposer.REPEAT_MINUTES` for the band. */
+        const val UNTIL_SEEN_INTERVALS = 4
     }
 }

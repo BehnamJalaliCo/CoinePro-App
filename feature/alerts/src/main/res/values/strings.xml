@@ -72,6 +72,11 @@
     <string name="alerts_scope_list">%1$s — %2$s symbols</string>
     <string name="alerts_scope_list_note">The condition is checked for each symbol on the list independently. A symbol added to the list is covered from that moment on.</string>
     <string name="alerts_sound">Loudness</string>
+    <string name="alerts_until_seen">Keep telling me</string>
+    <string name="alerts_until_seen_off">Once is enough</string>
+    <string name="alerts_until_seen_on">Until I see it</string>
+    <string name="alerts_until_seen_minutes">%1$s min</string>
+    <string name="alerts_until_seen_note">It comes back every %1$s minutes and stops the moment you open it or press Seen.</string>
     <string name="alerts_sound_quiet">Quiet</string>
     <string name="alerts_sound_normal">Normal</string>
     <string name="alerts_sound_loud">Loud</string>

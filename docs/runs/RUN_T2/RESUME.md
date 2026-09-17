@@ -11,8 +11,9 @@ carries it — so the phase became an audit with every number re-measured on thi
 clause run Τ left untested. See `CHECKLIST.md`, which opens with the correction, and `REPORT.md`
 for the measurements.
 
-**Phase B: four of ten done.** B1 and B4 were already shipped by runs Φ and Υ and are audited rows.
-B2, B3, B5 and B10 are this session's work. B6, B7, B8 and B9 are not started or not finished.
+**Phase B: five of ten done.** B1 and B4 were already shipped by runs Φ and Υ and are audited rows.
+B2, B3, B5, B9 and B10 are this session's work — B9 narrowed on its bundled sound set, which needs
+audio this repository does not hold (`BLOCKED.md §B9`). B6, B7 and B8 are not started.
 
 **Phase C: audited, not built.** C5 and C2 turn out to be mostly shipped already; C1, C3, C4 and C6
 do not exist.
@@ -23,24 +24,9 @@ do not exist.
 
 ## What is next, in the order it should be taken
 
-### B9 — alert sound and repeat
-
-The nearest thing to done, and the only one where the model is already half there.
-
-* **Exists:** `AlertRepeat` (once / daily / always) and `AlertFrequency` (bar-aware) on
-  `LocalPriceAlert`; `AlertChannel` (push / in-app / sound / vibrate) per alert; `soundLevel` per
-  alert with `AlertSound.coerce` and a loud threshold that routes to the alarm stream.
-* **Missing:** the **choice of sound** from a bundled set — there is a level but no tone;
-  «repeat every N minutes until acknowledged», which is a fourth `AlertRepeat` case carrying an
-  interval and an acknowledgement, not a variant of `ALWAYS` (that has a fixed
-  `COOLDOWN_MILLIS = 15 min` and no acknowledgement); and the **Do Not Disturb** rule.
-* **Files:** `core/notifications/…/LocalPriceAlert.kt`, `…/AlertDelivery.kt`,
-  `core/datastore/…/LocalAlertStore.kt` (the stored form is delimited — adding a field means
-  touching the codec and its round-trip test), `feature/alerts/…/AlertEditorSheet.kt`,
-  `app/…/alerts/AndroidAlertDeliverer.kt`.
-* **Watch out for:** the four channels are already separate per alert and the notification channels
-  per kind (price / signals / community / news) are in `app/…/notifications/NotificationChannels.kt`
-  — B9 says they stay separate, which they are. Do not collapse them.
+**B9's remaining half** is the four tones in `BLOCKED.md §B9`, and it is blocked on the owner rather
+than on work: once the files are in `res/main/res/raw/`, it is four more entries in
+`NotificationChannels` and a tone field on the alert beside `soundLevel`.
 
 ### B6 — offline as a first-class state
 

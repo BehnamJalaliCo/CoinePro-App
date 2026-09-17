@@ -161,6 +161,17 @@ class LocalAlertStore(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    /**
+     * Records that the reader has seen an [AlertRepeat.UNTIL_ACKNOWLEDGED] alert (run Τ2, B9).
+     *
+     * A no-op on every other repeat policy — `LocalPriceAlert.acknowledged` decides that, not this,
+     * so there is one rule and not two — and a no-op on an id this phone does not hold, which is
+     * the ordinary case for a notification tapped after its alert was deleted.
+     */
+    suspend fun acknowledge(id: String, atEpochMillis: Long) {
+        update(id) { it.acknowledged(atEpochMillis) }
+    }
+
     suspend fun clear() {
         dataStore.edit { it.remove(ALERTS) }
     }
@@ -215,6 +226,8 @@ class LocalAlertStore(private val dataStore: DataStore<Preferences>) {
                 AlertChannel.encode(alert.channels),
                 alert.soundLevel.toString(),
                 DelimitedText.escape(alert.message.orEmpty()),
+                alert.repeatEveryMinutes?.toString().orEmpty(),
+                alert.acknowledgedAtEpochMillis?.toString().orEmpty(),
             ).joinToString(FIELD)
         }
 
@@ -253,6 +266,10 @@ class LocalAlertStore(private val dataStore: DataStore<Preferences>) {
                     message = parts.getOrNull(15)
                         ?.takeIf(String::isNotBlank)
                         ?.let(DelimitedText::unescape),
+                    // Run Τ2, B9. Both null on every row written before it, which is «the default
+                    // interval» and «not yet acknowledged» — the state a fresh alert is in anyway.
+                    repeatEveryMinutes = parts.getOrNull(16)?.toIntOrNull(),
+                    acknowledgedAtEpochMillis = parts.getOrNull(17)?.toLongOrNull(),
                 )
             }
     }

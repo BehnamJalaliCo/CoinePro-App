@@ -31,6 +31,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
+import com.coinepro.app.alerts.AlertAcknowledgeReceiver
 import com.coinepro.app.alerts.AlertDeepLink
 import com.coinepro.app.notifications.PushCoordinator
 import com.coinepro.app.sync.BackgroundSyncScheduler
@@ -563,6 +564,16 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun consumeDeepLink(intent: Intent?) {
+        // **Opening it is an acknowledgement** (run Τ2, B9). Before the link is even parsed,
+        // because it is true whatever the link turns out to be: a reader who has the chart in
+        // front of them has seen the alert, and a notification that went on repeating after that
+        // would be the app arguing with the reader's own eyes. A no-op on every alert that is not
+        // an `UNTIL_ACKNOWLEDGED` one — `LocalPriceAlert.acknowledged` decides, not this.
+        intent?.getStringExtra(AlertAcknowledgeReceiver.EXTRA_ALERT_ID)
+            ?.takeIf(String::isNotBlank)
+            ?.let { id ->
+                lifecycleScope.launch { localAlertStore.acknowledge(id, System.currentTimeMillis()) }
+            }
         val uri = intent?.data ?: return
         // A malformed query throws rather than returning null, and a link the app cannot read is
         // not a reason to fail to open.

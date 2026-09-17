@@ -123,6 +123,7 @@
     <string name="notify_marketing">Offers and announcements</string>
     <string name="notify_marketing_note">Off by default</string>
     <string name="alert_fired_title">Price alert</string>
+    <string name="alert_acknowledge">Seen</string>
     <string name="alert_fired_body">%1$s reached %2$s.</string>
     <string name="alert_toast_open">Chart</string>
     <string name="channel_price_alert_loud">Loud price alerts</string>

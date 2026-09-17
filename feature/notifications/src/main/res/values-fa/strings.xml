@@ -38,6 +38,10 @@
     <string name="alert_repeat_once">یک بار</string>
     <string name="alert_repeat_daily">روزی یک بار</string>
     <string name="alert_repeat_always">هر بار</string>
+    <string name="alert_repeat_until_ack">تا وقتی ببینمش</string>
+    <string name="alert_repeat_until_ack_note">هر %1$s دقیقه تکرار می‌شود و به‌محض باز کردنش می‌ایستد.</string>
+    <string name="alert_repeat_every">تکرار هر</string>
+    <string name="alert_repeat_minutes">%1$s دقیقه</string>
 
     <string name="alert_new_title">هشدار تازه</string>
     <string name="alert_new_subtitle">بازار، شرط و اینکه چند بار خبرتان کند</string>

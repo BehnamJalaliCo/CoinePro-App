@@ -690,6 +690,22 @@ class AlertsController(
         editDraft { it.copy(frequency = frequency) }
     }
 
+    /**
+     * «تا وقتی ببینمش» on or off, and how often it speaks while it is on (run Τ2, B9).
+     *
+     * Two setters rather than one, because the interval survives the toggle: a reader who turns the
+     * policy off to look at the frequency chips and turns it back on has not asked to have their
+     * thirty minutes reset to the default. `AlertDraft.toAlert` is what drops the interval from an
+     * alert that is not repeating, so nothing stale reaches the stored row.
+     */
+    fun setUntilAcknowledged(enabled: Boolean) {
+        editDraft { it.copy(untilAcknowledged = enabled) }
+    }
+
+    fun setRepeatEveryMinutes(minutes: Int) {
+        editDraft { it.copy(repeatEveryMinutes = minutes) }
+    }
+
     /** Turns one delivery channel on or off. Turning all of them off is a choice, not an error. */
     fun toggleChannel(channel: AlertChannel) {
         editDraft { draft ->

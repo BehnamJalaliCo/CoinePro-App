@@ -63,8 +63,8 @@ arithmetic, and the one decision this leaves the owner, are in `BLOCKED.md §A`.
 
 ## Phase B — the gaps the 4.92 audit found
 
-Four of the ten landed in this session; two of the ten were already shipped by runs Φ and Υ and are
-audited rather than rebuilt; four are not done and are named, with their files and their traps, in
+Five of the ten landed in this run; two of the ten were already shipped by runs Φ and Υ and are
+audited rather than rebuilt; three are not done and are named, with their files and their traps, in
 `RESUME.md`.
 
 ### B2 — the entitlement is server-fed now, and it was not
@@ -111,6 +111,37 @@ What it did not have is anything saying so: a tappable cell that looks exactly l
 a door nobody opens. A 12 dp ⓘ now sits beside each cell's name and the **target stays the whole
 cell**, because 12 dp is below every minimum a thumb is measured against. Not one word of the four
 explanations changed.
+
+### B9 — the repeat that was actually missing
+
+Three policies existed and none of them says the useful thing. `ONCE` tells the reader once, which
+is nothing if the phone was face down. `ALWAYS` re-fires only while the condition keeps *becoming*
+true again, so a price that crosses a line and stays above it is announced once and never again —
+which is precisely the move somebody set the alert for. `DAILY` is a day late.
+
+`AlertRepeat.UNTIL_ACKNOWLEDGED` keeps speaking every N minutes until the reader answers, and an
+answer is the only thing that stops it. Not a count, not a timeout: a repeat that gives up on its
+own is the missed alert it was built to prevent. There are two ways to answer, because the value of
+the policy is that it keeps going when a tap did not happen — **opening** the notification, and a
+**«دیدم»** button on it, so it can be silenced from the shade by somebody who is driving or in a
+meeting and has already decided to do nothing.
+
+The rest of the model was already right and stayed where it was: four delivery channels per alert,
+a per-alert loudness, vibration as its own channel. One thing was wrong. The loud level plays on the
+**alarm** output, and an alarm is the one sound Android lets through a «priority only» filter on
+most phones — so the escalation a reader asked for on a Tuesday afternoon was what would wake them
+at three in the morning, from an app about candles. It is now capped back to the ordinary channel
+while the phone is in Do Not Disturb, and the system's own filter decides from there. Nothing in
+this app calls `setBypassDnd`, and that is deliberate.
+
+Two editors reach it. In the composer it is a chip in the row that was already there. In the editor
+sheet it is a row of its own, **below** the bar frequency rather than inside it, because the two
+answer different questions in different units — the chips above choose which *bars* may fire, this
+chooses what happens on the *clock* once one has — and folding them together would make «once per
+bar close» and «keep telling me» mutually exclusive for no reason a reader could discover.
+
+What is not done is the bundled sound set: this repository holds no audio, and `BLOCKED.md §B9`
+carries the four files, their format and the channel work that follows the moment they exist.
 
 ### B10 — one sentence, and where it goes
 

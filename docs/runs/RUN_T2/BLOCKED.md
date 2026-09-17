@@ -29,6 +29,33 @@ There is no third setting. Nothing else in the run is waiting on this answer.
 
 ---
 
+## §B9 — the bundled alert tones
+
+**What cannot be done here.** «Choose a sound from a small bundled set» needs sound files, and this
+repository has none. Inventing four audio assets I cannot listen to, and shipping them as the noise
+that wakes somebody at four in the morning, is not a judgement a build should make on its own.
+
+**What is in the build instead.** The whole of the rest of B9: a per-alert loudness the reader sets,
+the loud level routed to the alarm output and capped back while the phone is in Do Not Disturb,
+vibration as its own per-alert channel, and the repeat policy that was actually missing —
+«every N minutes until I have seen it», with two ways to answer it.
+
+**What the owner must supply.** Four short tones, and nothing else is needed to finish the row:
+
+| File | Length | What it should sound like |
+|---|---|---|
+| `app/src/main/res/raw/alert_soft.ogg` | ≤ 1.5 s | The ordinary one. Quiet enough for a desk |
+| `app/src/main/res/raw/alert_chime.ogg` | ≤ 1.5 s | Distinct from the phone's own notification tone |
+| `app/src/main/res/raw/alert_bell.ogg` | ≤ 2 s | The one for a level that matters |
+| `app/src/main/res/raw/alert_alarm.ogg` | ≤ 3 s | The loud one. Plays on the alarm output |
+
+OGG Vorbis, mono, 44.1 kHz, peak-normalised. Each tone needs its own notification channel — Android
+fixes a channel's sound when it is created and a per-notification sound has had no effect since
+Android 8 — so the work once the files exist is four more entries in `NotificationChannels` and a
+tone field on the alert beside `soundLevel`.
+
+---
+
 ## §B — what the device still owes
 
 Not a blocker on the code; a measurement only a phone can take.

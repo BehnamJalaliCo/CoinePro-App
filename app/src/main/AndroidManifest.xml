@@ -185,6 +185,20 @@
                 android:resource="@xml/widget_markets_info" />
         </receiver>
 
+        <!--
+          «دیدم» on a repeating price alert (run Τ2, B9).
+
+          `exported="false"`: the only sender is this app's own notification, and an acknowledgement
+          another app could broadcast would be a way to silence somebody else's alerts.
+        -->
+        <receiver
+            android:name=".alerts.AlertAcknowledgeReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.coinepro.app.alerts.ACKNOWLEDGE" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".notifications.CoineProFirebaseMessagingService"
             android:exported="false">

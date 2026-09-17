@@ -607,4 +607,5 @@ internal fun com.coinepro.core.notifications.AlertRepeat.labelRes(): Int = when 
     com.coinepro.core.notifications.AlertRepeat.ONCE -> R.string.alert_repeat_once
     com.coinepro.core.notifications.AlertRepeat.DAILY -> R.string.alert_repeat_daily
     com.coinepro.core.notifications.AlertRepeat.ALWAYS -> R.string.alert_repeat_always
+    com.coinepro.core.notifications.AlertRepeat.UNTIL_ACKNOWLEDGED -> R.string.alert_repeat_until_ack
 }

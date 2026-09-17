@@ -38,6 +38,10 @@
     <string name="alert_repeat_once">Once</string>
     <string name="alert_repeat_daily">Once a day</string>
     <string name="alert_repeat_always">Every time</string>
+    <string name="alert_repeat_until_ack">Until I see it</string>
+    <string name="alert_repeat_until_ack_note">It repeats every %1$s minutes and stops the moment you open it.</string>
+    <string name="alert_repeat_every">Repeat every</string>
+    <string name="alert_repeat_minutes">%1$s min</string>
 
     <string name="alert_new_title">New alert</string>
     <string name="alert_new_subtitle">The market, the condition, and how often to tell you</string>

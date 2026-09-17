@@ -51,6 +51,7 @@ import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.notifications.AlertChannel
+import com.coinepro.core.notifications.LocalPriceAlert
 import com.coinepro.core.notifications.AlertFrequency
 import com.coinepro.core.notifications.AlertMessageTemplate
 import com.coinepro.core.notifications.AlertTrigger
@@ -211,6 +212,12 @@ private fun EditorForm(draft: AlertDraft, refusal: AlertRefusal?, controller: Al
             selectedId = draft.frequency.name,
             onSelect = { id -> AlertFrequency.entries.firstOrNull { it.name == id }?.let(controller::setFrequency) },
             compact = true,
+        )
+
+        UntilSeenRow(
+            draft = draft,
+            onToggle = controller::setUntilAcknowledged,
+            onInterval = controller::setRepeatEveryMinutes,
         )
 
         VenueRow(
@@ -678,6 +685,80 @@ private fun LoudnessRow(draft: AlertDraft, onSelect: (AlertLoudness) -> Unit) {
     }
     Note(if (draft.loud) R.string.alerts_sound_loud_note else R.string.alerts_sound_normal_note)
 }
+
+/**
+ * «تا وقتی ببینمش» and how often (run Τ2, B9).
+ *
+ * Under the frequency row and not inside it, because the two are different units and the sheet
+ * should not pretend otherwise: the chips above choose which **bars** may fire, and this chooses
+ * what happens on the **clock** once one has. A reader can have «once per bar close» *and* «keep
+ * telling me every fifteen minutes until I look», and collapsing them into one row of five chips
+ * would make those two mutually exclusive for no reason a reader could discover.
+ *
+ * The interval appears only while the policy is on — an interval beside «once» is a control with
+ * nothing to control — and the note prints the number the reader has chosen rather than a general
+ * sentence, so what it says and what the chips say cannot disagree.
+ */
+@Composable
+private fun UntilSeenRow(
+    draft: AlertDraft,
+    onToggle: (Boolean) -> Unit,
+    onInterval: (Int) -> Unit,
+) {
+    val minutes = draft.repeatEveryMinutes ?: LocalPriceAlert.DEFAULT_REPEAT_MINUTES
+    FieldLabel(stringResource(R.string.alerts_until_seen))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = CoineProSpacing.Gutter),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        TapChip(
+            label = stringResource(R.string.alerts_until_seen_off),
+            selected = !draft.untilAcknowledged,
+            onClick = { onToggle(false) },
+        )
+        TapChip(
+            label = stringResource(R.string.alerts_until_seen_on),
+            selected = draft.untilAcknowledged,
+            onClick = { onToggle(true) },
+        )
+    }
+    if (draft.untilAcknowledged) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = CoineProSpacing.Gutter),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        ) {
+            UNTIL_SEEN_MINUTES.forEach { step ->
+                TapChip(
+                    label = stringResource(R.string.alerts_until_seen_minutes, step.proseDigits()),
+                    selected = step == minutes,
+                    onClick = { onInterval(step) },
+                )
+            }
+        }
+        CoineProNote(
+            R.string.alerts_until_seen_note,
+            minutes.proseDigits(),
+            style = MaterialTheme.typography.labelSmall.copy(textAlign = TextAlign.Right),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = CoineProSpacing.Gutter),
+        )
+    }
+}
+
+/**
+ * The intervals this row offers.
+ *
+ * Five to sixty. Under five the platform cannot keep up — with the app closed it runs the
+ * evaluation no more often than every fifteen minutes, which the alerts screen says in its own
+ * words — and over an hour the reader is describing a second alert rather than a repeat.
+ * `LocalPriceAlert.effectiveRepeatMillis` clamps anything outside the band.
+ */
+private val UNTIL_SEEN_MINUTES = listOf(5, 15, 30, 60)
 
 /** A supporting line under a group of controls. Muted, small, and always the same shape. */
 @Composable

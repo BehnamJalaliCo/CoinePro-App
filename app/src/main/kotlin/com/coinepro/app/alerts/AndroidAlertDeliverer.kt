@@ -1,6 +1,7 @@
 package com.coinepro.app.alerts
 
 import android.Manifest
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -126,6 +127,11 @@ class AndroidAlertDeliverer @Inject constructor(
         }
         val identity = notificationId(fired)
         val body = bodyOf(fired)
+        // The alert's own id rides as an extra rather than in the link, so that opening the
+        // notification can acknowledge a repeating alert without the deep-link grammar growing a
+        // parameter that means nothing to every other link through the same host. See
+        // `AlertAcknowledgeReceiver` for the other half.
+        intent.putExtra(AlertAcknowledgeReceiver.EXTRA_ALERT_ID, fired.alert.id)
         val pending = PendingIntent.getActivity(
             context,
             identity,
@@ -142,8 +148,39 @@ class AndroidAlertDeliverer @Inject constructor(
             // Silent covers sound *and* vibration, which is what an alert with neither asked for.
             // With either of them on, the chosen channel decides and this must stay false.
             .setSilent(AlertChannel.SOUND !in fired.alert.channels && AlertChannel.VIBRATE !in fired.alert.channels)
+            // Only where there is something to acknowledge (run Τ2, B9). Every other repeat policy
+            // has nothing to stop, and a button that does nothing is worse than no button.
+            .apply { acknowledgeAction(fired, identity)?.let(::addAction) }
             .build()
         NotificationManagerCompat.from(context).notify(identity, notification)
+    }
+
+    /**
+     * «دیدم», or null where this alert is not the kind that repeats until it is seen.
+     *
+     * The request code is the notification's own id, so two alerts firing at once get two distinct
+     * pending intents rather than the second quietly reusing the first's extras — which would
+     * acknowledge the wrong alert. `FLAG_IMMUTABLE` because nothing outside this app has any
+     * business filling in a field of it.
+     */
+    private fun acknowledgeAction(fired: FiredAlert, identity: Int): NotificationCompat.Action? {
+        if (!fired.alert.repeatsUntilAcknowledged) return null
+        val intent = Intent(context, AlertAcknowledgeReceiver::class.java).apply {
+            action = AlertAcknowledgeReceiver.ACTION
+            putExtra(AlertAcknowledgeReceiver.EXTRA_ALERT_ID, fired.alert.id)
+            putExtra(AlertAcknowledgeReceiver.EXTRA_NOTIFICATION_ID, identity)
+        }
+        val pending = PendingIntent.getBroadcast(
+            context,
+            identity,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return NotificationCompat.Action.Builder(
+            android.R.drawable.checkbox_on_background,
+            context.getString(R.string.alert_acknowledge),
+            pending,
+        ).build()
     }
 
     /**
@@ -179,7 +216,35 @@ class AndroidAlertDeliverer @Inject constructor(
      * price-alert channel, which the reader already controls from the notification itself.
      */
     private fun channelFor(fired: FiredAlert): String =
-        priceAlertChannelId(fired.alert.channels, fired.alert.effectiveSoundLevel)
+        priceAlertChannelId(fired.alert.channels, effectiveLoudness(fired))
+
+    /**
+     * The loudness this one alert is allowed **right now** (run Τ2, B9).
+     *
+     * The reader's own level, except while the phone is in Do Not Disturb — where the loud channel
+     * is capped back to the ordinary one. That matters because the loud channel plays on the
+     * **alarm** output, and an alarm is the one sound Android lets through a «priority only» filter
+     * on most configurations. So the escalation the reader asked for on a Tuesday afternoon would
+     * be the thing that wakes them at three in the morning, from an app about candles.
+     *
+     * The capped notification is still posted, still on the price-alert channel, and the system's
+     * own filter decides whether it makes a sound at all — which is what Do Not Disturb is for.
+     * Nothing here bypasses it: `setBypassDnd` appears nowhere in this app, and that is deliberate.
+     *
+     * `currentInterruptionFilter` reads `INTERRUPTION_FILTER_UNKNOWN` on a system that will not say,
+     * and unknown is treated as «not in Do Not Disturb» — the reader's own setting wins where the
+     * phone has told us nothing, rather than an app quietly deciding to be quieter than asked.
+     */
+    private fun effectiveLoudness(fired: FiredAlert): Float {
+        val level = fired.alert.effectiveSoundLevel
+        if (!AlertSound.isLoud(level)) return level
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return level
+        val filter = manager.currentInterruptionFilter
+        val disturbed = filter == NotificationManager.INTERRUPTION_FILTER_PRIORITY ||
+            filter == NotificationManager.INTERRUPTION_FILTER_ALARMS ||
+            filter == NotificationManager.INTERRUPTION_FILTER_NONE
+        return if (disturbed) AlertSound.DEFAULT_LEVEL else level
+    }
 
     /**
      * One notification per alert **per symbol**.

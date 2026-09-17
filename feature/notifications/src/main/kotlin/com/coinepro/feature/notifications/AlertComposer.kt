@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -23,6 +24,7 @@ import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSheet
@@ -70,6 +72,7 @@ fun AlertComposerBody(
 ) {
     var condition by rememberSaveable { mutableStateOf(LocalAlertCondition.ABOVE) }
     var repeat by rememberSaveable { mutableStateOf(AlertRepeat.ONCE) }
+    var everyMinutes by rememberSaveable { mutableIntStateOf(LocalPriceAlert.DEFAULT_REPEAT_MINUTES) }
     // **A price, or nothing — never a zero.**
     //
     // Callers reach this from a chart, where there is always a last price, and now also from a
@@ -134,6 +137,31 @@ fun AlertComposerBody(
             compact = true,
         )
 
+        // **How often «until I see it» speaks** (run Τ2, B9).
+        //
+        // Drawn only for the policy it belongs to, because an interval beside «once» is a control
+        // with nothing to control. Four intervals rather than a number field: the useful answers
+        // are five minutes to an hour, a keyboard for that is three taps where this is one, and a
+        // field would let somebody type «0» and then wonder why the phone would not stop.
+        if (repeat == AlertRepeat.UNTIL_ACKNOWLEDGED) {
+            CoineProChipRow(
+                options = REPEAT_MINUTES.map { minutes ->
+                    CoineProChip(
+                        id = minutes.toString(),
+                        label = stringResource(R.string.alert_repeat_minutes, minutes.proseDigits()),
+                    )
+                },
+                selectedId = everyMinutes.toString(),
+                onSelect = { id -> id?.toIntOrNull()?.let { everyMinutes = it } },
+                compact = true,
+            )
+            CoineProNote(
+                R.string.alert_repeat_until_ack_note,
+                everyMinutes.proseDigits(),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+
         if (full) {
             Text(
                 text = stringResource(
@@ -157,6 +185,11 @@ fun AlertComposerBody(
                             condition = condition,
                             value = amount,
                             repeat = repeat,
+                            // Carried only where it means something. Writing it on every alert
+                            // would put an interval on a one-shot, which reads in the stored row
+                            // as a policy the reader never chose.
+                            repeatEveryMinutes = everyMinutes
+                                .takeIf { repeat == AlertRepeat.UNTIL_ACKNOWLEDGED },
                             // Captured now and never updated, so a percentage alert does not
                             // re-base itself every time this sheet is opened.
                             referencePrice = reference,
@@ -219,3 +252,14 @@ internal fun LocalAlertCondition.shortLabelRes(): Int = when (this) {
     LocalAlertCondition.CHANGE_24H_OVER -> R.string.alert_short_24h_over
     LocalAlertCondition.CHANGE_24H_UNDER -> R.string.alert_short_24h_under
 }
+
+/**
+ * The intervals «تا وقتی ببینمش» offers.
+ *
+ * Five to sixty, because that is the band where the policy does anything: under five the phone's
+ * own background scheduler cannot keep up — it runs this work no more often than every fifteen
+ * minutes with the app closed, which the alerts screen already says — and over an hour the reader
+ * is describing a second alert rather than a repeat. `LocalPriceAlert.effectiveRepeatMillis`
+ * clamps anything outside the band, so a stored value from elsewhere cannot produce a stream.
+ */
+private val REPEAT_MINUTES = listOf(5, 15, 30, 60)

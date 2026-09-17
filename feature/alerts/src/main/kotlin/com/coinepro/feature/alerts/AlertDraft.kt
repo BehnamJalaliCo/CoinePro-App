@@ -302,6 +302,20 @@ data class AlertDraft(
      * code for a release.
      */
     val soundLevel: Float = AlertSound.DEFAULT_LEVEL,
+    /**
+     * «تا وقتی ببینمش» — keep speaking until the reader answers (run Τ2, B9).
+     *
+     * A flag beside [frequency] rather than a fifth [AlertFrequency], because the two answer
+     * different questions in different units: a frequency is *bars* — once per bar, once per bar
+     * close — and this is wall-clock, ending on an acknowledgement rather than on a candle. Adding
+     * it to that enum would put a policy no bar can express into the one place every bar-aware
+     * evaluator switches on.
+     *
+     * It overrides the repeat [frequency] would otherwise map to; see [toAlert].
+     */
+    val untilAcknowledged: Boolean = false,
+    /** How often it repeats while [untilAcknowledged]. Null means `LocalPriceAlert.DEFAULT_REPEAT_MINUTES`. */
+    val repeatEveryMinutes: Int? = null,
     /** Where this alert is decided. See [AlertVenue]; the editor only offers the second where it can. */
     val venue: AlertVenue = AlertVenue.DEVICE,
     /**
@@ -422,7 +436,10 @@ data class AlertDraft(
             symbol = ticker,
             condition = condition,
             value = value,
-            repeat = frequency.asRepeat(),
+            // The flag wins where it is set: «until I see it» is a statement about the reader,
+            // and the frequency underneath it still governs which *bars* may fire at all.
+            repeat = if (untilAcknowledged) AlertRepeat.UNTIL_ACKNOWLEDGED else frequency.asRepeat(),
+            repeatEveryMinutes = repeatEveryMinutes.takeIf { untilAcknowledged },
             referencePrice = existing?.referencePrice,
             active = true,
             createdAtEpochMillis = existing?.createdAtEpochMillis ?: nowEpochMillis,
@@ -464,6 +481,8 @@ data class AlertDraft(
                 symbol = alert.symbol,
                 conditions = rows,
                 frequency = alert.frequency ?: alert.repeat.asFrequency(),
+                untilAcknowledged = alert.repeat == AlertRepeat.UNTIL_ACKNOWLEDGED,
+                repeatEveryMinutes = alert.repeatEveryMinutes,
                 channels = alert.channels,
                 message = alert.message.orEmpty(),
                 scopeListId = (alert.effectiveScope as? AlertScope.Watchlist)?.listId,
@@ -557,4 +576,8 @@ internal fun AlertRepeat.asFrequency(): AlertFrequency = when (this) {
     AlertRepeat.ONCE -> AlertFrequency.ONCE
     AlertRepeat.DAILY -> AlertFrequency.EVERY_TIME
     AlertRepeat.ALWAYS -> AlertFrequency.EVERY_TIME
+    // «Until I have seen it» is more than once, and there is no bar policy that says it — the
+    // repeat is wall-clock and its end is an acknowledgement, neither of which a candle knows
+    // about. See `AlertRepeat.UNTIL_ACKNOWLEDGED`.
+    AlertRepeat.UNTIL_ACKNOWLEDGED -> AlertFrequency.EVERY_TIME
 }

@@ -35,6 +35,7 @@ ai_timeframe_scope_note	tip	feature/ai
 ai_timeframe_server_note	tip	feature/ai
 ai_working_body	state	feature/ai
 alert_fired_body	system	app
+alert_repeat_until_ack_note	tip	feature/notifications
 alerts_audit_empty_hint	state	feature/alerts
 alerts_centre_empty_hint	state	feature/alerts
 alerts_delete_body	visible	feature/alerts
@@ -43,6 +44,7 @@ alerts_message_hint	label	feature/alerts
 alerts_scope_list_note	tip	feature/alerts
 alerts_sound_loud_note	visible	feature/alerts
 alerts_sound_normal_note	tip	feature/alerts
+alerts_until_seen_note	tip	feature/alerts
 alerts_venue_device_note	visible	feature/alerts
 alerts_venue_server_note	visible	feature/alerts
 announcements_empty_hint	state	feature/news

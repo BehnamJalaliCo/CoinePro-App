@@ -56,6 +56,23 @@ enum class AlertRepeat(val id: String) {
 
     /** Every time the condition becomes true again, with [LocalPriceAlert.COOLDOWN_MILLIS] between. */
     ALWAYS("always"),
+
+    /**
+     * Every [LocalPriceAlert.repeatEveryMinutes] minutes **until the reader acknowledges it**
+     * (run Τ2, B9).
+     *
+     * The one policy the other three cannot express, and the only one worth waking somebody for:
+     * «tell me again until I have seen it». [ONCE] tells them once, which is nothing if the phone
+     * was face down; [ALWAYS] re-fires only while the condition keeps becoming true again, so a
+     * price that crosses a line and stays there is announced once and never again; [DAILY] is a
+     * day late.
+     *
+     * It ends on an acknowledgement and on nothing else — not on a count, not on a timeout. A
+     * repeat that gives up on its own is the same missed alert with extra steps, and an alert the
+     * reader has not seen is exactly the case this exists for. Opening the notification is the
+     * acknowledgement; see [LocalPriceAlert.acknowledged].
+     */
+    UNTIL_ACKNOWLEDGED("until_ack"),
     ;
 
     companion object {
@@ -150,6 +167,22 @@ data class LocalPriceAlert(
     /** How loud its own sound is, independently of the app's other notifications. See [AlertSound]. */
     val soundLevel: Float = AlertSound.DEFAULT_LEVEL,
     /**
+     * Minutes between two firings of an [AlertRepeat.UNTIL_ACKNOWLEDGED] alert. Ignored by the rest.
+     *
+     * Null means [DEFAULT_REPEAT_MINUTES]. Clamped on read rather than on write, because a value
+     * that came out of a preferences file is not one this app necessarily put there, and a zero
+     * would be a notification every evaluation pass.
+     */
+    val repeatEveryMinutes: Int? = null,
+    /**
+     * When the reader said they had seen it, or null while they have not.
+     *
+     * Only [AlertRepeat.UNTIL_ACKNOWLEDGED] reads it. It is a timestamp rather than a flag so that
+     * the audit trail can say *when* the repeat stopped, which is the question somebody asks after
+     * being woken four times.
+     */
+    val acknowledgedAtEpochMillis: Long? = null,
+    /**
      * The reader's own wording, with `{symbol}`, `{price}`, `{time}` and `{tf}` filled in.
      *
      * Null for the app's own wording. Rendered by [AlertMessageTemplate.render], never by string
@@ -188,6 +221,13 @@ data class LocalPriceAlert(
     companion object {
         /** Between two firings of an [AlertRepeat.ALWAYS] alert. Long enough not to be a stream. */
         const val COOLDOWN_MILLIS = 15 * 60 * 1000L
+
+        /** What an [AlertRepeat.UNTIL_ACKNOWLEDGED] alert repeats at unless the reader says otherwise. */
+        const val DEFAULT_REPEAT_MINUTES = 15
+
+        /** The band the editor offers and [effectiveRepeatMillis] clamps to. See its note. */
+        const val MIN_REPEAT_MINUTES = 1
+        const val MAX_REPEAT_MINUTES = 24 * 60
 
         private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
 
@@ -315,17 +355,70 @@ data class LocalPriceAlert(
     }
 
     private fun repeatAllows(nowEpochMillis: Long): Boolean {
+        // An acknowledged repeat is over, and that is checked before the «has it ever fired» line
+        // below: the reader's answer outlives the firing it answered.
+        if (repeat == AlertRepeat.UNTIL_ACKNOWLEDGED && acknowledgedAtEpochMillis != null) return false
         val last = lastFiredAtEpochMillis ?: return true
         return when (repeat) {
             AlertRepeat.ONCE -> false
             AlertRepeat.DAILY -> nowEpochMillis - last >= DAY_MILLIS
             AlertRepeat.ALWAYS -> nowEpochMillis - last >= COOLDOWN_MILLIS
+            AlertRepeat.UNTIL_ACKNOWLEDGED -> nowEpochMillis - last >= effectiveRepeatMillis
         }
     }
+
+    /**
+     * How long between two firings of this alert, in milliseconds, clamped into range.
+     *
+     * The floor is a minute because the platform will not run background work more often than
+     * fifteen anyway, and the ceiling is a day because a «repeat» that waits longer than that is a
+     * second alert. A stored zero or a negative — which nothing here writes, and a corrupt file
+     * could hold — becomes the default rather than a notification on every pass.
+     */
+    val effectiveRepeatMillis: Long
+        get() = (repeatEveryMinutes ?: DEFAULT_REPEAT_MINUTES)
+            .coerceIn(MIN_REPEAT_MINUTES, MAX_REPEAT_MINUTES)
+            .toLong() * 60_000L
+
+    /**
+     * Whether this alert will keep speaking until the reader answers.
+     *
+     * True from the moment it is created, not from its first firing: it is what decides whether the
+     * notification carries a «دیدم» button, and that decision is made **as the notification is
+     * built**, which is before the fire stamp is written.
+     */
+    val repeatsUntilAcknowledged: Boolean
+        get() = repeat == AlertRepeat.UNTIL_ACKNOWLEDGED && acknowledgedAtEpochMillis == null
+
+    /**
+     * Whether it has spoken and is still waiting for an answer.
+     *
+     * The narrower of the two, for a screen: an alert that has never fired is not «waiting to be
+     * acknowledged», it is armed, and a list that marked it would be telling the reader they had
+     * missed something that has not happened.
+     */
+    val awaitsAcknowledgement: Boolean
+        get() = repeatsUntilAcknowledged && lastFiredAtEpochMillis != null
 
     /** The alert after it has fired: stamped, and deactivated where it was a one-shot. */
     fun fired(atEpochMillis: Long): LocalPriceAlert = copy(
         lastFiredAtEpochMillis = atEpochMillis,
         active = repeat != AlertRepeat.ONCE,
     )
+
+    /**
+     * The alert after the reader has said they have seen it.
+     *
+     * Deactivated as well as stamped, because «until I acknowledge it» is a statement about one
+     * event: the level was reached, the reader was told, and they answered. Leaving it armed would
+     * make an acknowledgement mean «be quiet for now», which is a different promise and not the one
+     * the editor offers. A no-op on every other repeat policy — nothing else has anything to
+     * acknowledge, and an acknowledgement that silently deactivated a daily alert would lose it.
+     */
+    fun acknowledged(atEpochMillis: Long): LocalPriceAlert =
+        if (repeat != AlertRepeat.UNTIL_ACKNOWLEDGED) {
+            this
+        } else {
+            copy(acknowledgedAtEpochMillis = atEpochMillis, active = false)
+        }
 }
