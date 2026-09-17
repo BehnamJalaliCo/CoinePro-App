@@ -47,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.continuousMotionAllowed
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSecondaryButton
@@ -77,7 +78,14 @@ import kotlinx.coroutines.delay
  *
  * Each slide has one continuous animation — a line that draws itself, a pulse, a sweep. Continuous
  * motion needs a reduced-motion guard (`check-motion-policy.sh`), and these take it: with animations
- * off the illustration is drawn at rest, which is a still picture rather than a missing one.
+ * off the loop is never started at all and the illustration is drawn at its resting phase, which is
+ * a still picture rather than a missing one.
+ *
+ * **The carousel takes the same guard**, and that is the part worth stating rather than assuming. A
+ * reader who turned animations off did not only ask for fewer moving pixels — they asked for the
+ * page to stop changing under them. With the animator scale at zero the slides do not advance on
+ * their own; the swipe and the dots still work, so nothing becomes unreachable, and every one of the
+ * five is still one gesture away.
  *
  * ### Auto-advance stops when a thumb lands
  *
@@ -95,14 +103,17 @@ fun WelcomeSlides(
     modifier: Modifier = Modifier,
 ) {
     val haptics = rememberCoineProHaptics()
+    // One reading of the device's animator scale for the whole screen, so the carousel and the five
+    // illustrations cannot disagree about it. See the note above.
+    val moves = continuousMotionAllowed()
     var slide by remember { mutableIntStateOf(0) }
     var held by remember { mutableStateOf(false) }
     var travelled by remember { mutableFloatStateOf(0f) }
 
     // The clock. Suspended while a thumb is down — `held` is a key, so the effect is cancelled on
     // touch and restarted on the lift, which also restarts the dwell for the slide being read.
-    LaunchedEffect(slide, held) {
-        if (held) return@LaunchedEffect
+    LaunchedEffect(slide, held, moves) {
+        if (held || !moves) return@LaunchedEffect
         delay(DWELL_MS)
         slide = (slide + 1) % WelcomeSlide.entries.size
     }
@@ -150,6 +161,7 @@ fun WelcomeSlides(
             ) {
                 WelcomeArt(
                     slide = current,
+                    moves = moves,
                     modifier = Modifier
                         .fillMaxWidth(ART_WIDTH_FRACTION)
                         .aspectRatio(1f),
@@ -232,9 +244,18 @@ enum class WelcomeSlide(@StringRes val headline: Int, @StringRes val body: Int) 
  * still illustration rather than a blank box.
  */
 @Composable
-private fun WelcomeArt(slide: WelcomeSlide, modifier: Modifier = Modifier) {
+private fun WelcomeArt(
+    slide: WelcomeSlide,
+    /** The device's animator scale, read once by the screen. See [WelcomeSlides]. */
+    moves: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    // The transition is created either way — a composable's shape must not change with a value —
+    // but it is only *read* when motion is allowed. With animations off the phase is [AT_REST],
+    // which every one of the five drawings is composed to look finished at: a candle line fully
+    // drawn, the rings at their widest, the door open.
     val loop = rememberInfiniteTransition(label = "welcome")
-    val phase by loop.animateFloat(
+    val animated by loop.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -243,6 +264,7 @@ private fun WelcomeArt(slide: WelcomeSlide, modifier: Modifier = Modifier) {
         ),
         label = "phase",
     )
+    val phase = if (moves) animated else AT_REST
     val accent = CoineProColors.Accent
     val ink = CoineProColors.TextPrimary
     val muted = CoineProColors.Border
@@ -384,6 +406,15 @@ private fun Dots(count: Int, current: Int) {
 }
 
 /** Long enough to read six words and a line under them, short enough not to be a wait. */
+/**
+ * The phase a still illustration is drawn at.
+ *
+ * One rather than zero: every one of the five drawings runs from «starting» to «done» over the
+ * loop, so the end of the sweep is the finished picture and the start of it is an empty frame. A
+ * reader with animations off gets the finished one.
+ */
+private const val AT_REST = 1f
+
 private const val DWELL_MS = 3_200L
 
 /** One turn of a slide's loop. Slow: this is a background, not the subject. */
