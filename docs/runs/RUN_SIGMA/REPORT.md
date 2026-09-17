@@ -808,3 +808,92 @@ on a hunch. The last run is what that costs.
 | New | `report-market-coverage.py`, `SymbolWheelBandTest` (2), `ChartPanCostProbeTest` |
 | Frames | `tau2-wheel-ring-fa.png`, `tau2-wheel-one-fa.png` |
 | Owed to a device | the swipe: 93.9 ms vs 98.3 ms says what it is *not*; a trace says what it is |
+
+---
+
+## RUN Υ — «چارت کُپ میکنه» and the study that would not leave
+
+Two reports in one message, and they are the same chart: the owner put a study on it, and then
+everything around that study went wrong.
+
+### Item 2 first, because it is the one that explains item 1
+
+The legend addresses a study by **where its row sits**. `Overlay(3)` means «the fourth line on the
+price scale»; `Pane(1)` means «the second strip»; `ChartController.indicatorFor` turns that position
+back into an id by reading an owner list kept alongside. It is a good design for the eighty studies
+that draw a line or a strip, and it has nothing to say about the ones that draw neither.
+
+Seven of them draw neither. `sr`, `supplydemand` and `autofib` put **levels** on the price scale;
+`swings`, `fractals` and `chopzone` put **marks** on the bars; `correlation` draws a pane only once a
+second instrument is loaded and nothing at all before that. Every one of them changed the chart and
+appeared nowhere a reader could reach — no ×, no gear, no eye. The only way to switch one off was to
+find it again in a catalogue of eighty-three entries, which is not a way back that anybody finds.
+
+That is the report word for word: «ضرب در روی صفحه چارت رو می‌زنم ولی هنوز اندیکاتوره هست … گزینه‌های
+روی چارت اندیکاتور نمیادش که من حذفش بکنم».
+
+The fix is a row addressed by **name**: `ChartLegendTarget.Study(key)`, carrying the study's own id,
+because a position is precisely what these studies do not have. `ChartDecoration.studies` is what the
+caller hands over, `ChartUiState.studyRows` is what builds it — every switched-on study that owns no
+overlay row and no pane row — and `ChartDerived` now keeps an owner beside every level and every
+mark, which is what lets the eye on such a row actually take its levels off the canvas.
+
+**The gate is the sweep, not the example.** `IndicatorRemovalTest` switches on every indicator in the
+catalogue, one at a time, and fails on any study that draws something the legend cannot address. It
+found all seven; it is what stops the eighth being added silently.
+
+### Item 1: the measurement, and the three explanations it killed
+
+«چارت کُپ میکنه زمانی که به چپ و راست سوائپ میکنم.» Run Τ's lesson was that the plausible cause and
+the real one are different things, so four explanations were measured before anything was changed.
+
+1. **The fling clock.** The loop reads `withFrameNanos` and the `KineticScroll` twin measures its
+   elapsed time in *milliseconds* — which would deliver a whole flick in one frame. It is not the
+   bug: the chart flings on `ChartFling`, which is nanoseconds throughout, and `KineticScroll` is the
+   JVM twin the unit tests drive. Measured frame by frame, a 3 000 px/s flick moves over **99 frames**
+   and its biggest single step is **4 bars of 164**.
+2. **The derive.** Every page-back replaces the series and re-derives every switched-on study over
+   every bar held. At the 50 000-bar resident ceiling that is **27 ms** — linear, and once per page,
+   not per frame.
+3. **A dropped gesture.** A flick landing on a chart that is still coasting could plausibly be eaten
+   by the `flinging` key never changing. It is not: such a flick carries **164 bars against 164** from
+   rest.
+4. **The thinning.** This one was real.
+
+`SignalMarkers.thin` runs **inside the draw pass, once a frame**, whenever the bars are closer
+together than six points — which is to say whenever the reader has zoomed out, which is what a reader
+looking back through history has done. To find each mark's bar index it built a `HashMap<Long, Int>`
+of **every bar in the series**.
+
+Both of its inputs grow with use and neither grows with what is on screen. A structure study draws a
+mark per bar. Run Τ tripled the distance a flick covers, so a reader working the chart back and forth
+crosses the load margin far more often than before and the series climbs towards the ceiling in a
+handful of gestures. On a 50 000-bar chart carrying 200 marks, measured:
+
+| | before | after |
+|---|---|---|
+| one frame of thinning | **5 348 µs** | **13 µs** |
+| garbage per frame | **476 KiB** | **4 KiB** |
+| cost against a 2 500-bar chart | 8.1× | 0.4× — flat |
+
+Two changes. The index is a **binary search** over `CandleSeries.time`, which is sorted because the
+type refuses to be constructed otherwise: no map, no boxing, nothing allocated per bar. And
+`drawMarkers` takes the **window first** — `SignalMarkers.onPlot` — so the thinning decides among the
+marks a reader can actually see rather than among fifty thousand it will throw away. That is also the
+better answer at the plot's edges, where a ten-bar bucket straddling the boundary used to be spoken
+for by a mark outside the plot and therefore drew nothing.
+
+### What this does not settle
+
+It settles a cost, not a feel. The finding is real, it is in the hottest path in the app, and it grew
+with exactly the use described — but whether removing it is *enough* is not a question this container
+can answer, because the rest of a drag frame here is a software rasteriser. The Perfetto trace run Τ2
+asked for is still what closes Τ2 item 3.
+
+| | |
+|---|---|
+| Changed | `SignalMarkers.thin` (binary search, no whole-series index); `drawMarkers` windows before thinning; `ChartDerived` carries `levelOwners`/`markerOwners`; `ChartUiState.levels`/`markers` answer the eye |
+| New | `ChartLegendTarget.Study`, `ChartDecoration.studies`, `ChartStudyRow`, `ChartUiState.studyRows`, `SignalMarkers.onPlot` |
+| Tests | `IndicatorRemovalTest` (4, whole-catalogue sweep), `IndicatorRemovalProofTest` (2), `SignalMarkerThinningCostTest` (5), `ChartLegendRowsTest` (+3), `ChartFlingRegressionTest` (+2), `ChartHistoryDepthProbeTest` (1), `ChartDerivedCostProbeTest` (2) |
+| Frames | `upsilon-study-row-open-phone-fa.png`, `upsilon-study-row-removed-phone-fa.png` |
+| Owed to a device | whether the swipe now keeps up — a Perfetto or Macrobenchmark trace |

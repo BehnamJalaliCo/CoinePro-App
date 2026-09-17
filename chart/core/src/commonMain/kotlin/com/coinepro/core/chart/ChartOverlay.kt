@@ -270,6 +270,20 @@ data class ChartColours(
     val crosshair: Long,
 )
 
+/**
+ * A study with nothing on the price scale to name it — see [ChartDecoration.studies].
+ *
+ * [key] is the caller's own identifier for the study and travels back untouched on every legend
+ * target, so nothing here has to be resolved from a position. That is deliberate: this type exists
+ * because a position was the wrong address for studies of this shape.
+ */
+data class ChartStudyRow(
+    val key: String,
+    val label: String,
+    /** ARGB for the swatch, or null for a row with no colour of its own. */
+    val colour: Long? = null,
+)
+
 data class ChartDecoration(
     val overlays: List<ChartLine> = emptyList(),
     val signal: SignalOverlay? = null,
@@ -318,6 +332,25 @@ data class ChartDecoration(
     val levels: List<PriceLevel> = emptyList(),
     /** Per-bar marks: swing points, fractals, zigzag turns. */
     val markers: List<ChartMarker> = emptyList(),
+    /**
+     * Studies that are switched on and draw no line and no strip of their own.
+     *
+     * ### Why the legend needs to be told about them
+     *
+     * Because the legend addresses a study by **where its row sits** — «the fourth line on the
+     * price scale», «the second strip» — and a study whose whole output is [levels] or [markers]
+     * has neither. Seven of the catalogue's studies are that shape: support and resistance, supply
+     * and demand, the auto-Fibonacci, the swing and fractal marks, the chop band, and a
+     * correlation with no second instrument loaded. Switched on, each of them drew on the chart
+     * and appeared nowhere in the legend, so the ×, the gear and the eye that a reader reaches for
+     * did not exist for them at all: «ضرب در روی صفحه چارت رو می‌زنم ولی هنوز اندیکاتوره هست».
+     *
+     * So the caller names them and the legend prints a row apiece — the name and the three
+     * controls, with no reading, because there is no single number to read off a set of levels.
+     * The row carries [ChartStudyRow.key] rather than a position, which is the other half of the
+     * fix: an index into a list this study is not in is what could not be resolved.
+     */
+    val studies: List<ChartStudyRow> = emptyList(),
     /**
      * What happened, on the time axis: releases, earnings, headlines.
      *

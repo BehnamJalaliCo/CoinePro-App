@@ -81,6 +81,30 @@ object SignalMarkers {
     }
 
     /**
+     * The markers [view] can actually draw — run Υ, item 1.
+     *
+     * ### Why this is a step of its own, and why it comes first
+     *
+     * The renderer has always dropped a marker whose glyph would land off the plot; it did it one
+     * marker at a time, at the end, after [thin] had already decided among the whole set. That order
+     * is the wrong way round the moment the set stops being a handful of signals — a structure study
+     * draws a mark a bar, and a reader flicking back through history pages the series towards
+     * [ChartHistory.MAX_RESIDENT_BARS], so the set becomes every bar the chart holds and the frame
+     * pays to thin fifty thousand marks in order to draw forty.
+     *
+     * Windowing first also gives the better answer at the edges: a ten-bar bucket straddling the
+     * boundary used to be spoken for by a mark outside the plot, which was then dropped, so the
+     * bucket drew nothing. Now the strongest mark a reader can *see* wins it.
+     */
+    fun onPlot(markers: List<ChartMarker>, view: ChartViewport): List<ChartMarker> {
+        if (markers.isEmpty() || view.plotWidth <= 0f) return markers
+        return markers.filter { mark ->
+            val x = view.xOfTime(mark.time)
+            x >= 0f && x <= view.plotWidth
+        }
+    }
+
+    /**
      * One marker per [window] bars — the strongest of each — for a chart zoomed out past the point
      * where every mark can be its own object.
      *
@@ -96,17 +120,36 @@ object SignalMarkers {
      *
      * Markers whose time is not in [series] are kept as they are: the window is measured in bar
      * indices, and a mark this series has never heard of has no window to belong to.
+     *
+     * ### Why the bar index is searched for and not looked up — run Υ, item 1
+     *
+     * «چارت کُپ میکنه زمانی که به چپ و راست سوائپ میکنم.»
+     *
+     * This runs **inside the draw pass**, once a frame, for as long as the reader stays zoomed out
+     * past [TRIANGLE_SPACING_DP] — which is the zoom somebody looking back through history is at.
+     * It used to build a `HashMap` of every bar in the series to find each mark's index, and both of
+     * its inputs grow with use: a structure study draws a mark a bar, and flicking back pages the
+     * series towards [ChartHistory.MAX_RESIDENT_BARS]. Measured, that map cost five milliseconds and
+     * near half a megabyte of garbage **per frame** on a fifty-thousand-bar chart carrying two
+     * hundred marks — on the drawing thread, at a hundred and twenty frames a second. See
+     * `SignalMarkerThinningCostTest`.
+     *
+     * [CandleSeries.time] is sorted, because `CandleSeries` refuses to be built out of order, so the
+     * index is a binary search: no map, no boxing, nothing allocated per bar, and the answer is the
+     * same one. The cost of a frame is now a function of the marks being thinned rather than of the
+     * history the reader has paged in, which is the property it always should have had.
      */
     fun thin(markers: List<ChartMarker>, series: CandleSeries, window: Int = THIN_WINDOW): List<ChartMarker> {
         if (markers.size < 2 || series.isEmpty || window < 2) return markers
-        val indexOf = HashMap<Long, Int>(series.size)
-        for (index in 0 until series.size) indexOf[series.bars[index].t] = index
+        val times = series.time
         val strongest = LinkedHashMap<Int, ChartMarker>()
-        val orphans = mutableListOf<ChartMarker>()
+        var orphans: MutableList<ChartMarker>? = null
         for (marker in markers) {
-            val index = indexOf[marker.time]
-            if (index == null) {
-                orphans += marker
+            val index = barAt(times, marker.time)
+            if (index < 0) {
+                // Allocated only when there is one. A chart whose marks all belong to its own bars
+                // — every chart, in practice — pays nothing for the case that they might not.
+                (orphans ?: mutableListOf<ChartMarker>().also { orphans = it }) += marker
                 continue
             }
             // Keyed by the window *and* by which way the mark points: a buy and a sell inside the
@@ -116,7 +159,29 @@ object SignalMarkers {
             val held = strongest[key]
             if (held == null || marker.strength >= held.strength) strongest[key] = marker
         }
-        return strongest.values.toList() + orphans
+        val kept = orphans ?: return strongest.values.toList()
+        return strongest.values.toList() + kept
+    }
+
+    /**
+     * The index of the bar at [time] in the sorted [times], or −1 where this series has no such bar.
+     *
+     * Written out rather than taken from the standard library because `LongArray.binarySearch` is a
+     * JVM extension and this file is common code: the web terminal compiles it too.
+     */
+    private fun barAt(times: LongArray, time: Long): Int {
+        var low = 0
+        var high = times.size - 1
+        while (low <= high) {
+            val middle = (low + high) ushr 1
+            val at = times[middle]
+            when {
+                at < time -> low = middle + 1
+                at > time -> high = middle - 1
+                else -> return middle
+            }
+        }
+        return -1
     }
 }
 

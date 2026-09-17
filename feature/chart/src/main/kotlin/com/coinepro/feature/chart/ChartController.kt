@@ -19,6 +19,7 @@ import com.coinepro.core.chart.ChartMarker
 import com.coinepro.core.chart.ChartOrder
 import com.coinepro.core.chart.ChartPane
 import com.coinepro.core.chart.ChartPoint
+import com.coinepro.core.chart.ChartStudyRow
 import com.coinepro.core.chart.ChartType
 import com.coinepro.core.chart.ChartViewport
 import com.coinepro.core.chart.ComparisonBasis
@@ -868,6 +869,12 @@ data class ChartUiState(
             paneOwnersShown.forEachIndexed { index, owner ->
                 if (owner in hiddenIndicators) targets += ChartLegendTarget.Pane(index)
             }
+            // And the rows that carry their own id rather than a position — see [studyRows]. The
+            // eye on one of those is the only switch there is for a set of levels, so it has to be
+            // reported dimmed like every other switched-off row.
+            studyRows.forEach { study ->
+                if (study.key in hiddenIndicators) targets += ChartLegendTarget.Study(study.key)
+            }
             return targets
         }
 
@@ -903,12 +910,17 @@ data class ChartUiState(
     val levels: List<PriceLevel>
         get() = when {
             indicatorsHidden -> emptyList()
-            scriptDraw.levels.isEmpty() -> derived.levels
-            // The eye takes a script's levels with its lines: `levelOwners` is carried beside the
-            // levels for exactly this, so nothing here has to re-run a reader's code to find out
-            // whose line it is looking at.
-            else -> derived.levels + scriptDraw.shown(scriptDraw.levels, scriptDraw.levelOwners, hiddenIndicators)
+            // The eye takes a study's levels with everything else it draws, which is what makes the
+            // eye on a levels-only row mean anything at all: `levelOwners` is carried beside the
+            // levels on both sides — the catalogue's and the scripts' — so nothing here has to
+            // re-run a reader's code, or guess, to find out whose line it is looking at.
+            scriptDraw.levels.isEmpty() -> shownLevels
+            else -> shownLevels + scriptDraw.shown(scriptDraw.levels, scriptDraw.levelOwners, hiddenIndicators)
         }
+
+    /** [ChartDerived.levels] less the studies the reader switched off — the list itself when none. */
+    private val shownLevels: List<PriceLevel>
+        get() = ownedShown(derived.levels, derived.levelOwners, hiddenIndicators)
 
     /**
      * Which indicator a legend row belongs to, or null — item 109.
@@ -922,8 +934,50 @@ data class ChartUiState(
     fun indicatorFor(target: ChartLegendTarget): String? = when (target) {
         is ChartLegendTarget.Overlay -> shownOverlayOwners.getOrNull(target.index)
         is ChartLegendTarget.Pane -> paneOwnersShown.getOrNull(target.index)
+        // The one target that carries the study's own id — see [studyRows]. Checked against what is
+        // actually switched on rather than trusted: the row came from a previous emission of this
+        // state, and a stale key must resolve to nothing rather than to whatever now holds that id.
+        is ChartLegendTarget.Study -> target.key.takeIf { it in activeIndicators }
         else -> null
     }
+
+    /**
+     * The studies that are switched on and have nowhere in the legend to be named — run Υ item 2.
+     *
+     * ### The defect this closes
+     *
+     * «یه اندیکاتور رو روی چارت میندازیم و ضرب در رو می‌زنیم ولی هنوز اندیکاتوره هست … گزینه‌های روی
+     * چارت اندیکاتور نمیادش که من حذفش بکنم.»
+     *
+     * The legend is built from two lists — the lines on the price scale and the strips under it —
+     * and a study is addressable exactly when it owns an entry in one of them. Seven studies in the
+     * catalogue own neither: `sr`, `supplydemand` and `autofib` draw horizontal levels, `swings`,
+     * `fractals` and `chopzone` draw marks on the bars, and `correlation` draws a pane only once a
+     * second instrument is loaded and nothing at all before that. Switched on, each of them changed
+     * the chart and appeared nowhere a reader could reach — no ×, no gear, no eye — and the only way
+     * back was to find the row again in a catalogue of eighty-three and tap it off. That is not a
+     * way back that a reader finds.
+     *
+     * So they get a row of their own, addressed by id rather than by position, because position is
+     * the thing they do not have. `IndicatorRemovalTest` sweeps the whole catalogue and fails on any
+     * study that draws something and cannot be reached, which is what stops the next one being
+     * added silently.
+     *
+     * Empty while the rail's «اندیکاتورها» switch is off, because then nothing computed is drawn and
+     * a row for an invisible study would be an offer to remove something that is not there.
+     */
+    val studyRows: List<ChartStudyRow>
+        get() {
+            if (indicatorsHidden || activeIndicators.isEmpty()) return emptyList()
+            val spoken = HashSet<String>(shownOverlayOwners.size + paneOwnersShown.size)
+            spoken += shownOverlayOwners
+            spoken += paneOwnersShown
+            spoken += chained
+            return ChartCatalog.INDICATORS.mapNotNull { option ->
+                if (option.id !in activeIndicators || option.id in spoken) return@mapNotNull null
+                ChartStudyRow(key = option.id, label = option.label, colour = option.colour)
+            }
+        }
 
     /**
      * Whether the rail's «اندیکاتورها» switch is off — item 44.
@@ -950,6 +1004,8 @@ data class ChartUiState(
     val markers: List<ChartMarker>
         get() {
             if (indicatorsHidden) return emptyList()
+            // The catalogue's marks answer the eye the same way a script's do — see [levels].
+            val own = ownedShown(derived.markers, derived.markerOwners, hiddenIndicators)
             val scripted = scriptDraw.shown(scriptDraw.markers, scriptDraw.markerOwners, hiddenIndicators)
             val patterned = CandlePatterns.markersFor(visibleSeries, patterns)
             // The Signal Layer's own: a triangle on each of the newest bars a study fired on, in
@@ -957,8 +1013,8 @@ data class ChartUiState(
             // patterns are — they belong to a different question — and an eye switched off on a
             // study takes its marks with it, which is what `hiddenIndicators` is doing here.
             val signalled = ChartSignalEngine.markersFor(signals, visibleSeries, hiddenIndicators, markerStyles)
-            if (scripted.isEmpty() && patterned.isEmpty() && signalled.isEmpty()) return derived.markers
-            return derived.markers + scripted + patterned + signalled
+            if (scripted.isEmpty() && patterned.isEmpty() && signalled.isEmpty()) return own
+            return own + scripted + patterned + signalled
         }
 
     /**
@@ -4410,6 +4466,17 @@ data class ChartDerived internal constructor(
     val overlayOwners: List<String> = emptyList(),
     /** The same for [panes], where the mapping happens to be one to one. Built the same way anyway. */
     val paneOwners: List<String> = emptyList(),
+    /**
+     * Which study each entry of [levels] and [markers] came from, aligned index for index.
+     *
+     * These two used to be flattened without owners, and that is the whole of the defect behind
+     * run Υ item 2: a study whose only output is a set of levels or a row of marks had nothing in
+     * any owner list, so it had no legend row, so the legend's ×, gear and eye did not exist for
+     * it. Seven of the catalogue's studies are that shape. The owners are what let
+     * `ChartUiState.studyRows` name them and the eye actually take them off the canvas.
+     */
+    val levelOwners: List<String> = emptyList(),
+    val markerOwners: List<String> = emptyList(),
 ) {
     /** What [ChartDerived] was computed from. See [key]. */
     internal data class Key(
@@ -4615,10 +4682,16 @@ data class ChartDerived internal constructor(
                     ChartCatalog.overlayFor(option, series, periods[option.id], window, params[option.id].orEmpty())
                         .map { option.id to it }
                 }
-            val structureLines = chosen
-                .filter { it.pane == IndicatorPane.STRUCTURE }
-                .zip(structures)
+            // Paired the same way the lines are, and for the same reason one step further on: a
+            // study that draws *only* levels or *only* marks has no line and no pane, so the owner
+            // carried here is the only record that it drew anything at all.
+            val structured = chosen.filter { it.pane == IndicatorPane.STRUCTURE }.zip(structures)
+            val structureLines = structured
                 .flatMap { (option, structure) -> structure.lines.map { option.id to it } }
+            val structureLevels = structured
+                .flatMap { (option, structure) -> structure.levels.map { option.id to it } }
+            val structureMarks = structured
+                .flatMap { (option, structure) -> structure.markers.map { option.id to it } }
             val separatePanes = chosen
                 .filter { it.pane == IndicatorPane.SEPARATE }
                 .mapNotNull { option ->
@@ -4629,8 +4702,10 @@ data class ChartDerived internal constructor(
                 key = key,
                 overlays = (priceLines + structureLines).map { it.second },
                 overlayOwners = (priceLines + structureLines).map { it.first },
-                levels = structures.flatMap { it.levels },
-                markers = structures.flatMap { it.markers },
+                levels = structureLevels.map { it.second },
+                levelOwners = structureLevels.map { it.first },
+                markers = structureMarks.map { it.second },
+                markerOwners = structureMarks.map { it.first },
                 paneOwners = separatePanes
                     .filter { it.second.lines.isNotEmpty() || it.second.histogram != null }
                     .map { it.first },
@@ -4655,6 +4730,24 @@ data class ChartDerived internal constructor(
  * the mapping without dragging the other in.
  */
 internal fun OhlcBar.toCandle(): Candle = Candle(t = t, o = o, h = h, l = l, c = c, v = v)
+
+/**
+ * [items] less the entries whose owner the reader has switched off.
+ *
+ * The same rule `ChartScriptDraw.shown` applies to a script's drawing, applied to the catalogue's.
+ * It hands back the **list itself** when nothing is hidden, which is not a micro-optimisation here:
+ * `ChartDerived` exists so that a drag re-reads memoised lists rather than rebuilding them, and a
+ * filter that allocated on every frame would undo that for every chart with a structure study on it.
+ *
+ * A mismatched pair of lists is treated as «nothing is hidden» rather than as an error. Dropping
+ * entries on a guess would take somebody's levels off the chart, and there is no honest way to say
+ * which ones.
+ */
+private fun <T> ownedShown(items: List<T>, owners: List<String>, hidden: Set<String>): List<T> {
+    if (items.isEmpty() || hidden.isEmpty() || owners.size != items.size) return items
+    if (owners.none { it in hidden }) return items
+    return items.filterIndexed { index, _ -> owners[index] !in hidden }
+}
 
 /**
  * A drawn bar back on the wire's shape, so a bar the phone built can be kept.

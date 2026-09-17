@@ -77,6 +77,17 @@ sealed interface ChartLegendTarget {
 
     /** A compared instrument, by its position in [ChartDecoration.comparisons]. */
     data class Comparison(val index: Int) : ChartLegendTarget
+
+    /**
+     * A study that draws no line and no strip — see [ChartDecoration.studies].
+     *
+     * The one target addressed by **name** rather than by position, and for the reason the rest are
+     * addressed by position: an index is what the caller already keyed its list by, and for these
+     * studies there is no such list. Levels and marks are flattened into one heap apiece before the
+     * renderer ever sees them, so «the third level» is not a study and never was. The caller's own
+     * key is the only address that survives the flattening.
+     */
+    data class Study(val key: String) : ChartLegendTarget
 }
 
 /**
@@ -253,6 +264,22 @@ internal fun legendRows(
                     primary = false,
                 )
             }
+    }
+    // The studies with nothing on the price scale to name them — the levels, the marks, the band.
+    // A row apiece with no reading, because a set of support levels has no single number to print
+    // and inventing one would be worse than the blank. The name and the three controls are the
+    // whole point of the row: without it the study is on the chart and unreachable. See
+    // [ChartDecoration.studies].
+    decoration.studies.forEach { study ->
+        val target = ChartLegendTarget.Study(study.key)
+        rows += ChartLegendRow(
+            target = target,
+            label = study.label,
+            alternatives = listOf(""),
+            colour = study.colour,
+            primary = true,
+            warning = target in warnings,
+        )
     }
     // Never capped, unlike the overlays: there are at most `MAX_COMPARISONS` of them by
     // construction, and a comparison line with no legend row is an unexplained coloured line on

@@ -1175,6 +1175,10 @@ fun ChartScreen(
                         levels = state.levels,
                         markers = state.markers,
                         panes = state.panes,
+                        // The studies that draw the levels and the marks above and own no row of
+                        // their own on either scale. Without this the legend has no way to name
+                        // them and the reader has no way to take them off — see [studyRows].
+                        studies = state.studyRows,
                         // Only here. Every other chart in the app is a picture of history — a
                         // signal's evidence, a script's backtest, a row's sparkline — and counting
                         // down to a close on one of those would be counting down to something that

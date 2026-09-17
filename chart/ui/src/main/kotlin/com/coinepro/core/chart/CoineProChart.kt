@@ -5392,7 +5392,22 @@ private fun DrawScope.drawMarkers(
     if (markers.isEmpty()) return
     val spacingDp = view.barWidth / density
     val detail = SignalMarkers.detailFor(spacingDp)
-    val drawn = if (detail == MarkerDetail.THINNED) SignalMarkers.thin(markers, series) else markers
+    if (detail == MarkerDetail.HIDDEN) return
+    // **The window first, and then the thinning** (run Υ, item 1).
+    //
+    // «چارت کُپ میکنه زمانی که به چپ و راست سوائپ میکنم.» A structure study draws a mark per bar and
+    // a reader flicking back through history pages the series towards the resident ceiling, so this
+    // list is not a handful of signals — it can be every bar the chart holds. Thinning ran over the
+    // whole of it on every frame and the per-marker drop below then threw nearly all of that work
+    // away; at fifty thousand marks that was milliseconds a frame on the drawing thread, which is
+    // what a reader feels as the chart stopping.
+    //
+    // The same predicate the drop uses, applied first: what is off the plot cannot be drawn and
+    // cannot affect what is. The rule itself is `SignalMarkers.onPlot`, in `:chart-core`, where a
+    // unit test can reach it — the same division this function's own note draws.
+    val onPlot = SignalMarkers.onPlot(markers, view)
+    if (onPlot.isEmpty()) return
+    val drawn = if (detail == MarkerDetail.THINNED) SignalMarkers.thin(onPlot, series) else onPlot
     // What a label may not cover. The legend plate is the top-left quarter of the plot and it is
     // opaque, so a word under it is a word nobody reads; the price gutter is off the plot entirely
     // and a label that would reach it is dropped rather than clipped, because half a word is worse

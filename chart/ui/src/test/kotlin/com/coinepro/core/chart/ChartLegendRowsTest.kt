@@ -148,4 +148,49 @@ class ChartLegendRowsTest {
             rows.map { it.target }.filterIsInstance<ChartLegendTarget.Overlay>(),
         )
     }
+
+    @Test
+    fun `a study that draws only levels still gets a row, and the row can be acted on`() {
+        // Run Υ item 2. Support and resistance draws horizontal levels and nothing else: no line on
+        // the price scale and no strip under it. Before this it appeared nowhere in the legend, so
+        // the ×, the gear and the eye did not exist for it and a reader who switched it on could
+        // not switch it off from the chart.
+        val rows = rowsFor(
+            ChartDecoration(
+                levels = listOf(PriceLevel(price = 101.0, label = "R1", colour = 0xFF00B15C)),
+                studies = listOf(ChartStudyRow(key = "sr", label = "حمایت و مقاومت", colour = 0xFF00B15C)),
+            ),
+        )
+        val row = rows.first { it.target == ChartLegendTarget.Study("sr") }
+        assertEquals("حمایت و مقاومت", row.label)
+        assertEquals(0xFF00B15C, row.colour)
+        assertTrue("it carries the eye, the gear and the ×", row.primary)
+        assertTrue(
+            "and no reading, because a set of levels has no single number to print",
+            row.alternatives.all { it.isBlank() },
+        )
+    }
+
+    @Test
+    fun `a study row is addressed by name, so nothing about it moves when a line is added`() {
+        fun targetsWith(overlays: List<ChartLine>) = rowsFor(
+            ChartDecoration(
+                overlays = overlays,
+                studies = listOf(ChartStudyRow(key = "supplydemand", label = "عرضه و تقاضا")),
+            ),
+        ).map { it.target }
+
+        val alone = targetsWith(emptyList())
+        val crowded = targetsWith(listOf(line("EMA 20", 1.0), line("EMA 50", 2.0)))
+        // The whole reason this target carries a key: an index would have moved under the two new
+        // rows, and the × would then have taken off whatever had inherited the position.
+        assertTrue(ChartLegendTarget.Study("supplydemand") in alone)
+        assertTrue(ChartLegendTarget.Study("supplydemand") in crowded)
+    }
+
+    @Test
+    fun `a chart with no silent studies grows no extra rows`() {
+        val plain = rowsFor(ChartDecoration(overlays = listOf(line("EMA 20", 1.0))))
+        assertTrue(plain.none { it.target is ChartLegendTarget.Study })
+    }
 }

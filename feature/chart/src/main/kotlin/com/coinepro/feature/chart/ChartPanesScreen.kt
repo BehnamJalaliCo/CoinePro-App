@@ -531,6 +531,10 @@ private fun ChartPane(
                         levels = state.levels,
                         markers = state.markers,
                         panes = state.panes,
+                        // Named here too. This layout offers no per-row controls, but a legend that
+                        // names every study but the ones drawing the levels is a legend that lies
+                        // about what is on the chart.
+                        studies = state.studyRows,
                         colours = state.chartColours,
                         showCountdown = !state.replay.isOn,
                     ),

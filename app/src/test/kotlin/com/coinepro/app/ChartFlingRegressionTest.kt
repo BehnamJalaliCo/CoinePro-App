@@ -132,6 +132,44 @@ class ChartFlingRegressionTest {
     private data class Travel(val pixels: Float, val millis: Long)
 
     /**
+     * The same flick, reported **frame by frame**: how many bars the window moved on each frame.
+     *
+     * [flick] answers «how far» and «for how long», and a fling can be right on both and still be
+     * wrong: the whole of the travel delivered on one frame is the same distance in the same time
+     * and it is not an animation, it is a jump. That is what run Υ item 1 is about, so it is
+     * measured rather than reasoned about.
+     */
+    private fun frames(velocity: Float): List<Int> {
+        chart()
+        val node = composeRule.onNodeWithTag(TAG)
+        composeRule.mainClock.autoAdvance = false
+        node.performTouchInput {
+            val y = height * 0.4f
+            swipeWithVelocity(
+                start = Offset(width * 0.25f, y),
+                end = Offset(width * 0.75f, y),
+                endVelocity = velocity,
+                durationMillis = 200L,
+            )
+        }
+        composeRule.mainClock.advanceTimeBy(16L)
+        composeRule.waitForIdle()
+        var last = viewports.last().offset
+        val steps = mutableListOf<Int>()
+        var elapsed = 0L
+        while (elapsed < 4_000L) {
+            composeRule.mainClock.advanceTimeBy(FRAME_MS)
+            composeRule.waitForIdle()
+            elapsed += FRAME_MS
+            val now = viewports.last().offset
+            steps += now - last
+            last = now
+        }
+        composeRule.mainClock.autoAdvance = true
+        return steps
+    }
+
+    /**
      * What this measurement cannot see: the travel still sitting inside the current bar.
      *
      * The chart moves in two parts — whole bars, which change the published window, and a float
@@ -165,6 +203,117 @@ class ChartFlingRegressionTest {
         assertTrue(
             "an 800 px/s flick moved ${travel.pixels} px — under 0.4 of a screen",
             kotlin.math.abs(travel.pixels) >= floor,
+        )
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = PHONE)
+    fun `the flick is an animation and not a jump`() {
+        // **Run Υ item 1.** «چارت کُپ میکنه زمانی که به چپ و راست سوائپ میکنم.»
+        //
+        // The fling loop reads the frame clock with `withFrameNanos` and hands what it reads to a
+        // curve that measures its own elapsed time in **milliseconds**. One frame is 16 million of
+        // the first unit and 16 of the second, so on the very first frame after the start the curve
+        // is asked where it has got to after four and a half hours: the answer is «all the way»,
+        // and the whole of a flick's travel — two or three screens since run Τ widened it — is
+        // applied to the window between one frame and the next. The chart does not coast, it
+        // teleports and lands hard, usually against the end of the loaded history. Nothing that
+        // measured *distance* could see it, which is why both tests above passed through it.
+        val steps = frames(3_000f)
+        val moving = steps.count { it != 0 }
+        val biggest = steps.maxOfOrNull { kotlin.math.abs(it) } ?: 0
+        val total = steps.sumOf { kotlin.math.abs(it) }
+        println("fling frames: $moving moving of ${steps.size}, biggest $biggest bars, total $total bars")
+        assertTrue("the flick moved nothing at all", total > 0)
+        // A two-second coast at 120 Hz is on the order of two hundred frames. Twenty is a floor far
+        // below that and still far above the two a teleport takes, so it states the shape of the
+        // defect rather than pinning a number this container happens to produce.
+        assertTrue("the whole flick was delivered over $moving frames", moving >= 20)
+        assertTrue(
+            "one frame moved $biggest of the $total bars — that is a jump, not a fling",
+            biggest <= total / 4 + 1,
+        )
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = PHONE)
+    fun `a flick that lands on a chart still coasting is a flick like any other`() {
+        // **Run Υ item 1.** «چارت کُپ میکنه زمانی که به چپ و راست سوائپ میکنم» — swiping *back and
+        // forth*, which is a second gesture arriving while the first is still coasting. Run Τ made
+        // that the ordinary case rather than the rare one: a flick used to be over in a third of a
+        // second and now runs for two, so a reader working the chart left and right is almost always
+        // interrupting one.
+        chart()
+        val node = composeRule.onNodeWithTag(TAG)
+        composeRule.mainClock.autoAdvance = false
+
+        fun flickRight() = node.performTouchInput {
+            val y = height * 0.4f
+            swipeWithVelocity(
+                start = Offset(width * 0.25f, y),
+                end = Offset(width * 0.75f, y),
+                endVelocity = 3_000f,
+                durationMillis = 200L,
+            )
+        }
+
+        flickRight()
+        composeRule.mainClock.advanceTimeBy(16L)
+        composeRule.waitForIdle()
+        // A few frames in — still coasting, nowhere near settled.
+        repeat(8) {
+            composeRule.mainClock.advanceTimeBy(FRAME_MS)
+            composeRule.waitForIdle()
+        }
+        val interrupted = viewports.last().offset
+
+        // The second gesture, on a chart that has not stopped.
+        flickRight()
+        composeRule.mainClock.advanceTimeBy(16L)
+        composeRule.waitForIdle()
+        val afterSecondLift = viewports.last().offset
+        var elapsed = 0L
+        while (elapsed < 3_000L) {
+            composeRule.mainClock.advanceTimeBy(FRAME_MS)
+            composeRule.waitForIdle()
+            elapsed += FRAME_MS
+        }
+        val settled = viewports.last().offset
+        composeRule.mainClock.autoAdvance = true
+
+        // The same gesture on a chart that was standing still, for the comparison. On its own
+        // «the drag moved nothing» says as much about this harness — which injects a whole swipe
+        // between two frames — as about the chart.
+        chart()
+        val resting = viewports.last().offset
+        composeRule.mainClock.autoAdvance = false
+        flickRight()
+        composeRule.mainClock.advanceTimeBy(16L)
+        composeRule.waitForIdle()
+        val restingLift = viewports.last().offset
+        var rested = 0L
+        while (rested < 3_000L) {
+            composeRule.mainClock.advanceTimeBy(FRAME_MS)
+            composeRule.waitForIdle()
+            rested += FRAME_MS
+        }
+        val restingSettled = viewports.last().offset
+        composeRule.mainClock.autoAdvance = true
+
+        println(
+            "interrupted: held at $interrupted, lift $afterSecondLift, settled $settled " +
+                "(drag ${afterSecondLift - interrupted}, coast ${settled - afterSecondLift}) | " +
+                "from rest: $resting, lift $restingLift, settled $restingSettled " +
+                "(drag ${restingLift - resting}, coast ${restingSettled - restingLift})",
+        )
+        assertTrue(
+            "a flick onto a coasting chart carried ${settled - afterSecondLift} bars against " +
+                "${restingSettled - restingLift} from rest — the second gesture is not being taken",
+            kotlin.math.abs(settled - afterSecondLift) >= kotlin.math.abs(restingSettled - restingLift) / 2,
+        )
+        assertTrue(
+            "the drag moved ${afterSecondLift - interrupted} bars against ${restingLift - resting} at rest",
+            kotlin.math.abs(afterSecondLift - interrupted) >= kotlin.math.abs(restingLift - resting) / 2,
         )
     }
 
