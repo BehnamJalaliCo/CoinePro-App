@@ -74,8 +74,18 @@ jobs:
         with:
           gradle-version: "9.4.0"
 
+      # `packages: ''` is not tidiness — it is what makes this step work at all.
+      #
+      # The action's default is `packages: 'tools platform-tools'`, and `tools` is the obsolete SDK
+      # Tools package Google has removed from the repository. `sdkmanager` answers «Failed to find
+      # package 'tools'» and exits 1, which fails the step before a line of this project is compiled
+      # — every run, on every branch, whatever the diff. Asking for nothing here leaves the step to
+      # do the one job it is wanted for, which is putting `sdkmanager` and the licences in place;
+      # what this build actually needs is installed by name in the step below, and always was.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: ''
 
       # compileSdk is 36, and the last two steps need this exact build-tools version on the path:
       # `apksigner` to prove the APK is signed, and `dexdump` to prove R8 kept the wire fields.
