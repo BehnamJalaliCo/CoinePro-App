@@ -194,6 +194,62 @@ class ChartFlingRegressionTest {
 
     @Test
     @Config(sdk = [34], qualifiers = PHONE)
+    fun `the speed the finger left at is the speed that reaches the curve`() {
+        // **Run Τ, item 1.** The one thing a distance test cannot separate: a chart that travels
+        // too little because the curve is wrong, and one that travels too little because the speed
+        // handed to the curve was divided by the display density on the way. Both look identical
+        // from the outside and only the second is a bug in the gesture path.
+        //
+        // So the velocity is read back out of the travel. The curve is closed-form — a release at
+        // `v` covers `(v − cut-off) / f` — which makes the distance an invertible measurement of
+        // the speed that entered it. A 3 000 px/s flick divided by this phone's 2.625 would arrive
+        // as 1 143 and read back as 1 143, not as 3 000.
+        val travel = flick(3_000f)
+        val bar = quantisation(viewports.first())
+        val entered = kotlin.math.abs(travel.pixels) * FRICTION + CUT_OFF
+        println("velocity: injected 3000 px/s, read back ${entered.toInt()} px/s from ${travel.pixels} px")
+        assertTrue(
+            "a 3 000 px/s finger reached the fling curve at ${entered.toInt()} px/s",
+            kotlin.math.abs(entered - 3_000f) <= 300f + bar * FRICTION,
+        )
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = PHONE)
+    fun `a slow drag places the chart and never throws it`() {
+        // **Run Τ, item 4.** A finger that crosses the glass slowly and stops is positioning the
+        // chart, not throwing it, and momentum on top of a placement is the picture walking away
+        // from where the reader put it. The cut-off is what refuses it — see `KineticScroll`.
+        chart()
+        val node = composeRule.onNodeWithTag(TAG)
+        composeRule.mainClock.autoAdvance = false
+        node.performTouchInput {
+            val y = height * 0.4f
+            swipeWithVelocity(
+                start = Offset(width * 0.3f, y),
+                end = Offset(width * 0.7f, y),
+                endVelocity = 120f,
+                durationMillis = 700L,
+            )
+        }
+        composeRule.mainClock.advanceTimeBy(16L)
+        composeRule.waitForIdle()
+        val afterLift = viewports.last().offset
+        var elapsed = 0L
+        while (elapsed < 1_500L) {
+            composeRule.mainClock.advanceTimeBy(FRAME_MS)
+            composeRule.waitForIdle()
+            elapsed += FRAME_MS
+        }
+        composeRule.mainClock.autoAdvance = true
+        val coasted = viewports.last().offset - afterLift
+        // Not zero: lifting the finger springs the pan to the nearest whole bar, which is at most
+        // one bar and is the settle, not momentum.
+        assertTrue("a 120 px/s release coasted $coasted bars after the lift", kotlin.math.abs(coasted) <= 1)
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = PHONE)
     fun `a gentle flick still coasts rather than stopping under the finger`() {
         val travel = flick(800f)
         // `(800 − 240) / 1.25` is 448 px, which is 0.415 of this screen; the bound is the brief's
@@ -336,5 +392,9 @@ class ChartFlingRegressionTest {
         const val SCREEN_PX = 411f * DENSITY
         const val PLOT_WIDTH_PX = SCREEN_PX - 64f * DENSITY
         const val MIN_HARD = SCREEN_PX * 1.5f
+
+        /** The curve's own two numbers, so the travel can be read back as a speed. */
+        const val FRICTION = 1.25f
+        const val CUT_OFF = 240f
     }
 }

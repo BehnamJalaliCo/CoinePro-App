@@ -12,14 +12,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
 import com.coinepro.core.datastore.ReaderMode
 import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.designsystem.LocalTeachingDismissals
+import com.coinepro.feature.chart.BAND_INTERVAL_TAG
 import com.coinepro.feature.chart.ChartScreen
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -132,9 +136,39 @@ class ChartToolbarTest {
         )
     }
 
+    /** The horizontal centre of the one node answering to [description], or null where there is none. */
+    private fun centreOf(description: String): Float? =
+        composeRule.onAllNodesWithContentDescription(description).fetchSemanticsNodes()
+            .singleOrNull()?.boundsInRoot?.center?.x
+
+    /**
+     * Where the pencil sits: **between the timeframe chip and the indicators**, run Τ item 6.
+     *
+     * Stated as an order rather than a pixel, and read off the laid-out tree rather than the
+     * source, because the band is laid out right-to-left in Persian and left-to-right in English
+     * and «between» is the same sentence in both. Skipped only where there is no pencil to place —
+     * a window wide enough for the permanent tool column, which `assertDrawingReachable` covers.
+     */
+    private fun assertPencilBetweenIntervalAndIndicators(where: String) {
+        val pencil = centreOf(composeRule.activity.getString(ChartR.string.chart_band_draw)) ?: return
+        val indicators = centreOf(composeRule.activity.getString(ChartR.string.chart_band_indicators))
+        val interval = composeRule.onAllNodesWithTag(BAND_INTERVAL_TAG).fetchSemanticsNodes()
+            .singleOrNull()?.boundsInRoot?.center?.x
+        assertNotNull("the indicators button is missing $where", indicators)
+        assertNotNull("the timeframe chip is missing $where", interval)
+        val low = minOf(interval!!, indicators!!)
+        val high = maxOf(interval, indicators)
+        assertTrue(
+            "the pencil is at $pencil, outside the chip at $interval and the indicators at " +
+                "$indicators $where",
+            pencil in low..high,
+        )
+    }
+
     private fun assertToolbar(where: String) {
         assertBandIntact(where)
         assertDrawingReachable(where)
+        assertPencilBetweenIntervalAndIndicators(where)
     }
 
     @Test
@@ -155,14 +189,14 @@ class ChartToolbarTest {
     @Test
     @Config(sdk = [34], qualifiers = PORTRAIT)
     fun `the trader keeps it too`() {
-        toolbar(ReaderMode.TRADER)
+        toolbar(ReaderMode.TRADER, frame = "tau-toolbar-trader-portrait-fa")
         assertToolbar("in trader mode, portrait")
     }
 
     @Test
     @Config(sdk = [34], qualifiers = PORTRAIT)
     fun `and so does the pro`() {
-        toolbar(ReaderMode.PRO)
+        toolbar(ReaderMode.PRO, frame = "tau-toolbar-pro-portrait-fa")
         assertToolbar("in pro mode, portrait")
     }
 
@@ -176,14 +210,14 @@ class ChartToolbarTest {
     @Test
     @Config(sdk = [34], qualifiers = LANDSCAPE)
     fun `and the trader sideways`() {
-        toolbar(ReaderMode.TRADER)
+        toolbar(ReaderMode.TRADER, frame = "tau-toolbar-trader-landscape-fa")
         assertToolbar("in trader mode, landscape")
     }
 
     @Test
     @Config(sdk = [34], qualifiers = LANDSCAPE)
     fun `and the pro sideways`() {
-        toolbar(ReaderMode.PRO)
+        toolbar(ReaderMode.PRO, frame = "tau-toolbar-pro-landscape-fa")
         assertToolbar("in pro mode, landscape")
     }
 

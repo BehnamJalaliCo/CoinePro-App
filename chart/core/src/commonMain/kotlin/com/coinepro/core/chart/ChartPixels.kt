@@ -576,10 +576,16 @@ class KineticScroll(density: Float = 1f, private val curve: FlingCurve = FLING_C
         // A flag rather than a zero sentinel on the clock, because zero is a perfectly ordinary
         // frame time — `withFrameMillis` on a fresh process hands one out — and treating it as
         // "not started yet" would make the first fling of a session never advance at all.
+        //
+        // The clock is seeded [HANDOFF_MILLIS] *before* this frame rather than at it: the finger
+        // lifted between the previous frame and this one, so the release is already a frame old by
+        // the time anything can be drawn, and reading the curve at zero here spends the first frame
+        // of the fling standing still — at the exact moment the chart is moving fastest, which is
+        // the one frame of stillness a thumb can feel. See `ChartFling` for the same seeding on the
+        // curve the chart actually flings on.
         if (!started) {
             started = true
-            startedAt = nowMillis
-            return 0f
+            startedAt = nowMillis - HANDOFF_MILLIS
         }
         val elapsed = nowMillis - startedAt
         if (elapsed <= 0L) return 0f
@@ -614,6 +620,9 @@ class KineticScroll(density: Float = 1f, private val curve: FlingCurve = FLING_C
     companion object {
         /** Below this many pixels a second the fling is over before it starts. See the class KDoc. */
         const val MIN_VELOCITY = 240f
+
+        /** One frame at 120 Hz — how old the release already is on the first frame that can draw it. */
+        const val HANDOFF_MILLIS = 8L
 
         /**
          * Which curve a chart flick coasts on.

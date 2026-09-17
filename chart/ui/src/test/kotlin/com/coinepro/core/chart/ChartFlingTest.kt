@@ -23,8 +23,7 @@ class ChartFlingTest {
         val fling = ChartFling()
         fling.start(4_300f)
         var now = 0L
-        assertEquals(0f, fling.tick(now), 0f)
-        var travelled = 0f
+        var travelled = fling.tick(now)
         var frames = 0
         while (fling.isRunning && frames < 2_000) {
             now += FRAME_NANOS
@@ -39,9 +38,8 @@ class ChartFlingTest {
         val fling = ChartFling()
         fling.start(3_000f)
         var now = 0L
-        assertEquals(0f, fling.tick(now), 0f)
-        val steps = mutableListOf<Float>()
-        var travelled = 0f
+        val steps = mutableListOf(fling.tick(now))
+        var travelled = steps.first()
         var frames = 0
         while (fling.isRunning && frames < 2_000) {
             now += FRAME_NANOS
@@ -80,8 +78,7 @@ class ChartFlingTest {
         val fling = ChartFling()
         fling.start(3_000f)
         var now = 0L
-        fling.tick(now)
-        val steps = mutableListOf<Float>()
+        val steps = mutableListOf(fling.tick(now))
         var frames = 0
         while (fling.isRunning && frames < 2_000) {
             now += FRAME_NANOS
@@ -93,10 +90,29 @@ class ChartFlingTest {
     }
 
     @Test
+    fun `the first frame after the release moves`() {
+        // **Run Τ, item 3.** The finger lifts between two frames, so by the time the fling loop
+        // gets a frame the release is already about one old. Reading the curve at zero on that
+        // frame spends it standing still — the picture tracks the finger at full speed, stops for
+        // eight milliseconds, then starts again — and a hand-off with a hole in it is the one
+        // stutter a thumb can feel, because it happens where the chart is moving fastest.
+        val fling = ChartFling()
+        fling.start(3_000f)
+        val handoff = fling.tick(0L)
+        assertTrue("the hand-off frame moved nothing at all", handoff > 0f)
+        // And it is a frame's worth, not a jump: a 3 000 px/s release covers about 25 px in the
+        // 8⅓ ms of the first frame, so anything near the whole travel means the clock is wrong.
+        assertTrue("the hand-off frame moved $handoff px, which is not one frame", handoff < 60f)
+        val second = fling.tick(FRAME_NANOS)
+        assertTrue("the second frame moved nothing", second > 0f)
+        assertTrue("the fling sped up across the hand-off", second <= handoff + 1e-3f)
+    }
+
+    @Test
     fun `a leftward flick moves left, and a release slower than a drag starts nothing`() {
         val fling = ChartFling()
         fling.start(-1_200f)
-        fling.tick(0L)
+        assertTrue(fling.tick(0L) < 0f)
         assertTrue(fling.tick(FRAME_NANOS) < 0f)
         // A hundred and forty is under the cut-off: a finger that slow was placing the chart, not
         // throwing it, and momentum on top of a placement is the chart moving after the reader

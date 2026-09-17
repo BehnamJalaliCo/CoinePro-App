@@ -50,6 +50,31 @@ class ChartFlingBenchmark {
     @Test
     fun flingAcrossHistory() = measure { fling(seconds = 3) }
 
+    /**
+     * **Three flicks of increasing speed** (run Τ, item 7).
+     *
+     * The same finger travel — a quarter of the screen to three quarters — delivered over forty,
+     * ten and three samples. UiAutomator hands each sample to the digitiser about five
+     * milliseconds apart, so the release velocities are roughly 900, 3 500 and 12 000 px/s on a
+     * 1 080-wide panel: a placement, an ordinary flick, and as hard as a thumb can throw.
+     *
+     * They are separate scenarios rather than one loop because the fling's cost is not flat in its
+     * speed. A hard release coasts for two seconds across thousands of pixels, which is thousands
+     * of bars of layout and every study on them re-windowed; a slow one settles inside a few
+     * frames. Averaging the three reports a number that describes no gesture a reader makes.
+     *
+     * What they cannot answer is the owner's question — whether the chart *feels* right — which
+     * needs a phone. `docs/qa/DEVICE_PROOFS.md` carries the command and what to read out of it.
+     */
+    @Test
+    fun flickVelocitySlow() = measure { flicks(steps = 40) }
+
+    @Test
+    fun flickVelocityMedium() = measure { flicks(steps = 10) }
+
+    @Test
+    fun flickVelocityHard() = measure { flicks(steps = 3) }
+
     @Test
     fun pinchZoom() = measure {
         repeat(3) {
@@ -124,6 +149,24 @@ class ChartFlingBenchmark {
             // Five steps is a fast flick — about 25 ms of finger travel — which is what produces
             // momentum rather than a drag.
             device.swipe(from, y, to, y, 5)
+            device.waitForIdle()
+        }
+    }
+
+    /**
+     * Six flicks into history and back, each one [steps] samples of finger travel.
+     *
+     * Rightwards first, into loaded history, for the same reason [fling] goes that way: a leftward
+     * flick meets the live edge in a few bars and what stops it is the rubber band, not the curve.
+     */
+    private fun MacrobenchmarkScope.flicks(steps: Int) {
+        val width = device.displayWidth
+        val y = device.displayHeight / 2
+        repeat(6) { index ->
+            val rightwards = index % 2 == 0
+            val from = if (rightwards) width / 4 else width * 3 / 4
+            val to = if (rightwards) width * 3 / 4 else width / 4
+            device.swipe(from, y, to, y, steps)
             device.waitForIdle()
         }
     }

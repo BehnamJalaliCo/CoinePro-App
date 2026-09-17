@@ -430,8 +430,13 @@ class ChartPixelsTest {
         var travelled = 0f
         var previousStep = Float.MAX_VALUE
         var frames = 0
-        // The first tick establishes the clock and moves nothing.
-        assertEquals(0f, scroll.tick(now), 0f)
+        // The first tick is a real step: the finger lifted between the previous frame and this one,
+        // so the release is already a frame old — see `KineticScroll.HANDOFF_MILLIS`. It is left
+        // out of the never-speeds-up comparison because these frames are 16 ms apart and the
+        // hand-off is 8, so the second one covers twice the curve the first did. On the 120 Hz loop
+        // the chart actually flings on, the two are the same length.
+        travelled += scroll.tick(now)
+        assertTrue("the first frame of the fling stood still", travelled > 0f)
         while (scroll.isRunning && frames < 1_000) {
             now += 16
             val step = scroll.tick(now)
@@ -464,7 +469,9 @@ class ChartPixelsTest {
         var previousStep = Float.MAX_VALUE
         var travelled = 0f
         var frames = 0
-        assertEquals(0f, scroll.tick(now), 0f)
+        // The hand-off frame, and it moves. See the spline test above for why it is not compared.
+        travelled += scroll.tick(now)
+        assertTrue("the first frame of the fling stood still", travelled > 0f)
         while (scroll.isRunning && frames < 1_000) {
             now += 16
             val step = scroll.tick(now)
@@ -519,7 +526,7 @@ class ChartPixelsTest {
         // one. Treating it as "no clock yet" would make the first fling of a session inert.
         val scroll = KineticScroll(PHONE_DENSITY)
         scroll.start(1_000f)
-        assertEquals(0f, scroll.tick(0L), 0f)
+        assertTrue("the hand-off frame stood still", scroll.tick(0L) > 0f)
         assertTrue(scroll.tick(16L) > 0f)
     }
 

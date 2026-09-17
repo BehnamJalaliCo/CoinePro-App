@@ -45,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -198,7 +199,14 @@ internal fun ChartCommandBand(
                     onTravel = onSymbolTravel,
                 )
             }
-            ToolbarText(text = interval.wire, onClick = onMoreIntervals)
+            ToolbarText(
+                text = interval.wire,
+                onClick = onMoreIntervals,
+                // Named so a test can say where the pencil sits rather than only that it exists:
+                // run Τ item 6 is about the order of this band, and the button that went missing
+                // is the one between this chip and the indicators.
+                modifier = Modifier.testTag(BAND_INTERVAL_TAG),
+            )
             // TradingView's bar reads `[symbol] [interval ▾] │ [draw] [indicators] [•••] │ [undo]
             // [fullscreen]`: two hairlines, one after the "what" and one before the "undo".
             ToolbarDivider()
@@ -331,12 +339,12 @@ private fun ToolbarDivider() {
 
 /** The interval on the toolbar: bold, Latin, and a tap away from the date-range sheet. */
 @Composable
-private fun ToolbarText(text: String, onClick: () -> Unit) {
+private fun ToolbarText(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val interaction = remember { MutableInteractionSource() }
     val haptics = rememberCoineProHaptics()
     LtrDirection {
         Row(
-            modifier = Modifier
+            modifier = modifier
                 .pressScale(interaction, CoineProPress.CONTROL)
                 .clip(CoineProShapes.small)
                 .clickable(interaction, null) {
@@ -1252,6 +1260,9 @@ private const val PERCENT = 100.0
 // TradingView's chart toolbar, as the design brief measures it: a 48 dp bar, 22 dp glyphs 24 dp
 // apart (a 46 dp pitch), 1 px hairlines between the groups, and a badge on the sheets that hold
 // something. The 44 the first measurement gave is the phone app at an older build.
+/** The timeframe chip on the chart band, by name. See run Τ item 6 and `ChartToolbarTest`. */
+const val BAND_INTERVAL_TAG = "chart-band-interval"
+
 private val TOOLBAR_HEIGHT = 48.dp
 private val TOOLBAR_TARGET = 46.dp
 private val TOOLBAR_GLYPH = 22.dp

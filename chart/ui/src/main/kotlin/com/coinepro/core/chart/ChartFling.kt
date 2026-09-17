@@ -32,17 +32,41 @@ internal fun chartFlingSpec(): DecayAnimationSpec<Float> =
  * A fling in flight, read off [chartFlingSpec] frame by frame.
  *
  * The position is read off the curve at the elapsed time rather than integrated per frame, so a
- * dropped frame lands the chart where it would have been, not further along. The first tick
- * establishes the clock and moves nothing; a velocity under the cut-off starts nothing at all,
- * so a slow drag that ends with the finger almost still does not twitch after the release.
+ * dropped frame lands the chart where it would have been, not further along. A velocity under the
+ * cut-off starts nothing at all, so a slow drag that ends with the finger almost still does not
+ * twitch after the release.
+ *
+ * ### The hand-off frame
+ *
+ * The finger lifts *between* two frames. The first frame after it is therefore not `t = 0` on the
+ * curve — the release is already one frame in the past by the time anything can be drawn. Reading
+ * the curve at zero there costs the reader a frame of stillness at the exact moment the chart is
+ * moving fastest, which is the one frame a thumb can feel: the picture keeps the finger's speed
+ * right up to the lift, stops dead for eight milliseconds, and then starts again. So the clock is
+ * seeded [HANDOFF_NANOS] before the frame that first ticks it, and the first step the fling
+ * returns is a real one.
+ *
+ * That interval is a frame at 120 Hz, the rate this chart asks the panel for. On a 60 Hz panel it
+ * is half a frame, which under-counts rather than over-counts: the hand-off is smooth either way
+ * and the total travel is the curve's, because position is read off the curve and not accumulated.
  */
 internal class ChartFling(
     private val spec: VectorizedDecayAnimationSpec<AnimationVector1D> = chartFlingSpec().vectorize(Float.VectorConverter),
 ) {
     private var velocity = 0f
     private var durationNanos = 0L
-    private var startedAt = -1L
+    private var startedAt = 0L
     private var covered = 0f
+
+    /**
+     * Whether the clock has been set, as a flag rather than a sentinel on [startedAt].
+     *
+     * It has to be a flag: the clock is seeded a frame *before* the first tick, and a first frame
+     * at or near zero — `withFrameNanos` hands out small numbers on a fresh process — seeds a
+     * negative start. A negative sentinel would read that as «not started yet» and re-seed on every
+     * frame, which is a fling that never advances past its first step.
+     */
+    private var started = false
 
     var isRunning: Boolean = false
         private set
@@ -55,7 +79,8 @@ internal class ChartFling(
         }
         this.velocity = velocity
         durationNanos = spec.getDurationNanos(ORIGIN, AnimationVector1D(velocity))
-        startedAt = -1L
+        startedAt = 0L
+        started = false
         covered = 0f
         isRunning = durationNanos > 0L
     }
@@ -63,9 +88,9 @@ internal class ChartFling(
     /** How far the content should move since the last tick, in signed pixels. */
     fun tick(nowNanos: Long): Float {
         if (!isRunning) return 0f
-        if (startedAt < 0L) {
-            startedAt = nowNanos
-            return 0f
+        if (!started) {
+            started = true
+            startedAt = nowNanos - HANDOFF_NANOS
         }
         val elapsed = min(nowNanos - startedAt, durationNanos)
         if (elapsed <= 0L) return 0f
@@ -80,7 +105,8 @@ internal class ChartFling(
     fun stop() {
         velocity = 0f
         durationNanos = 0L
-        startedAt = -1L
+        startedAt = 0L
+        started = false
         covered = 0f
         isRunning = false
     }
@@ -90,5 +116,8 @@ internal class ChartFling(
 
     private companion object {
         val ORIGIN = AnimationVector1D(0f)
+
+        /** One frame at 120 Hz — how old the release already is on the first frame that can draw it. */
+        const val HANDOFF_NANOS = 8_333_333L
     }
 }

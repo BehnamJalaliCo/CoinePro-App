@@ -17,6 +17,24 @@ plan judges it by. Paths and class names are the repository's, not the plan's gu
 python3 scripts/quality/check-benchmark-thresholds.py   # applies the thresholds to the JSON
 ```
 
+## 1b. Three flicks of increasing speed (run Τ, item 7)
+
+```bash
+./gradlew :benchmark:connectedBenchmarkAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.coinepro.benchmark.ChartFlingBenchmark \
+  -Pandroid.testInstrumentationRunnerArguments.method=flickVelocitySlow
+# … and again with flickVelocityMedium and flickVelocityHard.
+# Output: the same JSON directory as §1, one file per scenario.
+# Read frameDurationCpuMs P95 and frameOverrunMs for each.
+# Targets: P95 ≤ 8 ms and 0 overrun in all three. The hard flick is the one that can fail: it
+# coasts for about two seconds across thousands of bars, and every frame of that is a layout.
+```
+
+The three are the same finger travel over 40, 10 and 3 samples — roughly 900, 3 500 and
+12 000 px/s at release on a 1 080-wide panel. What they measure is the **cost** of a flick, not
+its feel. The feel is §3 below, and it is the owner's to record: three flicks of increasing speed
+on BTCUSDT H1, at 120 fps, beside TradingView doing the same.
+
 ## 2. Jank count for a 30-second session by hand (item 4)
 
 ```bash
