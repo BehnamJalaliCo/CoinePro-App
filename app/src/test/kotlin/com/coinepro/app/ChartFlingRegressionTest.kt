@@ -185,6 +185,15 @@ class ChartFlingRegressionTest {
         // The number the owner measured on TradingView, put back. Before run Τ this travelled about
         // a fifth of it, which is «کند و با استوپ» in one figure.
         val travel = flick(3_000f)
+        // Pixels and screens only. `travel.millis` counts **loop iterations × 8**, and
+        // `waitForIdle` advances the frame clock further than that on its own, so it is a bound on
+        // the settle rather than a measurement of one — the duration this curve actually takes is
+        // `ln(3000/240)/1.25`, two seconds, and it is arithmetic rather than something this harness
+        // can weigh. `RUN_T2/BLOCKED.md §A` is where that number is argued.
+        println(
+            "hard flick: ${travel.pixels.toInt()} px " +
+                "(${String.format(java.util.Locale.ROOT, "%.2f", kotlin.math.abs(travel.pixels) / SCREEN_PX)} screens)",
+        )
         assertTrue(
             "a 3000 px/s flick moved ${travel.pixels} px — less than 1.5 screens ($MIN_HARD px)",
             kotlin.math.abs(travel.pixels) >= MIN_HARD - quantisation(viewports.first()),
@@ -246,6 +255,48 @@ class ChartFlingRegressionTest {
         // Not zero: lifting the finger springs the pan to the nearest whole bar, which is at most
         // one bar and is the settle, not momentum.
         assertTrue("a 120 px/s release coasted $coasted bars after the lift", kotlin.math.abs(coasted) <= 1)
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = PHONE)
+    fun `a flick in the price gutter stretches the scale and never throws the time axis`() {
+        // **Run Τ2, item A4.** The gutter is the price ladder, and a finger that starts there is
+        // asking for a taller or a shorter picture — not for the window to run off into history.
+        // The two gestures are the same shape and only their *starting x* tells them apart, which
+        // is the rule `onPlot` states and the one thing no unit test of the curve can check.
+        //
+        // The assertion is on the **time offset**, because that is what a fling moves. A price
+        // stretch is measured by `ChartPriceScaleTest`; what this owes is that the window did not
+        // travel, and «did not travel» has to allow the one bar the lift springs to.
+        chart()
+        val node = composeRule.onNodeWithTag(TAG)
+        composeRule.mainClock.autoAdvance = false
+        node.performTouchInput {
+            // Well inside the sixty-four point ladder on the right-hand edge, and away from the
+            // date strip along the bottom: this is the price axis and nothing else.
+            val x = width * 0.97f
+            swipeWithVelocity(
+                start = Offset(x, height * 0.30f),
+                end = Offset(x, height * 0.60f),
+                endVelocity = 3_000f,
+                durationMillis = 200L,
+            )
+        }
+        composeRule.mainClock.advanceTimeBy(16L)
+        composeRule.waitForIdle()
+        val afterLift = viewports.last().offset
+        var elapsed = 0L
+        while (elapsed < 2_500L) {
+            composeRule.mainClock.advanceTimeBy(FRAME_MS)
+            composeRule.waitForIdle()
+            elapsed += FRAME_MS
+        }
+        composeRule.mainClock.autoAdvance = true
+        val coasted = viewports.last().offset - afterLift
+        assertTrue(
+            "a 3 000 px/s flick down the price ladder carried the window $coasted bars into history",
+            kotlin.math.abs(coasted) <= 1,
+        )
     }
 
     @Test

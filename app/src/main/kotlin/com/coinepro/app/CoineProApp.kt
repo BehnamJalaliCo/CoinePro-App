@@ -4283,7 +4283,16 @@ private fun MainShell(
                             if (!terminalController.isConfigured) add("terminal")
                             // The connections screen is a broker or an exchange login, and on a
                             // platform this build offers no way to trade on there is neither (F5).
-                            if (!tradingOffered(activePlatform)) add("connections")
+                            //
+                            // Copy trading goes with it (run Τ2, B3). It mirrors verified signals
+                            // onto a MetaTrader account, so a build with no way to open one has
+                            // nothing to mirror onto — and the row was surviving the flag because
+                            // it is already keyed to the forex platform, which is a *different*
+                            // question from whether this build trades there at all.
+                            if (!tradingOffered(activePlatform)) {
+                                add("connections")
+                                add("copy-trade")
+                            }
                         },
                     ),
                     onOpenSurface = { id ->
@@ -4663,7 +4672,12 @@ private fun MainShell(
                             if (!terminalController.isConfigured) add("terminal")
                             if (!hasAcademy) add("academy")
                             if (!accountDeletionAvailable) add("delete")
-                            if (!tradingOffered(activePlatform)) add("connections")
+                            // Both, and for the reason the other call site spells out: a build
+                            // that opens no forex account has nothing for copy trading to copy to.
+                            if (!tradingOffered(activePlatform)) {
+                                add("connections")
+                                add("copy-trade")
+                            }
                         },
                     ),
                     onOpen = { id -> navController.navigate(menuRoute(id, activePlatform, watchlist)) },

@@ -51,6 +51,9 @@ class CoineProApplication : Application(), Configuration.Provider, SingletonImag
      */
     @Inject lateinit var appLog: AppLog
 
+    /** What this reader may reach. Applied from the store, then refreshed for next time. */
+    @Inject lateinit var entitlements: EntitlementStartUp
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -67,6 +70,7 @@ class CoineProApplication : Application(), Configuration.Provider, SingletonImag
             message = "process start",
             fields = mapOf("version" to BuildConfig.VERSION_NAME, "debug" to BuildConfig.DEBUG.toString()),
         )
+        entitlements.begin()
         initializeFirebaseIfConfigured()
         NotificationChannels.ensure(this)
     }

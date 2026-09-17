@@ -46,8 +46,10 @@ object FeatureFlags {
      * was, still compiled, and `EntitlementGateTest` drives them with this false so the day it goes
      * back the walls come back with it.
      *
-     * Server-fed in intent and local in fact: nothing in either backend serves an entitlement today.
-     * `docs/runs/RUN_TFY/BLOCKED.md` names the address it will read when one exists.
+     * **Server-fed, with this as the local default** (run Τ2, B2). `EntitlementStore` keeps whatever
+     * the backend last served and `Entitlements.applyAtStart` writes it here before the first screen;
+     * where nothing has ever been served — no route yet, a first launch offline — this value stands,
+     * and it is `true`. A missing answer must never read as a locked app.
      */
     var allUnlocked: Boolean = ALL_UNLOCKED_DEFAULT
 

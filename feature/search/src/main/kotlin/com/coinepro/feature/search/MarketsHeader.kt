@@ -11,21 +11,25 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProShapes
@@ -281,14 +285,35 @@ private fun PulseCell(
             }
             .padding(vertical = CoineProSpacing.Half),
     ) {
-        Text(
-            text = stringResource(cell.labelRes),
-            style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.TextMuted,
-            fontWeight = FontWeight.Normal,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        // **The ⓘ, and why the whole cell stays tappable** (run Τ2, item B5).
+        //
+        // The figure is the point of the row and the explanation is a second thought, so the cell
+        // prints a number and a name and nothing else — no «why this is a dash» under four columns
+        // on a phone. What the glyph buys is *discoverability*: a tappable cell that looks exactly
+        // like a printed one is a door nobody opens. It is the affordance, not the target, so the
+        // target remains the whole cell rather than a 12 dp mark, which is below every minimum a
+        // thumb is measured against.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(cell.labelRes),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+                fontWeight = FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            Icon(
+                painter = painterResource(CoineProIcons.Info),
+                // Null: the cell already carries its name and a second reading of «information
+                // about market cap» is one the screen reader does not need twice.
+                contentDescription = null,
+                tint = CoineProColors.TextMuted,
+                modifier = Modifier
+                    .padding(start = CoineProSpacing.Half)
+                    .size(WHY_GLYPH),
+            )
+        }
         Text(
             // A dash, never a zero. Zero is a claim that the market is worth nothing.
             text = value ?: EM_DASH,
@@ -400,6 +425,9 @@ private fun compactFigure(value: Double): String {
 
 /** What a cell with no figure says. Not a zero, which would be a claim. */
 private const val EM_DASH = "—"
+
+/** The ⓘ beside a pulse cell's name: small enough to be a mark, not a button. See [MarketPulseRow]. */
+private val WHY_GLYPH = 12.dp
 
 private val UNDERLINE = 2.dp
 private val UNDERLINE_WIDTH = 20.dp

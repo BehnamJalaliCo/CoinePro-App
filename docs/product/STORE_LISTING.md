@@ -18,6 +18,18 @@ That second line is a promise about the build, not a campaign: it is true exactl
 `FeatureFlags.allUnlocked` is true, and it comes out of the listing on the day that changes. See
 `docs/product/MONETISATION.md`.
 
+## What this app is not
+
+One sentence, in the listing and in the product, word for word (`menu_no_trading`, drawn at the
+foot of the menu):
+
+* **فارسی** — «این اپ معامله انجام نمی‌دهد و کارمزدی دریافت نمی‌کند.»
+* **English** — "This app does not trade and takes no commission."
+
+It leads the listing's body on both stores. A reader arriving from a search for a trading app is
+entitled to know before they install, and a reader who installed anyway finds the same sentence in
+the same words on the menu rather than discovering it from an absence.
+
 ## Long description — فارسی
 
 چارت حرفه‌ای برای بازار کریپتو، با همان ابزارهایی که روی دسکتاپ انتظار دارید: بیش از ۲۴۰ اندیکاتور،

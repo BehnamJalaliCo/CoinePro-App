@@ -13,6 +13,7 @@
     <string name="menu_sign_in">ورود یا ساخت حساب</string>
     <string name="menu_locked">با ورود به حساب</string>
     <string name="menu_footer">هر چه این برنامه دارد در همین صفحه است. آنچه به حساب نیاز دارد نشان داده می‌شود و پنهان نمی‌ماند.</string>
+    <string name="menu_no_trading">این اپ معامله انجام نمی‌دهد و کارمزدی دریافت نمی‌کند.</string>
 
     <!-- ── بلوک‌ها ─────────────────────────────────────────────────────────────────────── -->
     <string name="menu_group_market">بازار و دیده‌بان</string>

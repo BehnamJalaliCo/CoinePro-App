@@ -129,6 +129,28 @@ fun MenuScreen(
             )
         }
 
+        // **What this app is, in one sentence** (run Τ2, item B10).
+        //
+        // Directly under who the reader is, and above everything the app can do — because it is
+        // the one claim somebody is entitled to find without looking for it, and the same sentence
+        // the store listing leads with, word for word, so that nobody who installs on the strength
+        // of the listing discovers a different claim inside.
+        //
+        // Not the footer, which is where it started. The footer of a nine-section directory is a
+        // place a reader arrives at by accident, and «prominent» and «at the bottom of a list
+        // nobody scrolls to the end of» are not the same instruction.
+        item(key = "no-trading") {
+            Text(
+                text = stringResource(R.string.menu_no_trading),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = CoineProColors.TextPrimary,
+                modifier = Modifier
+                    .padding(horizontal = CoineProSpacing.Gutter)
+                    .testTag(MENU_NO_TRADING_TAG),
+            )
+        }
+
         appearance?.let { row ->
             item(key = "appearance") {
                 Column(modifier = Modifier.fillMaxWidth()) {
@@ -318,6 +340,9 @@ private fun Identity(
 object MenuTestTags {
     fun row(id: String): String = "menu-row-$id"
 }
+
+/** The sentence about what this app is. See the footer, and run Τ2 item B10. */
+const val MENU_NO_TRADING_TAG: String = "menu-no-trading"
 
 @Composable
 private fun MenuRow(

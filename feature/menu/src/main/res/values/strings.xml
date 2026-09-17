@@ -11,6 +11,11 @@
     <string name="menu_sign_in">Sign in or create an account</string>
     <string name="menu_locked">Needs an account</string>
     <string name="menu_footer">Everything this app contains is on this page. What needs an account is shown rather than hidden.</string>
+    <!--
+      The one sentence the store listing and this page say identically. See
+      docs/product/STORE_LISTING.md and docs/runs/RUN_T2/CHECKLIST.md item B10.
+    -->
+    <string name="menu_no_trading">This app does not trade and takes no commission.</string>
 
     <string name="menu_group_market">Markets and watchlist</string>
     <string name="menu_group_trade">Trading and portfolio</string>

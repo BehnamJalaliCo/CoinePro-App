@@ -13,6 +13,8 @@ import com.coinepro.core.academy.AcademyGateway
 import com.coinepro.core.academy.NetworkAcademyGateway
 import com.coinepro.core.account.AccountController
 import com.coinepro.core.account.AccountGateway
+import com.coinepro.core.account.EntitlementsGateway
+import com.coinepro.core.account.NetworkEntitlementsGateway
 import com.coinepro.core.announcements.AnnouncementsController
 import com.coinepro.core.announcements.AnnouncementsGateway
 import com.coinepro.core.announcements.NetworkAnnouncementsGateway
@@ -165,6 +167,7 @@ import com.coinepro.core.webhook.WebhookStore
 import com.coinepro.feature.alerts.AlertsController
 import com.coinepro.feature.alerts.StoredWebhooks
 import com.coinepro.core.datastore.ArenaStore
+import com.coinepro.core.datastore.EntitlementStore
 import com.coinepro.core.datastore.LastVisitStore
 import com.coinepro.core.datastore.ScriptInstallStore
 import com.coinepro.feature.chart.ChartWorkspaceStore
@@ -212,6 +215,24 @@ object AppModule {
     @Singleton
     fun installIdStore(preferences: DataStore<Preferences>): InstallIdStore =
         InstallIdStore(preferences)
+
+    /**
+     * What the server last said this reader may reach, and who asks it (run Τ2, B2).
+     *
+     * On the **crypto** retrofit, because that is the deployment every reader has — a guest with no
+     * account reaches TradeYar's public routes on the first screen, and an entitlement that only
+     * arrived for somebody signed in to the forex platform would be an entitlement most installs
+     * never see. See `EntitlementsGateway` for why every failure here answers «keep the default».
+     */
+    @Provides
+    @Singleton
+    fun entitlementStore(preferences: DataStore<Preferences>): EntitlementStore =
+        EntitlementStore(preferences)
+
+    @Provides
+    @Singleton
+    fun entitlementsGateway(@CryptoPlatform retrofit: Retrofit): EntitlementsGateway =
+        NetworkEntitlementsGateway.create(retrofit, MarketPlatform.TRADEYAR)
 
     /**
      * One log for both platforms, with each entry naming which one made the call.

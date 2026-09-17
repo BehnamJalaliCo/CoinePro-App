@@ -35,6 +35,22 @@ object Entitlements {
     val all: Boolean get() = FeatureFlags.allUnlocked
 
     /**
+     * Applies what the server last served, before the first screen (run Τ2, B2).
+     *
+     * Called once, from the start-up path, with the value `EntitlementStore` is holding. `null` —
+     * the server has never answered, because the route does not exist yet or the first launch was
+     * offline — leaves [FeatureFlags.ALL_UNLOCKED_DEFAULT] in place, which is open. **A silence is
+     * not a refusal**, and an app that locked itself because a request failed would be a worse
+     * product than one that stayed open a launch too long.
+     *
+     * Deliberately at start rather than on arrival: see `EntitlementStore` for why a wall must not
+     * appear while a reader is standing in the doorway.
+     */
+    fun applyAtStart(served: Boolean?) {
+        FeatureFlags.allUnlocked = served ?: FeatureFlags.ALL_UNLOCKED_DEFAULT
+    }
+
+    /**
      * Whether a lock the **server** declared should still be tried rather than obeyed on sight.
      *
      * True while everything is free, and it is the honest behaviour rather than a trick: a lock

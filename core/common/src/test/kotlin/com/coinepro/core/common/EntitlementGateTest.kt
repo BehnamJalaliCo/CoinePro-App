@@ -54,6 +54,29 @@ class EntitlementGateTest {
     }
 
     @Test
+    fun `a silence from the server leaves the app open`() {
+        // **Run Τ2, B2.** The failure mode this asymmetry exists to prevent: no route yet, a first
+        // launch with no signal, a body that would not parse — every one of them arrives here as
+        // null, and null must never read as «locked». Wrongly open costs the owner a subscription
+        // they are giving away; wrongly closed costs a reader the product they installed.
+        FeatureFlags.allUnlocked = false
+        Entitlements.applyAtStart(null)
+        assertTrue("a server that said nothing closed the app", Entitlements.all)
+    }
+
+    @Test
+    fun `what the server served is what the next launch starts with`() {
+        Entitlements.applyAtStart(false)
+        assertFalse("the served refusal was ignored", Entitlements.all)
+        // And every derived answer moves with it, exactly as the local switch does — the served
+        // value goes through `FeatureFlags`, so there is one path and not two.
+        assertFalse(Entitlements.attemptsLockedContent)
+        assertFalse(Entitlements.foundingMember)
+        Entitlements.applyAtStart(true)
+        assertTrue(Entitlements.all)
+    }
+
+    @Test
     fun `reset puts back exactly what a shipping build starts with`() {
         FeatureFlags.forexTrading = true
         FeatureFlags.allUnlocked = false

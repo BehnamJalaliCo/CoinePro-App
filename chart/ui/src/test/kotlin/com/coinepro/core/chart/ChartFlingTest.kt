@@ -9,9 +9,10 @@ import org.junit.Test
  * chart's frame loop relies on. Pure JVM — the spec is arithmetic.
  *
  * The numbers here were retuned in run Τ against the owner's frame-by-frame measurement of
- * TradingView on the same phone with the same finger. Friction went from 3.8 to 1.4 per second,
- * which is the distance a flick covers, and the cut-off from 20 px/s to 150 — see
- * `KineticScroll.MIN_VELOCITY` for what twenty looked like on a 120 Hz screen.
+ * TradingView on the same phone with the same finger. Friction went from 3.8 to **1.25** per
+ * second, which is the distance a flick covers, and the cut-off from 20 px/s to **240** — see
+ * `KineticScroll.MIN_VELOCITY` for what twenty looked like on a 120 Hz screen, and for why 240 is
+ * the only cut-off that satisfies «no sub-2 px/frame tail» on a panel running at 120.
  */
 class ChartFlingTest {
 
