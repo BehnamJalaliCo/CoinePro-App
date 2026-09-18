@@ -288,4 +288,44 @@ class ComparisonTest {
         assertEquals(align(base, other, "XAUUSD"), align(base, other, "XAUUSD"))
         assertNotEquals(align(base, other, "XAUUSD"), align(base, other, "EURUSD"))
     }
+
+    // ── the legend's own figure (run Τ2, C5) ──────────────────────────────────────────
+
+    @Test
+    fun `the legend reports the move across the bars on screen, not the whole series`() {
+        // The lines are rebased to the **left edge of the viewport**, so a legend reporting the
+        // series' own move would describe a different picture from the one in front of the reader.
+        val nine = series(10.0, 20.0, 30.0, 40.0, 50.0)
+        assertEquals(400.0, changeAcrossVisible(nine, 0, 4)!!, 1e-9)
+        assertEquals(100.0, changeAcrossVisible(nine, 1, 3)!!, 1e-9)
+        assertEquals(0.0, changeAcrossVisible(nine, 2, 2)!!, 1e-9)
+    }
+
+    @Test
+    fun `a window with nothing in it reports nothing, rather than nothing per cent`() {
+        // «۰٪» is a claim that the market did not move. A market that has not traded over these
+        // bars has not moved zero per cent, and a legend that said so would be inventing a fact.
+        val gaps = series(Double.NaN, Double.NaN, 40.0)
+        assertNull("a window of blanks reported a figure", changeAcrossVisible(gaps, 0, 1))
+        assertNull("an empty series reported a figure", changeAcrossVisible(series(), 0, 3))
+        // An anchor of exactly zero: a percentage move away from nothing is not a number.
+        assertNull("a zero anchor produced a percentage", changeAcrossVisible(series(0.0, 5.0), 0, 1))
+    }
+
+    @Test
+    fun `it anchors on the first bar that traded and reads to the last one that did`() {
+        // Not on the first *index*. A market closed for the first two bars on screen has not moved
+        // `NaN` per cent over a window the reader can plainly see rising.
+        val late = series(Double.NaN, 50.0, 60.0, Double.NaN)
+        assertEquals(20.0, changeAcrossVisible(late, 0, 3)!!, 1e-9)
+    }
+
+    @Test
+    fun `a window outside the series is clamped rather than thrown`() {
+        // A viewport is a live thing and can briefly run past the end of a series that has just
+        // been replaced. Clamped, like `BarWindow.clampedTo`, because a frame must not crash.
+        val two = series(10.0, 15.0)
+        assertEquals(50.0, changeAcrossVisible(two, -5, 99)!!, 1e-9)
+        assertNull(changeAcrossVisible(two, 1, 0))
+    }
 }

@@ -15,10 +15,12 @@ for the measurements.
 B2, B3, B5, B9 and B10 are this session's work — B9 narrowed on its bundled sound set, which needs
 audio this repository does not hold (`BLOCKED.md §B9`). B6, B7 and B8 are not started.
 
-**Phase C: audited, not built.** C5 and C2 turn out to be mostly shipped already; C1, C3, C4 and C6
-do not exist.
+**Phase C: one clause built, the rest audited.** C5's legend figure is new; the two clauses of C5
+that are not met are argued in the checklist rather than quietly dropped. C2 turns out to be mostly
+shipped already. C1, C3, C4 and C6 do not exist.
 
-**Shipped:** 4.93.0, with every gate green and the full unit suite passing.
+**Shipped:** 4.93.0 (phase A + B2/B3/B5/B10), 4.94.0 (B9), 4.95.0 (C5's legend). Every gate green
+and the full unit suite passing on each.
 
 ---
 
@@ -92,10 +94,11 @@ seeding and the scoring.
 
 ### C5 and C2 — finish rather than build
 
-* **C5:** `Comparison.kt` already normalises (PERCENT rebased to the viewport's left edge,
-  INDEXED_100, RATIO, ABSOLUTE) and the hub adds from the watchlist. What is left is the per-series
-  **percentage across the visible range printed on the legend**, and a one-tap swap in place of the
-  four-chip row. Also check the watchlist's «تحلیل» action reaches it.
+* **C5:** the legend figure landed in 4.95.0 (`changeAcrossVisible`). What is left are the two
+  clauses the checklist argues against rather than defers: **separate scales** — a second price axis
+  per compared series, which is real work in the renderer and is the only honest reading of that
+  phrase — and pointing the watchlist's «تحلیل» at the overlay, which would cost the side-by-side
+  panes. Both want the owner's word before anybody builds them.
 * **C2:** `AlertTrigger.DrawingTouch` and `AlertDrawings.kt` work. What is left is the
   delete-a-drawing-asks-about-its-alerts flow and the thumbnail in the alert list.
 
@@ -108,6 +111,10 @@ seeding and the scoring.
    sake. The recommendation is no.
 3. **B3's `membership_open_ourbit`** — kept deliberately, because it is the crypto venue's
    sub-account check and not a forex door. Say if that reading is wrong and it goes.
+4. **C5's «separate scales»** — a second price axis per compared series is renderer work and is not
+   what ABSOLUTE does. Worth building, or is the normalised view enough?
+5. **C5 from the watchlist** — «تحلیل» opens the side-by-side panes today. Should it keep them, or
+   offer both?
 
 ---
 
@@ -121,6 +128,11 @@ seeding and the scoring.
   before committing, or the diff claims changes that are noise.
 * `testDebugUnitTest` and `:app:assembleRelease` are **separate invocations**. Together they run out
   of memory.
+* A **wedged Gradle daemon** looks exactly like a slow test suite. One run in this session sat for
+  over an hour producing no test results, with the daemon at 5.4 GB resident and 65 % of a core;
+  `./gradlew --stop` and a re-run finished the identical work in 4m 50s. If a run that normally
+  takes five minutes passes fifteen with no new XML under `*/build/test-results/`, stop the daemon
+  rather than waiting — and rather than suspecting the change.
 * The menu is a `LazyColumn`: anything in its footer is not composed until it is scrolled to, so a
   semantics assertion on it fails. That is what moved B10's sentence to the top, and the move is
   right for the reader as well.

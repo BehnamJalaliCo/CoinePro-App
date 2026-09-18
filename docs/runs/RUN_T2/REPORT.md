@@ -165,9 +165,22 @@ day rebuilding them:
 * **C5, compare on the chart.** `chart/core/…/Comparison.kt` normalises to PERCENT — rebased to the
   **left edge of the viewport**, so the comparison re-answers itself as the reader pans, which is
   the whole point of the feature — and to INDEXED_100, RATIO and ABSOLUTE. The hub's «مقایسه با نماد
-  دیگر» tile adds from the watchlist and the legend carries a removable row per series. What C5 adds
-  on top is the per-series percentage across the visible range printed on the legend, and a one-tap
-  swap in place of the four-chip row.
+  دیگر» tile adds from the watchlist and the legend carries a removable row per series.
+
+  **What this run added** is the figure C5 asks for: `changeAcrossVisible`, and the percentage
+  beside each symbol on the legend. It is the move across the **bars on screen** and not the
+  series', because the lines are rebased to the viewport's left edge and a legend reporting anything
+  else would be describing a different picture from the one drawn. It anchors on the first bar that
+  *traded* rather than the first index — a market closed for the first two bars on screen has not
+  moved `NaN` per cent over a window the reader can see rising — and prints «—» rather than «۰٪»
+  where there is nothing to measure, because a market that has not traded has not moved zero.
+
+  Two clauses are not met and the checklist row says so. «Separate scales» is a feature this chart
+  does not have: ABSOLUTE is not it, since raw values on one axis put a $2 300 instrument and a
+  $0.42 one on the same ladder — the flat line the enum's own note exists to warn about. And the
+  watchlist's «تحلیل» opens the side-by-side panes run Υ built, which is a *different* comparison,
+  several symbols each with their own chart; pointing it at the overlay would take the multi-chart
+  away from the reader who has it.
 * **C2, alerts on drawn objects.** `AlertTrigger.DrawingTouch` and `AlertDrawings.kt` are shipped,
   and the evaluator resolves a trend line's price again at every sample rather than freezing it —
   which is the hard half. What is left is the delete-asks-about-its-alerts flow and the thumbnail.

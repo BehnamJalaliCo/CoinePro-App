@@ -286,6 +286,44 @@ fun rebase(
     }
 }
 
+/**
+ * **What one compared series did across the bars on screen** (run Τ2, C5), as a percentage.
+ *
+ * The number the legend prints beside each symbol, and it is deliberately the *visible* move rather
+ * than the whole series': the comparison itself is rebased to the left edge of the viewport — see
+ * [ComparisonBasis.PERCENT] — so a legend reporting anything else would be describing a different
+ * picture from the one the lines are drawing.
+ *
+ * Measured from the first finite value at or after [firstVisible] to the last finite value at or
+ * before [lastVisible], which is what «across the visible range» means on a series with gaps in it:
+ * a market that was closed for the first three bars on screen has not moved zero per cent over
+ * them, it has not traded, and anchoring on a blank would report `NaN` for a line the reader can
+ * plainly see rising.
+ *
+ * Null rather than zero where there is nothing to measure — an empty window, a series with no
+ * finite value in it, or an anchor of exactly zero, from which a percentage move is not a number.
+ * A legend cell with no figure says «—»; a legend cell saying «0.00 %» would be a claim.
+ *
+ * Independent of [ComparisonBasis] on purpose. RATIO and ABSOLUTE draw different lines but the
+ * question «how much did this move while I was looking at it» has one answer, and printing three
+ * answers to it depending on a chip would make the legend disagree with itself.
+ */
+fun changeAcrossVisible(series: ComparisonSeries, firstVisible: Int, lastVisible: Int): Double? {
+    val values = series.values
+    if (values.isEmpty()) return null
+    val first = firstVisible.coerceIn(0, values.size - 1)
+    val last = lastVisible.coerceIn(0, values.size - 1)
+    if (first > last) return null
+    val from = anchorValue(values, first)?.takeIf { it != 0.0 } ?: return null
+    var index = last
+    while (index >= first) {
+        val to = values[index]
+        if (to.isFinite()) return 100.0 * (to - from) / abs(from)
+        index--
+    }
+    return null
+}
+
 /** The first finite value at or after [from], or null when the series is blank from there on. */
 private fun anchorValue(values: DoubleArray, from: Int): Double? {
     var index = from.coerceAtLeast(0)

@@ -150,6 +150,7 @@ import com.coinepro.core.chart.TradeFacts
 import com.coinepro.core.chart.TradeFromChart
 import com.coinepro.core.chart.TradeSide
 import com.coinepro.core.chart.ComparisonBasis
+import com.coinepro.core.chart.changeAcrossVisible
 import com.coinepro.core.chart.ComparisonSeries
 import com.coinepro.core.chart.MAX_COMPARISONS
 import com.coinepro.core.chart.MarkerStyle
@@ -162,6 +163,7 @@ import com.coinepro.core.chartevents.ChartEventSheet
 import com.coinepro.core.chartevents.ChartEventState
 import com.coinepro.core.chartevents.SERVED_EVENT_KINDS
 import com.coinepro.core.common.MarketNumberFormatter
+import com.coinepro.core.designsystem.numeric
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.datastore.ChartColourTemplate
@@ -1951,6 +1953,7 @@ fun ChartScreen(
             ComparisonBar(
                 comparisons = state.comparisons,
                 basis = state.comparisonBasis,
+                window = state.window,
                 onSetBasis = controller::setComparisonBasis,
                 onRemove = controller::removeComparison,
             )
@@ -4131,6 +4134,8 @@ private fun ComparisonRow(symbol: String, colour: Color, index: Int, onRemove: (
 private fun ComparisonBar(
     comparisons: List<ComparisonSeries>,
     basis: ComparisonBasis,
+    /** The bars on screen. What the percentage beside each symbol is measured over. */
+    window: BarWindow,
     onSetBasis: (ComparisonBasis) -> Unit,
     onRemove: (String) -> Unit,
 ) {
@@ -4172,6 +4177,26 @@ private fun ComparisonBar(
                         Text(
                             text = series.label,
                             style = MaterialTheme.typography.labelSmall,
+                            color = colour,
+                        )
+                    }
+                    // **What it did while the reader was looking at it** (run Τ2, C5).
+                    //
+                    // The visible move, not the series', because the lines themselves are rebased
+                    // to the left edge of the viewport — a legend reporting anything else would be
+                    // describing a different picture from the one on screen. It re-computes as the
+                    // chart is panned, which is the whole point of the feature.
+                    //
+                    // «—» rather than «۰٪» where there is nothing to measure: a market that has not
+                    // traded over these bars has not moved zero per cent, and a zero would be a
+                    // claim. A market figure, so Latin digits and the signed form.
+                    val change = remember(series, window) {
+                        changeAcrossVisible(series, window.firstIndex, window.lastIndex)
+                    }
+                    LtrDirection {
+                        Text(
+                            text = change?.let { MarketNumberFormatter.signedPercent(it) } ?: EM_DASH,
+                            style = MaterialTheme.typography.labelSmall.numeric(),
                             color = colour,
                         )
                     }
@@ -5172,3 +5197,6 @@ private fun resolveArgument(value: Any, separator: String): String = when (value
     is List<*> -> value.joinToString(separator) { it.toString() }
     else -> value.toString()
 }
+
+/** What a legend cell with nothing to measure prints. Not a zero, which would be a claim. */
+private const val EM_DASH = "\u2014"
