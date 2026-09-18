@@ -88,6 +88,8 @@ Not in the brief, and found because 5.0.0's push was watched rather than assumed
 failing and none of the three failures was new; the owner's own gate list is green throughout, which
 is exactly how a workflow stays red without anybody noticing.
 
+**Android CI is green on `0f33dbb`** — the first time in at least six commits.
+
 | # | Item | State | Evidence | Frame |
 |---|---|---|---|---|
 | 25 | `:benchmark` had not compiled for weeks | ✅ **fixed** | A KDoc in `ChartFlingBenchmark` documented an output path ending `…/*.json`. **Kotlin block comments nest** — unlike Java's — so the slash-star inside the comment opened a second one, the closing delimiter shut only that, and the remaining two hundred lines of the file were comment. The error read «Unclosed comment» against the last line of the file, which is about as far from the cause as a diagnostic gets. The path is written without a glob now, and the note beside it says why | — **a compiler error, and the evidence is its absence.** `:benchmark:compileBenchmarkKotlin` green, built without `--offline` so the macrobenchmark artifact could be fetched |

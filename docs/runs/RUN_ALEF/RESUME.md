@@ -108,7 +108,8 @@ last is ⏳ on two static files somebody has to put on a host that already exist
 ## Android CI
 
 Three jobs were red when 5.0.0 was pushed and none of the three failures was new (§א7 in the
-checklist). All three are fixed, and each was verified as far as this container allows:
+checklist). **All three are fixed and the workflow is green** on `0f33dbb` — the first green Android
+CI in this repository for at least six commits. How each was verified:
 
 * **Compose UI** — green on CI after the `LocalActivityResultRegistryOwner` fix. Confirmed.
 * **`:app:lintDebug`** — green here.
@@ -117,7 +118,8 @@ checklist). All three are fixed, and each was verified as far as this container 
   macrobenchmark artifact could be fetched. The wrapper script in the scratchpad forces `--offline`
   and this module is the one place that matters.
 
-If anything is still red, read the workflow rather than guess:
+Keep reading the workflow after a push rather than assuming it; that habit is what found all
+of this:
 
 ```
 curl -s "https://api.github.com/repos/BehnamJalaliCo/CoinePro-App/actions/runs?per_page=6"
