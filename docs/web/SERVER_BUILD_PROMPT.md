@@ -49,11 +49,20 @@ so and stop rather than opening a port.
    values, never a fragment of a value, not even in an error message you are quoting.
 5. **Nothing is done until its acceptance check passes.** Each phase below ends with a command and
    the answer it must give. Run it, paste the real output, and do not move on if it disagrees.
-6. **Ask the bare snapshot.** Both backends answer a call with **no `symbols` parameter** by
-   returning everything they quote. That is the only discovery mechanism this product has. Never
-   name a symbol list in a relayed request; a list here would cap the web's universe at whatever you
-   happened to know the day you wrote it.
-7. **Stop and ask on anything destructive**: dropping a database, changing DNS, touching either
+6. **Never name a symbol list in a relayed request.** A list here caps the web's universe at
+   whatever you happened to know the day you wrote it. Ask for everything and let the backend say
+   what it has.
+
+   Which call *is* «everything» differs per venue, and getting this wrong is invisible — a short
+   list looks exactly like a small venue. **TradeYar**: `api/v1/public/prices` with an empty
+   `symbols` returns all 857. **CoinePro-FX**: the bare snapshot is **not** the answer — it omits
+   gold and silver — use `api/public/prices/live`. `SERVER.md` §4.7 has both measurements.
+7. **The `assetlinks.json` fingerprint does not come from Play Console.** If anything you are
+   reading says it does, that text is out of date — see Phase 1, step 3. Google Play does not
+   operate in Iran, this app is installed from a downloaded APK, and nothing re-signs it, so the
+   fingerprint is the **release keystore's own** SHA-256. Ask the owner for that value; do not ask
+   them to open a console they may not have.
+8. **Stop and ask on anything destructive**: dropping a database, changing DNS, touching either
    backend's configuration, or anything that would take the two live servers off the air.
 
 ---
@@ -78,8 +87,15 @@ GET <tradeyar-base>/api/mobile/v1/ws/snapshot
 GET <coineprofx-base>/../ws/snapshot          # note: the app's FX base ends in /api/, this route sits beside it
 ```
 
-If either refuses, or answers a different shape from `SERVER.md §4.1`, stop and report. Everything
+If either refuses, or answers a different shape from `SERVER.md` §4.1, stop and report. Everything
 below assumes both answer.
+
+**Then read both `/api/openapi.json` over the private network before writing a line of Phase 2**,
+and check every route you intend to relay against it. `SERVER.md` §4.0 divides each backend into an
+authenticated surface and a public one; the app uses the authenticated one because the app signs in,
+and a Phase-2 relay has no account, so **a 401 on a route is information rather than a problem**.
+Where the spec and the OpenAPI disagree, the OpenAPI is right and the spec is the thing to fix —
+say so and it gets fixed. That has already happened once and it improved the document.
 
 ---
 
@@ -132,6 +148,21 @@ who taps «قوانین» in the app gets a browser on a dead host. Closing that
 
 4. **A holding page at `/`.** One screen: the mark, the product's name, one sentence, and a link to
    the app. Not a marketing site — that is a later decision and not yours.
+
+5. **If `pro-chart.com` is behind Cloudflare, the origin needs a certificate Cloudflare trusts.**
+   A `526` means exactly that and nothing else: Cloudflare reached this machine and refused its
+   certificate. Let's Encrypt cannot complete a challenge through an orange-clouded record, so the
+   answer is a **Cloudflare Origin CA certificate** — the owner creates it in the dashboard
+   (SSL/TLS → Origin Server → Create Certificate) and hands over the certificate and key; you
+   install them in Caddy with `tls <cert> <key>` and set the zone to Full (strict). **Ask; do not
+   improvise around it.** Turning off TLS verification, serving plain HTTP to the origin, or
+   switching the zone to Flexible are all ways to make the `526` disappear while leaving the hop
+   unencrypted, and none of them is acceptable on a host that serves this product's legal pages.
+
+   One consequence, and it is already a rule: **`pro-chart.com` must never be certificate-pinned in
+   the Android app.** Cloudflare rotates the edge certificate on its own schedule and a pinned app
+   cannot be told. `docs/release/DOMAINS.md` and `docs/security/PINNING.md` both say so — it is the
+   same reason `coineprofx.com` is not pinned.
 
 **Acceptance:**
 
@@ -211,14 +242,25 @@ the document. Report both; they must be identical.
 FastAPI on Python 3.12, in Docker, behind Caddy at `/api/`. Redis for the cache. Postgres can wait
 until Phase 4 — do not create tables you are not using yet.
 
-Build exactly the routes in `SERVER.md §4.1` and `§4.3`, with the cache policy written there. Two
-things in that table are load-bearing and easy to get subtly wrong:
+Build the routes in **`SERVER.md` §4.1 «public surface» and §4.3 «what Phase 2 can carry»** — those
+tables only. The rows below them are the authenticated surface and belong to Phase 4; they answer
+401 to everything you can send in this phase, and that is correct rather than broken. **Phase 2 does
+not wait on `PLAN.md` §6.2.** That question gates the account, and none of these routes has one.
 
-- **The bare snapshot** (rule 6 above).
+Four things there are load-bearing and easy to get subtly wrong:
+
+- **Which call means «everything»** (rule 6 above), and it differs per venue.
 - **Candles cache by whether the bar is closed.** A closed bar never changes: cache it indefinitely,
   keyed `venue:symbol:interval:openTime`. Only the newest bar has a short life — one interval tick
   at most, 2 s on a minute chart, 30 s on an hour. This is where the relay earns its keep: a hundred
   tabs on BTCUSDT H1 become one upstream call an hour plus one live bar.
+- **FX serves four timeframes on the public route** — `M15 H1 H4 D1`; `M5`, `M30` and `W1` are a
+  `422`. Do not translate a timeframe the browser asks for into one the backend happens to accept.
+  Pass it through, let the `422` come back, and the terminal folds `M30` out of `M15` and `W1` out
+  of `D1` on the client, as the phone already does.
+- **FX candles come back in a different shape from crypto candles** — `t` is an ISO-8601 string,
+  there is no volume and no paging, and `limit` is bounded `20..400`. **Relay it unchanged anyway**
+  (rule 2). The adapting is the terminal's job, in the same place the Android app does it.
 
 Add a `/api/health` that reports, per upstream: reachable or not, the age of the last good answer,
 and the cache hit rate. No account, no socket, no writes in this phase.
@@ -228,15 +270,17 @@ Rate limits at the edge: 60 requests a minute per IP on `/api/*`.
 **Acceptance:**
 
 ```bash
-curl -s  https://pro-chart.com/api/fx/snapshot | head -c 200        # same shape as the backend's own
-curl -s  https://pro-chart.com/api/crypto/snapshot | python3 -c 'import json,sys; print(len(json.load(sys.stdin)["prices"]))'
-curl -sw '%{time_total}\n' -o /dev/null https://pro-chart.com/api/crypto/candles?symbol=BTCUSDT\&interval=1h   # twice; the second under 5 ms
+curl -s  https://pro-chart.com/api/crypto/prices | python3 -c 'import json,sys; print(len(json.load(sys.stdin)["data"]))'
+curl -s  https://pro-chart.com/api/fx/prices    | python3 -c 'import json,sys; print(len(json.load(sys.stdin)["items"]))'
+curl -sw '%{time_total}\n' -o /dev/null 'https://pro-chart.com/api/crypto/candles?symbol=BTCUSDT&tf=H1&limit=200'   # twice; the second under 5 ms
+curl -s  'https://pro-chart.com/api/fx/candles?symbol=XAUUSD&timeframe=H1&limit=20' | head -c 200
 curl -s  https://pro-chart.com/api/health
 ```
 
-Report the symbol count from the second command. **If it is under a hundred on crypto, say so
-loudly** — the Android app is proved to render 1 200 and the phone has been seeing a short list.
-That would be a backend question, not a relay bug, and the owner needs to know.
+Report both counts. The expected answers on 2026-09-18 were **857** and **19**; treat a large move
+as a finding rather than a variation. **Under a hundred on crypto, say so loudly** — the Android app
+is proved to render 1 200 — and **anything other than 19 on FX, likewise**: 17 means you reached
+`ws/snapshot` instead of `prices/live`, and the two differ by exactly gold and silver.
 
 ---
 

@@ -48,13 +48,22 @@ data class MarketCatalog(
  *
  * * **TradeYar** answers `GET ws/snapshot` with no `symbols` parameter by returning everything in
  *   scope. That is real discovery: the crypto universe is whatever LBank is quoting today.
- * * **CoinePro-FX** now does the same. It used to default to gold and silver, cap a request at
- *   twenty, and fail the whole request on one symbol outside `settings.SYMBOLS`; asked for a
- *   discovery mode, its team made the bare call return the full set, moved the cap onto explicit
- *   lists only, and added an `unsupported` field so one bad name no longer costs the response.
+ * * **CoinePro-FX** was asked for the same thing and answers the bare call — but **not with the
+ *   full set**, and that is measured rather than assumed. On 2026-09-18 `GET api/ws/snapshot` with
+ *   no `symbols` returned **17 symbols and neither XAUUSD nor XAGUSD**: the majors, three indices
+ *   and crude. The same host's `api/public/prices/live` returns 19, and the two extra are exactly
+ *   gold and silver.
  *
- * So both platforms are asked the same way now, and neither catalogue is a constant this app
- * carries. That is the whole point: a market either backend adds shows up without an app release.
+ *   So on the forex side this is **not** discovery of the whole universe, and the consequence is
+ *   not cosmetic: the metals are the reason this platform is in the product at all, and
+ *   `ForexSignalScope` narrows the forex signal list to gold. A reader can be shown a gold *call*
+ *   and then find no gold *market* to open. `docs/runs/RUN_ALEF/BLOCKED.md §א20` is the ask to
+ *   that backend's team; nothing in this app can fix it, because a symbol the feed does not list
+ *   is a symbol the app must not invent.
+ *
+ * Neither catalogue is a constant this app carries, and that stays the point: a market either
+ * backend adds shows up without an app release. What this note no longer claims is that both
+ * backends answer the bare call the same way. They do not.
  */
 interface MarketCatalogGateway {
     suspend fun load(): MarketCatalog

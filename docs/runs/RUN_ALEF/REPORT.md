@@ -196,3 +196,84 @@ number that would collide with major 5. So the major bump is the scheme deciding
 That it lands on the release where the product stops waiting for an American store and starts
 distributing itself is a coincidence. It is a convenient one, and it is the honest thing to put in
 the release note.
+
+---
+
+## 7. The server answered back, and four rows of the spec were wrong
+
+`docs/web/SERVER.md` was written in run Ψ against a machine that did not exist. It now exists, its
+agent finished Phase 0 and Phase 1, and it reported four disagreements with the live backends. All
+four were real, and they share one cause worth stating plainly:
+
+**The spec was written from what the Android app calls, and the Android app signs in.**
+
+Every route in §4 was lifted from a gateway in this repository. Those gateways carry a bearer token,
+because the app has an account by the time they run. A Phase-2 relay has no account by definition —
+so it met `401 TYR-004 Auth Token Missing` on route after route and read that as a blocker. It is
+not a blocker. It is the authenticated surface doing its job, and there is a public surface beside
+it that the spec never mentioned.
+
+New `§4.0` says so, and the useful part is that **the app already has a client for it**. `:core:guest`
+exists because a reader with no account still has to see markets: `GuestApi` reads
+`api/v1/public/prices` and `api/v1/public/candles/{symbol}`, and `GuestMarketGateways.kt` adapts them
+to the *same two interfaces* the signed-in chart uses, so the whole surface works with no `if (guest)`
+anywhere in it. **The web's Phase 2 is the guest tier.** That is not a compromise forced by a 401;
+it is the same answer the phone reached two runs ago, and it means Phase 2 does not wait on
+`PLAN.md` §6.2 at all — that question gates the account, and the guest tier does not have one.
+
+The other three were flat errors:
+
+* **§4.1's FX candle row named a TradeYar route.** `api/v1/public/candles/{symbol}` is TradeYar's;
+  it had been copied into the forex column. The app's own forex candles come from
+  `academy/chart/{symbol}`, behind a second token minted from the mobile one, which no relay without
+  an account can hold. The public route is `api/public/prices/series`, and it is narrower in ways the
+  terminal has to know rather than the relay hide: **four timeframes** (M15, H1, H4, D1 — measured;
+  M5, M30 and W1 all answer `422`), `limit` bounded 20–400, `t` an ISO-8601 string, no volume and no
+  paging. Four rather than the five the academy route serves: **the public route is the academy route
+  minus the five-minute bar.**
+* **§4.3 was Phase 4 wearing Phase 2's clothes.** `public/signals/*` sits under a path called
+  *public* on CoinePro-FX and is still behind VIP — `EndpointCatalog` says exactly that, and the live
+  server agrees. Same for the calendar and both market-intelligence routes. What Phase 2 *can* carry
+  is now its own table, and the interesting row in it is `api/demo/signals`: a badly named route
+  whose every row is a real published signal that has already closed, with the outcome it banked. A
+  track record, not a demonstration, and the only signal content this product shows a stranger.
+* **Rule 6 was half true.** «Both backends answer the bare call with everything they quote» — and
+  that is the one that mattered.
+
+### The bare snapshot, and the gold that is not in it
+
+TradeYar answers the bare call with 857 symbols. CoinePro-FX answers with **seventeen**, and the two
+it omits are **XAUUSD and XAGUSD**. `api/public/prices/live` on the same host answers nineteen, gold
+and silver first in the list. Measured from here, independently of the server, and recorded with the
+date in `SERVER.md` §4.7 so the next reader argues with a number.
+
+That is not a spec bug. `MarketCatalogGateway` builds the app's forex catalogue from `ws/snapshot`
+**and nothing else** — deliberately, because a hand-written symbol list is the thing that class was
+written to abolish. So the metals are absent from the phone's forex market list today.
+
+And run Ψ narrowed the forex *signals* to gold. Put the two together: **a reader can be shown a gold
+call and find no gold market to open.** The chart on the signal detail, the search screen, the
+watchlist — none of them can offer a symbol the catalogue does not contain.
+
+Nothing in the app may fix it, and that restraint is the point. Inventing a market the feed does not
+list is precisely the fault the catalogue exists to prevent, and a symbol on screen with no price
+behind it is worse than a short list. What changed here is the KDoc that claimed both backends
+answer alike; it records the measurement now. `BLOCKED.md §א20` carries the ask, and it is one line
+to CoinePro-FX's team — after which no app release is needed, because the catalogue is fetched.
+
+### Two things only the owner can do
+
+The server asked for the **App Signing SHA-256 from Play Console**. It had already been corrected
+once, in Phase 1; it is now **rule 7** at the top of the brief as well, where a reader meets it
+before any phase. There is no Play in this product's path, nothing re-signs the upload, and the
+value is the release keystore's own — which the app prints on its own «ایمنی و انتشار» screen with a
+copy button.
+
+And `pro-chart.com` answers **526**: Cloudflare reached the origin and refused its certificate.
+Let's Encrypt cannot complete a challenge through an orange-clouded record, so the answer is a
+Cloudflare **Origin CA** certificate from the owner's dashboard. The new Phase 1 step says so, and
+says plainly what not to do — turning off verification, serving plain HTTP to the origin, or
+switching the zone to Flexible each make the 526 disappear while leaving the hop unencrypted, on the
+host that serves this product's legal pages. It also records the consequence that was already a
+rule: a Cloudflare-fronted `pro-chart.com` must never be certificate-pinned, for the same reason
+`coineprofx.com` is not.

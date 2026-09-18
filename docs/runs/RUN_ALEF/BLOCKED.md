@@ -1,6 +1,7 @@
 # RUN א — blocked
 
-One thing, and it is two static files on a machine that already exists.
+Two things. One is two static files on a machine that already exists; the other is one line in
+CoinePro-FX's snapshot, and it is the more urgent of the two.
 
 ---
 
@@ -42,6 +43,50 @@ curl -sI https://pro-chart.com/api/app/latest | grep -i content-type
 
 and the served `version_code` against `python3 scripts/release/version.py --code` for the published
 tag.
+
+---
+
+## §א20 — gold is not in CoinePro-FX's snapshot, so it is not in the app's forex market list
+
+**Found while correcting `SERVER.md` against the live backends, and it is a product fault rather
+than a specification one.**
+
+Measured from here on 2026-09-18, against `coineprofx.com` over the public internet:
+
+```
+GET api/ws/snapshot          → 200, 17 symbols, NO XAUUSD, NO XAGUSD
+GET api/public/prices/live   → 200, 19 symbols — the same 17 plus XAUUSD and XAGUSD, first in the list
+```
+
+The 17 are the majors, three indices and crude: AUDJPY AUDUSD DE40 EURAUD EURGBP EURJPY EURUSD
+GBPJPY GBPUSD NAS100 NZDUSD US30 US500 USDCAD USDCHF USDJPY XTIUSD.
+
+**Why this reaches the reader.** `MarketCatalogGateway` builds the forex catalogue from
+`ws/snapshot` **and from nothing else** — there is no bundled fallback list, deliberately, because a
+hand-written symbol list is exactly what that class was written to remove. So the metals are absent
+from the phone's forex market list today.
+
+And run Ψ narrowed the forex signal list to gold: `ForexSignalScope` shows `XAU*` and withholds
+everything else. Put the two together and **a reader can be shown a gold call and find no gold
+market to open**. The signal detail's chart, the search screen, the watchlist: none of them can
+offer a symbol the catalogue does not contain.
+
+**What is in the build meanwhile.** Nothing, on purpose. The app must not invent a market the feed
+does not list — that is the rule the catalogue exists to enforce, and breaking it here to paper over
+a backend gap would put a symbol on screen with no price behind it. `MarketCatalogGateway`'s KDoc
+now records the measurement instead of the claim it used to make.
+
+**What the owner must ask CoinePro-FX's team**, and it is one line:
+
+> `api/ws/snapshot` with no `symbols` should return the same set as `api/public/prices/live` —
+> 19 symbols, including XAUUSD and XAGUSD. It returns 17 and omits both metals.
+
+No app release is needed once it does: the catalogue is fetched, not compiled in, so gold appears
+the next time the screen is opened.
+
+**Until then**, `SERVER.md` §4.1 tells the web relay to read `api/public/prices/live` rather than
+the snapshot, so the browser will have gold before the phone does. That is worth knowing and it is
+not a reason to delay the ask.
 
 ---
 

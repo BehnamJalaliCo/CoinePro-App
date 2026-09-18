@@ -29,18 +29,22 @@ last is ⏳ on two static files somebody has to put on a host that already exist
 
 ## What the next session does, in order
 
-1. **`BLOCKED.md §א19` — the update document.** Two static files on the Pro Chart machine.
+1. **`BLOCKED.md §א20` — gold.** One line to CoinePro-FX's team: `ws/snapshot` should answer the
+   same 19 symbols `public/prices/live` does. Until it does, the app's forex market list has no
+   gold while its forex *signals* are gold only. Ahead of everything else, because it is the one
+   item on this list a reader actually meets.
+2. **`BLOCKED.md §א19` — the update document.** Two static files on the Pro Chart machine.
    `SERVER_BUILD_PROMPT.md` Phase 1½ is written to be handed over as it stands, with its own
    acceptance commands. Until it answers, the work in this run is real code that never runs.
-2. **The rest of the server**, which the owner has provisioned and which now has three phases
-   waiting: the legal pages (the oldest loose end in the product — every legal link in the shipping
-   app points at a host that does not answer), the read-only relay, and the socket.
-   `RUN_PSI/BLOCKED.md §Ψ10` carries the three product questions that gate the ones after that.
-3. **The RUN Τ2 backlog**, still the largest thing outstanding and still untouched: B6 (offline as a
+3. **The rest of the server.** Phase 0 and Phase 1 are done on the machine; Phase 1 cannot finish
+   until the Cloudflare Origin CA certificate exists, because the host answers 526 without it.
+   Then the read-only relay (§4.0–§4.3, rewritten this run against the live backends) and the
+   socket. `RUN_PSI/BLOCKED.md §Ψ10` carries the three product questions that gate what follows.
+4. **The RUN Τ2 backlog**, still the largest thing outstanding and still untouched: B6 (offline as a
    first-class state), B7 (the single-symbol widget), B8 (Picture-in-Picture), C1's surface, C2's
    two gaps, C3, C4, C6. `RUN_T2/RESUME.md` names the files and the trap in each; none needs a
    backend.
-4. **`RUN_XI/BLOCKED.md §Ξ21`** — the signals route's «entitled but unlinked».
+5. **`RUN_XI/BLOCKED.md §Ξ21`** — the signals route's «entitled but unlinked».
 
 ---
 
@@ -85,6 +89,18 @@ last is ⏳ on two static files somebody has to put on a host that already exist
   line, naming neither the file's real problem nor anything near it. `:benchmark` had been in that
   state for weeks — and **a file that does not parse hides every error after the first**: behind the
   comment sat a second fault, `device.performMultiPointerGesture`, which `UiDevice` has never had.
+* **A spec written from what the app calls is a spec for an app that signs in.** Every route in
+  `SERVER.md` §4 came from the Android client, and the Android client holds a bearer token — so the
+  server's relay, which has no account, met 401 on all of them and read it as a blocker. Both
+  backends have a public surface beside the authenticated one, and the app already ships a client
+  for TradeYar's (`:core:guest`). Before specifying a route for something with no account, ask
+  **which surface**, not just which path.
+* **«Both backends do X» is two claims, and one of them had been false for months.**
+  `MarketCatalogGateway` said both answer the bare snapshot with everything they quote. TradeYar
+  does; CoinePro-FX answers 17 of 19 and drops exactly the two metals the product's forex side is
+  *about*. Nothing failed, no test broke, and the list simply had no gold in it. When a doc comment
+  asserts something about a server, the only way to keep it true is to measure it — `SERVER.md` §4.7
+  is that measurement, dated, so the next reader argues with a number.
 * **A wrapped `LocalContext` loses the activity.** `createConfigurationContext` builds from the base
   context, so anything that finds its owner by walking the context chain — `rememberLauncherForActivityResult` is the one that bit — stops working the moment a test swaps the locale that way.
   Provide the owner explicitly.
@@ -93,14 +109,18 @@ last is ⏳ on two static files somebody has to put on a host that already exist
 
 ## Open questions for the owner
 
-1. **`BLOCKED.md §א19`** — the update document, and whether the APK is served from `pro-chart.com`
+1. **`BLOCKED.md §א20`** — the one line to CoinePro-FX about gold in `ws/snapshot`.
+2. **`BLOCKED.md §א19`** — the update document, and whether the APK is served from `pro-chart.com`
    or the document points at the GitHub release.
-2. **The `assetlinks.json` fingerprint value**, for whoever configures the host. It is on the app's
-   own «ایمنی و انتشار» screen with a copy button; it just has to be handed over.
-3. **`RUN_PSI/BLOCKED.md §Ψ10`** — which backend owns the account on the web, whether the terminal
-   is open or member-only, and whether the candle archive is built on day one.
-4. **`RUN_XI/BLOCKED.md §Ξ21`** — the signals route's «entitled but unlinked».
-5. Everything still open from RUN Τ2: the fling's distance-versus-time, the four alert tones,
+3. **The Cloudflare Origin CA certificate** for `pro-chart.com` (SSL/TLS → Origin Server → Create
+   Certificate). Without it the host answers 526 and Phase 1 cannot finish.
+4. **The `assetlinks.json` fingerprint value**, for whoever configures the host. **Not from Play
+   Console** — it is on the app's own «ایمنی و انتشار» screen with a copy button.
+5. **`RUN_PSI/BLOCKED.md §Ψ10`** — which backend owns the account on the web, whether the terminal
+   is open or member-only, and whether the candle archive is built on day one. These gate Phase 4
+   and nothing earlier; Phase 2 was wrongly thought to wait on them and does not.
+6. **`RUN_XI/BLOCKED.md §Ξ21`** — the signals route's «entitled but unlinked».
+7. Everything still open from RUN Τ2: the fling's distance-versus-time, the four alert tones,
    `membership_open_ourbit`, C5's separate scales, and the watchlist's «تحلیل».
 
 ---

@@ -96,26 +96,79 @@ the web. No reshaping. A relay that rewrites a payload is a second contract to
 keep in step with the first, and the app has one contract per backend already
 (`docs/backend/MARKET_DATA_CONTRACT.md`, `docs/AUTH_CONTRACT.md`).
 
+### 4.0 Each backend has **two** surfaces, and Phase 2 uses the public one
+
+This section is new, and the first three tables below were wrong without it. **Correcting a spec
+that the server disagreed with is the spec's job, not the server's** — the routes were written from
+what the Android app calls, and the Android app signs in.
+
+Every route the app uses under `api/mobile/v1/…` (TradeYar) or `user/…` (CoinePro-FX) is the
+**authenticated** surface. It answers `401 TYR-004 Auth Token Missing` to anybody without a bearer
+token, which is every request a Phase-2 relay makes, because Phase 2 has no account by definition.
+That is not a fault to work around; it is the two surfaces doing their jobs.
+
+Beside it each backend has a **public** surface the app already knows:
+
+* **TradeYar** — `api/v1/public/…`. No auth at all. `:core:guest`'s `GuestApi` is the app's own
+  client for it, and `GuestMarketCatalogGateway` / `GuestCandleGateway` in `GuestMarketGateways.kt`
+  adapt it to the **same two interfaces** the signed-in chart uses. **The web's Phase 2 is the guest
+  tier**, and the guest tier is specified, shipped and proved on the phone. Build the relay against
+  the same routes and the browser gets the same markets a guest gets, which is the intended answer
+  rather than a compromise.
+* **CoinePro-FX** — `api/public/…`. Two routes, and the app calls **neither** today (it signs in and
+  uses `ws/snapshot` plus the academy chart). They are the only FX data a Phase-2 relay can reach.
+
+So Phase 2 does **not** wait on `PLAN.md` §6.2. That question gates the **account** — §4.4 and the
+sync documents — and nothing in §4.1 or the public part of §4.3 needs it answered.
+
 ### 4.1 Market data — the whole of the chart
 
-| `pro-chart.com` | upstream | upstream route | cache |
-| --- | --- | --- | --- |
-| `GET /api/crypto/snapshot` | TradeYar | `api/mobile/v1/ws/snapshot` | 2 s |
-| `GET /api/fx/snapshot` | CoinePro-FX | `ws/snapshot` | 2 s |
-| `GET /api/crypto/candles?symbol=&interval=` | TradeYar | `api/mobile/v1/market/candles` | see below |
-| `GET /api/fx/candles/{symbol}` | CoinePro-FX | `api/v1/public/candles/{symbol}` | see below |
-| `GET /api/crypto/prices` | TradeYar | `api/v1/public/prices` | 2 s |
+**Public surface — Phase 2, no account.** Every row below was fetched on 2026-09-18; §4.7 records
+what came back.
 
-**The snapshot is asked bare.** Both backends answer a call with no `symbols` parameter by returning
-everything they quote, and that is the app's only discovery mechanism — `MarketCatalogGateway` says
-so and `SymbolUniverseBreadthTest` proves the client handles the full list. The relay must keep
-asking it bare. Naming a list here would cap the web's universe at whatever the relay's author
-happened to know.
+| `pro-chart.com` | upstream | upstream route | auth | cache |
+| --- | --- | --- | --- | --- |
+| `GET /api/crypto/prices` | TradeYar | `api/v1/public/prices?symbols=` | none | 2 s |
+| `GET /api/crypto/candles?symbol=&tf=&limit=` | TradeYar | `api/v1/public/candles/{symbol}?tf=&limit=` | none | see below |
+| `GET /api/fx/prices` | CoinePro-FX | `api/public/prices/live` | none | 5 s |
+| `GET /api/fx/candles?symbol=&timeframe=&limit=` | CoinePro-FX | `api/public/prices/series?symbol=&timeframe=&limit=` | none | see below |
+
+**Authenticated surface — not before Phase 4, and only once `PLAN.md` §6.2 is answered.** These are
+the routes the Android app uses. They are listed so nobody has to rediscover them, and they are
+**not to be relayed yet**.
+
+| `pro-chart.com` | upstream | upstream route | auth |
+| --- | --- | --- | --- |
+| `GET /api/crypto/snapshot` | TradeYar | `api/mobile/v1/ws/snapshot` | bearer |
+| `GET /api/crypto/candles` (full history) | TradeYar | `api/mobile/v1/market/candles` | bearer |
+| `GET /api/fx/snapshot` | CoinePro-FX | `api/ws/snapshot` | none, **but see §4.7** |
+| `GET /api/fx/candles` (M5, paging) | CoinePro-FX | `academy/chart/{symbol}` | academy token, minted from the mobile one |
+
+**The bare snapshot is TradeYar's discovery mechanism, and only TradeYar's.** A call with no
+`symbols` returns everything that venue quotes — 857 on the public route, measured — and the relay
+must keep asking it bare; naming a list would cap the web's universe at whatever the relay's author
+happened to know. **On CoinePro-FX the same call is not discovery**: it answers 17 symbols and omits
+gold and silver. Use `api/public/prices/live`, which is the full 19. §4.7 has the measurement and
+`RUN_ALEF/BLOCKED.md §א20` is the question to that backend's team.
 
 **Candles cache by whether the bar is closed.** A closed bar never changes, so it is cached
 indefinitely and keyed `venue:symbol:interval:openTime`; the newest bar is cached for one interval
 tick at most (2 s at a minute, 30 s at an hour). This is the one place the relay earns its keep: a
 hundred tabs on BTCUSDT H1 become one upstream call an hour plus one live bar.
+
+**Two things about the FX candle route that the terminal has to know**, because they are not
+choices the relay can hide:
+
+* **Four timeframes, not eight.** `M15`, `H1`, `H4`, `D1` answer 200; `M5`, `M30` and `W1` answer
+  `422`. Measured, all seven. The app's own `ACADEMY_NATIVE_TIMEFRAMES` lists five — the same four
+  plus `M5` — so **the public route is the academy route minus the five-minute bar**. A weekly and a
+  half-hourly bar are folded on the client out of `D1` and `M15`, exactly as `CandleGateway` folds
+  them on the phone. Nothing finer than fifteen minutes can be drawn on forex from the web.
+* **The shape is not the app's candle shape.** `t` is an ISO-8601 **string**, there is no volume, no
+  `has_more` and no `before`, and `limit` is bounded `20..400` (`limit=3` is a `422`, with the bound
+  in the body). Rule 2 still holds — **the relay passes it through unchanged** — so the adapting
+  happens in the terminal, in the same place `GuestCandleGateway` does it on the phone. A relay that
+  reshaped this would be a second candle contract to keep in step with the first.
 
 ### 4.2 The socket
 
@@ -136,15 +189,43 @@ spend its life renegotiating.
 
 ### 4.3 Signals, news, the calendar
 
+**Most of this section is Phase 4, and the table said otherwise.** Signals are the product's paid
+surface: `public/signals/active` and `public/signals/recent` sit under a path called *public* on
+CoinePro-FX and are still behind VIP — `EndpointCatalog` in `:core:diagnostics` says so in as many
+words, and the live server answers 401. The same is true of the calendar and both
+market-intelligence routes. A Phase-2 relay reaches none of them.
+
+**What Phase 2 can carry**, because it needs no account:
+
 | `pro-chart.com` | upstream | upstream route | cache |
 | --- | --- | --- | --- |
-| `GET /api/signals?market=crypto` | TradeYar | the signals list route | 10 s |
-| `GET /api/signals?market=forex` | CoinePro-FX | the signals list route | 10 s |
-| `GET /api/news` | TradeYar | `api/v1/news/list` | 60 s |
-| `GET /api/news/{id}` | CoinePro-FX | `user/mobile/news/{id}` | 300 s |
-| `GET /api/calendar` | CoinePro-FX | `user/economic-calendar` | 300 s |
-| `GET /api/announcements` | TradeYar | `api/mobile/v1/announcements` | 60 s |
-| `GET /api/market-intelligence` | either | `api/mobile/v1/market-intelligence`, `user/mobile/market-intelligence` | 60 s |
+| `GET /api/news` | TradeYar | `api/v1/news/list?type=news&limit=` | 60 s |
+| `GET /api/track-record` | TradeYar | `api/demo/signals?limit=` | 300 s |
+| `GET /api/community` | TradeYar | `api/v1/public/community` | 60 s |
+| `GET /api/membership` | TradeYar | `api/v1/public/membership` | 300 s |
+
+`api/demo/signals` is named badly and the app's own `GuestApi` says why it is worth having: **every
+row is a real published signal that has already closed**, with the outcome it actually banked. It is
+a track record, not a demonstration, and it is the only signal content this product will show
+somebody who has not signed in.
+
+**Phase 4, once `PLAN.md` §6.2 is answered** — listed so they are not rediscovered, not to be
+relayed yet:
+
+| `pro-chart.com` | upstream | upstream route | auth |
+| --- | --- | --- | --- |
+| `GET /api/signals?market=crypto` | TradeYar | `api/mobile/v1/signals?status=` | bearer |
+| `GET /api/signals?market=forex` | CoinePro-FX | `public/signals/active`, `public/signals/recent` | bearer (VIP) |
+| `GET /api/signals/{id}` | either | `api/mobile/v1/signals/{id}`, `public/signals/detail/{id}` | bearer |
+| `GET /api/calendar` | CoinePro-FX | `user/economic-calendar` | bearer |
+| `GET /api/announcements` | TradeYar | `api/mobile/v1/announcements` | bearer |
+| `GET /api/market-intelligence` | either | `api/mobile/v1/market-intelligence`, `user/mobile/market-intelligence` | bearer |
+
+There is said to be a public **showcase** signal route on CoinePro-FX — `EndpointCatalog`'s note
+calls it «the one that is not [behind VIP], and it serves a closed signal on purpose». The app does
+not call it and this document does not know its address. **Read it off `/api/openapi.json` rather
+than taking this paragraph's word for it**, and if it is there it belongs in the Phase-2 table above
+beside the track record.
 
 **`market=forex` is the gold call** — `ForexSignalScope` in `:core:signals` is the rule and the
 terminal applies the same one. The relay does not filter; a client that narrows and a relay that
@@ -228,6 +309,27 @@ offered to anybody (`AppUpdate.publishable`):
 
 Cache it for a few minutes at the edge and no longer. A release that has just gone out is exactly
 when somebody is looking.
+
+### 4.7 Measured, not assumed — 2026-09-18
+
+Everything above that says «measured» was fetched from `coineprofx.com` and read back. Recorded
+here so the next reader argues with a number rather than with a memory, and so a backend that
+changes is caught by a re-run rather than by a broken chart.
+
+| call | answer |
+| --- | --- |
+| `GET api/ws/snapshot` (bare) | 200, **17 symbols**: AUDJPY AUDUSD DE40 EURAUD EURGBP EURJPY EURUSD GBPJPY GBPUSD NAS100 NZDUSD US30 US500 USDCAD USDCHF USDJPY XTIUSD. **No XAUUSD, no XAGUSD** |
+| `GET api/public/prices/live` | 200, **19 symbols** — the same 17 **plus XAUUSD and XAGUSD**, first in the list, with `symbol` (`XAU/USD`), `raw_symbol` (`XAUUSD`), `price`, `change_pct`, `positive`, and an `as_of` |
+| `GET api/public/prices/series?symbol=XAUUSD&timeframe=H1&limit=20` | 200 — `symbol`, `display`, `timeframe`, `candles[{t,o,h,l,c}]`, `change_pct`. **`t` is an ISO-8601 string**, no volume, no paging |
+| the same with `limit=3` | `422`, and the body names the bound: `limit >= 20` |
+| the same across seven timeframes | `M15` `H1` `H4` `D1` → **200**; `M5` `M30` `W1` → **422** |
+
+**The 17-against-19 line is the one that matters beyond this server.** The Android app builds its
+forex market list from the bare snapshot and from nothing else — there is no bundled fallback list
+— so the metals are missing from the phone's forex catalogue too, today. Run Ψ narrowed the forex
+signal list to gold; a reader can now be shown a gold call and find no gold market to open.
+`docs/runs/RUN_ALEF/BLOCKED.md §א20` is the ask to CoinePro-FX's team, and it is one line: put
+XAUUSD and XAGUSD in `ws/snapshot`'s bare answer, where `prices/live` already has them.
 
 ---
 
