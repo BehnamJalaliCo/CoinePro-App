@@ -5,10 +5,8 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -2078,16 +2076,45 @@ fun CoineProChart(
                                 // Only runs with nothing armed and something selected, so it
                                 // cannot steal the drag that places a freehand stroke or the one
                                 // that pans.
+                                //
+                                // **It claims the gesture at the down, and only on the drawing**
+                                // (run Ξ). The guards below used to sit inside `onDragStart` and
+                                // `onDrag` under a `detectDragGestures`, which consumes before
+                                // either of them runs — so every drag anywhere on the plot was
+                                // taken from the pan by a handler that then found it had no
+                                // drawing to move. The claim is now three questions asked of the
+                                // **down**: nothing armed, something selected, and the finger
+                                // landed on that something. See `docs/runs/RUN_XI/trace.md`.
                                 var handle = -1
                                 var origin: ChartPoint? = null
-                                detectDragGestures(
-                                    onDragStart = { position ->
-                                        val state = currentDrawing.value ?: return@detectDragGestures
-                                        if (state.tool != null) return@detectDragGestures
-                                        val id = state.selectedId ?: return@detectDragGestures
-                                        val view = lastView[0] ?: return@detectDragGestures
+                                awaitOwnedDrag(
+                                    axis = ChartDragAxis.ANY,
+                                    claims = claims@{ position ->
+                                        val state = currentDrawing.value ?: return@claims false
+                                        if (state.tool != null) return@claims false
+                                        val id = state.selectedId ?: return@claims false
+                                        val view = lastView[0] ?: return@claims false
                                         val target = state.drawings.firstOrNull { it.id == id }
-                                            ?: return@detectDragGestures
+                                            ?: return@claims false
+                                        val plot = frameOf(size.width.toFloat()).toPlot(position)
+                                        // A handle, or the object's own body. Anywhere else on the
+                                        // plot is the pan's, even with a drawing selected — a
+                                        // selection is not a claim on the whole canvas.
+                                        handleIndexAt(target, view, plot, tolerancePx) >= 0 ||
+                                            DrawingHitTest.at(
+                                                drawings = listOf(target),
+                                                x = plot.x,
+                                                y = plot.y,
+                                                view = view,
+                                                tolerancePx = tolerancePx,
+                                            ) != null
+                                    },
+                                    onStart = { position ->
+                                        val state = currentDrawing.value ?: return@awaitOwnedDrag
+                                        val id = state.selectedId ?: return@awaitOwnedDrag
+                                        val view = lastView[0] ?: return@awaitOwnedDrag
+                                        val target = state.drawings.firstOrNull { it.id == id }
+                                            ?: return@awaitOwnedDrag
                                         // In line-movement mode the whole object moves and the
                                         // handles are ignored: the gesture is "put this line at
                                         // that price", and grabbing an endpoint would rotate the
@@ -2100,18 +2127,38 @@ fun CoineProChart(
                                         grabbedHandle = handle
                                         origin = view.chartPointAt(plot, currentDisplay.value, state.magnetMode)
                                     },
-                                    onDrag = { change, _ ->
-                                        val state = currentDrawing.value ?: return@detectDragGestures
-                                        val emit = currentOnDrawing.value ?: return@detectDragGestures
-                                        val id = state.selectedId ?: return@detectDragGestures
-                                        val view = lastView[0] ?: return@detectDragGestures
-                                        val from = origin ?: return@detectDragGestures
+                                    onEnd = {
+                                        // Held for one adjustment, like the magnet and like the
+                                        // placing tap above. See the long-press branch.
+                                        if (handle >= 0) {
+                                            currentDrawing.value?.takeIf { it.constrainAngle }?.let { held ->
+                                                currentOnDrawing.value?.invoke(
+                                                    DrawingActions.setConstrainAngle(held, false),
+                                                )
+                                            }
+                                        }
+                                        handle = -1
+                                        grabbedHandle = -1
+                                        origin = null
+                                        magnifierAt = null
+                                    },
+                                    onCancel = {
+                                        handle = -1
+                                        grabbedHandle = -1
+                                        origin = null
+                                        magnifierAt = null
+                                    },
+                                ) { change, _ ->
+                                        val state = currentDrawing.value ?: return@awaitOwnedDrag
+                                        val emit = currentOnDrawing.value ?: return@awaitOwnedDrag
+                                        val id = state.selectedId ?: return@awaitOwnedDrag
+                                        val view = lastView[0] ?: return@awaitOwnedDrag
+                                        val from = origin ?: return@awaitOwnedDrag
                                         val to = view.chartPointAt(
                                             frameOf(size.width.toFloat()).toPlot(change.position),
                                             currentDisplay.value,
                                             state.magnetMode,
                                         )
-                                        change.consume()
                                         if (handle >= 0) magnifierAt = change.position
                                         if (handle >= 0) {
                                             // The other end of a two-point object is what the
@@ -2148,29 +2195,7 @@ fun CoineProChart(
                                             )
                                         }
                                         origin = to
-                                    },
-                                    onDragEnd = {
-                                        // Held for one adjustment, like the magnet and like the
-                                        // placing tap above. See the long-press branch.
-                                        if (handle >= 0) {
-                                            currentDrawing.value?.takeIf { it.constrainAngle }?.let { held ->
-                                                currentOnDrawing.value?.invoke(
-                                                    DrawingActions.setConstrainAngle(held, false),
-                                                )
-                                            }
-                                        }
-                                        handle = -1
-                                        grabbedHandle = -1
-                                        origin = null
-                                        magnifierAt = null
-                                    },
-                                    onDragCancel = {
-                                        handle = -1
-                                        grabbedHandle = -1
-                                        origin = null
-                                        magnifierAt = null
-                                    },
-                                )
+                                }
                             }
                             .pointerInput(onScalePanes != null) {
                                 // The divider between the candles and the first indicator pane:
@@ -2182,25 +2207,22 @@ fun CoineProChart(
                                 // exist. `paneTop` is written by the draw pass, which is the only
                                 // thing that knows where the boundary actually landed.
                                 if (onScalePanes == null) return@pointerInput
-                                var onDivider = false
-                                detectVerticalDragGestures(
-                                    onDragStart = { position ->
+                                awaitOwnedDrag(
+                                    axis = ChartDragAxis.VERTICAL,
+                                    claims = { position ->
                                         val boundary = paneTop[0]
                                         // The band is `separatorHitRect`'s and not a number
                                         // invented here: nine density-independent pixels straddling
                                         // a one-pixel line. It is the difference between a divider
                                         // that "just works" and one a reader concludes is not
                                         // draggable, and it never appears in a screenshot.
-                                        onDivider = boundary > 0f &&
+                                        boundary > 0f &&
                                             position.y in separatorHitRect(boundary, density.density)
                                     },
-                                    onDragEnd = { onDivider = false },
-                                    onDragCancel = { onDivider = false },
-                                ) { change, dragAmount ->
-                                    if (!onDivider) return@detectVerticalDragGestures
-                                    change.consume()
+                                ) { _, drag ->
+                                    val dragAmount = drag.y
                                     val boundary = paneTop[0]
-                                    if (boundary <= 0f) return@detectVerticalDragGestures
+                                    if (boundary <= 0f) return@awaitOwnedDrag
                                     // Dragging *up* grows the panes, because the divider moves up
                                     // and the space below it is theirs.
                                     currentScalePanes.value?.invoke(1f - dragAmount / boundary * DIVIDER_SENSITIVITY)
@@ -2221,18 +2243,22 @@ fun CoineProChart(
                                 // chart is drawn left-to-right regardless of the reading
                                 // direction, because no trader on earth reads the newest bar on
                                 // the left.
-                                detectVerticalDragGestures(
-                                    onDragStart = { position ->
-                                        gutterDrag = frameOf(size.width.toFloat())
+                                // Claimed at the down, never after — see `awaitOwnedDrag` and
+                                // run Ξ. `gutterDrag` is still published, because the draw pass
+                                // lights the gutter while it is being dragged.
+                                awaitOwnedDrag(
+                                    axis = ChartDragAxis.VERTICAL,
+                                    claims = { position ->
+                                        frameOf(size.width.toFloat())
                                             .inGutter(position.x, GUTTER_REACH_DP.toPx())
                                     },
-                                    onDragEnd = { gutterDrag = false },
-                                    onDragCancel = { gutterDrag = false },
-                                ) { change, dragAmount ->
-                                    if (!gutterDrag) return@detectVerticalDragGestures
-                                    change.consume()
+                                    onStart = { gutterDrag = true },
+                                    onEnd = { gutterDrag = false },
+                                    onCancel = { gutterDrag = false },
+                                ) { _, drag ->
+                                    val dragAmount = drag.y
                                     val height = drawn().plotHeight
-                                    if (height <= 0f) return@detectVerticalDragGestures
+                                    if (height <= 0f) return@awaitOwnedDrag
                                     // Dragging *down* compresses, which is the convention
                                     // everywhere: the finger pushes the extremes toward the middle.
                                     viewport = viewport.priceZoomedBy(1f + dragAmount / height * GUTTER_SENSITIVITY)
@@ -2255,21 +2281,30 @@ fun CoineProChart(
                                 // Confined to the strip the dates are drawn in, and the pan gesture
                                 // above refuses any drag that started there, so the two cannot both
                                 // claim the same finger.
-                                var onTimeAxis = false
+                                //
+                                // **It claims the gesture at the down or not at all** (run Ξ).
+                                //
+                                // This used to be `detectHorizontalDragGestures` with an
+                                // `if (!onTimeAxis) return` inside the callback, and that one line
+                                // in that one place is what «چارت انگشت را دنبال نمی‌کند» was: the
+                                // detector consumes the event that crosses the slop *before* the
+                                // guard runs, so a drag in the middle of the plot was taken from
+                                // the pan by the handler for the dates — which then declined it.
+                                // `detectTransformGestures` cancels on the first consumed event and
+                                // does not restart until the next down, so the chart stood still
+                                // for the rest of the finger. See `docs/runs/RUN_XI/trace.md`.
                                 var scaleResidue = 1f
-                                detectHorizontalDragGestures(
-                                    onDragStart = { position ->
+                                awaitOwnedDrag(
+                                    axis = ChartDragAxis.HORIZONTAL,
+                                    claims = { position ->
                                         val axisTop = timeAxisTop[0]
-                                        onTimeAxis = axisTop > 0f && position.y >= axisTop
-                                        scaleResidue = 1f
+                                        axisTop > 0f && position.y >= axisTop
                                     },
-                                    onDragEnd = { onTimeAxis = false },
-                                    onDragCancel = { onTimeAxis = false },
-                                ) { change, dragAmount ->
-                                    if (!onTimeAxis) return@detectHorizontalDragGestures
-                                    change.consume()
+                                    onStart = { scaleResidue = 1f },
+                                ) { _, drag ->
+                                    val dragAmount = drag.x
                                     val width = drawn().plotWidth
-                                    if (width <= 0f) return@detectHorizontalDragGestures
+                                    if (width <= 0f) return@awaitOwnedDrag
                                     // Accumulated across frames for the same reason the pinch is:
                                     // the bar count is a whole number, and a slow drag whose every
                                     // frame rounds back to the count it started on moves nothing at
