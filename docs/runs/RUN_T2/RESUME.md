@@ -15,9 +15,10 @@ for the measurements.
 B2, B3, B5, B9 and B10 are this session's work — B9 narrowed on its bundled sound set, which needs
 audio this repository does not hold (`BLOCKED.md §B9`). B6, B7 and B8 are not started.
 
-**Phase C: one clause built, the rest audited.** C5's legend figure is new; the two clauses of C5
-that are not met are argued in the checklist rather than quietly dropped. C2 turns out to be mostly
-shipped already. C1, C3, C4 and C6 do not exist.
+**Phase C: two pieces built, the rest audited.** C5's legend figure is new, and C1's rule —
+`NotableBars` — is built and tested with its surface still to come; both rows are ❌ with the
+checklist saying exactly what is missing. C2 turns out to be mostly shipped already. C3, C4 and C6
+do not exist.
 
 **Shipped:** 4.93.0 (phase A + B2/B3/B5/B10), 4.94.0 (B9), 4.95.0 (C5's legend). Every gate green
 and the full unit suite passing on each.
@@ -70,9 +71,24 @@ Nothing exists. The shape it wants:
 
 ### C1 — «Why this move?»
 
-Everything it reads already exists: `core/marketintel` (news + the economic calendar) and the
-Signal Layer's events. The work is the **bar test** (range > 2× the 20-bar average range), the dot
-marker on those bars, and the sheet. Nothing here needs a backend.
+**The rule is built and tested**: `NotableBars` in `:chart-core`, and `NotableBarsTest` beside it.
+What is left is the surface, and the design decision worth inheriting is *where the dot goes*.
+
+**Not in the plot's gestures.** A tap on the plot already means a drawing, an eraser stroke or a
+trade ring, and a long press already opens the context menu; taking one of them over for this would
+put the app's most delicate gesture path at risk for a feature nobody has asked for yet.
+
+**In the event strip**, under the bars, where `EventMark` glyphs already live. That strip is already
+«things that happened at this time», an unusually large bar is exactly that, and the whole hit-test
+is already written — `ChartEvents.markAt`, called from `CoineProChart.kt:2527`, confined to the few
+points of height below `timeAxisTop`. The work is: carry the notable indices on the decoration
+beside `decoration.events`, draw a dot for the visible ones in `drawEventMarks`, extend the strip's
+hit-test to answer with a bar index, and open a sheet.
+
+**The sheet's content needs no backend.** News and the economic calendar are already on the chart —
+`ChartEventController` holds them for the window in front of the reader, unfiltered — and the Signal
+Layer's events are on `decoration.signal`. The bar's own window is `series.time[index]` to the next
+bar's time. Where nothing falls inside it, one plain sentence and «news for this time».
 
 ### C4 — My week
 

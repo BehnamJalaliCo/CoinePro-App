@@ -185,7 +185,29 @@ day rebuilding them:
   and the evaluator resolves a trend line's price again at every sample rather than freezing it —
   which is the hard half. What is left is the delete-asks-about-its-alerts flow and the thumbnail.
 
-The other four — C1, C3, C4, C6 — do not exist. `RESUME.md` names the data each one reads, and none
+### C1 — the rule, ahead of its surface
+
+`NotableBars` decides which bars «چرا این حرکت؟» would offer itself on: range greater than twice the
+average range of the **preceding** twenty bars. A ratio and not a number, because «a big candle» has
+no absolute meaning across the markets this app carries — two hundred dollars is a quiet hour on
+Bitcoin and an impossible one on EURUSD, and a threshold in price would mark every bar on one and
+none on the other. What a reader notices is a bar that is big *for this chart, lately*.
+
+Four decisions in it are worth keeping:
+
+* the bar is **kept out of its own baseline**, because a bar in its own window raises the bar it has
+  to clear and the biggest candles would be the likeliest to hide themselves;
+* the **first twenty bars of a series are never marked**, since a baseline of three bars is not a
+  baseline and a dot on the oldest bars of every chart reads as a fault;
+* a **flat window answers nothing**, rather than «infinitely more than zero»;
+* a window with **gaps averages over the bars that traded**, because dividing by twenty when four of
+  them never printed understates the baseline and marks ordinary bars.
+
+Nothing a reader can see has changed, and the checklist row is ❌ for that reason. The design for the
+surface — and the argument that the dot belongs in the **event strip** rather than in the plot's
+gestures, which already carry the drawings, the eraser and the trade ring — is in `RESUME.md`.
+
+The other three — C3, C4, C6 — do not exist. `RESUME.md` names the data each one reads, and none
 of them needs a backend: the news and the calendar are in `core/marketintel`, the discipline chart
 is in `JournalController`, the alert history is in `AlertAuditStore`, and the share generator is
 `ShareCard.kt`.
