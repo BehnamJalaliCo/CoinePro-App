@@ -1,0 +1,198 @@
+# RUN א — report
+
+One message, two halves, and the second half was not an instruction at all:
+
+> «کپی ترید البنک میماند و در ضمن گوگل پلی به ما ایرانیا خدمات نمیده در حال ایمیل زدن و مکاتبه
+> هستیم باهاشون»
+
+The first half is an answer to a question this project asked at the end of run Ψ and it takes two
+paragraphs to record. The second half is a statement about the world — «Google Play does not serve
+us Iranians; we are corresponding with them» — phrased as an aside. Most of this run is what that
+aside turned out to mean.
+
+---
+
+## 1. LBank copy trading stays, and the asymmetry is correct
+
+`RUN_PSI/BLOCKED.md §Ψ16` set out two branches and asked for one word. The answer is the second:
+copy trading on LBank is the service's, reached from the web panel, and this app simply does not
+carry it. **Nothing was edited**, which is the whole of the work and is why the row now reads ✅ with
+«the evidence is that the diff is empty».
+
+What is worth writing down is the thing a future reader will trip over. The app has no copy trading
+anywhere in it, and `docs/legal/TERMS.md` §6-3 describes some. That looks exactly like an oversight
+and it is not:
+
+**The terms are the service's, not this binary's.** They are the same document the web panel serves.
+A reader who agrees to them really can have the feature — on LBank, through the panel — and a
+document that described only what one client happens to draw would be the wrong document to put in
+front of them. The membership gate's note is the one place a reader could be misled and it is not:
+it says the membership includes it, which is true.
+
+---
+
+## 2. «Google Play does not serve us» — what it actually costs
+
+The owner mentioned it in passing. Read properly it is a statement about how the product reaches
+every one of its readers, and three separate things in this repository were quietly assuming
+otherwise.
+
+`docs/PLAY_COUNTRIES.md` had already done the reading, months ago, off Google's own pages: Iran is
+not a country a Play Console developer account may be registered from, and under the sanctions
+regime Play does not serve installs into the country either. Two refusals, and the second cannot be
+worked around at all — even a listed app would not reach the readers this one is written for.
+
+So `docs/release/DISTRIBUTION.md` is new, and it is the document that now describes how the product
+ships. The Play documents are kept and re-framed as preparation rather than description, because the
+owner is corresponding with Google and the day that succeeds they are the day's work already done.
+
+### The hole, which nobody had noticed
+
+An app store does four things a reader never thinks about. Three of them this app already did for
+itself. The fourth it did not do at all.
+
+| what a store does | before this run |
+|---|---|
+| vouch that the package is the publisher's | `AppIntegrity.check` — a repackaged copy refuses to run |
+| let somebody verify what they installed | `AppIntegrity.fingerprints` — **written, and called by nothing on the safety screen** |
+| distribute the file | GitHub Releases, signed by CI |
+| **tell the reader a newer build exists** | **nothing. Not a line of code.** |
+
+`grep -rn "AppUpdate\|updateAvailable\|latestVersion\|versionCheck\|InAppUpdate"` over
+`app/src/main core feature` returned nothing.
+
+That is not a missing nicety. It means an old build is **silently permanent**: the reader has no
+reason to look, nothing tells them, and a fix shipped today reaches only the people who happen to
+read the channel it was announced on. Every release makes the gap wider. It is the one part of the
+store that has to be rebuilt rather than done without, and it is the largest thing in this run.
+
+---
+
+## 3. What was built
+
+### `:core:update` — a decision, not a downloader
+
+Three files and a test. The whole of the comparison is:
+
+```kotlin
+fun decide(installed: Long, release: AppRelease?): AppUpdateStatus = when {
+    release == null -> AppUpdateStatus.Unknown
+    !publishable(release) -> AppUpdateStatus.Unknown
+    release.versionCode > installed -> AppUpdateStatus.Available(release)
+    else -> AppUpdateStatus.Current
+}
+```
+
+Four decisions in it, each of which could have gone the other way:
+
+**Only `versionCode` is compared.** It is the integer the package manager itself orders installs by,
+and `scripts/release/version.py` derives it from the name for exactly that reason. A published
+release whose *name* reads newer over a *code* that is not changes nothing — there is a test for it,
+because that is the shape a release-process mistake takes.
+
+**An offer is refused rather than trusted.** `publishable()` requires HTTPS, a host on
+`PUBLISHING_HOSTS`, a 64-character digest and a finished record. The reason this route gets an
+allow-list when nothing else in the app does is that **every other response the app handles ends up
+as text on a screen, and this one ends up as an installable package on somebody's phone**. A host
+that could name any address could send a reader anywhere with the product's own voice behind it,
+which is a better phishing page than a phishing page. The `https://pro-chart.com@evil.example/x`
+case is in the test, and it is why the URL is parsed by hand rather than trusted to `startsWith`.
+
+**Every refusal is `Unknown`, which draws nothing.** Not an error, not a toast. The reader did not
+do anything wrong and cannot do anything about it, and the three ways of knowing nothing — not asked,
+no answer, unusable answer — are one state because no reader has a use for the difference.
+
+**The app does not download and does not install.** That would mean holding
+`REQUEST_INSTALL_PACKAGES` — permission to put *any* package on the phone — plus a download manager,
+a file provider and a directory of half-fetched APKs, purchased to save the reader three taps they
+have already performed once, on the day they installed this app. The button opens the browser. The
+digest is on the card so they can check what arrives.
+
+And one thing that is not in the code and is the most important: **`mandatory` changes a sentence and
+never a door.** A flag on a host that can stop an installed app from opening is a remote kill switch,
+and a kill switch is one compromised host away from being everybody's app at once. A reader on an
+old build is a reader this product still owes a working chart to.
+
+### The card, and why it is on the safety screen
+
+«ایمنی و انتشار» — *safety and release* — already existed and is already the screen that answers
+«what is this app, what does it do to me, what version am I on». An update card is the same
+question's other half, and a reader who opened that screen is asking rather than being interrupted.
+
+It is also why the check fires there rather than at launch: one request per visit to one screen,
+instead of one per cold start on networks where a request costs something, for a fact that changes a
+few times a year.
+
+Silent in both non-states. That is the property that lets it live on a screen every reader visits,
+and it is the one a screenshot cannot prove, so `AlefProofTest` asserts it twice — each time against
+a render that first proves it is the right screen, because otherwise «no update card» is satisfied by
+an empty one.
+
+### The client with no credential on it
+
+A third OkHttp client, built with no `bearerToken`. Both existing clients attach a session token to
+everything they carry; the brand host is neither platform's, so a call on either of them would hand
+that platform's bearer token to a machine with no business holding one. It is the same argument that
+already keeps the forex and crypto clients apart, applied one host further out. Unpinned, too:
+pinning a host whose certificate this repository has never seen is how an app locks itself out of
+its own server.
+
+---
+
+## 4. `assetlinks.json`, where the bad news makes something simpler
+
+This is the one place the absence of a store *helps*.
+
+With Play App Signing, Google re-signs an upload with a key only they hold, so the fingerprint that
+verifies an App Link is theirs rather than the one in the keystore. `print-assetlinks.sh` carried a
+warning about it, `SERVER.md` §8 listed «the App Signing certificate's SHA-256, from Play Console»
+among the things the owner must supply, and `SERVER_BUILD_PROMPT.md` told the server's agent to ask
+for it from a console the owner may never have.
+
+With no Play in the path there is no re-signing. **The key that signs the build is the key on the
+phone**, so the fingerprint is the release keystore's own — which the owner can already produce, and
+which `print-assetlinks.sh` has been printing all along.
+
+And now the shortest route of all: the safety screen prints the certificate of the running install,
+SHA-1 and SHA-256, with a copy button. `AppIntegrity.fingerprints` was written for this and was
+called by nothing on that screen; `LaunchReadinessScreen` carried **a parameter's KDoc with no
+parameter under it**, explaining at length why the fingerprint belongs on the glass. That
+documentation is now true.
+
+Four files said the old thing and now say the new one, each with the reasoning rather than the
+instruction, because an instruction without its reason is the thing that goes stale next time.
+
+---
+
+## 5. What the server now has to serve
+
+`SERVER.md` §4.6 is new and it is the one route on that machine which is **not** a relay. Nothing
+upstream knows or should know what the Android release is: TradeYar serves crypto and CoinePro-FX
+serves forex, and neither has any business holding the version number of an Android build. It is a
+static JSON file the release process writes, plus optionally the APK beside it.
+
+In `SERVER_BUILD_PROMPT.md` it is **Phase 1½**, between the legal pages and the relay. Placed there
+on an argument rather than by taste: it is the only step whose absence gets *worse* over time.
+Everything else on that server is a capability the product does not have yet; this one is a debt
+that compounds with every release that ships without it.
+
+The brief states the four rules with their consequence attached — a release that breaks any of them
+is **silently not offered to anybody** — because a server author who does not know that will ship a
+document with a missing digest and spend a day wondering why no phone reacts.
+
+---
+
+## 6. 5.0.0, and why it is not 4.100.0
+
+The version scheme reserves two digits for MINOR:
+
+```
+versionCode = MAJOR×10,000,000 + MINOR×100,000 + PATCH×1,000 + BUILD
+```
+
+4.99.0 is the last of the fours, and `version.py --bump minor` refuses rather than producing a
+number that would collide with major 5. So the major bump is the scheme deciding, not taste.
+
+That it lands on the release where the product stops waiting for an American store and starts
+distributing itself is a coincidence. It is a convenient one, and it is the honest thing to put in
+the release note.

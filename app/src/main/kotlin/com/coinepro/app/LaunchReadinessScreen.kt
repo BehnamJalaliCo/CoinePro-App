@@ -18,6 +18,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.Composable
 import com.coinepro.core.common.BidiText
+import com.coinepro.core.common.AppLanguage
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableLongStateOf
@@ -26,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -38,6 +40,8 @@ import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.update.AppRelease
+import com.coinepro.core.update.AppUpdateStatus
 
 /** Whether the runtime notification permission can be asked for, and whether it already was. */
 enum class NotificationPermissionUiState {
@@ -99,7 +103,25 @@ fun LaunchReadinessScreen(
      * uploads with a different key entirely. A phone showing its own answer settles all of it.
      *
      * Not a secret. It is derived from the APK, which anybody can download.
+     *
+     * It earns its place on this screen twice over now that the app is installed by hand rather
+     * than by a store: `/.well-known/assetlinks.json` on the brand host has to name the SHA-256 of
+     * the key the *installed* APK carries, and with no Play App Signing in the picture that is this
+     * one. A phone showing its own answer is the only reading of it nobody can get wrong.
      */
+    signingFingerprints: List<String> = emptyList(),
+    /** Copies a fingerprint, because nobody retypes sixty-four hex characters correctly. */
+    onCopyFingerprint: (String) -> Unit = {},
+    /**
+     * Whether a newer build has been published.
+     *
+     * Defaulted to [AppUpdateStatus.Unknown], which draws nothing — the same thing the screen does
+     * when the check has not answered, and the reason the card can be added to a screen every
+     * reader visits without adding a row to it for the reader who has nothing to do.
+     */
+    update: AppUpdateStatus = AppUpdateStatus.Unknown,
+    /** Hands the address to the browser. This app never downloads or installs a package itself. */
+    onDownloadUpdate: (AppRelease) -> Unit = {},
 ) {
     // Five taps, and they have to be consecutive: the counter resets whenever the gap between two
     // taps grows past a deliberate rhythm, so an ordinary stray tap on a scrolling screen never
@@ -116,6 +138,9 @@ fun LaunchReadinessScreen(
     ) {
         lastCrash?.let { crash ->
             CrashCard(crash = crash, onCopy = onCopyCrash, onShare = onShareCrash, onClear = onClearCrash)
+        }
+        (update as? AppUpdateStatus.Available)?.let { available ->
+            UpdateCard(release = available.release, onDownload = onDownloadUpdate)
         }
         Column(
             modifier = Modifier.padding(horizontal = CoineProSpacing.Half),
@@ -205,6 +230,10 @@ fun LaunchReadinessScreen(
             }
         }
 
+        if (signingFingerprints.isNotEmpty()) {
+            SigningCard(fingerprints = signingFingerprints, onCopy = onCopyFingerprint)
+        }
+
         Text(
             text = stringResource(R.string.safety_footer),
             modifier = Modifier.padding(horizontal = CoineProSpacing.Half),
@@ -241,6 +270,120 @@ fun LaunchReadinessScreen(
 
 private const val TAPS_TO_OPEN = 5
 private const val TAP_WINDOW_MILLIS = 1_200L
+
+/**
+ * The newest published build, when there is one.
+ *
+ * ### Why an app carries its own «there is a newer one»
+ *
+ * Because there is no store to carry it. Google Play does not serve Iran and will not register a
+ * developer account there (`docs/PLAY_COUNTRIES.md` reads it off Google's own pages), so this app
+ * is downloaded as an APK and installed by hand. Everything about that works except the part every
+ * other app gets free: nothing ever tells the reader that the build in their hand is six months old.
+ *
+ * ### What the card says, and what it refuses to do
+ *
+ * It names the version, says what changed in the reader's own language, shows the file's SHA-256 so
+ * they can check what they downloaded, and opens the address in a browser. It does not download and
+ * it does not install — that would mean `REQUEST_INSTALL_PACKAGES`, which is a permission to put
+ * arbitrary packages on somebody's phone, bought for the price of one tap. `AppUpdate`'s own note
+ * has the full argument, including why [AppRelease.mandatory] changes a sentence and never a door.
+ */
+@Composable
+private fun UpdateCard(release: AppRelease, onDownload: (AppRelease) -> Unit) {
+    val english = AppLanguage.fromTag(LocalConfiguration.current.locales[0].language) == AppLanguage.ENGLISH
+    val notes = (if (english) release.notesEn else release.notesFa).trim()
+    CoineProCard(modifier = Modifier.fillMaxWidth(), accent = CoineProColors.Buy) {
+        Text(
+            text = stringResource(R.string.update_available_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = CoineProColors.Buy,
+        )
+        Text(
+            // The version is a Latin identifier inside a Persian sentence, so it is isolated like
+            // every other figure on a right-to-left screen — otherwise «5.0.0» next to a comma
+            // reorders itself and the reader is shown a version that was never published.
+            text = stringResource(R.string.update_available_version, BidiText.isolateLtr(release.versionName)),
+            style = MaterialTheme.typography.bodyMedium,
+            color = CoineProColors.TextPrimary,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        if (release.mandatory) {
+            Text(
+                text = stringResource(R.string.update_urgent),
+                style = MaterialTheme.typography.bodyMedium,
+                color = CoineProColors.Warning,
+                modifier = Modifier.padding(top = CoineProSpacing.One),
+            )
+        }
+        if (notes.isNotEmpty()) {
+            Text(
+                text = notes,
+                style = MaterialTheme.typography.bodyMedium,
+                color = CoineProColors.TextSecondary,
+                modifier = Modifier.padding(top = CoineProSpacing.One),
+            )
+        }
+        Text(
+            text = stringResource(R.string.update_manual_body),
+            style = MaterialTheme.typography.bodySmall,
+            color = CoineProColors.TextMuted,
+            modifier = Modifier.padding(top = CoineProSpacing.One),
+        )
+        Text(
+            text = stringResource(R.string.update_digest_title),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+            modifier = Modifier.padding(top = CoineProSpacing.One),
+        )
+        LtrDirection {
+            Text(
+                text = release.sha256.lowercase(),
+                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                color = CoineProColors.TextSecondary,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        Spacer(Modifier.height(CoineProSpacing.OneHalf))
+        CoineProPrimaryButton(
+            text = stringResource(R.string.update_get),
+            onClick = { onDownload(release) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/**
+ * The certificate this install is signed with — the answer to a question that used to cost days.
+ *
+ * Google's console wants a SHA-1 to enable sign-in and the App Links verifier wants a SHA-256, and
+ * neither can be read off a keystore with certainty once a build has been through anybody's hands.
+ * The phone holding the install knows, and this is it saying so. Public information: it is derived
+ * from an APK anybody can download.
+ */
+@Composable
+private fun SigningCard(fingerprints: List<String>, onCopy: (String) -> Unit) {
+    CoineProCard(modifier = Modifier.fillMaxWidth()) {
+        CardTitle(R.string.safety_signing_title)
+        Body(R.string.safety_signing_body)
+        fingerprints.forEach { fingerprint ->
+            LtrDirection {
+                Text(
+                    text = fingerprint,
+                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                    color = CoineProColors.TextSecondary,
+                    modifier = Modifier.padding(top = CoineProSpacing.One),
+                )
+            }
+        }
+        Spacer(Modifier.height(CoineProSpacing.OneHalf))
+        CoineProSecondaryButton(
+            text = stringResource(R.string.safety_signing_copy),
+            onClick = { onCopy(fingerprints.joinToString("\n")) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
 
 @Composable
 private fun SafetyCard(

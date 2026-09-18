@@ -14,6 +14,9 @@ import com.coinepro.core.academy.NetworkAcademyGateway
 import com.coinepro.core.account.AccountController
 import com.coinepro.core.account.AccountGateway
 import com.coinepro.core.account.EntitlementsGateway
+import com.coinepro.core.common.BrandConfig
+import com.coinepro.core.update.AppUpdateGateway
+import com.coinepro.core.update.NetworkAppUpdateGateway
 import com.coinepro.core.account.NetworkEntitlementsGateway
 import com.coinepro.core.announcements.AnnouncementsController
 import com.coinepro.core.announcements.AnnouncementsGateway
@@ -427,6 +430,35 @@ object AppModule {
     @CryptoPlatform
     fun cryptoRetrofit(@CryptoPlatform client: OkHttpClient): Retrofit =
         NetworkFactory.retrofit(BuildConfig.TRADEYAR_API_BASE_URL, client)
+
+    // ── The brand host ───────────────────────────────────────────────────────────────────
+
+    /**
+     * Whether a newer build has been published — the one thing a phone with no app store has to
+     * ask for itself. See `AppUpdate` in `:core:update` for why the product needs this at all.
+     *
+     * **A third client, with no credential on it, and that is the whole reason it exists.** Both
+     * clients above attach a session token to every request they carry. The brand host is neither
+     * platform's, so a call made on either of them would hand that platform's bearer token to a
+     * machine that has no business holding one — the same argument that already keeps the forex and
+     * crypto clients apart, applied one host further out. It is one GET, a few times a day at most,
+     * so a connection pool of its own costs nothing worth counting.
+     *
+     * Unpinned, deliberately: `BuildConfig.CERTIFICATE_PINS` names the two API hosts, and pinning a
+     * host whose certificate this repository has never seen is how an app locks itself out of its
+     * own server. `docs/security/PINNING.md` and `docs/release/DOMAINS.md` both say so.
+     */
+    @Provides
+    @Singleton
+    fun appUpdateGateway(): AppUpdateGateway = NetworkAppUpdateGateway.create(
+        NetworkFactory.retrofit(
+            baseUrl = BrandConfig.WEB_URL,
+            client = NetworkFactory.okHttpClient(
+                appVersion = BuildConfig.VERSION_NAME,
+                enableHttpLogging = BuildConfig.DEBUG,
+            ),
+        ),
+    )
 
     @Provides
     @Singleton

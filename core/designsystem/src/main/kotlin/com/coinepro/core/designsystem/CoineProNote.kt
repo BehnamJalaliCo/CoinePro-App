@@ -93,6 +93,11 @@ object NotePolicy {
         "safety_provider_body",
         "safety_privacy_body",
         "safety_support_body",
+        // Drawn rather than folded because this app is installed by hand: the sentence that says
+        // «you fetch the file and install it yourself» and the certificate this install carries are
+        // both things a reader acts on, and an ⓘ is where an instruction goes to be missed.
+        "safety_signing_body",
+        "update_manual_body",
         "tampered_body",
         "lock_screen_body",
         "lock_sheet_note",

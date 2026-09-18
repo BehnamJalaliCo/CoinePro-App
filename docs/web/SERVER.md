@@ -184,6 +184,51 @@ last-writer-wins, exactly as the watchlist sync already works on the phone
 These are the only tables. Everything else the server holds is a cache and may be thrown away at any
 moment without the product noticing.
 
+### 4.6 The update document — the piece of the app store this server has to be
+
+**This is new, and it exists because the product has no app store.** Google Play does not serve
+Iran; the Android app is downloaded as an APK and installed by hand (`docs/release/DISTRIBUTION.md`
+is the whole picture). That works, and it is missing exactly one thing every other app gets free:
+any way for a reader to learn that the build in their hand is six months old.
+
+| `pro-chart.com` | what | who reads it |
+| --- | --- | --- |
+| `GET /api/app/latest` | the newest published Android build | the app's safety screen, once per visit |
+| `GET /download/pro-chart-X.Y.Z.apk` | the file itself | a browser, when the reader taps the button |
+
+The document is **static JSON written by the release process**. There is no code behind it, nothing
+computes it, and it is the one route on this server that is not a relay — nothing upstream knows or
+should know what the Android release is.
+
+```json
+{
+  "version_code": 50000000,
+  "version_name": "5.0.0",
+  "url": "https://pro-chart.com/download/pro-chart-5.0.0.apk",
+  "sha256": "…64 hex characters…",
+  "notes_fa": "…",
+  "notes_en": "…",
+  "mandatory": false
+}
+```
+
+Four things the app enforces, so the server has to get them right or its release is simply not
+offered to anybody (`AppUpdate.publishable`):
+
+* **`version_code` is the only field compared.** It is the integer Android itself orders installs
+  by, and `scripts/release/version.py` derives it from the name. A name that reads newer over a
+  code that is not changes nothing.
+* **`url` must be HTTPS and on `pro-chart.com`, `www.pro-chart.com` or `github.com`.** An allow-list
+  rather than any address, because this is the one response in the product that ends as an
+  installable package rather than as text on a screen.
+* **`sha256` is required**, and the app shows it to the reader before they download. An APK offered
+  with no way to check it is one the app declines to offer.
+* **`mandatory` changes a sentence and nothing else.** It must never be understood as a switch that
+  can stop an installed app from working; the app does not implement one and will not.
+
+Cache it for a few minutes at the edge and no longer. A release that has just gone out is exactly
+when somebody is looking.
+
 ---
 
 ## 5. Where the data actually comes from
@@ -232,6 +277,11 @@ minute on `/api/auth/*`, and one WebSocket per IP with a 200-symbol subscription
    points at `pro-chart.com/legal/…`, so this is the first thing that stops being a promise.
    *Proof:* `scripts/release/print-assetlinks.sh` output matches what the host serves, and the app's
    own legal links open a page rather than an error.
+2½. **The update document** (§4.6). Static JSON and a file; no relay, no cache logic, no account.
+   It is listed here rather than folded into step 2 because it is the only step whose absence gets
+   *worse* over time — every release that ships without it is another cohort of readers with no way
+   to hear about the next one. *Proof:* `curl -s https://pro-chart.com/api/app/latest` parses, and
+   its `version_code` matches `python3 scripts/release/version.py --code` for the published tag.
 3. **The read-only relay.** §4.1 and §4.3, no account, no socket. *Proof:* `/api/fx/snapshot`
    returns the same body as the backend's own route, and `/api/crypto/candles` returns a second
    request from cache in under 5 ms.
@@ -259,6 +309,14 @@ answer.
 2. **Whether the terminal is open, member-only, or a read-only guest page** (`PLAN.md` §6.3).
 3. **Whether the candle archive is built on day one** (§5). It is the difference between a reader
    panning to the edge of the backend's window and panning as far as the product has history.
-4. **The App Signing certificate's SHA-256 fingerprint**, from Play Console → Release → Setup → App
-   signing. Phase 1 cannot finish `assetlinks.json` without it and it must not be guessed: the
-   upload key's fingerprint is the wrong one whenever Play App Signing is on.
+4. ~~**The App Signing certificate's SHA-256 fingerprint**, from Play Console.~~ **Settled, and the
+   answer turned out to be simpler than the question.** Google Play does not serve Iran and this
+   app is installed from a downloaded APK (`docs/release/DISTRIBUTION.md`), so there is no Play App
+   Signing in the path and no re-signed key to ask a console about: the fingerprint
+   `assetlinks.json` needs is the **release keystore's own** SHA-256. Three ways to read it, in
+   `DISTRIBUTION.md` §5 — the shortest being the app's own «ایمنی و انتشار» screen, which prints
+   the certificate of the running install with a copy button. The owner still has to *hand it over*;
+   they no longer have to find it.
+5. **Whether the APK is served from this host as well as from GitHub** (§4.6). Nothing breaks if it
+   is not — the update document may point at the GitHub release — but a download that comes from
+   the same host as the document is one fewer thing a reader has to trust.

@@ -1,7 +1,7 @@
 # RUN Ψ — blocked
 
 Two things, and each carries what is in the build meanwhile and the exact thing the owner must
-supply.
+supply. **§Ψ16 is answered and closed** — the answer is at the foot of it.
 
 ---
 
@@ -38,7 +38,7 @@ they are worth doing on their own account: every legal link in the shipping app 
 
 ---
 
-## §Ψ16 — the LBank copy-trading sentences
+## §Ψ16 — the LBank copy-trading sentences *(closed — «it stays»)*
 
 **What was done.** Copy trading is gone from the app: the modules, the screens, the routes and every
 string a reader could meet. That is the instruction, executed.
@@ -64,3 +64,22 @@ about that service it was not told, in the document a reader legally agrees to.
   gate loses a note.
 * **«it stays, it is the web panel's»** — then nothing changes and this section closes, and the app
   is simply a product that does not carry a feature the service has.
+
+### The answer
+
+> «کپی ترید البنک میماند»
+
+**The second branch.** LBank copy trading stays; it is the service's, reached from the web panel,
+and this app does not carry it. So the three passages stand exactly as written and **nothing is
+edited** — `TERMS.md` §6-3, `TERMS_EN.md` §6.3, `membership_copytrade_note` and the MT5 broker line
+in `PRIVACY_POLICY.md` all describe a service the reader really can have, and a reader who agrees to
+them is agreeing to something true.
+
+Worth writing down, because the next reader will meet the asymmetry and wonder whether it is a
+leftover: **the app carries no copy trading and the terms describe some, and both are correct.** The
+terms are the *service's*, not this binary's — they are the same document the web panel serves — and
+a document that described only what one client happens to draw would be the wrong document. The
+membership gate's note is the one place a reader could be misled, and it is not: it says the
+membership includes it, which it does, on LBank, through the panel.
+
+This section is closed. Nothing in the build changed on the strength of it, which is the point.

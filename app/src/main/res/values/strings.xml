@@ -54,6 +54,15 @@
     <string name="safety_support_body">To ask something, open the support chat on Telegram and send us your thoughts, suggestions and complaints. To report a fault, use the Android share sheet with an app of your choice. The prepared message carries only app version and environment, and never a session token, broker credentials, a chart image or execution secrets.</string>
     <string name="safety_send_feedback">Send feedback</string>
     <string name="safety_footer">Live connectivity, trusted brokers and exchanges, and readiness for real execution are checked separately; this screen does not promise them.</string>
+    <string name="safety_signing_title">This install’s certificate</string>
+    <string name="safety_signing_body">The key this copy of the app is signed with. It is not a secret — anybody holding the file can read it — and it is the answer Google’s sign-in console and the web-link check both ask for.</string>
+    <string name="safety_signing_copy">Copy</string>
+    <string name="update_available_title">A newer version is out</string>
+    <string name="update_available_version">Version %1$s</string>
+    <string name="update_urgent">This one is worth installing now.</string>
+    <string name="update_manual_body">The app does not update itself. You download the file and install it, the same way you installed it the first time.</string>
+    <string name="update_digest_title">File fingerprint (SHA-256)</string>
+    <string name="update_get">Download the new version</string>
     <string name="hub_feed_live">Live</string>
     <string name="hub_feed_connecting">Connecting</string>
     <string name="hub_feed_degraded">HTTP snapshot</string>

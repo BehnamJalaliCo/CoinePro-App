@@ -22,6 +22,11 @@ So this server relays what a browser needs, caches it per field, holds one upstr
 and fans it out, keeps the three documents that are genuinely the web's own, and serves the static
 pages.
 
+It also does one thing that has nothing to do with the browser: **it is the Android app's update
+channel.** Google Play does not operate in Iran, so the app is downloaded and installed by hand, and
+a static JSON file on this host is the only way a reader ever learns that a newer build exists.
+Phase 1½, and it is two files.
+
 **All three machines are on one Hetzner private network.** Use it. Upstream calls go over the
 private address, not out to the public internet and back, and neither backend needs a firewall
 change, a CORS header or any other modification. If a backend answers only on its public name, say
@@ -112,10 +117,18 @@ who taps «قوانین» in the app gets a browser on a dead host. Closing that
 
 3. **`/.well-known/assetlinks.json`.** The Android app claims `https://pro-chart.com/reset` as an
    App Link and Android verifies it by fetching this file. **The owner must give you the SHA-256
-   certificate fingerprint** — from Play Console → Release → Setup → App signing → "App signing key
-   certificate". Ask for it; it is not in the repository and must not be guessed. The package name
-   is in the app's `build.gradle.kts`. The file must be served as `application/json` with no
-   redirect.
+   certificate fingerprint**; ask for it, it is not in the repository and must not be guessed. The
+   package name is in the app's `build.gradle.kts`. The file must be served as `application/json`
+   with no redirect.
+
+   Tell them where to get it, because the obvious answer is the wrong one: **it is the release
+   keystore's own fingerprint, not a Play Console one.** Google Play does not serve this product
+   — it does not operate in Iran — so the app is installed from a downloaded APK and there is no
+   Play App Signing re-signing it with a key only Google holds. The shortest route is the app
+   itself: its «ایمنی و انتشار» screen prints the certificate of the running install, SHA-1 and
+   SHA-256, with a copy button. `scripts/release/print-assetlinks.sh` in the app's repository prints
+   the whole file from the keystore, and `docs/release/DISTRIBUTION.md` §5 is the reasoning. If the
+   owner ever does get onto Play, list both fingerprints — the field is an array.
 
 4. **A holding page at `/`.** One screen: the mark, the product's name, one sentence, and a link to
    the app. Not a marketing site — that is a later decision and not yours.
@@ -132,6 +145,64 @@ curl -sI https://www.pro-chart.com/ | head -1                  # 301 to the apex
 
 Report the five outputs. When they pass, tell the owner — the three Play listing URLs can move from
 `coineprofx.com/legal/…` to these, and that is their action, not yours.
+
+---
+
+## Phase 1½ — the update document and the APK
+
+**Small, static, and the one thing on this server the Android app cannot do without for ever.**
+
+Google Play does not serve Iran, so the app is downloaded and installed by hand. That works — except
+that nothing ever tells a reader a newer build exists. The app now asks this server, and until this
+server answers, every release that goes out is another cohort of people who will never hear about
+the next one. It gets worse with time, which is why it is not at the back of the queue.
+
+Two things, both static:
+
+* **`GET /api/app/latest`** — a JSON file. Not computed, not relayed, not cached from anywhere:
+  neither backend knows or should know what the Android release is. Written by the owner's release
+  process; for now, written by hand when they tell you a version has shipped.
+* **`GET /download/pro-chart-X.Y.Z.apk`** — the file itself, `application/vnd.android.package-archive`,
+  no redirect to another host. Optional: the document may point at the GitHub release instead, and
+  it is worth asking the owner which they want. Serving it here means the document and the file come
+  from one host the reader is already trusting.
+
+```json
+{
+  "version_code": 50000000,
+  "version_name": "5.0.0",
+  "url": "https://pro-chart.com/download/pro-chart-5.0.0.apk",
+  "sha256": "…64 lowercase hex characters, the APK's own digest…",
+  "notes_fa": "چند اصلاح کوچک.",
+  "notes_en": "A few small fixes.",
+  "mandatory": false
+}
+```
+
+**The app enforces four things, and a release that fails any of them is silently not offered to
+anybody** — no error, no message, the card simply never appears. So get them right:
+
+1. `version_code` is the only field compared. It is the integer Android orders installs by.
+2. `url` must be HTTPS and its host must be `pro-chart.com`, `www.pro-chart.com` or `github.com`.
+3. `sha256` must be exactly 64 hex characters, and must be the digest of the file at `url` — the
+   app shows it to the reader so they can check what they downloaded. A digest that does not match
+   is worse than none.
+4. `mandatory` changes one sentence on a card. It is **not** a kill switch, the app does not
+   implement one, and no future request should ask you to make it into one.
+
+Cache it a few minutes at the edge and no longer: the day a release goes out is the day somebody is
+looking.
+
+**Acceptance:**
+
+```bash
+curl -s  https://pro-chart.com/api/app/latest | python3 -m json.tool          # parses; seven fields
+curl -sI https://pro-chart.com/api/app/latest | grep -i content-type          # application/json
+curl -sI "$(curl -s https://pro-chart.com/api/app/latest | python3 -c 'import json,sys; print(json.load(sys.stdin)["url"])')" | head -1   # 200
+```
+
+And, if you serve the APK here, the digest — `sha256sum` of the served file against the `sha256` in
+the document. Report both; they must be identical.
 
 ---
 

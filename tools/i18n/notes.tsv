@@ -244,6 +244,7 @@ safety_how_body	visible	app
 safety_privacy_body	visible	app
 safety_provider_body	visible	app
 safety_risk_body	visible	app
+safety_signing_body	visible	app
 safety_support_body	visible	app
 screener_empty_hint	state	feature/screener
 screener_free_note	tip	feature/screener
@@ -272,6 +273,7 @@ tools_connected_body	tip	feature/tools
 tools_note	tip	feature/tools
 tools_pnl_group_body	tip	feature/tools
 tools_risk_group_body	tip	feature/tools
+update_manual_body	visible	app
 vision_permission_note	visible	feature/ai-vision
 vision_prepared_note	tip	feature/ai-vision
 vision_waiting_note	state	feature/ai-vision

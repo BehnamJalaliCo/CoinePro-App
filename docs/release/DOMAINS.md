@@ -40,11 +40,17 @@ None of this is visible to a reader until the host serves. Until then:
    answer, switch the three Play listing URLs.
 3. **`/.well-known/assetlinks.json`** — `Content-Type: application/json`, no redirect, no auth;
    `scripts/release/print-assetlinks.sh <keystore> <alias>` prints it. Verify with
-   `adb shell pm get-app-links com.coinepro.app`.
-4. **`/reset`** — only when a backend starts mailing recovery links on this host. Until then the
+   `adb shell pm get-app-links com.coinepro.app`. **The fingerprint is the release keystore's own**,
+   because with no Play in the path nothing re-signs the upload — `docs/release/DISTRIBUTION.md`
+   §5, which also gives the three ways to read it.
+4. **`/api/app/latest` and `/download/pro-chart-X.Y.Z.apk`** — the update document and the file it
+   names. Static, written by the release process. **This is the app's whole update channel**: there
+   is no store to carry one, so until this answers, a reader on an old build has no way to learn
+   there is a newer one. `docs/web/SERVER.md` §4.6 is the contract; `DISTRIBUTION.md` is why.
+5. **`/reset`** — only when a backend starts mailing recovery links on this host. Until then the
    path can 404; the claim is harmless.
 5. **The web terminal** (`docs/web/PLAN.md`) — an API gateway on this host in front of the two
-   backends, then the Compose Multiplatform build. Not before 1–3.
+   backends, then the Compose Multiplatform build. Not before 1–4.
 
 ## What does not move
 
@@ -54,3 +60,7 @@ None of this is visible to a reader until the host serves. Until then:
 * The certificate pins. They are per API host and expire (`COINEPRO_CERTIFICATE_PINS_UNTIL`); the
   brand host is not pinned.
 * Support. `BrandConfig.SUPPORT_URL` is a Telegram channel and stays one.
+* The three Play listing URLs, for now. They must keep pointing at `coineprofx.com/legal/…` until
+  `pro-chart.com` answers — and, separately, **the product is not on Play at all**
+  (`docs/release/DISTRIBUTION.md`), so `docs/PLAY_LISTING.md` is preparation rather than a
+  description of how anybody gets the app.

@@ -54,6 +54,15 @@
     <string name="safety_support_body">برای پرسش، در تلگرام با پشتیبانی گفت‌وگو کنید و نظرها، پیشنهادها و انتقادهایتان را برای ما بفرستید. برای گزارش خطا، از منوی اشتراک‌گذاری اندروید و اپ دلخواه خودتان استفاده کنید. پیامِ آماده‌شده فقط نسخه و محیط اپ را دارد و هرگز توکن نشست، اطلاعات کارگزار، تصویر چارت یا اسرار اجرا را شامل نمی‌شود.</string>
     <string name="safety_send_feedback">ارسال بازخورد</string>
     <string name="safety_footer">اتصال محیط عملیاتی، تأیید کارگزار و صرافی و آمادگی اجرای زنده جداگانه بررسی می‌شوند و این صفحه آن‌ها را تضمین نمی‌کند.</string>
+    <string name="safety_signing_title">گواهی این نصب</string>
+    <string name="safety_signing_body">کلیدی که این نسخه‌ی برنامه با آن امضا شده است. رازی نیست — هر کسی که فایل را داشته باشد می‌تواند آن را بخواند — و همان چیزی است که کنسول ورود گوگل و بررسی پیوند وب هر دو می‌خواهند.</string>
+    <string name="safety_signing_copy">کپی</string>
+    <string name="update_available_title">نسخه‌ی تازه‌ای منتشر شده</string>
+    <string name="update_available_version">نسخه‌ی %1$s</string>
+    <string name="update_urgent">این یکی را همین حالا نصب کنید.</string>
+    <string name="update_manual_body">برنامه خودش به‌روز نمی‌شود. فایل را می‌گیرید و نصب می‌کنید، همان‌طور که بار اول نصبش کردید.</string>
+    <string name="update_digest_title">اثر انگشت فایل (SHA-256)</string>
+    <string name="update_get">دریافت نسخه‌ی تازه</string>
     <string name="hub_feed_live">لحظه‌ای</string>
     <string name="hub_feed_connecting">در حال اتصال</string>
     <string name="hub_feed_degraded">تصویر HTTP</string>

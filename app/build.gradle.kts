@@ -607,6 +607,7 @@ dependencies {
     implementation(project(":core:journal"))
     implementation(project(":core:papertrade"))
     implementation(project(":core:script"))
+    implementation(project(":core:update"))
     implementation(project(":core:diagnostics"))
     implementation(project(":core:aiassistant"))
     implementation(project(":core:chartevents"))

@@ -69,6 +69,9 @@ import com.coinepro.app.alerts.InAppAlertBus
 import com.coinepro.app.alerts.LocalAlertScheduler
 import com.coinepro.app.auth.GoogleSignInClient
 import com.coinepro.app.security.AppIntegrity
+import com.coinepro.core.update.AppUpdate
+import com.coinepro.core.update.AppUpdateGateway
+import com.coinepro.core.update.AppUpdateStatus
 import com.coinepro.app.auth.GoogleSignInOutcome
 import com.coinepro.app.chart.rememberChartControllers
 import com.coinepro.app.notifications.PushCoordinator
@@ -1026,6 +1029,15 @@ fun CoineProApp(
     adminController: AdminController,
     /** The app's narrative log, for the crash report and the diagnostics screen. */
     appLog: AppLog,
+    /**
+     * Who asks whether a newer build has been published, or null on a build that does not ask.
+     *
+     * Nullable and defaulted because every render test and every preview constructs this screen,
+     * and none of them should make a network call to draw one. Null is also the honest shape of
+     * «this build has no update channel», which is what a build pointed at a host that does not
+     * serve the document yet effectively is.
+     */
+    appUpdateGateway: AppUpdateGateway? = null,
     platformSessions: PlatformSessions,
     platformCapabilities: PlatformCapabilities,
     marketDataCache: MarketDataCache,
@@ -1525,6 +1537,7 @@ fun CoineProApp(
                 hasAcademy = activePlatform == MarketPlatform.COINEPRO_FX,
                 adminController = adminController,
                 appLog = appLog,
+                appUpdateGateway = appUpdateGateway,
                 hub = hub,
                 hubActions = hubActions,
                 briefing = briefingState.toHomeBriefing(briefingReadAt),
@@ -1764,6 +1777,7 @@ fun CoineProApp(
                         hasAcademy = false,
                         adminController = adminController,
                         appLog = appLog,
+                        appUpdateGateway = appUpdateGateway,
                         hub = hub,
                         hubActions = hubActions,
                         briefing = HomeBriefing.Resting,
@@ -2067,6 +2081,8 @@ private fun MainShell(
     accountController: AccountController,
     adminController: AdminController,
     appLog: AppLog,
+    /** See `CoineProApp`'s own parameter. Null on a build with no update channel. */
+    appUpdateGateway: AppUpdateGateway? = null,
     hub: ControlHub,
     hubActions: HubActions,
     briefing: HomeBriefing,
@@ -4734,7 +4750,37 @@ private fun MainShell(
                 // Read once per visit rather than watched: a crash file cannot change while the
                 // app that would write it is the one on screen.
                 var lastCrash by remember { mutableStateOf(crashes.last()) }
+                // Asked when the screen is opened rather than at start-up, and once per visit.
+                //
+                // A reader who has come to «ایمنی و انتشار» is already asking the app about itself,
+                // which is the one moment «there is a newer one» is an answer rather than an
+                // interruption. Doing it at launch would mean a request on every cold start for a
+                // fact that changes a few times a year, on networks where every request costs
+                // something. `Unknown` until it answers, and `Unknown` for ever if it never does —
+                // the card simply does not appear.
+                var update by remember { mutableStateOf<AppUpdateStatus>(AppUpdateStatus.Unknown) }
+                LaunchedEffect(appUpdateGateway) {
+                    val gateway = appUpdateGateway ?: return@LaunchedEffect
+                    update = AppUpdate.decide(BuildConfig.VERSION_CODE.toLong(), gateway.latest())
+                }
+                // Read from the package manager, which is the only reader that cannot be wrong
+                // about which key this install carries. Both algorithms: the sign-in console asks
+                // for SHA-1 and App Links verification for SHA-256.
+                val signingFingerprints = remember(context) {
+                    listOf("SHA-1", "SHA-256").flatMap { algorithm ->
+                        AppIntegrity.fingerprints(context, algorithm).map { "$algorithm  $it" }
+                    }
+                }
                 LaunchReadinessScreen(
+                    update = update,
+                    onDownloadUpdate = { release -> UpdateHandoff.open(context, release) },
+                    signingFingerprints = signingFingerprints,
+                    onCopyFingerprint = { text ->
+                        val clipboard = context.getSystemService(ClipboardManager::class.java)
+                        clipboard?.setPrimaryClip(
+                            ClipData.newPlainText("${BrandConfig.DISPLAY_NAME} certificate", text),
+                        )
+                    },
                     notificationPermissionState = notificationPermissionState,
                     onRequestNotificationPermission = onRequestNotificationPermission,
                     onOpenNotificationSettings = onOpenNotificationSettings,

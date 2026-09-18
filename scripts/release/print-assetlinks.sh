@@ -10,11 +10,23 @@
 #
 # WHICH FINGERPRINT
 # -----------------
-# The one Google signs releases with, which is NOT the upload key when Play App Signing is on.
-# Take it from Play Console → Release → Setup → App signing → "App signing key certificate".
-# Running this script against the local keystore prints the UPLOAD key's fingerprint, which is
-# right only for a build installed directly from an APK — a sideloaded test, not a Play install.
-# Both may be listed at once, and listing both is usually correct during a rollout.
+# The key the installed APK is actually signed with — and for this product that is the key in the
+# keystore this script reads, because the product is distributed as a downloadable APK.
+#
+# That used to be a caveat rather than the rule. When an app ships through Play with App Signing on,
+# Google re-signs the upload with a key only they hold, so the fingerprint that matters is the one
+# in Play Console → Release → Setup → App signing → "App signing key certificate", and the local
+# keystore prints the upload key, which is right only for a sideloaded test build. Google Play does
+# not serve Iran; this app is downloaded and installed directly, so there is no re-signing and the
+# local keystore is the answer. See docs/release/DISTRIBUTION.md.
+#
+# If that ever changes — if the correspondence with Google succeeds and the app does reach Play —
+# list BOTH fingerprints here. `sha256_cert_fingerprints` is an array on purpose, Android accepts an
+# install matching any entry, and during a rollout both kinds of install exist at once.
+#
+# A phone can also be asked directly: the app's «ایمنی و انتشار» screen prints the certificate of
+# the running install — SHA-1 and SHA-256 — which is the one answer no console and no script can
+# get wrong.
 set -euo pipefail
 
 KEYSTORE="${1:-${COINEPRO_RELEASE_STORE_FILE:-}}"

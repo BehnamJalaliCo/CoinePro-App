@@ -1,5 +1,17 @@
 # Google Play listing — Pro-Chart
 
+> **Read this first.** The product is **not on Google Play and is not expected to be**: Iran is not
+> a country a Play Console developer account may be registered from, and Play does not serve
+> installs into it either. The app reaches readers as a **downloaded APK**, and everything that
+> follows from that — the update channel the app carries for itself, which `assetlinks.json`
+> fingerprint is the right one, what the safety screen prints — is in
+> **`docs/release/DISTRIBUTION.md`**, which is the document that describes how the product actually
+> ships.
+>
+> This file is kept, and is not stale: the owner is corresponding with Google, and the day that
+> succeeds this is the day's work already done. Until then, **nothing in the build may assume any
+> of it**. `docs/PLAY_COUNTRIES.md` has the reading, from Google's own pages.
+
 Everything Play asks for, filled in where this repository knows the answer and marked
 **[OWNER]** where only the owner does. The Data safety answers in §4 are derived from the code, not
 from a template — `docs/legal/PRIVACY_POLICY.md` records where each one comes from.

@@ -6,8 +6,8 @@ Written as the last action of every session, per R5.
 
 ## Where the run is
 
-**All three instructions are executed.** Sixteen of eighteen rows are ✅; one is ⏳ on a machine the
-owner will buy, and one is ❌ because it asks a question only the owner can answer.
+**All three instructions are executed.** Seventeen of eighteen rows are ✅; the eighteenth is ⏳ on
+the machine, which the owner has since provided — the work on it is `docs/runs/RUN_ALEF/`.
 
 * **The tablet audit** found two faults in eleven surfaces — the welcome slides and the chart's
   loading skeleton — and both are fixed, with frames for one and arithmetic for the other. The other
@@ -72,10 +72,11 @@ owner will buy, and one is ❌ because it asks a question only the owner can ans
 
 ## Open questions for the owner
 
-1. **`BLOCKED.md §Ψ16`** — is crypto copy trading on LBank also gone, or does it stay as the web
-   panel's? One word, and it decides three passages in the terms and the privacy note.
-2. **`BLOCKED.md §Ψ10`** — the server. And, once it exists, the three product questions in
-   `PLAN.md` §6 that gate the account and the terminal.
+1. ~~**`BLOCKED.md §Ψ16`** — is crypto copy trading on LBank also gone?~~ **Answered:** «کپی ترید
+   البنک میماند» — it stays, it is the web panel's. Nothing was edited; §Ψ16 says why the app
+   carrying none and the terms describing some is correct rather than left over.
+2. **`BLOCKED.md §Ψ10`** — the server, now provisioned; `RUN_ALEF/` is the brief it was given. The
+   three product questions in `PLAN.md` §6 that gate the account and the terminal are still open.
 3. **`RUN_XI/BLOCKED.md §Ξ21`** — the signals route's «entitled but unlinked».
 4. Everything still open from RUN Τ2: the fling's distance-versus-time, the four alert tones,
    `membership_open_ourbit`, C5's separate scales, and the watchlist's «تحلیل».

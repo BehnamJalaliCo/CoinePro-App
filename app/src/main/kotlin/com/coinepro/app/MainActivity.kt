@@ -71,6 +71,7 @@ import com.coinepro.feature.alerts.AlertsController
 import com.coinepro.feature.screener.ScreenerController
 import com.coinepro.feature.screener.ScreenerStore
 import com.coinepro.app.security.AppIntegrity
+import com.coinepro.core.update.AppUpdateGateway
 import com.coinepro.app.security.IntegrityState
 import com.coinepro.app.security.TamperedScreen
 import com.coinepro.core.designsystem.CoineProTheme
@@ -190,6 +191,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var accountControllers: Map<MarketPlatform, @JvmSuppressWildcards AccountController>
     @Inject lateinit var adminController: AdminController
     @Inject lateinit var appLog: AppLog
+    @Inject lateinit var appUpdateGateway: AppUpdateGateway
     @Inject lateinit var platformSessions: PlatformSessions
     @Inject lateinit var platformCapabilities: PlatformCapabilities
     @Inject lateinit var marketDataCache: MarketDataCache
@@ -362,6 +364,7 @@ class MainActivity : FragmentActivity() {
                 accountControllers = accountControllers,
                 adminController = adminController,
                 appLog = appLog,
+                appUpdateGateway = appUpdateGateway,
                 platformSessions = platformSessions,
                 platformCapabilities = platformCapabilities,
                 marketDataCache = marketDataCache,
