@@ -5,9 +5,15 @@ to buy, what runs on it, which upstream routes it relays, what it stores, and ho
 working. Written so the owner can hand it to whoever provisions the machine and get back something
 this app and the browser terminal can both talk to on the first day.
 
-Nothing here is built. The machine does not exist yet, and `pro-chart.com` does not answer. What is
-written down is the contract, so that when it does exist the work is configuration rather than
-design.
+Nothing here is built yet. What is written down is the contract, so that the work on the machine is
+configuration rather than design. **`SERVER_BUILD_PROMPT.md`, beside this file, is the order of work
+and the acceptance check for each step** — that is what goes to the agent doing the building; this
+is what it reads for the detail.
+
+**The three machines share a Hetzner private network** (the owner's, confirmed when the server was
+provisioned). Upstream calls go over the private address rather than out to the public internet and
+back, which is faster, cheaper, and — the part that matters most — means neither backend needs a
+CORS header, a firewall change or any other modification to serve the web.
 
 ---
 
@@ -46,7 +52,9 @@ fan-out (memory per connection) and the static bundle (bandwidth), and both are 
 cheaply by a CDN in front than by a second box behind.
 
 **Hetzner, for the same reason CoinePro-FX is there**: the owner already runs one, the billing and
-the access are known, and the two servers being neighbours makes the upstream hop a local one.
+the access are known, and the three servers being neighbours on one private network makes every
+upstream hop a local one. That is not only speed — it is the reason neither backend has to be
+modified at all to serve the web.
 
 ### What runs on it
 
@@ -82,7 +90,9 @@ their pins because the app reaches them directly.
 ## 4. What it relays, route by route
 
 The rule for every row: **the browser asks `pro-chart.com`, the server asks the backend, and the
-body comes back unchanged.** No reshaping. A relay that rewrites a payload is a second contract to
+body comes back unchanged.** «The backend» means its **private address on the Hetzner network** —
+the three machines share one, so the hop never leaves it and neither backend is modified to serve
+the web. No reshaping. A relay that rewrites a payload is a second contract to
 keep in step with the first, and the app has one contract per backend already
 (`docs/backend/MARKET_DATA_CONTRACT.md`, `docs/AUTH_CONTRACT.md`).
 
@@ -241,10 +251,14 @@ answer.
 
 ## 8. What is still the owner's to decide
 
+0. ~~The provider and the machine.~~ **Done** — provisioned, on the same Hetzner private network as
+   TradeYar and CoinePro-FX, with an agent on it. `SERVER_BUILD_PROMPT.md` is what it works from.
+
 1. **Which backend owns the account** (`PLAN.md` §6.2, and
    `docs/SERVER_ASK_ONE_ACCOUNT_TWO_BACKENDS.md`). Step 5 cannot start without it.
 2. **Whether the terminal is open, member-only, or a read-only guest page** (`PLAN.md` §6.3).
 3. **Whether the candle archive is built on day one** (§5). It is the difference between a reader
    panning to the edge of the backend's window and panning as far as the product has history.
-4. **The provider.** Hetzner is assumed above because the owner runs one. Anything with 4 vCPU,
-   8 GB and a fixed IP does the job.
+4. **The App Signing certificate's SHA-256 fingerprint**, from Play Console → Release → Setup → App
+   signing. Phase 1 cannot finish `assetlinks.json` without it and it must not be guessed: the
+   upload key's fingerprint is the wrong one whenever Play App Signing is on.
