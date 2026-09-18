@@ -172,4 +172,8 @@
     <string name="brand_positioning">Crypto analysis, with an eye on gold and the dollar</string>
     <string name="brand_positioning_free">The full app, free for everyone — no limits, no ads</string>
     <string name="free_banner_dismiss">Close</string>
+    <string name="message_no_connection">No connection. Check the network and try again.</string>
+    <!-- The one word an empty state offers when the only honest action is to look again. Shared
+         so twelve screens cannot invent twelve wordings for the same button. -->
+    <string name="state_refresh">Refresh</string>
 </resources>

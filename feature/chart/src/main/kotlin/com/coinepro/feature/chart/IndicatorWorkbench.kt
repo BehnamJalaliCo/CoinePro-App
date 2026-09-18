@@ -35,6 +35,7 @@ import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.chart.IndicatorChain
 import com.coinepro.core.chart.IndicatorSource
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.coineProControl
 import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.datastore.IndicatorTemplate
 import com.coinepro.core.designsystem.CoineProColors
@@ -357,7 +358,7 @@ private fun SourcePill(text: String, active: Boolean, onClick: () -> Unit) {
                 color = if (active) CoineProTint.edge(CoineProColors.Accent) else CoineProColors.Border,
                 shape = CoineProPillShape,
             )
-            .clickable(onClick = onClick)
+            .coineProControl(onClick = onClick)
             .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half),
     ) {
         Text(

@@ -23,6 +23,8 @@ private val MessageKey.resourceId: Int
         MessageKey.SESSION_NOT_REVALIDATED -> R.string.message_session_not_revalidated
         MessageKey.TELEGRAM_SIGN_IN_NOT_CONFIGURED -> R.string.message_telegram_sign_in_not_configured
         MessageKey.TELEGRAM_SIGN_IN_CONFIG_UNAVAILABLE -> R.string.message_telegram_sign_in_config_unavailable
+        // The transport's own answer, ahead of every caller's fallback. See `toUiMessage`.
+        MessageKey.NO_CONNECTION -> R.string.message_no_connection
         MessageKey.SIGNALS_UNAVAILABLE -> R.string.message_signals_unavailable
         MessageKey.SIGNAL_HISTORY_UNAVAILABLE -> R.string.message_signal_history_unavailable
         MessageKey.SIGNAL_DETAILS_UNAVAILABLE -> R.string.message_signal_details_unavailable

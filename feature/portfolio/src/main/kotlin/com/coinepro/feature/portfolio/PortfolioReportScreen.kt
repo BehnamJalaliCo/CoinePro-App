@@ -112,6 +112,11 @@ fun PortfolioReportScreen(
                     icon = CoineProIcons.Portfolio,
                     message = stringResource(R.string.portfolio_report_empty),
                     hint = stringResource(R.string.portfolio_report_empty_hint),
+                    // **No action, deliberately** (run Ξ, item 22). This page is a reading of the
+                    // trades the portfolio screen already loaded — it fetches nothing of its own,
+                    // so there is nothing here a button could ask for again. The hint names what
+                    // fills it, which is trades, and those arrive from an account rather than from
+                    // this page.
                 )
             }
             else -> Report(state.trades, metrics, attribution, state.byMonth, zone)

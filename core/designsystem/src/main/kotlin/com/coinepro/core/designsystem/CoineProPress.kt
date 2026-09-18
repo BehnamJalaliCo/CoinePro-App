@@ -1,10 +1,13 @@
 package com.coinepro.core.designsystem
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 
@@ -64,4 +67,52 @@ fun Modifier.pressScale(
         label = "pressScale",
     )
     return scale(scale)
+}
+
+/**
+ * A control that compresses under a thumb and answers it — the two halves of D6 in one modifier.
+ *
+ * ### Why this exists rather than three lines at each call site
+ *
+ * Because the three lines were the problem. A control in this app is «an interaction source, a
+ * `pressScale` on it, a `haptics.select()` in the lambda, and `indication = null` so the ripple
+ * does not fight the scale», and every one of those is a line somebody can forget without anything
+ * failing. The chart is where that showed: run Ξ's audit found fifty clickable controls on and
+ * around the plot and **thirty-one of them were silent** — the drawing pencil, every replay
+ * transport, the selection toolbar, the legend's rows, the scale minis. Each was a perfectly
+ * ordinary `Modifier.clickable(onClick = …)`, which is exactly why nobody noticed: the missing
+ * feedback is invisible in a diff and inaudible in a screenshot.
+ *
+ * The buttons had it because the *component* carried it — that is the argument
+ * `scripts/quality/check-haptic-policy.sh` already makes for its five primitives. This extends the
+ * same argument to everything that is a control without being a button.
+ *
+ * ### What it does not do
+ *
+ * It does not invent a sixth haptic weight: [CoineProHaptics.select] is the vocabulary's word for
+ * «you touched a control and it took», and a control that commits something destructive should
+ * still say so itself. It does not take a ripple, because a ripple and a scale together read as two
+ * responses to one touch, and the scale is the one this product uses.
+ */
+@Composable
+fun Modifier.coineProControl(
+    enabled: Boolean = true,
+    pressed: Float = CoineProPress.CONTROL,
+    /** Read out by a screen reader in place of «button». Null keeps the platform's own wording. */
+    onClickLabel: String? = null,
+    onClick: () -> Unit,
+): Modifier {
+    val interaction = remember { MutableInteractionSource() }
+    val haptics = rememberCoineProHaptics()
+    return this
+        .pressScale(interaction, pressed)
+        .clickable(
+            interactionSource = interaction,
+            indication = null,
+            enabled = enabled,
+            onClickLabel = onClickLabel,
+        ) {
+            haptics.select()
+            onClick()
+        }
 }

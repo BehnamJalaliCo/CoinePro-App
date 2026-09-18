@@ -92,6 +92,21 @@ enum class MessageKey {
     AI_IMAGE_TOO_LARGE,
     AI_IMAGE_TYPE_UNSUPPORTED,
     AI_CONVERSATION_CHANGED,
+
+    /**
+     * The phone could not reach the server at all (run Ξ, item 21).
+     *
+     * Its own key, and the reason is the brief's fourth failure state: «no connection» and «the
+     * server answered and refused» are different facts with different answers, and until now every
+     * controller in the app collapsed them into one sentence — «signals could not be loaded»,
+     * «markets could not be loaded» — because [toUiMessage] discarded the throwable and returned
+     * the caller's fallback whatever had happened.
+     *
+     * A reader on a train reads «signals could not be loaded» as the desk being down, waits, and
+     * tries again in an hour. «You are offline» is a thing they can act on in ten seconds. One key
+     * mapped from the transport's own exception type gives that answer to every screen at once.
+     */
+    NO_CONNECTION,
 }
 
 /**
@@ -100,5 +115,12 @@ enum class MessageKey {
  * The exception's own message is intentionally discarded: it is an English platform string such as
  * `failed to connect to /10.0.2.2:443`, which is worse than a translated sentence for a reader who
  * cannot act on it either way.
+ *
+ * **Its *type* is not discarded** (run Ξ, item 21). An `IOException` from the transport means the
+ * request never reached anybody — no host, no route, no answer — and that is a different fact from
+ * a server that answered and said no. The reader's next move is different in each case, so the two
+ * no longer share a sentence. Everything else still falls back to the caller's own key, because a
+ * caller knows what it was doing and the exception does not.
  */
-fun Throwable.toUiMessage(fallback: MessageKey): UiMessage = UiMessage.Local(fallback)
+fun Throwable.toUiMessage(fallback: MessageKey): UiMessage =
+    if (this is java.io.IOException) UiMessage.Local(MessageKey.NO_CONNECTION) else UiMessage.Local(fallback)

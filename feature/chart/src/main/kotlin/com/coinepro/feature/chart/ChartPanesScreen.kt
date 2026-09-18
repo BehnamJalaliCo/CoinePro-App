@@ -61,6 +61,7 @@ import com.coinepro.core.chart.CoineProChart
 import com.coinepro.core.chart.decimalsFor
 import com.coinepro.core.chart.formatPrice
 import com.coinepro.core.common.BidiText
+import com.coinepro.core.designsystem.coineProControl
 import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.SymbolChartStateStore
@@ -835,7 +836,7 @@ private fun PanesHeader(
                     modifier = Modifier
                         .clip(CoineProShapes.small)
                         .background(CoineProColors.SurfaceElevated)
-                        .clickable(onClick = back)
+                        .coineProControl(onClick = back)
                         .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.Half),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),

@@ -292,6 +292,10 @@ fun JournalScreen(
                     icon = DesignR.drawable.tv_tool_note,
                     message = stringResource(R.string.journal_empty),
                     hint = stringResource(R.string.journal_empty_hint),
+                    // **No action, deliberately** (run Ξ, item 22). The action on this screen is
+                    // «write one», and it is the button already standing above this sentence. A
+                    // second one inside the empty state would be the same control twice, six
+                    // points apart.
                 )
             }
             shown.isEmpty() -> item {

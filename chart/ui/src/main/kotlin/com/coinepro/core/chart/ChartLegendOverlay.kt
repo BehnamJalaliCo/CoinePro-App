@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.coinepro.core.designsystem.CoineProAssetLogo
+import com.coinepro.core.designsystem.coineProControl
 import kotlin.math.abs
 
 /**
@@ -1009,7 +1010,7 @@ private fun LegendRow(
                 } else {
                     Modifier
                         .clip(RoundedCornerShape(LEGEND_PLATE_RADIUS_DP))
-                        .clickable(onClick = onOverflowClick)
+                        .coineProControl(onClick = onOverflowClick)
                         .padding(horizontal = LEGEND_GAP_DP)
                         .semantics { contentDescription = "legend-overflow" }
                 },
@@ -1084,7 +1085,7 @@ private fun LegendButton(
         modifier = Modifier
             .touchTarget(footprint = LEGEND_BUTTON_DP, target = LEGEND_TOUCH_DP)
             .clip(CircleShape)
-            .clickable(onClick = onClick)
+            .coineProControl(onClick = onClick)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {

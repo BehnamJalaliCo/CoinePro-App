@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import com.coinepro.core.designsystem.coineProControl
 import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.LtrDirection
 import androidx.compose.ui.text.style.TextAlign
@@ -1204,7 +1205,7 @@ internal fun StudioRow(
             .fillMaxWidth()
             .clip(CoineProShapes.small)
             .background(CoineProColors.Surface)
-            .clickable(onClick = onOpen)
+            .coineProControl(onClick = onOpen)
             .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.OneHalf),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),

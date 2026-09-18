@@ -90,7 +90,16 @@ fi
 # 0.4-to-0 most clones reach for.
 # `HomeScreen.kt`: the balance hero's wash, 18 % of the accent fading to nothing behind the
 # figure — the design brief's, and the one gradient a surface carries.
-gradient_allow='CoineProBrand.kt|CoineProSurfaces.kt|CoineProThinking.kt|CoineProMotionEffects.kt|EquityCurve.kt|CoineProChart.kt|ChartSeriesTypes.kt|HomeScreen.kt'
+# `WelcomeSlides.kt` (run Ξ, item 10): the welcome's five illustrations are drawings, and the soft
+# radial fall-off behind each one is a layer *of* the drawing rather than a wash applied to a card —
+# the same case as the brand mark's metal and the chart's own area fill. It also carries the one
+# vertical gradient on its stage, and that is the reason this entry needed arguing rather than
+# adding: a gradient behind a surface is what the rule above bans. The argument is that this screen
+# is not a surface in the system's sense. It is the brand sequence, before any of the app's own
+# chrome exists, with no card, no header and no button fill touched by it — the 2 % lift across the
+# whole page is the depth the five scenes are lit against, and without it a near-black screen with a
+# glow in the middle of it reads as a badly compressed photograph.
+gradient_allow='CoineProBrand.kt|CoineProSurfaces.kt|CoineProThinking.kt|CoineProMotionEffects.kt|EquityCurve.kt|CoineProChart.kt|ChartSeriesTypes.kt|HomeScreen.kt|WelcomeSlides.kt'
 gradient_hits="$( { git grep -lE 'Brush\.(vertical|horizontal|linear|radial|sweep)Gradient' -- 'app/**/*.kt' 'core/**/*.kt' 'feature/**/*.kt' 'chart/**/*.kt' 'namascript/**/*.kt' || true; } | grep -vE "$gradient_allow" || true)"
 if [[ -n "$gradient_hits" ]]; then
   echo "$gradient_hits"

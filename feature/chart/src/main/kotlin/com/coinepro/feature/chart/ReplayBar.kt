@@ -55,6 +55,7 @@ import com.coinepro.core.chart.SignalOverlay
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.JalaliDate
 import com.coinepro.core.common.foldDigitsToLatin
+import com.coinepro.core.designsystem.coineProControl
 import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -239,7 +240,7 @@ internal fun GoToDateField(
                 .minimumInteractiveComponentSize()
                 .clip(CoineProShapes.small)
                 .background(if (target == null) Color.Transparent else CoineProColors.AccentFill)
-                .clickable(enabled = target != null) {
+                .coineProControl(enabled = target != null) {
                     target?.let {
                         onGoTo(it)
                         typedDate = ""
@@ -707,7 +708,7 @@ private fun OpenPositionRow(
                     .minimumInteractiveComponentSize()
                     .clip(CoineProShapes.small)
                     .background(CoineProColors.AccentFill)
-                    .clickable(onClick = onClose)
+                    .coineProControl(onClick = onClose)
                     .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
             )
         }
@@ -742,7 +743,7 @@ private fun OpenPositionRow(
                     .minimumInteractiveComponentSize()
                     .clip(CoineProShapes.small)
                     .background(CoineProColors.SurfaceElevated)
-                    .clickable(onClick = onBreakEven)
+                    .coineProControl(onClick = onBreakEven)
                     .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
             )
         }
@@ -796,7 +797,7 @@ private fun ActionChip(label: String, colour: Color, enabled: Boolean, onClick: 
         modifier = Modifier
             .clip(CoineProShapes.small)
             .background(if (enabled) colour else Color.Transparent)
-            .clickable(enabled = enabled, onClick = onClick)
+            .coineProControl(enabled = enabled, onClick = onClick)
             .padding(horizontal = CoineProSpacing.OneHalf, vertical = 8.dp),
     )
 }
@@ -868,7 +869,7 @@ private fun TransportButton(
     Box(
         modifier = Modifier
             .clip(CoineProShapes.small)
-            .clickable(onClick = onClick)
+            .coineProControl(onClick = onClick)
             .padding(CoineProSpacing.Half),
     ) {
         Icon(

@@ -309,6 +309,10 @@ fun ExploreScreen(
                 cards.isEmpty() -> CoineProEmptyState(
                     icon = CoineProIcons.Markets,
                     message = stringResource(R.string.explore_markets_empty),
+                    // Run Ξ, item 22: the same offer the failure above makes, because a market
+                    // strip with nothing in it is indistinguishable from one that did not load.
+                    action = stringResource(R.string.explore_retry),
+                    onAction = controller::refresh,
                     modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
                 )
                 else -> MarketStrip(

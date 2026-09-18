@@ -19,6 +19,7 @@ import com.coinepro.core.chart.LineStyleKind
 import com.coinepro.core.common.NumberStyle
 import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.common.foldDigitsToLatin
+import com.coinepro.core.designsystem.coineProControl
 import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSegmentedControl
@@ -336,7 +337,7 @@ private fun StyleTab(
                 .clip(CircleShape)
                 .background(parsed?.let { Color(it.toULong() shl COLOUR_SHIFT) } ?: CoineProColors.SurfaceElevated)
                 .border(1.dp, CoineProColors.Border, CircleShape)
-                .clickable(enabled = editable && parsed != null) { parsed?.let(onSetColour) },
+                .coineProControl(enabled = editable && parsed != null) { parsed?.let(onSetColour) },
         )
     }
 
@@ -684,7 +685,7 @@ private fun WidthSegment(
                 color = if (active) CoineProTint.edge(CoineProColors.Gold) else CoineProColors.Border,
                 shape = CoineProShapes.small,
             )
-            .clickable(enabled = enabled, onClick = onClick)
+            .coineProControl(enabled = enabled, onClick = onClick)
             .semantics { contentDescription = label }
             .padding(horizontal = CoineProSpacing.OneHalf),
         contentAlignment = Alignment.Center,
@@ -804,7 +805,7 @@ private fun TemplateRow(
             modifier = Modifier
                 .weight(1f)
                 .clip(CoineProShapes.small)
-                .clickable(enabled = enabled, onClick = onApply)
+                .coineProControl(enabled = enabled, onClick = onApply)
                 .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.One),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
@@ -827,7 +828,7 @@ private fun TemplateRow(
             modifier = Modifier
                 .size(ACTION)
                 .clip(CircleShape)
-                .clickable(onClick = onSetDefault),
+                .coineProControl(onClick = onSetDefault),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -847,7 +848,7 @@ private fun TemplateRow(
             modifier = Modifier
                 .size(ACTION)
                 .clip(CircleShape)
-                .clickable(onClick = onDelete),
+                .coineProControl(onClick = onDelete),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -878,7 +879,7 @@ private fun ColourSwatch(
                 color = if (selected) CoineProColors.Gold else CoineProColors.Border,
                 shape = CircleShape,
             )
-            .clickable(enabled = enabled, onClick = onClick),
+            .coineProControl(enabled = enabled, onClick = onClick),
     )
 }
 
@@ -901,7 +902,7 @@ private fun StylePill(
             .clip(CoineProPillShape)
             .background(if (active) CoineProTint.fill(tone, CoineProColors.Surface) else Color.Transparent)
             .border(1.dp, if (active) CoineProTint.edge(tone) else CoineProColors.Border, CoineProPillShape)
-            .clickable(enabled = enabled, onClick = onClick)
+            .coineProControl(enabled = enabled, onClick = onClick)
             .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
     ) {
         Text(text = text, style = MaterialTheme.typography.labelSmall, color = ink)

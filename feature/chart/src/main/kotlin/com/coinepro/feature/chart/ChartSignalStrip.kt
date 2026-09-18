@@ -32,6 +32,7 @@ import com.coinepro.core.chart.SignalRead
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.coineProControl
 import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.numeric
 
@@ -100,7 +101,7 @@ private fun SetupChip(score: SetupScore, english: Boolean, onClick: () -> Unit) 
             .clip(CoineProPillShape)
             .background(CoineProColors.SurfaceRaised)
             .border(1.dp, tone.copy(alpha = CHIP_EDGE_ALPHA), CoineProPillShape)
-            .clickable(onClick = onClick)
+            .coineProControl(onClick = onClick)
             .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half)
             .semantics { contentDescription = "setup-score" },
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
@@ -148,7 +149,7 @@ private fun StudyPill(
         modifier = Modifier
             .clip(CoineProPillShape)
             .background(CoineProColors.SurfaceElevated)
-            .clickable(onClick = onClick)
+            .coineProControl(onClick = onClick)
             .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half)
             .semantics { contentDescription = "signal-pill-${read.id}" },
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),

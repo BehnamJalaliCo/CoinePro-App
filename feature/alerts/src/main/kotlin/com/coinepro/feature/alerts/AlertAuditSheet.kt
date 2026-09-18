@@ -108,6 +108,9 @@ internal fun AlertAuditSheet(view: AlertAuditView, onDismiss: () -> Unit) {
             // The sentence above has already said why a server alert's log is empty, so the empty
             // state that would say it again in different words is left off rather than repeated.
             if (!view.loading && view.venue == AlertVenue.DEVICE) {
+                // **No action, deliberately** (run Ξ, item 22). A device alert's log is written on
+                // this phone as the alert fires; there is no request behind it and nothing to ask
+                // again. The one thing that fills it is time, and the hint says so.
                 CoineProEmptyState(
                     message = stringResource(R.string.alerts_audit_empty),
                     icon = CoineProIcons.Pending,

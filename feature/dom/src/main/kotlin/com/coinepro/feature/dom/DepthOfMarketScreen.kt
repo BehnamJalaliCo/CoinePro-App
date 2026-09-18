@@ -76,6 +76,7 @@ import com.coinepro.core.orderbook.aggregated
 import com.coinepro.core.orderbook.aggregationSteps
 import kotlinx.coroutines.launch
 import java.time.Instant
+import com.coinepro.core.designsystem.R as DesignR
 
 /**
  * Depth of market — the resting book, as a ladder.
@@ -231,6 +232,11 @@ fun DepthOfMarketBody(
                 message = stringResource(R.string.dom_empty),
                 icon = CoineProIcons.Markets,
                 hint = stringResource(R.string.dom_empty_hint),
+                // Run Ξ, item 22. A book with no levels on it is usually a moment rather than a
+                // state — a thin market between two quotes — so asking again is exactly the right
+                // move and the screen already has the call to make.
+                action = stringResource(DesignR.string.state_refresh),
+                onAction = onRetry,
             )
             else -> {
                 // Folded once, here, and handed to both the ladder and the curve. They have to be
@@ -306,6 +312,11 @@ private fun DepthUnavailable(reason: DepthUnavailableReason) {
         DepthUnavailableReason.SYMBOL_DELISTED -> R.string.dom_unavailable_delisted_hint
         DepthUnavailableReason.SESSION_REQUIRED -> R.string.dom_unavailable_session_hint
     }
+    // **No action, deliberately** (run Ξ, item 22). Every one of these five reasons is a standing
+    // fact about the venue or the instrument — this feed publishes no depth, this symbol is not
+    // served, this one is delisted — and not a moment that a second request would get past. A
+    // refresh button here would repeat the same answer on every press, which is how a reader learns
+    // that an app's controls do nothing. The hint above names what *would* change it.
     CoineProEmptyState(
         message = stringResource(message),
         icon = CoineProIcons.Markets,

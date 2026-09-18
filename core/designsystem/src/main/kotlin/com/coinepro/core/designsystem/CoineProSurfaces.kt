@@ -317,6 +317,21 @@ fun CoineProPrimaryButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val haptics = rememberCoineProHaptics()
+    // The other half of the press, and the half the eye actually reads (run Ξ, item 12). The scale
+    // is real but it is a two-dp travel on a full-width pill; a fill that darkens by [PRESS_DARKEN]
+    // under the thumb is visible at any button size, which is the argument `CoineProCard` already
+    // makes for moving its own fill to `surfacePressed`. A tween rather than a spring, deliberately:
+    // a colour has no momentum to carry.
+    val pressed by interaction.collectIsPressedAsState()
+    val fill by animateColorAsState(
+        targetValue = when {
+            !enabled -> CoineProColors.SurfaceElevated
+            pressed -> lerp(CoineProColors.pageAccent, Color.Black, PRESS_DARKEN)
+            else -> CoineProColors.pageAccent
+        },
+        animationSpec = CoineProMotionSpecs.press(),
+        label = "primaryButtonFill",
+    )
     Surface(
         onClick = {
             haptics.commit()
@@ -336,7 +351,7 @@ fun CoineProPrimaryButton(
         // light, which is a button whose text cannot be read at the exact moment the reader is
         // trying to work out why they cannot press it. A neutral fill says unavailable more
         // plainly than a faded gold does, and it keeps the sentence legible while it says it.
-        color = if (enabled) CoineProColors.pageAccent else CoineProColors.SurfaceElevated,
+        color = fill,
         // A rim one step darker than the fill, which is what a gold object has and a gold
         // rectangle does not. `GoldDeep` is the mark's own shadow stop, and the palette names
         // exactly this use for it: "borders on gold surfaces". On the blue and green accents the
@@ -442,6 +457,13 @@ private fun ButtonContent(text: String, @DrawableRes icon: Int?, ink: Color) {
 private fun Color.rim(): Color = lerp(this, Color.Black, RIM_SHIFT)
 
 private const val RIM_SHIFT = 0.28f
+
+/**
+ * How far the primary action's fill darkens under a thumb. Eight per cent — the brief's number, and
+ * about a third of the rim's shift, so a pressed button is darker than its own fill and still
+ * lighter than its own edge.
+ */
+private const val PRESS_DARKEN = 0.08f
 
 /**
  * A round token carrying an instrument's initial, in that instrument's own colour.

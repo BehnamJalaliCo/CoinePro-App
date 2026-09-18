@@ -18,6 +18,22 @@ data class MarketCatalog(
     val markets: List<SymbolMeta>,
     val quotes: Map<String, MarketQuote>,
     val serverTimeEpochMillis: Long?,
+    /**
+     * How many names the venue actually returned, before this app dropped a single one (run Ξ,
+     * item 20).
+     *
+     * The count matters because the brief's question — «does the app render every symbol the venue
+     * serves?» — has two failure modes that look identical from the screen: a client that drops
+     * markets, and a backend that serves few. Without this number the two are indistinguishable
+     * and the wrong one gets fixed. With it, `markets.size` against [served] says exactly which:
+     * equal, less the noise rows, means the client is keeping everything it is given, and a short
+     * list is then a short answer.
+     *
+     * Defaulted to the list's own size so the two dozen fakes in the test tree, and the guest
+     * gateway that builds its catalogue rather than fetching one, do not have to answer a question
+     * they have no information about.
+     */
+    val served: Int = markets.size,
 )
 
 /**
@@ -66,13 +82,22 @@ class NetworkMarketCatalogGateway private constructor(
             markets = response.prices.keys
                 .filterNot(SymbolClassifier::isNoise)
                 .map(SymbolClassifier::classify)
-                // A market the app cannot draw is a market it does not list. The lettered token —
-                // a grey disc with a "D" in it — does not read as "this is DOGE" beside forty real
-                // logos; it reads as a broken image, and a screenful of them reads as a broken app.
-                // Leaving out the long tail nobody asked for costs less than presenting it badly.
+                // **Everything the venue serves, drawn one way or the other** (run ΤΦΥ F1, and run
+                // Ξ item 20).
+                //
+                // This filter used to be the rule that a market the app had no artwork for was a
+                // market it did not list, and the argument was that a grey disc with a "D" in it
+                // does not read as «this is DOGE» beside forty real logos. The measurement
+                // overturned it: LBank quotes 1 333 tether pairs and this repository holds a mark
+                // for 178, so the rule was not trimming a long tail — it was hiding seven markets
+                // in eight in a product whose subject is the list of markets. `SymbolArtwork.lists`
+                // now answers true for everything, the monogram carries the ones with no mark, and
+                // `ARTWORK_GATES_LISTING` is the one word that would put the old rule back.
                 .filter(SymbolArtwork::lists),
             quotes = quotes,
             serverTimeEpochMillis = response.serverTimeMs,
+            // Before anything above ran. See [MarketCatalog.served].
+            served = response.prices.keys.size,
         )
     }
 

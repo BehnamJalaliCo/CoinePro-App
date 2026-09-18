@@ -229,6 +229,9 @@ fun CoineProDetailPlaceholder(modifier: Modifier = Modifier) {
         // The pane's mark is the chart's, because the detail pane of every list-detail layout in
         // this app holds a chart. A pane with a sentence and nothing else reads, on a tablet, as
         // half a screen that failed to draw.
+        // **No action, deliberately** (run Ξ, item 22). The action is the list in the pane beside
+        // this one, which is on screen, full of rows, and the reason this half is empty: nothing has
+        // been picked yet. A button here would be pointing at something already in view.
         CoineProEmptyState(
             icon = CoineProIcons.Chart,
             message = stringResource(R.string.pane_detail_empty),

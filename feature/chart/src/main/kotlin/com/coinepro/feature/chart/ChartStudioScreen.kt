@@ -66,6 +66,7 @@ import com.coinepro.core.chart.Replay
 import com.coinepro.core.chart.ToolRail
 import com.coinepro.core.backtest.Backtest
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.coineProControl
 import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
@@ -945,7 +946,7 @@ private fun StudioHeader(symbol: String, timeframe: String, onBackToChart: (() -
                     modifier = Modifier
                         .clip(CoineProShapes.small)
                         .background(CoineProColors.SurfaceElevated)
-                        .clickable(onClick = it)
+                        .coineProControl(onClick = it)
                         .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
@@ -992,7 +993,7 @@ private fun SectionCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onToggle)
+                .coineProControl(onClick = onToggle)
                 .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.OneHalf),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -1058,7 +1059,7 @@ private fun ActionRow(
             .fillMaxWidth()
             .clip(CoineProShapes.small)
             .background(CoineProColors.Surface)
-            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (enabled) Modifier.coineProControl(onClick = onClick) else Modifier)
             .padding(CoineProSpacing.OneHalf),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),

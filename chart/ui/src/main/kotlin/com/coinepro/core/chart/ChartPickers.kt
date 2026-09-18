@@ -41,6 +41,7 @@ import androidx.compose.ui.semantics.semantics
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import androidx.compose.ui.unit.dp
+import com.coinepro.core.designsystem.coineProControl
 import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
@@ -410,7 +411,7 @@ private fun PickerRow(
                 modifier = Modifier
                     .size(28.dp)
                     .clip(CircleShape)
-                    .clickable(onClick = toggle),
+                    .coineProControl(onClick = toggle),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -547,7 +548,7 @@ private fun StepperButton(
         modifier = Modifier
             .size(STEPPER_TAP)
             .clip(CircleShape)
-            .clickable(enabled = enabled, onClick = onClick),
+            .coineProControl(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -604,7 +605,7 @@ internal fun HelpDot(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .clickable(onClick = onClick),
+            .coineProControl(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(

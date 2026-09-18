@@ -36,6 +36,7 @@ import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.coineProControl
 import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.onPageAccent
 import com.coinepro.core.designsystem.pageAccent
@@ -284,7 +285,7 @@ private fun MarkerStyleChip(option: MarkerStyle, selected: Boolean, onClick: () 
         modifier = Modifier
             .clip(CoineProPillShape)
             .background(if (selected) CoineProColors.pageAccent else CoineProColors.SurfaceElevated)
-            .clickable(onClick = onClick)
+            .coineProControl(onClick = onClick)
             .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half)
             .semantics { contentDescription = "marker-style-${option.name.lowercase()}" },
     )

@@ -48,10 +48,18 @@ class SignalControllerCacheTest {
         // The refresh failure is reported as owned copy behind the cached-provenance lead-in.
         // The IOException's own text is deliberately not surfaced: it is diagnostic output, not
         // something a reader can act on, and it would be untranslatable.
+        //
+        // **Its type is** (run Ξ, item 21). This case throws an `IOException`, which means the
+        // request reached nobody, and that is a different fact from a server that answered and
+        // refused — so the detail is `NO_CONNECTION` rather than the caller's own
+        // `SIGNAL_HISTORY_UNAVAILABLE`. A reader looking at a week-old cached list wants to know
+        // that their phone is offline, not that the history «is unavailable», which reads as the
+        // desk being down and is worth waiting an hour for. The prefix is unchanged: the list on
+        // screen is still explicitly the cached one.
         assertEquals(
             UiMessage.Prefixed(
                 MessageKey.CACHED_HISTORY_SHOWN,
-                UiMessage.Local(MessageKey.SIGNAL_HISTORY_UNAVAILABLE),
+                UiMessage.Local(MessageKey.NO_CONNECTION),
             ),
             state.error,
         )

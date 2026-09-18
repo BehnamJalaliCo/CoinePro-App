@@ -47,6 +47,7 @@ import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.SHEET_PREVIEW_SCRIM_ALPHA
+import com.coinepro.core.designsystem.coineProControl
 import com.coinepro.core.designsystem.numeric
 
 /** The three pages of an indicator's settings, as the reference names them. */
@@ -385,7 +386,7 @@ private fun ArrangementPill(text: String, enabled: Boolean, tag: String, accent:
         modifier = Modifier
             .clip(CoineProPillShape)
             .border(1.dp, if (enabled) CoineProTint.edge(accent) else CoineProColors.Border, CoineProPillShape)
-            .clickable(enabled = enabled, onClick = onClick)
+            .coineProControl(enabled = enabled, onClick = onClick)
             .semantics { contentDescription = tag }
             .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
     ) {

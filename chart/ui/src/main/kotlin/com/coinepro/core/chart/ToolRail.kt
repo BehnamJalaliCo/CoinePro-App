@@ -52,6 +52,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.coineProControl
 import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProPillShape
@@ -501,7 +502,7 @@ private fun ModeTileCell(tile: ModeTile, plate: Boolean) {
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .clickable(onClick = tile.onClick)
+                .coineProControl(onClick = tile.onClick)
                 .padding(horizontal = CoineProSpacing.Half),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -586,7 +587,7 @@ private fun RailTab(label: String, selected: Boolean, onClick: () -> Unit) {
             // The chosen tab is a pill on the raised rung — the reference's — not a rounded square.
             .clip(CoineProPillShape)
             .background(if (selected) CoineProColors.SurfaceElevated else Color.Transparent)
-            .clickable(onClick = onClick)
+            .coineProControl(onClick = onClick)
             .padding(horizontal = CoineProSpacing.OneHalf),
         contentAlignment = Alignment.Center,
     ) {
@@ -901,7 +902,7 @@ private fun RailAction(
             // one" in reviews of every app in this category.
             .size(48.dp)
             .clip(CircleShape)
-            .clickable(enabled = enabled, onClick = onClick),
+            .coineProControl(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(

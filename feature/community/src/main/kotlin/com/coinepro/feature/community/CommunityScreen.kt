@@ -317,11 +317,15 @@ fun CommunityScreen(
                 CommunityMode.LOADING -> CentreState(stringResource(R.string.community_loading), busy = true)
 
                 // The name card above is the control; down here the board is simply empty.
+                // No action, therefore: the one thing to do is name yourself, and that field is
+                // on screen already.
                 CommunityMode.UNREGISTERED -> CoineProEmptyState(
                     icon = CoineProIcons.Assistant,
                     message = state.serverText ?: stringResource(R.string.community_unregistered),
                     modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
                 )
+                // No action: a locked board is a standing answer about this account, not a request
+                // that failed, and pressing anything here would return the same refusal.
                 CommunityMode.LOCKED -> CoineProEmptyState(
                     icon = CoineProIcons.Locked,
                     message = state.serverText ?: stringResource(R.string.community_locked),
@@ -423,6 +427,10 @@ private fun LeaderboardBody(state: CommunityUiState) {
             stringResource(R.string.community_loading),
             busy = true,
         )
+        // **No action, deliberately** (run Ξ, item 22). The board is refreshed by the control at
+        // the head of this screen, which is in view above this sentence; an empty table means
+        // nobody has placed yet this period, and asking the server again inside the minute will
+        // return the same nobody.
         table == null || table.leaders.isEmpty() -> CoineProEmptyState(
             icon = CoineProIcons.Assistant,
             message = stringResource(R.string.community_leaderboard_empty),

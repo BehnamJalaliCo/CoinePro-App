@@ -4110,14 +4110,39 @@ private fun MainShell(
                 // Until now the FX branch drew the *copy-trading* screen here, so the one thing an
                 // FX reader comes to Connections for — linking their broker account — was the one
                 // thing this address could not do.
-                ConnectionsScreen(
-                    controller = executionController,
-                    platform = activePlatform,
-                    copyTrade = copyTradeController,
-                )
+                // **The route itself refuses** (run Ξ, item 19).
+                //
+                // Run Τ2 took every menu row that leads here out of the directory while
+                // `FeatureFlags.forexTrading` is off, and that is where a reader would have found
+                // it. This is the other half, and it is the half that makes the claim airtight: a
+                // deep link, a restored back stack, a card on some future screen, or one call site
+                // that forgets the guard would all still have opened the MetaTrader login and its
+                // twenty-two `connections_mt5_*` strings. A route that checks for itself cannot be
+                // reached wrongly by anything.
+                //
+                // Not a wall and not an empty screen: the address simply does not exist, and the
+                // reader is returned to where they were. There is nothing to explain, because there
+                // is nothing they asked for that was refused.
+                if (tradingOffered(activePlatform)) {
+                    ConnectionsScreen(
+                        controller = executionController,
+                        platform = activePlatform,
+                        copyTrade = copyTradeController,
+                    )
+                } else {
+                    LaunchedEffect(Unit) { navController.popBackStack() }
+                }
             }
             composable(COPY_TRADE_ROUTE) {
-                CopyTradeScreen(controller = copyTradeController)
+                // The same guard, and here it is the whole screen rather than one platform's half:
+                // copy trading mirrors signals onto a MetaTrader account, so a build that opens no
+                // broker account has nothing to put on this page at all. `copy_account_*`,
+                // `copy_balance` and `copy_broker` are drawn here and nowhere else.
+                if (tradingOffered(activePlatform)) {
+                    CopyTradeScreen(controller = copyTradeController)
+                } else {
+                    LaunchedEffect(Unit) { navController.popBackStack() }
+                }
             }
             composable(
                 route = AI_PATTERN,

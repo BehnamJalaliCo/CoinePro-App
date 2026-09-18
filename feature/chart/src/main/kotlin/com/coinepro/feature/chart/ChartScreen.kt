@@ -241,6 +241,8 @@ import com.coinepro.core.designsystem.CoineProCelebration
 import com.coinepro.core.designsystem.CoineProConfetti
 import androidx.annotation.StringRes
 import com.coinepro.core.datastore.ReaderMode
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.PathEffect
 
 /**
  * The chart screen.
@@ -811,30 +813,28 @@ fun ChartScreen(
     }
 
     /**
-     * The chart's ink on a symbol switch: zero the frame the instrument changes, one 250 ms later.
+     * The chart's ink on a **timeframe** change: zero the frame the bars are re-cut, one 250 ms
+     * later.
      *
-     * The design brief's cross-fade on the wheel's release. A true cross-fade would hold the old
-     * series on a second canvas for a quarter second; this is the same picture — the new chart
-     * dissolving in over the stage — at the cost of one layer rather than two.
+     * A true cross-fade would hold the old series on a second canvas for a quarter second; this is
+     * the same picture — the re-cut chart dissolving in over the stage — at the cost of one layer
+     * rather than two.
+     *
+     * **A symbol switch is no longer a fade** (run Ξ, item 16). It is a wipe, and it belongs to the
+     * chart rather than to this screen: `CoineProChart` takes [ChartUiState.symbol] and draws the
+     * new instrument in from the left over the same quarter second. The two motions are different
+     * because the two events are. A new timeframe is the same market described again, and a wipe
+     * there would claim a change of subject; a new instrument is a wholly new picture, and a
+     * picture that is wholly new should be seen to be drawn. Doing both here would have meant a
+     * chart that dissolves *and* wipes, which reads as a chart that cannot decide.
      */
     val symbolFade = remember { Animatable(1f) }
-    var fadedSymbol by remember { mutableStateOf(state.symbol) }
     var fadedInterval by remember { mutableStateOf(state.interval) }
-    LaunchedEffect(state.symbol, state.interval) {
-        when {
-            state.symbol != fadedSymbol -> {
-                fadedSymbol = state.symbol
-                fadedInterval = state.interval
-                symbolFade.snapTo(0f)
-                symbolFade.animateTo(1f, tween(SYMBOL_CROSSFADE_MS))
-            }
-            // A timeframe change is a shorter dissolve: the same market, redrawn.
-            state.interval != fadedInterval -> {
-                fadedInterval = state.interval
-                symbolFade.snapTo(0f)
-                symbolFade.animateTo(1f, tween(INTERVAL_CROSSFADE_MS))
-            }
-        }
+    LaunchedEffect(state.interval) {
+        if (state.interval == fadedInterval) return@LaunchedEffect
+        fadedInterval = state.interval
+        symbolFade.snapTo(0f)
+        symbolFade.animateTo(1f, tween(INTERVAL_CROSSFADE_MS))
     }
 
     /**
@@ -1155,7 +1155,7 @@ fun ChartScreen(
                 modifier = Modifier.align(Alignment.Center).zIndex(2f),
             )
             when {
-                state.loading && state.series.isEmpty -> Loading()
+                state.loading && state.series.isEmpty -> ChartSkeleton()
                 state.error != null && state.series.isEmpty -> ChartFailure(state.error!!, controller::retry)
                 // **A seconds chart with nothing on it yet is not a broken chart.**
                 //
@@ -1169,6 +1169,10 @@ fun ChartScreen(
                 else -> {
                 CoineProChart(
                     series = state.visibleSeries,
+                    // The wipe's trigger, and nothing else — see the note on `symbolFade` above.
+                    // The interval is deliberately not passed: this screen already dissolves it,
+                    // and a chart that did both would wipe and fade at once.
+                    symbol = state.symbol,
                     // Read in the layer, so the fade repaints without recomposing the chart. The
                     // stale factor multiplies into the same alpha rather than adding a second
                     // layer: bars on their way out are drawn at [STALE_ALPHA] and a symbol switch
@@ -4879,12 +4883,89 @@ internal fun studioSummary(indicators: Int, drawings: Int): String {
     return if (parts.isEmpty()) empty else parts.joinToString(" · ")
 }
 
+/**
+ * The chart before its first bar: the frame it will fill, not a spinner (run Ξ, item 18).
+ *
+ * ### Why a spinner was the wrong answer
+ *
+ * A circle turning in the middle of a black rectangle says one thing — «wait» — and it says it
+ * identically whether what is coming is a chart, a list or a photograph. What arrives here is
+ * always the same shape: a grid, a ladder of prices down one side, a row of times along the
+ * bottom. Drawing that shape while it loads means the screen does not **change layout** when the
+ * bars land; it fills in. That is the whole of the skeleton argument the rest of this app already
+ * makes with [CoineProSkeleton], applied to the one surface that had kept its spinner.
+ *
+ * The grid is drawn rather than composed because it is a grid: twenty-odd lines in a `Canvas` cost
+ * one draw call and no layout, and they are the same dotted hairline `drawGrid` uses so the
+ * transition is a fill rather than a redraw. The ladder and the time row are real
+ * [CoineProSkeleton] blocks, so they shimmer under the same reduced-motion guard as every other
+ * placeholder in the product and hold a still highlight when a reader has asked for no animation.
+ */
 @Composable
-private fun Loading() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.dp)
+private fun ChartSkeleton() {
+    val grid = CoineProColors.Border
+    Row(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val dots = PathEffect.dashPathEffect(
+                    floatArrayOf(SKELETON_DOT_DP.toPx(), SKELETON_GAP_DP.toPx()),
+                    0f,
+                )
+                val hairline = SKELETON_HAIRLINE_DP.toPx()
+                val rows = SKELETON_ROWS
+                val columns = SKELETON_COLUMNS
+                repeat(rows) { row ->
+                    val y = size.height * (row + 1) / (rows + 1)
+                    drawLine(grid, Offset(0f, y), Offset(size.width, y), hairline, pathEffect = dots)
+                }
+                repeat(columns) { column ->
+                    val x = size.width * (column + 1) / (columns + 1)
+                    drawLine(grid, Offset(x, 0f), Offset(x, size.height), hairline, pathEffect = dots)
+                }
+            }
+            // The time axis, along the foot of the plot where its labels will be.
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.One),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                repeat(SKELETON_COLUMNS) {
+                    CoineProSkeleton(modifier = Modifier.width(SKELETON_TIME_WIDTH), height = SKELETON_LABEL_HEIGHT)
+                }
+            }
+        }
+        // And the price ladder down the gutter, one block per row the grid just drew, so the
+        // numbers arrive where the placeholders were rather than beside them.
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(SKELETON_GUTTER_WIDTH)
+                .padding(vertical = CoineProSpacing.One),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.End,
+        ) {
+            repeat(SKELETON_ROWS + 2) {
+                CoineProSkeleton(
+                    modifier = Modifier.width(SKELETON_PRICE_WIDTH),
+                    height = SKELETON_LABEL_HEIGHT,
+                )
+            }
+        }
     }
 }
+
+/** The skeleton grid's shape. Five rows and six columns is what a phone-sized plot carries. */
+private const val SKELETON_ROWS = 5
+private const val SKELETON_COLUMNS = 6
+private val SKELETON_DOT_DP = 1.dp
+private val SKELETON_GAP_DP = 3.dp
+private val SKELETON_HAIRLINE_DP = 1.dp
+private val SKELETON_LABEL_HEIGHT = 10.dp
+private val SKELETON_PRICE_WIDTH = 44.dp
+private val SKELETON_TIME_WIDTH = 28.dp
+private val SKELETON_GUTTER_WIDTH = 56.dp
 
 /**
  * The wait before a sub-minute chart has a first bar, said in words.
@@ -5039,10 +5120,18 @@ private fun ChartFailure(error: ChartError, onRetry: () -> Unit) {
  */
 private const val INDICATOR_SHEET_HEIGHT = 1f
 
-/** The toolbar's slide out before the fullscreen window, and the chart's fade on a symbol switch. */
+/** The toolbar's slide out before the fullscreen window. */
 private const val FULLSCREEN_SLIDE_MS = 200
-private const val SYMBOL_CROSSFADE_MS = 250
-private const val INTERVAL_CROSSFADE_MS = 150
+
+/**
+ * The dissolve when the bars are re-cut at a new timeframe.
+ *
+ * Two hundred and fifty, up from a hundred and fifty (run Ξ, item 16), and matched to the wipe the
+ * chart itself runs on a symbol switch: two different motions at two different speeds read as two
+ * unrelated behaviours, and a reader who changes the timeframe and then the symbol should feel one
+ * machine answering twice.
+ */
+private const val INTERVAL_CROSSFADE_MS = 250
 
 /** The shimmer down the left edge while older bars load. */
 private val HISTORY_SKELETON_WIDTH = 24.dp

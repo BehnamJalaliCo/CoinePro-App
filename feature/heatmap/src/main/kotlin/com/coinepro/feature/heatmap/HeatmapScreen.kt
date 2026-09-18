@@ -64,6 +64,7 @@ import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.designsystem.CoineProSkeleton
 import com.coinepro.core.marketdata.MarketSearchController
 import com.coinepro.core.symbols.SymbolCategory
+import com.coinepro.core.designsystem.R as DesignR
 
 /**
  * The market heatmap: one screen, one canvas, two sheets.
@@ -254,6 +255,11 @@ fun HeatmapScreen(
                         icon = CoineProIcons.Heatmap,
                         message = stringResource(R.string.heatmap_empty),
                         hint = stringResource(R.string.heatmap_empty_hint),
+                        // Run Ξ, item 22. Offered only where the caller gave this screen something
+                        // to call: docked in a panel with no refresh of its own, the map is fed by
+                        // the surface around it and a button here would do nothing.
+                        action = onRefresh?.let { stringResource(DesignR.string.state_refresh) },
+                        onAction = onRefresh,
                         modifier = Modifier.align(Alignment.Center),
                     )
 

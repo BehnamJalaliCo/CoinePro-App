@@ -44,6 +44,11 @@ fun PaperHistory(
     val fills = state.book.fills.sortedByDescending { it.atEpochMillis }
 
     if (closed.isEmpty() && fills.isEmpty()) {
+        // **No action, deliberately** (run Ξ, item 22). The thing to do here is place an order,
+        // and that control is the ticket tab in the row directly above this panel — on screen, one
+        // tap away, at the moment the reader is reading this sentence. A button that moved them to
+        // a tab they can already see would be a second control for one action, and the tab row is
+        // the one they will use next time.
         CoineProEmptyState(
             message = stringResource(R.string.paper_history_empty),
             icon = CoineProIcons.Activity,

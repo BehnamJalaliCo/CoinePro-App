@@ -35,6 +35,7 @@ import com.coinepro.core.chart.DrawingState
 import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.chart.LineStyleKind
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.coineProControl
 import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.datastore.DrawingTemplate
 import com.coinepro.core.designsystem.CoineProColors
@@ -308,7 +309,7 @@ private fun ClipboardChip(
                 color = if (enabled) CoineProColors.Border else CoineProColors.Border.copy(alpha = DISABLED_EDGE),
                 shape = CoineProPillShape,
             )
-            .clickable(enabled = enabled, onClick = onClick)
+            .coineProControl(enabled = enabled, onClick = onClick)
             .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
     ) {
         Text(
@@ -489,7 +490,7 @@ private fun StyleChip(label: String, active: Boolean, onClick: () -> Unit) {
                 color = if (active) CoineProTint.edge(CoineProColors.pageAccentInk) else CoineProColors.Border,
                 shape = CoineProPillShape,
             )
-            .clickable(onClick = onClick)
+            .coineProControl(onClick = onClick)
             .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
     ) {
         Text(
@@ -560,7 +561,7 @@ private fun SelectionAction(
         modifier = Modifier
             .size(ACTION)
             .clip(CircleShape)
-            .clickable(enabled = enabled, onClick = onClick),
+            .coineProControl(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(

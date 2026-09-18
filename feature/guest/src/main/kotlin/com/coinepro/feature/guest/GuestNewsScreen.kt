@@ -28,6 +28,7 @@ import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.guest.GuestHeadline
 import com.coinepro.core.guest.GuestNewsState
+import com.coinepro.core.designsystem.R as DesignR
 
 /**
  * The headlines, on a page of their own, for a reader with no account.
@@ -81,6 +82,10 @@ fun GuestNewsScreen(controller: GuestController, modifier: Modifier = Modifier) 
                 CoineProEmptyState(
                     icon = CoineProIcons.News,
                     message = stringResource(R.string.guest_news_empty),
+                    // Run Ξ, item 22. A feed that answered and had nothing is rare enough that a
+                    // reader reads it as a fault; the button is what says the app is working.
+                    action = stringResource(DesignR.string.state_refresh),
+                    onAction = controller::refreshNews,
                 )
             } else {
                 LazyColumn(

@@ -41,6 +41,7 @@ import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.R as DesignR
 import androidx.compose.ui.res.stringResource
 import com.coinepro.core.designsystem.CoineProNote
+import com.coinepro.core.designsystem.coineProControl
 
 /**
  * The chart's colour templates: which palette it paints with, and how to make another.
@@ -292,7 +293,7 @@ private fun ColourTemplateChip(
                 if (active) CoineProTint.edge(CoineProColors.Gold) else CoineProColors.Border,
                 CoineProShapes.small,
             )
-            .clickable(onClick = onClick)
+            .coineProControl(onClick = onClick)
             .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
@@ -319,7 +320,7 @@ private fun ColourTemplateChip(
                 tint = CoineProColors.TextMuted,
                 modifier = Modifier
                     .size(CHIP_GLYPH)
-                    .clickable(onClick = delete),
+                    .coineProControl(onClick = delete),
             )
         }
     }
@@ -337,7 +338,7 @@ private fun ThemeChip(label: String, active: Boolean, onClick: () -> Unit) {
                 if (active) CoineProTint.edge(CoineProColors.Gold) else CoineProColors.Border,
                 CoineProShapes.small,
             )
-            .clickable(onClick = onClick)
+            .coineProControl(onClick = onClick)
             .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.OneHalf),
     ) {
         Text(

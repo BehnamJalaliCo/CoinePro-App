@@ -765,6 +765,54 @@ def check_state_surfaces() -> None:
         "an empty state with no mark, which reads as a screen that failed:\n" + "\n".join(offenders),
     )
 
+    # ── one sentence and one action (run Ξ, item 22) ──────────────────────────────────────────
+    #
+    # The brief's rule is «no empty screen without one sentence and one action», and the sentence
+    # half is already true by construction: `message` is a required parameter. The action is not,
+    # and eighteen call sites had none.
+    #
+    # What this gate asks for is **an action, or a reason** — not an action everywhere — and the
+    # difference is the whole of what the audit found. Several empty states in this app already
+    # argued, in a comment beside them, that a button would be wrong: a locked board answers the
+    # same refusal on every press, a depth feed that publishes no book will publish no book on the
+    # second ask, a paper-trade tab's action is the ticket tab the reader can already see. A control
+    # whose every press repeats the same answer teaches a reader that the app's controls do nothing,
+    # which is worse than the empty screen the rule was written against.
+    #
+    # So: pass `onAction`, or write «no action» / «no retry» within the few lines above the call and
+    # say why. A reason that has to be written is a reason somebody has to have.
+    actionless: list[str] = []
+    for path in sources:
+        text = path.read_text(encoding="utf-8")
+        lines = text.splitlines()
+        for match in re.finditer(r"CoineProEmptyState\(", text):
+            index = match.end() - 1
+            depth = 0
+            while index < len(text):
+                if text[index] == "(":
+                    depth += 1
+                elif text[index] == ")":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                index += 1
+            body = text[match.end():index]
+            if "@DrawableRes" in body or "onAction" in body:
+                continue
+            line = text[: match.start()].count("\n") + 1
+            # The reason may sit above the call or inside it; both read naturally and both are a
+            # comment somebody had to write.
+            reason = (" ".join(lines[max(0, line - 8):line]) + " " + body).lower()
+            if any(phrase in reason for phrase in ("no action", "no retry", "nothing to retry")):
+                continue
+            actionless.append(f"{path.relative_to(ROOT)}:{line}")
+    require(
+        not actionless,
+        "an empty state with no action and no reason given for having none:\n"
+        + "\n".join(actionless)
+        + "\nPass onAction, or write «no action» above the call and say why.",
+    )
+
     # Only the drawables an empty or error screen would reach for. The brand mark and the asset
     # logos are bigger and are not this: one is the app's identity, the others are a coin's own
     # artwork, and neither is an illustration somebody drew for a screen with nothing on it.

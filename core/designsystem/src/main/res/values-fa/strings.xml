@@ -165,4 +165,6 @@
     <string name="brand_positioning">خانه‌ی تحلیل کریپتو — با یک نگاه به طلا و دلار</string>
     <string name="brand_positioning_free">نسخه‌ی کامل، رایگان برای همه — بدون محدودیت، بدون آگهی</string>
     <string name="free_banner_dismiss">بستن</string>
+    <string name="message_no_connection">اتصالی نیست. شبکه را بررسی کنید و دوباره تلاش کنید.</string>
+    <string name="state_refresh">تازه‌سازی</string>
 </resources>

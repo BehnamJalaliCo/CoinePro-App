@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.Spring
@@ -46,12 +47,20 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -133,6 +142,16 @@ fun CoineProChart(
     decoration: ChartDecoration = ChartDecoration(),
     /** Interaction off makes this a static picture — for a list row or a card. */
     interactive: Boolean = true,
+    /**
+     * Which instrument these bars belong to, for the arrival animation only (run Ξ, item 16).
+     *
+     * Not used to fetch, label or identify anything — the chart is handed its series and draws it.
+     * It is here because «a new symbol» and «more bars of the same symbol» look identical from
+     * inside this file, and only one of them should redraw the picture from the left.
+     */
+    symbol: String? = null,
+    /** And which timeframe, for the same reason. A change here cross-fades rather than redraws. */
+    interval: String? = null,
     /**
      * The drawing layer's state, or null on a chart that is not a drawing surface.
      *
@@ -1312,6 +1331,66 @@ fun CoineProChart(
     }
 
     /**
+     * The Signal Layer's marks, and the scale-in that carries a new one on (run Ξ, item 15).
+     *
+     * The same arrangement the axis fade above uses, and for the same reason: which marks are on the
+     * plot is a fact only the draw knows, because it is the settled viewport and the thinning that
+     * decide it. The draw publishes the set, the effect chases it, and only what is **new** is
+     * animated — a mark the last frame already carried is drawn at full size whatever the clock is
+     * doing, so a pan over a chart full of signals does not set the whole chart pulsing.
+     *
+     * Nothing scales on the first frame, for the same reason nothing fades on the first ladder: a
+     * chart opening should have its signals, not signals arriving, and a single-frame render — a
+     * screenshot, a thumbnail, a share card — would otherwise photograph them half-grown.
+     */
+    /**
+     * **The arrival** (run Ξ, item 16): a new symbol draws itself in from the left, a new timeframe
+     * cross-fades.
+     *
+     * Two different motions because they are two different events. Changing the **symbol** replaces
+     * every bar on the screen with another instrument's, and a picture that is wholly new should be
+     * seen to be drawn — left to right, the direction time runs, over a quarter of a second.
+     * Changing the **timeframe** keeps the instrument and re-cuts it: the same market, described
+     * again, and a wipe there would claim a change of subject that has not happened.
+     *
+     * **Neither runs on the first composition**, for the reason the axis fade above gives: a
+     * screenshot, a thumbnail or a share card renders one frame, and a chart that arrives would be
+     * photographed half-drawn. A reader opening the app gets a chart, not a chart appearing.
+     */
+    val arrival = remember { Animatable(1f) }
+    var arrivalIsWipe by remember { mutableStateOf(true) }
+    var firstSymbol by remember { mutableStateOf(true) }
+    var firstInterval by remember { mutableStateOf(true) }
+    LaunchedEffect(symbol) {
+        if (firstSymbol) {
+            firstSymbol = false
+            return@LaunchedEffect
+        }
+        arrivalIsWipe = true
+        arrival.snapTo(0f)
+        arrival.animateTo(1f, tween(durationMillis = ARRIVAL_MS, easing = FastOutSlowInEasing))
+    }
+    LaunchedEffect(interval) {
+        if (firstInterval) {
+            firstInterval = false
+            return@LaunchedEffect
+        }
+        arrivalIsWipe = false
+        arrival.snapTo(0f)
+        arrival.animateTo(1f, tween(durationMillis = ARRIVAL_MS, easing = LinearEasing))
+    }
+
+    var markersOnPlot by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    var markersEntering by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    val markerAppear = remember { Animatable(1f) }
+    LaunchedEffect(markersOnPlot) {
+        if (markersEntering.isEmpty()) return@LaunchedEffect
+        markerAppear.snapTo(0f)
+        markerAppear.animateTo(1f, tween(durationMillis = MARKER_APPEAR_MS, easing = FastOutSlowInEasing))
+        markersEntering = emptySet()
+    }
+
+    /**
      * Which legend rows the reader has switched off.
      *
      * Seeded from the caller and toggled here, which is the one place a controlled/uncontrolled
@@ -1546,6 +1625,22 @@ fun CoineProChart(
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
+                // The arrival, applied to the finished picture rather than threaded through eighty
+                // draw calls: a wipe is a clip and a cross-fade is an alpha, and both are what a
+                // graphics layer is for. See `arrival` above.
+                // The cross-fade: one alpha on the finished picture, read in the layer's own block
+                // so a frame of it costs a draw rather than a recomposition.
+                .graphicsLayer { alpha = if (arrivalIsWipe) 1f else arrival.value }
+                // And the wipe: a clip, for the same reason. Threading either of these through the
+                // eighty draw calls below would be eighty places for one of them to be forgotten.
+                .drawWithContent {
+                    val progress = arrival.value
+                    if (!arrivalIsWipe || progress >= 1f) {
+                        drawContent()
+                    } else {
+                        clipRect(right = size.width * progress) { this@drawWithContent.drawContent() }
+                    }
+                }
                 .then(
                     if (!interactive) {
                         Modifier
@@ -2696,7 +2791,21 @@ fun CoineProChart(
             // gutters and the empty state agree with the plot instead of leaving the theme's colour
             // in two strips down the edges.
             if (decoration.colours != null) {
-                drawRect(color = palette.stage, size = size)
+                // **Two per cent lighter at the top** (run Ξ, item 15). A chart is the largest flat
+                // area in the product and the one a reader stares at for minutes at a time; a
+                // perfectly even fill over that much surface reads as a printed page rather than as
+                // something lit. Two per cent is below the threshold at which anybody can name it
+                // as a gradient — which is the point. It is drawn where the flat fill already was,
+                // so a chart embedded in a card or a list row, which has never filled its ground,
+                // still does not.
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(palette.stage.lifted(PLOT_LIFT), palette.stage),
+                        startY = 0f,
+                        endY = size.height,
+                    ),
+                    size = size,
+                )
             }
             // Where the plot sits once the gutters have been taken off it. One rectangle, computed
             // here and published for the gestures and the overlays, so that nothing anywhere else
@@ -2905,7 +3014,7 @@ fun CoineProChart(
                     drawnType != ChartType.FOOTPRINT && drawnType != ChartType.TPO
                 if (volumeBand) {
                     clipRect(0f, 0f, plotWidth, plotHeight) {
-                        drawVolume(view, plotHeight, palette, metrics.body)
+                        drawVolume(view, plotHeight, plotWidth, palette, metrics.body)
                     }
                 }
                 if (priceShown) clipRect(0f, 0f, plotWidth, plotHeight) {
@@ -2997,6 +3106,15 @@ fun CoineProChart(
                         showLegend = decoration.showLegend,
                         palette = palette,
                         measurer = measurer,
+                        entering = markersEntering,
+                        appear = markerAppear.value,
+                        publish = { onPlot ->
+                            val now = onPlot.mapTo(HashSet(onPlot.size)) { it.time }
+                            if (now != markersOnPlot) {
+                                if (markersOnPlot.isNotEmpty()) markersEntering = now - markersOnPlot
+                                markersOnPlot = now
+                            }
+                        },
                     )
                 }
                         }
@@ -3558,6 +3676,24 @@ private fun AlertGutterAffordance(
  * as opaque turns that mistake into a visible colour rather than an invisible chart.
  */
 private fun chartColour(argb: Long): Color = Color(opaqueArgb(argb))
+
+/**
+ * The same colour, [by] of full scale lighter in every channel.
+ *
+ * Added rather than mixed towards white, and that is the difference that matters on a near-black
+ * stage: `lerp(stage, White, 0.02)` moves a 0x0B ground by half a step and is invisible, while two
+ * per cent of full scale is five levels — which is what «two per cent lighter» means to the eye
+ * looking at the top of the screen. On a light stage the same addition clips harmlessly at white.
+ */
+private fun Color.lifted(by: Float): Color = Color(
+    red = (red + by).coerceAtMost(1f),
+    green = (green + by).coerceAtMost(1f),
+    blue = (blue + by).coerceAtMost(1f),
+    alpha = alpha,
+)
+
+/** How far the plot's ground lifts at the top of the canvas. Run Ξ, item 15. */
+private const val PLOT_LIFT = 0.02f
 
 /**
  * The same value with an opaque alpha byte when it had none.
@@ -4129,6 +4265,7 @@ private fun DrawScope.drawOverlay(
 private fun DrawScope.drawVolume(
     view: ChartViewport,
     plotHeight: Float,
+    plotWidth: Float,
     palette: ChartPalette,
     body: Float,
 ) {
@@ -4139,6 +4276,19 @@ private fun DrawScope.drawVolume(
     if (peak <= 0.0) return
     val band = plotHeight * VOLUME_INLINE
     val floorY = round(plotHeight)
+    // **The lid** (run Ξ, item 15). The inline volume shares the price plot's ground, so until now
+    // the only thing saying where one ended and the other began was the height of the bars — and on
+    // a quiet stretch, where every bar is a stub, nothing said it at all. One registered hairline at
+    // the top of the band is the whole fix: it is the same mark the indicator panes are lidded with,
+    // which is why it needs no explaining to anybody who has seen one.
+    val lid = crispStroke(HAIRLINE_DP.toPx())
+    val lidY = strokeCentre(floorY - band, lid)
+    drawLine(
+        color = palette.grid.copy(alpha = VOLUME_LID_ALPHA),
+        start = Offset(0f, lidY),
+        end = Offset(plotWidth, lidY),
+        strokeWidth = lid,
+    )
     for (index in view.firstVisible..view.lastVisible) {
         val bar = view.series[index]
         // Rounded up, not down: a bar whose volume is a hundredth of the session's peak is still a
@@ -4957,6 +5107,30 @@ private fun DrawScope.drawLastPrice(
         pathEffect = dashEffect(LineStyleKind.SPARSE_DOTTED, HAIRLINE_DP.toPx()),
     )
     if (!withAxis || frame.tagGutterWidth <= 0f) return
+    // **A soft glow in the candle's own colour behind the tag** (run Ξ, item 15).
+    //
+    // The one exception to the surface rule, and it is worth naming rather than sliding in: this
+    // app bans coloured glows, because a tinted shadow under a card is what makes an interface look
+    // sprayed on. This is not that. It is a fall-off painted *inside the chart's own canvas*, in
+    // the colour the bar is already drawn in, behind the single label that says what the price is
+    // right now — the one mark on the screen a reader looks for first and the only one that has to
+    // be findable from the far side of a desk. Nothing in the design system's sense of the word is
+    // shadowed: `ambientColor` and `spotColor` appear nowhere, and the gate that bans them is
+    // untouched.
+    val glowY = y.coerceIn(0f, view.plotHeight)
+    val glowRadius = frame.tagGutterWidth * LAST_PRICE_GLOW_SPREAD
+    if (glowRadius > 0f) {
+        val centre = Offset(frame.tagGutterX + frame.tagGutterWidth / 2f, glowY)
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(colour.copy(alpha = LAST_PRICE_GLOW_ALPHA), Color.Transparent),
+                center = centre,
+                radius = glowRadius,
+            ),
+            radius = glowRadius,
+            center = centre,
+        )
+    }
     // One tag, two lines: the price over the countdown, in the same fill — TradingView's own
     // arrangement, measured at 30 css px tall for two 12 px lines. It used to be a coloured tag
     // with a second, stage-coloured chip under it, which read as two labels rather than one fact.
@@ -4977,6 +5151,12 @@ private fun DrawScope.drawLastPrice(
  * colour, and TradingView's greens and reds are dark enough that white clears them.
  */
 private val TAG_INK = Color.White
+
+/** How far the last price's glow reaches, as a multiple of the tag gutter's width. */
+private const val LAST_PRICE_GLOW_SPREAD = 1.1f
+
+/** And how strong it is at the centre. Soft enough that nobody can name it as a circle. */
+private const val LAST_PRICE_GLOW_ALPHA = 0.16f
 
 /**
  * TradingView's trade button: a purple ring with a lightning bolt, hanging at the bottom of the
@@ -5190,6 +5370,8 @@ private fun DrawScope.drawAxisChip(
     top: Float,
     height: Float,
     fill: Color,
+    /** How far the chip's shadow spreads. Zero — no shadow — for every tag but the crosshair's. */
+    shadow: Float = 0f,
 ) {
     val radius = TAG_RADIUS_DP.toPx()
     // Square against the canvas edge and rounded towards the plot, whichever side the gutter is on.
@@ -5211,8 +5393,51 @@ private fun DrawScope.drawAxisChip(
             ),
         )
     }
-    drawPath(chip, color = fill)
+    if (shadow > 0f) drawSoftShadowedPath(chip, fill, shadow) else drawPath(chip, color = fill)
 }
+
+/**
+ * One filled path with a soft shadow under it.
+ *
+ * ### Why this reaches for the framework's paint
+ *
+ * A blur is the one effect Compose's `DrawScope` has no expression for, and the modifier that does
+ * — `Modifier.blur` — is banned in this repository and would be the wrong tool anyway: it is a
+ * render-effect pass over a whole layer, per frame, and what is wanted here is four points of
+ * softness under one small chip. `Paint.setShadowLayer` is the platform's own answer, it costs
+ * nothing when nothing asks for it, and it is what a shadow on a canvas is drawn with.
+ *
+ * The house rule it does **not** break is the one about coloured glows: [SHADOW_INK] is black at low
+ * alpha, in both themes, which is exactly what `check-motion-policy.sh` requires of every shadow in
+ * the product.
+ *
+ * ### The paint is shared, and that is safe here
+ *
+ * One instance for the module rather than one per frame, because this is called on every pointer
+ * move while a crosshair is up and a `Paint` per frame at 120 Hz is 120 allocations a second in the
+ * one place this chart has spent three runs removing them from. Every draw happens on the UI thread
+ * — a `DrawScope` has nowhere else to happen — and the paint is fully reconfigured on each call, so
+ * nothing survives between them.
+ */
+private fun DrawScope.drawSoftShadowedPath(path: Path, fill: Color, blur: Float) {
+    drawIntoCanvas { canvas ->
+        val paint = chipShadowPaint
+        paint.reset()
+        paint.isAntiAlias = true
+        paint.color = fill.toArgb()
+        paint.setShadowLayer(blur, 0f, blur * SHADOW_DROP, SHADOW_INK.toArgb())
+        canvas.nativeCanvas.drawPath(path.asAndroidPath(), paint)
+    }
+}
+
+/** See [drawSoftShadowedPath] for why there is one of these rather than one per frame. */
+private val chipShadowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+
+/** Black at low alpha. The only colour a shadow in this product is ever drawn in. */
+private val SHADOW_INK = Color.Black.copy(alpha = 0.45f)
+
+/** How far a shadow falls, as a fraction of its blur. A quarter: lit from high above. */
+private const val SHADOW_DROP = 0.25f
 
 /**
  * Seconds as `m:ss`, `h:mm:ss` or `Nd`, whichever the size calls for.
@@ -5261,6 +5486,15 @@ private fun DrawScope.drawAxisTag(
     padding: Dp = TAG_PADDING_DP,
     /** From the gutter's edge to the text. The axis' own 10; the crosshair's 8. */
     inset: Dp = AXIS_PADDING_DP,
+    /**
+     * A soft shadow under the chip (run Ξ, item 15).
+     *
+     * Zero for the axis' own tags, which are part of the chart's furniture and sit on a gutter
+     * nothing else is drawn in. The crosshair's are the opposite case: they are drawn **over** the
+     * picture, they move under a finger, and on a busy chart a flat chip on top of candles of a
+     * similar value reads as part of the chart rather than as the reading the reader asked for.
+     */
+    shadow: Dp = 0.dp,
 ) {
     val label = measurer.measure(text, axisStyle(textColour))
     // The countdown, a size down and a shade lighter than the price above it — the phone app's
@@ -5273,7 +5507,7 @@ private fun DrawScope.drawAxisTag(
     // and the countdown hangs under it, which is where TradingView puts it.
     val anchor = if (second == null) y - height / 2 else y - label.size.height / 2 - pad
     val tagTop = anchor.coerceIn(top, lowest)
-    drawAxisChip(frame, tagTop, height, fill)
+    drawAxisChip(frame, tagTop, height, fill, shadow.toPx())
     // **The inset gives way before the digits do.**
     //
     // The gutter is measured against the widest label the axis expects to print, and that estimate
@@ -5423,6 +5657,12 @@ private fun DrawScope.drawMarkers(
     showLegend: Boolean,
     palette: ChartPalette,
     measurer: TextMeasurer,
+    /** The marker times that are new to the plot since the last frame; they scale in. */
+    entering: Set<Long> = emptySet(),
+    /** How far through the [MARKER_APPEAR_MS] scale-in they are: 0 at the swap, 1 at rest. */
+    appear: Float = 1f,
+    /** Where the set of marks actually on the plot is reported. See the note at the call site. */
+    publish: (List<ChartMarker>) -> Unit = {},
 ) {
     if (markers.isEmpty()) return
     val spacingDp = view.barWidth / density
@@ -5441,6 +5681,7 @@ private fun DrawScope.drawMarkers(
     // cannot affect what is. The rule itself is `SignalMarkers.onPlot`, in `:chart-core`, where a
     // unit test can reach it — the same division this function's own note draws.
     val onPlot = SignalMarkers.onPlot(markers, view)
+    publish(onPlot)
     if (onPlot.isEmpty()) return
     val drawn = if (detail == MarkerDetail.THINNED) SignalMarkers.thin(onPlot, series) else onPlot
     // What a label may not cover. The legend plate is the top-left quarter of the plot and it is
@@ -5456,7 +5697,19 @@ private fun DrawScope.drawMarkers(
     }
     val taken = mutableListOf<Rect>()
     for (marker in drawn) {
-        val placed = drawMarker(view, marker, density, detail, palette, measurer, legendGuard, taken)
+        val appearance = if (marker.time in entering) appear else 1f
+        // Grown from the price it points at, not from the canvas' middle: a mark that swelled out
+        // of the centre of the screen would be an animation about the screen rather than about the
+        // bar, and for the 200 ms it lasted it would be pointing at the wrong candle.
+        val placed = if (appearance >= 1f) {
+            drawMarker(view, marker, density, detail, palette, measurer, legendGuard, taken)
+        } else {
+            var grown: Rect? = null
+            scale(appearance, appearance, Offset(view.xOfTime(marker.time), view.yOf(marker.price))) {
+                grown = drawMarker(view, marker, density, detail, palette, measurer, legendGuard, taken)
+            }
+            grown
+        }
         if (placed != null) taken += placed
     }
 }
@@ -5809,6 +6062,7 @@ private fun DrawScope.drawCrosshair(
             top = band.top,
             padding = CROSSHAIR_TAG_PADDING_DP,
             inset = CROSSHAIR_TAG_INSET_DP,
+            shadow = CROSSHAIR_SHADOW_DP,
         )
     } else {
         drawAxisTag(
@@ -5821,6 +6075,7 @@ private fun DrawScope.drawCrosshair(
             plotHeight = view.plotHeight,
             padding = CROSSHAIR_TAG_PADDING_DP,
             inset = CROSSHAIR_TAG_INSET_DP,
+            shadow = CROSSHAIR_SHADOW_DP,
         )
     }
     if (!decoration.showTimeAxis) return
@@ -6409,6 +6664,19 @@ private const val SPAN_MULTI_YEAR = 60L * 60 * 24 * 400
 private const val VOLUME_INLINE = 0.18f
 
 /**
+ * How long a Signal Layer mark takes to reach full size when it arrives. Two hundred milliseconds
+ * — the brief's number, and about as long as a mark can take to grow before the growing is the
+ * thing being watched rather than the signal.
+ */
+private const val MARKER_APPEAR_MS = 200
+
+/**
+ * How long a new symbol takes to draw itself in, and a new timeframe to cross over. Two hundred
+ * and fifty milliseconds — the brief's number, and long enough to be seen without being waited on.
+ */
+private const val ARRIVAL_MS = 250
+
+/**
  * How much of the plot's width the widest row of a volume profile reaches. See
  * [drawVolumeProfileRows].
  *
@@ -6712,6 +6980,12 @@ private val TAG_PADDING_DP = 3.dp
  * above and below — and 8 px from the tag's edge to the text on either side.
  */
 private val CROSSHAIR_TAG_PADDING_DP = 4.dp
+
+/**
+ * How soft the crosshair tag's shadow is. Four points — the brief's number, and the design
+ * system's own «one very soft shadow», which is what a chip floating over a picture is allowed.
+ */
+private val CROSSHAIR_SHADOW_DP = 4.dp
 private val CROSSHAIR_TAG_INSET_DP = 8.dp
 
 /**
@@ -6857,6 +7131,14 @@ private const val GRID_ALPHA = 1f
 private const val FRAME_ALPHA = 0.9f
 // TradingView's volume histogram: the candle colour at half strength, measured #1A5A54 on #0F0F0F.
 private const val VOLUME_ALPHA = 0.5f
+
+/**
+ * The volume band's lid, against the grid's own ink.
+ *
+ * Stronger than a gridline and weaker than a pane's lid: the band is part of the price plot, not a
+ * pane of its own, and a rule as firm as a pane's would claim a division that is not there.
+ */
+private const val VOLUME_LID_ALPHA = 0.5f
 
 /**
  * How long a time-axis label takes to dissolve in or out when the zoom changes the ladder.
