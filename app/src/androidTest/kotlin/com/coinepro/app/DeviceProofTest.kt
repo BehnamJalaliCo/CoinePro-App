@@ -4,6 +4,7 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.os.Build
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -204,6 +205,15 @@ class DeviceProofTest {
                     LocalContext provides context,
                     LocalConfiguration provides configuration,
                     LocalLayoutDirection provides if (language.value.language == "fa") LayoutDirection.Rtl else LayoutDirection.Ltr,
+                    // **Put back what the locale swap takes away.**
+                    //
+                    // `createConfigurationContext` builds a context from the *base*, not from the
+                    // activity, so the wrapper chain no longer reaches a `ComponentActivity` — and
+                    // `rememberLauncherForActivityResult` finds its owner by walking that chain.
+                    // Any scene containing a picker therefore died with «No
+                    // ActivityResultRegistryOwner was provided», which reads like a Compose bug and
+                    // is really the line above it. The rule's activity is the owner; hand it over.
+                    LocalActivityResultRegistryOwner provides composeRule.activity,
                 ) {
                     CoineProTheme(darkTheme = dark.value) {
                         Surface(modifier = Modifier.fillMaxSize()) {

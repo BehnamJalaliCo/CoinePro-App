@@ -77,10 +77,14 @@ class RunOmegaFixProofTest {
     @Config(sdk = [34], qualifiers = FA_PHONE)
     fun theSetupScoreShowsTheRecordItWasBuiltFrom() {
         val controller = charted()
+        // Read before the composable rather than inside it: `StateFlow.value` in composition is a
+        // read Compose cannot recompose on, and lint refuses it — rightly, even in a test, because
+        // a proof frame that silently stops tracking its own state is a frame of the wrong moment.
+        val layer = controller.state.value.signals
         proof("omegafix-setup-score-fa") {
             ExplainSheetBody(
                 id = null,
-                layer = controller.state.value.signals,
+                layer = layer,
                 onSetHorizon = controller::setConfidenceHorizon,
                 onAddAlert = null,
                 onPractise = null,
@@ -115,10 +119,11 @@ class RunOmegaFixProofTest {
     @Config(sdk = [34], qualifiers = FA_PHONE)
     fun theExplainSheetNamesAStopRatherThanAMistake() {
         val controller = charted()
+        val layer = controller.state.value.signals
         proof("omegafix-explain-stop-fa") {
             ExplainSheetBody(
                 id = "rsi",
-                layer = controller.state.value.signals,
+                layer = layer,
                 onSetHorizon = controller::setConfidenceHorizon,
                 onAddAlert = {},
                 onPractise = {},

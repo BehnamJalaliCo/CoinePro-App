@@ -40,7 +40,13 @@ private const val PINCH_FAR = 0.22f
  *     ./gradlew :benchmark:connectedBenchmarkAndroidTest \
  *         -Pandroid.testInstrumentationRunnerArguments.class=com.coinepro.benchmark.ChartFlingBenchmark
  *
- * and read `benchmark/build/outputs/connected_android_test_additional_output/…/*.json`.
+ * and read the JSON under `benchmark/build/outputs/connected_android_test_additional_output/`.
+ *
+ * (Written without a glob on purpose. Kotlin block comments **nest**, unlike Java's: a slash
+ * followed by a star inside this KDoc opens a second comment, and the delimiter that ends this
+ * one then closes only the inner. It did — the rest of the file became comment, the module
+ * stopped compiling, and the error read «Unclosed comment» against the last line, which is
+ * about as far from the cause as a diagnostic can get.)
  */
 @RunWith(AndroidJUnit4::class)
 class ChartFlingBenchmark {

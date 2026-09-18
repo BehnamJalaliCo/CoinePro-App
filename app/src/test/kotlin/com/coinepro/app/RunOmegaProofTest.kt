@@ -113,10 +113,13 @@ class RunOmegaProofTest {
     @Config(sdk = [34], qualifiers = FA_PHONE)
     fun theExplainSheetShowsTheBaseRateAndItsSampleSize() {
         val controller = charted()
+        // Read before the composable, not inside it: `StateFlow.value` in composition is a read
+        // Compose cannot recompose on, and lint refuses it even in a test.
+        val layer = controller.state.value.signals
         proof("omega-explain-sheet-fa-dark") {
             ExplainSheetBody(
                 id = "rsi",
-                layer = controller.state.value.signals,
+                layer = layer,
                 onSetHorizon = controller::setConfidenceHorizon,
                 onAddAlert = {},
                 onPractise = {},

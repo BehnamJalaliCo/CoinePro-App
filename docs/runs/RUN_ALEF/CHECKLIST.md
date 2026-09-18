@@ -79,3 +79,17 @@ world, not an instruction — and it turned out to have a great deal of work hid
 | 22 | The new surface rendered at a tablet width **on the day it was written** | ✅ | `RUN_PSI/RESUME.md`'s second instruction to the next session, followed rather than read: two of the last three full-screen surfaces were wrong on a tablet, and both were caught a run late. The card has a pixel-tablet frame in the same commit as the card | `alef-update-available-pixel-tablet-fa` |
 | 23 | Every gate, the whole suite, a signed build | ✅ | Nine gates green; the full unit suite green; shipped as 5.0.0 | — **the commit and the release** |
 | 24 | Why 5.0.0 and not 4.100.0 | ✅ | The versioning scheme reserves two digits for MINOR — `versionCode = MAJOR×10,000,000 + MINOR×100,000 + …` — so 4.99.0 is the last of the fours and `version.py --bump minor` refuses to go further. It is the scheme choosing, not taste; that it lands on the release where the product leaves the store behind is a coincidence and a convenient one | — **arithmetic.** `scripts/release/version.py`, `MAX_MINOR = 99` |
+
+---
+
+## א7 — Android CI, red for six commits before this run touched it
+
+Not in the brief, and found because 5.0.0's push was watched rather than assumed. Three jobs were
+failing and none of the three failures was new; the owner's own gate list is green throughout, which
+is exactly how a workflow stays red without anybody noticing.
+
+| # | Item | State | Evidence | Frame |
+|---|---|---|---|---|
+| 25 | `:benchmark` had not compiled for weeks | ✅ **fixed** | A KDoc in `ChartFlingBenchmark` documented an output path ending `…/*.json`. **Kotlin block comments nest** — unlike Java's — so the slash-star inside the comment opened a second one, the closing delimiter shut only that, and the remaining two hundred lines of the file were comment. The error read «Unclosed comment» against the last line of the file, which is about as far from the cause as a diagnostic gets. The path is written without a glob now, and the note beside it says why | — **a compiler error, and the evidence is its absence.** CI's `:benchmark:compileBenchmarkKotlin`; it cannot be built here (the macrobenchmark artifact is not in the offline cache) |
+| 26 | `:app:lintDebug` failed on two proof tests | ✅ **fixed** | `StateFlowValueCalledInComposition`: `controller.state.value.signals` read *inside* a `proof { }` composable in `RunOmegaFixProofTest` and `RunOmegaProofTest`. Hoisted above the lambda in all three places. The rule is right even in a test — a frame whose state cannot recompose is a picture of the wrong moment, which is the same fault run Ψ found in the welcome captures | — **a lint rule.** `:app:lintDebug` green here, 0 errors against 41 warnings |
+| 27 | The on-device proof test died before it drew anything | ✅ **fixed, unverified** | `DeviceProofTest` swaps the locale with `createConfigurationContext`, which builds a context from the **base** rather than from the activity — so the wrapper chain no longer reaches a `ComponentActivity`, and `rememberLauncherForActivityResult` could not find its owner. Any scene with a picker in it threw. `LocalActivityResultRegistryOwner` is now provided from the rule's own activity | — **an emulator test; this container has none.** It compiles (`:app:compileDebugAndroidTestKotlin`), and CI's emulator is the verdict |

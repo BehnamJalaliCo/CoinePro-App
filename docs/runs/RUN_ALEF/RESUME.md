@@ -22,7 +22,8 @@ last is ⏳ on two static files somebody has to put on a host that already exist
 * **`docs/release/DISTRIBUTION.md`** is the new document of record for how the product ships. The
   two Play documents are re-framed as preparation and neither is now describing reality.
 
-**Shipped:** 5.0.0. Every gate green, the whole unit suite green.
+**Shipped:** 5.0.0. Every gate green, the whole unit suite green, the signed APK published as
+`v5.0.0`. Android CI was red on arrival for reasons predating this run — see the last section.
 
 ---
 
@@ -73,6 +74,19 @@ last is ⏳ on two static files somebody has to put on a host that already exist
   title first.
 * **`testDebugUnitTest` and `:app:assembleRelease` are still separate invocations**, or they run out
   of memory. Unchanged from run Ψ, and still true.
+* **The owner's gate list does not cover what CI runs, and CI had been red for six commits.**
+  Nine gates green and the whole unit suite green says nothing about `:app:lintDebug`,
+  `:benchmark:compileBenchmarkKotlin` or the emulator tests, and all three were failing before this
+  run went near them (§א7). **Read the workflow result after a push** — it is one `curl` against
+  `api.github.com/repos/.../actions/runs`, and the alternative is finding out six releases later.
+* **Kotlin block comments nest.** `/*` inside a KDoc opens a second comment, and the closing
+  delimiter then shuts only the inner one — so a path like `…/*.json` written in a doc comment turns
+  the rest of the file into a comment. The compiler reports «Unclosed comment» against the *last*
+  line, naming neither the file's real problem nor anything near it. `:benchmark` had been in that
+  state for weeks.
+* **A wrapped `LocalContext` loses the activity.** `createConfigurationContext` builds from the base
+  context, so anything that finds its owner by walking the context chain — `rememberLauncherForActivityResult` is the one that bit — stops working the moment a test swaps the locale that way.
+  Provide the owner explicitly.
 
 ---
 
@@ -87,3 +101,19 @@ last is ⏳ on two static files somebody has to put on a host that already exist
 4. **`RUN_XI/BLOCKED.md §Ξ21`** — the signals route's «entitled but unlinked».
 5. Everything still open from RUN Τ2: the fling's distance-versus-time, the four alert tones,
    `membership_open_ourbit`, C5's separate scales, and the watchlist's «تحلیل».
+
+---
+
+## Android CI
+
+Three jobs were red when 5.0.0 was pushed and none of the three failures was new (§א7 in the checklist). Two are fixed and verified here: `:app:lintDebug` passes, and the nested-comment
+fault that stopped `:benchmark` compiling is gone. The third — `DeviceProofTest` on the emulator —
+is fixed but **unverifiable in this container**, so the next session's first act should be to read
+the workflow result rather than assume it:
+
+```
+curl -s "https://api.github.com/repos/BehnamJalaliCo/CoinePro-App/actions/runs?per_page=6"
+```
+
+The signed release is published either way: "Build Android APK" is a separate workflow and it
+succeeded — `v5.0.0`, with `pro-chart-5.0.0.apk`.
