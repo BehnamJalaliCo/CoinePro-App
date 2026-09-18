@@ -10,6 +10,7 @@ import androidx.benchmark.macro.StartupMode
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.uiautomator.By
+import androidx.test.uiautomator.UiSelector
 import androidx.test.uiautomator.Until
 import org.junit.Rule
 import org.junit.Test
@@ -217,7 +218,12 @@ class ChartFlingBenchmark {
                 y = if (vertical) centreY + reach.toInt() else centreY,
             )
         }
-        device.performMultiPointerGesture(first, second)
+        // `performMultiPointerGesture` lives on `UiObject` — the `UiSelector` API — and on nothing
+        // else: not on `UiDevice`, which has only the single-pointer `swipe`, and not on the
+        // `UiObject2` that [pinch] above gets back from `findObject(By…)`. Two fingers on an
+        // explicit path is the whole point of this gesture, so the selector API is the one to use.
+        val surface = device.findObject(UiSelector().packageName(TARGET_PACKAGE))
+        surface.performMultiPointerGesture(first, second)
         device.waitForIdle()
     }
 

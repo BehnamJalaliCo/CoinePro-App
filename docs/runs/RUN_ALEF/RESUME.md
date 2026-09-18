@@ -83,7 +83,8 @@ last is ⏳ on two static files somebody has to put on a host that already exist
   delimiter then shuts only the inner one — so a path like `…/*.json` written in a doc comment turns
   the rest of the file into a comment. The compiler reports «Unclosed comment» against the *last*
   line, naming neither the file's real problem nor anything near it. `:benchmark` had been in that
-  state for weeks.
+  state for weeks — and **a file that does not parse hides every error after the first**: behind the
+  comment sat a second fault, `device.performMultiPointerGesture`, which `UiDevice` has never had.
 * **A wrapped `LocalContext` loses the activity.** `createConfigurationContext` builds from the base
   context, so anything that finds its owner by walking the context chain — `rememberLauncherForActivityResult` is the one that bit — stops working the moment a test swaps the locale that way.
   Provide the owner explicitly.
@@ -106,10 +107,17 @@ last is ⏳ on two static files somebody has to put on a host that already exist
 
 ## Android CI
 
-Three jobs were red when 5.0.0 was pushed and none of the three failures was new (§א7 in the checklist). Two are fixed and verified here: `:app:lintDebug` passes, and the nested-comment
-fault that stopped `:benchmark` compiling is gone. The third — `DeviceProofTest` on the emulator —
-is fixed but **unverifiable in this container**, so the next session's first act should be to read
-the workflow result rather than assume it:
+Three jobs were red when 5.0.0 was pushed and none of the three failures was new (§א7 in the
+checklist). All three are fixed, and each was verified as far as this container allows:
+
+* **Compose UI** — green on CI after the `LocalActivityResultRegistryOwner` fix. Confirmed.
+* **`:app:lintDebug`** — green here.
+* **`:benchmark`** — two faults, one hidden behind the other. Both fixed;
+  `:benchmark:compileBenchmarkKotlin` is green here, built **without** `--offline` so the
+  macrobenchmark artifact could be fetched. The wrapper script in the scratchpad forces `--offline`
+  and this module is the one place that matters.
+
+If anything is still red, read the workflow rather than guess:
 
 ```
 curl -s "https://api.github.com/repos/BehnamJalaliCo/CoinePro-App/actions/runs?per_page=6"
