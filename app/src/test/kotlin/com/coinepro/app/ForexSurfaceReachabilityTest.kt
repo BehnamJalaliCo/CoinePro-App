@@ -15,9 +15,15 @@ import org.junit.Test
  * **`FeatureFlags.forexTrading = false` has to be airtight** (run Τ2, B3).
  *
  * The flag's own promise is that with it off every door to a forex *account* is **absent** rather
- * than dimmed — the introducing brokers, the MetaTrader connection, copy trading, and every row
- * that leads to one of them. A dimmed control is an advertisement for something the reader cannot
- * have, and on a screen about money it reads as a fault.
+ * than dimmed — the introducing brokers, the venue link, and every row that leads to one of them.
+ * A dimmed control is an advertisement for something the reader cannot have, and on a screen about
+ * money it reads as a fault.
+ *
+ * **Copy trading is not on the list any more** (run Ψ). It was the largest thing the flag hid, and
+ * it is now something stronger than hidden: the screen, the route, the controller and the two
+ * modules behind it are deleted. A test asserting the flag hides it would be asserting the flag's
+ * reach over something nothing could reach anyway, so what is left is the one row the flag still
+ * governs and the one route that still refuses itself.
  *
  * ### What this walks, and what it deliberately does not
  *
@@ -117,13 +123,13 @@ class ForexSurfaceReachabilityTest {
      *
      * B3 took the rows out of the directory, which is where a reader would have found them. It did
      * not stop a deep link, a restored back stack, or one future call site that forgets the guard.
-     * So both addresses now check for themselves, and this reads the check out of the shell rather
-     * than trusting that somebody remembered it.
+     * So the address checks for itself, and this reads the check out of the shell rather than
+     * trusting that somebody remembered it.
      */
     @Test
-    fun `both broker routes refuse to draw themselves with the flag off`() {
+    fun `the broker route refuses to draw itself with the flag off`() {
         val source = File("src/main/kotlin/com/coinepro/app/CoineProApp.kt").readText()
-        listOf("CONNECTIONS_ROUTE", "COPY_TRADE_ROUTE").forEach { route ->
+        GUARDED_ROUTES.forEach { route ->
             val block = Regex("""composable\($route\) \{(.*?)
             \}""", RegexOption.DOT_MATCHES_ALL)
                 .find(source)
@@ -143,78 +149,72 @@ class ForexSurfaceReachabilityTest {
     }
 
     /**
-     * The brief names three families of string — the MetaTrader keys, the copy-trading account
-     * block, and the broker's own name — and asks that the flag take all of them.
+     * Run Ξ named three families of string — the MetaTrader keys, the copy-trading account block,
+     * and the broker's own name — and asked that the flag take all of them.
      *
-     * The way that is true is **where they live**: every one of them is drawn on one of the two
-     * screens above and on no other, so the two guards take the lot. This is what would fail the
-     * day somebody puts «موجودی حساب کپی» on a card in the menu, which is precisely the kind of
-     * change that would slip a broker surface back into a build that opens no broker account.
+     * **All three are now gone from the tree** (run Ψ), which is the strongest form the answer can
+     * take: the MetaTrader card went with copy trading, and its twenty `connections_mt5_*` strings
+     * went with the card. So what this asserts is that none of them is drawn anywhere — and the
+     * companion assertion is the important half, because a walk that finds nothing because it was
+     * pointed at nothing is a test that passes by looking at the wrong place.
      */
     @Test
-    fun `every broker string is drawn on one of the two guarded screens and nowhere else`() {
-        val allowed = setOf("feature/connections", "feature/copytrade")
-        val offenders = sequenceOf(File("../app/src/main"), File("../core"), File("../feature"))
+    fun `no copy-trading or MetaTrader string is drawn anywhere`() {
+        val roots = listOf(File("../app/src/main"), File("../core"), File("../feature"))
+        roots.forEach { root ->
+            assertTrue("${root.path} is not on disk — this test is looking at nothing", root.isDirectory)
+        }
+        val sources = roots
+            .asSequence()
             .flatMap { root -> root.walkTopDown().filter { it.isFile && it.extension == "kt" } }
+            .filterNot { "/test/" in it.path.replace('\\', '/') }
+            .toList()
+        assertTrue("no Kotlin sources were walked at all", sources.size > 100)
+
+        val offenders = sources
             .filter { file ->
-                val path = file.path.replace('\\', '/')
-                allowed.none { it in path } && "/test/" !in path
-            }
-            .filter { file ->
+                val text = file.readText()
                 BROKER_STRING_FAMILIES.any { family ->
-                    Regex("""R\.string\.$family""").containsMatchIn(file.readText())
+                    Regex("R\\.string\\.$family").containsMatchIn(text)
                 }
             }
             .map { it.path }
-            .toList()
         assertTrue(
-            "a broker string is drawn outside the two guarded screens: $offenders",
+            "a copy-trading or MetaTrader string is still drawn: $offenders",
             offenders.isEmpty(),
         )
-        // And the search works. A walk over a path that does not exist finds nothing and passes,
-        // which is the failure mode of every test written this way; this is what says the regular
-        // expressions match something real.
-        val guarded = listOf(
-            File("../feature/copytrade/src/main/kotlin/com/coinepro/feature/copytrade/CopyTradeScreen.kt"),
-            File("../feature/connections/src/main/kotlin/com/coinepro/feature/connections/ConnectionsScreen.kt"),
-        )
-        guarded.forEach { file ->
-            assertTrue("${file.path} has moved — this test is looking at nothing", file.isFile)
-            val text = file.readText()
-            assertTrue(
-                "${file.name} draws none of the broker strings — either it changed or the " +
-                    "patterns in BROKER_STRING_FAMILIES no longer match anything",
-                BROKER_STRING_FAMILIES.any { family -> Regex("R\\.string\\.$family").containsMatchIn(text) },
-            )
-        }
+        println("walked ${sources.size} sources; broker strings drawn in ${offenders.size}")
     }
 
     /**
-     * And the keys are all on the one screen's own resources, so hiding the screen hides them.
+     * And the resources went with the screen, in both languages.
      *
-     * The brief says twenty-two `connections_mt5_*` keys; the tree carries **twenty**, all of them
-     * in `feature/connections`. The number is stated rather than asserted at 22 — a gate that
-     * fails when somebody writes a twenty-first string would be a gate arguing with the product —
-     * but the *location* is asserted, because that is the claim that matters.
+     * Run Ξ counted twenty `connections_mt5_*` keys in `feature/connections`. Run Ψ removed the
+     * MetaTrader card, so all twenty are gone — and gone from `values-fa/` as well, which is the
+     * half that rots quietly: a Persian string with no English twin passes a parity check by being
+     * absent from the comparison rather than by being right.
      */
     @Test
-    fun `the MetaTrader strings live in the connections module only`() {
-        val english = File("../feature/connections/src/main/res/values/strings.xml").readText()
-        val keys = Regex("""name="(connections_mt5_[a-z0-9_]+)"""").findAll(english).count()
-        assertTrue("the MetaTrader strings have left feature/connections", keys > 0)
-        println("connections_mt5_* keys in feature/connections: $keys")
+    fun `no MetaTrader string survives in either language`() {
+        listOf("values", "values-fa").forEach { locale ->
+            val file = File("../feature/connections/src/main/res/$locale/strings.xml")
+            assertTrue("${file.path} is missing", file.isFile)
+            val keys = Regex("""name="(connections_mt5_[a-z0-9_]+)"""").findAll(file.readText()).count()
+            assertEquals("MetaTrader strings survive in $locale", 0, keys)
+        }
     }
 
     private companion object {
         /**
          * The rows that must not survive the flag.
          *
-         * `connections` is the MetaTrader login and the broker list — the twenty-two
-         * `connections_mt5_*` strings live on that screen and nowhere else, so it going takes them
-         * with it. `copy-trade` mirrors verified signals onto a MetaTrader account, which a build
-         * that opens none has nothing to do with.
+         * `connections` is the venue link and the broker list. It is the only one left: run Ψ
+         * deleted copy trading from the product, so `copy-trade` is not a row this flag hides — it
+         * is a row that does not exist, along with its screen, its route and its two modules. A
+         * test that still asserted the flag hid it would be asserting the flag's reach over
+         * something nothing could reach anyway.
          */
-        val FORBIDDEN_IDS = listOf("connections", "copy-trade")
+        val FORBIDDEN_IDS = listOf("connections")
 
         /**
          * The string families the brief names, as regular-expression stems.
@@ -224,5 +224,8 @@ class ForexSurfaceReachabilityTest {
          * is covered the day it is added rather than the day somebody remembers this file.
          */
         val BROKER_STRING_FAMILIES = listOf("connections_mt5_[a-z0-9_]+", "copy_account_[a-z0-9_]+", "copy_balance", "copy_broker")
+
+        /** The route this test still guards. `COPY_TRADE_ROUTE` went with the feature (run Ψ). */
+        val GUARDED_ROUTES = listOf("CONNECTIONS_ROUTE")
     }
 }

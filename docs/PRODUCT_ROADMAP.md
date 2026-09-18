@@ -298,7 +298,6 @@ core:symbols
 core:signals
 core:notifications
 core:execution
-core:copytrade
 core:portfolio
 core:academy
 core:community
@@ -341,7 +340,6 @@ feature:dom
 feature:heatmap
 feature:journal
 feature:papertrade
-feature:copytrade
 feature:ai
 feature:ai-vision
 feature:ai-assistant

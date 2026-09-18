@@ -59,9 +59,24 @@ class SignalController(
                 // out, so fifty was leaving fifty signals on the server for no reason — one
                 // request either way, and the shortfall is reported rather than hidden.
                 val page = gateway.list(market, status, limit = LIST_LIMIT)
+                // **What this product publishes on this market** (run Ψ). On crypto that is
+                // everything the desk sent; on forex it is the gold call, which is the whole of
+                // what the forex side of Pro Chart is now. The rule is `ForexSignalScope`, in one
+                // place with a test on it, and what it holds back is counted rather than dropped.
+                val shown = ForexSignalScope.scoped(market, page.items)
+                val held = page.items.size - shown.size
                 _state.update { old ->
                     if (old.market == market && old.status == status) {
-                        old.copy(items = page.items, total = page.total, loading = false, error = null)
+                        old.copy(
+                            items = shown,
+                            // The server's own count, less what this product does not show: a
+                            // reader must not be told there are eleven more in the history when
+                            // every one of them is a market this app does not publish.
+                            total = (page.total - held).coerceAtLeast(shown.size),
+                            withheld = held,
+                            loading = false,
+                            error = null,
+                        )
                     } else {
                         old
                     }

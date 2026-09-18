@@ -21,7 +21,6 @@ dependencies {
     // CoinePro-FX has no venue-connection route. Its MetaTrader 5 account is linked over the
     // copy-trading contract — `user/account/link`, `DELETE user/account`, `user/copy-status` — so
     // this screen reads that module rather than inventing a second client for the same three routes.
-    implementation(project(":core:copytrade"))
     implementation(project(":core:designsystem"))
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(platform(libs.androidx.compose.bom))

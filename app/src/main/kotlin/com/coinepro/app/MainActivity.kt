@@ -99,7 +99,6 @@ import com.coinepro.core.papertrade.PaperTradeController
 import com.coinepro.core.script.ScriptController
 import com.coinepro.core.auth.SessionController
 import com.coinepro.core.auth.SessionState
-import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.datastore.ActivePlatformStore
 import com.coinepro.core.marketdata.MarketDataController
@@ -198,7 +197,6 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var signalControllers: Map<MarketPlatform, @JvmSuppressWildcards SignalController>
     @Inject lateinit var notificationControllers: Map<MarketPlatform, @JvmSuppressWildcards NotificationController>
     @Inject lateinit var executionControllers: Map<MarketPlatform, @JvmSuppressWildcards ExecutionController>
-    @Inject lateinit var copyTradeControllers: Map<MarketPlatform, @JvmSuppressWildcards CopyTradeController>
     @Inject lateinit var aiSignalControllers: Map<MarketPlatform, @JvmSuppressWildcards AiSignalController>
     @Inject lateinit var aiVisionControllers: Map<MarketPlatform, @JvmSuppressWildcards AiVisionController>
     @Inject lateinit var aiAssistantController: AiAssistantController
@@ -371,7 +369,6 @@ class MainActivity : FragmentActivity() {
                 signalControllers = signalControllers,
                 notificationControllers = notificationControllers,
                 executionControllers = executionControllers,
-                copyTradeControllers = copyTradeControllers,
                 aiSignalControllers = aiSignalControllers,
                 aiVisionControllers = aiVisionControllers,
                 aiAssistantController = aiAssistantController,

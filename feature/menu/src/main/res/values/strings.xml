@@ -37,7 +37,6 @@
     <string name="menu_paper_title">Paper trading</string>
     <string name="menu_journal_title">Trading journal</string>
     <string name="menu_connections_title">Account connections</string>
-    <string name="menu_copy_title">Copy trading</string>
     <string name="menu_terminal_title">Web terminal</string>
 
     <string name="menu_studio_title">Chart studio</string>

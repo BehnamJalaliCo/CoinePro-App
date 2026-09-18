@@ -25,11 +25,19 @@ object FeatureFlags {
      * False, and that is the product decision: «خانه‌ی تحلیل کریپتو — با یک نگاه به طلا و دلار».
      * Gold and the dollar are what this app was built around and they are not going anywhere — they
      * keep their chart, their indicators, their drawings, their alerts, their scripts, their replay
-     * and their watchlist row. What goes is the *account*: the introducing-broker links, the
-     * MetaTrader connection, copy trading and every row that leads to one of them.
+     * and their watchlist row. What goes is the *account*: the introducing-broker links and every
+     * row that leads to one.
      *
      * They go **absent, never greyed**. A dimmed control is an advertisement for something the
      * reader cannot have, and on a screen about money it reads as a fault rather than a choice.
+     *
+     * **Copy trading is not on this flag's list any more, and that is not an omission** (run Ψ).
+     * It used to be the largest thing the flag hid. The product no longer has the feature at all:
+     * the screen, the controller, the gateway, the MetaTrader card on Connections and the two
+     * modules behind them are deleted rather than switched off. On the forex side this app is a
+     * gold signal and a chart — see `ForexSignalScope` — and nothing mirrors anybody's orders onto
+     * a broker account. Turning this flag back on would restore the broker links; it would not
+     * restore copy trading, because there is nothing left to restore.
      *
      * Untouched either way (F6): the LBank connection that places crypto orders, the account
      * verification the crypto venue requires, every alert, every signal, and every read-only

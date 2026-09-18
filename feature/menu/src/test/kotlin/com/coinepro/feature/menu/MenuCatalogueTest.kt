@@ -126,13 +126,14 @@ class MenuCatalogueTest {
 
     @Test
     fun `a platform that does not serve a surface is not offered it`() {
-        // The academy and copy trading are CoinePro-FX routes; TradeYar has neither.
+        // The academy is a CoinePro-FX route; TradeYar does not have it. Copy trading was the
+        // other such row until run Ψ, and it is not a platform's now — it is nobody's.
         assertFalse("academy" in ids(member))
         assertFalse("copy-trade" in ids(member))
 
         val fx = MenuAccess(platform = MarketPlatform.COINEPRO_FX, signedIn = true)
         assertTrue("academy" in ids(fx))
-        assertTrue("copy-trade" in ids(fx))
+        assertFalse("copy-trade" in ids(fx))
     }
 
     @Test

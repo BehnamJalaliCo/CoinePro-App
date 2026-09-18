@@ -36,7 +36,16 @@ class NotePolicyTest {
     fun `the money and deletion notes are the ones that stay`() {
         // A spot check of the policy's stated reason, so the list cannot drift into "notes somebody
         // liked" without this sentence changing too.
-        val kept = setOf("copy_switch_note", "alerts_delete_body", "delete_account_kept_note", "webhooks_secret_hint")
+        //
+        // `copy_switch_note` stood here as the money example until run Ψ, when copy trading left
+        // the product. `connections_lbank_body` is the money note now: it is the exchange key that
+        // places real orders, which is the same claim on a surface that still exists.
+        val kept = setOf(
+            "connections_lbank_body",
+            "alerts_delete_body",
+            "delete_account_kept_note",
+            "webhooks_secret_hint",
+        )
         assertEquals(kept, NotePolicy.visible intersect kept)
     }
 }

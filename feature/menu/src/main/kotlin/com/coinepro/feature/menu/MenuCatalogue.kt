@@ -212,17 +212,13 @@ object MenuCatalogue {
             group = MenuGroup.TRADE,
             account = true,
         ),
-        // CoinePro-FX only. TradeYar places orders itself, so on that platform a copy-trading row
-        // would lead to a screen that can only report the feature absent.
-        MenuEntry(
-            id = "copy-trade",
-            titleRes = R.string.menu_copy_title,
-            bodyRes = DesignR.string.feature_copy_body,
-            icon = CoineProIcons.CopyTrade,
-            group = MenuGroup.TRADE,
-            platform = MarketPlatform.COINEPRO_FX,
-            account = true,
-        ),
+        // **There is no copy-trading row, because there is no copy trading** (run Ψ).
+        //
+        // It was here, CoinePro-FX only, behind `FeatureFlags.forexTrading`. The owner's decision
+        // is that the product no longer has the feature at all: on the forex side this app is a
+        // gold signal and a chart, and nothing mirrors anybody's orders onto a MetaTrader account.
+        // So the row is gone rather than hidden, and so are the screen, the controller, the gateway
+        // and the two modules behind them — `git log` is where it lives now.
         MenuEntry(
             id = "terminal",
             titleRes = R.string.menu_terminal_title,
@@ -390,12 +386,15 @@ object MenuCatalogue {
      * them. It is derived from the catalogue rather than typed beside it, because a whitelist that
      * is maintained by hand is a whitelist that quietly stops matching what is drawn.
      *
-     * ### The seven, and the argument for each
+     * ### The six, and the argument for each
+     *
+     * Seven until run Ψ. `copy-trade` was one of them — «کپی‌ترید» reads as copying one trade, and
+     * what it did was mirror verified signals onto a MetaTrader account, which is a much larger
+     * thing to agree to. The row is gone with the feature, so the argument is history rather than
+     * a rule.
      *
      * * `screener` — «اسکرینر» is a loanword that names nothing in Persian.
      * * `connections` — «اتصال حساب» does not say *whose* account. It is a broker's, not this app's.
-     * * `copy-trade` — «کپی‌ترید» reads as copying one trade; it mirrors verified signals onto a
-     *   MetaTrader account, which is a much larger thing to agree to.
      * * `terminal` — «ترمینال وب» could be a console. It is the full desktop platform.
      * * `ai` — «ستاپ‌ساز هوشمند» is a name this app coined, so it has to be explained once.
      * * `ai-assistant` — «دستیار» alone says nothing about what it assists with.

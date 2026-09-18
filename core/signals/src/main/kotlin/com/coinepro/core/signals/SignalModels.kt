@@ -96,6 +96,16 @@ data class SignalsState(
      */
     val total: Int = 0,
     val loading: Boolean = false,
+    /**
+     * How many of the server's forex signals this product does not show (run Ψ).
+     *
+     * Zero on crypto and zero on a forex response that was gold-only, which is every response the
+     * desk is expected to send. See [ForexSignalScope]: the forex side of this app publishes the
+     * gold call and nothing else, so a non-zero number here is the desk and the app disagreeing
+     * about what that side is — worth counting, and not worth a sentence on the screen, because a
+     * reader cannot act on it and was never promised the rest.
+     */
+    val withheld: Int = 0,
     val membershipRequired: Boolean = false,
     /** The server's own explanation of how to subscribe, shown as written when it gave one. */
     val membershipMessage: String? = null,

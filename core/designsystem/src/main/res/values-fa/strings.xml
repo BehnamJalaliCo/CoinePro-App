@@ -126,7 +126,6 @@
          Forty Persian characters or six English words: the row shows one line and no more. -->
     <string name="feature_screener_body">فیلتر قیمت، حجم، نوسان و اندیکاتور</string>
     <string name="feature_connections_body">کارگزار یا صرافی، فقط برای اجرای سیگنال</string>
-    <string name="feature_copy_body">سیگنال تأییدشده روی حساب شما اجرا می‌شود</string>
     <string name="feature_terminal_body">نسخه‌ی کامل دسکتاپ، داخل همین اپ</string>
     <string name="feature_setup_body">ورود، حد ضرر و هدف از روی چارت واقعی</string>
     <string name="feature_assistant_body">پرسش درباره‌ی بازار، نماد و همین اپ</string>

@@ -31,7 +31,7 @@ The two things that could break the compile and were looked at: `String.format` 
 
 **What the page has**, in the order the plan lists for the tablet, because a browser window is an Expanded window: the labelled rail, the chart with the tools column and the readings panel (`ChartWorkbench` as it is), the 1–8 layout grid, the object tree, the NamaScript studio split beside the chart, the watchlist as the list of a list-detail. The tablet layouts are the web layouts; that is why §4 was done before §5.
 
-**What the page does not have**, at first: the guest gateway, the KYC flow, copy trading, the account pages, push notifications. Those stay on the phone until the account API is behind the gateway (§4 below).
+**What the page does not have**, at first: the guest gateway, the KYC flow, the account pages, push notifications. Those stay on the phone until the account API is behind the gateway (§4 below). Copy trading is not on that list because it is not in the product at all any more (run Ψ) — the feature, its screen and its two modules are deleted, and the web has nothing to inherit.
 
 ## 3a. Run Ω's four surfaces, and where each of them already is (run Ω5)
 
@@ -87,6 +87,11 @@ and the app's rule — decide from the space given, never from «is this a phone
 desktop window gets the same treatment without a line of new code.
 
 ## 4. What the server side needs
+
+**`SERVER.md` is the buildable version of this section** (run Ψ): the machine to buy, the services
+on it, every route the relay carries with its upstream and its cache policy, the three documents it
+owns, and the seven-step order to bring it up with a proof for each step. This table stays as the
+*why*; that document is the *what*.
 
 None of this exists on `pro-chart.com` today (the host does not answer — `DOMAINS.md`). In the order it has to be built:
 

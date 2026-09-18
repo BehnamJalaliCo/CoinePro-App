@@ -91,8 +91,8 @@ class MenuRowMetricsTest {
     /**
      * The other backend, because two rows only exist there.
      *
-     * `copy-trade` and `academy` are CoinePro-FX's, so a measurement taken on TradeYar has never
-     * seen them — and `copy-trade` is one of the seven that carries a second line.
+     * `academy` is CoinePro-FX's, so a measurement taken on TradeYar has never seen it. There were
+     * two such rows until run Ψ; `copy-trade` was the other, and it is not hidden now but gone.
      */
     @Test
     @Config(sdk = [34], qualifiers = FA_411)
@@ -208,11 +208,15 @@ class MenuRowMetricsTest {
          */
         val MAX_ROW_HEIGHT: Dp = 60.dp
 
-        /** The seven the audit kept. See [MenuCatalogue.DESCRIPTIVE_ROWS] for the argument. */
+        /**
+         * The six the audit kept. See [MenuCatalogue.DESCRIPTIVE_ROWS] for the argument.
+         *
+         * Seven until run Ψ: `copy-trade` was one of them, and it left with the feature rather
+         * than with the audit.
+         */
         val AUDITED_DESCRIPTIVE_ROWS = setOf(
             "screener",
             "connections",
-            "copy-trade",
             "terminal",
             "ai",
             "ai-assistant",

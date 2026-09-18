@@ -243,6 +243,8 @@ import androidx.annotation.StringRes
 import com.coinepro.core.datastore.ReaderMode
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.unit.Density
 
 /**
  * The chart screen.
@@ -4900,20 +4902,34 @@ internal fun studioSummary(indicators: Int, drawings: Int): String {
  * transition is a fill rather than a redraw. The ladder and the time row are real
  * [CoineProSkeleton] blocks, so they shimmer under the same reduced-motion guard as every other
  * placeholder in the product and hold a still highlight when a reader has asked for no animation.
+ *
+ * ### The grid counts its own rows (run Ψ)
+ *
+ * Five by six is a phone's chart. On a 1 280 dp tablet the same five rows are 160 dp apart and the
+ * picture reads as a sparse table rather than as a chart about to arrive — the exact tablet fault
+ * this run went looking for. The counts are derived from the space instead, at roughly the spacing
+ * `drawGrid` puts its own rules at, so the skeleton and the chart that replaces it are the same
+ * density on every window. The ladder counts with them, because a price tag per row is what the
+ * axis is.
  */
 @Composable
 private fun ChartSkeleton() {
     val grid = CoineProColors.Border
+    val density = LocalDensity.current
     Row(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+        BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            // The two counts the whole skeleton is built from, taken once from the space this
+            // panel was actually given rather than from the window: docked in a side panel the
+            // chart is a third of the glass, and a grid drawn for the window would be wrong there
+            // in the other direction.
+            val rows = with(density) { skeletonRows(maxHeight.toPx()) }
+            val columns = with(density) { skeletonRows(maxWidth.toPx()) }
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val dots = PathEffect.dashPathEffect(
                     floatArrayOf(SKELETON_DOT_DP.toPx(), SKELETON_GAP_DP.toPx()),
                     0f,
                 )
                 val hairline = SKELETON_HAIRLINE_DP.toPx()
-                val rows = SKELETON_ROWS
-                val columns = SKELETON_COLUMNS
                 repeat(rows) { row ->
                     val y = size.height * (row + 1) / (rows + 1)
                     drawLine(grid, Offset(0f, y), Offset(size.width, y), hairline, pathEffect = dots)
@@ -4931,34 +4947,67 @@ private fun ChartSkeleton() {
                     .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.One),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                repeat(SKELETON_COLUMNS) {
+                repeat(columns) {
                     CoineProSkeleton(modifier = Modifier.width(SKELETON_TIME_WIDTH), height = SKELETON_LABEL_HEIGHT)
                 }
             }
         }
         // And the price ladder down the gutter, one block per row the grid just drew, so the
         // numbers arrive where the placeholders were rather than beside them.
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxHeight()
                 .width(SKELETON_GUTTER_WIDTH)
                 .padding(vertical = CoineProSpacing.One),
-            verticalArrangement = Arrangement.SpaceBetween,
-            horizontalAlignment = Alignment.End,
         ) {
-            repeat(SKELETON_ROWS + 2) {
-                CoineProSkeleton(
-                    modifier = Modifier.width(SKELETON_PRICE_WIDTH),
-                    height = SKELETON_LABEL_HEIGHT,
-                )
+            val ladder = with(density) { skeletonRows(maxHeight.toPx()) }
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.End,
+            ) {
+                repeat(ladder + 2) {
+                    CoineProSkeleton(
+                        modifier = Modifier.width(SKELETON_PRICE_WIDTH),
+                        height = SKELETON_LABEL_HEIGHT,
+                    )
+                }
             }
         }
     }
 }
 
-/** The skeleton grid's shape. Five rows and six columns is what a phone-sized plot carries. */
-private const val SKELETON_ROWS = 5
-private const val SKELETON_COLUMNS = 6
+/**
+ * How many rules the chart's loading skeleton draws across a span of [extentDp] density-independent
+ * pixels (run Ψ).
+ *
+ * ### Why this is an object with a test rather than three lines in the composable
+ *
+ * Because it is the whole of the tablet claim. Five rows by six columns was a phone's chart; on a
+ * 1 280 dp landscape tablet the same five rules are 160 dp apart and the picture reads as a sparse
+ * table rather than as a chart about to arrive. A rendered still cannot say «these are 96 dp
+ * apart» — it can only show a picture somebody has to judge — so the arithmetic lives here, where a
+ * test can drive it at every window the parity matrix tracks.
+ *
+ * Bounded at both ends: three is the fewest that reads as a grid at all, and fifteen is where the
+ * lines stop being a scale and start being hatching. Fifteen rather than eleven because of the
+ * widest window this product is drawn on — a Galaxy Tab S9 Ultra is 1 973 dp across, and eleven
+ * rules there are 164 dp apart, which is the fault this rule exists to prevent, one size up.
+ */
+internal object ChartSkeletonGrid {
+
+    /** Roughly what `drawGrid` puts its own rules at on a phone. */
+    const val SPACING_DP: Float = 96f
+
+    const val MIN_LINES: Int = 3
+    const val MAX_LINES: Int = 15
+
+    fun lines(extentDp: Float): Int =
+        (extentDp / SPACING_DP).toInt().coerceIn(MIN_LINES, MAX_LINES)
+}
+
+private fun Density.skeletonRows(extent: Float): Int =
+    ChartSkeletonGrid.lines(extent / density)
 private val SKELETON_DOT_DP = 1.dp
 private val SKELETON_GAP_DP = 3.dp
 private val SKELETON_HAIRLINE_DP = 1.dp

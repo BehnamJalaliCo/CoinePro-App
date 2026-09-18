@@ -117,7 +117,6 @@
          Forty Persian characters or six English words: the row shows one line and no more. -->
     <string name="feature_screener_body">Filter by price, volume, volatility, indicators</string>
     <string name="feature_connections_body">Broker or exchange, for approved signals</string>
-    <string name="feature_copy_body">Approved signals run on your account</string>
     <string name="feature_terminal_body">The full desktop version, in-app</string>
     <string name="feature_setup_body">Entry, stop, target from the chart</string>
     <string name="feature_assistant_body">Ask about markets, symbols, this app</string>

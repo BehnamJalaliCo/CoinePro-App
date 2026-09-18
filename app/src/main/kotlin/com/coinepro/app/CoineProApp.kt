@@ -96,7 +96,6 @@ import com.coinepro.core.common.Entitlements
 import com.coinepro.core.common.FeatureFlags
 import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.chartevents.ChartEventController
-import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.datastore.ActivePlatformStore
 import com.coinepro.core.datastore.ArenaStore
 import com.coinepro.core.datastore.ChartLayout
@@ -298,7 +297,6 @@ import com.coinepro.feature.chart.ChartStudioScreen
 import com.coinepro.feature.chart.ChartWorkspaceStore
 import com.coinepro.feature.chart.WatchlistQuote
 import com.coinepro.feature.connections.ConnectionsScreen
-import com.coinepro.feature.copytrade.CopyTradeScreen
 import com.coinepro.feature.dom.DepthLadderPreference
 import com.coinepro.feature.dom.DepthLadderPreferences
 import com.coinepro.feature.dom.LadderFigure
@@ -364,14 +362,6 @@ private const val SIGNAL_DETAIL_PATTERN = "signal/{signalId}"
 private const val EXECUTION_PATTERN = "execution/{signalId}"
 private const val CONNECTIONS_ROUTE = "connections"
 
-/**
- * Copy trading, which used to *be* the connections route on CoinePro-FX.
- *
- * Its own address now, because Connections has become a real screen on that platform: the
- * MetaTrader 5 broker link. Sharing one route meant the two could never both be reachable and
- * meant the heading had to lie about one of them.
- */
-private const val COPY_TRADE_ROUTE = "copy-trade"
 private const val AI_VISION_ROUTE = "ai/vision"
 private const val AI_ASSISTANT_ROUTE = "ai/assistant"
 internal const val MARKET_SEARCH_ROUTE = "market/search"
@@ -693,7 +683,6 @@ internal fun surfaceRoute(id: String, platform: MarketPlatform, watchlist: List<
         "ai-assistant" -> AI_ASSISTANT_ROUTE
         "terminal" -> TERMINAL_ROUTE
         "connections" -> CONNECTIONS_ROUTE
-        "copy-trade" -> COPY_TRADE_ROUTE
         "activity" -> ACTIVITY_ROUTE
         "membership" -> MEMBERSHIP_ROUTE
         "verify" -> KYC_ROUTE
@@ -914,10 +903,9 @@ private fun accentFor(route: String?): PageAccent = when (route) {
     AI_PATTERN,
     -> PageAccent.ANALYSIS
 
-    // Copy trading, the venue links that feed it, and the feed itself. Community is social by the
-    // plainest reading there is: every pixel on it was put there by another reader.
+    // The venue links, and the feed itself. Community is social by the plainest reading there is:
+    // every pixel on it was put there by another reader.
     CONNECTIONS_ROUTE,
-    COPY_TRADE_ROUTE,
     COMMUNITY_ROUTE,
     COMMUNITY_THREAD_PATTERN,
     // Ideas is the board and the signal list together, and the board is the half whose every
@@ -1056,7 +1044,6 @@ fun CoineProApp(
      */
     inAppAlerts: InAppAlertBus,
     executionControllers: Map<MarketPlatform, ExecutionController>,
-    copyTradeControllers: Map<MarketPlatform, CopyTradeController>,
     aiSignalControllers: Map<MarketPlatform, AiSignalController>,
     aiVisionControllers: Map<MarketPlatform, AiVisionController>,
     aiAssistantController: AiAssistantController,
@@ -1153,7 +1140,6 @@ fun CoineProApp(
     val signalController = signalControllers.getValue(activePlatform)
     val notificationController = notificationControllers.getValue(activePlatform)
     val executionController = executionControllers.getValue(activePlatform)
-    val copyTradeController = copyTradeControllers.getValue(activePlatform)
     val aiSignalController = aiSignalControllers.getValue(activePlatform)
     val aiVisionController = aiVisionControllers.getValue(activePlatform)
     val briefingState by accountController.briefing.collectAsStateWithLifecycle()
@@ -1237,7 +1223,6 @@ fun CoineProApp(
             signalControllers.values.forEach(SignalController::clear)
             notificationControllers.values.forEach(NotificationController::clear)
             executionControllers.values.forEach(ExecutionController::clear)
-            copyTradeControllers.values.forEach(CopyTradeController::clear)
             aiSignalControllers.values.forEach(AiSignalController::clear)
             aiVisionControllers.values.forEach(AiVisionController::clear)
             aiAssistantController.clear()
@@ -1556,7 +1541,6 @@ fun CoineProApp(
                 alertsController = alertsController,
                 inAppAlerts = inAppAlerts,
                 executionController = executionController,
-                copyTradeController = copyTradeController,
                 aiSignalController = aiSignalController,
                 aiVisionController = aiVisionController,
                 aiAssistantController = aiAssistantController,
@@ -1796,7 +1780,6 @@ fun CoineProApp(
                         alertsController = alertsController,
                         inAppAlerts = inAppAlerts,
                         executionController = executionController,
-                        copyTradeController = copyTradeController,
                         aiSignalController = aiSignalController,
                         aiVisionController = aiVisionController,
                         aiAssistantController = aiAssistantController,
@@ -2067,7 +2050,6 @@ private fun MainShell(
     /** Firings to show while the app is open. See the collector below. */
     inAppAlerts: InAppAlertBus,
     executionController: ExecutionController,
-    copyTradeController: CopyTradeController,
     aiSignalController: AiSignalController,
     aiVisionController: AiVisionController,
     aiAssistantController: AiAssistantController,
@@ -2533,7 +2515,6 @@ private fun MainShell(
         SIGNAL_DETAIL_PATTERN,
         EXECUTION_PATTERN,
         CONNECTIONS_ROUTE,
-        COPY_TRADE_ROUTE,
         MARKET_SEARCH_ROUTE,
         CHART_PATTERN,
         PROFILE_ROUTE,
@@ -2581,11 +2562,9 @@ private fun MainShell(
         COMMUNITY_THREAD_PATTERN -> R.string.screen_community_thread
         SIGNAL_DETAIL_PATTERN -> R.string.screen_signal_detail
         EXECUTION_PATTERN -> R.string.screen_execution
-        // No longer switched on the platform. Connections is genuinely Connections on both now —
-        // an exchange key on TradeYar, a MetaTrader 5 broker login on CoinePro-FX — and copy
-        // trading has its own address rather than borrowing this one's heading.
+        // Not switched on the platform: Connections is the venue's key pair, and the venue this
+        // build places orders on is the crypto one.
         CONNECTIONS_ROUTE -> R.string.screen_connections
-        COPY_TRADE_ROUTE -> R.string.screen_copy_trading
         PROFILE_ROUTE -> R.string.screen_profile
         NOTIFICATIONS_ROUTE -> R.string.screen_notifications
         MEMBERSHIP_ROUTE -> R.string.screen_membership
@@ -3431,19 +3410,11 @@ private fun MainShell(
                 marketIntelController = marketIntelController,
                 signalId = signalId,
                 chartController = signalChartController,
-                // Null where the platform places no orders. CoinePro-FX is the case: its
-                // signals reach a reader's account through copy trading, so the button that
-                // used to sit here led to a screen that could only say the feature was absent.
+                // Null where the platform places no orders, which on the forex side is now the
+                // standing answer rather than a flag's: a gold signal is something to read and act
+                // on in whatever account the reader keeps, and this app opens none of them.
                 onExecute = if (activePlatform == MarketPlatform.TRADEYAR) {
                     { id -> navController.navigate(executionRoute(id)) }
-                } else {
-                    null
-                },
-                // …and only while this build has a forex account to copy into (F5).
-                onOpenCopyTrading = if (activePlatform == MarketPlatform.COINEPRO_FX &&
-                    FeatureFlags.forexTrading
-                ) {
-                    { navController.navigate(COPY_TRADE_ROUTE) }
                 } else {
                     null
                 },
@@ -4116,9 +4087,8 @@ private fun MainShell(
                 // `FeatureFlags.forexTrading` is off, and that is where a reader would have found
                 // it. This is the other half, and it is the half that makes the claim airtight: a
                 // deep link, a restored back stack, a card on some future screen, or one call site
-                // that forgets the guard would all still have opened the MetaTrader login and its
-                // twenty-two `connections_mt5_*` strings. A route that checks for itself cannot be
-                // reached wrongly by anything.
+                // that forgets the guard would all still have reached a broker login. A route that
+                // checks for itself cannot be reached wrongly by anything.
                 //
                 // Not a wall and not an empty screen: the address simply does not exist, and the
                 // reader is returned to where they were. There is nothing to explain, because there
@@ -4127,19 +4097,7 @@ private fun MainShell(
                     ConnectionsScreen(
                         controller = executionController,
                         platform = activePlatform,
-                        copyTrade = copyTradeController,
                     )
-                } else {
-                    LaunchedEffect(Unit) { navController.popBackStack() }
-                }
-            }
-            composable(COPY_TRADE_ROUTE) {
-                // The same guard, and here it is the whole screen rather than one platform's half:
-                // copy trading mirrors signals onto a MetaTrader account, so a build that opens no
-                // broker account has nothing to put on this page at all. `copy_account_*`,
-                // `copy_balance` and `copy_broker` are drawn here and nowhere else.
-                if (tradingOffered(activePlatform)) {
-                    CopyTradeScreen(controller = copyTradeController)
                 } else {
                     LaunchedEffect(Unit) { navController.popBackStack() }
                 }

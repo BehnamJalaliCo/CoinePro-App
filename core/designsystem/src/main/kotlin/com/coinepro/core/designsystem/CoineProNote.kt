@@ -71,14 +71,10 @@ object NotePolicy {
         "delete_account_kept_note",
         "delete_account_local_note",
         "delete_account_web_body",
-        // Real money: copy trading and the account it trades on.
-        "copy_switch_note",
-        "copy_mismatch_body",
-        "copy_account_none_body",
+        // Real money: the exchange account orders are placed on. The five copy-trading and
+        // MetaTrader keys that stood here went with the feature (run Ψ) — copy trading is not in
+        // the product, so there is no note about it to keep visible.
         "connections_lbank_body",
-        "connections_mt5_body",
-        "connections_mt5_pending_note",
-        "detail_copy_note",
         "detail_stale_note",
         "detail_high_impact_body",
         "membership_copytrade_note",

@@ -45,9 +45,9 @@ from a template — `docs/legal/PRIVACY_POLICY.md` records where each one comes 
 یک ستاپ کامل با ورود و حد ضرر و هدف، به‌همراه شواهدی که مدل روی آن تصمیم گرفته. یا عکس نمودارتان را
 بفرستید و تحلیلش را بگیرید.
 
-■ کپی‌تریدینگ و اجرا
-روی کوین‌پرو اف‌ایکس حساب بروکرتان را وصل کنید و معاملات به‌صورت خودکار کپی شوند. روی تریدیار سفارش
-را مستقیم روی صرافی بفرستید.
+■ اجرای سفارش
+روی تریدیار سفارش را مستقیم روی صرافی بفرستید. سمت طلا و دلار، اپ فقط می‌خوانَد: چارت، هشدار و
+سیگنال — حسابی باز نمی‌شود و معامله‌ای انجام نمی‌گیرد.
 
 ■ عملکرد حساب
 سود خالص، نرخ برد، ضریب سود، بیشترین افت و منحنی سرمایه — از دفتر خود بروکر یا صرافی، نه از محاسبهٔ
@@ -187,11 +187,11 @@ invite a rejection for a problem the app does not have.
 **Answer: "All functionality is available without special access."** — with this note:
 
 > اپ بدون ثبت‌نام باز می‌شود. بازار، نمودار، اخبار و کارنامهٔ سیگنال‌ها همگی برای کاربر مهمان در
-> دسترس‌اند. سیگنال و کپی‌تریدینگ حساب رایگان می‌خواهند و شرایطش داخل اپ توضیح داده شده است.
+> دسترس‌اند. سیگنال حساب رایگان می‌خواهد و شرایطش داخل اپ توضیح داده شده است.
 >
 > The app opens without registration. Markets, charts, news and the published signal record are all
-> available to a guest. Signals and copy trading require a free account, and the conditions are
-> explained inside the app.
+> available to a guest. Signals require a free account, and the conditions are explained inside the
+> app.
 
 A reviewer who opens the app sees a working product on the first screen, which is a stronger answer
 than a demo account: a credential can expire between submission and review, and a rejection for

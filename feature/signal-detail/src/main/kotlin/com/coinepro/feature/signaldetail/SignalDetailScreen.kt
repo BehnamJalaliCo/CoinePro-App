@@ -86,13 +86,14 @@ fun SignalDetailScreen(
     /**
      * Sends this signal to the order screen, where the platform places orders per signal.
      *
-     * Null where it does not. CoinePro-FX reaches a reader's account through copy trading instead,
-     * and a button leading to an order screen that could only report the feature as absent was
-     * worse than no button — it read as something broken rather than something elsewhere.
+     * Null where it does not, which on the forex side is the standing answer rather than a flag's:
+     * this app opens no account there. A button leading to an order screen that could only report
+     * the feature absent was worse than no button — it read as something broken rather than
+     * something the product does not do. The reader gets the call and acts on it wherever they
+     * keep their account; there was a «go to copy trading» button here once and it went with the
+     * feature (run Ψ).
      */
     onExecute: ((Long) -> Unit)?,
-    /** Opens copy trading, on the platform whose signals arrive that way. */
-    onOpenCopyTrading: (() -> Unit)? = null,
     /**
      * The bars behind the setup. Null draws the screen exactly as it was before the chart existed,
      * which is what a platform with no candle route should get.
@@ -142,7 +143,6 @@ fun SignalDetailScreen(
                 highImpactWarnings = warnings,
                 chart = chartState?.value,
                 onExecute = onExecute,
-                onOpenCopyTrading = onOpenCopyTrading,
             )
         }
         else -> Center { Text(stringResource(R.string.detail_not_found), color = CoineProColors.TextSecondary) }
@@ -164,7 +164,6 @@ private fun SignalContent(
     highImpactWarnings: List<EconomicEvent>,
     chart: SignalChartState?,
     onExecute: ((Long) -> Unit)?,
-    onOpenCopyTrading: (() -> Unit)?,
 ) {
     val directionColor = when (signal.direction) {
         SignalDirection.BUY -> CoineProColors.Buy
@@ -379,19 +378,6 @@ private fun SignalContent(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 CoineProNote(R.string.detail_execute_note, style = MaterialTheme.typography.bodySmall)
-            } else if (onOpenCopyTrading != null) {
-                // Says how this signal reaches an account here, which is not by pressing anything
-                // on this screen. Without it the absence of a button reads as an omission.
-                Text(
-                    text = stringResource(R.string.detail_copy_note),
-                    color = CoineProColors.TextMuted,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                CoineProSecondaryButton(
-                    text = stringResource(R.string.detail_open_copy),
-                    onClick = onOpenCopyTrading,
-                    modifier = Modifier.fillMaxWidth(),
-                )
             }
         }
 

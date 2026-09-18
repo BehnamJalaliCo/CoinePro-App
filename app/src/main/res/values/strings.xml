@@ -9,7 +9,6 @@
     <string name="screen_signal_detail">Signal</string>
     <string name="screen_execution">Execute signal</string>
     <string name="screen_connections">Connections</string>
-    <string name="screen_copy_trading">Copy trading</string>
     <string name="screen_kyc">Verify identity</string>
     <string name="screen_delete_account">Delete account</string>
     <string name="screen_alerts">Price alerts</string>

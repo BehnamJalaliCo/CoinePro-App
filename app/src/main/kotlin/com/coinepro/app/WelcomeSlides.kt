@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -118,6 +119,16 @@ import kotlinx.coroutines.delay
  * that changes colour with a setting nobody has set yet is a sequence that flashes. So the whole
  * screen is wrapped in the dark palette and drawn on the near-black stage with one accent, the brand
  * gold. The buttons, the dots and the small print inherit it and cannot disagree with the ground.
+ *
+ * ### One column, whatever the glass is
+ *
+ * Every measurement on this screen is a fraction of a **column**, not of the window, and the column
+ * is capped at [CONTENT_MAX_WIDTH] (run Ψ). Without the cap a 1 280 dp tablet drew a 790 dp square
+ * illustration, a headline set on a 1 248 dp measure — six times the length a line of type is
+ * readable at — and two full-width pills at the foot, which is the shape of a phone screen stretched
+ * rather than a tablet screen designed. The cap is the same idea as a reading measure in print, and
+ * it is applied once, at the top, so the scene, the type, the dots and the buttons cannot disagree
+ * about what «the width» means. On a phone the cap is never reached and nothing changes.
  *
  * ### Auto-advance stops when a thumb lands
  *
@@ -239,6 +250,7 @@ private fun WelcomeSequence(
         Box(
             modifier = Modifier
                 .weight(1f)
+                .widthIn(max = CONTENT_MAX_WIDTH)
                 .fillMaxWidth()
                 .padding(horizontal = CoineProSpacing.Gutter),
         ) {
@@ -292,6 +304,7 @@ private fun WelcomeSequence(
 
         Column(
             modifier = Modifier
+                .widthIn(max = CONTENT_MAX_WIDTH)
                 .fillMaxWidth()
                 .padding(horizontal = CoineProSpacing.Gutter)
                 .padding(bottom = CoineProSpacing.Three),
@@ -874,8 +887,19 @@ private val CANDLE_LOWS = floatArrayOf(0.66f, 0.61f, 0.58f, 0.58f, 0.55f, 0.54f,
 private val REPLAY_HEIGHTS =
     floatArrayOf(0.2f, 0.3f, 0.26f, 0.4f, 0.34f, 0.46f, 0.38f, 0.5f, 0.42f, 0.54f, 0.47f)
 
-/** How much of the width a scene takes. Leaves room for the words under it on a small phone. */
+/** How much of the column a scene takes. Leaves room for the words under it on a small phone. */
 private const val ART_WIDTH_FRACTION = 0.62f
+
+/**
+ * The widest this screen's content column is ever drawn (run Ψ).
+ *
+ * Four hundred and forty-eight, which is a large phone's width and a little more: wide enough that
+ * nothing on a phone is ever narrowed, narrow enough that a 28 sp headline on a tablet sits on a
+ * measure somebody can read in one movement of the eye. The illustration, the type, the dots and
+ * the two buttons all take their width from this, so a tablet gets the phone's composition centred
+ * on a larger stage rather than the phone's composition stretched across it.
+ */
+private val CONTENT_MAX_WIDTH = 448.dp
 
 /** The brand frame occupies the scene's own box, so the hand-over is a cross-fade, not a jump. */
 private const val BRAND_FRAME_ASPECT = 1.6f

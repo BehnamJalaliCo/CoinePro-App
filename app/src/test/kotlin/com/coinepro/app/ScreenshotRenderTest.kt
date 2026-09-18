@@ -96,10 +96,6 @@ import com.coinepro.core.chart.DrawingActions
 import com.coinepro.core.chart.DrawingList
 import com.coinepro.core.chart.DrawingState
 import com.coinepro.core.chart.DrawingTool
-import com.coinepro.core.copytrade.CopyBook
-import com.coinepro.core.copytrade.CopyPreferences
-import com.coinepro.core.copytrade.CopyTradeGateway
-import com.coinepro.core.copytrade.CopyTradeStatus
 import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.chart.IndicatorPicker
 import com.coinepro.core.chart.Indicators
@@ -113,7 +109,6 @@ import com.coinepro.core.common.AppResult
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.ErrorKind
 import com.coinepro.core.common.toPersianDigits
-import com.coinepro.core.copytrade.CopyTradeController
 import com.coinepro.core.datastore.AlertAuditStore
 import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.StoredProfile
@@ -182,7 +177,6 @@ import com.coinepro.feature.chart.ChartWorkspaceStore
 import com.coinepro.feature.chart.WatchlistQuote
 import com.coinepro.feature.chart.ChartStudioScreen
 import com.coinepro.feature.connections.ConnectionsScreen
-import com.coinepro.feature.copytrade.CopyTradeScreen
 import com.coinepro.feature.guest.GuestGate
 import com.coinepro.feature.guest.GuestGateScreen
 import com.coinepro.feature.guest.GuestScreen
@@ -593,34 +587,6 @@ class ScreenshotRenderTest {
             supported = false,
             onDeleted = {},
         )
-    }
-
-    /**
-     * CoinePro-FX's copy-trading screen, live: a linked account, the switch on, one mirrored
-     * position, and the reason the last signal did not open.
-     *
-     * Rendered because that last card is the one nobody could see before. It is server text in
-     * Persian carrying a broker return code, sitting inside a right-to-left column beside Latin
-     * figures — exactly the mix that goes wrong silently, and only a render shows it.
-     */
-    @Test
-    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
-    fun copyTrading() {
-        val controller = CopyTradeController(FakeCopyTradeGateway(), scope)
-        controller.refresh()
-        capture("27-copy-trading-fa") { CopyTradeScreen(controller = controller) }
-    }
-
-    /** The same screen with nothing linked yet — the form, and the warning above it. */
-    @Test
-    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
-    fun copyTradingUnlinked() {
-        val controller = CopyTradeController(
-            FakeCopyTradeGateway(ScreenshotFixtures.copyTradeUnlinked),
-            scope,
-        )
-        controller.refresh()
-        capture("28-copy-trading-unlinked-fa") { CopyTradeScreen(controller = controller) }
     }
 
     /**
@@ -1151,56 +1117,6 @@ class ScreenshotRenderTest {
         val controller = ExecutionController(FakeExecutionGateway(), scope)
         controller.refreshConnections()
         capture("69-connections-fa") { ConnectionsScreen(controller = controller) }
-    }
-
-    /**
-     * Connections on the **forex** platform, which until now was not this screen at all.
-     *
-     * The route drew the copy-trading screen there, so the one thing a CoinePro-FX reader comes to
-     * Connections for — linking their MetaTrader 5 account — had nowhere to be. This is the gate on
-     * it: the same card shape as the LBank surface beside it, the four fields the server's
-     * `user/account/link` actually takes, and a status line that says *not linked* rather than
-     * implying a connection nobody has made.
-     */
-    @Test
-    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi")
-    fun connectionsForexPersian() {
-        val copy = CopyTradeController(NotLinkedCopyGateway(), scope)
-        copy.refresh()
-        capture("71-connections-mt5-fa") {
-            ConnectionsScreen(
-                controller = ExecutionController(FakeExecutionGateway(), scope),
-                platform = MarketPlatform.COINEPRO_FX,
-                copyTrade = copy,
-            )
-        }
-    }
-
-    /**
-     * A server that answers copy-status with no account on it: linked to nothing, and no error.
-     *
-     * Deliberately the *empty* case rather than a connected one. A screenshot of a working link is
-     * a picture of a happy path nobody doubts; the picture worth reviewing is the one a reader sees
-     * on the day they arrive, because that is the screen that has to teach them what to do.
-     */
-    private class NotLinkedCopyGateway : CopyTradeGateway {
-        override suspend fun status() = CopyTradeStatus(
-            account = null,
-            preferences = CopyPreferences(),
-            master = CopyBook(),
-            mirrored = emptyList(),
-            mode = null,
-            accountMismatch = false,
-            liveAccount = null,
-            events = emptyList(),
-            slotState = null,
-        )
-
-        override suspend fun setEnabled(enabled: Boolean) = CopyPreferences(enabled = enabled)
-
-        override suspend fun linkAccount(broker: String, server: String, login: String, password: String) = Unit
-
-        override suspend fun unlinkAccount() = Unit
     }
 
     @Test

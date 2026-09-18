@@ -78,6 +78,8 @@ class UpsilonProofTest {
     @Config(sdk = [34], qualifiers = PHONE)
     fun `the welcome opens on the first slide, with both buttons fixed under it`() {
         render { WelcomeSlides(onStart = {}, onSignIn = {}) }
+        capture("upsilon-welcome-brand-phone-fa")
+        pastTheBrandFrame()
         capture("upsilon-welcome-phone-fa")
 
         assertTrue(
@@ -86,6 +88,63 @@ class UpsilonProofTest {
         )
         // The two buttons are the fixed part: they do not move between slides, so a reader who has
         // decided on slide one does not have to wait for the carousel to stop to act on it.
+        listOf(R.string.welcome_start, R.string.welcome_sign_in).forEach { label ->
+            val text = composeRule.activity.getString(label)
+            assertTrue(
+                "«$text» is not under the slides",
+                composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty(),
+            )
+        }
+    }
+
+    /**
+     * **The welcome on a tablet** (run Ψ).
+     *
+     * The owner's question for this run was whether everything shipped so far also works on the
+     * larger glass, and this screen was the clearest answer of «no»: every measurement on it was a
+     * fraction of the **window**, so a 1 280 dp tablet drew a 790 dp square illustration, a headline
+     * set on a 1 248 dp measure and two full-width pills at the foot. It is one capped column now,
+     * and these two frames are what says so — one at each tablet width the parity matrix tracks.
+     *
+     * Asserted as well as captured, because a still cannot say «the column stopped at 448 dp»:
+     * what the assertion pins is that the two buttons are still there and still one tap away, which
+     * is the property the whole screen is built around and the one a layout change can break.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = PIXEL_TABLET)
+    fun `the welcome holds one column on a landscape tablet`() {
+        render { WelcomeSlides(onStart = {}, onSignIn = {}) }
+        capture("psi-welcome-brand-pixel-tablet-fa")
+        pastTheBrandFrame()
+        capture("psi-welcome-pixel-tablet-fa")
+        assertBothDoorsAreOpen()
+    }
+
+    @Test
+    @Config(sdk = [34], qualifiers = TAB_S9_ULTRA)
+    fun `the welcome holds one column on the largest tablet there is`() {
+        render(dark = false) { WelcomeSlides(onStart = {}, onSignIn = {}) }
+        pastTheBrandFrame()
+        capture("psi-welcome-tab-s9-ultra-en-light")
+        assertBothDoorsAreOpen()
+    }
+
+    /**
+     * Past the six-hundred-millisecond brand hold, and past the scene's own reveal.
+     *
+     * Without this every welcome frame in this file was a picture of the **brand frame** — which is
+     * a real frame and the first one a reader sees, and is not the one the illustration, the
+     * typography and the dots items were asking for. `waitForIdle` settles composition; it does not
+     * move a wall clock, and the hold is a `delay`.
+     */
+    private fun pastTheBrandFrame() {
+        composeRule.mainClock.advanceTimeBy(BRAND_HOLD_AND_REVEAL_MS)
+        composeRule.waitForIdle()
+        shadowOf(Looper.getMainLooper()).idle()
+        composeRule.waitForIdle()
+    }
+
+    private fun assertBothDoorsAreOpen() {
         listOf(R.string.welcome_start, R.string.welcome_sign_in).forEach { label ->
             val text = composeRule.activity.getString(label)
             assertTrue(
@@ -438,6 +497,7 @@ class UpsilonProofTest {
     @Config(sdk = [34], qualifiers = ENGLISH)
     fun `the welcome reads in English on the light theme`() {
         render(dark = false) { WelcomeSlides(onStart = {}, onSignIn = {}) }
+        pastTheBrandFrame()
         capture("upsilon-welcome-phone-en-light")
 
         listOf(R.string.welcome_start, R.string.welcome_sign_in).forEach { label ->
@@ -512,6 +572,15 @@ class UpsilonProofTest {
 
         /** The same phone, in the language `values/` holds. See the locale-inversion note. */
         const val ENGLISH = "en-rUS-ldltr-w411dp-h914dp-420dpi"
+
+        /** Pixel Tablet, landscape — the width the parity matrix calls `pixel-tablet`. */
+        const val PIXEL_TABLET = "fa-rIR-ldrtl-sw800dp-w1280dp-h800dp-xhdpi"
+
+        /** Galaxy Tab S9 Ultra, landscape: the widest window this product is drawn on. */
+        const val TAB_S9_ULTRA = "en-rUS-ldltr-sw1232dp-w1973dp-h1232dp-hdpi"
+
+        /** The 600 ms brand hold plus the 900 ms scene reveal, and a beat to settle on. */
+        const val BRAND_HOLD_AND_REVEAL_MS = 1_800L
 
         /** What a pulse cell with no figure draws. Spelled out, so the assertion reads as the pixels do. */
         const val EM_DASH = "—"
