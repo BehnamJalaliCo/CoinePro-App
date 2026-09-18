@@ -20,8 +20,11 @@ audio this repository does not hold (`BLOCKED.md §B9`). B6, B7 and B8 are not s
 checklist saying exactly what is missing. C2 turns out to be mostly shipped already. C3, C4 and C6
 do not exist.
 
-**Shipped:** 4.93.0 (phase A + B2/B3/B5/B10), 4.94.0 (B9), 4.95.0 (C5's legend). Every gate green
-and the full unit suite passing on each.
+**Shipped:** 4.93.0 (phase A + B2/B3/B5/B10), 4.94.0 (B9), 4.95.0 (C5's legend), 4.96.0 (C1's rule).
+Every gate green and the full unit suite passing on each.
+
+**Not done, and the next session's list in order:** B6, B7, B8, C1's surface, C2's two gaps, C3, C4,
+C6. Each is named below with its files, the data it reads and the trap in it.
 
 ---
 
