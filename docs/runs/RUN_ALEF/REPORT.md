@@ -349,3 +349,89 @@ Android app builds its forex market list from, serves seventeen and drops exactl
 product's forex side is about.
 
 That is now the only blocked item in this run, and it is one line to one team.
+
+---
+
+## 9. The socket, and what it found behind the two backends
+
+Phase 3 is built and it is **forex-complete and crypto-closed**. Both halves of that sentence are
+facts about the backends rather than about the relay, and the second one is the same wall §4.0
+described: the crypto socket is the authenticated surface. Seven candidate paths on TradeYar — two
+time out at the handshake, three answer `404`, and the two that resolve close `4001` and `4401
+unauthorized`, the latter being the one the Android app itself opens. §4.2 said «one upstream
+connection per venue»; for crypto, without an account, the number available is **zero**, not one.
+
+What the relay does about that is the part worth keeping. It declares the venue and says it is not
+live, in the first frame every client receives:
+
+```json
+{"type":"welcome","venues":{
+   "forex":  {"live": true,  "reason": null},
+   "crypto": {"live": false, "reason": "upstream requires an account (PLAN.md §6.2, Phase 4)"}}}
+```
+
+**The difference between a chart that says «there is no crypto feed» and a chart that simply never
+ticks is that one frame.** This product has spent three runs removing silent failures from its own
+client; it would have been absurd to accept one in its own protocol.
+
+### The question, and why the answer is «wait»
+
+The relay could bridge crypto onto the socket: poll the public prices route every two seconds and
+push the differences. It asked rather than deciding, which was right, and the answer is no.
+
+Not for effort — the values would be relayed unchanged, and rule 1 would survive that reading. The
+problem is what a tick *is*. A tick asserts **when something happened**. A poll can only assert «my
+two samples, two seconds apart, differed», so the frame would have to carry either the poll's own
+clock — a number this server authored — or the upstream's timestamp on a frame arriving up to two
+seconds late with nothing saying so. Either way the server becomes the author of something, and the
+phone's contract of «snapshot, then the venue's stream» would quietly mean two different things on
+the two platforms.
+
+And refusing costs nothing. **A tab polling `/api/crypto/prices` every two seconds is the same
+upstream traffic as the bridge**, because the relay's two-second cache collapses a hundred tabs into
+one call either way. The only thing that changes is whether the browser is told the truth about what
+it is receiving. When a design would make something up, the first question is what refusing costs;
+here the answer was nothing at all.
+
+### A third universe, and gold is in none of the small ones
+
+The forex socket carries **seven** symbols: the majors. No metals, no indices, no crude, no crosses.
+So one backend now presents three different answers to «what do you quote?» — **19** from
+`prices/live`, **17** from `ws/snapshot`, **7** from the socket.
+
+For gold that is a second absence on top of §א20's first. It has no row in the snapshot the app's
+catalogue is built from, and **no live tick even for a client that knows its name**: a subscriber to
+`XAUUSD` receives its opening value and never another frame. The ask to that team is two lines now.
+
+### The thing nobody had read
+
+Every row of that snapshot carries `source: "yfinance"`, and `bid == ask == price` exactly — one
+number echoed into three fields, so the feed has no spread in it. `SERVER.md` §1 has described this
+backend as «gold and the dollar, **over Finnhub**» for a year. Nobody had checked.
+
+It matters because of a promise the app makes on purpose. `CandleGateway.sourceName` exists so the
+chart can print where its bars come from, and its KDoc is explicit about why: the commonest
+accusation against this category of app is «کندل‌سازی», and the only answer to it is provenance a
+reader can verify. The forex gateway names **MetaTrader 5** and describes those bars as the prices
+the copied account actually trades at.
+
+So on one screen today the candles say MetaTrader 5 and the last price above them is Yahoo Finance,
+with nothing saying so. A reader who took the app's own advice — hold this chart against that
+venue's own — would be comparing two different venues and concluding the wrong thing about both.
+
+Nothing was done about it in code, and that restraint is the answer rather than an omission. The app
+already files these quotes under `QuoteSource.UNKNOWN`, so nothing on screen is *mislabelled*;
+adding `YFINANCE` to the enum would be this run deciding that Yahoo Finance is an acceptable quote
+source for a paid forex product, and renaming the chart's label would be inventing provenance, which
+is the exact fault the label was built to prevent. `BLOCKED.md §א22` is the question, with the two
+answers that are both fine and the one thing the app must not do: guess.
+
+### Two small keepers
+
+`/api/health` no longer prints the upstreams' private addresses — asked for in §4.9, done.
+
+And a measurement the server needed in order to test at all, kept because it explains a frozen
+chart: **the forex market is shut at the weekend.** Upstream sends a frame a second with unchanged
+values — 45 seconds, 45 frames, zero change — and re-samples about every two minutes, which is when
+the timestamp moves. The relay forwards changes rather than frames, so a closed market costs nothing
+downstream, and a tick is real even when its price has not moved because nothing is trading.

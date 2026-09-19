@@ -20,7 +20,7 @@ CORS header, a firewall change or any other modification to serve the web.
 ## 1. What the server is for, in one paragraph
 
 Two backends already serve this product's data — **TradeYar** (crypto, over LBank) and
-**CoinePro-FX** (gold and the dollar, over Finnhub). The phone talks to both directly, and that is
+**CoinePro-FX** (gold and the dollar — whose live quotes are **not** Finnhub; see §4.10). The phone talks to both directly, and that is
 fine for a phone. A browser cannot: two origins mean two CORS negotiations on servers this project
 does not own, two cookies, two sessions and two rate limits, and a thousand open tabs mean a
 thousand upstream sockets where the phone opened one. So the Pro Chart server is **one origin in
@@ -186,6 +186,53 @@ wss://pro-chart.com/api/stream
 A subscriber count of zero on a symbol does **not** unsubscribe upstream: both venues send
 everything on one socket anyway, and a relay that renegotiated its upstream on every tab close would
 spend its life renegotiating.
+
+**This section said «one upstream connection per venue» and one of the two venues has no socket to
+connect to.** Measured 2026-09-19, seven candidate paths on TradeYar: `/ws/prices` and `/ws` time out
+at the handshake, three `…/public/…` shapes answer `404`, `/api/v1/ws/prices` closes `4001
+Unauthorized`, and `/api/mobile/v1/ws/prices` — the one the Android app opens — closes `4401
+unauthorized`. So the crypto socket is the same wall as §4.0: it is the authenticated surface, and a
+relay with no account cannot open **zero** connections to it, not one.
+
+So Phase 3 is **forex-complete and crypto-closed**, and the contract says so in its first frame
+rather than leaving a chart to tick silently forever:
+
+```
+← {"type":"welcome","venues":{
+     "forex":  {"live": true,  "reason": null},
+     "crypto": {"live": false, "reason": "upstream requires an account (PLAN.md §6.2, Phase 4)"}}}
+```
+
+**The difference between a chart that says «there is no crypto feed» and a chart that simply never
+ticks is this one frame.** A terminal must read it and say so; a silent chart is the failure this
+product keeps designing out.
+
+### 4.2.1 Crypto on the socket — the decision, and it is «wait»
+
+Two ways were possible and the server was right to ask rather than pick:
+
+1. **Leave it false until Phase 4.** The terminal reads crypto from `GET /api/crypto/prices`, which
+   is already relayed and already cached two seconds.
+2. **Bridge it.** The relay polls that same public route every two seconds and pushes the
+   differences down the socket as ticks.
+
+**It is (1), and the reason is rule 1 rather than effort.** A bridged tick does not compute a price
+— the server would relay the values unchanged — but it invents the one thing a tick is *for*: **when
+it happened.** The relay can only ever know «my poll two seconds apart differed», so the event would
+carry either the poll's own clock (a number this server authored) or the upstream's timestamp on a
+frame that arrives up to two seconds late with nothing saying so. Both are this server becoming the
+author of something, and the phone's contract — snapshot, then the venue's stream — would quietly
+mean two different things on the two platforms.
+
+And the cost of refusing is nil. A tab polling `/api/crypto/prices` every two seconds is the **same
+upstream traffic** as the bridge, because the relay's two-second cache collapses it either way: a
+hundred tabs are one upstream call per two seconds under both designs. The difference is only
+whether the browser is told the truth about what it is receiving.
+
+Two notes for the terminal, since it is the one polling:
+* **Back off when the tab is hidden.** `document.visibilityState` — a background tab has no reader.
+* Two seconds is 30 requests a minute against an edge limit of 60. That is half the budget on one
+  route, which is fine for one tab and is the reason the point above is not optional.
 
 ### 4.3 Signals, news, the calendar
 
@@ -384,6 +431,63 @@ ignore it.
 it is the shape of a network drawn for anybody who asks, and it buys the reader nothing: the fields
 that matter are `reachable`, `probe`, `latency_ms` and the cache rate. Drop `address`, or move the
 whole route behind the private network and leave a bare `{"status":"ok"}` on the public one.
+
+### 4.10 What the forex feed actually is — measured, and it is not what this document said
+
+§1 called CoinePro-FX «gold and the dollar, over Finnhub». That line is a year old and it is wrong.
+Every row of `api/ws/snapshot`, read on 2026-09-19:
+
+```json
+{"symbol":"EURUSD","price":1.1490291357040405,
+ "bid":1.1490291357040405,"ask":1.1490291357040405,
+ "ts":1789857617149,"source":"yfinance"}
+```
+
+**`source: "yfinance"` on all seventeen, and `bid == ask == price` exactly** — so there is no spread
+in this feed; one number is echoed into three fields. Crypto, for contrast, reports
+`source: "lbank-ws"` and means it.
+
+Three consequences, and the third is the one that matters:
+
+1. **A third symbol universe.** `prices/live` serves 19, `ws/snapshot` 17, and the **socket 7** —
+   AUDUSD, EURUSD, GBPUSD, NZDUSD, USDCAD, USDCHF, USDJPY. No metals, no indices, no crude, no
+   crosses. So `XAUUSD` has a snapshot and **no live stream at all**: a subscriber gets its opening
+   value and never another frame. The relay sends snapshot-then-stream, so that is the truth of the
+   symbol rather than an invisible hole — but it is the product's headline instrument.
+2. **The app files every forex quote under `QuoteSource.UNKNOWN`.** `MarketDataController` maps
+   `finnhub` and `lbank` by name and everything else to `UNKNOWN`, which carries a 30-second
+   staleness budget. Nothing is broken and nothing is labelled either.
+3. **The chart names a different venue from the quote beside it.** `CandleGateway.sourceName` on the
+   forex path is **«MetaTrader 5»**, and its KDoc says exactly why it is printed: the commonest
+   accusation against this category of app is «کندل‌سازی», and the answer is provenance a reader can
+   check. On one screen today the candles say MetaTrader 5 and the last price is Yahoo Finance, with
+   nothing saying so. **That is the promise the label exists to keep, not kept.**
+
+Nothing in the app or the relay should paper over any of this: a client that renamed the source
+would be inventing provenance, which is worse than having none. `RUN_ALEF/BLOCKED.md §א22` is the
+question to CoinePro-FX's team, and §א20 gains a second sentence — gold is missing from the
+snapshot **and** from the stream.
+
+### 4.11 Phase 3, measured — 2026-09-19
+
+| check | answer |
+| --- | --- |
+| two clients on EURUSD for 150 s | **one** TCP connection from the relay to CoinePro-FX:443, counted from `/proc/net/tcp` inside the relay's own container |
+| the tick both received | identical `timestamp` and `last`, one frame each |
+| a second socket from one address | refused, `403` |
+| 201 symbols | `{"type":"error","detail":"201 symbols; the ceiling is 200"}` |
+| 200 symbols | accepted |
+| `wss://pro-chart.com/api/stream` from outside, through Cloudflare | works |
+
+**The ceiling refuses rather than truncates**, which is the behaviour `webSocketUrl`'s own comment in
+the app warns about: a silently shortened subscription is a chart that never ticks for a symbol the
+reader asked for and was never told about.
+
+One measurement the server had to make to test at all, worth keeping: **the forex market is shut at
+the weekend.** Upstream still sends a frame a second, with frozen values — 45 seconds, 45 frames,
+zero change — and re-samples about every two minutes, which is when the timestamp moves. The relay
+forwards changes rather than frames, so a closed market costs nothing downstream. A tick in the test
+above is real; its price simply has not moved, because nothing is trading.
 
 ---
 

@@ -1,6 +1,8 @@
 # RUN א — blocked
 
-**One thing, and it is one line to CoinePro-FX's team: §א20, the missing gold.**
+**Two, and both are questions for CoinePro-FX's team: §א20, the missing gold, and §א22, which feed
+the forex prices actually come from.** Neither needs an app release; both are about what one backend
+serves.
 
 §א19 (the update document) and §א21 (the Cloudflare certificate) are both closed — `pro-chart.com`
 is live, and the work in this run is in front of readers. Both sections are kept below with what
@@ -154,12 +156,75 @@ now records the measurement instead of the claim it used to make.
 serves nineteen; and the snapshot the app reads serves seventeen. The odd one out is the route the
 phone depends on, which is the whole of the ask.
 
+**And a second sentence, from the socket.** Phase 3 on the Pro Chart server found that the forex
+**stream** carries **seven** symbols — AUDUSD, EURUSD, GBPUSD, NZDUSD, USDCAD, USDCHF, USDJPY. No
+metals, no indices, no crude, no crosses. So there are three universes on one backend: **19** from
+`prices/live`, **17** from `ws/snapshot`, **7** from the socket.
+
+For gold that means it is missing twice over: no row in the snapshot the app's catalogue is built
+from, and **no live tick even for a client that knows its name**. A subscriber to `XAUUSD` gets the
+opening value and never another frame. So the ask is really two lines:
+
+> `ws/snapshot` and the price socket should both carry the same set `public/prices/live` does — 19
+> symbols, XAUUSD and XAGUSD among them. Today the snapshot serves 17 and the socket serves 7, and
+> gold is in neither.
+
 No app release is needed once it does: the catalogue is fetched, not compiled in, so gold appears
 the next time the screen is opened.
 
 **Until then**, `SERVER.md` §4.1 tells the web relay to read `api/public/prices/live` rather than
 the snapshot, so the browser will have gold before the phone does. That is worth knowing and it is
 not a reason to delay the ask.
+
+---
+
+## §א22 — the forex prices are Yahoo Finance, and the chart beside them says MetaTrader 5
+
+**Measured, not inferred.** Every row of `coineprofx.com/api/ws/snapshot` on 2026-09-19:
+
+```json
+{"symbol":"EURUSD","price":1.1490291357040405,
+ "bid":1.1490291357040405,"ask":1.1490291357040405,
+ "ts":1789857617149,"source":"yfinance"}
+```
+
+`source: "yfinance"` on all seventeen, and **`bid == ask == price` exactly** — one number echoed
+into three fields, so the feed carries no spread. The crypto side, for contrast, reports
+`source: "lbank-ws"` and means it. `SERVER.md` §1 has called this backend «gold and the dollar, over
+Finnhub» for a year; that line is now corrected.
+
+**Why this is a product question and not a note.** The app prints the provenance of its forex
+candles, and `CandleGateway.sourceName`'s own KDoc says why:
+
+> The loudest accusation in Persian-language reviews of this whole category of app is «کندل‌سازی» —
+> that the broker manufactures its candles. […] So every gateway names its venue, the chart prints
+> it, and the claim becomes falsifiable — a reader can hold this chart against that venue's own.
+
+The forex gateway names **«MetaTrader 5»**, and describes those bars as «the prices the copied
+account trades at, not an index or a composite». On one screen today, the candles say MetaTrader 5
+and the last price above them comes from Yahoo Finance, with nothing saying so. A reader who took
+the app's own advice and held the chart against MT5 would be comparing two different venues.
+
+**What the app does with it now**, and it is safe but unlabelled: `MarketDataController` maps a
+source containing `finnhub` or `lbank` by name and everything else to `QuoteSource.UNKNOWN`, which
+carries a 30-second staleness budget. So `yfinance` is already treated as an unknown venue rather
+than mislabelled. Nothing is wrong on screen; nothing is named either.
+
+**What is deliberately not done here.** Adding `YFINANCE` to `QuoteSource` would be this run
+deciding that Yahoo Finance is an acceptable quote source for a paid forex product, which is the
+owner's decision and not a client's. Renaming the chart's source label would be worse — inventing
+provenance is the fault the label exists to prevent.
+
+**What the owner must ask**, and it is one question with two acceptable answers:
+
+> Which venue do `api/ws/snapshot` and the price socket quote from? They report `source: "yfinance"`
+> with `bid == ask`. The app's chart names MetaTrader 5 as the candle source. If the quotes really
+> are Yahoo Finance, the two do not match and the app is labelling one screen with two venues; if
+> they are MT5 and the field is stale, the field should say so.
+
+Once answered, the app's side is small: either `QuoteSource` gains a named venue and the chart's
+label is qualified, or nothing changes because the field was simply wrong. Either way the app must
+not guess.
 
 ---
 

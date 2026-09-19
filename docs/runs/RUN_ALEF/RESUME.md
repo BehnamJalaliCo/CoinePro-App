@@ -27,29 +27,28 @@ last is ⏳ on two static files somebody has to put on a host that already exist
 
 **Live since 2026-09-19:** `pro-chart.com`. The legal pages every shipping build links to, the
 `assetlinks.json` that lets the App Link verify, the update document, and the read-only relay — all
-answering, all measured from outside rather than reported. The update card is in front of readers.
+answering, all measured from outside rather than reported. The update card is in front of readers. The socket is live too, **for forex**: one upstream
+connection fanned out to many clients, a ceiling that refuses rather than truncates, and a welcome
+frame that says out loud which venue is not live and why.
 
 ---
 
 ## What the next session does, in order
 
-1. **`BLOCKED.md §א20` — gold, and it is now the only thing blocked.** One line to CoinePro-FX's
-   team: `ws/snapshot` should answer the same 19 symbols `public/prices/live` does. Three witnesses
-   now say nineteen — `prices/live`, `signals/stats`'s own `symbols_covered`, and the route the
-   phone reads, which says seventeen and is the odd one out. Until it changes, the app's forex
-   market list has no gold while its forex *signals* are gold only.
-2. **Phase 3 on the server** — the socket (`SERVER.md` §4.2). Phases 1, 1½ and 2 are live and
-   verified from outside; Phase 3 is the next one that needs nothing from the owner.
-3. **`/api/health` should stop printing the upstreams' private addresses** (§4.9). Small, and the
-   server's to do.
-4. **`RUN_PSI/BLOCKED.md §Ψ10`** — the three product questions that gate Phase 4: which backend owns
-   the account on the web, whether the terminal is open or member-only, whether the candle archive
-   is built on day one. Nothing before Phase 4 waits on them.
-5. **The RUN Τ2 backlog**, still the largest thing outstanding and still untouched: B6 (offline as a
+1. **`BLOCKED.md §א20` and `§א22` — both are one message to CoinePro-FX's team.** §א20: the forex
+   universe is 19 by the desk's own count, 17 in the snapshot the app's catalogue is built from and
+   **7 on the socket**, and gold is missing from the last two. §א22: the quotes report
+   `source: "yfinance"` with `bid == ask`, while the chart beside them names MetaTrader 5 — two
+   venues on one screen, one of them labelled. Neither needs an app release; both need an answer.
+2. **Phase 4 on the server** is gated on `RUN_PSI/BLOCKED.md §Ψ10` — which backend owns the account
+   on the web, whether the terminal is open or member-only, whether the candle archive is built on
+   day one. Phases 1, 1½, 2 and 3 are live; Phase 3 is forex-complete and crypto-closed, and stays
+   that way until §6.2 is answered.
+3. **The RUN Τ2 backlog**, still the largest thing outstanding and still untouched: B6 (offline as a
    first-class state), B7 (the single-symbol widget), B8 (Picture-in-Picture), C1's surface, C2's
    two gaps, C3, C4, C6. `RUN_T2/RESUME.md` names the files and the trap in each; none needs a
    backend.
-6. **`RUN_XI/BLOCKED.md §Ξ21`** — the signals route's «entitled but unlinked».
+4. **`RUN_XI/BLOCKED.md §Ξ21`** — the signals route's «entitled but unlinked».
 
 ---
 
@@ -136,6 +135,18 @@ answering, all measured from outside rather than reported. The update card is in
   login page; a relay that does not follow redirects reads that as «degraded». The probe is
   `api/v1/system/health`. A monitor that reports a fault which is not there teaches everybody to
   ignore the one that is.
+* **A relay that polls is not a relay that streams, and the difference is a timestamp.** The server
+  asked whether it should bridge crypto onto the socket by polling the public route every two
+  seconds. It would have relayed the values unchanged — but a tick is an assertion about *when*
+  something happened, and a poll can only assert «my two samples differed». Answer: no, and the cost
+  of refusing is zero, because a tab polling the cached route is the same upstream traffic.
+  **When a design would make something up, check whether refusing actually costs anything; here it
+  cost nothing at all.**
+* **A feed's `source` field is worth reading, and nobody had read this one.** CoinePro-FX's quotes
+  say `yfinance` with `bid == ask`; `SERVER.md` had called that backend «over Finnhub» for a year,
+  and the app's chart names MetaTrader 5 a few pixels away. Nothing was broken, no test failed, and
+  the app files the venue as `UNKNOWN` — so the only symptom was a label that quietly meant two
+  things. **Read the metadata fields, not only the numbers.**
 * **A wrapped `LocalContext` loses the activity.** `createConfigurationContext` builds from the base
   context, so anything that finds its owner by walking the context chain — `rememberLauncherForActivityResult` is the one that bit — stops working the moment a test swaps the locale that way.
   Provide the owner explicitly.
@@ -144,22 +155,20 @@ answering, all measured from outside rather than reported. The update card is in
 
 ## Open questions for the owner
 
-1. **`BLOCKED.md §א20`** — the one line to CoinePro-FX about gold in `ws/snapshot`. **The only open
-   blocker.**
-2. **The text on the update card**, if the owner's own words differ from what is in
-   `docs/release/UPDATE_NOTES.md`. Edit the file and the next publish carries them — the server
-   reads it directly and a gate keeps its shape.
+1. **`BLOCKED.md §א20`** — gold is in neither the snapshot (17) nor the socket (7), while the desk's
+   own `symbols_covered` says 19.
+2. **`BLOCKED.md §א22`** — which venue the forex quotes come from. They say `yfinance`; the chart
+   says MetaTrader 5. One question, two acceptable answers, and the app must not guess either.
 3. **`RUN_PSI/BLOCKED.md §Ψ10`** — which backend owns the account on the web, whether the terminal
-   is open or member-only, and whether the candle archive is built on day one. These gate Phase 4
-   and nothing earlier.
+   is open or member-only, and whether the candle archive is built on day one. These gate Phase 4,
+   and Phase 3's crypto half with it.
 4. **`RUN_XI/BLOCKED.md §Ξ21`** — the signals route's «entitled but unlinked».
 5. Everything still open from RUN Τ2: the fling's distance-versus-time, the four alert tones,
    `membership_open_ourbit`, C5's separate scales, and the watchlist's «تحلیل».
 
-*Settled since this file was first written:* the `assetlinks.json` fingerprint (read from the
-published APK, confirmed four ways, in `DISTRIBUTION.md` §5) and the Cloudflare Origin CA
-certificate — `pro-chart.com` is live, and with it the legal pages, the update document and the
-read-only relay.
+*Settled since this file was first written:* the `assetlinks.json` fingerprint, the Cloudflare
+Origin CA certificate, and whether the relay should bridge crypto onto the socket (it should not —
+`SERVER.md` §4.2.1).
 
 ---
 
