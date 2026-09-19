@@ -1,7 +1,9 @@
 # RUN א — blocked
 
-Two things. One is two static files on a machine that already exists; the other is one line in
+Two things, and neither is code. One is a certificate from a dashboard; the other is one line in
 CoinePro-FX's snapshot, and it is the more urgent of the two.
+
+**§א19 is served and closed** — see the foot of it.
 
 ---
 
@@ -43,6 +45,53 @@ curl -sI https://pro-chart.com/api/app/latest | grep -i content-type
 
 and the served `version_code` against `python3 scripts/release/version.py --code` for the published
 tag.
+
+### Served — and verified from this side
+
+The Pro Chart machine built it. Every claim in its acceptance report was re-checked here against the
+published artefacts rather than taken on trust, and all of it holds:
+
+| claim | checked how | result |
+| --- | --- | --- |
+| `version_code: 50000004` | `aapt2 dump badging` on the release APK | `versionCode='50000004'`, `versionName='5.0.0+4'` — exact |
+| `sha256: f6f9925…738c2` | `sha256sum` of the APK downloaded from the GitHub release | identical |
+| the certificate it read from the APK | `apksigner verify --print-certs` on a *different* release (5.0.0+2) | `9612ab6c…fbd0`, `CN=CoinePro, OU=Mobile, O=CoinePro, L=Tehran, C=IR` — identical |
+| `publishable → True` | the four rules in `AppUpdate.publishable`, read against the document | holds: HTTPS, host `pro-chart.com`, 64 hex, name and code present |
+
+So the document is correct and the app would act on it. **What it is not yet is reachable**: the
+origin answers 200 on `localhost` and `pro-chart.com` answers 526 from outside, because Cloudflare
+refuses the origin's certificate. That is §א21, and it is the only thing between this work and a
+reader seeing it.
+
+The fingerprint no longer needs a phone to confirm. It was read three ways — by the server from the
+APK's v2 signing block, by `openssl x509` independently of that parser, and here by `apksigner` on a
+different release — and all three agree. `docs/release/DISTRIBUTION.md` §5 carries the value.
+
+---
+
+## §א21 — the Cloudflare origin certificate
+
+**What cannot be done here, or on the server.** `pro-chart.com` is behind Cloudflare, and Cloudflare
+will not talk to an origin whose certificate it does not trust: that is what a **526** is. Let's
+Encrypt cannot complete a challenge through an orange-clouded record, so the origin needs a
+**Cloudflare Origin CA** certificate, which only the zone's owner can create.
+
+**What the owner does**, once:
+
+> Cloudflare dashboard → the `pro-chart.com` zone → **SSL/TLS → Origin Server → Create
+> Certificate**. Accept the defaults, hand the **certificate** and the **private key** to the
+> server. Then set **SSL/TLS → Overview → Full (strict)**.
+
+The server puts them in `caddy/origin/` and serves `tls <cert> <key>`. It has been told not to make
+the 526 disappear any other way — disabling verification, plain HTTP to the origin, or a Flexible
+zone each hide it while leaving the hop unencrypted, on the host that serves this product's legal
+pages.
+
+**One consequence, and it is already a rule.** A Cloudflare-fronted `pro-chart.com` must never be
+certificate-pinned in the app: Cloudflare rotates the edge certificate on its own schedule and a
+pinned build cannot be told. `docs/release/DOMAINS.md` and `docs/security/PINNING.md` both say so —
+the same reason `coineprofx.com` is not pinned. Nothing needs changing; it needs not being
+forgotten.
 
 ---
 

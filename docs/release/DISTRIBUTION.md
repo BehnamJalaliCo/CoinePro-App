@@ -32,7 +32,10 @@ reader gets the app.
 ## 2. How a reader actually gets it
 
 1. The tag is pushed; GitHub Actions ("Build Android APK") builds and signs it.
-2. The release `vX.Y.Z` carries `pro-chart-X.Y.Z.apk`.
+2. The release `vX.Y.Z` carries `pro-chart-X.Y.Z.apk`. A build on top of a named version is tagged
+   `vX.Y.Z-bN` and **is** a pre-release; the named version is not. That distinction was a hard-coded
+   `prerelease: true` until 5.0.0, which left GitHub with no latest release to point at —
+   `releases/latest` answered `302` to the list of releases rather than to a file.
 3. The reader downloads that file and installs it, granting "install unknown apps" to their browser
    once.
 4. Once `pro-chart.com` serves it, the same file is offered from the brand host as well, with the
@@ -81,7 +84,9 @@ kill switch is one compromised host away from being everybody's app at once.
   `AppUpdate.PUBLISHING_HOSTS`, and it is an allow-list because this is the one response in the app
   that ends as an installable package rather than as text on a screen.
 * `sha256` is required. An APK offered with no way to check it is one this app declines to offer.
-* Both note fields may be empty; the card then shows the version alone.
+* Both note fields may be empty; the card then shows the version alone. Where they are not empty,
+  they are copied from **`docs/release/UPDATE_NOTES.md`**, which exists so that the one place this
+  product speaks to a reader about itself is not written from whatever was to hand.
 
 ## 5. `assetlinks.json` — which fingerprint
 
@@ -92,6 +97,25 @@ Google re-signs an upload with a key only they hold, and the fingerprint that ve
 is theirs rather than the one in the keystore — which is why `print-assetlinks.sh` used to carry a
 warning about it. With no Play in the path there is no re-signing: the key that signs the build is
 the key on the phone.
+
+**The value, as of 5.0.0** — read off the published APK with `apksigner verify --print-certs`, and
+independently confirmed by the Pro Chart server's own reading of three separate releases (4.99.0,
+5.0.0, 5.0.0+4; all three identical):
+
+```
+subject: CN=CoinePro, OU=Mobile, O=CoinePro, L=Tehran, C=IR
+SHA-256: 96:12:AB:6C:BF:BB:4F:4F:FB:F1:51:D8:60:2C:12:9D:CC:E8:A9:77:1E:85:46:69:E6:63:87:0F:04:04:FB:D0
+SHA-1:   5D:E8:7F:4B:B3:E8:35:6B:4E:98:1E:D4:DA:63:0B:A7:77:5F:9A:A8
+```
+
+Not a secret — it is derived from a file anybody can download, and it is served publicly in
+`assetlinks.json`. It is written down here so a mismatch is something a reader can *notice*: if a
+phone's «ایمنی و انتشار» screen ever shows a different SHA-256, that install was signed with another
+key and did not come from this repository.
+
+One thing that surprised the server and is worth recording: **the APK carries no v1 signature at
+all**, so `keytool -printcert -jarfile` finds nothing and says so unhelpfully. The certificate lives
+in the v2 signing block. `apksigner` reads it; `keytool` does not.
 
 Three ways to obtain it, in order of how hard they are to get wrong:
 

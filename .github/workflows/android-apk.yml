@@ -288,4 +288,15 @@ jobs:
             pro-chart-${{ steps.ver.outputs.full }}.aab
           fail_on_unmatched_files: true
           draft: false
-          prerelease: true
+          # **A build on a named version is a pre-release; the named version itself is not.**
+          #
+          # This was a hard-coded `true`, so all thirty releases were marked pre-release and GitHub
+          # had no latest release to point at: `releases/latest` answered `302` to the *list* of
+          # releases rather than to a file, and the website's «download the app» button was aimed
+          # at exactly that. Nothing in the app noticed — the update document names an exact URL —
+          # which is how it went unseen.
+          #
+          # `build` is commits since `version.properties` last changed, so it is `0` on the commit
+          # that bumps the version and that tag is `vX.Y.Z`. Every tag after it is `vX.Y.Z-bN`,
+          # which is a pre-release in semver's own sense as well as GitHub's.
+          prerelease: ${{ steps.ver.outputs.build != '0' }}

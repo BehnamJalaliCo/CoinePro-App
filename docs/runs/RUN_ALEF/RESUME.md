@@ -33,13 +33,12 @@ last is ⏳ on two static files somebody has to put on a host that already exist
    same 19 symbols `public/prices/live` does. Until it does, the app's forex market list has no
    gold while its forex *signals* are gold only. Ahead of everything else, because it is the one
    item on this list a reader actually meets.
-2. **`BLOCKED.md §א19` — the update document.** Two static files on the Pro Chart machine.
-   `SERVER_BUILD_PROMPT.md` Phase 1½ is written to be handed over as it stands, with its own
-   acceptance commands. Until it answers, the work in this run is real code that never runs.
-3. **The rest of the server.** Phase 0 and Phase 1 are done on the machine; Phase 1 cannot finish
-   until the Cloudflare Origin CA certificate exists, because the host answers 526 without it.
-   Then the read-only relay (§4.0–§4.3, rewritten this run against the live backends) and the
-   socket. `RUN_PSI/BLOCKED.md §Ψ10` carries the three product questions that gate what follows.
+2. **`BLOCKED.md §א21` — the Cloudflare Origin CA certificate.** The only thing between the work in
+   this run and a reader seeing it: the origin answers 200 and `pro-chart.com` answers 526.
+   Phases 1 and 1½ are built and verified behind it.
+3. **Phase 2 on the server** — the read-only relay, against §4.0–§4.3 as rewritten this run. It does
+   **not** wait on `PLAN.md` §6.2; that gates Phase 4. `RUN_PSI/BLOCKED.md §Ψ10` carries the three
+   product questions that do.
 4. **The RUN Τ2 backlog**, still the largest thing outstanding and still untouched: B6 (offline as a
    first-class state), B7 (the single-symbol widget), B8 (Picture-in-Picture), C1's surface, C2's
    two gaps, C3, C4, C6. `RUN_T2/RESUME.md` names the files and the trap in each; none needs a
@@ -101,6 +100,19 @@ last is ⏳ on two static files somebody has to put on a host that already exist
   *about*. Nothing failed, no test broke, and the list simply had no gold in it. When a doc comment
   asserts something about a server, the only way to keep it true is to measure it — `SERVER.md` §4.7
   is that measurement, dated, so the next reader argues with a number.
+* **A hard-coded `prerelease: true` cost thirty releases and nobody saw it.** GitHub marks the
+  newest *non*-prerelease as latest; with every release flagged, `releases/latest` answered `302` to
+  the list of releases and the website's download button pointed at a page instead of a file. The
+  app never noticed because the update document names an exact URL — **the thing that hid it was the
+  same thing that made it not matter yet.** Fixed as `build != '0'`.
+* **The APK has no v1 signature**, so `keytool -printcert -jarfile` finds nothing and says so
+  unhelpfully. The certificate is in the v2 signing block: `apksigner verify --print-certs`. The
+  Android SDK in the scratchpad has it at `build-tools/36.0.0/apksigner`, and one command settles a
+  question that had been costing days.
+* **Verify a report against the artefact, not against the reporter.** The server's Phase 1½
+  acceptance was correct in every particular — and it was worth spending four commands to know that
+  rather than to assume it: `aapt2 dump badging` for the version code, `sha256sum` for the digest,
+  `apksigner` for the certificate on a *different* release than the one it read.
 * **A wrapped `LocalContext` loses the activity.** `createConfigurationContext` builds from the base
   context, so anything that finds its owner by walking the context chain — `rememberLauncherForActivityResult` is the one that bit — stops working the moment a test swaps the locale that way.
   Provide the owner explicitly.
@@ -110,18 +122,21 @@ last is ⏳ on two static files somebody has to put on a host that already exist
 ## Open questions for the owner
 
 1. **`BLOCKED.md §א20`** — the one line to CoinePro-FX about gold in `ws/snapshot`.
-2. **`BLOCKED.md §א19`** — the update document, and whether the APK is served from `pro-chart.com`
-   or the document points at the GitHub release.
-3. **The Cloudflare Origin CA certificate** for `pro-chart.com` (SSL/TLS → Origin Server → Create
-   Certificate). Without it the host answers 526 and Phase 1 cannot finish.
-4. **The `assetlinks.json` fingerprint value**, for whoever configures the host. **Not from Play
-   Console** — it is on the app's own «ایمنی و انتشار» screen with a copy button.
-5. **`RUN_PSI/BLOCKED.md §Ψ10`** — which backend owns the account on the web, whether the terminal
+2. **`BLOCKED.md §א21`** — the Cloudflare Origin CA certificate for `pro-chart.com`
+   (SSL/TLS → Origin Server → Create Certificate; then the zone on Full (strict)). Hand the
+   certificate and the key to the server.
+3. **The text on the update card.** `docs/release/UPDATE_NOTES.md` now holds it, and 5.0.0's entry
+   is written; the owner's own words replace it whenever they prefer theirs.
+4. **`RUN_PSI/BLOCKED.md §Ψ10`** — which backend owns the account on the web, whether the terminal
    is open or member-only, and whether the candle archive is built on day one. These gate Phase 4
    and nothing earlier; Phase 2 was wrongly thought to wait on them and does not.
-6. **`RUN_XI/BLOCKED.md §Ξ21`** — the signals route's «entitled but unlinked».
-7. Everything still open from RUN Τ2: the fling's distance-versus-time, the four alert tones,
+5. **`RUN_XI/BLOCKED.md §Ξ21`** — the signals route's «entitled but unlinked».
+6. Everything still open from RUN Τ2: the fling's distance-versus-time, the four alert tones,
    `membership_open_ourbit`, C5's separate scales, and the watchlist's «تحلیل».
+
+*Settled since this file was first written:* the `assetlinks.json` fingerprint — read from the
+published APK and confirmed four ways, recorded in `docs/release/DISTRIBUTION.md` §5. It needs no
+phone and no console.
 
 ---
 
