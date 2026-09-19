@@ -203,6 +203,7 @@ market-intelligence routes. A Phase-2 relay reaches none of them.
 | `GET /api/track-record` | TradeYar | `api/demo/signals?limit=` | 300 s |
 | `GET /api/community` | TradeYar | `api/v1/public/community` | 60 s |
 | `GET /api/membership` | TradeYar | `api/v1/public/membership` | 300 s |
+| `GET /api/fx/showcase` | CoinePro-FX | `public/signals/showcase` | 60 s |
 
 `api/demo/signals` is named badly and the app's own `GuestApi` says why it is worth having: **every
 row is a real published signal that has already closed**, with the outcome it actually banked. It is
@@ -221,11 +222,19 @@ relayed yet:
 | `GET /api/announcements` | TradeYar | `api/mobile/v1/announcements` | bearer |
 | `GET /api/market-intelligence` | either | `api/mobile/v1/market-intelligence`, `user/mobile/market-intelligence` | bearer |
 
-There is said to be a public **showcase** signal route on CoinePro-FX — `EndpointCatalog`'s note
-calls it «the one that is not [behind VIP], and it serves a closed signal on purpose». The app does
-not call it and this document does not know its address. **Read it off `/api/openapi.json` rather
-than taking this paragraph's word for it**, and if it is there it belongs in the Phase-2 table above
-beside the track record.
+**The showcase route exists** — `public/signals/showcase`, read off `/api/openapi.json` as this
+paragraph used to instruct rather than taken on anybody's word, and confirmed to answer without a
+token while `active` and `recent` beside it do not. It is in the Phase-2 table above.
+
+Today it answers `{"signal": null, "live": null}`, and that is **empty rather than broken**: the
+neighbouring `public/signals/stats` reports `total_signals: 0`. A relay must not turn a null into an
+error, and a terminal must not draw a card for it.
+
+`public/signals/stats` is public too and is **not** relayed, because §4.3 did not name it and the
+server was right not to invent a route. It is worth a line here anyway for something it says in
+passing: **`symbols_covered: 19`**. The desk's own count of the forex universe is nineteen — the
+same nineteen `public/prices/live` returns and two more than the bare snapshot gives the phone. See
+§4.7 and `RUN_ALEF/BLOCKED.md §א20`.
 
 **`market=forex` is the gold call** — `ForexSignalScope` in `:core:signals` is the rule and the
 terminal applies the same one. The relay does not filter; a client that narrows and a relay that
@@ -330,6 +339,51 @@ forex market list from the bare snapshot and from nothing else — there is no b
 signal list to gold; a reader can now be shown a gold call and find no gold market to open.
 `docs/runs/RUN_ALEF/BLOCKED.md §א20` is the ask to CoinePro-FX's team, and it is one line: put
 XAUUSD and XAGUSD in `ws/snapshot`'s bare answer, where `prices/live` already has them.
+
+### 4.8 Live — 2026-09-19, measured through Cloudflare
+
+The host answers. Everything below was fetched from outside, as a reader's phone or browser would,
+and re-checked here against the artefacts rather than taken from the server's own report.
+
+| call | answer |
+| --- | --- |
+| `/legal/terms/`, `/legal/privacy/`, `/legal/delete-account/` | `200`, **zero redirects**, `text/html` |
+| `/.well-known/assetlinks.json` | `200`, `application/json`, no redirect — and the fingerprint in it **is** the release keystore's, checked against `apksigner`'s own reading of the APK |
+| `/api/app/latest` | `200`, `application/json`; the notes are **byte-identical** to `docs/release/UPDATE_NOTES.md` |
+| the APK the document names | `200`, and `sha256sum` says it is **byte-identical to the GitHub release** |
+| `/api/crypto/prices` | `857` rows |
+| `/api/fx/prices` | `19` rows, XAUUSD and XAGUSD first |
+| `/api/fx/candles`, seven timeframes | `M15 H1 H4 D1` → 200; `M5 M30 W1` → **422, unchanged from upstream** |
+| `/api/health` | both upstreams reachable, cache hit rate reported |
+| `www.pro-chart.com` | `301` to the apex |
+
+**The relay does not translate a refusal.** That is the row worth dwelling on: asking for `M5`
+returns the backend's own `422` with the backend's own message, rather than a timeframe the relay
+picked as near enough. A relay that quietly substituted `M15` would draw a chart of the wrong bars
+and nothing anywhere would say so.
+
+### 4.9 Two decisions the relay's author made, and why both stand
+
+**The candle cache expires on the bar's close, not per candle.** §4.1 names the key
+`venue:symbol:interval:openTime`, which implies caching each bar and rebuilding the response from
+the ones held. The server declined, and its reason is better than the rule: rebuilding a body means
+the relay has to write `server_time_ms` itself — and **rule 1 says this server is never the author
+of any number.** So the body is cached whole, unmodified, with a TTL that runs to the moment the
+newest bar closes, capped at one interval tick. The effect §4.1 asked for is unchanged — a hundred
+tabs on BTCUSDT H1 are one upstream call an hour plus one live bar — without the relay acquiring a
+second contract. Measured: 657 ms cold, **3.5 ms** warm.
+
+**The health probe is not `/healthz`.** TradeYar's answers `307` to `/login?from=/healthz`, and the
+relay does not follow redirects, so the first reading was a false «degraded». The probe is
+`api/v1/system/health`, which answers `200` directly. Worth recording because the failure mode is
+the dangerous kind: a health check that reports a fault which is not there teaches everybody to
+ignore it.
+
+**One thing to change.** `/api/health` prints each upstream's **private address** (`10.10.1.2`,
+`10.10.1.3`) to the public internet. Neither is a secret and neither is reachable from outside, but
+it is the shape of a network drawn for anybody who asks, and it buys the reader nothing: the fields
+that matter are `reachable`, `probe`, `latency_ms` and the cache rate. Drop `address`, or move the
+whole route behind the private network and leave a bare `{"status":"ok"}` on the public one.
 
 ---
 

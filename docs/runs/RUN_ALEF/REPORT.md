@@ -277,3 +277,75 @@ switching the zone to Flexible each make the 526 disappear while leaving the hop
 host that serves this product's legal pages. It also records the consequence that was already a
 rule: a Cloudflare-fronted `pro-chart.com` must never be certificate-pinned, for the same reason
 `coineprofx.com` is not.
+
+---
+
+## 8. The host answers
+
+The owner made the Origin CA certificate; the server installed it after checking the key and the
+certificate were a pair, and disabled nothing to do it. `pro-chart.com` is live, and with it Phases
+1, 1½ and 2.
+
+Everything worth saying about that was measured from outside, through Cloudflare, rather than read
+from the server's report — `SERVER.md` §4.8 is the table. But one line of it is not a measurement,
+it is the end of something:
+
+**Every legal link in the shipping app now opens a page.** Those three addresses have been compiled
+into the binary since 4.47.0. `docs/release/DOMAINS.md` has carried the sentence «a legal link from
+inside the app opens a browser on a host that does not answer» for a year, under a status column
+reading **not serving**. A reader who tapped «قوانین» got a dead host, and the only reason it was not
+worse is that the documents are bundled and the in-app reader shows them anyway. That sentence is
+gone from the document because the fact is gone from the world.
+
+The rest holds end to end. `assetlinks.json` answers as `application/json` with no redirect and
+carries the release keystore's own fingerprint — checked here against `apksigner`'s reading of the
+APK, not against the server's report of it — so the App Link on `/reset` can verify. The update
+document answers, its notes are byte-identical to `UPDATE_NOTES.md`, and the APK it names is
+byte-identical to the GitHub release. Four artefacts, one chain, no weak link in it.
+
+And the relay carries 857 crypto rows and 19 forex rows with gold first: the same two numbers §4.7
+measured against the backends directly, so nothing was lost in the hop.
+
+### The row worth dwelling on
+
+`M5`, `M30` and `W1` come back from `/api/fx/candles` as the backend's own `422`, with the backend's
+own message. **The relay does not translate a refusal.** It would have been easy and superficially
+kind to serve the nearest timeframe it could — and the result would be a chart of the wrong bars
+with nothing anywhere saying so, which is the exact failure this product spent run Ψ removing from
+its own client.
+
+### Where the implementer was right and the spec was wrong
+
+§4.1 said to cache candles keyed `venue:symbol:interval:openTime`, one entry per bar. The server
+declined, and its reason is better than the rule: rebuilding a response body out of individually
+cached bars means the relay has to write `server_time_ms` itself, and **rule 1 is that this server
+is never the author of any number.** Caching the body whole, unmodified, with a TTL that runs to the
+moment the newest bar closes gets exactly the effect §4.1 wanted — 657 ms cold, 3.5 ms warm, a
+hundred tabs on one symbol becoming one upstream call an hour — without the relay acquiring a second
+contract to keep in step.
+
+So §4.9 records the decision and the spec now matches the implementation. That is the right
+direction of travel when the implementer's argument is the better one, and it is worth saying
+plainly: the rule existed to prevent a class of fault, the implementation found a way to prevent it
+harder, and a spec that insisted on its own wording would have made the product worse.
+
+### Two small things
+
+A health check that reported a fault which was not there: TradeYar's `/healthz` answers `307` to a
+login page, and a relay that does not follow redirects reads that as «degraded». The probe moved to
+`api/v1/system/health`. Worth recording because a monitor that cries wolf teaches everybody to
+ignore the one that is telling the truth.
+
+And one thing still to change, named rather than fixed because it is the server's: `/api/health`
+prints each upstream's private address to the public internet. Neither is a secret and neither is
+reachable from outside, but it is a network diagram handed to anybody who asks, and the fields a
+reader actually needs — reachable, probe, latency, cache rate — are all there without it.
+
+### A third witness for the gold
+
+`public/signals/stats` on CoinePro-FX reports **`symbols_covered: 19`**. So the desk's own count of
+its forex universe is nineteen; `prices/live` serves nineteen; and `ws/snapshot`, the one route the
+Android app builds its forex market list from, serves seventeen and drops exactly the two metals the
+product's forex side is about.
+
+That is now the only blocked item in this run, and it is one line to one team.

@@ -1,9 +1,10 @@
 # RUN א — blocked
 
-Two things, and neither is code. One is a certificate from a dashboard; the other is one line in
-CoinePro-FX's snapshot, and it is the more urgent of the two.
+**One thing, and it is one line to CoinePro-FX's team: §א20, the missing gold.**
 
-**§א19 is served and closed** — see the foot of it.
+§א19 (the update document) and §א21 (the Cloudflare certificate) are both closed — `pro-chart.com`
+is live, and the work in this run is in front of readers. Both sections are kept below with what
+closed them, because a blocker's record is worth more than its absence.
 
 ---
 
@@ -69,9 +70,27 @@ different release — and all three agree. `docs/release/DISTRIBUTION.md` §5 ca
 
 ---
 
-## §א21 — the Cloudflare origin certificate
+## §א21 — the Cloudflare origin certificate *(closed — 2026-09-19)*
 
-**What cannot be done here, or on the server.** `pro-chart.com` is behind Cloudflare, and Cloudflare
+**Closed.** The owner created it; the server installed it after checking the key and certificate
+were a pair, and changed nothing else — verification stayed on, the origin was never given plain
+HTTP, the zone went to Full (strict). Valid to 2041, covering `pro-chart.com` and `*.pro-chart.com`.
+
+`pro-chart.com` is live. Measured from outside, through Cloudflare: the three legal pages answer
+`200` with **zero redirects**, `assetlinks.json` answers `application/json` with the right
+fingerprint, the update document answers and names an APK **byte-identical to the GitHub release**,
+`www` `301`s to the apex, and the Phase-2 relay answers 857 crypto rows and 19 forex rows with gold
+first. `SERVER.md` §4.8 is the table.
+
+**This closes the oldest loose end in the product.** Every legal link in the shipping app has
+pointed at `pro-chart.com/legal/…` since 4.47.0, and until today a reader who tapped «قوانین» got a
+browser on a host that did not answer. `docs/release/DOMAINS.md` said so for a year; it does not any
+more.
+
+The rest of this section is kept as written, because the reasoning is what made it one ask rather
+than a week of guessing.
+
+**What could not be done here, or on the server.** `pro-chart.com` is behind Cloudflare, and Cloudflare
 will not talk to an origin whose certificate it does not trust: that is what a **526** is. Let's
 Encrypt cannot complete a challenge through an orange-clouded record, so the origin needs a
 **Cloudflare Origin CA** certificate, which only the zone's owner can create.
@@ -129,6 +148,11 @@ now records the measurement instead of the claim it used to make.
 
 > `api/ws/snapshot` with no `symbols` should return the same set as `api/public/prices/live` —
 > 19 symbols, including XAUUSD and XAGUSD. It returns 17 and omits both metals.
+
+**A third witness, found on 2026-09-19.** `api/public/signals/stats` on that same host reports
+`symbols_covered: 19`. So the desk's own count of its forex universe is nineteen; `prices/live`
+serves nineteen; and the snapshot the app reads serves seventeen. The odd one out is the route the
+phone depends on, which is the whole of the ask.
 
 No app release is needed once it does: the catalogue is fetched, not compiled in, so gold appears
 the next time the screen is opened.
