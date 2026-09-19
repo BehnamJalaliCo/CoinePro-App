@@ -113,6 +113,13 @@ last is ⏳ on two static files somebody has to put on a host that already exist
   acceptance was correct in every particular — and it was worth spending four commands to know that
   rather than to assume it: `aapt2 dump badging` for the version code, `sha256sum` for the digest,
   `apksigner` for the certificate on a *different* release than the one it read.
+* **The moment another program parses a document, the document is an interface.**
+  `docs/release/UPDATE_NOTES.md` was written as prose for whoever publishes a release. The Pro Chart
+  server now reads it directly, so a reformatted heading or a version bumped without an entry would
+  publish a card that says nothing — with no error anywhere, on a screen most readers open twice a
+  year. `scripts/release/check-update-notes.py` is the answer, and the general rule is: when
+  something outside this repository starts reading a file inside it, that file needs a gate the same
+  day, not the run after.
 * **A wrapped `LocalContext` loses the activity.** `createConfigurationContext` builds from the base
   context, so anything that finds its owner by walking the context chain — `rememberLauncherForActivityResult` is the one that bit — stops working the moment a test swaps the locale that way.
   Provide the owner explicitly.
@@ -125,8 +132,9 @@ last is ⏳ on two static files somebody has to put on a host that already exist
 2. **`BLOCKED.md §א21`** — the Cloudflare Origin CA certificate for `pro-chart.com`
    (SSL/TLS → Origin Server → Create Certificate; then the zone on Full (strict)). Hand the
    certificate and the key to the server.
-3. **The text on the update card.** `docs/release/UPDATE_NOTES.md` now holds it, and 5.0.0's entry
-   is written; the owner's own words replace it whenever they prefer theirs.
+3. **The text on the update card.** `docs/release/UPDATE_NOTES.md` holds it, the server reads it
+   directly, and a gate keeps its shape. 5.0.0's entry is written; the owner's own words replace it
+   whenever they prefer theirs — edit the file, and the next publish carries them.
 4. **`RUN_PSI/BLOCKED.md §Ψ10`** — which backend owns the account on the web, whether the terminal
    is open or member-only, and whether the candle archive is built on day one. These gate Phase 4
    and nothing earlier; Phase 2 was wrongly thought to wait on them and does not.

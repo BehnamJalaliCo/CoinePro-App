@@ -9,6 +9,28 @@ whatever material was to hand — and what was to hand was a release body that i
 `CHANGELOG.md` that stopped at 0.2.0. The update card is the one place this product speaks to a
 reader about itself; it should not be written by accident.
 
+---
+
+## This file is parsed. Its shape is a contract.
+
+`app-latest.py` on the Pro Chart server reads it directly — nobody retypes these sentences — so the
+format below is an interface, not a layout preference:
+
+* **`## MAJOR.MINOR.PATCH`** is the key, and it is the **released** version, not the build. `5.0.0+4`
+  reads `## 5.0.0`. A note per build would be a note nobody writes.
+* Under it, **`**fa**`** and **`**en**`**, each followed by a **blockquote**.
+* The server strips the `>`, joins the lines with a space, and puts the result in `notes_fa` /
+  `notes_en` **byte for byte**. Nothing else in the entry is read; prose outside the blockquotes is
+  for whoever is editing.
+
+`scripts/release/check-update-notes.py` parses it the same way and fails the build if the version
+being released has no entry, if an entry is missing a language, if the Persian breaks the house
+orthography, or if either language runs past 400 characters. It runs in both workflows and prints
+what a reader will see, so a CI log answers «what is on the card?».
+
+Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** characters of Persian and
+**274** of English on both sides, identical.
+
 ## How to write one
 
 * **Two or three sentences.** It is a card on a screen, not a changelog. Somebody deciding whether

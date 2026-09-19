@@ -65,6 +65,12 @@ jobs:
       - name: Doctrine D10 — no ✅ without a frame or a test
         run: python3 scripts/quality/check-checklist-honesty.py
 
+      # The update card's own sentence. `docs/release/UPDATE_NOTES.md` is parsed by the Pro Chart
+      # server, so its shape is an interface rather than a document — and an interface nobody
+      # checks breaks silently, on a screen most readers open twice a year.
+      - name: The update card has a sentence, and it parses
+        run: python3 scripts/release/check-update-notes.py
+
       # `docs/legal/` is the only place the two documents are written; the app reads committed
       # copies of them. Without this check a revision nobody re-synced ships an out-of-date
       # document to readers while the published site shows the new one.

@@ -152,6 +152,11 @@ jobs:
           bash scripts/security/scan-secrets.sh
           # The version arithmetic exists in two languages; this asserts the two agree.
           python3 scripts/release/version.py --check
+          # `UPDATE_NOTES.md` stopped being prose the day the Pro Chart server started parsing it
+          # for the update card's two sentences. This asserts the version being built has an entry
+          # and that every entry parses the way that server reads it — and prints what a reader
+          # will see, so the CI log answers it without opening a browser.
+          python3 scripts/release/check-update-notes.py
 
       - name: Unit tests
         run: gradle --no-daemon testDebugUnitTest
