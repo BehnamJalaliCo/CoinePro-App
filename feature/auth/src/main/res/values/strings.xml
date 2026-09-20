@@ -31,7 +31,7 @@
     <string name="auth_forgot_body">Enter the account\'s email address. If an account exists for it, a recovery code is sent.</string>
     <string name="auth_send_reset">Send recovery code</string>
     <string name="auth_reset_title">A new password</string>
-    <string name="auth_reset_body">Enter the eight-letter code from the email — it looks like ABCD-EFGH. The dash and lower case are both fine. Opening the emailed link on this phone fills it in for you.</string>
+    <string name="auth_reset_body">Enter the eight-letter code from the email — it looks like ABCD-EFGH. The dash and lower case are both fine.</string>
     <string name="auth_reset_submit">Change password</string>
     <string name="auth_continue_google">Continue with Google</string>
     <string name="auth_back_to_sign_in">Back to sign-in</string>
@@ -46,7 +46,7 @@
 
     <string name="auth_notice_code_sent">The code was sent.</string>
     <string name="auth_notice_reset_requested">If an account exists for that address, a recovery code was sent. Check your email.</string>
-    <string name="auth_notice_password_changed">Your password was changed. Sign in with the new one.</string>
+    <string name="auth_notice_password_changed">Your password was changed and every other device was signed out. Sign in with the new one.</string>
 
     <string name="auth_error_rejected">The request was not accepted.</string>
     <string name="auth_error_invalid">Those details were not accepted.</string>

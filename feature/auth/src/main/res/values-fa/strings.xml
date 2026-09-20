@@ -31,7 +31,7 @@
     <string name="auth_forgot_body">آدرس ایمیل حساب را بنویسید. اگر حسابی با آن آدرس وجود داشته باشد، کد بازیابی فرستاده می‌شود.</string>
     <string name="auth_send_reset">ارسال کد بازیابی</string>
     <string name="auth_reset_title">رمز عبور تازه</string>
-    <string name="auth_reset_body">کد هشت‌حرفی داخل ایمیل را بنویسید — به شکل ABCD-EFGH. خط تیره و حروف کوچک هم پذیرفته می‌شود. اگر لینک ایمیل را روی همین گوشی باز کنید، کد خودش پر می‌شود.</string>
+    <string name="auth_reset_body">کد هشت‌حرفی داخل ایمیل را بنویسید — به شکل ABCD-EFGH. خط تیره و حروف کوچک هم پذیرفته می‌شود.</string>
     <string name="auth_reset_submit">تغییر رمز عبور</string>
     <string name="auth_continue_google">ادامه با گوگل</string>
     <string name="auth_back_to_sign_in">بازگشت به ورود</string>
@@ -46,7 +46,7 @@
 
     <string name="auth_notice_code_sent">کد فرستاده شد.</string>
     <string name="auth_notice_reset_requested">اگر حسابی با این آدرس وجود داشته باشد، کد بازیابی فرستاده شد. ایمیل خود را ببینید.</string>
-    <string name="auth_notice_password_changed">رمز عبور عوض شد. حالا با رمز تازه وارد شوید.</string>
+    <string name="auth_notice_password_changed">رمز عبور عوض شد و همه‌ی دستگاه‌های دیگر از حساب بیرون آمدند. حالا با رمز تازه وارد شوید.</string>
 
     <string name="auth_error_rejected">درخواست پذیرفته نشد.</string>
     <string name="auth_error_invalid">اطلاعات واردشده پذیرفته نشد.</string>

@@ -72,4 +72,14 @@ the app, leads nowhere** — so the page has to exist before any mail names it. 
 the token from the query, post it, say what happened. `SERVER.md` §3.1 reserves the path and keeps
 it out of the terminal's SPA fallback for exactly this reason.
 
+**One thing to change in the same breath as any mail that starts carrying a link.** There are two
+reset flows on CoinePro-FX and they carry different credentials: the **academy** one e-mails
+`…/reset-password?token=<43 characters>`, which `RESET_TOKEN` accepts; the **mobile** one — the flow
+this app uses — e-mails an **eight-character code**, `ABCD-EFGH`, and no link at all. So if anybody
+ever puts that code into a `pro-chart.com/reset?token=…` link, `RESET_TOKEN`'s sixteen-character
+minimum will drop it, `DeepLinkValidation` will return null, and the App Link will open the app to
+nothing. The regex is deliberately not widened in advance — a validator loosened for a case that
+does not exist is a validator nobody can reason about — but widening it belongs in the same change
+as the mail.
+
 `coineprofx.com` stays claimed for as long as CoinePro-FX's e-mails name it.

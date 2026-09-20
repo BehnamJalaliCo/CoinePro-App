@@ -160,6 +160,43 @@ The mail itself is a separate question and stays as it is until somebody decides
 existing does not mean anything should point at it yet. `docs/release/APP_LINKS.md` carries the
 same note from the app's side.
 
+**The credential is a typed code, not a token in a URL** — measured in CoinePro-FX's own source
+rather than assumed, because the shape of the page depends on it and the two halves of that backend
+do it differently:
+
+| flow | what the reader gets | what consumes it |
+| --- | --- | --- |
+| **mobile** — the one this relay proxies | an **eight-character code**, `ABCD-EFGH`, in the mail body. **No link at all** (`src/api/mobile/reset.py`, brand `panel_reset`) | `POST user/auth/password/reset {reset_token, new_password}`, `reset_token` 6–40 characters |
+| academy | a link, `…/reset-password?token=<43 characters>` (`secrets.token_urlsafe(32)`) | `POST /auth/reset-password` — a **different route**, not the one relayed |
+
+So `/reset` must **accept a typed code as well as a `?token=`**, and the code is the case that
+exists today. A page that shows its form only when a token is in the query is, for every reader the
+mobile flow produces, a page with no form — and telling them to «open the full link from the
+e-mail» sends them looking for something the e-mail does not contain. With the query parameter it
+stays a convenience for whenever a mail does carry one; without it, the reader types `ABCD-EFGH`
+and the page works today, against the mail exactly as it is.
+
+**`{"reset": true}` rendered as a sentence is right**, and the line is worth stating because it is
+the one place rule 1 could be misread. Rule 1 forbids the server **authoring a claim** — a price,
+a timestamp, a verdict the backend did not reach. Turning a flag the backend *did* set into a
+sentence a human can read is translation, not authorship; it is what every screen in the app does
+with every response. Two conditions keep it on the right side of the line:
+
+* The test is `HTTP 200 && body.reset === true`, never the truthiness of `body.reset`. A
+  `{"reset": false}`, or a 200 carrying an error shape, must not read as success — that is the
+  failure mode that matters, because a reader told «done» when nothing happened will not try again.
+* The sentence says **only** what the backend did. It did one more thing than «the password
+  changed»: `revoke_all_for_user(user.id, "password_change")` — **every other session is signed
+  out**. A reader who changes their password on a laptop and then finds their phone logged out
+  should have been told, and that is not invention, it is the backend's own behaviour. The app's
+  string now says it too, in both languages, so the two surfaces say one thing:
+
+> **fa** — «رمز عبور عوض شد و همه‌ی دستگاه‌های دیگر از حساب بیرون آمدند. حالا با رمز تازه وارد شوید.»
+> **en** — «Your password was changed and every other device was signed out. Sign in with the new one.»
+
+Use those two verbatim (`auth_notice_password_changed`), so a reader moving between the page and
+the app meets one vocabulary rather than two translations of it.
+
 **No `Cross-Origin-Opener-Policy` / `Cross-Origin-Embedder-Policy`**, and this is a decision rather
 than an omission. Those two headers are needed only for `SharedArrayBuffer`, `SharedArrayBuffer` is
 needed only for shared-memory threads, and **Kotlin/Wasm has no threading model** — no `Thread`, no
