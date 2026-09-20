@@ -99,7 +99,7 @@ than discovered when a bundler is wired up.
 | `/download/…` | the APK | served beside the document that names its digest (§4.6) |
 | `/api/…` | the relay | §4 |
 | `/s/<id>` | a shared script | **not built yet**, and when it is: server-rendered, not an SPA route — see below. `ScriptLink.of` in `:namascript` already spells this address |
-| `/reset` | password reset | **not built yet, and now asymmetric** — see below |
+| `/reset` | password reset | **not built yet — build it, with one proxied route.** See below |
 | `/.well-known/assetlinks.json` | App Links | `application/json`, no redirect |
 
 **The terminal mounts at `/terminal/`, and the root is a page of its own.** The tempting answer is
@@ -132,14 +132,33 @@ Server-rendered, then: the script's name and author in the head, and a link into
 run it. Note also what `ScriptLink` already guarantees — the link carries an **id, never source**,
 so nothing runs on a tap.
 
-**`/reset` is claimed by the app and does not exist on the server**, which is new and worth naming
-rather than leaving in a table. `/.well-known/assetlinks.json` now verifies — the fingerprint is
-right and the file is served the way Android's verifier needs it — so on a phone with the app, the
-link opens the app. For anybody else it is a `404`. Nothing is broken for a reader today, because
-no e-mail names that address yet (CoinePro-FX's reset mails name `coineprofx.com/reset-password`),
-but the halves are now asymmetric and the page has to exist **before** any mail names it. It is one
-page: read the token from the query, post it, say what happened. `docs/release/APP_LINKS.md` has
-the same note from the app's side.
+**`/reset` is claimed by the app and does not exist on the server yet.**
+`/.well-known/assetlinks.json` verifies — the fingerprint is right and the file is served the way
+Android's verifier needs it — so on a phone with the app installed, the link opens the app and the
+reset happens in it (`DeepLinkValidation` returns `PasswordReset(token)`, and the token stays opaque
+to the app). **The page is for the reader who does not have the app**: somebody resetting on a
+laptop. Today they get a `404`.
+
+**Build it, with one route proxied, rather than leaving the `404`.** The reasoning, because it looks
+like it touches Phase 4 and does not:
+
+* §4.4's default is already written: auth proxies to **CoinePro-FX** until §8.1 is answered. A
+  reset mail carrying a `pro-chart.com/reset` link would be CoinePro-FX's mail carrying
+  CoinePro-FX's token, so forwarding it there is not a guess about who owns the account — it is
+  the row above, followed. `POST /api/auth/password/reset` alone, not the rest of `/api/auth/*`.
+* **The page must invent nothing**, which is rule 1 again: it reads the token from the query,
+  posts it, and shows the backend's own answer. It does not validate the token, does not decide
+  what «expired» means, and does not write a message the backend did not send.
+* The alternative that looks safer is not: a page that renders a form it cannot submit is **worse
+  than a `404`**, because a `404` is unambiguous while a dead form teaches a reader to distrust the
+  product at the one moment they are already locked out.
+* And leaving the `404` makes the product depend on nobody ever changing a mail template — a
+  decision taken in another repository, by people who have no reason to know this page is missing.
+  A thing that is correct only while somebody else does not act is not correct.
+
+The mail itself is a separate question and stays as it is until somebody decides it: the page
+existing does not mean anything should point at it yet. `docs/release/APP_LINKS.md` carries the
+same note from the app's side.
 
 **No `Cross-Origin-Opener-Policy` / `Cross-Origin-Embedder-Policy`**, and this is a decision rather
 than an omission. Those two headers are needed only for `SharedArrayBuffer`, `SharedArrayBuffer` is
@@ -360,7 +379,7 @@ narrows would be two places to change the day the desk publishes something else.
 
 | `pro-chart.com` | upstream | note |
 | --- | --- | --- |
-| `POST /api/auth/*` | whichever backend owns the account | **`PLAN.md` §6.2 is still open.** Until the owner answers, the relay proxies auth to CoinePro-FX, which is where `RESET_HOST` already points |
+| `POST /api/auth/*` | whichever backend owns the account | **§8.1 is still open, and this row is not waiting on it.** The default is written down: until the owner answers, the relay proxies auth to **CoinePro-FX**, which is where `RESET_HOST` already points. Building against that default is not pre-empting the decision — it is following the spec, and one proxied route is reversible in an afternoon if the answer goes the other way |
 | `POST /api/auth/guest` | TradeYar | `user/auth/guest` — the read-only tier |
 | `GET /api/membership` | TradeYar | `api/v1/public/membership`, `api/mobile/v1/membership/status` |
 | `GET,POST /api/community/*` | TradeYar | `api/v1/public/app-community/*` |
@@ -731,11 +750,19 @@ answer.
 
 ## 8. What is still the owner's to decide
 
+**Cite these as «`SERVER.md` §8.<n>».** They used to be cited as «`PLAN.md` §6.<n>», which was fine
+until this document grew a §6.2 of its own about serving the bundle — and «§6.2» now names two
+different things in two documents, one of which is an owner decision and the other a cache header.
+The numbering below is the canonical one.
+
 0. ~~The provider and the machine.~~ **Done** — provisioned, on the same Hetzner private network as
    TradeYar and CoinePro-FX, with an agent on it. `SERVER_BUILD_PROMPT.md` is what it works from.
 
 1. **Which backend owns the account** (`PLAN.md` §6.2, and
-   `docs/SERVER_ASK_ONE_ACCOUNT_TWO_BACKENDS.md`). Step 5 cannot start without it.
+   `docs/SERVER_ASK_ONE_ACCOUNT_TWO_BACKENDS.md`). Step 5 cannot start without it. **What does not
+   wait on it:** §4.4 names CoinePro-FX as the default until the answer arrives, so anything built
+   against that default — `/reset` and its one proxied route (§3.1) — is following the spec rather
+   than pre-empting the decision.
 2. **Whether the terminal is open, member-only, or a read-only guest page** (`PLAN.md` §6.3).
 3. **Whether the candle archive is built on day one** (§5). It is the difference between a reader
    panning to the edge of the backend's window and panning as far as the product has history.
