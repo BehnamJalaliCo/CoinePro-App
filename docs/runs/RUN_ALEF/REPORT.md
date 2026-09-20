@@ -435,3 +435,68 @@ chart: **the forex market is shut at the weekend.** Upstream sends a frame a sec
 values — 45 seconds, 45 frames, zero change — and re-samples about every two minutes, which is when
 the timestamp moves. The relay forwards changes rather than frames, so a closed market costs nothing
 downstream, and a tick is real even when its price has not moved because nothing is trading.
+
+---
+
+## 10. The number the relay's author was right to question
+
+The server did the arithmetic on §6 and did not change the figure, because §6 is the spec and the
+spec was not theirs to edit. That was the correct instinct and it surfaced a mistake of mine.
+
+§6 said **60 requests a minute per IP on `/api/*`**. That number was written when the relay was
+imagined as serving page loads, with the socket carrying anything live. Then §4.2.1 — decided in
+this same run — concluded that crypto cannot use the socket and the terminal must poll
+`/api/crypto/prices` every two seconds.
+
+Thirty a minute. **Two tabs from one address exhaust that one route**, before `fx/prices`, a candle
+load or the news takes any share at all. And per-IP is a blunt instrument in this product's own
+market: `NetworkFactory`'s KDoc has said for a year that the backends cannot rate-limit the phone by
+address, because «carrier-grade NAT puts a very large number of Iranian mobile subscribers behind
+one address». An office, a household, a floor of a building — all one address.
+
+Neither section was wrong when it was written. The fault is that **a decision in one place changed a
+number in another and nothing connected them.**
+
+The fix is not a bigger number; it is the right shape. A limit should be proportional to what a
+request costs, and these do not cost the same thing: the two price routes are served from a
+two-second Redis cache and cost the upstreams **nothing at all**, because a hundred tabs collapse
+into one call either way. Refusing them is protecting a resource that is not scarce. A candle miss,
+by contrast, really does reach a backend.
+
+So: 240 a minute for the cached reads, 60 for everything else, 10 for auth, bucketed by
+`(address, client id)` where the browser sends one — the same idea as the app's `X-Install-Id`,
+widening the limit for honest readers behind one NAT without replacing the address ceiling, since a
+browser can mint identifiers and a phone's install id can too.
+
+And the terminal's half of it, which is not optional: stop polling when the tab is hidden.
+
+---
+
+## 11. What the digest does not prove
+
+One machine now serves the update document *and* the APK it names. That is the right arrangement —
+one host a reader already trusts — and it means the `sha256` in that document proves something
+narrower than it looks.
+
+**It proves transport, not publication.** A reader who checks the file against the digest has
+established that the bytes arrived intact and that the host meant to serve that file. They have not
+established that this project made it, because the same host wrote both numbers. Anybody with root
+on `pro-chart.com` could serve a different APK and a matching digest, and every check would pass.
+
+The thing that actually protects a reader is the **signature**, and it is not on the server at all.
+Android refuses to install an APK over an existing one unless the signing certificate is identical,
+and the key that signs these releases is a GitHub Actions secret used in CI and nowhere else. So the
+worst a compromised host can do to somebody who already has the app is offer a package their phone
+declines with «app not installed». `AppIntegrity.check` is the second line, for a reader who
+uninstalls first.
+
+Three things follow, and they are why the design already has the shape it has: **keep the GitHub
+release**, because it is the independent copy and the workflow that builds it holds the key while
+the host that serves it does not; **never put the signing key on the server**, because that is the
+moment two independent things become one; and know that **a first install is the exposed case**,
+which is why §5's fingerprint is written down in this repository rather than left to be looked up,
+and why the app prints the installed certificate on its own screen afterwards.
+
+None of that makes the digest pointless — it catches a truncated download, a mirror, a proxy that
+rewrote something. It is why the card shows it. It is also why the app never installs anything
+itself.

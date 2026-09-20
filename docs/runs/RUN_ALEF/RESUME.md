@@ -147,6 +147,16 @@ frame that says out loud which venue is not live and why.
   and the app's chart names MetaTrader 5 a few pixels away. Nothing was broken, no test failed, and
   the app files the venue as `UNKNOWN` — so the only symptom was a label that quietly meant two
   things. **Read the metadata fields, not only the numbers.**
+* **A decision in one section can invalidate a number in another, and nothing will say so.**
+  §4.2.1 decided the terminal polls crypto every two seconds; §6 had said 60 requests a minute per
+  IP. Thirty and sixty: two tabs from one address exhaust one route. Neither section was wrong when
+  it was written. **When a design choice changes a rate, go and find the rate** — the implementer
+  will otherwise find it at three in the morning, or a reader will find it as a `429`.
+* **A digest served by the same host as the file proves transport, not publication.** Worth knowing
+  before somebody treats it as a security guarantee: the anchor for this product is the APK
+  signature, which Android checks and which lives in CI rather than on the server. `DISTRIBUTION.md`
+  §4½ writes the model out, including the one exposed case — a first install, with no previous
+  signature to compare against.
 * **A wrapped `LocalContext` loses the activity.** `createConfigurationContext` builds from the base
   context, so anything that finds its owner by walking the context chain — `rememberLauncherForActivityResult` is the one that bit — stops working the moment a test swaps the locale that way.
   Provide the owner explicitly.

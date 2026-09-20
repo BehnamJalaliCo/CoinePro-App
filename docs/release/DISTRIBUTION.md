@@ -88,6 +88,42 @@ kill switch is one compromised host away from being everybody's app at once.
   they are copied from **`docs/release/UPDATE_NOTES.md`**, which exists so that the one place this
   product speaks to a reader about itself is not written from whatever was to hand.
 
+## 4½. What the digest proves, and what actually protects a reader
+
+Worth writing down now that one machine serves both the document and the file it names, because the
+answer is not the obvious one.
+
+**The `sha256` proves transport, not publication.** A reader who downloads the APK and checks it
+against the document has established that the bytes arrived intact and that the host meant to serve
+*that* file. They have **not** established that the publisher of this app made it — because the same
+host wrote both numbers. Anybody with root on `pro-chart.com` could serve a different APK and a
+matching digest, and every check in this paragraph would pass.
+
+**The signature is the anchor, and it is on the phone rather than the server.** Android refuses to
+install an APK over an existing one unless the signing certificate is identical. So the worst a
+compromised `pro-chart.com` can do to somebody who already has this app is offer a package their
+phone declines with «app not installed». It cannot replace the app in place, because the key that
+signs releases is not on that machine — it is a GitHub Actions secret, used in CI and nowhere else.
+`AppIntegrity.check` is the second line: a copy signed with another key refuses to run even if a
+reader uninstalls first and installs it fresh.
+
+Three things follow, and they are the reason the design is shaped the way it is:
+
+* **Keep the GitHub release.** It is the independent copy. The workflow that builds it holds the
+  key; the host that serves it does not. `AppUpdate.PUBLISHING_HOSTS` allows `github.com` for
+  exactly this reason, and `--host github` stays as a supported way to publish the document.
+* **Never put the signing key on the server.** Nothing on that machine needs it, and the moment
+  something does, the two independent things become one.
+* **A new reader — first install, no existing app — is the exposed case**, since there is no
+  previous signature to compare against. That reader's only real protection is that the fingerprint
+  is published in more than one place: this document, `assetlinks.json`, and their own phone's
+  «ایمنی و انتشار» screen afterwards. It is also why §5's value is written down here rather than
+  left to be looked up.
+
+None of this makes the digest useless — it catches a truncated download, a mirror, a proxy that
+rewrote something — and all of it is why the card shows the digest *and* the app never installs
+anything itself.
+
 ## 5. `assetlinks.json` — which fingerprint
 
 **The release keystore's own SHA-256.** Not Play's.

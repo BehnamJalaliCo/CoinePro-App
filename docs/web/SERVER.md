@@ -523,8 +523,42 @@ What it is, in whole: an HTTP client with a Redis cache in front, a WebSocket hu
 a cookie. No ORM beyond SQLAlchemy for the three documents. No background workers except the nightly
 candle pull and the two upstream sockets.
 
-**Rate limits** at the edge rather than in the app: 60 requests a minute per IP on `/api/*`, 10 a
-minute on `/api/auth/*`, and one WebSocket per IP with a 200-symbol subscription ceiling.
+### Rate limits, and the number that was wrong
+
+**60 a minute per IP on `/api/*` was written before §4.2.1 existed, and §4.2.1 broke it.** The
+relay's author did the arithmetic and did not change the figure unilaterally, which was right — so
+here it is, corrected.
+
+Two seconds of polling is thirty requests a minute. **Two tabs from one address reach a sixty-a-minute
+ceiling on that one route**, before `fx/prices`, a candle load or the news take any share at all. And
+a per-IP limit is blunt in this product's own market: `NetworkFactory`'s KDoc already says why the
+backends cannot rate-limit the phone by address — «carrier-grade NAT puts a very large number of
+Iranian mobile subscribers behind one address» — which is exactly as true of an office, a household,
+or a floor of a building behind one NAT.
+
+**A limit should be proportional to what a request costs**, and these do not cost the same:
+
+| bucket | routes | per IP |
+| --- | --- | --- |
+| **cached reads** | `/api/crypto/prices`, `/api/fx/prices`, `/api/app/latest`, the legal pages | **240 a minute** |
+| **everything else under `/api/*`** | candles, news, signals, membership, health | **60 a minute** |
+| **auth** | `/api/auth/*` (Phase 4) | **10 a minute** |
+| **socket** | `wss://…/api/stream` | one per IP, 200 symbols |
+
+The first row is generous because it is nearly free: those responses are served from a two-second
+Redis cache and cost the upstreams **nothing at all** — a hundred tabs are one upstream call either
+way. Refusing them is protecting a resource that is not scarce. The second row stays at sixty
+because a candle miss really does reach a backend.
+
+**Bucket by `(address, client id)` where a client id is present**, falling back to the address
+alone. The terminal sends a random per-browser identifier the way the app sends `X-Install-Id`, and
+for the same reason: so that honest readers behind one NAT do not collide. It is **not** a
+replacement for the address limit — a browser can mint identifiers — so the per-address ceiling stays
+as the backstop, an order of magnitude above the per-client one.
+
+And the terminal's side of the bargain, which is not optional: **stop polling when the tab is
+hidden** (`document.visibilityState`). A background tab has no reader. If a `429` is ever seen in
+the terminal, this is the first place to look and the relay is the second.
 
 ---
 
