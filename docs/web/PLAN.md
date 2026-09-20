@@ -56,6 +56,12 @@ not used in common code (it is behind `formatFixed`); `Math.floorDiv` — replac
 
 **Compose Multiplatform, Wasm target, one page.** `:chart-ui` today is an Android library because it draws on `androidx.compose.ui.graphics.Canvas` and reads Android resources for the icons. The move is: `:chart-ui` becomes KMP with `androidTarget` + `wasmJs`, `CoineProChart` stays as it is (the Canvas API is Compose's own, and identical on both), the `ChartIcon → drawable` map gets a second `actual` that returns a Compose resource. The tool rail, the pickers, the legend overlay follow the same rule: Compose-only code moves, Android-only code (`R.drawable`, `Context`, `Toast`) gets an `expect`.
 
+**Where it mounts: `/terminal/`**, and the root stays a page of its own — the download page and the
+fingerprint page, because a reader with no copy of the app yet is the one `DISTRIBUTION.md` §4½
+calls the exposed case, and they arrive at the address they were given. `SERVER.md` §3.1 has the
+whole path table and the SPA-fallback rule, which is scoped to that one prefix so it cannot swallow
+`/legal/*`, `/api/*` or `/s/<id>`.
+
 **What the page has**, in the order the plan lists for the tablet, because a browser window is an Expanded window: the labelled rail, the chart with the tools column and the readings panel (`ChartWorkbench` as it is), the 1–8 layout grid, the object tree, the NamaScript studio split beside the chart, the watchlist as the list of a list-detail. The tablet layouts are the web layouts; that is why §4 was done before §5.
 
 **What the page does not have**, at first: the guest gateway, the KYC flow, the account pages, push notifications. Those stay on the phone until the account API is behind the gateway (§4 below). Copy trading is not on that list because it is not in the product at all any more (run Ψ) — the feature, its screen and its two modules are deleted, and the web has nothing to inherit.

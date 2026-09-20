@@ -85,6 +85,72 @@ thing to operate, and this server's whole job is to stay up and be boring.
 nobody controls, and a pin set against one is a pin set against an outage. The two backends keep
 their pins because the app reaches them directly.
 
+### 3.1 The site's shape — which path holds what
+
+One origin serves four different kinds of thing, and they have different lifetimes, different cache
+policies and different consequences when one swallows another. So the paths are fixed here rather
+than discovered when a bundler is wired up.
+
+| path | what | notes |
+| --- | --- | --- |
+| `/` | the landing page | **not the terminal.** See below |
+| `/terminal/…` | the web terminal — a single-page app | the **only** prefix with an SPA fallback |
+| `/legal/terms/`, `/legal/privacy/`, `/legal/delete-account/` | the three documents | server-rendered, `no-cache`. **The trailing slash is canonical** — the app already builds it that way, and the bare form answers `308` to it |
+| `/download/…` | the APK | served beside the document that names its digest (§4.6) |
+| `/api/…` | the relay | §4 |
+| `/s/<id>` | a shared script | **not built yet**, and when it is: server-rendered, not an SPA route — see below. `ScriptLink.of` in `:namascript` already spells this address |
+| `/reset` | password reset | **not built yet, and now asymmetric** — see below |
+| `/.well-known/assetlinks.json` | App Links | `application/json`, no redirect |
+
+**The terminal mounts at `/terminal/`, and the root is a page of its own.** The tempting answer is
+`/`, because the domain is the product's name. It is the wrong one here, for two reasons that are
+specific to this product rather than matters of taste:
+
+* **The root page has a more urgent job than the chart.** Google Play does not serve this app's
+  readers, so a first install is a hand-carried APK — and `docs/release/DISTRIBUTION.md` §4½ says
+  the exposed case is precisely the reader who has no copy yet to compare a signature against.
+  Their protection is that the **fingerprint is published where they will actually look**, and
+  where they look is the address they were given. The root is the download page and the
+  fingerprint page. A terminal at `/` buries the one thing a new reader came for.
+* **An SPA fallback at `/` is a denylist, and denylists rot.** Rooted there, every path in the table
+  above has to be *excluded* from the catch-all, and so does every path added later by somebody who
+  does not know the rule. Rooted at `/terminal/` it is an allowlist: the fallback applies inside one
+  prefix and nowhere else, and a mistake outside it is an honest `404` rather than a chart where a
+  legal document should be.
+
+So: **`/terminal/*` falls back to `/terminal/index.html`; nothing else falls back at all.** A
+refresh on `/terminal/BTCUSDT/4h` renders the terminal; a typo at `/legall/terms` is a `404`.
+
+**`/s/<id>` is reserved now and server-rendered when it is built.** Two things to know before
+anybody builds it. It is **not** what the app's own sharing uses: the community board refuses URLs
+at the door, so a shared script travels as the `.nama` document itself inside the post, and
+`ScriptShare`'s KDoc explains why that is the better shape anyway — the reader can read the code
+above the button. What the address is for is a link pasted into Telegram, and there the whole job
+of the link is the Open Graph card the server puts in the HTML head. An SPA route has nothing in
+its head to scrape, so the link would arrive as a bare URL, which is the one thing it must not do.
+Server-rendered, then: the script's name and author in the head, and a link into `/terminal/` to
+run it. Note also what `ScriptLink` already guarantees — the link carries an **id, never source**,
+so nothing runs on a tap.
+
+**`/reset` is claimed by the app and does not exist on the server**, which is new and worth naming
+rather than leaving in a table. `/.well-known/assetlinks.json` now verifies — the fingerprint is
+right and the file is served the way Android's verifier needs it — so on a phone with the app, the
+link opens the app. For anybody else it is a `404`. Nothing is broken for a reader today, because
+no e-mail names that address yet (CoinePro-FX's reset mails name `coineprofx.com/reset-password`),
+but the halves are now asymmetric and the page has to exist **before** any mail names it. It is one
+page: read the token from the query, post it, say what happened. `docs/release/APP_LINKS.md` has
+the same note from the app's side.
+
+**No `Cross-Origin-Opener-Policy` / `Cross-Origin-Embedder-Policy`**, and this is a decision rather
+than an omission. Those two headers are needed only for `SharedArrayBuffer`, `SharedArrayBuffer` is
+needed only for shared-memory threads, and **Kotlin/Wasm has no threading model** — no `Thread`, no
+shared-memory atomics, and coroutines on `wasmJs` dispatch on the one thread exactly as they do on
+`js`. Adding the pair «to be safe» is not safe: `COEP: require-corp` breaks every cross-origin
+resource that does not opt in, so the cost of guessing wrong in that direction is a blank page,
+while the cost of guessing wrong in the other is a bundle that refuses to start and says so in the
+console. **The bundle is the test** — if a future Compose or Skia build ever wants shared memory it
+will fail loudly on first load, at which point the headers go in with a reason recorded here.
+
 ---
 
 ## 4. What it relays, route by route
@@ -599,6 +665,36 @@ The socket is deliberately in no per-minute bucket. This section gives it no fig
 self-invented one would punish a reconnect during a flap — the case where a reader is already
 having a bad time. Its limits are the one-per-address and 200-symbol rules, enforced in the relay
 where the subscription is read rather than at the edge where it cannot be seen.
+
+### 6.2 Serving the bundle
+
+A Wasm terminal is 5–15 MB, which is a different kind of object from everything else this host
+serves and needs three things right. All three are in place and were **proved against a synthetic
+bundle before the real one exists**, which is the right order: nothing to discover on the day it
+lands.
+
+| rule | why |
+| --- | --- |
+| `*.wasm` → `Content-Type: application/wasm` | without it the browser drops out of streaming compilation and reads the whole file before starting |
+| `*.wasm`, `*.js` → `Content-Encoding: br`, **pre-compressed on disk at quality 11** | compressing ten megabytes per reader is a CPU bill, not a cache. Written once by `bin/precompress.sh` |
+| a content hash in the name (`[.-]<8+ hex>.<ext>`) → `max-age=31536000, immutable`; `*.html` → `no-cache` | the usual pair, and for a file this size it is the difference between one download and every download |
+
+The rules key on **extension and filename, not on path**, which is what makes §3.1's mount point a
+decision the server does not have to care about.
+
+### 6.3 Two things that look like faults and are not
+
+Written down because each will be found again by somebody with `curl`, and a false alarm costs more
+than the line it takes to pre-empt it.
+
+* **`HEAD /api/app/latest` reports `content-length: 20`; `GET` returns 989 bytes.** Cloudflare
+  answers a `HEAD` with the *compressed* length (its ETag carries the `-gzip` suffix), while the
+  origin's own answer to the same request is 989. The app uses `GET`, which returns the whole
+  document. `curl -I` against this route is measuring the edge's compression, not a truncated file.
+* **The legal pages are `no-cache` rather than `max-age=300`.** A document whose entire value is
+  being current should not be served stale for five minutes; the cost is one revalidation and a
+  `304`, not a re-download. The app bundles its own copies anyway, so a reader is never stranded by
+  a revalidation that fails (`docs/release/DOMAINS.md`).
 
 ---
 

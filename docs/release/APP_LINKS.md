@@ -56,7 +56,20 @@ after fixing a file, reinstall rather than waiting.
 ## The brand domain
 
 `pro-chart.com` is claimed already (`BrandConfig.WEB_HOST`), and `DeepLinkValidation.kt` accepts a
-`/reset?token=…` from it. What is missing is the host itself: as of 2026-09-08 it does not answer
-on 80 or 443, so the claim fails verification and the link opens the browser, harmlessly. The
-order of work to make it real is in `docs/release/DOMAINS.md`. `coineprofx.com` stays claimed for
-as long as CoinePro-FX's e-mails name it.
+`/reset?token=…` from it.
+
+**The host answers now, and the verification side is done.** As of 2026-09-20,
+`/.well-known/assetlinks.json` returns `200 application/json` with no redirect and carries the
+release keystore's own SHA-256 — checked against `apksigner`'s reading of the APK rather than
+against anybody's report of it. That is everything Android's verifier asks, so the claim verifies
+and the link opens the app.
+
+**The page behind the link does not exist yet.** `https://pro-chart.com/reset` is a `404`. Nothing
+is broken for a reader today, because no e-mail names that address: CoinePro-FX's reset mails name
+`coineprofx.com/reset-password`, which is claimed separately and stays claimed for as long as they
+do. But the two halves are now asymmetric — **the app will open on a link that, for anybody without
+the app, leads nowhere** — so the page has to exist before any mail names it. It is one page: read
+the token from the query, post it, say what happened. `SERVER.md` §3.1 reserves the path and keeps
+it out of the terminal's SPA fallback for exactly this reason.
+
+`coineprofx.com` stays claimed for as long as CoinePro-FX's e-mails name it.
