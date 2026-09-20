@@ -6,24 +6,51 @@
 
 | piece | state | proof |
 | --- | --- | --- |
-| `:chart-core` compiles without Android | KMP, `jvm()` + Android; `commonMain` has no `java.*`, no Compose | `chart/core/.../ArchitectureTest`, `:chart-core:jvmTest` in CI (`android-ci.yml`) |
-| `:namascript` compiles without Android | same | `namascript/.../ArchitectureTest`, `:namascript:jvmTest` in CI |
+| `:chart-core` compiles without Android | KMP, `jvm()` + Android + **`wasmJs`**; `commonMain` has no `java.*`, no `kotlin.js.*`, no Compose | `chart/core/.../ArchitectureTest`, `:chart-core:jvmTest` and `:chart-core:compileKotlinWasmJs` in CI (`android-ci.yml`) |
+| `:namascript` compiles without Android | same | `namascript/.../ArchitectureTest`, `:namascript:jvmTest` and `:namascript:compileKotlinWasmJs` in CI |
+| the engine and the language compile **for a browser** | WebAssembly, on every push | §2 below |
 | the platform seam is five functions | `ChartPlatform.kt`: `systemChartZone`, `currentTimeMillis`, `formatFixed`, `formatLocalMoment`, `ChartIcon` | `MODULES.md` §The platform seam |
 | the engine matches an outside reference | 63 indicator series against a pandas/`ta` fixture; the web terminal's own `indicators.js` defects reported | `IndicatorReferenceTest`, `docs/backend/PROMPT_WEB_TERMINAL.md` |
 | the language is specified and suited | `docs/namascript/SPEC.md`, 351 conformance scripts, generated FA/EN reference | `ConformanceSuiteTest`, `ReferenceDocsTest` |
 | the brand host is in the app | `BrandConfig.WEB_HOST = pro-chart.com`, `WEB_URL`, `LEGAL_BASE_URL`, App Link `/reset` | `docs/release/DOMAINS.md`, `APP_LINKS.md` |
 | the calendar does not need `java.time` | `CivilDate.ofEpochDay` in common code | `TimeScaleTest` |
 
-## 2. The `wasmJs` target — checked, not enabled
+## 2. The `wasmJs` target — enabled, and green
 
-The plan asks for a `wasmJs()` compile check «when the Kotlin/Wasm toolchain is stable in the repo». It is not in the repo: the Gradle cache holds no `kotlin-stdlib-wasm-js` and this environment builds offline, so a target cannot be added and compiled here. What adding it takes, so the day it is done is a morning and not a week:
+**Done, 5.0.0.** `:chart-core` and `:namascript` compile to WebAssembly, and
+`:chart-core:compileKotlinWasmJs :namascript:compileKotlinWasmJs` runs in `android-ci.yml` on every
+push. The engine and the language — scales, indicators, drawings, the backtester, the object tree,
+the lexer, the parser, the interpreter, the eighty-three built-ins — are now proven to build for a
+browser, not argued to.
 
-1. `wasmJs { browser() }` in `chart/core/build.gradle.kts` and `namascript/build.gradle.kts`, beside `jvm()`.
-2. A `wasmJsMain` source set with the five `actual`s. Four are one line each on top of the browser's `Date` and `Intl`; `formatLocalMoment` takes the `CivilDate` already in common code and a twenty-line pattern printer for the two patterns the object tree uses (`d MMM`, `HH:mm`), so `Intl` is not even needed for it.
-3. `@JvmInline` on `ChartIcon` becomes `kotlin.jvm.JvmInline`, which is already what the import resolves to; nothing else in `commonMain` names a JVM type (the architecture tests are the proof, and they will be the proof for Wasm: add `kotlin.js.` to their forbidden list for the JVM source sets).
-4. `:chart-core:compileKotlinWasmJs :namascript:compileKotlinWasmJs` in CI beside the two `jvmTest` jobs. No Node, no browser: a compile check, as the plan says.
+This section used to say the toolchain was not in the repository. It was not; the environment that
+wrote that sentence built offline. The moment one could reach Maven Central, the four steps it
+listed took an afternoon, and three of the four were exactly as predicted:
 
-The two things that could break the compile and were looked at: `String.format` — not used in common code (it is behind `formatFixed`); `Math.floorDiv` — replaced by Kotlin's `floorDiv` in 4.48.0.
+1. `wasmJs { browser() }` beside `jvm()` in both build files. ✅
+2. `wasmJsMain` with the five `actual`s (`ChartPlatform.wasmJs.kt`). `Intl` is **not** used and
+   deliberately so: a Fibonacci ratio and an axis label are Latin digits with a `.` and English
+   month names, which is exactly what `Locale.US` gives on the phone, so the browser's own
+   `toFixed` and a small pattern printer over the `CivilDate` already in common code produce the
+   same bytes. Asking `Intl` would have been a longer road to a Persian-digit bug.
+3. `@JvmInline` needed `import kotlin.jvm.JvmInline` spelled out — the annotation is common stdlib,
+   but `kotlin.jvm.*` is a default import on the JVM targets and on no other. One line, and the
+   only surprise of the four. `kotlin.js.` and `kotlin.wasm.` are now on both `ArchitectureTest`s'
+   forbidden list, so the web cannot leak into common code any more than Android can.
+4. The compile check in CI. ✅
+
+**And one real defect the browser found.** `NamaScript` caught `StackOverflowError` to turn a
+deeply nested script into `E405` rather than a crash. On the JVM that is sound; in WebAssembly an
+exhausted stack is a *trap*, and a trap cannot be caught — it would have taken the whole terminal
+page down, not the script. So the recursion now has its own limit (`Parser.MAX_NESTING`, 128) that
+refuses the script before it starts, with a line and a column, on every target; the JVM's catch
+stayed as a second line of defence behind an `expect`/`actual` that is honest about the difference
+(`DeepNesting.kt`). This is the pattern to expect from here on: **the web target is a reviewer**,
+and what it finds is usually true on the phone too — the phone was just quieter about it.
+
+The two things that could have broken the compile and were looked at in advance: `String.format` —
+not used in common code (it is behind `formatFixed`); `Math.floorDiv` — replaced by Kotlin's
+`floorDiv` in 4.48.0. Neither appeared.
 
 ## 3. The terminal
 

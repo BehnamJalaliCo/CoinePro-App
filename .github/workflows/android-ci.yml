@@ -130,6 +130,12 @@ jobs:
       - name: Enforce Phase 1-17 repository consistency
         run: python3 scripts/quality/check-cross-phase-consistency.py
 
+      # The engine and the language compile for the browser. A compile check, not a bundle: this
+      # is what keeps the web terminal possible between now and the day it is written, and it is
+      # the only job here that would notice a JVM type reaching common code.
+      - name: The engine and the language still compile for the browser
+        run: gradle --no-daemon :chart-core:compileKotlinWasmJs :namascript:compileKotlinWasmJs
+
       - name: Lint, test, and assemble debug + staging + release + benchmark
         run: gradle --no-daemon :chart-core:jvmTest :namascript:jvmTest :chart-ui:testDebugUnitTest :core:script:testDebugUnitTest :core:auth:testDebugUnitTest :core:network:testDebugUnitTest :core:marketdata:testDebugUnitTest :core:signals:testDebugUnitTest :core:notifications:testDebugUnitTest :core:execution:testDebugUnitTest :core:aisignal:testDebugUnitTest :core:aivision:testDebugUnitTest :core:aiassistant:testDebugUnitTest :core:marketintel:testDebugUnitTest :core:database:testDebugUnitTest :feature:tools:testDebugUnitTest :app:lintDebug :app:lintStaging :app:lintRelease :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleStaging :app:assembleRelease :app:assembleBenchmark :benchmark:assembleBenchmark
 

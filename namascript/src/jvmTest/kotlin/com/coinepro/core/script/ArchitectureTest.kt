@@ -36,6 +36,12 @@ class ArchitectureTest {
             "androidx.",
             "java.",
             "javax.",
+            // The browser's types are forbidden here for the same reason the JDK's are: the
+            // language runs on the phone too, and what it needs from a platform it takes from
+            // `:chart-core`'s seam. `DeepNesting.kt` is the one thing that differs, and it is an
+            // `expect` rather than an import.
+            "kotlin.js.",
+            "kotlin.wasm.",
             "kotlinx.coroutines",
             "com.coinepro.core.common",
             "com.coinepro.core.designsystem",

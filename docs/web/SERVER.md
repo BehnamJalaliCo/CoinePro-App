@@ -231,8 +231,11 @@ whether the browser is told the truth about what it is receiving.
 
 Two notes for the terminal, since it is the one polling:
 * **Back off when the tab is hidden.** `document.visibilityState` — a background tab has no reader.
-* Two seconds is 30 requests a minute against an edge limit of 60. That is half the budget on one
-  route, which is fine for one tab and is the reason the point above is not optional.
+* Two seconds is 30 requests a minute. **This section is why §6's figure changed**: against the 60
+  a minute §6 used to give every route, two tabs from one address exhausted one route before
+  anything else took a share. The price routes are now a bucket of their own at 240, because they
+  are served from the two-second cache and cost the upstreams nothing — but the point above is not
+  optional at any ceiling, because a hidden tab is spending a real reader's budget for nobody.
 
 ### 4.3 Signals, news, the calendar
 
@@ -559,6 +562,43 @@ as the backstop, an order of magnitude above the per-client one.
 And the terminal's side of the bargain, which is not optional: **stop polling when the tab is
 hidden** (`document.visibilityState`). A background tab has no reader. If a `429` is ever seen in
 the terminal, this is the first place to look and the relay is the second.
+
+### 6.1 As built, and measured from outside
+
+The relay implements the table above as **two zones per bucket**: a per-client key of
+`{client_ip}|{X-Install-Id}{X-Client-Id}` and a per-address key of `{client_ip}` at ten times the
+figure (2400 / 600 / 100). Concatenating both headers rather than choosing between them is a Caddy
+constraint — it has no fallback expression — and it lands on the right behaviour anyway: absent
+headers expand to empty, so a client that sends neither collapses to the address alone, which is
+this section's fallback with no conditional to get wrong. `X-Install-Id` is the name because it is
+already this product's own (`NetworkFactory`); `X-Client-Id` is accepted as an alias so a browser
+need not borrow the app's header.
+
+Measured against the live host rather than read from a report:
+
+| probe | result |
+| --- | --- |
+| `/api/app/latest` × 70, one address | 70 × 200 — above the 60 ceiling, so the cached-read bucket is in force |
+| `/api/news` × 70, one address | 60 × 200, then 10 × 429 — the default bucket, exactly |
+| `/api/news` × 40 + × 40 under two `X-Client-Id` values, then × 5 with none | 85 × 200, no 429 — the per-client key is real, and the 600 per-address backstop is what is left |
+
+Two consequences worth writing down:
+
+* **The buckets are shared, not per route.** Spending `/api/app/latest` also spends
+  `/api/crypto/prices` and the legal pages, because they are one bucket; `/api/health` is in the
+  other and is unaffected. That is the intent — the bucket is a budget for a class of cost, not a
+  quota per URL — but it means a terminal that hammers one cached route starves the rest of its own
+  cached reads.
+* **The app sends no client id to this host.** `appUpdateGateway` builds its own unauthenticated
+  client with no `installId` provider (`AppModule`), deliberately, so the phone's update check
+  lands in the address bucket. It costs one request per launch against a ceiling of 240, which is
+  the right trade: an install identifier does not belong on a request that carries no account and
+  asks a public question.
+
+The socket is deliberately in no per-minute bucket. This section gives it no figure, and a
+self-invented one would punish a reconnect during a flap — the case where a reader is already
+having a bad time. Its limits are the one-per-address and 200-symbol rules, enforced in the relay
+where the subscription is read rather than at the edge where it cannot be seen.
 
 ---
 

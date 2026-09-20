@@ -18,6 +18,7 @@ package com.coinepro.core.script
 internal class Parser(private val tokens: List<Token>) {
 
     private var position = 0
+    private var depth = 0
 
     fun parse(): Program {
         val statements = mutableListOf<Statement>()
@@ -59,7 +60,39 @@ internal class Parser(private val tokens: List<Token>) {
         return ExpressionStatement(expression(), token.line, token.column)
     }
 
-    private fun expression(): Expr = conditional()
+    private fun expression(): Expr = nested { conditional() }
+
+    /**
+     * How deep an expression may be nested before the script is refused.
+     *
+     * A refusal, not a crash: `((((((…))))))` far enough down exhausts the call stack in this
+     * recursive descent, and what happens then is not the same on every target — the JVM raises a
+     * catchable `StackOverflowError`, a browser traps and the WebAssembly instance is gone with the
+     * page on top of it (`DeepNesting.kt`). A limit checked here costs one comparison per level and
+     * removes the difference: every target refuses the same script, in the same place, with a line
+     * and a column the editor can point at.
+     *
+     * 128 is far past anything a reader writes — the deepest script in the conformance suite is
+     * nowhere near it — and far short of any target's stack, at roughly ten frames per level.
+     */
+    private fun nested(block: () -> Expr): Expr {
+        if (depth >= MAX_NESTING) {
+            val token = peek()
+            throw ScriptError(
+                "اسکریپت بیش از حد تودرتو است",
+                "The script is nested too deeply",
+                token.line,
+                token.column,
+                code = "E405",
+            )
+        }
+        depth++
+        try {
+            return block()
+        } finally {
+            depth--
+        }
+    }
 
     private fun conditional(): Expr {
         val condition = logicalOr()
@@ -90,10 +123,11 @@ internal class Parser(private val tokens: List<Token>) {
         return left
     }
 
+    // `---x` recurses without passing through `expression()`, so it counts its own depth.
     private fun unary(): Expr {
         if (check(TokenType.MINUS) || check(TokenType.NOT)) {
             val operator = advance()
-            return Unary(operator.type, unary(), operator.line, operator.column)
+            return nested { Unary(operator.type, unary(), operator.line, operator.column) }
         }
         return postfix()
     }
@@ -198,5 +232,9 @@ internal class Parser(private val tokens: List<Token>) {
         TokenType.RPAREN, TokenType.RBRACKET -> "E102"
         TokenType.COLON -> "E103"
         else -> "E104"
+    }
+
+    internal companion object {
+        const val MAX_NESTING = 128
     }
 }

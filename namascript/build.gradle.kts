@@ -13,6 +13,8 @@ plugins {
 
 kotlin {
     jvm()
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+    wasmJs { browser() }
     androidLibrary {
         namespace = "com.coinepro.namascript"
         compileSdk = 36
@@ -20,6 +22,10 @@ kotlin {
     }
     sourceSets {
         commonMain.dependencies { api(project(":chart-core")) }
+        // One `actual` for the two JVM-based targets; the browser has its own, in `wasmJsMain`.
+        val jvmShared by creating { dependsOn(commonMain.get()) }
+        jvmMain.get().dependsOn(jvmShared)
+        androidMain.get().dependsOn(jvmShared)
         jvmTest.dependencies { implementation(libs.junit) }
     }
 }

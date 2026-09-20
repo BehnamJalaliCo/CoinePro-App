@@ -500,3 +500,63 @@ and why the app prints the installed certificate on its own screen afterwards.
 None of that makes the digest pointless — it catches a truncated download, a mirror, a proxy that
 rewrote something. It is why the card shows it. It is also why the app never installs anything
 itself.
+
+
+---
+
+## 12. The web target, and what a browser found that a phone had hidden
+
+«کی ورژن وب آماده می‌شود؟» has been answerable only as a guess, because the largest unknown in the
+plan — *does this code even build for a browser?* — had never been tested. `PLAN.md` §2 said the
+Kotlin/Wasm toolchain was not in the repository and a target could not be added here.
+
+That sentence was true of the environment that wrote it and false of the repository. Every build in
+this run goes through a wrapper that forces `--offline`; the claim was inherited from that and never
+re-checked. One `curl` at Maven Central was enough to find it out.
+
+**So the target went in, and both modules compile for WebAssembly.** The engine — eighteen chart
+types, eighty-three indicators, the geometry behind eighty-five drawing tools, the backtester, the
+replay, the object tree — and the language — lexer, parser, type checker, interpreter, sixty-one
+shipped strategies. `:chart-core:compileKotlinWasmJs :namascript:compileKotlinWasmJs` now runs in
+CI on every push, so the thing that was an argument is a task with an exit code.
+
+Three of §2's four predicted steps landed exactly as written. The fourth was a one-line surprise:
+`@JvmInline` on `ChartIcon` needed `import kotlin.jvm.JvmInline` spelled out, because the
+annotation is common-code stdlib but `kotlin.jvm.*` is a default import on the JVM targets and on
+no other.
+
+### The defect the browser found, which was a defect on the phone too
+
+`NamaScript` caught `StackOverflowError` so that a deeply nested script — `((((((…))))))` — came
+back as `E405` instead of a crash. On the JVM that is sound: the stack unwinds and nothing else in
+the process notices.
+
+In WebAssembly an exhausted stack is a **trap**, and a trap does not unwind. There is no `catch`
+afterwards because there is no afterwards — the instance is gone, and with it the terminal page,
+not merely the script. A defence that reads as universal turned out to be implemented on exactly
+one target.
+
+The tempting fix is `catch (Throwable)`, and it is the wrong one: it compiles everywhere and makes
+every genuine bug in the interpreter reach the reader as «your script is nested too deeply», which
+is a lie told by the error handler. So the fix went upstream instead — `Parser.MAX_NESTING`, a
+depth counter around the two places the recursive descent re-enters itself, refusing an over-nested
+script **before** the recursion starts, with a line and a column the editor can point at. That runs
+on every target. The JVM's catch stayed behind an `expect`/`actual` (`DeepNesting.kt`) as a second
+line, and the browser's `actual` says plainly that it cannot catch anything.
+
+The general shape, because it will recur: **the web target is a reviewer.** What it rejects is
+usually wrong on the phone as well — the phone was just quieter about it. The phone's version of
+this bug was a script that could kill its own stack and be reported with no position at all.
+
+### And the answer to the question
+
+`docs/web/PARITY.md` is the schedule, and the first thing it does is refuse the word «exactly» for
+one of the three things it could mean. Chart parity is reachable and largely reached. Terminal
+parity is a port of surfaces that already exist. **Network parity — their data licences, their
+hundreds of thousands of published scripts, their broker integrations — is not reachable**, and a
+document that implied it was would be making a promise on somebody else's behalf.
+
+What is left is honest and has a number on it: a usable web terminal — chart, tools, scripts,
+watchlist, no account — is **18 to 28 working days**, and nothing is blocking it. Everything past
+that needs an account, and the account needs an answer to a question that has been open since
+`SERVER_ASK_ONE_ACCOUNT_TWO_BACKENDS.md`: which backend owns the reader.

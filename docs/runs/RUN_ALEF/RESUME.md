@@ -204,3 +204,26 @@ curl -s "https://api.github.com/repos/BehnamJalaliCo/CoinePro-App/actions/runs?p
 
 The signed release is published either way: "Build Android APK" is a separate workflow and it
 succeeded — `v5.0.0`, with `pro-chart-5.0.0.apk`.
+
+
+---
+
+## The web target, and the trap that is not a catch
+
+Two things to carry forward, both learned the hard way in the hour the `wasmJs` target went in.
+
+**`PLAN.md` §2 said the toolchain was not in the repository, and that was true of the environment
+that wrote it, not of the repository.** The Gradle wrapper in the scratchpad forces `--offline`, so
+every build in this run was offline by default and the sentence «a target cannot be added and
+compiled here» was inherited rather than re-checked. The moment `curl` reached Maven Central, the
+whole of §2 was an afternoon. **Re-check an environmental blocker before quoting it**; the note in
+`RESUME` about `:benchmark` needing a run without `--offline` was the same lesson and it did not
+generalise on its own.
+
+**A catch that cannot run is worse than no catch.** `catch (error: StackOverflowError)` reads like
+defence on every target and is defence on exactly one: WebAssembly traps, and a trap does not
+unwind. The fix was not to catch something wider — `catch (Throwable)` would have reported every
+genuine bug in the interpreter as «your script is nested too deeply», which is a lie told by the
+error handler — but to make the failure impossible upstream, with a limit in the parser that runs
+everywhere. **When a target cannot implement a defence, move the defence to where every target can
+run it**, and leave the platform-specific half as the second line rather than the only one.

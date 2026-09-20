@@ -26,17 +26,19 @@ object NamaScript {
      * Lex, parse and type-check [source] once. The failure, if any, carries the same code the
      * run would have raised, so the editor can show it before anything runs.
      */
-    fun compile(source: String): Compilation = try {
-        if (source.length > MAX_SOURCE_LENGTH) {
-            throw ScriptError("اسکریپت از حد مجاز بلندتر است", "The script is longer than allowed", code = "E403")
+    fun compile(source: String): Compilation = catchingDeepNesting(
+        fallback = { Compilation(null, deepNestingFailure()) },
+    ) {
+        try {
+            if (source.length > MAX_SOURCE_LENGTH) {
+                throw ScriptError("اسکریپت از حد مجاز بلندتر است", "The script is longer than allowed", code = "E403")
+            }
+            val program = Parser(Lexer(source).scan()).parse()
+            val analysis = TypeChecker().check(program)
+            Compilation(CompiledScript(program, analysis), null)
+        } catch (error: ScriptError) {
+            Compilation(null, ScriptFailure(error.fa, error.en, error.line, error.column, error.code))
         }
-        val program = Parser(Lexer(source).scan()).parse()
-        val analysis = TypeChecker().check(program)
-        Compilation(CompiledScript(program, analysis), null)
-    } catch (error: ScriptError) {
-        Compilation(null, ScriptFailure(error.fa, error.en, error.line, error.column, error.code))
-    } catch (error: StackOverflowError) {
-        Compilation(null, ScriptFailure("اسکریپت بیش از حد تودرتو است", "The script is nested too deeply", 0, 0, "E405"))
     }
 
     /** The outcome of [compile]: exactly one of the two is set. */
@@ -57,13 +59,17 @@ object NamaScript {
     fun check(source: String): ScriptFailure? = compile(source).failure
 
     /** Turns the two failures a run can throw into a [ScriptResult]; shared with [CompiledScript]. */
-    internal inline fun guard(block: () -> ScriptResult): ScriptResult = try {
-        block()
-    } catch (error: ScriptError) {
-        ScriptResult(error = ScriptFailure(error.fa, error.en, error.line, error.column, error.code))
-    } catch (error: StackOverflowError) {
+    internal inline fun guard(crossinline block: () -> ScriptResult): ScriptResult = catchingDeepNesting(
         // A deeply nested expression can exhaust the stack before the node budget notices. Caught
-        // by name rather than as Throwable, so a genuine bug in this package still surfaces as one.
-        ScriptResult(error = ScriptFailure("اسکریپت بیش از حد تودرتو است", "The script is nested too deeply", 0, 0, "E405"))
+        // by name rather than as Throwable, so a genuine bug in this package still surfaces as one
+        // — and on a target where it cannot be caught at all, `Parser.MAX_NESTING` refuses the
+        // script first. See `DeepNesting.kt`.
+        fallback = { ScriptResult(error = deepNestingFailure()) },
+    ) {
+        try {
+            block()
+        } catch (error: ScriptError) {
+            ScriptResult(error = ScriptFailure(error.fa, error.en, error.line, error.column, error.code))
+        }
     }
 }

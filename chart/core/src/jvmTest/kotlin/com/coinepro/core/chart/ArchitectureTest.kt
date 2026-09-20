@@ -59,6 +59,11 @@ class ArchitectureTest {
             "androidx.",
             "java.",
             "javax.",
+            // The browser's own types, for the same reason the JDK's are on this list: they do not
+            // exist on the phone. `kotlin.jvm.JvmInline` is the one thing here that is neither —
+            // it is common stdlib and means the same on every target, hence the narrower prefix.
+            "kotlin.js.",
+            "kotlin.wasm.",
             "kotlinx.coroutines.android",
             "com.coinepro.core.common",
             "com.coinepro.core.designsystem",

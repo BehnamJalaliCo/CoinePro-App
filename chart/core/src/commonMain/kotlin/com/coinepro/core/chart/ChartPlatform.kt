@@ -1,5 +1,9 @@
 package com.coinepro.core.chart
 
+// `kotlin.jvm.*` is a default import on the JVM targets and on no other, so the browser needs this
+// line spelled out. The annotation itself is common-code stdlib and means the same on every target.
+import kotlin.jvm.JvmInline
+
 /**
  * What the engine needs from the platform it runs on, and nothing more.
  *

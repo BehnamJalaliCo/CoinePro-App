@@ -41,6 +41,28 @@ class ScriptDiagnosticsTest {
         assertEquals(1, failure.line)
     }
 
+    /**
+     * The nesting limit is a web-parity test as much as a diagnostics one: on the JVM an
+     * over-nested script used to be caught as a `StackOverflowError` with no position, and in a
+     * browser it could not be caught at all — a WebAssembly trap takes the page with it. The
+     * parser's own limit makes both targets refuse the same script in the same place.
+     */
+    @Test
+    fun `a script nested past the limit is refused with a position, not a crash`() {
+        val depth = Parser.MAX_NESTING + 8
+        val failure = NamaScript.check("plot(" + "(".repeat(depth) + "close" + ")".repeat(depth) + ")")!!
+        assertEquals("E405", failure.code)
+        assertEquals(1, failure.line)
+        assertTrue("the caret should sit inside the script", failure.column > 1)
+        assertTrue(failure.hint(english = false).isNotBlank())
+    }
+
+    @Test
+    fun `nesting just under the limit still compiles`() {
+        val depth = Parser.MAX_NESTING - 8
+        assertEquals(null, NamaScript.check("plot(" + "(".repeat(depth) + "close" + ")".repeat(depth) + ")"))
+    }
+
     @Test
     fun `a message without a code still renders`() {
         val failure = ScriptFailure("x", "y", 0, 0)

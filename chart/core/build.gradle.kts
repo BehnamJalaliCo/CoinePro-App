@@ -18,13 +18,15 @@ plugins {
 
 kotlin {
     jvm()
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+    wasmJs { browser() }
     androidLibrary {
         namespace = "com.coinepro.chart.core"
         compileSdk = 36
         minSdk = 26
     }
     sourceSets {
-        // One `actual` for both JVM-based targets; the web target gets its own when it exists.
+        // One `actual` for the two JVM-based targets; the browser has its own, in `wasmJsMain`.
         val jvmShared by creating { dependsOn(commonMain.get()) }
         jvmMain.get().dependsOn(jvmShared)
         androidMain.get().dependsOn(jvmShared)
