@@ -24,8 +24,10 @@ built the row says «not built» rather than «planned».
 | the screens themselves, in a browser | ❌ **not built.** `:chart-ui` and every `feature:*` module are Android libraries |
 | an account that is one account on both | ❌ **not built** — but no longer blocked: §5's decisions were answered on 2026-09-21 |
 
-So the honest shape of the answer is: **the hard half is done and proven, the visible half has not
-started**, and the visible half is gated on two decisions that are the owner's, not the work's.
+So the honest shape of the answer is: **the hard half is done and proven, and the visible half has
+not started.** It used to be gated on two decisions that were the owner's rather than the work's;
+both were answered on 2026-09-21 (§5), and one of them — the terminal is open and read-only — means
+**W1 → W3 reaches readers without an account**. Nothing is waiting on anybody now.
 
 ---
 
