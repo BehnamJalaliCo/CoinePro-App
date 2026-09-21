@@ -48,18 +48,21 @@ data class MarketCatalog(
  *
  * * **TradeYar** answers `GET ws/snapshot` with no `symbols` parameter by returning everything in
  *   scope. That is real discovery: the crypto universe is whatever LBank is quoting today.
- * * **CoinePro-FX** was asked for the same thing and answers the bare call — but **not with the
- *   full set**, and that is measured rather than assumed. On 2026-09-18 `GET api/ws/snapshot` with
- *   no `symbols` returned **17 symbols and neither XAUUSD nor XAGUSD**: the majors, three indices
- *   and crude. The same host's `api/public/prices/live` returns 19, and the two extra are exactly
- *   gold and silver.
+ * * **CoinePro-FX** answers the bare call with the full set too — **now**. That word is doing
+ *   work, and the history is kept rather than overwritten because it is the reason this paragraph
+ *   is this long.
  *
- *   So on the forex side this is **not** discovery of the whole universe, and the consequence is
- *   not cosmetic: the metals are the reason this platform is in the product at all, and
- *   `ForexSignalScope` narrows the forex signal list to gold. A reader can be shown a gold *call*
- *   and then find no gold *market* to open. `docs/runs/RUN_ALEF/BLOCKED.md §א20` is the ask to
- *   that backend's team; nothing in this app can fix it, because a symbol the feed does not list
- *   is a symbol the app must not invent.
+ *   On **2026-09-18** the bare `GET api/ws/snapshot` returned **17 symbols and neither XAUUSD nor
+ *   XAGUSD**: the majors, three indices and crude, while the same host's
+ *   `api/public/prices/live` returned 19 — the two extra being exactly gold and silver. The metals
+ *   are the reason this platform is in the product at all, and `ForexSignalScope` narrows the
+ *   forex signal list to gold, so a reader could be shown a gold *call* and find no gold *market*
+ *   to open. That was `BLOCKED.md §א20`, and nothing in this app could fix it: a symbol the feed
+ *   does not list is a symbol the app must not invent.
+ *
+ *   On **2026-09-21** the same bare call returns **19, gold and silver among them**, and the two
+ *   routes agree. The backend's team changed it; no request from here was ever sent. §א20 is
+ *   closed, and what closed it is the thing the app was right to refuse to work around.
  *
  * Neither catalogue is a constant this app carries, and that stays the point: a market either
  * backend adds shows up without an app release. What this note no longer claims is that both

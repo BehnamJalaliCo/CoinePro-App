@@ -20,7 +20,8 @@ CORS header, a firewall change or any other modification to serve the web.
 ## 1. What the server is for, in one paragraph
 
 Two backends already serve this product's data — **TradeYar** (crypto, over LBank) and
-**CoinePro-FX** (gold and the dollar — whose live quotes are **not** Finnhub; see §4.10). The phone talks to both directly, and that is
+**CoinePro-FX** (gold and the dollar, over Finnhub — a line that was wrong for two days and is
+right again; §4.10 and §4.10.1 carry both measurements). The phone talks to both directly, and that is
 fine for a phone. A browser cannot: two origins mean two CORS negotiations on servers this project
 does not own, two cookies, two sessions and two rate limits, and a thousand open tabs mean a
 thousand upstream sockets where the phone opened one. So the Pro Chart server is **one origin in
@@ -592,6 +593,41 @@ Nothing in the app or the relay should paper over any of this: a client that ren
 would be inventing provenance, which is worse than having none. `RUN_ALEF/BLOCKED.md §א22` is the
 question to CoinePro-FX's team, and §א20 gains a second sentence — gold is missing from the
 snapshot **and** from the stream.
+
+### 4.10.1 Two days later, both of them fixed — measured 2026-09-21
+
+CoinePro-FX's team changed it. **No message was ever sent**: §א20 and §א22 were written down here
+and in `BLOCKED.md`, and the backend moved on its own. What follows is read from the host directly
+rather than from anybody's report of it, including theirs.
+
+| | 2026-09-18/19 | **2026-09-21** |
+| --- | --- | --- |
+| `api/ws/snapshot`, bare | 17, no metals | **19, gold and silver among them** |
+| `api/public/prices/live` | 19 | 19 — **the two routes now agree** |
+| the forex socket | 7, majors only | **9** — the seven plus `XAUUSD` and `XAGUSD` |
+| `source` | `yfinance` | **`finnhub`, on all 19** |
+| `bid` vs `ask` | equal | **still equal, on 19 of 19** |
+
+So of the three consequences above, **two are gone and the third is not**:
+
+1. **The third universe is closed.** `XAUUSD` has a snapshot value *and* a live stream. The
+   headline instrument ticks.
+2. **The app files these under `QuoteSource.FINNHUB` now, with no change to the app at all.**
+   `MarketDataController` has always mapped the string `finnhub`; the wire simply started sending
+   what the app was already written to read. One behaviour changes with it and it is an
+   improvement: the staleness budget goes from `UNKNOWN`'s 30 seconds to `FINNHUB`'s 90, which is
+   the right window for a feed that re-samples rather than streams every tick. **This is what
+   refusing to add a `YFINANCE` enum bought** — the app needed no migration, because it had not
+   encoded somebody else's mistake.
+3. **The chart still names a venue the quote does not.** `CandleGateway.sourceName` prints
+   «MetaTrader 5» beside a last price that now says Finnhub. Two venues on one screen is not a
+   contradiction — candles and quotes legitimately come from different places — but only one of
+   them is named, and the label exists precisely so a reader can check. **And `bid == ask == price`
+   on all 19 still means there is no spread in this feed.** Both of those stay open.
+
+The §1 line that this section was written to correct — «over Finnhub» — **is true again**, which is
+an odd way for a document to be right and worth saying out loud: it was wrong for as long as it
+took somebody to measure it, and correct on both sides of that window.
 
 ### 4.11 Phase 3, measured — 2026-09-19
 

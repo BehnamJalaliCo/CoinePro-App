@@ -1,12 +1,25 @@
 # RUN א — blocked
 
-**Two, and both are questions for CoinePro-FX's team: §א20, the missing gold, and §א22, which feed
-the forex prices actually come from.** Neither needs an app release; both are about what one backend
-serves.
+**None left on a backend. Nothing here is waiting on anybody but the owner**, and what the owner
+owes is two product decisions rather than a fix: `SERVER.md` §8.1 (which backend owns the account
+on the web) and §8.2 (whether the terminal is open, member-only or a read-only guest page).
+
+**§א20 and §א22 closed on 2026-09-21, and closed themselves.** Gold and silver are in
+CoinePro-FX's snapshot *and* on its socket, and the `source` on every row is `finnhub` rather than
+`yfinance`. **No message was ever sent to that team.** Both were written down here, measured, and
+left alone on the principle that a symbol the feed does not list is a symbol the app must not
+invent — and the backend moved on its own. The record of each is kept below with the measurement
+that closed it.
+
+**One thing each section leaves behind, and neither is a blocker:** `bid == ask == price` on all 19
+rows, so this feed still carries no spread; and `CandleGateway.sourceName` still prints
+«MetaTrader 5» beside a quote that now says Finnhub. Two venues on one screen is legitimate — the
+candles and the quotes need not share a source — but only one of them is named. Both are in
+`SERVER.md` §4.10.1.
 
 §א19 (the update document) and §א21 (the Cloudflare certificate) are both closed — `pro-chart.com`
-is live, and the work in this run is in front of readers. Both sections are kept below with what
-closed them, because a blocker's record is worth more than its absence.
+is live, and the work in this run is in front of readers. Every section is kept below with what
+closed it, because a blocker's record is worth more than its absence.
 
 ---
 
@@ -118,6 +131,13 @@ forgotten.
 
 ## §א20 — gold is not in CoinePro-FX's snapshot, so it is not in the app's forex market list
 
+> **CLOSED 2026-09-21, by the backend, unprompted.** The bare `GET api/ws/snapshot` now returns
+> **19** with `XAUUSD` and `XAGUSD` among them — the same 19 `api/public/prices/live` serves, so
+> the two routes finally agree — and the forex socket carries **9** rather than 7, the seven majors
+> plus gold and silver. The headline instrument has a live stream. Measured from here against
+> `coineprofx.com`, not read from a report. `MarketCatalogGateway`'s KDoc keeps both dates.
+
+
 **Found while correcting `SERVER.md` against the live backends, and it is a product fault rather
 than a specification one.**
 
@@ -179,6 +199,16 @@ not a reason to delay the ask.
 ---
 
 ## §א22 — the forex prices are Yahoo Finance, and the chart beside them says MetaTrader 5
+
+> **HALF CLOSED 2026-09-21.** `source` is now **`finnhub`** on all 19 rows, so the venue question is
+> answered and `SERVER.md` §1's year-old «over Finnhub» is true again. The app needed **no change**:
+> `MarketDataController` has always mapped the string `finnhub`, so these quotes move from
+> `QuoteSource.UNKNOWN` to `FINNHUB` and inherit the 90-second staleness window instead of 30 —
+> which is what refusing to add a `YFINANCE` enum bought, since the app had not encoded somebody
+> else's mistake. **Still open and not a blocker:** `bid == ask == price` on 19 of 19, so there is
+> no spread in this feed, and the chart still names «MetaTrader 5» beside a quote that names
+> Finnhub. §4.10.1.
+
 
 **Measured, not inferred.** Every row of `coineprofx.com/api/ws/snapshot` on 2026-09-19:
 
