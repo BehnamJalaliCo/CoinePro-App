@@ -13,7 +13,7 @@ rules that do not bend.
 ## What you are building
 
 **One origin in front of two backends.** Two servers already hold this product's data — **TradeYar**
-(crypto, over LBank) and **CoinePro-FX** (gold and the dollar; its live quotes are **not** Finnhub — `SERVER.md` §4.10). The Android app talks
+(crypto, over LBank) and **CoinePro-FX** (gold and the dollar, over Finnhub — a line that was wrong for two days in September 2026 and is right again; `SERVER.md` §4.10 and §4.10.1 carry both measurements). The Android app talks
 to both directly and that is fine for a phone. A browser cannot: two origins mean two CORS
 negotiations on servers we do not want to change, two cookies, two sessions, and a thousand open
 tabs mean a thousand upstream sockets where the phone opened one.
