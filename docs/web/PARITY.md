@@ -102,16 +102,57 @@ arrive mid-phase; each phase ends with something a reader could open.
 | phase | what it is | days | depends on |
 | --- | --- | --- | --- |
 | **W0** | the target exists, engine + language compile for a browser, CI keeps them compiling | **done** | — |
-| **W1** | `:chart-ui` becomes KMP. `CoineProChart` draws on `androidx.compose.ui.graphics.Canvas`, which is Compose's own API and identical on both; the `ChartIcon → drawable` map gets a second `actual` returning a Compose resource. Ends with **a chart in a browser, on real candles from the relay** | 6–10 | W0 |
-| **W2** | the terminal shell: the labelled rail, the tool column, the readings panel, the 1–8 grid, the object tree, the watchlist as list-detail. All of it is the tablet layout, which is why §4 of the plan was done before §5 | 8–12 | W1 |
+| **W1** | `:chart-ui` becomes KMP. Audited rather than estimated — see §3a: the chart code is portable almost in whole, and the cost is two small files behind an `expect`/`actual`, five resource calls, and the design system underneath it | 6–10 | W0 |
+| **W1½** | **the drawables.** 1,150 vector XML files move to `composeResources/`, of which **226 use `aapt:attr` inline gradients** and have to be converted first. Mechanical, scriptable, and the biggest single item nobody had counted | 3–5 | W0, and it can run in parallel with W1 |
+| **W2** | the terminal shell: the labelled rail, the tool column, the readings panel, the 1–8 grid, the object tree, the watchlist as list-detail. All of it is the tablet layout, which is why §4 of the plan was done before §5 | 8–12 | W1, W1½ |
 | **W3** | the script studio in the browser — the editor, the diagnostics, the console, the library | 4–6 | W1, and a `<textarea>`'s selection model |
 | **W4** | the account: one login across phone, tablet and browser; synced layouts, drawings, watchlists | 5–8 | **blocked** — §5, and server phase 4 |
 | **W5** | server-side alerts, because a closed tab evaluates nothing | 4–6 | W4 |
 | **W6** | the parity pass proper: the comparison rig pointed at TradingView's *web* terminal rather than their Android app, and every gap it finds closed | 5–10 | W2 |
 
-**W1 + W2 + W3 is a terminal a reader can use** — a chart, the tools, the scripts, the watchlist,
-read-only, no account. Call it **18–28 working days** from a standing start, and it is not blocked
-on anybody: everything it needs is either built or decided.
+**W1 + W1½ + W2 + W3 is a terminal a reader can use** — a chart, the tools, the scripts, the
+watchlist, read-only, no account. Call it **21–33 working days** from a standing start, and it is
+not blocked on anybody: everything it needs is either built or decided. The figure went up rather
+than down after §3a's audit, and that is the audit working: W1½ is real work that was inside
+nobody's estimate, while W1 itself turned out smaller than it looked.
+
+## 3a. What is actually Android in the chart — counted, not guessed
+
+`PLAN.md` §2 was written as an estimate and then measured, and the measuring changed it. The same
+was owed to W1 before anybody spends a fortnight on it, so here is `:chart-ui` read import by
+import.
+
+**`:chart-ui` is 15,242 lines of Compose across 17 files, and 22 imports of it are platform-bound.**
+That is the whole list:
+
+| what | count | what it costs |
+| --- | --- | --- |
+| `LocalDensity`, `LocalLayoutDirection` | 7 | **nothing.** Both exist in Compose Multiplatform under the same names |
+| `painterResource`, `stringResource` | 5 | the `org.jetbrains.compose.resources` equivalents — mechanical |
+| `LocalConfiguration` | 1 | one site; the window size it reads is available without it |
+| `android.graphics.BitmapFactory` | 1 | one site |
+| `android.view.Surface`, `SurfaceControl`, `View`, `os.Build` | 5 | **one file** — `ChartFrameRate.kt`, 69 lines. A browser has no `setFrameRate`; this is an `expect`/`actual` whose web half does nothing |
+| `android.view.MotionEvent`, `MotionEventPredictor` | 2 | **one file** — `ChartStrokePredictor.kt`, 59 lines. Same treatment; the browser starts without prediction |
+| `:core:designsystem` | 34 | not a rewrite — the module beneath, below |
+
+Everything else — `CoineProChart` at 7,429 lines, the drawing renderer at 2,576, the legend overlay
+at 1,357, all eighteen series types — draws on `androidx.compose.ui.graphics.Canvas`, which is
+Compose's own API and is the same one on the web. **Two files totalling 128 lines are the only
+Android in the chart.**
+
+**The design system is the real dependency**, and it is bigger but still bounded: 55 files, 12,308
+lines, about sixty platform-bound imports, of which the ones that need thought rather than a rename
+are `StaticLayout` and `android.graphics` in the share card (already known — §2 of this document's
+sibling table calls it the one surface that does not cross) and Coil for remote images, which has a
+multiplatform build.
+
+**And the thing nobody had counted: 1,150 vector drawables.** Every asset logo and every tool
+glyph. Compose Multiplatform reads Android's `<vector>` XML, so most of them move by copying —
+but **226 of them use `aapt:attr` with an inline `<gradient>`**, which is an Android resource-linker
+feature rather than a vector one, and those have to be converted before they render anywhere else.
+218 use `fillType`, 11 use `<group>` transforms, and both of those are fine. That is W1½, and it is
+the sort of item that turns a fortnight's estimate into a month when it is found late instead of
+early.
 
 **W4 onwards cannot start**, and the reason is in §5.
 
