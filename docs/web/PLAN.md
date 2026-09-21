@@ -146,8 +146,12 @@ None of this exists on `pro-chart.com` today (the host does not answer — `DOMA
 - No Android-only type enters `chart/core/src/commonMain` or `namascript/src/commonMain`; the two `ArchitectureTest`s fail the build if one does.
 - The chart's rendering decisions (`ChartWorkbenchColumns`, `ChartLayoutPreset`, the window class) are measured against the space given, not against «is this a phone», so a browser window of any size gets the layout its width earns.
 
-## 6. Open product decisions for the owner
+## 6. Product decisions for the owner — all three answered, 2026-09-21
 
-1. **One origin or two.** The gateway is the clean answer; the alternative is CORS on both backends, which is a change on two servers the app does not own.
-2. **Which backend owns the account** on the web (`docs/SERVER_ASK_ONE_ACCOUNT_TWO_BACKENDS.md` — the same question, not yet answered).
-3. **Whether the web terminal is free, member-only, or the phone's guest tier.** The guest gateway is an Android construct; the browser's equivalent is a read-only page with no account.
+Kept with their answers rather than deleted: a decision's record is worth more than its absence, and
+two of these had been open for a year. **`SERVER.md` §8 is the canonical list from here on**, because
+this document's «§6.2» and that one's now name different things.
+
+1. ~~**One origin or two.**~~ **One.** The gateway is what the relay already is; the alternative was CORS on two servers the app does not own.
+2. ~~**Which backend owns the account** on the web.~~ **TradeYar** (`docs/SERVER_ASK_ONE_ACCOUNT_TWO_BACKENDS.md` is the question it answers). The reset route moved the same day and the contract did not change with it — `SERVER.md` §4.4.1.
+3. ~~**Whether the web terminal is free, member-only, or the phone's guest tier.**~~ **Open and read-only, with no account.** The guest gateway is an Android construct; the browser's equivalent is this, and it is already what Phases 2 and 3 serve. It is also the answer that most changes the schedule: `PARITY.md`'s W1 → W3 can reach readers without waiting for an account.

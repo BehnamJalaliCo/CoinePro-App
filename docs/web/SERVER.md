@@ -100,7 +100,7 @@ than discovered when a bundler is wired up.
 | `/download/…` | the APK | served beside the document that names its digest (§4.6) |
 | `/api/…` | the relay | §4 |
 | `/s/<id>` | a shared script | **not built yet**, and when it is: server-rendered, not an SPA route — see below. `ScriptLink.of` in `:namascript` already spells this address |
-| `/reset` | password reset | **not built yet — build it, with one proxied route.** See below |
+| `/reset` | password reset | **built and serving**, one proxied route to TradeYar. See below and §4.4.1 |
 | `/.well-known/assetlinks.json` | App Links | `application/json`, no redirect |
 
 **The terminal mounts at `/terminal/`, and the root is a page of its own.** The tempting answer is
@@ -417,7 +417,7 @@ narrows would be two places to change the day the desk publishes something else.
 
 | `pro-chart.com` | upstream | note |
 | --- | --- | --- |
-| `POST /api/auth/*` | whichever backend owns the account | **§8.1 is still open, and this row is not waiting on it.** The default is written down: until the owner answers, the relay proxies auth to **CoinePro-FX**, which is where `RESET_HOST` already points. Building against that default is not pre-empting the decision — it is following the spec, and one proxied route is reversible in an afternoon if the answer goes the other way |
+| `POST /api/auth/*` | **TradeYar** | **§8.1 is answered: the owner chose TradeYar, 2026-09-21.** The default in this row used to read CoinePro-FX, and the switch cost what it was predicted to cost — the body is the same shape on both (`reset_token` + `new_password`), so only the destination moved. §4.4.1 has what the switch exposed |
 | `POST /api/auth/guest` | TradeYar | `user/auth/guest` — the read-only tier |
 | `GET /api/membership` | TradeYar | `api/v1/public/membership`, `api/mobile/v1/membership/status` |
 | `GET,POST /api/community/*` | TradeYar | `api/v1/public/app-community/*` |
@@ -431,6 +431,54 @@ has an XSS surface a phone does not.
 **There is no broker account, and no route for one.** Copy trading was removed from the product
 (run Ψ); `user/account/link`, `DELETE user/account` and `user/copy-status` are **not** relayed, and
 adding them later is a product decision rather than a configuration one.
+
+### 4.4.1 What the switch to TradeYar exposed — read from TradeYar's source, 2026-09-21
+
+The move cost what §4.4 said it would: the body is `{reset_token, new_password}` on both backends,
+so only the destination changed. Three things were **not** the same, and each is worth having in
+writing before somebody assumes one backend's habits about the other.
+
+**The credential is a link, not a typed code.** CoinePro-FX's mobile flow mails an eight-character
+`ABCD-EFGH` and nothing else; TradeYar mails **both** — a button carrying `?token=<token>` *and* the
+token printed below it as copyable text, deliberately, «for the very common case of reading the mail
+on a desktop and finishing in the app on the phone». `reset_token` is `1..512` here against
+`6..40` there. So the page keeps its always-visible field *and* its `?token=` prefill, and the
+`ABCD-EFGH` hint goes, because it was one backend's rule wearing the other's clothes.
+
+**Opening the link must not consume the token**, and that is TradeYar's own stated contract:
+corporate mail scanners and link-preview bots fetch every URL in a message before a human sees it,
+so a `GET` that burned the token would meet the reader with «invalid link» on their first real
+click and the cause would never be found. The page therefore renders a form and **calls nothing on
+load**.
+
+**The error shapes differ and both must be read.** CoinePro-FX answers `{"detail": {"code",
+"message"}}`; TradeYar answers RFC 7807 with `detail` as a **string** (`TYR-003`, «این لینک بازیابی
+معتبر یا فعال نیست»). A page that reached for `detail.message` would have rendered nothing at all
+against the new backend — an empty error is worse than an ugly one, because the reader concludes
+the button is broken rather than the token is stale.
+
+**And the sentence that was removed should go back.** «Every other device was signed out» was read
+out of CoinePro-FX's source; when the destination became TradeYar, nobody had read TradeYar's, so
+dropping it was right — a claim kept by habit about a server nobody has looked at is the same
+mistake as inventing one. Now somebody has looked: `password_reset` in
+`app/api/routers/mobile/auth.py` calls `revoke_all_for_user(platform_id, reason="password_changed")`
+**unconditionally**, before it returns. The sentence is true here too, so it returns — because it
+was read, not because it was already written.
+
+**What must not be added**, though it is also true: TradeYar sends a «your password changed» mail
+afterwards. It is conditional on the account having an address and wrapped in a `try/except` that
+logs and swallows a failure — by design, so a mail server cannot fail a reset that already
+succeeded. A page that promised the mail would be lying in exactly the case where it matters.
+
+**Success is `{"reset": true}`**, read from the same function rather than inferred.
+
+**One thing is left and it is a variable on TradeYar's machine, not work here.** The reset mail
+carries a link only when `MOBILE_RESET_DEEP_LINK_BASE` is set; TradeYar's own comment says it is
+«never given a guessed default, because a link that 404s is worse than no link» — which is the
+argument this document made from the other side two days ago, when it decided `/reset` had to exist
+before any mail named it. **It exists now**, so the variable can point at
+`https://pro-chart.com/reset`. Until it does, TradeYar's mail ships the token alone and the reader
+pastes it, which works: the page's field is always visible for exactly that reason.
 
 ### 4.5 What the server owns itself
 
@@ -831,12 +879,13 @@ The numbering below is the canonical one.
 0. ~~The provider and the machine.~~ **Done** — provisioned, on the same Hetzner private network as
    TradeYar and CoinePro-FX, with an agent on it. `SERVER_BUILD_PROMPT.md` is what it works from.
 
-1. **Which backend owns the account** (`PLAN.md` §6.2, and
-   `docs/SERVER_ASK_ONE_ACCOUNT_TWO_BACKENDS.md`). Step 5 cannot start without it. **What does not
-   wait on it:** §4.4 names CoinePro-FX as the default until the answer arrives, so anything built
-   against that default — `/reset` and its one proxied route (§3.1) — is following the spec rather
-   than pre-empting the decision.
-2. **Whether the terminal is open, member-only, or a read-only guest page** (`PLAN.md` §6.3).
+1. ~~**Which backend owns the account.**~~ **Answered 2026-09-21: TradeYar.** The reset route moved
+   the same day and the contract did not change with it — same body, same field names, a different
+   host. `docs/SERVER_ASK_ONE_ACCOUNT_TWO_BACKENDS.md` is the question that was open for a year.
+2. ~~**Whether the terminal is open, member-only, or a read-only guest page.**~~ **Answered
+   2026-09-21: open and read-only, no account.** This one needs no work at all — it is exactly what
+   Phases 2 and 3 already serve — and it unblocks a schedule: `PARITY.md`'s W1→W3 can ship to
+   readers without waiting for W4, because there is nothing to sign in to.
 3. **Whether the candle archive is built on day one** (§5). It is the difference between a reader
    panning to the edge of the backend's window and panning as far as the product has history.
 4. ~~**The App Signing certificate's SHA-256 fingerprint**, from Play Console.~~ **Settled, and the

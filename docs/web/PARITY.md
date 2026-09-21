@@ -22,7 +22,7 @@ built the row says «not built» rather than «planned».
 | the server the browser would talk to | ✅ phases 1–3 live on `pro-chart.com`: legal, the update document, crypto and forex prices, candles, news, the forex socket |
 | the layouts a wide window needs | ✅ the tablet work — a browser window *is* an Expanded window, and the app already decides from width rather than from «is this a phone» |
 | the screens themselves, in a browser | ❌ **not built.** `:chart-ui` and every `feature:*` module are Android libraries |
-| an account that is one account on both | ❌ **not built**, and blocked — see §5 |
+| an account that is one account on both | ❌ **not built** — but no longer blocked: §5's decisions were answered on 2026-09-21 |
 
 So the honest shape of the answer is: **the hard half is done and proven, the visible half has not
 started**, and the visible half is gated on two decisions that are the owner's, not the work's.
@@ -106,7 +106,7 @@ arrive mid-phase; each phase ends with something a reader could open.
 | **W1½** | **the drawables.** 1,150 vector XML files move to `composeResources/`, of which **226 use `aapt:attr` inline gradients** and have to be converted first. Mechanical, scriptable, and the biggest single item nobody had counted | 3–5 | W0, and it can run in parallel with W1 |
 | **W2** | the terminal shell: the labelled rail, the tool column, the readings panel, the 1–8 grid, the object tree, the watchlist as list-detail. All of it is the tablet layout, which is why §4 of the plan was done before §5 | 8–12 | W1, W1½ |
 | **W3** | the script studio in the browser — the editor, the diagnostics, the console, the library | 4–6 | W1, and a `<textarea>`'s selection model |
-| **W4** | the account: one login across phone, tablet and browser; synced layouts, drawings, watchlists | 5–8 | **blocked** — §5, and server phase 4 |
+| **W4** | the account: one login across phone, tablet and browser; synced layouts, drawings, watchlists | 5–8 | server phase 4. **Unblocked 2026-09-21** — TradeYar owns the account |
 | **W5** | server-side alerts, because a closed tab evaluates nothing | 4–6 | W4 |
 | **W6** | the parity pass proper: the comparison rig pointed at TradingView's *web* terminal rather than their Android app, and every gap it finds closed | 5–10 | W2 |
 
@@ -154,7 +154,7 @@ feature rather than a vector one, and those have to be converted before they ren
 the sort of item that turns a fortnight's estimate into a month when it is found late instead of
 early.
 
-**W4 onwards cannot start**, and the reason is in §5.
+**W4 onwards can start now.** It could not when this was written; §5 has what changed.
 
 ---
 
@@ -182,28 +182,35 @@ Three rules carry over unchanged, because they are what makes the number mean an
 
 ---
 
-## 5. What is blocking, and it is not engineering
+## 5. What was blocking — all of it, answered on 2026-09-21
 
-Three decisions, all in `PLAN.md` §6, all the owner's:
+This section listed three decisions and two data faults. **None of them is open**, and the two
+halves came unstuck in opposite ways, which is worth keeping side by side.
 
-1. **Which backend owns the account** on the web. Two backends, one reader; the question has been
-   open since `docs/SERVER_ASK_ONE_ACCOUNT_TWO_BACKENDS.md` was written. Until it is answered,
-   server phase 4 cannot start, and W4 sits behind server phase 4.
-2. **Is the web terminal free, member-only, or a read-only guest page?** This is not a late
-   detail — it decides whether W1's output is publishable on its own or has to wait for W4.
-3. **One origin or two.** The gateway is the clean answer and is what the relay already is; the
-   alternative is CORS on two servers this app does not own.
+**The decisions were answered by the owner:**
 
-And two facts about the data, which parity cannot paper over — both with CoinePro-FX, both one
-message away (`RUN_ALEF/BLOCKED.md` §א20 and §א22):
+1. ~~Which backend owns the account on the web.~~ **TradeYar.** Open since
+   `docs/SERVER_ASK_ONE_ACCOUNT_TWO_BACKENDS.md` was written; server phase 4 and **W4** are
+   unblocked, and the reset route moved the same day — same body, a different host (`SERVER.md`
+   §4.4.1).
+2. ~~Free, member-only, or a read-only guest page.~~ **Open and read-only, no account.** This is the
+   answer that costs nothing to implement and changes the schedule most: **W1 → W3 ships to readers
+   on its own.** There is nothing to sign in to, so the chart, the tools, the scripts and the
+   watchlist do not wait behind W4.
+3. ~~One origin or two.~~ **One** — it is what the relay already is, and every phase since has been
+   built that way.
 
-* **Gold is missing** from the snapshot the catalogue is built from, while the forex signals are
-  gold and nothing else.
-* **The forex quotes say `source: "yfinance"`** with `bid == ask`, while the chart names
-  «MetaTrader 5» beside them.
+**The data faults fixed themselves.** `RUN_ALEF/BLOCKED.md` §א20 and §א22: gold and silver are in
+CoinePro-FX's snapshot *and* on its socket, and `source` reads `finnhub` on all 19 rows.
+CoinePro-FX's team changed it with no message from here — the faults were measured, written down,
+and left alone rather than worked around, because a symbol the feed does not list is a symbol the
+app must not invent.
 
-A terminal at parity with TradingView on a feed that cannot say where its prices come from would be
-parity of the wrong kind.
+**What is left of §א22 is one sentence and it is not a blocker:** `bid == ask == price` on 19 of
+19, so this feed carries no spread, and `CandleGateway.sourceName` still prints «MetaTrader 5»
+beside a quote that now says Finnhub. A terminal at parity with TradingView on a feed that cannot
+say where its prices come from would be parity of the wrong kind — but it can say now, and what
+remains is a label that names one of two venues rather than a feed that names none.
 
 ---
 

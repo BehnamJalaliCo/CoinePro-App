@@ -64,13 +64,12 @@ release keystore's own SHA-256 — checked against `apksigner`'s reading of the 
 against anybody's report of it. That is everything Android's verifier asks, so the claim verifies
 and the link opens the app.
 
-**The page behind the link does not exist yet.** `https://pro-chart.com/reset` is a `404`. Nothing
-is broken for a reader today, because no e-mail names that address: CoinePro-FX's reset mails name
-`coineprofx.com/reset-password`, which is claimed separately and stays claimed for as long as they
-do. But the two halves are now asymmetric — **the app will open on a link that, for anybody without
-the app, leads nowhere** — so the page has to exist before any mail names it. It is one page: read
-the token from the query, post it, say what happened. `SERVER.md` §3.1 reserves the path and keeps
-it out of the terminal's SPA fallback for exactly this reason.
+**The page behind the link exists now.** It was a `404` on 2026-09-20 and the asymmetry was worth
+naming — the app would have opened on a link that, for anybody without the app, led nowhere. It
+serves `200` with and without `?token=`, reads the token from the query, posts it and shows the
+backend's own answer, and calls nothing on load (the reason for that last one is in `SERVER.md`
+§4.4.1: a mail scanner that fetched the URL would otherwise burn the token before the reader
+clicked). `SERVER.md` §3.1 keeps the path out of the terminal's SPA fallback.
 
 **One thing to change in the same breath as any mail that starts carrying a link.** There are two
 reset flows on CoinePro-FX and they carry different credentials: the **academy** one e-mails
@@ -81,5 +80,13 @@ minimum will drop it, `DeepLinkValidation` will return null, and the App Link wi
 nothing. The regex is deliberately not widened in advance — a validator loosened for a case that
 does not exist is a validator nobody can reason about — but widening it belongs in the same change
 as the mail.
+
+**Since 2026-09-21 the account on the web is TradeYar's** (`SERVER.md` §8.1), and that settles what
+this claim is for. TradeYar's reset mail builds its link from `MOBILE_RESET_DEEP_LINK_BASE`, which
+is **unset by default on purpose** — its own comment says a link is «never given a guessed default,
+because a link that 404s is worse than no link» — and the address it should carry is
+`https://pro-chart.com/reset`, which now exists. Its token is a URL token, comfortably past
+`RESET_TOKEN`'s sixteen-character floor, so the note above about the eight-character code is a
+CoinePro-FX matter rather than a live risk.
 
 `coineprofx.com` stays claimed for as long as CoinePro-FX's e-mails name it.
