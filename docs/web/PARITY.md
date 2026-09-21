@@ -104,10 +104,11 @@ arrive mid-phase; each phase ends with something a reader could open.
 | phase | what it is | days | depends on |
 | --- | --- | --- | --- |
 | **W0** | the target exists, engine + language compile for a browser, CI keeps them compiling | **done** | — |
-| **W1** | `:chart-ui` becomes KMP. Audited rather than estimated — see §3a: the chart code is portable almost in whole, and the cost is two small files behind an `expect`/`actual`, five resource calls, and the design system underneath it | 6–10 | W0 |
-| **W1½** | **the drawables.** 1,150 vector XML files move to `composeResources/`, of which **226 use `aapt:attr` inline gradients** and have to be converted first. Mechanical, scriptable, and the biggest single item nobody had counted | 3–5 | W0, and it can run in parallel with W1 |
-| **W2** | the terminal shell: the labelled rail, the tool column, the readings panel, the 1–8 grid, the object tree, the watchlist as list-detail. All of it is the tablet layout, which is why §4 of the plan was done before §5 | 8–12 | W1, W1½ |
-| **W3** | the script studio in the browser — the editor, the diagnostics, the console, the library | 4–6 | W1, and a `<textarea>`'s selection model |
+| **W1a** | **`:chart-ui` is a KMP module.** Done, 2026-09-21 — one target, Android, sources in `androidMain`. The whole suite and `:app:assembleRelease` green, no behaviour changed | **done** | W0 |
+| **W1b** | the browser target on it: `wasmJs`, the two Android files behind a seam, the five resource calls | 5–9 | W1a, W1½ |
+| **W1½** | **the drawables.** 1,150 vector XML files move to `composeResources/`, of which **226 use `aapt:attr` inline gradients** and have to be converted first. Mechanical, scriptable, and the biggest single item nobody had counted | 3–5 | W0, and it can run in parallel with W1b |
+| **W2** | the terminal shell: the labelled rail, the tool column, the readings panel, the 1–8 grid, the object tree, the watchlist as list-detail. All of it is the tablet layout, which is why §4 of the plan was done before §5 | 8–12 | W1b, W1½ |
+| **W3** | the script studio in the browser — the editor, the diagnostics, the console, the library | 4–6 | W1b, and a `<textarea>`'s selection model |
 | **W4** | the account: one login across phone, tablet and browser; synced layouts, drawings, watchlists | 5–8 | server phase 4. **Unblocked 2026-09-21** — TradeYar owns the account |
 | **W5** | server-side alerts, because a closed tab evaluates nothing | 4–6 | W4 |
 | **W6** | the parity pass proper: the comparison rig pointed at TradingView's *web* terminal rather than their Android app, and every gap it finds closed | 5–10 | W2 |
