@@ -183,6 +183,31 @@ enum class AuthFailureReason {
     /** Too many attempts. [AuthFailure.retryAfterSeconds] carries the server's wait, when it sent one. */
     RATE_LIMITED,
 
-    /** The request never reached a verdict: no connectivity, a timeout, a server fault. */
+    /** The request never reached a verdict: no connectivity, or a timeout. */
     UNREACHABLE,
+
+    /**
+     * The connection was refused **by this app**, because the server's certificate was not one of
+     * the keys the build was told to expect.
+     *
+     * This is a `SSLPeerUnverifiedException`, which is an `IOException`, which is why it used to
+     * arrive on screen as [UNREACHABLE] — «the request was not judged», the same sentence a phone
+     * in a tunnel gets. The diagnoses have nothing in common. A reader in a tunnel waits; a reader
+     * whose app has a stale pin waits for ever, because the server is up, the network is fine, and
+     * the refusal is ours. Pinning has no remote fix — see `app/build.gradle.kts`,
+     * `DEFAULT_CERTIFICATE_PINS` — so the one thing the app owes anybody looking at the screen is
+     * to say which of the two it is.
+     */
+    UNTRUSTED,
+
+    /**
+     * The server answered, and what it answered with was its own fault — a 5xx.
+     *
+     * Split out of [UNREACHABLE] after Cafe Bazaar refused 4.88.0 with «پاسخی نرسید» on the
+     * sign-in screen: the two are indistinguishable on the glass and have opposite diagnoses.
+     * «The request was not judged» is **false** of a 500 — it arrived, it was read, and the thing
+     * that broke was on the other side. Telling a reader otherwise sends them to check their
+     * connection while the fault is ours, and told a reviewer nothing anybody could act on.
+     */
+    SERVER_FAULT,
 }

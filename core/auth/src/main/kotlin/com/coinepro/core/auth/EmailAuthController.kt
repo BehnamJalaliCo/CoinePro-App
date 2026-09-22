@@ -67,6 +67,13 @@ enum class EmailAuthNotice {
 data class EmailAuthUiState(
     val methods: AuthMethods = AuthMethods(),
     val methodsKnown: Boolean = false,
+    /**
+     * True when [methods] is what the app fell back to rather than what the server said, because
+     * discovery failed. The screen has to say so: the buttons on it are an offer to try, not a
+     * report of what the deployment supports, and a reader who is not told that reads a failed
+     * attempt as their own mistake.
+     */
+    val methodsAssumed: Boolean = false,
     val step: EmailAuthStep = EmailAuthStep.SIGN_IN,
     val busy: Boolean = false,
     val failure: AuthFailure? = null,
@@ -108,16 +115,37 @@ class EmailAuthController(
     private var countdown: Job? = null
 
     /**
-     * Asks which ways in exist. Until this answers, [EmailAuthUiState.methodsKnown] stays false and
-     * the screen shows no buttons rather than a guess at which ones work.
+     * Asks which ways in exist, and **offers e-mail anyway when the asking fails**.
+     *
+     * Until 5.0.1 a failed discovery left the screen with no buttons at all, on the reasoning that
+     * guessing would put a button there that is certain to fail and a reader who taps it concludes
+     * the fault is theirs. That reasoning is still right about **Google and Telegram** — both need
+     * something discovery supplies (an audience, a bot name), so offering them blind offers
+     * nothing. It was wrong about e-mail, and Cafe Bazaar's refusal of 4.88.0 is what showed it:
+     * their reviewer opened the screen, one request did not answer, and there was **no way in at
+     * all** — not a failed attempt, no attempt.
+     *
+     * E-mail and password is the one method that needs no configuration to try. Offering it after
+     * a failed discovery costs a reader one attempt that produces a **real** error from a real
+     * request, which is more than a dead screen tells them and far more than it told a reviewer.
+     * The failure stays on screen beside it, so nobody is told the deployment is healthy.
      */
     fun loadMethods() {
         scope.launch {
             when (val result = gateway.methods()) {
                 is AppResult.Success ->
-                    stateMutable.update { it.copy(methods = result.value, methodsKnown = true) }
+                    stateMutable.update {
+                        it.copy(methods = result.value, methodsKnown = true, methodsAssumed = false)
+                    }
                 is AppResult.Failure ->
-                    stateMutable.update { it.copy(failure = result.toAuthFailure(), methodsKnown = false) }
+                    stateMutable.update {
+                        it.copy(
+                            failure = result.toAuthFailure(),
+                            methods = AuthMethods(emailPassword = true),
+                            methodsKnown = true,
+                            methodsAssumed = true,
+                        )
+                    }
             }
         }
     }

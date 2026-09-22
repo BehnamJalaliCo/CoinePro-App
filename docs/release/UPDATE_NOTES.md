@@ -47,6 +47,20 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.0.1
+
+**fa**
+
+> صفحه‌ی ورود دیگر خالی نمی‌ماند. اگر برنامه نتواند از سرور بپرسد کدام روش‌های ورود فعال‌اند، ورود
+> با ایمیل را نشان می‌دهد و می‌گوید چرا. پیام‌های خطا هم روشن‌تر شده‌اند: حالا فرق «پاسخی نرسید» با
+> «سرور پاسخ داد ولی خطا داشت» معلوم است.
+
+**en**
+
+> The sign-in screen no longer comes up empty. If the app cannot ask the server which ways in are
+> available, it offers e-mail and says why. The errors are clearer too: «no answer came back» and
+> «the server answered with a fault of its own» are now two different sentences.
+
 ## 5.0.0
 
 **fa**

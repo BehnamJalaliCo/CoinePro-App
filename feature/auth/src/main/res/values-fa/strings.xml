@@ -52,9 +52,12 @@
     <string name="auth_error_invalid">اطلاعات واردشده پذیرفته نشد.</string>
     <string name="auth_error_rate_limited">تلاش‌های زیادی انجام شد.</string>
     <string name="auth_error_unreachable">پاسخی نرسید. این یعنی درخواست بررسی نشد، نه اینکه رد شد.</string>
+    <string name="auth_error_server_fault">سرور پاسخ داد ولی خطای خودش را برگرداند. از سمت شما چیزی اشتباه نیست؛ کمی بعد دوباره تلاش کنید.</string>
+    <string name="auth_error_untrusted">ارتباط امن را خودِ برنامه رد کرد: گواهی سرور آن چیزی نیست که این نسخه ساخته شده بپذیرد. اینترنت شما مشکلی ندارد و تلاش دوباره فایده‌ای ندارد — این نسخه باید به‌روز شود.</string>
     <string name="auth_retry_in">تلاش دوباره تا %1$d ثانیه‌ی دیگر</string>
 
     <string name="auth_methods_unknown">هنوز معلوم نیست کدام روش‌های ورود در دسترس‌اند.</string>
+    <string name="auth_methods_assumed">نشد از سرور بپرسیم کدام روش‌های ورود فعال‌اند. ورود با ایمیل را نشان می‌دهیم چون همیشه هست؛ اگر نشد، ایراد از سمت ماست.</string>
     <string name="auth_methods_retry">تلاش دوباره</string>
     <string name="auth_methods_none">در حال حاضر هیچ روش ورودی فعال نیست.</string>
     <string name="auth_telegram_unavailable">ورود با تلگرام فعلاً فقط در نسخه‌ی وب کار می‌کند. اینجا با ایمیل وارد شوید.</string>

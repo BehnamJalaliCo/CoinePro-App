@@ -1,8 +1,8 @@
 package com.coinepro.core.auth
 
 import com.coinepro.core.common.AppResult
-import com.coinepro.core.model.MarketPlatform
 import com.coinepro.core.common.ErrorKind
+import com.coinepro.core.model.MarketPlatform
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -31,6 +31,43 @@ class EmailAuthControllerTest {
         assertTrue(controller.state.value.methodsKnown)
         assertTrue(controller.state.value.methods.emailPassword)
         assertFalse("A method the server disabled must not be offered", controller.state.value.methods.google)
+    }
+
+    /**
+     * Cafe Bazaar refused 4.88.0 because their reviewer opened this screen, one request did not
+     * answer, and there was **no way in at all** — not a failed attempt, no attempt. E-mail needs
+     * nothing discovery supplies, so it is offered anyway; Google and Telegram still are not,
+     * because each needs something only the server can hand over.
+     */
+    @Test
+    fun `discovery that fails still offers e-mail, and says it is assuming`() = runTest {
+        val gateway = FakeEmailAuthGateway()
+        gateway.methods = AppResult.Failure(kind = ErrorKind.NETWORK, message = "timeout")
+        val controller = controller(gateway)
+
+        controller.loadMethods()
+        runCurrent()
+
+        val state = controller.state.value
+        assertTrue("the screen must have a way in rather than a wall", state.methodsKnown)
+        assertTrue(state.methodsAssumed)
+        assertTrue(state.methods.emailPassword)
+        assertFalse("Google needs an audience discovery would have supplied", state.methods.google)
+        assertFalse(state.methods.telegram)
+        // The failure stays on screen: nobody is told the deployment is healthy.
+        assertEquals(AuthFailureReason.UNREACHABLE, state.failure?.reason)
+    }
+
+    @Test
+    fun `a server fault reads as one rather than as silence`() = runTest {
+        val gateway = FakeEmailAuthGateway()
+        gateway.methods = AppResult.Failure(kind = ErrorKind.SERVER, message = "bad gateway")
+        val controller = controller(gateway)
+
+        controller.loadMethods()
+        runCurrent()
+
+        assertEquals(AuthFailureReason.SERVER_FAULT, controller.state.value.failure?.reason)
     }
 
     @Test

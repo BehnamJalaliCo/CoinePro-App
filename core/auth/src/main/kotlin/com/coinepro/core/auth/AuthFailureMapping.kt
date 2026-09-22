@@ -2,6 +2,8 @@ package com.coinepro.core.auth
 
 import com.coinepro.core.common.AppResult
 import com.coinepro.core.common.ErrorKind
+import java.security.cert.CertificateException
+import javax.net.ssl.SSLPeerUnverifiedException
 
 /**
  * Turns a transport failure into the one thing the sign-in screens act on.
@@ -16,7 +18,19 @@ internal fun AppResult.Failure.toAuthFailure(): AuthFailure = AuthFailure(
         ErrorKind.AUTH -> AuthFailureReason.REJECTED
         ErrorKind.VALIDATION -> AuthFailureReason.INVALID
         ErrorKind.RATE_LIMIT -> AuthFailureReason.RATE_LIMITED
-        ErrorKind.NETWORK, ErrorKind.SERVER, ErrorKind.UNKNOWN -> AuthFailureReason.UNREACHABLE
+        // `SERVER` used to sit on this line, and that contradicted the paragraph above it: a 5xx
+        // **is** an answer. The request arrived, it was read, and the fault is on the other side —
+        // so «the request was not judged» was a false sentence the app told about itself.
+        ErrorKind.SERVER -> AuthFailureReason.SERVER_FAULT
+        // A pinned handshake the app itself rejected is an `IOException` like any other, so it
+        // arrives here as `NETWORK` and used to read as «no answer». It is the opposite: the
+        // server answered the handshake and **we** hung up. Only the cause can tell them apart.
+        ErrorKind.NETWORK, ErrorKind.UNKNOWN ->
+            if (cause.isCertificateRefusal()) {
+                AuthFailureReason.UNTRUSTED
+            } else {
+                AuthFailureReason.UNREACHABLE
+            }
     },
     // Only a real verdict carries wording worth repeating. A timeout's exception text is a
     // description of the app's own plumbing, and putting it on screen in the server's place would
@@ -26,3 +40,24 @@ internal fun AppResult.Failure.toAuthFailure(): AuthFailure = AuthFailure(
     },
     retryAfterSeconds = retryAfterSeconds,
 )
+
+/**
+ * Whether this failure is the app refusing a certificate rather than the network failing.
+ *
+ * The chain is walked because OkHttp wraps: a pin mismatch on a retried route arrives as a
+ * `RouteException`-shaped `IOException` with the real `SSLPeerUnverifiedException` underneath, and
+ * reading only the outermost throwable would miss exactly the case this exists for. The walk is
+ * bounded — a cause chain that loops is a library bug, not a reason to hang the sign-in screen.
+ */
+private fun Throwable?.isCertificateRefusal(): Boolean {
+    var current = this
+    var hops = 0
+    while (current != null && hops < 8) {
+        if (current is SSLPeerUnverifiedException || current is CertificateException) return true
+        val next = current.cause
+        if (next === current) return false
+        current = next
+        hops++
+    }
+    return false
+}

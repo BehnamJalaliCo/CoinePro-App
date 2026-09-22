@@ -171,6 +171,13 @@ private fun SignInStep(
         Waiting(R.string.auth_methods_unknown, onRetryMethods, R.string.auth_methods_retry, state.busy)
         return
     }
+    // When the asking *failed*, e-mail is offered anyway and this note says why. The reasoning is
+    // in `EmailAuthController.loadMethods`; the short version is that a dead screen tells a reader
+    // less than a real attempt does, and told a store reviewer nothing at all.
+    if (state.methodsAssumed) {
+        Notice(stringResource(R.string.auth_methods_assumed), CoineProColors.Warning)
+        Spacer(Modifier.height(CoineProSpacing.One))
+    }
     if (!state.methods.any) {
         Notice(stringResource(R.string.auth_methods_none), CoineProColors.Warning)
         return
@@ -606,6 +613,8 @@ private fun AuthFailureReason.copyRes(): Int = when (this) {
     AuthFailureReason.INVALID -> R.string.auth_error_invalid
     AuthFailureReason.RATE_LIMITED -> R.string.auth_error_rate_limited
     AuthFailureReason.UNREACHABLE -> R.string.auth_error_unreachable
+    AuthFailureReason.SERVER_FAULT -> R.string.auth_error_server_fault
+    AuthFailureReason.UNTRUSTED -> R.string.auth_error_untrusted
 }
 
 /** Matches the server's stated minimum; the server is still what enforces it. */
