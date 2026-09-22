@@ -15,6 +15,7 @@ android {
 
 dependencies {
     implementation(project(":core:model"))
+    implementation(project(":core:common"))
     implementation(project(":core:marketdata"))
     implementation(project(":core:signals"))
     api(libs.androidx.room.runtime)

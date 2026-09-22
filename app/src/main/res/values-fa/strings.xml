@@ -207,7 +207,7 @@
     <string name="script_link_unknown">آن پیوند به اسکریپتی اشاره می‌کند که روی این دستگاه نیست.</string>
 
     <string name="profile_action_export">پشتیبان‌گیری از چیزهایی که ساخته‌ام</string>
-    <string name="profile_action_export_note">دیده‌بان، اسکریپت‌ها و زنجیره‌تان، در یک متن که هر جا بخواهید نگه می‌دارید. چیدمان‌ها و دفترچه هنوز در آن نیستند.</string>
+    <string name="profile_action_export_note">دیده‌بان، چیدمان‌ها، اسکریپت‌ها و دفترچه‌تان، در یک متن که هر جا بخواهید نگه می‌دارید. زنجیره‌ی آرنا در آن نیست؛ آن از تاریخچه‌تان شمرده می‌شود، نه اینکه ذخیره شده باشد.</string>
     <string name="profile_action_import">بازگرداندن از پشتیبان</string>
     <string name="profile_export_done">کپی شد. جایی بچسبانید که بعداً هم داشته باشیدش.</string>
     <string name="profile_export_empty">هنوز چیزی برای پشتیبان‌گیری نیست.</string>

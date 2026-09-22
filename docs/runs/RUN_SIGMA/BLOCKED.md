@@ -77,7 +77,31 @@ server-side. `ScriptLink` remains what it was — an address carrying an id and 
 tapped link can never be a script that ran — and it is what the web terminal will use, where an
 address is a page rather than a deep link.
 
-## 6. The archive carries two stores of five (Σ3, item S6)
+## 6. ~~The archive carries two stores of five~~ — **four of five in 5.0.3, and the fifth is a decision**
+
+> **Closed 2026-09-22.** Layouts and the journal are in the file. A layout goes through
+> **`ChartLayoutStore`'s own encoder**, reached rather than reimplemented, because a parallel
+> encoder is the one that drifts: a field added to `ChartLayout` would be written by the store and
+> dropped silently by the archive, and the backup would restore without the reader's scripts and
+> look like it had worked. A journal entry goes through `JournalArchiveCodec`, which length-prefixes
+> every field (`ArchiveFields`) and escapes nothing — the note and the lesson are the parts a reader
+> wrote by hand, and «drop the field that has a separator in it» is how a paste from a chat app
+> loses the sentence they cared about.
+>
+> **The streak stays out, and that is the finding.** It is not stored: `ArenaStore` counts it back
+> from the arena rows, deliberately, «so it cannot disagree with them». Writing the two numbers into
+> a backup would carry a *reading* of rows the archive does not carry, and the first recount on the
+> new phone would replace it — a figure that was right for one screen and then quietly was not. That
+> is the same «a summary rather than the thing» this entry already refused, arrived at from the
+> other side. The field stays in the format for the day the rows travel too.
+>
+> **And the row's own note was already false.** It read «your watchlist, your scripts and your
+> streak» while `exportArchive` passed `streak = null`. It now says what is in the file and why the
+> streak is not.
+
+---
+
+### What the entry said while it stood
 
 **Blocked on:** nothing external. Scope, and named rather than implied.
 

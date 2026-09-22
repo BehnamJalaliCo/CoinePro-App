@@ -289,3 +289,15 @@ and item 3 of Τ2 stays ❌ until it arrives.
 **The study rows are not a new feature.** They name what is already on the chart. A study that draws
 nothing at all — `correlation` before a second instrument is loaded — now gets a row too, and that is
 deliberate: a switch that is on and invisible is worse than one that admits it is doing nothing.
+
+---
+
+## Σ-CLOSE — the archive's remaining three stores, and why only two of them were work (5.0.3)
+
+| # | Item | State | Evidence | Frame |
+|---|---|---|---|---|
+| C1 | Layouts, through the store's own encoder | ✅ | `ChartLayoutArchiveCodec` reaches `ChartLayoutStore.encodeLayout`/`decodeLayout` rather than reimplementing them, and a test asserts the two produce the same string. A second encoder passes its own tests for ever while the backup it writes quietly stops carrying a field the store added — the reader's scripts travel in a layout since 4.73.0, and that is exactly what would have gone missing | — **`ChartLayoutArchiveCodecTest`, four cases** |
+| C2 | The journal, with nothing escaped and nothing dropped | ✅ | `JournalArchiveCodec` over `ArchiveFields`: every field `<length>:<value>`, no separator anywhere, so a note may contain newlines, colons, quotes and the three ASCII separators every other codec in this app blanks a field for. The entry's Room id is deliberately not carried — it identified a row on the phone the archive came from, and restoring it would invite a write over an unrelated row here | — **thirteen tests across `ArchiveFieldsTest` and `JournalArchiveCodecTest`** |
+| C3 | The case that decided the format | ✅ | A journal is the one record with no server route and no second copy — «a trading diary is the one record whose value depends on nobody else reading it». The free text *is* the entry, and a paste from a chat app is enough to bring a `\u001E` nobody can see. «Drop the field that has a separator in it» would lose the sentence the reader cared about, silently, on the record that cannot be refetched | — **one test that writes all three separators into a note and reads it back** |
+| C4 | The streak stays out, and it is a decision rather than a gap | ✅ **the finding** | `ArenaStore` does not store it: it counts back over the arena rows, deliberately, «so it cannot disagree with them». Two numbers in a backup would be a **reading** of rows the archive does not carry, and the first recount on the new phone would replace it — right for one screen, then quietly not. That is the same «a summary rather than the thing» this run already refused, reached from the other side. The field stays in the format for the day the rows travel | — **`ArenaStore`'s own note, read rather than assumed** |
+| C5 | And the sentence on the profile was already false | ✅ | `profile_action_export_note` read «your watchlist, your scripts **and your streak**» while `exportArchive` passed `streak = null`. Nobody had read the two together. Both languages now name what is in the file and say why the streak is not | — **one string, two locales** |

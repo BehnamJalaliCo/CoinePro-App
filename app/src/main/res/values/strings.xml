@@ -207,7 +207,7 @@
 
     <!-- The reader's own archive (4.82.3, run Σ item S6; doctrine D8). -->
     <string name="profile_action_export">Back up what I have made</string>
-    <string name="profile_action_export_note">Your watchlist, your scripts and your streak, as one piece of text you can keep anywhere. Layouts and the journal are not in it yet.</string>
+    <string name="profile_action_export_note">Your watchlist, your chart layouts, your scripts and your journal, as one piece of text you can keep anywhere. The Arena streak is not in it: it is counted from your history rather than stored.</string>
     <string name="profile_action_import">Restore from a backup</string>
     <string name="profile_export_done">Copied. Paste it somewhere you will still have it.</string>
     <string name="profile_export_empty">There is nothing to back up yet.</string>

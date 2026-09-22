@@ -91,6 +91,32 @@ class JournalController(
     }
 
     fun csv(): String = Journal.toCsv(state.value.entries)
+
+    /**
+     * Every entry, whatever tag is selected — what a backup has to carry.
+     *
+     * Deliberately **not** `state.value.entries`, which is filtered: a reader who exported their
+     * archive while «بریک‌اوت» was tapped would get a backup of their breakouts and no warning
+     * that the rest of their journal was not in it. The filter is a way of reading the journal,
+     * not a statement about which entries are theirs.
+     */
+    val all: StateFlow<List<JournalEntryEntity>> =
+        dao.entries().stateIn(scope, SharingStarted.Eagerly, emptyList())
+
+    /**
+     * Restores one entry from an archive, keeping the moment it was written.
+     *
+     * [add] stamps `now()`, which is right for a note being written and wrong for one being
+     * restored: a journal is read backwards through time, and an import that gave every entry
+     * today's date would flatten a year of it into one afternoon.
+     *
+     * The id is dropped — it was Room's, on the phone the archive came from — so this is always a
+     * new row rather than a write over whatever happens to hold that number here.
+     */
+    suspend fun insertFromArchive(entry: JournalEntryEntity) {
+        if (entry.symbol.isBlank()) return
+        dao.insert(entry.copy(id = 0))
+    }
 }
 
 internal fun JournalEntryEntity.tagList(): List<String> =

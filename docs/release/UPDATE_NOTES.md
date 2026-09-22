@@ -47,6 +47,19 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.0.3
+
+**fa**
+
+> پشتیبان‌گیری حالا چیدمان‌های نمودار و دفترچه‌ی معاملات را هم می‌برد، نه فقط دیده‌بان و
+> اسکریپت‌ها. هر چه در یادداشت‌هایتان نوشته‌اید همان‌طور برمی‌گردد — با هر نویسه و هر خط.
+
+**en**
+
+> A backup now carries your chart layouts and your trading journal too, not just your watchlist
+> and your scripts. Whatever you wrote in a note comes back exactly as you wrote it, every
+> character and every line of it.
+
 ## 5.0.2
 
 **fa**

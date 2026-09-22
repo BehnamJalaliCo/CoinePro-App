@@ -478,3 +478,25 @@ class ChartLayoutStore(private val dataStore: DataStore<Preferences>) {
         private fun blankIfSeparated(value: String) = if (hasSeparator(value)) "" else value
     }
 }
+
+/**
+ * One layout as a string, for the reader's archive — the same record [ChartLayoutStore] stores.
+ *
+ * The store's own encoder, made reachable rather than reimplemented. A second encoder is a second
+ * definition of what a layout is, and the one that is not exercised by the store is the one that
+ * drifts: a field added to [ChartLayout] would be written by the store and quietly dropped by the
+ * archive, so the backup would restore a layout with the reader's scripts missing and look like it
+ * had worked.
+ *
+ * The record carries ASCII control characters as separators. That is safe in an archive because
+ * `ReaderArchiveFile` length-prefixes every body precisely so it never has to know what is inside
+ * one, and it is why a layout can be carried through unread.
+ */
+object ChartLayoutArchiveCodec {
+
+    /** Null for a layout the store itself would refuse — a blank id, or a name with a separator. */
+    fun encode(layout: ChartLayout): String? = ChartLayoutStore.encodeLayout(layout)
+
+    /** The layout in [record], or null when it is not one. */
+    fun decode(record: String): ChartLayout? = ChartLayoutStore.decodeLayout(record)
+}

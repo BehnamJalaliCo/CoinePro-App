@@ -47,7 +47,9 @@ import com.coinepro.core.common.ChallengeSurface
 import com.coinepro.core.common.ReturnLoop
 import com.coinepro.core.common.SymbolMove
 import com.coinepro.core.script.ScriptDocument
+import com.coinepro.core.database.JournalArchiveCodec
 import com.coinepro.core.database.SavedScriptEntity
+import com.coinepro.core.datastore.ChartLayoutArchiveCodec
 import com.coinepro.core.script.ScriptFile
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -2263,6 +2265,9 @@ private fun MainShell(
     // The reader's own scripts and the clipboard, for the archive. Collected here rather than at
     // the call site because both functions are plain lambdas and neither can call a composable.
     val savedScriptsForArchive by scriptController.saved.collectAsStateWithLifecycle()
+    // Unfiltered on purpose: `journalController.state` is narrowed by whatever tag is selected,
+    // and a backup taken while one was would silently hold a slice of the journal.
+    val journalForArchive by journalController.all.collectAsStateWithLifecycle()
     val clipboardManager = LocalClipboardManager.current
     val archiveEnglish = inEnglish()
 
@@ -2653,9 +2658,15 @@ private fun MainShell(
      * provider is three taps and a permission between them and that.
      *
      * What goes in is what round-trips **faithfully**: the watchlist, the reader's own scripts as
-     * whole `.nama` files, and the streak. Layouts and the journal are not in it yet — each needs
-     * its own codec, and a field that came back as a summary rather than as the thing would be a
-     * backup that looks like one. `BLOCKED.md` says so, and so does the row's own note.
+     * whole `.nama` files, their chart layouts as the record the layout store itself writes, and
+     * their journal entry by entry with the moment each was written.
+     *
+     * **The streak is still not in it, and that is now a decision rather than a gap.** It is not
+     * stored: `ArenaStore` counts it back from the reader's arena rows, deliberately, «so it
+     * cannot disagree with them». Writing the two numbers into a backup would carry a *reading*
+     * of rows the archive does not carry, and the first recount on the new phone would replace it
+     * with the truth — a figure that was right for one screen and then quietly was not. The field
+     * stays in the format for the day the rows travel too.
      */
     fun exportArchive() {
         val archive = ReaderArchive(
@@ -2679,8 +2690,16 @@ private fun MainShell(
                     ),
                 )
             },
-            // The streak is on the arena's own screen and not in scope here; the field is in
-            // the format so the day it is has no migration in it. See `BLOCKED.md`.
+            // Through the store's own encoder, never a second one: a layout that gained a field
+            // would otherwise be written whole by the store and dropped silently by the archive,
+            // and the backup would restore without the reader's scripts and look like it worked.
+            layouts = chartLayouts.mapNotNull { layout ->
+                ChartLayoutArchiveCodec.encode(layout)?.let { ArchivedRecord(layout.name, it) }
+            },
+            journal = journalForArchive.map { entry ->
+                ArchivedRecord(JournalArchiveCodec.nameOf(entry), JournalArchiveCodec.encode(entry))
+            },
+            // Derived, so it is left out on purpose — see the note above this function.
             streak = null,
         )
         if (archive.isEmpty) {
@@ -2727,6 +2746,23 @@ private fun MainShell(
                         publicId = document.id,
                     ),
                 )
+            }
+            // Layouts by name, which is what the reader recognises and what `ArchiveMerge` keys
+            // on. A layout the store itself would refuse is skipped rather than saved half-read.
+            val myLayouts = chartLayouts.map { it.name }.toSet()
+            for (record in archive.layouts) {
+                if (record.name in myLayouts) continue
+                val layout = ChartLayoutArchiveCodec.decode(record.body) ?: continue
+                chartLayoutStore.save(layout)
+            }
+            // Journal entries by symbol and instant rather than by name, because the name is built
+            // from exactly those two and matching on the pair says what it means. A backup
+            // imported twice adds nothing the second time.
+            val mineAlready = journalForArchive
+            for (record in archive.journal) {
+                val entry = JournalArchiveCodec.decode(record.body) ?: continue
+                if (mineAlready.any { JournalArchiveCodec.sameEntry(it, entry) }) continue
+                journalController.insertFromArchive(entry)
             }
             toaster.show(String.format(archiveImportedFormat, archiveCount(archive.count, archiveEnglish)))
         }
