@@ -156,6 +156,43 @@ TradeYar's leaf is the one from 8 August; with `reuse_key = True` the October re
 key, and the offline backup `Q1JB2…` plus ISRG Root X2 are there if it does not. Nothing in the
 pin set or the expiry needed to move.
 
+### Re-measured 2026-09-22 (5.0.4) — and the prediction held
+
+Measured by the owner, from a network this container cannot reach, because the sandbox's egress
+proxy re-terminates TLS and every digest taken through it is the proxy's own key.
+
+| what | measured | pinned since 4.57.0 | |
+| --- | --- | --- | --- |
+| TradeYar leaf SPKI | `RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=` | the same string | **exact** |
+
+Six weeks and at least one renewal after the last measurement, **the leaf key has not moved.** That
+is `reuse_key = True` doing exactly what it was set for after the rotation fault in §80, and it is
+the first time this repository has confirmed it across a renewal rather than assumed it.
+
+The chain, though, is not the one that was measured in September:
+
+```
+0  tradeyar.trade-future.ir   ← Let's Encrypt YE2
+1  Let's Encrypt YE2          ← ISRG Root YE
+2  ISRG Root YE               ← ISRG Root X2
+3  ISRG Root X1
+```
+
+`ISRG Root YE` is new and sits between the intermediate and the pinned root, cross-signed by X2 so
+that devices reach an anchor they already trust. Both pinned roots are still in that path, so
+nothing is wrong today and nothing needed to move.
+
+**What to notice, because it is the thing that will eventually bite.** The pin set is now relying
+on that cross-signature. When an Android trust store ships `Root YE` as an anchor of its own, a
+device on it may build `leaf → YE2 → Root YE` and stop, with neither X1 nor X2 in the verified
+chain — and the leaf pin would be the only one left, one `reuse_key = False` away from wrong.
+
+The fix is one line, **and it is not written until somebody measures the digest**: pin `Root YE`
+alongside the two. A pin this repository invented is the single fault with no remote cure, so an
+unmeasured one is worse than a missing one. Take it from the third certificate of the chain above,
+add it to `DEFAULT_CERTIFICATE_PINS` and to `network_security_config.xml` — `NetworkSecurityPinsTest`
+holds the two equal — and the expiry does not need to move for it.
+
 ## Before 2027-03-01
 
 Re-run the measurement above from any network, confirm the two leaves and the intermediates,

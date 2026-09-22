@@ -198,7 +198,49 @@ not a reason to delay the ask.
 
 ---
 
-## §א23 — the pins, and the one digest that decides whether 4.88.0 is bricked
+## §א23 — the pins, and the one digest that decides whether 4.88.0 is bricked *(closed — 2026-09-22)*
+
+> **CLOSED. Pinning is not the cause, and it is not close to being the cause.** The owner measured
+> the leaf's SPKI from outside this container:
+>
+> ```
+> RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=
+> ```
+>
+> **Byte for byte the pin that shipped at 4.57.0** — so the server's certbot still has
+> `reuse_key = True` and the primary pin has survived every renewal since. And the chain ends where
+> the backstops are:
+>
+> ```
+> 0 leaf  tradeyar.trade-future.ir   ← YE2
+> 1       Let's Encrypt YE2          ← ISRG Root YE
+> 2       ISRG Root YE               ← ISRG Root X2
+> 3       ISRG Root X1
+> ```
+>
+> `ISRG Root X2` and `ISRG Root X1` are both pinned, so **two independent things** would have had to
+> fail before an install refused this server: the leaf key *and* the root. Neither did. Every build
+> since 4.57.0 reaches this host, and «پاسخی نرسید» came from somewhere else — §א24.
+
+### One thing the chain shows that did not exist when the pins were measured
+
+`ISRG Root YE` sits between `YE2` and `X2`, cross-signed by X2 so that today's devices path-build to
+a root they already trust. **That cross-signature is what the pins are currently relying on.** The
+day an Android trust store ships `Root YE` as an anchor of its own, a device may build the short
+path — leaf → YE2 → Root YE — and stop there, with neither X1 nor X2 anywhere in the verified
+chain. The leaf pin would be the only one left holding, and the leaf pin is one `reuse_key = False`
+away from being wrong.
+
+It is not urgent: an Android trust store is years old by the time it is in most hands, and
+`DEFAULT_CERTIFICATE_PINS_UNTIL` bounds any mistake at 2027-03-01 regardless. It is also one line.
+**What it needs is the digest, measured rather than guessed** — the same command, run against the
+third certificate in the chain. Until somebody measures it, the pin is not written, because a pin
+this repository invented is the one failure with no remote fix.
+
+---
+
+### The section as it stood while it was open
+
 
 **Opened 2026-09-22, after the owner measured the certificate from outside this container.**
 
@@ -249,6 +291,45 @@ as `app/build.gradle.kts` spells it. The second prints the chain, which names th
 Bazaar failure is something else. A mismatch means the pins are replaced from that measurement and
 shipped, and `app/src/main/res/xml/network_security_config.xml` moves with them —
 `NetworkSecurityPinsTest` holds the two lists equal.
+
+---
+
+## §א24 — what is left of the Cafe Bazaar refusal, now that pinning is ruled out
+
+**Everything the app could be wrong about has been measured and is right.** The server answers
+(`/api/mobile/v1/auth/methods` → `200` with real JSON, measured from here). The certificate is
+valid, for this host, from Let's Encrypt. The pinned leaf digest matches byte for byte and the
+chain ends at two pinned roots. The three sign-in faults found on 2026-09-22 are fixed and shipped
+in 5.0.4.
+
+So the reviewer's «پاسخی نرسید» was an `IOException` that was **neither a pin nor a dead server**.
+What is left is the path between their device and `trade-future.ir`, and that is not something this
+repository can measure: every probe here leaves through a proxy in another country.
+
+**The hypothesis, and it is the last one standing:** a Cafe Bazaar reviewer opens the app on an
+Iranian mobile network, and `tradeyar.trade-future.ir` does not answer from there — filtered,
+rate-limited by the carrier, or simply unreachable on that route. Nothing in the app would look
+different from a server being down.
+
+**The test, and it needs a phone in Iran on mobile data — not Wi-Fi, and no VPN:**
+
+```
+https://tradeyar.trade-future.ir/api/mobile/v1/auth/methods
+```
+
+opened in the phone's browser. JSON means the route is fine and the hypothesis is wrong. A timeout,
+a reset or a filtering page means it is right, and the fix is not in the client.
+
+**If it is right, the fix is already specified and is not a workaround.** `ACCOUNT.md` has Pro Chart
+owning identity, and `pro-chart.com` is behind Cloudflare — which is reachable where a bare origin
+may not be. Moving sign-in onto Pro Chart's own route is `SERVER_BUILD_PROMPT.md` Phase 4, decided
+on its own merits before any of this, and it happens to be the thing that makes the store's
+reviewer able to sign in.
+
+**What 5.0.4 already does for the case where it is right.** The screen no longer goes blank: e-mail
+is offered, the failure stays visible beside it, and the three causes now read as three different
+sentences instead of one. A reviewer sees an app that tried and said why, rather than an app with
+no way in.
 
 ---
 
