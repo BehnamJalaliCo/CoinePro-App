@@ -70,6 +70,35 @@ and the app discovers the rest from the snapshot — but if the FX snapshot's co
 small, no amount of client work will fill the screen. The question for that team is one line: how
 many symbols does a bare `ws/snapshot` return today, and what is the ceiling.
 
+### The answer, measured 2026-09-22 — and the number that turned out to matter is a different one
+
+A bare `coineprofx.com/api/ws/snapshot` returns **nineteen**: twelve currency pairs, two metals,
+four indices and one energy contract. So the FX universe really is small, and the first half of the
+question is answered — the client handles hundreds and is being given nineteen.
+
+The second number is the one worth having. **Eighteen of the nineteen reach a reader; the
+nineteenth does not.** `XTIUSD` — WTI crude — fails `SymbolArtwork.covers`, so the standing rule
+«no symbol without artwork ever reaches a list» quietly removes it at the catalogue and again at the
+live feed. Nothing else about it is missing: `SymbolAliases` folds it onto `USOIL`,
+`SymbolNames.ENERGY` calls it «نفت آمریکا (WTI)», `SymbolRanking` gives energy its own rank and
+`BundledUniverse` seeds it. `covers` answers false because **energy is the one category with no
+mark of its own** — the vendored archive has no oil drawing and this app has authored none.
+
+`ForexFeedCoverageTest` pins all of it, so the count stops being something anybody has to re-derive
+and the day a mark exists is the day the test fails and asks for the number to be moved.
+
+**What the owner must decide, and it is one drawing.** A house mark for the energy contracts
+(`USOIL`, `UKOIL`, `NATGAS`). `design/asset-logos/authored/README.md` is the established path —
+it is how `de.svg` and `fr.svg` came to exist for the two flags TradingView's set omits — and it
+sets the constraints a new mark has to meet: the vendor's palette rather than true colours, the
+same 18×18 viewBox, converted with `scripts/design/svg-to-vector.py`. The wiring after that is
+`SymbolArtwork.covers`'s energy branch, a table beside `INDEX_COUNTRY`, and a single-mark composable
+like `CoineProIndexLogo`.
+
+It is not drawn here because inventing a commodity glyph is a decision about what the product looks
+like, which is the owner's, and a flag's geometry — the precedent in that README — is expressly not
+one. Until it is drawn, crude oil stays out, which is the rule working rather than failing.
+
 ---
 
 ## §Ξ21 — three of the four redemption states describe a door this app does not have
