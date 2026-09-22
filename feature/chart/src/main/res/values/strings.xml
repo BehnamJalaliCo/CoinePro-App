@@ -375,7 +375,8 @@
     <string name="chart_fullscreen_enter">Full screen</string>
     <string name="chart_fullscreen_exit">Leave full screen</string>
     <string name="chart_fullscreen_tools">Tools</string>
-    <string name="chart_source">Prices from %1$s</string>
+    <string name="chart_source">Candles from %1$s</string>
+    <string name="chart_source_quote">last price from %1$s</string>
 
     <string name="chart_interval_other">Other</string>
 

@@ -47,6 +47,20 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.0.2
+
+**fa**
+
+> زیر نمودار می‌نوشت «منبع قیمت» و فقط نام منبع کندل‌ها را می‌آورد. روی فارکس این دو یکی نیستند:
+> کندل‌ها از MetaTrader 5 می‌آیند و آخرین قیمت از Finnhub. حالا هر کدام نام خودش را دارد، تا اگر
+> خواستید نمودار را با خودِ آن بازار بسنجید، بدانید کدام را باز کنید.
+
+**en**
+
+> The caption under the chart said «price source» and named only where the candles came from. On
+> forex those are not the same: the bars are MetaTrader 5 and the last price is Finnhub. Each is
+> now named, so if you want to check this chart against the venue's own you know which to open.
+
 ## 5.0.1
 
 **fa**

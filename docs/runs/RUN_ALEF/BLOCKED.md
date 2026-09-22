@@ -205,9 +205,17 @@ not a reason to delay the ask.
 > `MarketDataController` has always mapped the string `finnhub`, so these quotes move from
 > `QuoteSource.UNKNOWN` to `FINNHUB` and inherit the 90-second staleness window instead of 30 —
 > which is what refusing to add a `YFINANCE` enum bought, since the app had not encoded somebody
-> else's mistake. **Still open and not a blocker:** `bid == ask == price` on 19 of 19, so there is
-> no spread in this feed, and the chart still names «MetaTrader 5» beside a quote that names
-> Finnhub. §4.10.1.
+> else's mistake.
+>
+> **CLOSED on the app's side 2026-09-22 (5.0.2).** The half that was ours was worse than «unnamed»:
+> the caption read «منبع قیمت: MetaTrader 5» — *price* source — from `CandleGateway.sourceName`,
+> which names the candles. Both venues are now named, each read off its own feed: the bars' from the
+> gateway, the price's from `QuoteSource.displayName` carried on `PriceTick.sourceName`. Same venue
+> prints one line; an unrecognised `source` prints none, because `UNKNOWN`'s name is empty rather
+> than «نامشخص». No venue is assumed from the platform.
+>
+> **Still open and not a blocker, and it is the backend's:** `bid == ask == price` on 19 of 19, so
+> this feed carries no spread. §4.10.1.
 
 
 **Measured, not inferred.** Every row of `coineprofx.com/api/ws/snapshot` on 2026-09-19:

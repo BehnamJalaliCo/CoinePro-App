@@ -4697,8 +4697,26 @@ private fun ChartUnderline(
             if (source.isNotEmpty()) {
                 // The venue name is a proper noun in Latin script inside a right-to-left line, so
                 // it is isolated: without it a name ending in a digit reorders the whole row.
+                //
+                // Two venues when the feed reports two, and one line when it reports one. On forex
+                // the bars are MetaTrader 5 and the price above them is Finnhub, and this caption
+                // named only the first while calling it «منبع قیمت» — the price source — which is
+                // the invented provenance `CandleGateway.sourceName` exists to prevent. The bars'
+                // line now says bars; the price's line appears only when it differs, because the
+                // same name twice is noise on the screen this app is most short of room on.
                 Text(
-                    text = stringResource(R.string.chart_source, BidiText.isolateLtr(source)),
+                    text = buildString {
+                        append(stringResource(R.string.chart_source, BidiText.isolateLtr(source)))
+                        if (state.quoteSourceName.isNotEmpty()) {
+                            append("  ·  ")
+                            append(
+                                stringResource(
+                                    R.string.chart_source_quote,
+                                    BidiText.isolateLtr(state.quoteSourceName),
+                                ),
+                            )
+                        }
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextDisabled,
                     fontWeight = FontWeight.Normal,

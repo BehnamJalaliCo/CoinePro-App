@@ -17,6 +17,17 @@ data class PriceTick(
     val symbol: String,
     val price: Double,
     val epochSeconds: Long,
+    /**
+     * The venue this price came from, as the feed named it — empty when it named nothing the app
+     * recognises.
+     *
+     * It rides on the tick rather than being asked of the platform because **it is not a property
+     * of the platform**. The forex chart's bars come from MetaTrader 5 and the price above them
+     * arrives from Finnhub; hard-coding either beside the other is the invented provenance that
+     * `CandleGateway.sourceName` exists to prevent. The feed says which venue it is on every
+     * message, so that is what the screen shows.
+     */
+    val sourceName: String = "",
 )
 
 /**
@@ -83,6 +94,7 @@ fun MarketDataController.chartTicks(): ChartTickSource = ChartTickSource { symbo
                 symbol = key,
                 price = quote.price,
                 epochSeconds = quote.timestampEpochMillis / 1_000L,
+                sourceName = quote.source.displayName,
             )
         }
 }

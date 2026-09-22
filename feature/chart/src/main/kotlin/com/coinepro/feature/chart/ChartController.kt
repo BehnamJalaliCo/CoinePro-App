@@ -100,6 +100,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -322,6 +323,23 @@ data class ChartUiState(
      * Zero until the first load lands, or wherever no archive is wired.
      */
     val archivedBars: Int = 0,
+    /**
+     * The venue the **live price** comes from, when it is not the one the bars come from.
+     *
+     * Empty until a tick arrives, and empty for ever when the two agree — on crypto they do, so
+     * this stays empty there and the caption keeps its one line.
+     *
+     * On forex they do not, and until 5.0.2 the screen said otherwise: the caption read «منبع
+     * قیمت: MetaTrader 5», drawn from `CandleGateway.sourceName`, while the price above the bars
+     * arrived from the snapshot feed reporting `source: "finnhub"`. That is precisely the fault
+     * `CandleGateway.sourceName`'s own KDoc exists to prevent — a reader who answered «کندل‌سازی»
+     * by holding the chart against MetaTrader 5's prices would have been checking the wrong venue
+     * and finding a difference that proved nothing.
+     *
+     * It is read off the feed rather than derived from the platform, because the platform does not
+     * know: a backend that changes quote provider changes this field and nothing else.
+     */
+    val quoteSourceName: String = "",
     /**
      * Whether the venue has genuinely run out of history for this series.
      *
@@ -1345,6 +1363,25 @@ class ChartController(
 
     /** The venue these bars come from, named. See [CandleGateway.sourceName]. */
     val sourceName: String get() = gateway.sourceName
+
+    /**
+     * Records the venue a live price came from, so the caption can name it beside the bars'.
+     *
+     * It lives in the state rather than on this class because it is not known until the feed says
+     * so, and a screen that read it from a plain property would not recompose when it arrived.
+     * The same-venue case is dropped here rather than at the draw: repeating one name twice says
+     * nothing, and the label exists to be read.
+     */
+    internal fun noteQuoteVenue(forSymbol: String, venue: String) {
+        if (venue.isEmpty() || venue == gateway.sourceName) return
+        _state.update { current ->
+            if (current.symbol != forSymbol || current.quoteSourceName == venue) {
+                current
+            } else {
+                current.copy(quoteSourceName = venue)
+            }
+        }
+    }
 
     private val _state = MutableStateFlow(
         ChartUiState(symbol = symbol, interval = ChartInterval.Preset(timeframe)),
@@ -4033,6 +4070,10 @@ class ChartController(
             // chart, which has no server behind it at all.
             launch {
                 ticks.ticks(symbol)
+                    // Provenance before folding, and outside it: the venue a price came from is
+                    // true whether or not the price lands in a bar — `foldTick` drops a tick that
+                    // is stale, or that arrives during a load, and neither makes the name wrong.
+                    .onEach { tick -> noteQuoteVenue(symbol, tick.sourceName) }
                     // `takeWhile` rather than a cancel from inside the collector: [foldTick]
                     // answers false the moment this series stops being the one on screen, and that
                     // answer ends the collection cleanly instead of by throwing.
