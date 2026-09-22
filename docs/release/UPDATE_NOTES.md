@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.0.4
+
+**fa**
+
+> شماره‌ی نسخه از این به بعد ساده است: ۵.۰.۴، نه ۵.۰.۳+۱. هر نسخه‌ای که منتشر می‌شود شماره‌ی خودش
+> را دارد، پس هر چه روی گوشی‌تان نوشته شده همان است که در فهرست نسخه‌ها پیدا می‌کنید.
+
+**en**
+
+> Version numbers are plain from now on: 5.0.4, not 5.0.3+1. Every published build gets its own
+> number, so what the app shows you is exactly what you will find in the list of releases.
+
 ## 5.0.3
 
 **fa**

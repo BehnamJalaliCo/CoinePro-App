@@ -23,14 +23,22 @@ Read it right to left and each field has room to move without disturbing the one
 The property is that a bump *anywhere* is strictly larger than anything reachable below it. That is
 the whole reason for the widths, and it is why the numbers are round rather than tight.
 
+**The name a reader sees never carries build metadata** (owner's decision, 5.0.4). It is
+`MAJOR.MINOR.PATCH` and nothing else: a version is what a person says out loud, reads on a store
+page and types into a support message, and `5.0.3+1` is not a thing anybody says. The build after
+5.0.3 is 5.0.4. BUILD survives only inside `versionCode`, where precedence actually happens and
+where nobody reads it — and `--release` is what stops two binaries sharing one name, by refusing to
+publish a version that already has one.
+
 Usage:
     version.py                     # print "1.0.0 (10000000)"
-    version.py --name              # print the version name, with build metadata when there is any
+    version.py --name              # print the version name
     version.py --code              # print the version code only
     version.py --json              # print every field, for a script that wants one
     version.py --github-output     # append name/full/tag/code/build to $GITHUB_OUTPUT
     version.py --bump patch        # rewrite version.properties, in place
     version.py --check             # validate, including that build.gradle.kts agrees
+    version.py --release           # additionally refuse a version that is already published
 """
 
 from __future__ import annotations
@@ -110,7 +118,22 @@ def build_number() -> int:
     A shallow clone cannot answer this — `actions/checkout` fetches one commit by default — so CI
     checks out with `fetch-depth: 0`. Outside a git tree at all (a source tarball, a sandbox) the
     answer is 0, which is right for a build that is not being distributed.
+
+    **An uncommitted change to the file counts as zero.** The number means «commits since the
+    version last changed», and a bump sitting in the working tree *is* that change — it simply has
+    not been committed yet. Without this, `--bump patch` followed by `--name` reports the new
+    version plus the old build count, and every gate that reads the version before the commit (the
+    update-notes card, most of all) is asked about a version that will never exist.
     """
+    try:
+        dirty = subprocess.run(
+            ["git", "status", "--porcelain", "--", str(VERSION_FILE.relative_to(ROOT))],
+            cwd=ROOT, capture_output=True, text=True, check=True,
+        ).stdout.strip()
+        if dirty:
+            return 0
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
     try:
         anchor = subprocess.run(
             ["git", "log", "-1", "--format=%H", "--", str(VERSION_FILE.relative_to(ROOT))],
@@ -159,19 +182,20 @@ def resolve() -> dict[str, object]:
     if not SEMVER.fullmatch(name):
         raise VersionError(f"Computed version name {name!r} is not semver-shaped.")
 
-    # Three names, because three readers want different things.
+    # **One name, and it has no build metadata in it** (owner's decision, 5.0.4).
     #
-    #   name  1.0.0        the release. What CHANGELOG.md calls it and what a person says out loud.
-    #   full  1.0.0+4      semver build metadata: the same release, four commits on. This is what
-    #                      goes on the device, so a bug report names the exact build, not the
-    #                      nearest version. Semver defines `+` as metadata that does not affect
-    #                      precedence, which is exactly right — the build number is already carried
-    #                      by versionCode, where precedence actually happens.
-    #   tag   v1.0.0-b4    the git tag. Same information, spelled in the characters a refname and a
-    #                      URL both take without escaping; `+` would survive git and then need
-    #                      encoding everywhere it was linked.
-    full = name if build == 0 else f"{name}+{build}"
-    tag = f"v{name}" if build == 0 else f"v{name}-b{build}"
+    # It used to be three. `full` carried `+4` when a build sat four commits past its version, on
+    # the reasoning that a bug report should name the exact binary rather than the nearest version.
+    # That reasoning was sound and the owner overruled it for a better one: a version is what a
+    # person says out loud, reads on a store page and types into a support message, and `5.0.3+1`
+    # is not a thing anybody says. The next build after 5.0.3 is **5.0.4**.
+    #
+    # What made `+4` necessary is still true — two different binaries must never share a version —
+    # and it is now met the other way round, by [release_guard]: a build with commits past its
+    # version does not get published under that version, it gets a bump. So the build number stays
+    # in `versionCode`, where precedence actually happens, and never in anything a reader sees.
+    full = name
+    tag = f"v{name}"
 
     return {
         "name": name, "full": full, "tag": tag, "code": code, "build": build,
@@ -199,6 +223,29 @@ def bump(part: str) -> None:
         text = re.sub(rf"(?m)^{key}=.*$", f"{key}={number}", text)
     VERSION_FILE.write_text(text, encoding="utf-8")
     print(f"version.properties -> {major}.{minor}.{patch}")
+
+
+def release_guard(resolved: dict[str, object]) -> None:
+    """Refuse to publish a second binary under a version that already has one.
+
+    Since 5.0.4 the version name carries no build metadata, so two commits on the same
+    `version.properties` would produce two different APKs both calling themselves `5.0.3` — with
+    different `versionCode`s, the same git tag, and no way for a reader looking at «۵.۰.۳» on the
+    profile screen to know which one they have. That is the failure `+N` used to prevent, and this
+    is what prevents it now.
+
+    Only the publishing workflow calls this. A local `--name` or `--code` stays quiet, because a
+    local build is not something anybody installs over.
+    """
+    build = int(resolved["build"])  # type: ignore[arg-type]
+    if build == 0:
+        return
+    raise VersionError(
+        f"{resolved['name']} already names a published build, and there are {build} commit(s) on "
+        "top of it. A version is what a person reads and says out loud, so every published build "
+        "gets its own — run `python3 scripts/release/version.py --bump patch`, write the card's "
+        "two sentences in docs/release/UPDATE_NOTES.md, and commit both with the change."
+    )
 
 
 GRADLE_FILE = ROOT / "app" / "build.gradle.kts"
@@ -246,6 +293,11 @@ def main() -> int:
     parser.add_argument("--json", action="store_true", help="print every resolved field as JSON")
     parser.add_argument("--github-output", action="store_true", help="append name/code to $GITHUB_OUTPUT")
     parser.add_argument("--check", action="store_true", help="validate and say nothing on success")
+    parser.add_argument(
+        "--release",
+        action="store_true",
+        help="also refuse a version that already names a published build (for the publishing workflow)",
+    )
     parser.add_argument("--bump", choices=("major", "minor", "patch"), help="rewrite version.properties")
     args = parser.parse_args()
 
@@ -254,6 +306,8 @@ def main() -> int:
             bump(args.bump)
             return 0
         resolved = resolve()
+        if args.release:
+            release_guard(resolved)
     except VersionError as error:
         print(f"::error::{error}", file=sys.stderr)
         return 1

@@ -57,11 +57,17 @@ jobs:
       # be, but it meant the number on the reader's profile screen said nothing about what was in
       # the build: 0.1.1004 was not a patch of 0.1.1003, it was whatever landed that day. The
       # version now names the release, and CHANGELOG.md says what is in it.
+      #
+      # `--release` is the half that only a publishing workflow wants. Since 5.0.4 the version name
+      # carries no `+N`, so two commits on one `version.properties` would put two different binaries
+      # on the same name — and a reader looking at «۵.۰.۳» on the profile screen could not tell
+      # which they had. The guard refuses that here, at the top, rather than after twenty minutes
+      # of building, and its message says exactly what to run.
       - name: Compute version
         id: ver
         run: |
           set -euo pipefail
-          python3 scripts/release/version.py --github-output
+          python3 scripts/release/version.py --release --github-output
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -301,7 +307,8 @@ jobs:
           # at exactly that. Nothing in the app noticed — the update document names an exact URL —
           # which is how it went unseen.
           #
-          # `build` is commits since `version.properties` last changed, so it is `0` on the commit
-          # that bumps the version and that tag is `vX.Y.Z`. Every tag after it is `vX.Y.Z-bN`,
-          # which is a pre-release in semver's own sense as well as GitHub's.
-          prerelease: ${{ steps.ver.outputs.build != '0' }}
+          # Since 5.0.4 `build` is always `0` here — the step above refuses to publish otherwise —
+          # so what is left to ask is semver's own question: does the version carry a pre-release
+          # tag? `PRE_RELEASE=rc.1` in `version.properties` makes `5.1.0-rc.1`, and that is a
+          # pre-release in semver's sense and GitHub's alike. A plain `5.0.4` is not.
+          prerelease: ${{ contains(steps.ver.outputs.name, '-') }}

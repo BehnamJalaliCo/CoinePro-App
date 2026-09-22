@@ -73,23 +73,45 @@ Consequences worth knowing:
 * Past 999 commits without a version bump the build **fails**, and says to bump. That is the right
   failure: 999 commits with no release worth naming is the actual problem.
 
-## The three names
+## One name (5.0.4)
 
-`version.py` emits three spellings of the same release, because three readers want different
-things.
+`version.py` emits `name`, `full` and `tag`, and **all three now say the same number**:
 
 | Output | Example | Who reads it |
 | --- | --- | --- |
-| `name` | `1.0.0` | `CHANGELOG.md`, and people |
-| `full` | `1.0.0+4` | the device — `versionName`, and the APK's filename |
-| `tag` | `v1.0.0-b4` | git, and the GitHub Release |
+| `name` | `5.0.4` | `CHANGELOG.md`, and people |
+| `full` | `5.0.4` | the device — `versionName`, and the APK's filename |
+| `tag` | `v5.0.4` | git, and the GitHub Release |
 
-`+4` is semver *build metadata*: by the specification it does not affect precedence, which is
-exactly right here, because precedence is already carried by `versionCode`. It is on the device so
-that a bug report names the exact build rather than the nearest version.
+### What changed and why
 
-The tag says the same thing in the characters a refname and a URL both accept unescaped. `+` is
-legal in a git tag and then needs percent-encoding in every link to it.
+Until 5.0.3 `full` carried semver build metadata — `5.0.3+1` for the build one commit past its
+version — so that a bug report named the exact binary rather than the nearest version. **The owner
+overruled it, and the reason is better than the one it replaced:** a version is what a person says
+out loud, reads on a store listing and types into a support message. Nobody says «five point oh
+point three plus one». The build after 5.0.3 is **5.0.4**.
+
+### What still has to be true, and how it is met now
+
+Two different binaries must never share a version name. `+N` met that by making the name unique;
+`--release` meets it by making the *situation* impossible:
+
+```bash
+python3 scripts/release/version.py --release --github-output
+```
+
+is the first step of the publishing workflow, and it fails when there are commits on top of the
+version in `version.properties` — before twenty minutes of building rather than after. So every
+published build carries its own version, which is the model the owner asked for: ship a change,
+bump the patch, write the card's two sentences.
+
+`BUILD` has not gone anywhere. It still rides in `versionCode`, where precedence actually happens
+and where no reader ever sees it, so a local build still gets a code above the one before it.
+
+**A bump in the working tree counts as the change.** `build_number()` answers `0` while
+`version.properties` is modified-but-uncommitted, because the pending commit *is* the change the
+number counts. Without that, `--bump patch` followed by any gate that reads the version — the
+update-notes card most of all — would be asked about a version that will never exist.
 
 ## Bumping
 
