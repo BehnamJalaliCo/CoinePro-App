@@ -133,6 +133,13 @@ Server-rendered, then: the script's name and author in the head, and a link into
 run it. Note also what `ScriptLink` already guarantees — the link carries an **id, never source**,
 so nothing runs on a tap.
 
+> **Stale as written, kept as the record — read §4.4 and `ACCOUNT.md` for what is true now.**
+> This subsection was written before §8.1 was answered *at all*. It says the page does not exist
+> and that auth proxies to CoinePro-FX «until §8.1 is answered». Since then the page was built
+> (2026-09-20), the proxy was pointed at **TradeYar** (2026-09-21), and the account was made **Pro
+> Chart's own** (2026-09-22, `ACCOUNT.md`). The *reasoning* below is why the page exists and why it
+> invents nothing, and that has survived all three; the *destination* it names has not.
+
 **`/reset` is claimed by the app and does not exist on the server yet.**
 `/.well-known/assetlinks.json` verifies — the fingerprint is right and the file is served the way
 Android's verifier needs it — so on a phone with the app installed, the link opens the app and the
@@ -143,10 +150,10 @@ laptop. Today they get a `404`.
 **Build it, with one route proxied, rather than leaving the `404`.** The reasoning, because it looks
 like it touches Phase 4 and does not:
 
-* §4.4's default is already written: auth proxies to **CoinePro-FX** until §8.1 is answered. A
-  reset mail carrying a `pro-chart.com/reset` link would be CoinePro-FX's mail carrying
-  CoinePro-FX's token, so forwarding it there is not a guess about who owns the account — it is
-  the row above, followed. `POST /api/auth/password/reset` alone, not the rest of `/api/auth/*`.
+* ~~§4.4's default is already written: auth proxies to **CoinePro-FX** until §8.1 is answered.~~
+  **Two reversals out of date** — see the note above. What survives is the shape: **`POST
+  /api/auth/password/reset` alone, not the rest of `/api/auth/*`**, and the page forwards a token
+  rather than judging it. Where it forwards to is §4.4's business and has changed twice.
 * **The page must invent nothing**, which is rule 1 again: it reads the token from the query,
   posts it, and shows the backend's own answer. It does not validate the token, does not decide
   what «expired» means, and does not write a message the backend did not send.
