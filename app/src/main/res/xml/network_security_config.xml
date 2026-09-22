@@ -4,7 +4,8 @@
 
   `NetworkFactory` has pinned the two API hosts through OkHttp's CertificatePinner since 4.57.0;
   that covers every request the app makes itself and nothing a WebView makes. This pin-set is the
-  same nine digests with the same expiry, enforced by the platform's trust manager for every TLS
+  same eleven digests with the same expiry — nine until ISRG Root YE was added to both hosts on
+  2026-09-22 — enforced by the platform's trust manager for every TLS
   connection to these hosts — OkHttp's included, and the terminal's WebView too. The two lists
   are held equal by `NetworkSecurityPinsTest`; `docs/security/PINNING.md` says where each digest
   came from and how a rotation is done. After the expiration the platform stops enforcing them,
@@ -27,6 +28,9 @@
             <pin digest="SHA-256">C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=</pin>
             <!-- ISRG Root X2 -->
             <pin digest="SHA-256">diGVwiVYbubAI3RW4hB9xU8e/CH2GnkuvVFZE8zmgzI=</pin>
+            <!-- ISRG Root YE, cross-signed by X2 (added 2026-09-22; the key, valid to 2032)
+                 See DEFAULT_CERTIFICATE_PINS in app/build.gradle.kts for why. -->
+            <pin digest="SHA-256">sCkq5UWXjg+7mKu9lMhhYF5bGLsy7VI/UNW3tccdR7w=</pin>
         </pin-set>
     </domain-config>
     <domain-config>
@@ -42,6 +46,9 @@
             <pin digest="SHA-256">C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=</pin>
             <!-- ISRG Root X2 -->
             <pin digest="SHA-256">diGVwiVYbubAI3RW4hB9xU8e/CH2GnkuvVFZE8zmgzI=</pin>
+            <!-- ISRG Root YE, cross-signed by X2 (added 2026-09-22; the key, valid to 2032)
+                 See DEFAULT_CERTIFICATE_PINS in app/build.gradle.kts for why. -->
+            <pin digest="SHA-256">sCkq5UWXjg+7mKu9lMhhYF5bGLsy7VI/UNW3tccdR7w=</pin>
         </pin-set>
     </domain-config>
 </network-security-config>

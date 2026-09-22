@@ -187,11 +187,24 @@ on that cross-signature. When an Android trust store ships `Root YE` as an ancho
 device on it may build `leaf → YE2 → Root YE` and stop, with neither X1 nor X2 in the verified
 chain — and the leaf pin would be the only one left, one `reuse_key = False` away from wrong.
 
-The fix is one line, **and it is not written until somebody measures the digest**: pin `Root YE`
-alongside the two. A pin this repository invented is the single fault with no remote cure, so an
-unmeasured one is worse than a missing one. Take it from the third certificate of the chain above,
-add it to `DEFAULT_CERTIFICATE_PINS` and to `network_security_config.xml` — `NetworkSecurityPinsTest`
-holds the two equal — and the expiry does not need to move for it.
+### ISRG Root YE, measured and pinned the same day
+
+| | |
+| --- | --- |
+| SPKI SHA-256 | `sCkq5UWXjg+7mKu9lMhhYF5bGLsy7VI/UNW3tccdR7w=` |
+| subject | `C = US, O = ISRG, CN = Root YE` |
+| issuer | `C = US, O = Internet Security Research Group, CN = ISRG Root X2` |
+| valid | 2026-05-13 → **2032-09-02** |
+| where | `DEFAULT_CERTIFICATE_PINS` and `network_security_config.xml`, **both hosts** |
+
+Both hosts, for the same reason X1 and X2 are already on both: `coineprofx.com`'s Let's Encrypt
+pins exist «for the day Cloudflare moves it there», and Root YE is now part of that hierarchy.
+Eleven digests across the two, five and six.
+
+**Why this one is durable where the leaf is not, stated exactly:** a pin is a digest of a **public
+key**, not of a certificate file. So it keeps matching if the same root is ever sent self-signed
+instead of cross-signed by X2 — the key is the same object either way — and it does not move on a
+sixty-day renewal the way a leaf does. The expiry did not need to move for it.
 
 ## Before 2027-03-01
 

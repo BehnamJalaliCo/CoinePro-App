@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.0.6
+
+**fa**
+
+> یک کلید ریشه‌ی تازه به فهرست گواهی‌های مورد اعتماد برنامه اضافه شد. چیزی روی صفحه عوض نمی‌شود؛
+> این کار می‌کند که روزهای آینده، وقتی گواهی سرور عوض شود، برنامه از کار نیفتد.
+
+**en**
+
+> A new root key was added to the certificates this app is built to accept. Nothing changes on
+> screen; it keeps the app from locking itself out of its own server when the certificate changes.
+
 ## 5.0.5
 
 **fa**

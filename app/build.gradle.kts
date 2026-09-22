@@ -218,11 +218,22 @@ fun escapedBuildConfig(value: String): String = "\"${value.replace("\"", "\\\"")
  * - `tradeyar.trade-future.ir`: the leaf's SPKI (primary, `reuse_key = True` on their certbot so
  *   it survives renewal) and the offline backup key they generated; behind those, Let's Encrypt's
  *   two roots (ISRG Root X1, ISRG Root X2) so a renewal that lands on the other intermediate still
- *   matches.
+ *   matches. **ISRG Root YE joined them on 2026-09-22** — see below.
  * - `coineprofx.com` is behind Cloudflare and its edge certificate is renewed with a new key and
  *   no notice, so the pins are the CA's: the intermediate that issues it today (GTS WE1, valid to
- *   2029), its root (GTS Root R4), Google's other root (GTS Root R1), and Let's Encrypt's two roots
+ *   2029), its root (GTS Root R4), Google's other root (GTS Root R1), and Let's Encrypt's roots
  *   for the day Cloudflare moves it there. See docs/security/PINNING.md for the digests' provenance.
+ *
+ * **ISRG Root YE, added 2026-09-22 to both hosts.** Let's Encrypt put a new root under the chain:
+ * `leaf ← YE2 ← ISRG Root YE ← ISRG Root X2`. Nothing was broken — X2 cross-signs it, so today's
+ * devices still reach a pinned anchor — but that made the whole set depend on one cross-signature.
+ * When an Android trust store ships Root YE as an anchor of its own, a device on it may build
+ * `leaf ← YE2 ← Root YE` and stop, with neither X1 nor X2 in the verified chain, leaving only the
+ * leaf pin: one `reuse_key = False` from wrong. This closes that.
+ *
+ * It is a **public key**, not a certificate, which is what makes it durable: the same root sent
+ * self-signed instead of cross-signed by X2 still matches, and unlike the leaf it does not move on
+ * a sixty-day renewal. The certificate carrying it is valid to 2032-09-02.
  *
  * Every pin stops being enforced on [DEFAULT_CERTIFICATE_PINS_UNTIL]; a release before that date
  * has to re-measure and move the date. `COINEPRO_CERTIFICATE_PINS`/`_UNTIL` still override both.
@@ -232,11 +243,13 @@ val DEFAULT_CERTIFICATE_PINS: String = listOf(
     "tradeyar.trade-future.ir=sha256/Q1JB2C45jMeyX4xQi8ZE83kmB+EfduUc2utHJ+H6YHI=",
     "tradeyar.trade-future.ir=sha256/C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=",
     "tradeyar.trade-future.ir=sha256/diGVwiVYbubAI3RW4hB9xU8e/CH2GnkuvVFZE8zmgzI=",
+    "tradeyar.trade-future.ir=sha256/sCkq5UWXjg+7mKu9lMhhYF5bGLsy7VI/UNW3tccdR7w=",
     "coineprofx.com=sha256/kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
     "coineprofx.com=sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=",
     "coineprofx.com=sha256/hxqRlPTu1bMS/0DITB1SSu0vd4u/8l8TjPgfaAp63Gc=",
     "coineprofx.com=sha256/C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=",
     "coineprofx.com=sha256/diGVwiVYbubAI3RW4hB9xU8e/CH2GnkuvVFZE8zmgzI=",
+    "coineprofx.com=sha256/sCkq5UWXjg+7mKu9lMhhYF5bGLsy7VI/UNW3tccdR7w=",
 ).joinToString(";")
 
 val DEFAULT_CERTIFICATE_PINS_UNTIL = "2027-03-01"
