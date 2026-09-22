@@ -301,11 +301,42 @@ and that both clients receive the same tick. Report the two counts.
 
 ---
 
-## Phase 4 — the three documents *(blocked — do not start)*
+## Phase 4 — **the Pro Chart account** *(unblocked 2026-09-22; this is now the main work)*
 
-Watchlists, layouts and drawings, per account, as versioned JSON with last-writer-wins. These need
-the answer to a question the owner has not settled: **which backend owns the account on the web**.
-Do not begin, do not create the tables, and do not proxy `/api/auth/*` until they say.
+**Read `ACCOUNT.md` before you touch anything here.** The owner settled the year-old question by
+refusing its premise: the account belongs to **neither backend**. It is Pro Chart's own — its own
+users, its own password hashes, its own sessions, its own reset mail — and TradeYar and CoinePro-FX
+go back to being sources of market data and nothing else.
+
+**Undo first.** `POST /api/auth/password/reset` was proxied to TradeYar on 2026-09-21. Remove the
+proxy. `/reset` keeps its page exactly as it is — always-visible field, `?token=` prefill, nothing
+called on load, the backend's own message rendered rather than an invented one — and only the route
+behind it changes.
+
+**Then build it, in this order, each step provable:**
+
+1. The four tables of `ACCOUNT.md` §2, with Argon2id parameters written into the migration.
+2. `register`, `login`, `logout`, `refresh` — opaque refresh token in an `HttpOnly; Secure;
+   SameSite=Lax` cookie, never a bearer in `localStorage`.
+3. `password/forgot` and `password/reset` against Pro Chart's own `reset` table: hashed at rest,
+   single use, thirty minutes, and **opening the link must not consume it**.
+4. `verify`, and the «your password changed» mail, best-effort and never claimed by the page.
+5. `GET /api/me`, and `POST /api/link/{tradeyar|coineprofx}` — **the link-on-demand shape of
+   `ACCOUNT.md` §4, not the migration.** Store `upstream_user_id` and nothing secret.
+6. Only then the three sync documents — watchlists, layouts, drawings — as versioned JSON with
+   last-writer-wins, per Pro Chart account.
+
+**Two things you must stop for rather than decide:**
+
+* **Sending mail.** This server has never sent one. It needs a domain with SPF, DKIM and DMARC and
+  a provider. **Do not invent one**, do not guess a relay: a reset mail in a spam folder is a reset
+  that did not happen. Ask the owner and wait.
+* **Migrating the backends' existing readers.** `ACCOUNT.md` §4 says build the link, not the
+  migration. The first is reversible; the second is not.
+
+**And say it where the reader can see it:** until they link, a Pro Chart account is a chart
+account — not a subscription, not their membership. The screen says so rather than leaving them to
+find out.
 
 There is **no broker account and no route for one**. `user/account/link`, `DELETE user/account` and
 `user/copy-status` are not relayed. Copy trading was removed from the product; if you find yourself

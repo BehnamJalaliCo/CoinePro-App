@@ -26,9 +26,16 @@ The guarantee the whole plan rests on is «mobile, tablet and web are one». A s
 of an indicator is a second answer to «what is the RSI here», and the day the two disagree is the
 day the product stops being trustworthy.
 
-**It ships without an account.** The owner decided (2026-09-21) that the terminal is open and
-read-only: no sign-in, no sync, no membership gate. That is the whole of what you are building
-toward — chart, tools, scripts, watchlist. The account is a later phase and is not your problem.
+**It ships without an account, and that has not changed.** The owner decided (2026-09-21) that the
+terminal is open and read-only: no sign-in, no sync, no membership gate. That is the whole of what
+you are building toward — chart, tools, scripts, watchlist.
+
+On 2026-09-22 they also decided that when an account *does* arrive it is **Pro Chart's own**, owned
+by no backend (`ACCOUNT.md`). That is the server's work, it runs in parallel with yours, and it
+changes nothing in this brief: a terminal with no sign-in does not care whose sign-in it will not
+have. **Do not build a login screen, do not add a session, do not gate anything.** If you find
+yourself needing an account to finish a surface, that surface is out of scope for this pass —
+name it and move on.
 
 ---
 

@@ -413,12 +413,27 @@ same nineteen `public/prices/live` returns and two more than the bare snapshot g
 terminal applies the same one. The relay does not filter; a client that narrows and a relay that
 narrows would be two places to change the day the desk publishes something else.
 
-### 4.4 The account
+### 4.4 The account — **Pro Chart's own, from 2026-09-22**
 
-| `pro-chart.com` | upstream | note |
+**The owner changed this, and it is the largest decision in this document.** §8.1 was answered
+«TradeYar» on 2026-09-21 and reversed the next day: **the account belongs to Pro Chart and depends
+on no backend.** `docs/web/ACCOUNT.md` is the specification; this row is the summary.
+
+What that means in one line: `pro-chart.com` stops relaying anybody else's identity and starts
+holding its own — its own users, its own password hashes, its own sessions, its own reset mail.
+TradeYar and CoinePro-FX go back to being what §1 calls them, **sources of market data**, and stop
+being sources of *people*.
+
+**The reversal costs one route and buys the product its own front door.** `POST
+/api/auth/password/reset` was proxied to TradeYar on 2026-09-21 (§4.4.1); it is now Pro Chart's own
+and the proxy is removed. That is what «one route, reversible in an afternoon» was for.
+
+| `pro-chart.com` | where it lives | note |
 | --- | --- | --- |
-| `POST /api/auth/*` | **TradeYar** | **§8.1 is answered: the owner chose TradeYar, 2026-09-21.** The default in this row used to read CoinePro-FX, and the switch cost what it was predicted to cost — the body is the same shape on both (`reset_token` + `new_password`), so only the destination moved. §4.4.1 has what the switch exposed |
-| `POST /api/auth/guest` | TradeYar | `user/auth/guest` — the read-only tier |
+| `POST /api/auth/register`, `/login`, `/logout`, `/refresh`, `/password/forgot`, `/password/reset`, `/verify` | **Pro Chart itself** | `ACCOUNT.md`. No upstream, no proxy |
+| `GET /api/me` | Pro Chart itself | the reader, their link state, their entitlement |
+| `POST /api/link/{tradeyar\|coineprofx}` | Pro Chart, calling the backend **once** | how a reader who already has an app account joins it to this one. **The open question is in `ACCOUNT.md` §4** |
+| `GET /api/membership` | TradeYar | `api/v1/public/membership`, `api/mobile/v1/membership/status` — **entitlement still comes from the backends**; Pro Chart holds identity, not permission |
 | `GET /api/membership` | TradeYar | `api/v1/public/membership`, `api/mobile/v1/membership/status` |
 | `GET,POST /api/community/*` | TradeYar | `api/v1/public/app-community/*` |
 | `GET /api/academy/*` | CoinePro-FX | the academy routes, behind `user/academy-token` |
@@ -879,9 +894,12 @@ The numbering below is the canonical one.
 0. ~~The provider and the machine.~~ **Done** — provisioned, on the same Hetzner private network as
    TradeYar and CoinePro-FX, with an agent on it. `SERVER_BUILD_PROMPT.md` is what it works from.
 
-1. ~~**Which backend owns the account.**~~ **Answered 2026-09-21: TradeYar.** The reset route moved
-   the same day and the contract did not change with it — same body, same field names, a different
-   host. `docs/SERVER_ASK_ONE_ACCOUNT_TWO_BACKENDS.md` is the question that was open for a year.
+1. ~~**Which backend owns the account.**~~ **Answered twice.** «TradeYar», 2026-09-21; then, on
+   2026-09-22, **neither — the account is Pro Chart's own and depends on no backend.** The second
+   answer is the one that stands and it is a bigger decision than the first: it makes this server
+   the holder of people's passwords, which §4.4 and `ACCOUNT.md` spell out. The year-old question
+   in `docs/SERVER_ASK_ONE_ACCOUNT_TWO_BACKENDS.md` is answered by refusing its premise — it asked
+   *which of the two*, and the answer is *neither*.
 2. ~~**Whether the terminal is open, member-only, or a read-only guest page.**~~ **Answered
    2026-09-21: open and read-only, no account.** This one needs no work at all — it is exactly what
    Phases 2 and 3 already serve — and it unblocks a schedule: `PARITY.md`'s W1→W3 can ship to
