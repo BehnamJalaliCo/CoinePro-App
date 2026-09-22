@@ -198,6 +198,60 @@ not a reason to delay the ask.
 
 ---
 
+## §א23 — the pins, and the one digest that decides whether 4.88.0 is bricked
+
+**Opened 2026-09-22, after the owner measured the certificate from outside this container.**
+
+```
+issuer=C = US, O = Let's Encrypt, CN = YE2
+subject=CN = tradeyar.trade-future.ir
+```
+
+**What that settles.** The certificate is Let's Encrypt's, issued for the host itself, and the
+handshake completes. The server is healthy and reachable. It also **withdraws** the reading this
+run reported on the same day: through the sandbox's egress proxy the subject read
+`CN = *.trade-future.ir`, and a move to a wildcard was offered as the likely reason a leaf pin had
+stopped matching. There is no wildcard. The proxy re-terminates TLS and does not copy the subject
+faithfully either — so through it, **only the HTTP body is evidence.** That is the third instrument
+error in three days and the first one that reached a report.
+
+**What it does not settle, and this is the whole question.** A pin is a digest of a **key**. An
+issuer name is not one and a subject is not one. `DEFAULT_CERTIFICATE_PINS` holds four digests for
+this host:
+
+| Pin | What it is | Holds when |
+| --- | --- | --- |
+| `RO8XwxTQ…` | the leaf's SPKI, measured at 4.57.0 | the server's certbot still has `reuse_key = True` |
+| `Q1JB2C45…` | their offline backup key | that key is what a rotation moves to |
+| `C5+lpZ7t…` | ISRG Root X1 | the chain still ends at Let's Encrypt's RSA root |
+| `diGVwiVY…` | ISRG Root X2 | the chain still ends at Let's Encrypt's ECDSA root |
+
+`YE2` is an intermediate this repository has never measured. If it chains to X1 or X2, the roots
+catch it and **nothing is wrong** whatever the leaf key did. If it chains to anything else, every
+install since 4.57.0 has been refusing this server, and that is «پاسخی نرسید».
+
+**The command, on any machine that is not this one:**
+
+```bash
+host=tradeyar.trade-future.ir
+openssl s_client -connect "$host:443" -servername "$host" </dev/null 2>/dev/null \
+  | openssl x509 -pubkey -noout \
+  | openssl pkey -pubin -outform der \
+  | openssl dgst -sha256 -binary | openssl enc -base64
+openssl s_client -connect "$host:443" -servername "$host" -showcerts </dev/null 2>/dev/null \
+  | grep -E "^ *[0-9]+ s:|^ *i:"
+```
+
+The first prints the leaf's SPKI digest — compare it to `RO8XwxTQmKWLxQ7Ij7dkTd5vWTS4aC2pROWNg3Sh25c=`
+as `app/build.gradle.kts` spells it. The second prints the chain, which names the root.
+
+**Neither outcome needs a guess afterwards.** A match means pinning is not the cause and the Cafe
+Bazaar failure is something else. A mismatch means the pins are replaced from that measurement and
+shipped, and `app/src/main/res/xml/network_security_config.xml` moves with them —
+`NetworkSecurityPinsTest` holds the two lists equal.
+
+---
+
 ## §א22 — the forex prices are Yahoo Finance, and the chart beside them says MetaTrader 5
 
 > **HALF CLOSED 2026-09-21.** `source` is now **`finnhub`** on all 19 rows, so the venue question is
