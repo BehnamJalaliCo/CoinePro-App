@@ -294,7 +294,48 @@ shipped, and `app/src/main/res/xml/network_security_config.xml` moves with them 
 
 ---
 
-## §א24 — what is left of the Cafe Bazaar refusal, now that pinning is ruled out
+## §א24 — what is left of the Cafe Bazaar refusal *(the network ruled out too — 2026-09-22)*
+
+> **The host answers from Iran.** The owner opened
+> `https://tradeyar.trade-future.ir/api/mobile/v1/auth/methods` in a phone browser on an Iranian
+> mobile network: `200`, with the real body — 442 symbols and every capability flag. So the
+> hypothesis below is **wrong**, and with it the last explanation that put the fault outside this
+> app.
+>
+> **That sent the search back into the code, and the code had it.** `ErrorKind.UNKNOWN` — the
+> catch-all for a `Throwable` that is neither an HTTP status nor an `IOException` — still read on
+> screen as «پاسخی نرسید»: *no answer came*. It is the third case of the same false sentence this
+> run fixed twice already, and the one that survives on a device whose network is demonstrably
+> fine, because it is not about the network at all. A body the app cannot parse, a field a server
+> stopped sending, an NPE out of a Gson type: the answer *arrived*, and this side dropped it.
+>
+> **And the payload named a way for it to happen.** That same measured body reports
+> `"telegram": true` with **no `telegram_bot_username` at all**. Gson builds a class with no
+> no-argument constructor through `Unsafe` — fields assigned directly, Kotlin's null checks never
+> run — so `AuthConfigDto(val botUsername: String)` was a non-null type holding null, and the first
+> dereference was a `NullPointerException` several frames from the parse. Straight into
+> `catch (error: Throwable)`, out as `UNKNOWN`, onto the glass as «پاسخی نرسید».
+>
+> **A second fault fell out of writing the test for the first.** `AuthConfigDto` carried no
+> `@SerializedName`, so under the app's `LOWER_CASE_WITH_UNDERSCORES` policy it asked for
+> `bot_username` and nothing else — while CoinePro-FX's config answer spells it `botUsername`, in
+> the same object where it spells other keys with underscores. A camelCase key under a snake_case
+> policy does not fail. It parses as the default. The test failed on its first run and that is how
+> it was found.
+>
+> Fixed in 5.0.5: `UNREADABLE` is its own reason with its own sentence in both languages, every
+> field a server may omit is nullable with a default, both spellings are accepted, and the Telegram
+> response's missing fields are stated by `requireNotNull` rather than dereferenced.
+>
+> **What is still not proven** is that this is what the reviewer hit. It is a fault that produces
+> exactly their sentence on a device whose network is fine, which is more than anything else left
+> standing — but the only thing that settles it is 5.0.5 on a phone, where the three causes are
+> three different sentences.
+
+---
+
+### The hypothesis as it stood, and the measurement that killed it
+
 
 **Everything the app could be wrong about has been measured and is right.** The server answers
 (`/api/mobile/v1/auth/methods` → `200` with real JSON, measured from here). The certificate is

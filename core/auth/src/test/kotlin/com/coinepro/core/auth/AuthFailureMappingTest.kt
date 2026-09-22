@@ -35,10 +35,31 @@ class AuthFailureMappingTest {
     }
 
     @Test
-    fun `an unknown failure stays unreachable`() {
+    fun `an answer the app could not read is not a missing answer`() {
+        // `UNKNOWN` is the catch-all for a Throwable that is neither a status nor an IOException:
+        // a body that is not the JSON expected, a field a server stopped sending, or — the case
+        // that sent this looking — a NullPointerException out of a Gson type whose non-null
+        // declaration Gson never enforced. All of those mean the answer *arrived*.
         assertEquals(
-            AuthFailureReason.UNREACHABLE,
+            AuthFailureReason.UNREADABLE,
             AppResult.Failure(kind = ErrorKind.UNKNOWN, message = "boom").toAuthFailure().reason,
+        )
+        assertEquals(
+            AuthFailureReason.UNREADABLE,
+            AppResult.Failure(kind = ErrorKind.UNKNOWN, cause = NullPointerException())
+                .toAuthFailure().reason,
+        )
+    }
+
+    @Test
+    fun `a certificate refusal is still named even when it arrives as unknown`() {
+        // OkHttp can surface one outside IOException, so the cause is checked on both branches.
+        assertEquals(
+            AuthFailureReason.UNTRUSTED,
+            AppResult.Failure(
+                kind = ErrorKind.UNKNOWN,
+                cause = SSLPeerUnverifiedException("Certificate pinning failure!"),
+            ).toAuthFailure().reason,
         )
     }
 

@@ -14,14 +14,28 @@ class NetworkAuthGateway internal constructor(
         // A deployment without Telegram sign-in is not a broken one. Reporting it as unconfigured
         // is what makes the screen leave the button out, rather than draw one that cannot work.
         val telegram = paths.telegram ?: return AppResult.Success(AuthConfig(botUsername = ""))
-        return call { AuthConfig(api.authConfig(telegram.config).botUsername) }
+        // An **empty** bot name rather than a failure when the server omits it. A deployment that
+        // says it does Telegram and does not name its bot is telling the screen to leave the
+        // button out, which is what `LoginConfigState` already does with a blank name — and it is
+        // a shape TradeYar actually serves. Before this it was a `String` the JSON did not carry,
+        // which Gson left null and Kotlin then dereferenced: a NullPointerException reported to
+        // the reader as «پاسخی نرسید».
+        return call { AuthConfig(api.authConfig(telegram.config).botUsername.orEmpty()) }
     }
 
     override suspend fun loginTelegram(payload: TelegramAuthPayload): AppResult<AuthSession> {
         val telegram = paths.telegram ?: return AppResult.Failure(ErrorKind.AUTH)
         return call {
             val response = api.loginTelegram(telegram.login, payload)
-            AuthSession(response.token, response.profile.toDomain())
+            // Stated rather than dereferenced. Both fields are nullable because Gson can leave
+            // them so whatever the declaration says; `requireNotNull` makes an absent one an
+            // error that names itself, in the same place, instead of a NullPointerException two
+            // frames away that says nothing about which field was missing.
+            AuthSession(
+                requireNotNull(response.token) { "A Telegram sign-in response with no token." },
+                requireNotNull(response.profile) { "A Telegram sign-in response with no profile." }
+                    .toDomain(),
+            )
         }
     }
 

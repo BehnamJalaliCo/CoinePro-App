@@ -53,6 +53,7 @@
     <string name="auth_error_rate_limited">Too many attempts.</string>
     <string name="auth_error_unreachable">No answer came back. That means the request was not judged, not that it was refused.</string>
     <string name="auth_error_server_fault">The server answered with a fault of its own. Nothing is wrong at your end; try again shortly.</string>
+    <string name="auth_error_unreadable">The server answered and this app could not read the answer. That is a fault at our end, not with your connection, and trying again will not help — this needs an app update.</string>
     <string name="auth_error_untrusted">The secure connection was refused by this app: the server\'s certificate is not one this version was built to accept. Your network is fine, and trying again will not help — this needs an app update.</string>
     <string name="auth_retry_in">You can try again in %1$d seconds</string>
 

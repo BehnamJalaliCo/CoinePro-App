@@ -187,6 +187,22 @@ enum class AuthFailureReason {
     UNREACHABLE,
 
     /**
+     * An answer arrived and **this app could not read it**.
+     *
+     * The third sentence that «پاسخی نرسید» was standing in for, and the one that took longest to
+     * see, because it does not look like a fault in the transport at all. `ErrorKind.UNKNOWN` is
+     * the catch-all for any `Throwable` that is neither an HTTP status nor an `IOException` — a
+     * body that is not the JSON the app expected, a field the server stopped sending, a
+     * `NullPointerException` from a Gson type whose non-null declaration Gson never enforced. All
+     * of it reads to the reader as «the request was not judged», and all of it means the opposite:
+     * the request was judged, answered, delivered, and then dropped on this side of the wire.
+     *
+     * It is ours, it is not the reader's network, and retrying will not fix it — so the wording
+     * says all three, exactly as [UNTRUSTED] does.
+     */
+    UNREADABLE,
+
+    /**
      * The connection was refused **by this app**, because the server's certificate was not one of
      * the keys the build was told to expect.
      *

@@ -25,11 +25,23 @@ internal fun AppResult.Failure.toAuthFailure(): AuthFailure = AuthFailure(
         // A pinned handshake the app itself rejected is an `IOException` like any other, so it
         // arrives here as `NETWORK` and used to read as «no answer». It is the opposite: the
         // server answered the handshake and **we** hung up. Only the cause can tell them apart.
-        ErrorKind.NETWORK, ErrorKind.UNKNOWN ->
+        ErrorKind.NETWORK ->
             if (cause.isCertificateRefusal()) {
                 AuthFailureReason.UNTRUSTED
             } else {
                 AuthFailureReason.UNREACHABLE
+            }
+        // **`UNKNOWN` is not a network failure and never was.** It is the catch-all for a
+        // `Throwable` that is neither an HTTP status nor an `IOException` — a body the app could
+        // not parse, a field a server stopped sending, an NPE out of a Gson type whose non-null
+        // declaration Gson never enforced. Every one of those means an answer *arrived* and this
+        // side dropped it, which is the opposite of «the request was not judged». Certificate
+        // refusal is checked first because OkHttp can surface one outside `IOException` too.
+        ErrorKind.UNKNOWN ->
+            if (cause.isCertificateRefusal()) {
+                AuthFailureReason.UNTRUSTED
+            } else {
+                AuthFailureReason.UNREADABLE
             }
     },
     // Only a real verdict carries wording worth repeating. A timeout's exception text is a

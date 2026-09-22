@@ -47,6 +47,19 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.0.5
+
+**fa**
+
+> اگر ورود به مشکل بخورد، حالا برنامه می‌گوید کدام مشکل: پاسخی نرسید، یا سرور خطا داد، یا پاسخ آمد
+> و برنامه نتوانست بخواندش. مورد سوم یک ایراد واقعی بود که همین‌جا پیدا و درست شد.
+
+**en**
+
+> When sign-in fails the app now says which failure it was: no answer came, the server returned a
+> fault, or the answer arrived and the app could not read it. That third one was a real bug, found
+> and fixed here.
+
 ## 5.0.4
 
 **fa**

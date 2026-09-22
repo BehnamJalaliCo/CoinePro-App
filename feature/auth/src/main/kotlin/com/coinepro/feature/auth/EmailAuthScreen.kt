@@ -615,6 +615,7 @@ private fun AuthFailureReason.copyRes(): Int = when (this) {
     AuthFailureReason.UNREACHABLE -> R.string.auth_error_unreachable
     AuthFailureReason.SERVER_FAULT -> R.string.auth_error_server_fault
     AuthFailureReason.UNTRUSTED -> R.string.auth_error_untrusted
+    AuthFailureReason.UNREADABLE -> R.string.auth_error_unreadable
 }
 
 /** Matches the server's stated minimum; the server is still what enforces it. */
