@@ -51,13 +51,32 @@ same reason: a browser has an XSS surface a phone does not.
 ## 3. The rules that make it safe to hold this
 
 1. **Argon2id, and the parameters in the migration.**
-2. **Rate limits, and they are not the read buckets.** `/api/auth/*` is 10 a minute per address
-   (`SERVER.md` §6), and on top of that a **per-account backoff** so an attacker cannot spread
-   attempts across addresses. Lock nothing permanently; a lockout that a stranger can trigger is a
-   denial of service against the owner of the account.
+2. **Rate limits, and they are not the read buckets.** `/api/auth/*` is 10 a minute per network
+   address (`SERVER.md` §6), and on top of that a backoff **keyed on the identifier that was
+   typed** — the e-mail address in the request — so that spreading attempts across many network
+   addresses does not buy an attacker anything against one account. Lock nothing permanently; a
+   lockout that a stranger can trigger is a denial of service against the owner of the account.
+
+   > **This rule said «per-account» until 2026-09-23, and that was wrong in a way that broke rule
+   > 3.** The server's agent found it while building: a backoff that only engages when the account
+   > *exists* is an oracle. Type a real address and the fourth attempt slows down; type one nobody
+   > has registered and it never does — so the rate limiter answers the question rule 3 exists to
+   > refuse. Keying on the typed identifier whether or not a row is behind it does the job the rule
+   > was written for **and** keeps rule 3 true. The word «addresses» in the old sentence also meant
+   > *network* addresses and read as *e-mail* ones, which is how it went unseen.
+   >
+   > **The curve, proposed by the server and adopted:** two free failures, then 2ⁿ seconds capped at
+   > five minutes, cleared by a success, and the counter itself expires after an hour — so nothing
+   > is ever permanent, which is the part of this rule that is not negotiable.
 3. **The same answer whether the address exists or not.** `/password/forgot` always says «if an
    account exists for that address, a mail was sent». An enumerable login is how a leak becomes a
    list.
+
+   **And `register` is the hole this rule does not close.** A duplicate address has to be refused,
+   and a refusal says the address is taken. The only shape that does not leak — answer `201` to the
+   browser either way, and tell the *address* by mail that somebody tried to register it — **needs
+   the mail sender**, so until that exists `register` answers `409` and the enumeration surface is
+   real and known. Named here rather than discovered later.
 4. **A reset token is hashed at rest, single use, and 30 minutes.** And **opening its link must not
    consume it** — mail scanners fetch every URL before the human does, so the page renders a form
    and calls nothing on load. This is already true of `/reset` (`SERVER.md` §4.4.1) and must stay

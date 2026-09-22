@@ -100,9 +100,13 @@ But mail blocks **two steps, not the phase.** Ordered so you get as far as possi
    backends: Pro Chart holds identity, not permission.
    **Do not build the migration.** The link is reversible; moving the backends' readers into this
    table is not, and it needs both teams. `ACCOUNT.md` §4 says build the first and not the second.
-5. **The three sync documents** — watchlists, layouts, drawings — versioned JSON, last-writer-wins,
-   per Pro Chart account. Last, because they are worth nothing until there is an account to hang
-   them on.
+5. **The three sync documents** — watchlists, layouts, drawings — per Pro Chart account. Last,
+   because they are worth nothing until there is an account to hang them on.
+   **Build them to `SERVER.md` §4.5's table, which is optimistic concurrency and not
+   last-writer-wins**: never-synced answers `version: 0` and `{}` rather than `404`; a stale `PUT`
+   is a **`409` carrying the whole current document**; over the cap is `413` with nothing written;
+   and `max_bytes` rides on every response. A `200` to a stale write passes every one-device test
+   and eats the reader's second handset.
 
 ### Waiting on mail — do not start these
 
@@ -120,10 +124,14 @@ But mail blocks **two steps, not the phase.** Ordered so you get as far as possi
 * **The same answer whether the address exists or not.** `password/forgot` always says «if an
   account exists for that address, a mail was sent». An enumerable login is how a leak becomes a
   list.
-* **Rate limits that are not the read buckets.** `/api/auth/*` is 10 a minute per address (§6), and
-  **on top of that a per-account backoff**, so an attacker cannot spread attempts across addresses.
-  Lock nothing permanently: a lockout a stranger can trigger is a denial of service against the
-  account's owner.
+* **Rate limits that are not the read buckets.** `/api/auth/*` is 10 a minute per **network**
+  address (§6), and on top of that a backoff **keyed on the e-mail address that was typed, whether
+  or not an account exists behind it** — `ACCOUNT.md` rule 2, corrected 2026-09-23. Keying it on the
+  account is an oracle: a real address slows down on the fourth try and an unregistered one never
+  does, which answers the question rule 3 exists to refuse. Lock nothing permanently: a lockout a
+  stranger can trigger is a denial of service against the account's owner.
+  The curve: two free failures, then 2ⁿ seconds capped at five minutes, cleared by a success, and
+  the counter expires after an hour.
 * **Deleting an account deletes it.** `/legal/delete-account/` is already a page; it now has to be
   a route that works. Rows go, not a flag.
 
@@ -195,6 +203,17 @@ curl -s -X POST https://pro-chart.com/api/auth/password/forgot -d '{"email":"<a 
 for u in /api/crypto/prices /api/fx/prices /api/news /api/health /api/app/latest; do
   printf '%-24s ' "$u"; curl -s -o /dev/null -w '%{http_code}\n' "https://pro-chart.com$u"; done
 ```
+
+## 6a. Two calls already made, so nobody re-opens them
+
+* **`DELETE /api/me` asks for the password again.** `ACCOUNT.md` does not require it; the server's
+  agent added it and asked. **Keep it.** It is the one irreversible thing in the phase, and a second
+  factor of «you are the person, not just the session» is cheap against a cost that cannot be
+  undone.
+* **`/api/link/*` belongs in the 10/min bucket, not the 60.** The agent put it in 60 because §6's
+  table names only `/api/auth/*` at 10, and flagged it. The flag was right and the placement moves:
+  the route **accepts an upstream credential**, which makes it an authentication surface whatever
+  its path says. §6's table is the thing that was incomplete.
 
 ## 7. Stop and ask on
 

@@ -332,7 +332,8 @@ behind it changes.
 5. `GET /api/me`, and `POST /api/link/{tradeyar|coineprofx}` — **the link-on-demand shape of
    `ACCOUNT.md` §4, not the migration.** Store `upstream_user_id` and nothing secret.
 6. Only then the three sync documents — watchlists, layouts, drawings — as versioned JSON with
-   last-writer-wins, per Pro Chart account.
+   per Pro Chart account — **optimistic concurrency, not last-writer-wins**: see `SERVER.md`
+   §4.5's table. A stale `PUT` is a `409` carrying the current document.
 
 **Two things you must stop for rather than decide:**
 

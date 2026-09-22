@@ -331,6 +331,20 @@ rather than leaving a chart to tick silently forever:
 ← {"type":"welcome","venues":{
      "forex":  {"live": true,  "reason": null},
      "crypto": {"live": false, "reason": "upstream requires an account (PLAN.md §6.2, Phase 4)"}}}
+
+> **That reason string is stale and the fact in it is not.** Raised again on 2026-09-23 by the
+> server's agent, who read «Phase 4» and reasonably asked whether it was work the brief had
+> missed. It is not, and the confusion is the citation's fault: «Phase 4» there is `PLAN.md`'s old
+> numbering, not `SERVER_BUILD_PROMPT.md`'s.
+>
+> **Building the Pro Chart account does nothing for it.** TradeYar's crypto socket wants a
+> *TradeYar* session, and a Pro Chart account is not one — which is the whole point of §4.4. The
+> only thing that could open it is a reader's own linked upstream session, and whether to use one
+> that way is §4.2.1's «wait», still unanswered and deliberately so.
+>
+> Nothing is broken meanwhile: crypto prices come over REST, 861 symbols, `stale: false`. At the
+> next deploy the string should cite **§4.2.1** — the decision that actually governs it — rather
+> than a phase number in a retired document.
 ```
 
 **The difference between a chart that says «there is no crypto feed» and a chart that simply never
@@ -511,9 +525,27 @@ pastes it, which works: the page's field is always visible for exactly that reas
 
 ### 4.5 What the server owns itself
 
-Three documents per account, and nothing else. Each is a JSON blob with a version number,
-last-writer-wins, exactly as the watchlist sync already works on the phone
-(`WatchlistSyncController`):
+Three documents per account, and nothing else. Each is a JSON blob with a version number, exactly
+as the watchlist sync already works on the phone (`WatchlistSyncController`).
+
+**It is not last-writer-wins, and calling it that was this document's error** — caught by the
+server's agent on 2026-09-23 while building it, against the phone's own source. `WatchlistDocument`,
+`WatchlistSyncConflict` and `WatchlistSyncTooLargeException` in `core/watchlistsync` are the
+contract, and it is **optimistic concurrency**:
+
+| the phone expects | and so the route must |
+| --- | --- |
+| a reader who has never synced | `200` with `version: 0` and `payload: {}` — **not a `404`** |
+| a `PUT` carrying the version it was built on | `200` with the new version when that version is current |
+| a `PUT` built on a version that has moved | **`409` carrying the whole current document** — the app merges from it |
+| a document over the cap | `413` naming the cap. **Nothing is written** |
+| every response, success or refusal | `max_bytes`, because nothing in the app hard-codes 64 KB |
+
+**Why the distinction is not pedantry.** A route that answered `200` to a stale write would pass
+every test anybody runs on one device, and silently discard the second handset's work the first time
+a reader owned two. The `409` is what makes this feature *merge* rather than overwrite, and the
+document inside it is what the app merges from — a bare `409` is not enough.
+
 
 | `pro-chart.com` | what | already on the phone |
 | --- | --- | --- |
@@ -797,6 +829,11 @@ as the backstop, an order of magnitude above the per-client one.
 And the terminal's side of the bargain, which is not optional: **stop polling when the tab is
 hidden** (`document.visibilityState`). A background tab has no reader. If a `429` is ever seen in
 the terminal, this is the first place to look and the relay is the second.
+
+**`/api/link/*` is in the 10-a-minute bucket too, from 2026-09-23.** This table named only
+`/api/auth/*`, so a reasonable reader put the link routes in the 60 bucket and said so — which is
+how the gap was found. A route that accepts somebody's upstream credential is an authentication
+surface whatever its path spells, and the table was what was incomplete.
 
 ### 6.1 As built, and measured from outside
 
