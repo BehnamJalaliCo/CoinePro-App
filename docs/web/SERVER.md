@@ -425,8 +425,15 @@ TradeYar and CoinePro-FX go back to being what §1 calls them, **sources of mark
 being sources of *people*.
 
 **The reversal costs one route and buys the product its own front door.** `POST
-/api/auth/password/reset` was proxied to TradeYar on 2026-09-21 (§4.4.1); it is now Pro Chart's own
-and the proxy is removed. That is what «one route, reversible in an afternoon» was for.
+/api/auth/password/reset` was proxied to TradeYar on 2026-09-21 (§4.4.1); it becomes Pro Chart's own
+and the proxy goes.
+
+**Measured 2026-09-22: the proxy is still in place** — a deliberately invalid token comes back as
+TradeYar's own `TYR-017` body, trace id and all. That is the correct state, because removing it has
+a precondition neither this section nor the build prompt had written down: **if TradeYar's recovery
+mail currently links here** (`MOBILE_RESET_DEEP_LINK_BASE`), removing the proxy locks live readers
+out of their own password recovery, with every page involved looking like it works.
+`ACCOUNT_BUILD_PROMPT.md` §2 is the gate. That is what «one route, reversible in an afternoon» was for.
 
 | `pro-chart.com` | where it lives | note |
 | --- | --- | --- |

@@ -303,6 +303,14 @@ and that both clients receive the same tick. Report the two counts.
 
 ## Phase 4 — **the Pro Chart account** *(unblocked 2026-09-22; this is now the main work)*
 
+> **`ACCOUNT_BUILD_PROMPT.md` is the brief to hand over for this phase.** It is this section with
+> the live state measured rather than assumed, the pre-mail and post-mail work separated so the
+> agent gets through five steps without waiting on the owner, and **one gate that is missing here**:
+> the proxy below must not be removed until somebody has checked whether TradeYar's recovery mail
+> currently points at `pro-chart.com/reset`. If it does, removing it locks live readers out of
+> their own password recovery while every page involved looks like it is working.
+
+
 **Read `ACCOUNT.md` before you touch anything here.** The owner settled the year-old question by
 refusing its premise: the account belongs to **neither backend**. It is Pro Chart's own — its own
 users, its own password hashes, its own sessions, its own reset mail — and TradeYar and CoinePro-FX
