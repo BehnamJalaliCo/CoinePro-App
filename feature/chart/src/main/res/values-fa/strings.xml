@@ -577,6 +577,7 @@
     <string name="duel_record_building">%1$s دور از %2$s دور. نرخ درستی با کمتر از این چیزی را نشان نمی‌دهد.</string>
     <string name="duel_already">امروز را قبلاً جواب داده‌اید، پس این دور ثبت نشد.</string>
     <string name="duel_finish">پایان</string>
+    <string name="chart_keep_watching">تماشای پیوسته</string>
     <string name="chart_hub_help">مرکز راهنما</string>
     <string name="chart_hub_trade">معامله با کارگزار</string>
     <string name="chart_partners_title">معامله با کارگزار</string>

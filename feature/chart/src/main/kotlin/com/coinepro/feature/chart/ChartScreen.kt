@@ -504,6 +504,13 @@ fun ChartScreen(
     onStartDuel: (() -> Unit)? = null,
     /** The reader's record so far, for the line the band prints under a verdict. */
     duelRecord: DuelRecord = DuelRecord(),
+    /**
+     * **همچنان تماشا کن** — put this market in a small window and leave the app (run Τ2, B8).
+     *
+     * Hoisted because only an activity can enter that mode, and this module is several routes away
+     * from one. Null where the phone does not have it, which drops the tile rather than dimming it.
+     */
+    onKeepWatching: (() -> Unit)? = null,
     onCreateAlert: ((symbol: String, price: Double) -> Unit)? = null,
     /**
      * The alerts already set on this symbol, drawn on the plot (run Ω2).
@@ -2627,6 +2634,15 @@ fun ChartScreen(
                 // replay modes on one chart at once is one chart with two ideas about which bar it
                 // is on.
                 onDuel = onStartDuel?.takeIf { duel == null && arena == null },
+                // Only where the shell can actually open the window. See `onKeepWatching`: null on
+                // a phone with no such mode, because a tile that can only ever refuse teaches the
+                // reader the app is broken.
+                onKeepWatching = onKeepWatching?.let { watch ->
+                    {
+                        sheet = null
+                        watch()
+                    }
+                },
                 onHelpCenter = {
                     sheet = null
                     onHelp(CHART_HELP_ID)

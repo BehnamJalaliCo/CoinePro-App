@@ -6,7 +6,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.app.PictureInPictureParams
+import android.content.res.Configuration
 import android.os.Build
+import android.util.Rational
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.compose.setContent
@@ -51,6 +54,9 @@ import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.auth.EmailAuthController
 import com.coinepro.core.datastore.ArenaStore
+import com.coinepro.app.watch.ChartWatchStore
+import com.coinepro.app.watch.WatchWindow
+import com.coinepro.core.chart.ChartWatch
 import com.coinepro.core.datastore.DuelStore
 import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartLayoutStore
@@ -176,6 +182,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var chartWorkspaceStore: ChartWorkspaceStore
     @Inject lateinit var arenaStore: ArenaStore
     @Inject lateinit var duelStore: DuelStore
+    @Inject lateinit var chartWatchStore: ChartWatchStore
     @Inject lateinit var journalController: JournalController
     @Inject lateinit var paperTradeController: PaperTradeController
     @Inject lateinit var scriptController: ScriptController
@@ -252,6 +259,48 @@ class MainActivity : FragmentActivity() {
         super.attachBaseContext(AppLanguageStore.apply(newBase))
     }
 
+    /**
+     * Whether the window is currently a stamp in the corner — run Τ2, B8.
+     *
+     * Read by the composition, written by [onPictureInPictureModeChanged]. State rather than the
+     * activity's own `isInPictureInPictureMode`, because that property is not observable and a
+     * composable reading it would be right once and then wrong for ever.
+     */
+    private var inWatchMode by mutableStateOf(false)
+
+    /**
+     * Asks Android for the small window.
+     *
+     * The aspect is clamped by `ChartWatch.aspectOf`, which is not tidiness: `setAspectRatio`
+     * **throws** outside `1:2.39` … `2.39:1`, so a window that happened to be very tall would
+     * crash the app at exactly the moment the reader asked for the feature.
+     *
+     * Below Android 8 there is no such mode at all, and the call is a no-op rather than a failure:
+     * the hub tile is offered on every build, and a reader on an older phone gets nothing rather
+     * than an error about their operating system.
+     */
+    private fun enterWatchMode() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val aspect = ChartWatch.aspectOf(window.decorView.width, window.decorView.height)
+        val numerator = (aspect * ASPECT_SCALE).toInt().coerceAtLeast(1)
+        runCatching {
+            enterPictureInPictureMode(
+                PictureInPictureParams.Builder()
+                    .setAspectRatio(Rational(numerator, ASPECT_SCALE))
+                    .build(),
+            )
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        inWatchMode = isInPictureInPictureMode
+        // Leaving the mode forgets the chart. Without this a window opened tomorrow would flash
+        // yesterday's price before the first snapshot lands — a stale number in the one place on
+        // the screen there is no room to qualify it.
+        if (!isInPictureInPictureMode) chartWatchStore.clear()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // The manifest opens the window in `Theme.CoinePro.Launch` — white, so the frame the
         // launcher shows matches the launch sheet drawn over the app. The app's own theme takes
@@ -273,6 +322,22 @@ class MainActivity : FragmentActivity() {
             return
         }
         setContent {
+            // **The stamp-sized window, instead of the app** (run Τ2, B8).
+            //
+            // Returning here rather than overlaying, and that is the whole point of the mode: a
+            // window a hundred and fifty points across cannot usefully show an app, and leaving
+            // the real tree composed under it would keep every controller and every study alive
+            // for a surface with no room to draw them. The app recomposes when the mode ends.
+            //
+            // Themed on its own, because `CoineProTheme` is provided inside `CoineProApp` and this
+            // branch never reaches it.
+            if (inWatchMode) {
+                CoineProTheme {
+                    val snapshot by chartWatchStore.snapshot.collectAsStateWithLifecycle()
+                    WatchWindow(snapshot = snapshot)
+                }
+                return@setContent
+            }
             // The launch sheet over the app, once per process. `rememberSaveable` so a rotation
             // during the first two seconds does not start the launch again, and a plain Box so the
             // app underneath composes — and loads — while the sheet is still up.
@@ -353,6 +418,10 @@ class MainActivity : FragmentActivity() {
                 chartWorkspaceStore = chartWorkspaceStore,
                 arenaStore = arenaStore,
                 duelStore = duelStore,
+                chartWatchStore = chartWatchStore,
+                // Null below Android 8: the mode does not exist there, and the chart's hub then
+                // offers no tile rather than one that refuses.
+                onKeepWatching = ::enterWatchMode.takeIf { Build.VERSION.SDK_INT >= Build.VERSION_CODES.O },
                 journalController = journalController,
                 paperTradeController = paperTradeController,
                 scriptController = scriptController,
@@ -662,6 +731,15 @@ class MainActivity : FragmentActivity() {
     companion object {
         private const val LAUNCH_PREFERENCES = "launch_readiness"
         private const val KEY_NOTIFICATION_PERMISSION_REQUESTED = "notification_permission_requested"
+
+        /**
+         * The denominator the aspect ratio is expressed over.
+         *
+         * `Rational` takes two integers and the ratio this app wants is not one — sixteen by nine
+         * is `1.777…`. A thousandth is finer than a window a hundred and fifty points across can
+         * express, so the rounding is invisible and the arithmetic stays in integers.
+         */
+        private const val ASPECT_SCALE = 1_000
     }
 
     /**

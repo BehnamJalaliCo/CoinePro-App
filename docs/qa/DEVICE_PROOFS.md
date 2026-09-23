@@ -92,3 +92,31 @@ bash scripts/qa/monkey-soak.sh 5        # a five-minute dry run first, to see th
 # The script prints the crash and ANR counts and exits non-zero on either; the target is 0 / 0.
 # Commit the log under docs/qa/soak/.
 ```
+
+## 7. Picture-in-picture on the phone (run Τ2, B8)
+
+Robolectric does not enter the mode, so nothing about the mode itself is under a test. Everything
+that *could* be made pure is — `ChartWatchTest` over the ratio and the countdown, and
+`ChartWatchStoreTest` over the rate limit — and what is left needs a phone running Android 8 or
+above.
+
+```bash
+./gradlew :app:installDebug
+# Open a chart, «بیشتر» → «تماشای پیوسته», then press home.
+```
+
+What to look for, in the order the failures would appear:
+
+1. **The window opens at all**, and at roughly sixteen by nine. A crash here is the aspect ratio —
+   `setAspectRatio` throws outside `1:2.39` … `2.39:1` and `ChartWatch.aspectOf` is what stops it.
+2. **The price updates about once a second**, not forty times and not never. Frozen is the failure
+   `ChartWatchStoreTest`'s «a dropped snapshot does not move the clock» guards against; too fast
+   means the limit is not being applied at the write.
+3. **The countdown runs down and then stops appearing**, rather than sticking at «0:00» or going
+   negative. That was a real bug on the chart's own live tag.
+4. **A tap returns to the chart**, on the market the window was showing.
+5. **Coming back and leaving again** shows the current price rather than flashing the old one —
+   `onPictureInPictureModeChanged` clears the store on the way out.
+
+Worth capturing: one screen recording of the window beside the app, and one frame of it over
+another app's screen.

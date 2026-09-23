@@ -47,6 +47,22 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.7.0
+
+**fa**
+
+> روی چارت، «بیشتر» یک کاشی تازه دارد: **تماشای پیوسته**. بازار را در یک پنجره‌ی کوچک گوشه‌ی صفحه
+> می‌گذارد که وقتی از برنامه بیرون می‌روید هم می‌ماند — نماد، قیمت، تغییر، یک خط کوتاه و شمارش
+> معکوس کندل. چیز دیگری رویش نیست، چون در آن اندازه خوانده نمی‌شود. با یک ضربه به خود چارت
+> برمی‌گردید.
+
+**en**
+
+> The chart's «more» sheet has a new tile: **Keep watching**. It puts the market in a small window
+> in the corner of the screen that stays there when you leave the app — the ticker, the price, the
+> change, a short line and the candle's countdown. Nothing else, because nothing else is readable
+> at that size. One tap takes you back to the chart.
+
 ## 5.6.0
 
 **fa**

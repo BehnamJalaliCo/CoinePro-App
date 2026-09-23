@@ -246,9 +246,12 @@ import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.SignalDirection
 import com.coinepro.core.navigation.AppDestination
 import com.coinepro.core.chart.Arena
+import com.coinepro.app.watch.ChartWatchStore
+import com.coinepro.core.chart.ChartWatch
 import com.coinepro.core.chart.Duel
 import com.coinepro.core.chart.DuelRecord
 import com.coinepro.core.chart.DuelVerdict
+import com.coinepro.core.chart.WatchSnapshot
 import com.coinepro.core.chart.ArenaChallenge
 import com.coinepro.core.chart.ArenaTrade
 import com.coinepro.core.chart.markRevengeTrades
@@ -1013,6 +1016,15 @@ fun CoineProApp(
     arenaStore: ArenaStore,
     /** The reader's duel record — three counters and a day. See [DuelStore]. */
     duelStore: DuelStore,
+    /** What the picture-in-picture window watches. See [ChartWatchStore]. */
+    chartWatchStore: ChartWatchStore,
+    /**
+     * Puts the chart in a stamp-sized window and leaves the app — run Τ2, B8.
+     *
+     * Only an activity can enter that mode, so it arrives as a function. Null below Android 8,
+     * where there is no such mode, and the chart's hub then offers no tile at all.
+     */
+    onKeepWatching: (() -> Unit)? = null,
     /** The reader's saved screens. One file for both platforms — a filter is not per backend. */
     screenerStore: ScreenerStore,
     journalController: JournalController,
@@ -1560,6 +1572,8 @@ fun CoineProApp(
                 chartWorkspaceStore = chartWorkspaceStore,
                 arenaStore = arenaStore,
                 duelStore = duelStore,
+                chartWatchStore = chartWatchStore,
+                onKeepWatching = onKeepWatching,
                 portfolioController = portfolioControllers.getValue(activePlatform),
                 academyController = academyController,
                 communityController = communityController,
@@ -1799,6 +1813,8 @@ fun CoineProApp(
                         chartWorkspaceStore = chartWorkspaceStore,
                         arenaStore = arenaStore,
                         duelStore = duelStore,
+                        chartWatchStore = chartWatchStore,
+                        onKeepWatching = onKeepWatching,
                         portfolioController = portfolioControllers.getValue(activePlatform),
                         academyController = academyController,
                         // The community is the app's own and needs no account, so a guest has it.
@@ -2080,6 +2096,15 @@ private fun MainShell(
     arenaStore: ArenaStore,
     /** The reader's duel record — three counters and a day. See [DuelStore]. */
     duelStore: DuelStore,
+    /** What the picture-in-picture window watches. See [ChartWatchStore]. */
+    chartWatchStore: ChartWatchStore,
+    /**
+     * Puts the chart in a stamp-sized window and leaves the app — run Τ2, B8.
+     *
+     * Only an activity can enter that mode, so it arrives as a function. Null below Android 8,
+     * where there is no such mode, and the chart's hub then offers no tile at all.
+     */
+    onKeepWatching: (() -> Unit)? = null,
     portfolioController: PortfolioController,
     academyController: AcademyController,
     /** The app's own board. On both platforms and for a guest: it belongs to neither account. */
@@ -3196,6 +3221,36 @@ private fun MainShell(
                 arenaPending = null
             }
 
+            // **What the picture-in-picture window watches** (run Τ2, B8).
+            //
+            // Published from here rather than from the chart module, for `arenaStore`'s reason:
+            // `ChartWatchStore` is an application type and `feature:chart` has no business seeing
+            // one. What crosses is four numbers and a tail of closes, which is all a window a
+            // hundred and fifty points across can draw — see `WatchSnapshot`.
+            //
+            // The rate limit is inside `offer`, not here: a throttle downstream of the state would
+            // still be recomposed by everything upstream of it.
+            LaunchedEffect(chartState.series, chartState.symbol, chartState.interval) {
+                val bars = chartState.visibleSeries.bars
+                if (bars.isEmpty()) return@LaunchedEffect
+                chartWatchStore.offer(
+                    WatchSnapshot(
+                        symbol = chartState.symbol,
+                        intervalWire = chartState.interval.wire,
+                        price = chartState.lastPrice ?: return@LaunchedEffect,
+                        changePercent = chartState.changePercent,
+                        closes = bars.takeLast(ChartWatch.LINE_POINTS).map { it.c },
+                        // The forming bar's own close, from its open plus the bar length. Null on
+                        // a series whose last bar has no sane timestamp — the window then draws no
+                        // countdown rather than one counting to a moment nobody can name.
+                        barClosesAtEpochSeconds = bars.lastOrNull()
+                            ?.t
+                            ?.takeIf { it > 0L }
+                            ?.plus(chartState.interval.seconds),
+                    ),
+                )
+            }
+
             // **دوئل با گذشته — today's round** (run Τ2, C3).
             //
             // The Arena's construction above, deliberately duplicated rather than shared: the two
@@ -3427,6 +3482,9 @@ private fun MainShell(
                 arenaBest = arenaHistory.best()?.total,
                 duel = duelSession,
                 duelRecord = duelRecord,
+                // Null below Android 8, which is the honest answer: the mode does not exist there
+                // and no amount of asking will make it. See `MainActivity.enterWatchMode`.
+                onKeepWatching = onKeepWatching,
                 // Offered only where the round exists — `roundFor` answers null rather than a
                 // window whose answer is off the end of the data.
                 onStartDuel = duelRound?.let { round ->

@@ -557,6 +557,7 @@
     <string name="duel_record_building">%1$s of %2$s rounds. A hit rate needs more than this to mean anything.</string>
     <string name="duel_already">You have already answered today, so this round was not recorded.</string>
     <string name="duel_finish">Done</string>
+    <string name="chart_keep_watching">Keep watching</string>
     <string name="chart_hub_help">Help Center</string>
     <string name="chart_hub_trade">Trade with your broker</string>
     <string name="chart_partners_title">Trade with a broker</string>

@@ -761,6 +761,14 @@ internal fun ChartMoreSheetBody(
      */
     onDuel: (() -> Unit)? = null,
     /**
+     * **همچنان تماشا کن** — the market in a window that survives leaving the app (run Τ2, B8).
+     *
+     * Null where the phone has no such mode, and null is the honest state rather than a dimmed
+     * tile: a reader on Android 7 cannot be given this by trying harder, and a control that can
+     * only ever refuse is a control that teaches them the app is broken.
+     */
+    onKeepWatching: (() -> Unit)? = null,
+    /**
      * **رصد** — the chart read out loud (run Ω4). Null on a chart with too few bars to read.
      *
      * First in the MORE section on the tablet and the phone alike, above «خوانش بازار», because the
@@ -893,6 +901,15 @@ internal fun ChartMoreSheetBody(
                     // Arena's and these are two different things.
                     icon = DesignR.drawable.tv_tool_forecast,
                     label = stringResource(R.string.duel_name),
+                    onClick = it,
+                )
+            }
+            onKeepWatching?.let {
+                HubTile(
+                    // The «make this smaller» glyph, which is literally what the mode does to the
+                    // window. The reader has already met it on the fullscreen control.
+                    icon = DesignR.drawable.tv_minimize2,
+                    label = stringResource(R.string.chart_keep_watching),
                     onClick = it,
                 )
             }

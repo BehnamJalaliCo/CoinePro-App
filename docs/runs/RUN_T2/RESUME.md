@@ -11,9 +11,11 @@ carries it — so the phase became an audit with every number re-measured on thi
 clause run Τ left untested. See `CHECKLIST.md`, which opens with the correction, and `REPORT.md`
 for the measurements.
 
-**Phase B: six of ten done.** B1 and B4 were already shipped by runs Φ and Υ and are audited rows.
-B2, B3, B5, B9, B10 and now B6 are built — B9 narrowed on its bundled sound set, which needs audio
-this repository does not hold (`BLOCKED.md §B9`). B7 and B8 are not started.
+**Phase B: seven of ten done, and one of them ⏳.** B1 and B4 were already shipped by runs Φ and Υ
+and are audited rows. B2, B3, B5, B9, B10, B6 and B8 are built — B9 narrowed on its bundled sound
+set, which needs audio this repository does not hold (`BLOCKED.md §B9`), and **B8 is ⏳**: the code
+is there and its rules are tested, but Robolectric does not enter picture-in-picture, so the mode
+itself needs the owner's phone. B7 is not started.
 
 **Phase C: done but for C5.** C5's legend figure is new and its row stays ❌ on two clauses the
 checklist argues against rather than defers. **C1, C2, C3, C4 and C6 are ✅.**
@@ -27,11 +29,11 @@ that fails without the fix. The lesson for the rest of this phase: **a row that 
 exists» is a row nobody has used end to end.**
 
 **Shipped:** 4.93.0 (phase A + B2/B3/B5/B10), 4.94.0 (B9), 4.95.0 (C5's legend), 4.96.0 (C1's rule),
-5.1.0 (C2), 5.2.0 (C6), 5.3.0 (C1's surface), 5.4.0 (C4), 5.5.0 (C3), 5.6.0 (B6). Every gate green
-and the full unit suite passing on each.
+5.1.0 (C2), 5.2.0 (C6), 5.3.0 (C1's surface), 5.4.0 (C4), 5.5.0 (C3), 5.6.0 (B6), 5.7.0 (B8). Every gate
+green and the full unit suite passing on each.
 
-**Not done, and the next session's list in order:** B7, B8. Each is named below with its
-files, the data it reads and the trap in it.
+**Not done, and the next session's list:** B7, plus the device proof B8 is waiting on. Each is
+named below with its files, the data it reads and the trap in it.
 
 ---
 
@@ -62,20 +64,26 @@ The note above was right and is worth keeping: it is a **new component beside**
   looks identical to a current one. Anything that reads `SavedAge` on a screen that stays open
   should use that helper rather than computing once.
 
-### B8 — Picture-in-Picture
+### B8 — Picture-in-Picture: built in 5.7.0, ⏳ on the device proof
 
-Nothing exists. The shape it wants:
+The plan above was followed exactly, and its last line still stands: **Robolectric does not enter
+the mode**, so `enterPictureInPictureMode`, the activity's mode callback and what the system does
+with the ratio are device-bound. The row is ⏳ until the owner opens it on a phone. What to look
+for: the window appears at about sixteen by nine, the price updates about once a second, the
+countdown runs and then stops rather than showing «0:00», and a tap returns to the chart.
 
-1. `android:supportsPictureInPicture="true"` on `MainActivity` in the manifest, with
-   `configChanges` covering `screenSize|smallestScreenSize|screenLayout`.
-2. An app-scoped holder the chart writes its snapshot into (symbol, interval, last price, change,
-   the last N closes, the bar-close instant) and `MainActivity` reads — the chart is deep inside the
-   graph and the activity is what enters PiP.
-3. A compact composable drawn when `isInPictureInPictureMode`, capped at one update a second.
-4. A «همچنان تماشا کن» tile in the hub (`ChartChrome.kt`, the MORE section) behind an
-   `onKeepWatching` callback.
-* **Cannot be proved here.** Robolectric does not enter PiP. Whatever lands must be marked ⏳ and
-  verified on the owner's phone.
+The label is **«تماشای پیوسته»**, not the «همچنان تماشا کن» this section proposed —
+`tools/i18n/lint_strings.py` rejects the informal imperative, and the hub's other tiles are nouns.
+
+Three things worth inheriting:
+
+* **The aspect is clamped, and that is a crash guard.** `setAspectRatio` throws outside
+  `1:2.39` … `2.39:1`. Anything that recomputes the ratio must go through `ChartWatch.aspectOf`.
+* **The rate limit lives in `ChartWatchStore.offer`**, upstream of the state. A refused offer must
+  not stamp the clock — there is a test for it, and getting that wrong freezes the price entirely.
+* **The composition returns early in the mode** rather than overlaying. Drawing the window over a
+  live tree would keep every controller and study running behind a surface with no room to show
+  them.
 
 ### B7 — the second widget, and Glance
 

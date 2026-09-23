@@ -57,6 +57,22 @@ object BriefSparklineShape {
             val from = maxOf(0, source.size - bars)
             (from until source.size).mapNotNull { index -> source[index].c.takeIf(Double::isFinite) }
         }.orEmpty()
+        return ofCloses(closes)
+    }
+
+    /**
+     * The same normalisation, from closes a caller already has — run Τ2, B8.
+     *
+     * The picture-in-picture window publishes a tail of closes rather than a whole series, because
+     * a series cannot survive the composition it came from and the window outlives one. It gets
+     * this rather than a second copy of the arithmetic: two places deciding «where does this point
+     * land when the span is zero» is two places that can disagree, and this one is tested.
+     *
+     * Non-finite values are dropped here too, and for the same reason: a point at zero in a picture
+     * of prices reads as a fault in the feed.
+     */
+    fun ofCloses(values: List<Double>): Shape? {
+        val closes = values.filter(Double::isFinite)
         if (closes.size < 2) return null
 
         val low = closes.min()

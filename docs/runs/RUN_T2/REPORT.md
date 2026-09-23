@@ -677,3 +677,81 @@ the same wording the bar uses.
 `AlertReachTest` (8) in `core:notifications`; `AlertCheckStore` and the `AlertChecks` seam on the
 evaluator with two more cases in `AlertEvaluatorTest`; and the bar on the chart, the watchlist, news
 and the calendar.
+
+---
+
+## B8 — the chart in a window the size of a stamp
+
+Nothing existed. What landed is the mode, its content, and a careful line around what this machine
+can and cannot prove about it.
+
+### Four facts and a line, and the refusals are the design
+
+A picture-in-picture window is about a hundred and fifty points across, and the reader is looking at
+something else. What fits — and more to the point what is *readable* at that size — is which market,
+what it costs, which way it has gone, and how long this candle has left, plus enough of a line to
+see the shape.
+
+So: no axes, no legend, no indicators. And **no controls**: a tap anywhere on the window is
+Android's own «go back to the app», and a button in here would be competing with the one gesture
+every reader already knows.
+
+### The window draws a store, not a chart
+
+A reader who pops the window out and then goes home has left the whole navigation graph behind, and
+the window is still there. So the chart pushes a `WatchSnapshot` into an application-scoped store
+and `MainActivity` reads it; nothing in between has to stay composed.
+
+The composition **returns early** in the mode rather than drawing the window over the app. That is
+the point rather than a shortcut: leaving the real tree alive under a surface with no room to show
+it would keep every controller and every study running for nothing. The app recomposes when the mode
+ends.
+
+### The rate limit is at the write
+
+`ChartWatchStore.offer` decides, and it decides before the state changes. A composable that
+throttled its own reads would still be recomposed by the flow underneath it — a throttle downstream
+of the state is decoration. At most one publication a second, and none at all when nothing a reader
+could see has changed.
+
+There is a test for a specific mistake in that: **a refused offer must not stamp the clock.** If it
+did, a chart ticking forty times a second would keep pushing the window out and the price in the
+corner would never update at all.
+
+The countdown is the one thing that does *not* ride the snapshot. It changes every second and the
+snapshot deliberately does not, so the window reads the clock itself — one integer a second in a
+surface that is already awake.
+
+### The aspect ratio is clamped because the alternative is a crash
+
+`setAspectRatio` **throws** outside `1:2.39` … `2.39:1`. A window that happened to be very tall
+would therefore crash the app at exactly the moment the reader asked for the feature, which is the
+worst possible place for it. `ChartWatch.aspectOf` clamps, and falls back to sixteen by nine where
+there is no measured window — the mode can be entered before anything is laid out, and a zero there
+would become the same crash.
+
+The countdown is null past the close rather than zero or negative. That is the bug the chart's own
+live tag once had: a countdown is `close − now`, and a bar minutes old has a negative one.
+
+### What this machine cannot prove, said plainly
+
+Robolectric does not enter picture-in-picture. `enterPictureInPictureMode`, the activity's
+`onPictureInPictureModeChanged` callback, and what the system actually does with the ratio are
+**device-bound**, and the row stays ⏳ until the owner has it on a phone.
+
+What *is* asserted here is everything that can be: 13 cases over the rules in `ChartWatch` and 7
+over the store. The split is deliberate and it is the same one `BriefSparklineShape` was pulled out
+for in C6 — the decisions live where an ordinary unit test can reach them, and what is left in the
+Android layer has nothing to decide.
+
+`BriefSparklineShape` is reused rather than copied, and gained an `ofCloses` entry point for it: the
+brief's picture and this one answer the same question about a list of closes, and two copies of
+«where does this point land when the span is zero» is two places that can disagree.
+
+### What landed
+
+`ChartWatch.kt` and `ChartWatchTest` (13) in `:chart-core`; `ChartWatchStore.kt` and
+`ChartWatchStoreTest` (7) plus `WatchWindow.kt` in `:app`; `supportsPictureInPicture` on
+`MainActivity` (its `configChanges` already covered the mode); the snapshot publisher and the
+`onKeepWatching` wiring in `CoineProApp`; and the hub tile in `ChartChrome`, offered only on
+Android 8 and above — a tile that can only ever refuse teaches the reader the app is broken.
