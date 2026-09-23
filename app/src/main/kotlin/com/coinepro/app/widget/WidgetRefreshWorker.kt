@@ -66,6 +66,9 @@ class WidgetRefreshWorker @AssistedInject constructor(
         // because the freshness line now says «آفلاین». A widget that goes quiet on a failure is
         // one that shows an old price as if it were current.
         MarketsWidget.refreshAll(applicationContext)
+        // Both widgets, one fetch. They read the same snapshot, so a second schedule for the
+        // single-symbol tile would be a second wake-up on somebody's battery for the same prices.
+        SymbolWidget.refreshAll(applicationContext)
         // `retry` rather than `failure`, so WorkManager's own backoff handles a network that came
         // back a minute later. Never `failure`: that stops the chain and the widget would then
         // wait for the next period with nothing having been tried.

@@ -47,6 +47,22 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.8.0
+
+**fa**
+
+> ویجت دوم: **یک بازار**، در یک کاشی کوچک روی صفحه‌ی گوشی، با قیمتی که از دور هم خوانده می‌شود.
+> وقتی می‌گذاریدش می‌پرسد کدام بازار — از میان همان‌هایی که ستاره کرده‌اید — و هر تعداد که بخواهید
+> می‌توانید بگذارید. اگر آن بازار از فهرست‌تان برود، کاشی همین را می‌گوید و بازار دیگری را جای آن
+> نشان نمی‌دهد.
+
+**en**
+
+> A second widget: **one market**, as a small tile on your home screen, with a price you can read
+> from across the room. Placing it asks which market — from the ones you have starred — and you can
+> place as many as you like. If that market leaves your list, the tile says so rather than quietly
+> showing a different one.
+
 ## 5.7.0
 
 **fa**

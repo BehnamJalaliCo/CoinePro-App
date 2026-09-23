@@ -11,11 +11,14 @@ carries it — so the phase became an audit with every number re-measured on thi
 clause run Τ left untested. See `CHECKLIST.md`, which opens with the correction, and `REPORT.md`
 for the measurements.
 
-**Phase B: seven of ten done, and one of them ⏳.** B1 and B4 were already shipped by runs Φ and Υ
-and are audited rows. B2, B3, B5, B9, B10, B6 and B8 are built — B9 narrowed on its bundled sound
+**Phase B: eight of ten done, one of them ⏳.** B1 and B4 were already shipped by runs Φ and Υ and
+are audited rows. B2, B3, B5, B9, B10, B6, B8 and B7 are built — B9 narrowed on its bundled sound
 set, which needs audio this repository does not hold (`BLOCKED.md §B9`), and **B8 is ⏳**: the code
 is there and its rules are tested, but Robolectric does not enter picture-in-picture, so the mode
-itself needs the owner's phone. B7 is not started.
+itself needs the owner's phone.
+
+**Run Τ2's list is now worked through.** What is left is not work this session could do: B9's four
+tones, C5's two narrowed clauses, and B8's device proof — all of them the owner's.
 
 **Phase C: done but for C5.** C5's legend figure is new and its row stays ❌ on two clauses the
 checklist argues against rather than defers. **C1, C2, C3, C4 and C6 are ✅.**
@@ -29,11 +32,11 @@ that fails without the fix. The lesson for the rest of this phase: **a row that 
 exists» is a row nobody has used end to end.**
 
 **Shipped:** 4.93.0 (phase A + B2/B3/B5/B10), 4.94.0 (B9), 4.95.0 (C5's legend), 4.96.0 (C1's rule),
-5.1.0 (C2), 5.2.0 (C6), 5.3.0 (C1's surface), 5.4.0 (C4), 5.5.0 (C3), 5.6.0 (B6), 5.7.0 (B8). Every gate
-green and the full unit suite passing on each.
+5.1.0 (C2), 5.2.0 (C6), 5.3.0 (C1's surface), 5.4.0 (C4), 5.5.0 (C3), 5.6.0 (B6), 5.7.0 (B8), 5.8.0 (B7).
+Every gate green and the full unit suite passing on each.
 
-**Not done, and the next session's list:** B7, plus the device proof B8 is waiting on. Each is
-named below with its files, the data it reads and the trap in it.
+**Not done, and none of it is code:** B8's device proof (`docs/qa/DEVICE_PROOFS.md` §7), B9's four
+tones, and C5's two narrowed clauses. Each is named below.
 
 ---
 
@@ -85,16 +88,30 @@ Three things worth inheriting:
   live tree would keep every controller and study running behind a surface with no room to show
   them.
 
-### B7 — the second widget, and Glance
+### B7 — the second widget: done in 5.8.0, and Glance refused
 
-* **Exists:** `MarketsWidget` (RemoteViews, `app/src/main/kotlin/com/coinepro/app/widget/`) with
-  `WidgetConfigureActivity`, `WidgetRefreshWorker` and `WidgetSnapshotStore` — the configuration
-  activity, the WorkManager refresh and the deep link B7 asks for are all already there for the
-  list widget.
-* **Missing:** the **single-symbol** widget (price, change, the nearest level from the Signal
-  Layer), and the brief's «Glance». Consider whether the second widget is worth a second toolkit:
-  the existing one works and a Glance rewrite of a working widget is risk with no reader-visible
-  gain. If it stays RemoteViews, the row says so and stays ❌.
+The consideration this section asked for was made and the answer is **no**, written into the row
+rather than deferred: the existing widget works, a rewrite of working code in a second toolkit is
+risk with no reader-visible gain, and mixing the two would mean two widgets in one directory built
+two ways. If Glance is ever right it is right for both at once, as a deliberate migration.
+
+The single-symbol tile is built. Four things worth inheriting:
+
+* **A market that is no longer in the snapshot is *said*, not substituted.** A widget is configured
+  once and lives for months; drawing the first row instead would be a tile that quietly starts
+  showing a different instrument.
+* **Removing a tile forgets its ticker.** Android reuses widget ids, so without that a new tile
+  inherits a deleted one's market.
+* **`onDisabled` cancels the refresh only when *both* widgets are gone.** They share one schedule,
+  and cancelling on one removal would freeze the other.
+* **The per-widget tickers are `SharedPreferences`, deliberately.** `WidgetSnapshotBridge` says why
+  `runBlocking` over DataStore is fine for the snapshot — the read is already loaded — and that does
+  not hold here: the launcher can ask for a redraw before the graph has been touched.
+
+One thing the plan named that is **not** built: «the nearest level from the Signal Layer». The
+snapshot carries a price, a change and a direction, and putting a level in it means the refresh
+worker computing one per starred market on a fifteen-minute schedule. That is a real piece of work
+and it is a different item; the tile draws what the snapshot honestly holds.
 
 ### C1 — «Why this move?»: done in 5.3.0
 

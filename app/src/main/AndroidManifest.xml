@@ -194,6 +194,35 @@
         </receiver>
 
         <!--
+          The single-symbol tile — run Τ2, B7.
+
+          A second provider rather than a second size of the first: the two answer different
+          questions («how is my list» against «where is gold») and only this one needs a ticker,
+          which is why it has a configuration activity where the markets widget deliberately has
+          none. They share one refresh schedule; see `WidgetRefreshWorker`.
+        -->
+        <activity
+            android:name=".widget.SymbolWidgetConfigureActivity"
+            android:exported="true"
+            android:theme="@style/Theme.CoinePro">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <receiver
+            android:name=".widget.SymbolWidget"
+            android:label="@string/widget_symbol_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_symbol_info" />
+        </receiver>
+
+        <!--
           «دیدم» on a repeating price alert (run Τ2, B9).
 
           `exported="false"`: the only sender is this app's own notification, and an acknowledgement

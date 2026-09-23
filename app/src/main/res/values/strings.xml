@@ -193,6 +193,12 @@
     <string name="widget_configure_starred">Starred</string>
     <string name="widget_configure_save">Add widget</string>
     <string name="widget_configure_count">%1$s symbols</string>
+    <string name="widget_symbol_label">One market</string>
+    <string name="widget_symbol_description">One market, large enough to read at a glance.</string>
+    <string name="widget_symbol_missing">%1$s is not on your list any more.</string>
+    <string name="widget_symbol_configure_title">Which market?</string>
+    <string name="widget_symbol_configure_body">The tile shows this one market. Place another for a second.</string>
+    <string name="widget_symbol_configure_empty">You have not starred a market yet. Star one in the app and it appears here.</string>
     <string name="widget_minutes">%1$s min ago</string>
     <string name="widget_hours">%1$s h ago</string>
     <string name="widget_old">a long time ago</string>

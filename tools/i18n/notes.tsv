@@ -291,6 +291,7 @@ welcome_free_body	tip	app
 welcome_practice_body	tip	app
 welcome_tools_body	tip	app
 widget_configure_body	state	app
+widget_symbol_configure_body	state	app
 workbench_chain_note	tip	feature/chart
 workbench_patterns_note	tip	feature/chart
 workbench_template_note	tip	feature/chart

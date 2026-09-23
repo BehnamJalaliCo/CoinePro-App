@@ -755,3 +755,78 @@ brief's picture and this one answer the same question about a list of closes, an
 `MainActivity` (its `configChanges` already covered the mode); the snapshot publisher and the
 `onKeepWatching` wiring in `CoineProApp`; and the hub tile in `ChartChrome`, offered only on
 Android 8 and above — a tile that can only ever refuse teaches the reader the app is broken.
+
+---
+
+## B7 — the second widget, and the rewrite that was refused
+
+Two halves again, and this time one of them is a **no**.
+
+### «یک بازار»
+
+One market as a two-cell tile: the ticker, a price large enough to read across a room, the change
+under it, the freshness under that. It is a different question from the markets widget's rather
+than a smaller version of it — that one answers «how is my list» and earns twelve cells; this
+answers «where is gold», and a reader who wants one number does not want to scan a list to find it.
+Reviews of this category ask for both, in different words.
+
+### It is configured, and the first one deliberately is not
+
+`MarketsWidget` follows the watchlist on purpose: the reader has already answered «which markets» by
+starring them, and asking again would create a second list that drifts out of step. There is no such
+inherited answer for «which **one**» — it is a question only this widget can ask — so it has a
+configuration activity and stores a ticker per widget id.
+
+The picker offers the reader's own starred markets, not the catalogue. A picker over a few thousand
+tickers on a screen the launcher opened for two seconds is a search problem, and the instruments
+somebody wants on their home screen are, with near certainty, ones they have already starred. A
+reader with an empty watchlist is told so and sent to the app rather than shown an empty list with a
+dead button under it.
+
+### A market that leaves the list is said, not substituted
+
+A widget is configured once and then lives for months. In that time the reader can unstar the
+instrument, the catalogue can drop it, a refresh can come back with fewer rows. Every one of those
+leaves a tile whose symbol is not in the snapshot, and the wrong answer is to draw *something*: a
+tile that quietly starts showing a different market is worse than one that admits it cannot find
+this one. That is the first case in `SymbolWidgetPickTest` and the reason the file exists.
+
+### One fetch for both
+
+The same snapshot, the same worker, the same freshness sentence, the same colour convention read at
+render time, the same deep link. A second schedule for the same prices would be a second wake-up on
+somebody's battery for nothing, so `onDisabled` cancels the schedule only when **both** widgets are
+gone — cancelling it because one was removed would leave the other frozen.
+
+Removing a tile forgets its ticker. Android reuses widget ids, so without that a new tile would
+inherit a deleted one's market and open already showing something nobody chose — and the file would
+grow by one entry per widget the reader ever placed.
+
+The per-widget tickers are in `SharedPreferences` rather than the app's DataStore, and that is a
+considered exception. `WidgetSnapshotBridge` explains why `runBlocking` over DataStore is acceptable
+for the snapshot: the read is from an already-loaded preferences object. This one has no such
+guarantee — the launcher may ask for a redraw before the application graph has been touched — and a
+widget that blocks a launcher's process on a cold disk read makes somebody's home screen stutter.
+
+### The Glance rewrite is refused
+
+This is the half the row asked for and the answer is no, stated rather than deferred.
+
+The existing widget works. It has a configuration activity, a WorkManager refresh, a responsive
+layout with its own tested rule, and right-to-left handling that took a specific bug to get right.
+A Glance rewrite of that is risk with no reader-visible gain: nothing on the home screen changes,
+and what is gained is a nicer authoring experience for code that is already written.
+
+Worse, it would not be a rewrite of one widget but a **split**: two widgets in one directory built
+on two toolkits, with two ways of doing layout, two ways of binding a click and two ways of being
+wrong. If Glance is ever the right answer it is the right answer for both at once, and that is a
+deliberate migration rather than a line item in a feature run.
+
+So both widgets are `RemoteViews`, and the row is ✅ on the widget and explicit about the rewrite.
+
+### What landed
+
+`SymbolWidgetPick.kt` and `SymbolWidgetPickTest` (10); `SymbolWidget.kt` with its renderer;
+`SymbolWidgetBridge.kt`; `SymbolWidgetConfigureActivity.kt`; `widget_symbol.xml` and
+`widget_symbol_info.xml`; the manifest's receiver and configure activity; and the two existing
+refresh call sites now redrawing both widgets.

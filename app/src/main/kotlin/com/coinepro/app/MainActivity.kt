@@ -94,6 +94,7 @@ import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.ProfileStore
 import com.coinepro.core.datastore.UserPreferencesStore
 import com.coinepro.app.widget.MarketsWidget
+import com.coinepro.app.widget.SymbolWidget
 import com.coinepro.app.widget.WidgetRefreshEngine
 import com.coinepro.core.marketdata.CandleArchive
 import com.coinepro.core.marketdata.CandleCache
@@ -629,6 +630,9 @@ class MainActivity : FragmentActivity() {
         lifecycleScope.launch {
             runCatching { widgetRefreshEngine.refresh() }
             MarketsWidget.refreshAll(this@MainActivity)
+            // The single-symbol tile too: a reader who stars a market should not have to wait a
+            // refresh cycle for either widget to notice. See `SymbolWidget`.
+            SymbolWidget.refreshAll(this@MainActivity)
         }
     }
 

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One market, as a tile.
+
+  The price is the widget. Everything else — the name, the change, the freshness — is declared here
+  and hidden by the provider where the tile is too small to carry it; `RemoteViews` cannot inflate
+  at runtime, so a fixed tree that is toggled is how a responsive widget is built. See
+  `SymbolWidgetPick.layoutFor` for which goes first and why.
+
+  The same two right-to-left rules `widget_row` documents apply and are load-bearing here too: the
+  price and the change are `textDirection="ltr"` runs of digits inside a right-to-left line, and
+  without the direction forced, one beginning with a minus reorders the tile.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/symbol_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:background="@drawable/widget_background"
+    android:padding="12dp">
+
+    <TextView
+        android:id="@+id/symbol_ticker"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textDirection="ltr"
+        android:textColor="@color/widget_text_secondary" />
+
+    <TextView
+        android:id="@+id/symbol_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="11sp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:visibility="gone"
+        android:textColor="@color/widget_text_muted" />
+
+    <TextView
+        android:id="@+id/symbol_price"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="22sp"
+        android:maxLines="1"
+        android:textDirection="ltr"
+        android:textColor="@color/widget_text_primary" />
+
+    <TextView
+        android:id="@+id/symbol_change"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="13sp"
+        android:maxLines="1"
+        android:visibility="gone"
+        android:textDirection="ltr"
+        android:textColor="@color/widget_text_muted" />
+
+    <TextView
+        android:id="@+id/symbol_freshness"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="10sp"
+        android:maxLines="1"
+        android:visibility="gone"
+        android:textColor="@color/widget_text_muted" />
+
+    <!-- Shown alone when the snapshot does not carry this market. See `SymbolWidgetPick`. -->
+    <TextView
+        android:id="@+id/symbol_missing"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:gravity="center"
+        android:visibility="gone"
+        android:textColor="@color/widget_text_secondary" />
+</LinearLayout>

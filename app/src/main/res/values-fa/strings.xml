@@ -193,6 +193,12 @@
     <string name="widget_configure_starred">ستاره‌دارها</string>
     <string name="widget_configure_save">افزودن ویجت</string>
     <string name="widget_configure_count">%1$s نماد</string>
+    <string name="widget_symbol_label">یک بازار</string>
+    <string name="widget_symbol_description">یک بازار، به اندازه‌ای بزرگ که با یک نگاه خوانده شود.</string>
+    <string name="widget_symbol_missing">%1$s دیگر در فهرست شما نیست.</string>
+    <string name="widget_symbol_configure_title">کدام بازار؟</string>
+    <string name="widget_symbol_configure_body">این کاشی همین یک بازار را نشان می‌دهد. برای بازار دوم یک کاشی دیگر بگذارید.</string>
+    <string name="widget_symbol_configure_empty">هنوز بازاری را ستاره نکرده‌اید. در برنامه یکی را ستاره کنید تا اینجا بیاید.</string>
     <string name="widget_minutes">%1$s دقیقه پیش</string>
     <string name="widget_hours">%1$s ساعت پیش</string>
     <string name="widget_old">خیلی وقت پیش</string>
