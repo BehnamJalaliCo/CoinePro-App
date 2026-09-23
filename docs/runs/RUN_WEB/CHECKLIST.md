@@ -1,46 +1,73 @@
 # RUN WEB — checklist
 
-The web terminal, from `docs/web/TERMINAL_BUILD_PROMPT.md`. Every row carries a state, its evidence
-and a frame — or says why a still frame cannot carry it and names what can.
+The web version at `/terminal/`. It started as the phone's chart alone (W1b, 5.8.x). **Since 5.9.0
+it is the whole phone app**: the same Kotlin sources for every screen, compiled for the browser.
+Every row carries a state, its evidence and a frame, or says why a still frame cannot show it and
+names what can.
 
-States: ✅ done · ❌ not done, or narrowed (the row says exactly how) · ⏳ owed to the owner or the server.
+States: ✅ done · ❌ not done, or narrowed (the row says exactly how) · ⏳ owed to the server or the owner.
 
 ---
 
-## W1b — the browser target on `:chart-ui`
+## The approach — one app, not a second one
 
 | Item | State | Evidence | Frame |
 |---|---|---|---|
-| **1** Compose Multiplatform and `wasmJs` on `:chart-ui` | ✅ | `chart/ui/build.gradle.kts` adds `wasmJs { browser() }` and the JetBrains Compose coordinates in `commonMain`; `:core:tokens` is the new module holding the design tokens in the same package, so no import in the app changed. Compose Multiplatform **1.9.0**, Material 3 **1.8.2**: `:app:dependencies releaseRuntimeClasspath` was resolved on `HEAD` and on this tree and the 152 `androidx.*` modules resolve to identical versions (Material 3 1.9.0 had moved Compose to 1.9.3 and was refused for that reason — `REPORT.md`) | — **a dependency graph, not a picture.** The diff script is in `REPORT.md` §1 |
-| **2** The two Android files behind a seam | ✅ | `ChartUiPlatform.kt` declares the seam; `ChartFrameRate` and `ChartStrokePredictor` sit behind `ChartHost`, an interface the composable holds instead of a `View`. The browser's host votes for nothing and predicts nothing, and says so in its KDoc | — **an interface.** `:chart-ui:compileKotlinWasmJs` compiles it; the Android host tests run the phone's side |
-| **3** Files moved `androidMain` → `commonMain` | ✅ | Twelve files, `CoineProChart.kt` last. Still Android-only, deliberately: `ChartFrameRate`, `ChartStrokePredictor`, `ChartIcons`, `ToolRail`, `ChartPickers` — none of them is reached from `CoineProChart` | — **a source-set move.** `git show --stat` lists the renames |
-| **4** The resource calls | ✅ **narrowed: a seam, not `org.jetbrains.compose.resources`** | `painterResource`/`stringResource` became `chartGlyph`/`chartText`. On the phone they are the same `R` calls; in the browser the two glyphs are built from the XML's own path data (checked on every commit by `check_web_glyphs`) and the seven legend words are a two-language table. Compose resources would have put a second copy of every drawable and string on the phone's classpath for a browser that needs nine | `web-btcusdt-4h-fa.png` — the legend drawn in the browser |
-| **5** `:core:designsystem` follows | ❌ **narrowed: only the tokens moved** | Palette, colours, page accents and the tabular-figures constant are in `:core:tokens`. The rest of the design system — share card, Coil, window size — is not needed by the chart and stays where it is until W2 needs a piece of it | — **nothing to show; the row is a scope statement** |
-| **6** `:chart-ui:compileKotlinWasmJs` in CI | ✅ | `android-ci.yml` compiles `:core:tokens`, `:chart-ui` and builds `:web:terminalBundle`, and keeps the bundle as the `pro-chart-terminal` artefact | — **a workflow step.** Its first run is on the push |
-| **Golden frames unchanged** | ✅ | `./gradlew testDebugUnitTest` green on this tree, which includes every golden screenshot test in `:app` and `:chart-ui`; `./gradlew :app:assembleRelease` green | — **the goldens are the frames**, and they did not move |
-| **Milestone: `CoineProChart` in a browser on real candles** | ✅ | The bundle served locally with `/api/*` relayed to `pro-chart.com`, driven by Chromium: BTCUSDT 4h and XAUUSD 1h in Persian with a Solar Hijri axis, ETHUSDT 15m in English, SOLUSDT 1d at 390 px wide. The live price moved between two captures (85,692.5 → 85,650.1) | `web-btcusdt-4h-fa.png`, `web-xauusd-1h-fa.png`, `web-ethusdt-15m-en.png`, `web-solusdt-1d-fa-phone.png` |
+| **The phone's sources, not a port** | ✅ | `web/build.gradle.kts` `sharedSources` lists `app`, all 37 `core/*` modules, every `feature/*` module and `chart/ui`. `web/tools/share_sources.py` copies them into `web/build/generated/shared` and makes only mechanical changes: a serializer for every wire class, a `<Name>Web` class for every Retrofit interface, and the dependency graph Hilt builds (`WebGraph.kt`) generated from `AppModule` and the `@Inject` constructors. **606 files, 141 wire classes, 31 services** on this tree | — **a build step.** Its log line reads `shared 606 files, 141 wire classes, 31 services` |
+| **What stands in for Android** | ✅ | `web/src/shims/kotlin`: the Android, AndroidX, OkHttp, Retrofit, Room, DataStore, WorkManager, Gson and JVM APIs the sources call, under the same names. Each one is backed by the browser: `fetch` for HTTP, `WebSocket`, `localStorage` for preferences, files and the database, WebAuthn for biometrics, `getUserMedia` for the camera, the Notification API, the share sheet and the clipboard | — **source.** One file per package |
+| **Only a few files replaced** | ✅ | `replacedFiles`: `MainActivity`, `CoineProApplication`, the two widget classes and their configuration activities, the widget snapshot bridge, `GoogleSignIn`, the chart's three platform files and the two share-image files. Each browser version is in `web/src/wasmJsMain` and says what the page does in their place | — **a list**, in `web/build.gradle.kts` |
+| **The phone did not change** | ✅ | No file under `app/`, `core/`, `feature/` or `chart/` changed in this run. `./gradlew testDebugUnitTest` (every golden) and `./gradlew :app:assembleRelease` green | — **the goldens are the frames** |
 
-## W2 — the terminal shell (the part this run ships)
+## Every screen, in the browser
 
-| Item | State | Evidence | Frame |
-|---|---|---|---|
-| **Mount at `/terminal/`, deep links render** | ✅ | `<base href="/terminal/">`; `Route.parse` reads `/terminal/{SYMBOL}/{tf}` in any case and falls back to BTCUSDT 1h; the address bar follows every change (`replaceState`). The ETH frame was opened as `/terminal/ethusdt/15m` and the page rewrote it to `/terminal/ETHUSDT/15m` | `web-ethusdt-15m-en.png` |
-| **Poll every 2 s, stop when hidden, `X-Client-Id`** | ✅ | Crypto: `/api/crypto/prices` every 2 s moves the forming bar; the loop asks nothing while `document.visibilityState` is `hidden`; one random id per browser in `localStorage`, sent on every request | — **a cadence, not a still.** `Terminal.kt`'s loop and `Browser.kt`'s `ClientId` |
-| **Crypto does not tick — say so** | ✅ **narrowed** | The page does not open the socket at all in this release, so there is no welcome frame to show. What it says instead is true of what it does: «قیمت هر ۲ ثانیه به‌روز می‌شود» for crypto, «نمودار هر ۳۰ ثانیه به‌روز می‌شود» for forex, and after 90 s with nothing new it says the connection is gone rather than letting a frozen chart pass as live | every frame's bottom line |
-| **Forex price never spliced into forex candles** | ✅ | The live forex price and the forex candles come from different upstreams (`SERVER.md` §4.10), so forex refetches its own bars every 30 s instead | — **an absence.** `Terminal.kt`, the `Venue.FOREX` branch |
-| **One typeface** | ✅ | IRANYekanX's four weights are copied into the bundle at build time from `core/designsystem/src/main/res/font/`; no other face exists in the page. The marks IRANYekanX lacks — `·`, `Δ`, `◉`, `⋮`, `✕`, `—`, `∅`… — have a browser-only substitute from the typeface's own character map (`ChartMarks`); the phone keeps its characters | `web-xauusd-1h-fa.png` — no empty boxes |
-| Workbench, rails, layout grid, object tree, watchlist, screener | ❌ **not in this release** | W2 items 1–6 beyond the chart itself. The page is a chart, an instrument, a timeframe and a language | — **not built** |
+Served locally at `/terminal/` with `/api/*` relayed to `pro-chart.com` and `/up/*` passed to the
+two backends (the passthrough `SERVER.md` §4.12 asks for), driven by Chromium at 390 × 844 unless
+the frame says otherwise.
 
-## W1½ and W3
+| Screen | State | Frame |
+|---|---|---|
+| First run: launch, welcome, start preferences, reader question | ✅ | shown on first visit; kept out of the set to spare the reader four near-empty frames |
+| Watchlist — live prices, sparklines, logos, toolbar | ✅ | `web-app-watchlist-fa-phone.png` |
+| Chart tab — the chart owns the screen, as on the phone in portrait | ✅ | `web-app-chart-fa-phone.png` |
+| Rasad | ✅ | `web-app-rasad-fa-phone.png` |
+| Ideas: signals, track record | ✅ | `web-app-ideas-fa-phone.png` |
+| Community | ✅ | `web-app-community-fa-phone.png`. The forum is empty because the server's feed is `{"posts":[]}` today, and the phone shows the same |
+| Menu, every row | ✅ | `web-app-menu-fa-phone.png` |
+| Search, screener, heatmap, markets, explore | ✅ | `web-app-{search,screener,heatmap,markets,explore}-fa-phone.png` |
+| News with photos, calendar | ✅ | `web-app-news-fa-phone.png`, `web-app-calendar-fa-phone.png`. The photos need `/api/img` (`SERVER.md` §4.13); without it each card says «تصویر نیامد», which is the phone's own words for a photo that did not load |
+| Paper trading, journal | ✅ | `web-app-paper-fa-phone.png`, `web-app-journal-fa-phone.png` |
+| Chart studio, NamaScript, alerts, trader's toolbox | ✅ | `web-app-{studio,backtest,alerts,toolbox}-fa-phone.png` |
+| Security and release notes, profile, notification settings | ✅ | `web-app-{security,profile,notif}-fa-phone.png` |
+| Portfolio, connections, setup builder, signals, subscription, identity check, activity | ✅ **for a guest: the sign-in screen**, the phone's own gate | `web-app-portfolio-fa-phone.png` |
+| English, light theme | ✅ | `web-app-menu-en-light-phone.png`, `web-app-rasad-en-light-phone.png` |
+| Wide window: navigation rail, list-detail | ✅ | `web-app-watchlist-en-light-desktop.png` |
+| Tablet grid, four charts | ✅ | `web-app-tablet-grid-fa.png` |
 
-| Item | State | Evidence | Frame |
-|---|---|---|---|
-| W1½ the 1,150 drawables | ❌ **not needed yet** | The page draws two glyphs, both built from their XML's path data | — **not built** |
-| W3 the script studio | ❌ **not in this release** | `:namascript` compiles to Wasm already; the screen is not ported | — **not built** |
+## Faults found and fixed in the browser
+
+| Fault | Fixed by |
+|---|---|
+| Three watchlist toolbar icons and a caret stayed blank | `Drawables.ensure`: the fetch belongs to the page now, not to the composable that first asked. A row composed for one frame and then dropped used to cancel the fetch halfway, and the name stayed «loading» for the whole visit |
+| Characters IRANYekanX does not have: `○` in the watchlist, and any `\uXXXX` escape | `web/tools/glyphs.json` maps them, `share_sources.py` also maps them when written as escapes, and `check_web_glyph_map` now reads every Kotlin string literal as well as the string tables |
+| Publishers' photos: a page may not read another site's bytes | `WebRoutes.mapImage` → `/api/img?url=` (`SERVER.md` §4.13) |
+
+## What a browser cannot do — not a gap in the port
+
+| Phone feature | On the web |
+|---|---|
+| Home-screen widgets (markets, single symbol) | ❌ **no such thing on the web.** `Widgets.web.kt` keeps the calls and draws nothing |
+| Picture-in-picture watch mode | ❌ a tab cannot shrink into its own floating window; `onKeepWatching = null`, so the hub offers no tile, as on a phone without the mode |
+| Push while the app is closed (FCM) | ⏳ needs a Web Push key pair and a server sender; while the tab is open, the Notification API shows the same notifications |
+| Play Integrity | ❌ Android-only; the header is not sent, which the backends already accept from a phone without Play services |
+| Background sync when closed | ❌ WorkManager's jobs run on timers while the tab is open |
+| Opening the system notification settings | ❌ a page cannot; the phone's screen already says where the switch is |
 
 ## Publishing
 
-| Item | State | Evidence | Frame |
-|---|---|---|---|
-| The bundle | ✅ | `./gradlew :web:terminalBundle` → `web/build/terminal/`, eleven files, 12 MB before compression (Skia's own `skiko.wasm` is 8.4 MB of it). No webpack — `REPORT.md` §3 says why | — **a directory listing**, in `REPORT.md` |
-| On `pro-chart.com/terminal/` | ⏳ **owed to the server agent** | `/terminal/` answers `404` today. What finishes it: put `web/build/terminal/` (or CI's `pro-chart-terminal` artefact) at `site/terminal` and run `bin/precompress.sh site/terminal` | — **a deployment this repository cannot do** |
+| Item | State | Evidence |
+|---|---|---|
+| The bundle | ✅ | `./gradlew :web:terminalBundle` → `web/build/terminal/`. CI builds it and keeps it as the `pro-chart-terminal` artefact |
+| On `pro-chart.com/terminal/` | ⏳ **owed to the server agent** | `BLOCKED.md` B1 |
+| Signed-in screens against the live backends | ⏳ **owed to the server agent** | `SERVER.md` §4.12, the `/up/` passthrough with the token swap. `BLOCKED.md` B2 |
+| News photos | ⏳ **owed to the server agent** | `SERVER.md` §4.13. `BLOCKED.md` B3 |
+| Google sign-in from the page | ⏳ **owed to the owner** | `BLOCKED.md` B4 |

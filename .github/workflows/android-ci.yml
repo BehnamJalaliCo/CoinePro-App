@@ -131,15 +131,17 @@ jobs:
         run: python3 scripts/quality/check-cross-phase-consistency.py
 
       # The engine, the language, the Compose chart and the design tokens compile for the browser,
-      # and the terminal's bundle builds. This is the only job here that would notice a JVM type
-      # reaching common code, and the bundle it leaves is the one pro-chart.com/terminal/ serves.
+      # and the web version builds: the whole phone app, compiled from the phone's own sources
+      # (web/tools/share_sources.py, python3 from the runner). This is the job that notices a phone
+      # change the browser has no stand-in for, and the bundle it leaves is the one
+      # pro-chart.com/terminal/ serves.
       # Node and Yarn for the Kotlin/Wasm build come from the machine (build.gradle.kts says why).
       - name: Set up Node 22
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
-      - name: The chart still compiles for the browser, and the terminal bundle builds
+      - name: The chart still compiles for the browser, and the web version builds
         run: |
           yarn --version
           gradle --no-daemon :chart-core:compileKotlinWasmJs :namascript:compileKotlinWasmJs :core:tokens:compileKotlinWasmJs :chart-ui:compileKotlinWasmJs :web:terminalBundle

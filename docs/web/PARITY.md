@@ -13,21 +13,21 @@ built the row says «not built» rather than «planned».
 
 ## 0. The short answer
 
-**There is no web build today.** What exists is everything underneath one:
+**Since 5.9.0 the web build is the phone app** — every screen, compiled from the phone's own
+Kotlin sources for the browser, not ported (`docs/runs/RUN_WEB/REPORT.md` §1). Whatever the phone
+has, the site has at the next build.
 
 | | |
 | --- | --- |
-| the chart engine compiles for a browser | ✅ 5.0.0 — `:chart-core:compileKotlinWasmJs` runs on every push |
-| the language compiles for a browser | ✅ 5.0.0 — `:namascript:compileKotlinWasmJs`, same job |
-| the server the browser would talk to | ✅ phases 1–3 live on `pro-chart.com`: legal, the update document, crypto and forex prices, candles, news, the forex socket |
-| the layouts a wide window needs | ✅ the tablet work — a browser window *is* an Expanded window, and the app already decides from width rather than from «is this a phone» |
-| the screens themselves, in a browser | ❌ **not built.** `:chart-ui` and every `feature:*` module are Android libraries |
-| an account that is one account on both | ❌ **not built** — but no longer blocked: §5's decisions were answered on 2026-09-21 |
+| the chart engine and the language compile for a browser | ✅ 5.0.0 |
+| the chart itself in a browser, on live candles | ✅ 5.8.0 (W1b) |
+| **every screen of the app in a browser** | ✅ **5.9.0** — `docs/runs/RUN_WEB/CHECKLIST.md`, a frame per screen |
+| the server the browser talks to | ✅ the named relay routes are live; ⏳ the `/up/` passthrough for signed-in screens (`SERVER.md` §4.12) and `/api/img` (§4.13) are owed to the server agent |
+| an account that is one account on both | ✅ the phone's own sign-in, on the same two backends, once §4.12 is live |
 
-So the honest shape of the answer is: **the hard half is done and proven, and the visible half has
-not started.** It used to be gated on two decisions that were the owner's rather than the work's;
-both were answered on 2026-09-21 (§5), and one of them — the terminal is open and read-only — means
-**W1 → W3 reaches readers without an account**. Nothing is waiting on anybody now.
+What a browser cannot be (widgets, picture-in-picture, Play Integrity, work while the tab is closed)
+is listed in the checklist, with what the page does instead. The phases in §3 below are the plan this
+replaced, kept because §3a's measurements are still true.
 
 ---
 
@@ -229,6 +229,6 @@ remains is a label that names one of two venues rather than a feed that names no
 
 ## 6. The one-line answer to «when»
 
-**A usable web terminal — chart, tools, scripts, watchlist, no account — is 18–28 working days of
-work that nothing is blocking.** Everything past that is behind an account, and the account is
-behind a question only the owner can answer.
+**Built, 5.9.0.** The whole app runs in a browser from the phone's sources. What stands between it
+and readers is deployment and two server routes (`docs/runs/RUN_WEB/BLOCKED.md`), not more work in
+this repository.

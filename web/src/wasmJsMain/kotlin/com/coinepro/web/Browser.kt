@@ -55,6 +55,8 @@ fun jsonLength(array: JsAny): Int = js("array.length")
 
 fun jsonItem(array: JsAny, index: Int): JsAny = js("array[index]")
 
+fun jsonStringAt(array: JsAny, index: Int): String = js("String(array[index])")
+
 /** A number field, or NaN when it is absent or not a number. */
 fun jsonNumber(node: JsAny, key: String): Double = js("(node && typeof node[key] === 'number') ? node[key] : NaN")
 
@@ -103,6 +105,8 @@ private fun storedJs(key: String): String? = js("(function () { try { return loc
 
 private fun storeJs(key: String, value: String): Unit = js("(function () { try { localStorage.setItem(key, value); } catch (e) {} })()")
 
+private fun removeJs(key: String): Unit = js("(function () { try { localStorage.removeItem(key); } catch (e) {} })()")
+
 private fun randomIdJs(): String = js(
     "(window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('c' + Math.random().toString(36).slice(2) + Date.now().toString(36))",
 )
@@ -111,6 +115,8 @@ private fun randomIdJs(): String = js(
 fun stored(key: String): String? = storedJs(key)
 
 fun store(key: String, value: String) = storeJs(key, value)
+
+fun unstore(key: String) = removeJs(key)
 
 /**
  * One random id per browser, sent as `X-Client-Id` (docs/web/SERVER.md §6).

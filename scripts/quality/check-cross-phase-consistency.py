@@ -7,9 +7,11 @@ missing external legal/provider/production evidence into a pass.
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -635,6 +637,67 @@ def check_web_glyphs() -> None:
         require(browser == phone, f"{web.relative_to(ROOT)}: {constant} differs from {name}.xml")
 
 
+def check_web_glyph_map() -> None:
+    """Every character the app writes is one IRANYekanX can draw, or the browser build maps it.
+
+    The phone falls back to Android's system fonts for a glyph the one typeface lacks; a page draws
+    with IRANYekanX alone, so a missing glyph is a blank on screen. `web/tools/glyphs.json` maps each
+    such character to the nearest one the typeface has, and this keeps the map complete: a new string
+    with an em dash or an arrow either uses a mapped character or fails here. Needs fontTools to read
+    the font's character map; without it only the map's own shape is checked.
+    """
+    table = ROOT / "web/tools/glyphs.json"
+    if not table.exists():
+        return
+    glyphs = json.loads(table.read_text(encoding="utf-8"))["map"]
+    for missing, present in glyphs.items():
+        require(not any(ch in glyphs for ch in present), f"web/tools/glyphs.json: {missing!r} maps to another mapped character")
+    try:
+        from fontTools.ttLib import TTFont  # type: ignore
+    except ImportError:
+        return
+    cmap: set[int] = set()
+    for face in (ROOT / "core/designsystem/src/main/res/font").glob("iranyekanx_*.ttf"):
+        cmap |= set(TTFont(str(face)).getBestCmap().keys())
+    invisible = {0x200C, 0x200D, 0x200E, 0x200F, 0x2066, 0x2067, 0x2068, 0x2069, 0x202A, 0x202B, 0x202C, 0x202D, 0x202E, 0xFE0F}
+    for missing, present in glyphs.items():
+        for ch in present:
+            require(ord(ch) in cmap or ord(ch) in invisible, f"web/tools/glyphs.json: {ch!r} (for {missing!r}) is not in IRANYekanX either")
+    emoji = lambda ch: ord(ch) >= 0x1F000 or 0x2600 <= ord(ch) <= 0x27BF and ch not in glyphs
+    for path in list(ROOT.glob("*/src/main/res/values*/strings.xml")) + list(ROOT.glob("*/*/src/main/res/values*/strings.xml")):
+        words = re.sub(r"<!--.*?-->", "", path.read_text(encoding="utf-8"), flags=re.DOTALL)
+        for ch in set(words):
+            if ord(ch) < 0x80 or ord(ch) in cmap or ord(ch) in invisible or ch in glyphs or emoji(ch):
+                continue
+            require(False, f"{path.relative_to(ROOT)}: {ch!r} U+{ord(ch):04X} has no glyph in IRANYekanX and no entry in web/tools/glyphs.json")
+    # The Kotlin sources the page is built from write text too — «○», «↓» — so their string
+    # literals are read with the same lexer the browser build uses. Letters (a Persian regex range in
+    # the legal renderer) and controls are not drawn marks and are left alone.
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("share_sources", ROOT / "web/tools/share_sources.py")
+    lexer = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(lexer)  # type: ignore[union-attr]
+    arabic = lambda ch: 0x0600 <= ord(ch) <= 0x08FF or 0xFB50 <= ord(ch) <= 0xFEFF
+    drawn = lambda ch: unicodedata.category(ch)[0] in "SP" and ord(ch) >= 0x80 and not arabic(ch)
+    sources = [p for pattern in ("app/src/main/**/*.kt", "feature/*/src/main/**/*.kt", "core/*/src/main/**/*.kt", "chart/ui/src/commonMain/**/*.kt")
+               for p in ROOT.glob(pattern)]
+    for path in sources:
+        text = path.read_text(encoding="utf-8")
+        j = 0
+        while j < len(text):
+            if text[j] in "\"'":
+                k = lexer.skip_string(text, j)
+                literal = re.sub(r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), text[j:k])
+                for ch in set(literal):
+                    if drawn(ch) and ord(ch) not in cmap and ch not in glyphs and not emoji(ch):
+                        require(False, f"{path.relative_to(ROOT)}: {ch!r} U+{ord(ch):04X} has no glyph in IRANYekanX and no entry in web/tools/glyphs.json")
+                j = k
+            elif text.startswith("//", j) or text.startswith("/*", j):
+                j = lexer.skip_comment(text, j)
+            else:
+                j += 1
+
+
 MATERIAL_ICON_IMPORT = re.compile(r"^import androidx\.compose\.material\.icons\.", re.MULTILINE)
 STOCK_ICON_USE = re.compile(r"\bIcons\.(Filled|Default|Outlined|Rounded|Sharp|TwoTone)\.")
 
@@ -913,6 +976,7 @@ def main() -> None:
     check_tabular_digits()
     check_single_typeface()
     check_web_glyphs()
+    check_web_glyph_map()
     check_numeric_styles_are_latin()
     check_every_screen_is_rendered()
     check_bottom_navigation()

@@ -2,27 +2,23 @@
 
 ## Where the run is
 
-**W1b is done and its milestone frame exists**: `CoineProChart` in Chromium on the relay's live
-candles, Persian and English, desktop and phone width (`frames/`). The phone is unchanged — same
-androidx graph, suite and goldens green, release builds.
+**The web version is the phone app.** Every screen, from the phone's own Kotlin, compiled for the
+browser (`CHECKLIST.md`). The phone is unchanged: suite and goldens green, release builds.
 
-**The first public page is built**: `./gradlew :web:terminalBundle` → `web/build/terminal/`. It is
-a chart with an instrument, a timeframe and a language; it is not yet the workbench.
+**Waiting on the server agent** for the bundle at `site/terminal` (B1), the `/up/` passthrough for
+signed-in screens (B2) and `/api/img` for news photos (B3). **Waiting on the owner** for the Google
+origin (B4) and, if wanted, Web Push keys (B5). See `BLOCKED.md`.
 
-**Waiting on the server agent** to put the bundle at `site/terminal` (`BLOCKED.md` B1).
+## When a phone screen changes
 
-## Next, in order
-
-1. W2 item 1: `ChartWorkbench` — tools column and readings panel. `ToolRail.kt` and `ChartIcons.kt`
-   are the Android-only files it will pull into `commonMain`; W1½'s drawables come with them.
-2. The forex socket (`wss://pro-chart.com/api/stream`) for ticks, with the welcome frame shown for
-   crypto.
-3. History paging on crypto (`has_more`/`oldest` are in the response).
-4. W3, the script studio.
+Nothing to do. The next `:web:terminalBundle` compiles the changed source. If it fails, the fault
+is either a new Android API with no browser version in `web/src/shims/kotlin`, or a new Retrofit or
+Hilt shape `web/tools/share_sources.py` does not read yet. Add it there, never in the phone's code.
 
 ## How to see it locally
 
 ```
 ./gradlew :web:terminalBundle
-python3 <any static server that serves web/build/terminal at /terminal/ and relays /api/* to pro-chart.com>
+python3 <a static server for web/build/terminal at /terminal/, relaying /api/* to pro-chart.com,
+         /up/tradeyar/* and /up/coineprofx/* to the two backends, and /api/img?url= to the url>
 ```

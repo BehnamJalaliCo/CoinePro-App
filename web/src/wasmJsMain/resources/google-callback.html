@@ -1,0 +1,14 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Google</title>
+<script>
+  // Google's account chooser returns here with the ID token in the fragment. The token goes to the
+  // page that opened this window — same origin only — and this window closes. Nothing is stored.
+  (function () {
+    var p = new URLSearchParams(window.location.hash.slice(1));
+    if (window.opener) {
+      window.opener.postMessage({ kind: 'google-id-token', idToken: p.get('id_token'), error: p.get('error') }, window.location.origin);
+    }
+    window.close();
+  })();
+</script>

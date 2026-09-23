@@ -779,6 +779,73 @@ above is real; its price simply has not moved, because nothing is trading.
 
 ---
 
+### 4.12 The whole app in the browser — the passthrough it needs (2026-09-23)
+
+**What changed.** `/terminal/` is no longer the chart alone. It is the phone app — every screen,
+compiled from the phone's own Kotlin (`web/build.gradle.kts`, `web/tools/share_sources.py`) — and
+the phone app talks to both backends on ~140 routes, not the eight §4.1–§4.3 relay. The page maps
+every URL the phone builds (`WebRoutes.kt`):
+
+1. **The named routes above, where the phone's call is exactly what they front** — public prices,
+   public candles, headlines, the track record, community and membership counts, the FX showcase.
+   These work today; nothing to add.
+2. **Everything else on the two backends → a passthrough on this origin:**
+
+| page asks | server forwards to | methods |
+| --- | --- | --- |
+| `https://pro-chart.com/up/tradeyar/<path>?<query>` | `https://tradeyar.trade-future.ir/<path>?<query>` | GET POST PUT PATCH DELETE |
+| `https://pro-chart.com/up/coineprofx/<path>?<query>` | `https://coineprofx.com/<path>?<query>` | GET POST PUT PATCH DELETE |
+| `wss://pro-chart.com/up/tradeyar/api/…/ws/prices?symbols=` | `wss://tradeyar.trade-future.ir/…` | WebSocket upgrade |
+| `wss://pro-chart.com/up/coineprofx/api/ws/prices?symbols=` | `wss://coineprofx.com/api/ws/prices` | WebSocket upgrade |
+
+The same path and query, the same body, byte for byte. Forward these request headers and no
+others: `Authorization`, `Content-Type`, `Accept`, `X-Install-Id`, `X-App-Platform`,
+`X-App-Version`, `X-Play-Integrity` (never sent by a page, harmless), and `X-Client-Id` for §6's
+buckets. Never forward the reader's `Cookie`. Return the upstream status, `Content-Type` and body
+unchanged; add no CORS headers (the page is same-origin). No caching on this prefix.
+
+**The one thing it must do rather than merely pass: keep the bearer out of the page.** §4.4 says the
+browser never holds a bearer token, and the phone's code stores the tokens its sign-in returns. The
+passthrough squares the two without touching that code: on a response to any sign-in or refresh
+route — TradeYar's `api/mobile/v1/auth/{login,refresh,register/verify,google}` and CoinePro-FX's
+`api/user/auth/{login,refresh,register/verify,google,telegram}` (`AuthPaths` in `core/auth`) — replace each
+`access_token` / `refresh_token` in the JSON with an opaque handle, keep the real tokens server-side
+against it, and set an `HttpOnly; Secure; SameSite=Strict` cookie binding the handle to this browser.
+On every later request, swap `Authorization: Bearer <handle>` for the real token only when the
+cookie matches. A handle copied out of the page is then worthless anywhere else. Sign-out
+(`…/auth/logout`) drops the server-side pair.
+
+**Limits.** Same buckets as §6 (address + client), with sign-in routes at the tighter of the two
+backends' own limits; request bodies up to 8 MB (the AI-vision upload is the largest, one image).
+
+**How to know it works.** From the page, sign in to either backend and open the portfolio: the
+network panel shows `/up/…` calls answering 200 with the phone's JSON, and `localStorage` holds no
+token that works against the backend directly. Until this exists, everything a guest sees works
+(the named routes), and every signed-in screen says it cannot reach the server — exactly what the
+phone says with no network.
+
+### 4.13 Pictures from other sites — `GET /api/img?url=` (2026-09-23)
+
+A headline carries its publisher's photo (`beincrypto.com`, `cointelegraph.com`, …) and the phone
+loads it straight from there. A page cannot: it may *show* another site's image in an `<img>`, but
+Compose draws from bytes, and a cross-origin read without CORS headers is refused. So every picture
+whose host is not this origin or one of the two backends is asked for as
+`/api/img?url=<encodeURIComponent(original)>` (`WebRoutes.mapImage`).
+
+| rule | value |
+| --- | --- |
+| scheme | `https://` only; anything else `400` |
+| upstream | a plain `GET`, no cookies, no `Authorization`, the relay's own `User-Agent`; redirects followed at most 3 times, each hop still `https://` |
+| response | only `image/jpeg`, `image/png`, `image/webp`, `image/gif`, `image/avif`; anything else `415` |
+| size | 5 MB; larger `413` |
+| never | an address in a private, loopback or link-local range after DNS resolution — this is the one route here that takes a URL from the page, and it must not become a way into the server's own network |
+| cache | `Cache-Control: public, max-age=86400`; key on the full `url` |
+| limits | §6's buckets |
+
+**How to know it works.** Open «اخبار بازار» on the page: each card shows its photo instead of
+«تصویر نیامد». Until this route exists the cards show that line, which is what the phone shows for a
+photo that did not load.
+
 ## 5. Where the data actually comes from
 
 The owner's words for this run were «take the data we need from the TradeYar and CoinePro-FX servers

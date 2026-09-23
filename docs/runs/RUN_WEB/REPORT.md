@@ -1,91 +1,91 @@
 # RUN WEB — report
 
-The web terminal's first release: the phone's chart, drawn by the phone's code, in a browser, on the
-relay's live candles. What was done, what was measured, and what was chosen against the brief.
+The web version, from the chart alone (W1b, 5.8.x) to the whole app (5.9.0). What was done, what
+was measured, and what was chosen.
 
 ---
 
-## 1. The phone did not change
+## 1. One app, compiled twice
 
-The whole port is a refactor from the phone's point of view (`TERMINAL_BUILD_PROMPT.md` rule 3),
-so the first thing measured was the one thing that could silently move it: the dependency graph.
+The plan in `docs/web/PLAN.md` was a port: screen by screen, W2 then W3, each rewritten against
+Compose Multiplatform. The owner's ask was stricter: the site should have **exactly** what the
+Android app has. A port cannot promise that. Every phone release would start a second copy
+drifting away.
 
-Compose Multiplatform's Android artifacts are redirects to androidx Compose. Pin the wrong version
-and Gradle quietly upgrades the phone's Compose under a refactor that promised to change nothing.
-So `:app:dependencies --configuration releaseRuntimeClasspath` was resolved twice — on `HEAD` in a
-separate worktree and on this tree — and every `--- androidx.G:A:V -> W` line reduced to its final
-version:
+So the browser build compiles **the phone's own sources**. `web/build.gradle.kts` names them:
+`app`, all 37 `core/*` modules, every `feature/*` module and `chart/ui`. `:web:shareSources` copies
+them into `web/build/generated/shared` and makes only mechanical changes
+(`web/tools/share_sources.py`):
 
-| | `androidx.*` modules | differing |
-|---|---|---|
-| Compose MP 1.9.0 + Material 3 **1.9.0** | 152 / 152 | **Compose 1.9.2 → 1.9.3 across foundation, ui, animation, material-ripple** — refused |
-| Compose MP 1.9.0 + Material 3 **1.8.2** | 152 / 152 | **none** |
+* **Wire classes.** Gson reads by reflection, and a browser has none. Every class the phone decodes
+  (Retrofit return and body types, `fromJson` targets, Room entities, anything with
+  `@SerializedName`) and everything they contain gets `@Serializable`. `@SerializedName` becomes
+  `@SerialName` plus `@JsonNames` for the Kotlin name, so both spellings decode as they did.
+  141 classes on this tree.
+* **Retrofit.** Each interface gets a `<Name>Web` class that builds the same request from the same
+  annotations and sends it with `fetch`. 31 services.
+* **Hilt.** `WebGraph.kt` is the graph Hilt would build, generated from `AppModule`'s `@Provides`
+  functions and the `@Inject` constructors, with the same qualifiers.
+* **A handful of rewrites that have no browser meaning**: `runBlocking` (runs straight through when
+  the block does not wait), `Class.simpleName`, `decorFitsSystemWindows`.
 
-Material 3 1.9.0 requires Compose 1.9.1, whose Android side is androidx 1.9.3 — above the app's
-BOM. 1.8.2 requires 1.8.2, below it, so the BOM wins and the phone is the build it was. The pin is
-written into `libs.versions.toml` with that reason beside it.
+Under the copied sources, `web/src/shims/kotlin` gives each Android, AndroidX, OkHttp, Retrofit,
+Room, DataStore, WorkManager and JVM API they call its browser meaning, under the same name.
+Thirteen files are replaced outright (`CHECKLIST.md`, first table). Everything else on screen is the
+phone's code.
 
-Then the suite: `./gradlew testDebugUnitTest` green (every golden screenshot test included) and
-`./gradlew :app:assembleRelease` green, as two invocations.
+**What this buys.** A screen added to the phone next month is on the site at the next build, with
+no web work. That is the only way «exactly what Android has» stays true.
 
-## 2. The seam
+## 2. The phone did not change
 
-`chart/ui/src/commonMain/.../ChartUiPlatform.kt`. Every `actual` on Android is the code that was
-at the call site before, moved and not changed: the Tehran `ZoneId` (the platform zone *is*
-`java.time.ZoneId`, as a typealias, so no Android caller changed a type), `DateTimeFormatter` with
-`Locale.US`, `JalaliDate` for the Solar Hijri axis, `LocalConfiguration`, the frame-rate vote and
-stylus predictor behind one `ChartHost`, Android's magnifier, the native shadow paint, `BitmapFactory`,
-`synchronized`, `coineProControl`, `CoineProAssetLogo`, two `painterResource`s and seven
-`stringResource`s.
+No file under `app/`, `core/`, `feature/` or `chart/` changed. The build changes are additive:
+`:web` alone applies the serialization plugin, and the Kotlin daemon gets `-Xmx6g`, because
+compiling 606 files for Wasm in one module needs it. `./gradlew testDebugUnitTest` (every golden)
+and `./gradlew :app:assembleRelease` are green on this tree.
 
-The browser's side, and what it does without:
+## 3. Where the data comes from
 
-* **Time.** A fixed +03:30 for Tehran (Iran has kept no daylight saving since 2022, so a fixed
-  offset is exact), the browser's own zone per moment for «the device's zone», a pattern printer
-  over Hinnant's civil-date arithmetic — no `Intl`, for `ChartPlatform.wasmJs.kt`'s reason.
-* **Solar Hijri.** `JalaliDate`'s Borkowski break table, ported line for line, because
-  `:core:common` is an Android module.
-* **No frame-rate vote** (a browser already paints at the display's rate), **no stylus
-  prediction** (the live stroke ends at the last real point), **no magnifier lens**, **no blur**
-  under the price chip. None of these is faked.
-* **Marks the typeface lacks.** IRANYekanX carries no `·`, `Δ`, `◉`, `⋮`, `✕`, `—` or `∅`
-  (measured with its character map). On the phone the system's fallback fonts draw them; a browser
-  page has no fallback and one typeface by rule, so the first frames showed empty boxes. `ChartMarks`
-  gives each the nearest mark the typeface does carry — `•`, `±`, `°`, `¦`, `×`, `…` — in the
-  browser only.
+The page's origin is `pro-chart.com`, and the phone calls two other hosts. `WebRoutes.map` sends
+each phone URL:
 
-## 3. The bundle, and why there is no webpack
+1. to the relay's named route where one fronts exactly that call (prices, candles, news, track
+   record, community, membership, FX showcase). These work today;
+2. to `/up/tradeyar/…` or `/up/coineprofx/…` otherwise. That is the passthrough `SERVER.md` §4.12
+   asks for, with the one thing it must add: the bearer token stays on the server, behind an
+   `HttpOnly` cookie;
+3. pictures from any other host go to `/api/img?url=` (`SERVER.md` §4.13), because Compose draws
+   from bytes and a page may not read another site's bytes.
 
-`:web:wasmJsBrowserDistribution` needs the Kotlin plugin's test tooling, whose Karma is fetched
-from a GitHub archive at build time. That download has nothing to do with the page and failed here
-(`403`). The compiler already emits browser-ready ES modules, so `:web:terminalBundle` ships them
-as they are:
+## 4. What was found in the browser
 
-```
-index.html                      1.3 KB   import map for @js-joda/core, <base href="/terminal/">
-terminal.mjs                    0.2 KB
-terminal.uninstantiated.mjs    32 KB
-terminal.wasm                 2.4 MB   Binaryen-optimised
-skiko.mjs                     613 KB   Skia's runtime
-skiko.wasm                    8.0 MB
-js-joda.esm.js                392 KB   imported by name through kotlinx-datetime
-fonts/iranyekanx_{regular,medium,semibold,bold}.ttf   336 KB
-```
+Every screen was driven in Chromium at phone and desktop sizes, in Persian and English, dark and
+light (`CHECKLIST.md`). Three faults were the page's own, and all three are fixed:
 
-Node and Yarn come from the machine rather than a download, because `settings.gradle.kts` refuses
-project repositories; Binaryen still downloads, from a repository the settings declare for it alone.
+* **Icons that never drew.** `Drawables.ensure` ran inside the `LaunchedEffect` of whichever
+  composable asked first. The watchlist toolbar is composed once while the list settles and then
+  again; the first composition's effect was cancelled mid-fetch, and the name stayed «in flight»
+  for the rest of the visit. The fetch is the page's now.
+* **Marks the typeface lacks.** The Kotlin sources write some marks as escapes (`"○"`), which
+  the glyph map, written for literal characters, did not see. It maps both forms now, and the gate
+  reads every string literal in the shared sources, not only the string tables.
+* **News photos.** §3 item 3.
 
-## 4. What the page does
+Two things that looked like faults are the phone's behaviour, so the web keeps them: the community
+feed is empty because the server's feed is empty, and the screener lists symbols without a logo
+because `SymbolArtwork.ARTWORK_GATES_LISTING` has been `false` since run ΤΦΥ.
 
-`/terminal/{SYMBOL}/{tf}` — eleven instruments (six crypto, five forex, each fetched live on
-2026-09-23 before it was listed) and the four timeframes the forex route answers. Crypto: candles
-once, the venue's snapshot every 2 s moving the forming bar, candles again every five minutes.
-Forex: candles every 30 s, never spliced with the forex price, which comes from a different
-upstream. Nothing is asked while the tab is hidden. One random `X-Client-Id` per browser. Persian by
-default, English on one tap, remembered. A failed load retries once after three seconds, then says so
-with a button.
+## 5. What a browser cannot be
 
-## 5. What is not in it
+Home-screen widgets, picture-in-picture, Play Integrity, background work while the tab is closed,
+and opening the system's notification settings. The page does each one's nearest honest thing and
+says so (`CHECKLIST.md`, «What a browser cannot do»). Push while closed is possible and needs Web
+Push keys (`BLOCKED.md` B5).
 
-The workbench, the rails, the layout grid, the object tree, the watchlist, the screener (W2) and
-the script studio (W3). The page is a chart. See `CHECKLIST.md`.
+## 6. The bundle
+
+`./gradlew :web:terminalBundle` → `web/build/terminal/`: `terminal.wasm` 15 MB and Skia's
+`skiko.wasm` 8 MB, both before compression; the phone's 1,156 drawables as their own XML/WebP
+files, fetched as they are first drawn; the fa/en string tables; the help and legal assets; the four
+IRANYekanX weights. No webpack, for the reason in the W1b section of this report's history: the
+compiler's ES modules are served as they are.

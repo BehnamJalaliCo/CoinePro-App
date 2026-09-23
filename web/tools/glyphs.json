@@ -1,0 +1,33 @@
+{
+  "_why": "IRANYekanX, the product's one typeface, has no glyph for these characters. The phone draws them from Android's system fonts; a page draws text through Skia with only the fonts it is given, and the owner's rule is that it is given IRANYekanX and nothing else. So the browser build writes each as the nearest glyph the typeface does have. Applied to the string tables (exportTerminalStrings) and the shared Kotlin sources' literals (share_sources.py); checked by check_web_glyph_map, which reads the Kotlin literals as well as the tables — a `\\u2193` escape included. ⁦ and ⁩ isolate an arrow so a right-to-left line does not mirror it.",
+  "map": {
+    "—": "−",
+    "–": "−",
+    "‑": "-",
+    "·": "•",
+    "→": "⁦›⁩",
+    "←": "⁦‹⁩",
+    "↔": "⁦‹›⁩",
+    "▸": "⁦›⁩",
+    "↑": "^",
+    "↓": "v",
+    "✓": "√",
+    "▲": "^",
+    "▼": "v",
+    "◉": "•",
+    "●": "•",
+    "○": "°",
+    "◆": "•",
+    "★": "*",
+    "✚": "+",
+    "✖": "×",
+    "✕": "×",
+    "⚑": "!",
+    "❗": "!",
+    "≡": "=",
+    "€": "EUR ",
+    "£": "GBP ",
+    "⋮": "…",
+    "⋯": "…"
+  }
+}

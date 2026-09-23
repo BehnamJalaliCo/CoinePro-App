@@ -1,6 +1,8 @@
 buildscript {
     dependencies {
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.0")
+        // The web terminal decodes the phone's wire classes with kotlinx.serialization — :web only.
+        classpath("org.jetbrains.kotlin:kotlin-serialization:2.3.0")
     }
 }
 
