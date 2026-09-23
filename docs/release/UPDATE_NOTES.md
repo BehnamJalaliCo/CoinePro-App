@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.8.1
+
+**fa**
+
+> نمودار پرو چارت حالا در مرورگر هم باز می‌شود، با همان کدی که روی گوشی نمودار را می‌کشد، و بدون ثبت‌نام.
+> در این نسخه‌ی گوشی چیزی عوض نشده است.
+
+**en**
+
+> The Pro Chart chart now opens in a browser too, drawn by the same code that draws it on your phone, with
+> no sign-up. Nothing on the phone has changed in this version.
+
 ## 5.8.0
 
 **fa**
