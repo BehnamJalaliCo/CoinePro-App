@@ -28,14 +28,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
-import com.coinepro.core.designsystem.R as DesignR
 
 /**
  * A price alert as the chart draws it: one line, and a handle you can drag.
@@ -199,7 +197,7 @@ private fun AlertHandle(
         horizontalArrangement = Arrangement.spacedBy(HANDLE_PADDING_DP),
     ) {
         Icon(
-            painter = painterResource(DesignR.drawable.tv_bell),
+            painter = chartGlyph(ChartGlyph.BELL),
             contentDescription = null,
             tint = ink,
             modifier = Modifier.size(GLYPH_DP),

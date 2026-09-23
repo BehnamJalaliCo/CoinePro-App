@@ -1,6 +1,5 @@
 package com.coinepro.core.chart
 
-import android.graphics.BitmapFactory
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -11,7 +10,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -19,10 +17,10 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import com.coinepro.core.designsystem.TABULAR_FIGURES
-import com.coinepro.core.designsystem.CoineProLatinFontFamily
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -73,7 +71,7 @@ fun DrawScope.drawDrawing(
      * away; on a frozen one the mark is still removed by `DrawingActions.expire`, which is the
      * model's own answer and does not wait for a frame.
      */
-    nowMillis: Long = System.currentTimeMillis(),
+    nowMillis: Long = currentTimeMillis(),
     /**
      * Where the image tool's pictures come from.
      *
@@ -239,7 +237,7 @@ fun DrawScope.drawDrawing(
             val delta = chart[1].price - chart[0].price
             val percent = if (chart[0].price != 0.0) delta / chart[0].price * 100 else 0.0
             val bars = ((end.x - a.x) / max(1f, view.barWidth)).roundToInt()
-            val text = "Δ ${priceText(delta)}\n${fixed(percent, 2)}% | $bars بار\n${fixed(degreesOf(a, end), 1)}°"
+            val text = "${ChartMarks.change} ${priceText(delta)}\n${fixed(percent, 2)}% | $bars بار\n${fixed(degreesOf(a, end), 1)}°"
             boxLabel(measurer, text, (a.x + end.x) / 2, (a.y + end.y) / 2, colour, Anchor.CENTER)
         } != null
 
@@ -486,7 +484,7 @@ fun DrawScope.drawDrawing(
             val amplitude = abs(chart[1].price - chart[0].price) / 2
             val samples = (0..SINE_SAMPLES).map { step ->
                 val time = chart[0].time + (wavelength * (step.toDouble() / SINE_SAMPLES) * SINE_CYCLES).toLong()
-                val phase = 2 * Math.PI * (time - chart[0].time) / wavelength
+                val phase = 2 * PI * (time - chart[0].time) / wavelength
                 Offset(view.xOfTime(time), view.yOf(mid + amplitude * sin(phase)))
             }
             polyline(samples, colour, width)
@@ -578,7 +576,7 @@ fun DrawScope.drawDrawing(
             val percent = if (chart[0].price != 0.0) delta / chart[0].price * 100 else 0.0
             val bars = abs(((end.x - a.x) / max(1f, view.barWidth)).roundToInt())
             band(min(a.x, end.x), max(a.x, end.x), a.y, end.y, gainColour(delta).copy(alpha = ZONE))
-            val arrow = if (delta >= 0) "▲" else "▼"
+            val arrow = if (delta >= 0) ChartMarks.rising else ChartMarks.falling
             boxLabel(
                 measurer = measurer,
                 text = "$arrow ${priceText(abs(delta))} (${fixed(percent, 2)}%)\n$bars بار",
@@ -795,10 +793,20 @@ object DrawingImages : DrawingImageSource {
      */
     private const val CAPACITY = 6
 
-    /** Access-ordered, so [CAPACITY] evicts the picture least recently *drawn* rather than oldest. */
-    private val loaded = object : LinkedHashMap<String, ImageBitmap>(CAPACITY, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ImageBitmap>): Boolean =
-            size > CAPACITY
+    /**
+     * Least recently *drawn* first, so [CAPACITY] evicts that picture rather than the oldest.
+     *
+     * Kept in that order by hand — a hit is removed and put back at the end — rather than with the
+     * JVM's access-ordered `LinkedHashMap`, which the browser does not have. Same order, same
+     * eviction; see `TextWidthCache` for the same move.
+     */
+    private val loaded = LinkedHashMap<String, ImageBitmap>()
+
+    /** The picture for [imageId], marked as just drawn. Call under the lock. */
+    private fun touch(imageId: String): ImageBitmap? {
+        val hit = loaded.remove(imageId) ?: return null
+        loaded[imageId] = hit
+        return hit
     }
 
     /** The ids somebody looked for and did not find. Never evicted; there is nothing to evict. */
@@ -838,16 +846,18 @@ object DrawingImages : DrawingImageSource {
     override fun imageFor(imageId: String): DrawingImage {
         // Read inside the draw phase on purpose — see the class note on the revision counter.
         revision.intValue
-        synchronized(loaded) {
-            loaded[imageId]?.let { return DrawingImage.Shown(it) }
-            return if (imageId in gone) DrawingImage.Gone else DrawingImage.Waiting
+        return chartLocked(loaded) {
+            touch(imageId)?.let { DrawingImage.Shown(it) }
+                ?: if (imageId in gone) DrawingImage.Gone else DrawingImage.Waiting
         }
     }
 
     /** Hold a picture somebody else decoded. */
     fun put(imageId: String, bitmap: ImageBitmap) {
-        synchronized(loaded) {
+        chartLocked(loaded) {
+            loaded.remove(imageId)
             loaded[imageId] = bitmap
+            while (loaded.size > CAPACITY) loaded.remove(loaded.keys.first())
             gone.remove(imageId)
         }
         revision.intValue++
@@ -864,15 +874,14 @@ object DrawingImages : DrawingImageSource {
      * Decoding is not free — call it off the main thread.
      */
     fun put(imageId: String, encoded: ByteArray): Boolean {
-        val bitmap = runCatching { BitmapFactory.decodeByteArray(encoded, 0, encoded.size) }.getOrNull()
-            ?: return false
-        put(imageId, bitmap.asImageBitmap())
+        val bitmap = decodeDrawingImage(encoded) ?: return false
+        put(imageId, bitmap)
         return true
     }
 
     /** Record that a picture's bytes are not there, so the frame can say so instead of waiting. */
     fun markGone(imageId: String) {
-        synchronized(loaded) {
+        chartLocked(loaded) {
             loaded.remove(imageId)
             gone.add(imageId)
         }
@@ -881,7 +890,7 @@ object DrawingImages : DrawingImageSource {
 
     /** Drop one picture from memory — the reader deleted the drawing, or replaced its picture. */
     fun forget(imageId: String) {
-        synchronized(loaded) {
+        chartLocked(loaded) {
             loaded.remove(imageId)
             gone.remove(imageId)
         }
@@ -890,7 +899,7 @@ object DrawingImages : DrawingImageSource {
 
     /** Drop everything. For a sign-out, and for a test that must not see the last one's pictures. */
     fun clear() {
-        synchronized(loaded) {
+        chartLocked(loaded) {
             loaded.clear()
             gone.clear()
         }
@@ -1166,7 +1175,7 @@ private fun DrawScope.fillBand(left: Float, right: Float, y0: Float, y1: Float, 
 
 private fun DrawScope.arrowHead(from: Offset, to: Offset, colour: Color, size: Float) {
     val angle = atan2((to.y - from.y).toDouble(), (to.x - from.x).toDouble())
-    val spread = Math.PI / 7
+    val spread = PI / 7
     val path = Path().apply {
         moveTo(to.x, to.y)
         lineTo((to.x - size * cos(angle - spread)).toFloat(), (to.y - size * sin(angle - spread)).toFloat())
@@ -1424,13 +1433,13 @@ private fun spanText(seconds: Long): String {
 }
 
 private fun degreesOf(from: Offset, to: Offset): Float =
-    (atan2(-(to.y - from.y).toDouble(), (to.x - from.x).toDouble()) * 180 / Math.PI).toFloat()
+    (atan2(-(to.y - from.y).toDouble(), (to.x - from.x).toDouble()) * 180 / PI).toFloat()
 
 // Tabular figures and the Latin face: a price on a box label ticks like a price on the axis.
 private fun boxStyle(colour: Color) = TextStyle(
     color = colour,
     fontSize = LABEL_SIZE,
-    fontFamily = CoineProLatinFontFamily,
+    fontFamily = ChartLatinFontFamily,
     fontFeatureSettings = TABULAR_FIGURES,
 )
 
@@ -1876,7 +1885,7 @@ private fun DrawScope.drawExtendedDrawing(
                 )
                 drawCircle(colour, size.height * 0.09f, Offset(a.x + size.width * 0.74f, a.y + size.height * 0.26f), style = Stroke(width))
                 val words = if (picture is DrawingImage.Gone) {
-                    listOfNotNull(MISSING_IMAGE_CAPTION, caption).joinToString(" — ")
+                    listOfNotNull(MISSING_IMAGE_CAPTION, caption).joinToString(ChartMarks.captionJoin)
                 } else {
                     caption ?: DEFAULT_IMAGE_CAPTION
                 }
@@ -2091,7 +2100,7 @@ private fun DrawScope.paintArcs(
             paint.dash,
         )
         val text = arc.label ?: continue
-        val radians = arc.startDeg * Math.PI / 180.0
+        val radians = arc.startDeg * PI / 180.0
         val at = Offset(
             (centre.x + rx * cos(radians)).toFloat(),
             (centre.y - ry * sin(radians)).toFloat(),

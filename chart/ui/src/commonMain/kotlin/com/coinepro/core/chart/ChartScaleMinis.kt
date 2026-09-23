@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
-import com.coinepro.core.designsystem.coineProControl
 
 /**
  * **A** and **L** at the foot of the price gutter (run Ω2).
@@ -126,7 +125,7 @@ private fun Mini(
             .size(MINI_DP)
             .clip(RoundedCornerShape(MINI_RADIUS_DP))
             .background(if (lit) palette.crosshair else palette.crosshair.copy(alpha = MINI_GROUND_ALPHA))
-            .coineProControl(onClick = onClick)
+            .chartControl(onClick = onClick)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {

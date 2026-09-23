@@ -2,6 +2,11 @@
 agp = "9.0.0"
 kotlin = "2.3.0"
 composeBom = "2025.09.01"
+# Compose for the browser. Pinned so its Android resolution stays *below* the BOM — see core/tokens.
+jetbrainsCompose = "1.9.0"
+# Material 3 for the browser. 1.8.2 and not 1.9.0: Material 1.9.0 requires Compose 1.9.1, whose
+# Android side is androidx Compose 1.9.3 — above the BOM — and would move the phone. See core/tokens.
+jetbrainsMaterial3 = "1.8.2"
 playIntegrity = "1.4.0"
 activityCompose = "1.9.3"
 coreKtx = "1.15.0"
@@ -42,6 +47,10 @@ androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-ru
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigation" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "dataStore" }
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+jetbrains-compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "jetbrainsCompose" }
+jetbrains-compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "jetbrainsCompose" }
+jetbrains-compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "jetbrainsCompose" }
+jetbrains-compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "jetbrainsMaterial3" }
 androidx-window = { module = "androidx.window:window", version = "1.5.0" }
 androidx-compose-animation = { module = "androidx.compose.animation:animation" }
 androidx-compose-foundation = { module = "androidx.compose.foundation:foundation" }

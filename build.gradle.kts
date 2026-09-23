@@ -71,3 +71,27 @@ val checkDefaultLocaleIsEnglish by tasks.registering {
         }
     }
 }
+
+/**
+ * The web terminal's Node.js and Yarn come from the machine, not from a download.
+ *
+ * The Kotlin plugin would otherwise add `nodejs.org` and the Yarn release page as project
+ * repositories at build time, and `settings.gradle.kts` refuses project repositories outright —
+ * deliberately, so a dependency can only come from where the settings say. Node 22 and Yarn are on
+ * the CI image and on every machine this is built on (`actions/setup-node` pins the version in CI).
+ */
+plugins.withType<org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsRootPlugin> {
+    the<org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsEnvSpec>().download.set(false)
+}
+plugins.withType<org.jetbrains.kotlin.gradle.targets.wasm.yarn.WasmYarnPlugin> {
+    the<org.jetbrains.kotlin.gradle.targets.wasm.yarn.WasmYarnRootEnvSpec>().download.set(false)
+}
+
+// Binaryen (`wasm-opt`, which shrinks the production bundle) is not on those machines, so it is
+// still downloaded — from the repository `settings.gradle.kts` declares for it, with the plugin's own
+// repository switched off by clearing its base URL.
+subprojects {
+    plugins.withType<org.jetbrains.kotlin.gradle.targets.wasm.binaryen.BinaryenPlugin> {
+        the<org.jetbrains.kotlin.gradle.targets.wasm.binaryen.BinaryenEnvSpec>().downloadBaseUrl.set(null as String?)
+    }
+}

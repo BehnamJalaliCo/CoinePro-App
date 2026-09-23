@@ -60,9 +60,6 @@ val CoineProFontFamily = FontFamily(
  */
 val CoineProLatinFontFamily: FontFamily get() = CoineProFontFamily
 
-/** Tabular figures, so a column of prices lines up and a ticking price does not shift its neighbours. */
-const val TABULAR_FIGURES = "tnum"
-
 /**
  * Persian glyphs sit taller than Latin ones, so line heights are trimmed to the first and last line
  * to keep dense financial rows from gaining uneven vertical padding.

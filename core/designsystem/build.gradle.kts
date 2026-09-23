@@ -22,6 +22,9 @@ android {
 }
 
 dependencies {
+    // The palette and the other plain-Compose tokens, in the same package, with a browser target.
+    // `api`, because every screen that reads a colour reads it through a type that lives there now.
+    api(project(":core:tokens"))
     api(project(":core:common"))
     // api, not implementation: AvatarSpec is in CoineProAvatar's signature, so every screen
     // that draws one needs the type on its own classpath.

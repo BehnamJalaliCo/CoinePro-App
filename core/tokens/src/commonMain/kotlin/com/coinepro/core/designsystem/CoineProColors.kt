@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
-import java.util.Locale
 
 /**
  * Brand palette, sampled from the CoinePro mark, plus the theme-dependent colours read against it.
@@ -241,7 +240,7 @@ object CoineProColors {
      * printed on the disc.
      */
     fun monogramHue(ticker: String): Color {
-        val clean = ticker.uppercase(Locale.US).filter { it.isLetterOrDigit() }
+        val clean = ticker.uppercase().filter { it.isLetterOrDigit() }
         if (clean.isEmpty()) return Color(0xFF8E9BA8)
         // FNV-1a, 32-bit. Small, well spread for short strings, and written down so it cannot change
         // underneath a reader who has learned that their coin is the teal one.

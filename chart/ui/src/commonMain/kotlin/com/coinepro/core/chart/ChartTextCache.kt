@@ -29,10 +29,15 @@ package com.coinepro.core.chart
  */
 internal class TextWidthCache<V>(private val capacity: Int = DEFAULT_CAPACITY) {
 
-    private val entries = object : LinkedHashMap<Any, V>(INITIAL_BUCKETS, LOAD_FACTOR, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Any, V>): Boolean =
-            size > this@TextWidthCache.capacity
-    }
+    /**
+     * Insertion-ordered, with a hit moved to the end by hand — which *is* least-recently-used.
+     *
+     * It used to be the JVM's access-ordered `LinkedHashMap` with `removeEldestEntry`, and that
+     * constructor and that hook exist on the JVM only; the browser's `LinkedHashMap` has neither.
+     * A remove and a re-insert on a hit is the same order in O(1), on every target, and the eviction
+     * rule the test pins is unchanged.
+     */
+    private val entries = LinkedHashMap<Any, V>(INITIAL_BUCKETS)
 
     /** How many measurements are being held. For the test that pins the eviction rule. */
     val size: Int get() = entries.size
@@ -44,9 +49,18 @@ internal class TextWidthCache<V>(private val capacity: Int = DEFAULT_CAPACITY) {
      * an already-measured result would be paying the cost this class exists to avoid.
      */
     fun measure(key: Any, compute: () -> V): V {
-        entries[key]?.let { return it }
+        val held = entries.remove(key)
+        if (held != null) {
+            // Re-inserted, so it is now the most recently used.
+            entries[key] = held
+            return held
+        }
         val measured = compute()
         entries[key] = measured
+        if (entries.size > capacity) {
+            // The first key is the one least recently touched.
+            entries.remove(entries.keys.first())
+        }
         return measured
     }
 
@@ -60,6 +74,5 @@ internal class TextWidthCache<V>(private val capacity: Int = DEFAULT_CAPACITY) {
          */
         const val DEFAULT_CAPACITY = 96
         const val INITIAL_BUCKETS = 32
-        const val LOAD_FACTOR = 0.75f
     }
 }

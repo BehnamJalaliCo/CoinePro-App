@@ -611,6 +611,30 @@ def check_single_typeface() -> None:
             require("fonts.gstatic.com" not in text, f"{path.relative_to(ROOT)}: pulls a face from a font service")
 
 
+def check_web_glyphs() -> None:
+    """The browser's two chart glyphs are the phone's, path for path.
+
+    `ChartUiPlatform.wasmJs.kt` carries the bell and the long/short glyph as path strings because
+    the browser cannot read an Android vector resource. This is what keeps those strings from
+    drifting away from `tv_bell.xml` and `tv_tool_longshort.xml`, which a regeneration of the
+    vendored icons could change.
+    """
+    web = ROOT / "chart/ui/src/wasmJsMain/kotlin/com/coinepro/core/chart/ChartUiPlatform.wasmJs.kt"
+    if not web.exists():
+        return
+    text = web.read_text(encoding="utf-8")
+    drawables = ROOT / "core/designsystem/src/main/res/drawable"
+    for name, constant in (("tv_bell", "BELL_PATHS"), ("tv_tool_longshort", "LONG_SHORT_PATHS")):
+        xml = (drawables / f"{name}.xml").read_text(encoding="utf-8")
+        phone = re.findall(r'android:pathData="([^"]+)"', xml)
+        block = re.search(constant + r" = listOf\((.*?)\n\)", text, re.DOTALL)
+        require(block is not None, f"{web.relative_to(ROOT)}: {constant} is missing")
+        if block is None:
+            continue
+        browser = re.findall(r'"([^"]+)"', block.group(1))
+        require(browser == phone, f"{web.relative_to(ROOT)}: {constant} differs from {name}.xml")
+
+
 MATERIAL_ICON_IMPORT = re.compile(r"^import androidx\.compose\.material\.icons\.", re.MULTILINE)
 STOCK_ICON_USE = re.compile(r"\bIcons\.(Filled|Default|Outlined|Rounded|Sharp|TwoTone)\.")
 
@@ -888,6 +912,7 @@ def main() -> None:
     check_assets_clean()
     check_tabular_digits()
     check_single_typeface()
+    check_web_glyphs()
     check_numeric_styles_are_latin()
     check_every_screen_is_rendered()
     check_bottom_navigation()

@@ -1,7 +1,5 @@
 package com.coinepro.core.chart
 
-import com.coinepro.core.designsystem.R as DesignR
-import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -52,8 +50,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.coinepro.core.designsystem.CoineProAssetLogo
-import com.coinepro.core.designsystem.coineProControl
 import kotlin.math.abs
 
 /**
@@ -378,7 +374,7 @@ internal val ChartPalette.title: Color
 
 internal fun legendSeriesName(label: String, status: ChartMarketStatus?): String {
     val note = status?.let(::statusNote) ?: return label
-    return if (label.isBlank()) note else "$label · $note"
+    return if (label.isBlank()) note else "$label ${ChartMarks.separator} $note"
 }
 
 /**
@@ -1010,7 +1006,7 @@ private fun LegendRow(
                 } else {
                     Modifier
                         .clip(RoundedCornerShape(LEGEND_PLATE_RADIUS_DP))
-                        .coineProControl(onClick = onOverflowClick)
+                        .chartControl(onClick = onOverflowClick)
                         .padding(horizontal = LEGEND_GAP_DP)
                         .semantics { contentDescription = "legend-overflow" }
                 },
@@ -1024,14 +1020,14 @@ private fun LegendRow(
             Spacer(modifier = Modifier.width(LEGEND_ACTIONS_GAP_DP))
             LegendButton(
                 glyph = if (dimmed) GLYPH_HIDDEN else GLYPH_VISIBLE,
-                description = stringResource(if (dimmed) DesignR.string.legend_show else DesignR.string.legend_hide),
+                description = chartText(if (dimmed) ChartText.LEGEND_SHOW else ChartText.LEGEND_HIDE),
                 colour = palette.text,
                 fontSize = fontSize,
             ) { onToggleVisibility(row.target) }
             onOpenSettings?.let { settings ->
                 LegendButton(
                     glyph = GLYPH_SETTINGS,
-                    description = stringResource(DesignR.string.legend_settings),
+                    description = chartText(ChartText.LEGEND_SETTINGS),
                     colour = palette.text,
                     fontSize = fontSize,
                 ) { settings(row.target) }
@@ -1039,7 +1035,7 @@ private fun LegendRow(
             onRemove?.let { remove ->
                 LegendButton(
                     glyph = GLYPH_REMOVE,
-                    description = stringResource(DesignR.string.legend_remove),
+                    description = chartText(ChartText.LEGEND_REMOVE),
                     colour = palette.text,
                     fontSize = fontSize,
                 ) { remove(row.target) }
@@ -1055,7 +1051,7 @@ private fun LegendRow(
             if (!row.primary || slots == 0) Spacer(modifier = Modifier.width(LEGEND_ACTIONS_GAP_DP))
             LegendButton(
                 glyph = if (disclosed) GLYPH_COLLAPSE else GLYPH_EXPAND,
-                description = stringResource(if (disclosed) DesignR.string.legend_controls_close else DesignR.string.legend_controls_open),
+                description = chartText(if (disclosed) ChartText.LEGEND_CONTROLS_CLOSE else ChartText.LEGEND_CONTROLS_OPEN),
                 colour = palette.text,
                 fontSize = fontSize,
                 onClick = toggle,
@@ -1085,7 +1081,7 @@ private fun LegendButton(
         modifier = Modifier
             .touchTarget(footprint = LEGEND_BUTTON_DP, target = LEGEND_TOUCH_DP)
             .clip(CircleShape)
-            .coineProControl(onClick = onClick)
+            .chartControl(onClick = onClick)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
@@ -1184,13 +1180,13 @@ private fun LegendHead(
         onBack?.let { back ->
             LegendButton(
                 glyph = backGlyph,
-                description = stringResource(DesignR.string.legend_back),
+                description = chartText(ChartText.LEGEND_BACK),
                 colour = palette.title,
                 fontSize = fontSize * TITLE_SCALE,
                 onClick = back,
             )
         }
-        logoSymbol?.let { CoineProAssetLogo(symbol = it, size = LEGEND_LOGO_DP) }
+        logoSymbol?.let { ChartAssetLogo(symbol = it, size = LEGEND_LOGO_DP) }
         if (title.isNotBlank()) {
             Text(
                 text = title,
@@ -1223,7 +1219,7 @@ private fun LegendHead(
         Spacer(modifier = Modifier.width(LEGEND_ACTIONS_GAP_DP))
         LegendButton(
             glyph = if (disclosed) GLYPH_COLLAPSE else GLYPH_EXPAND,
-            description = stringResource(if (disclosed) DesignR.string.legend_controls_close else DesignR.string.legend_controls_open),
+            description = chartText(if (disclosed) ChartText.LEGEND_CONTROLS_CLOSE else ChartText.LEGEND_CONTROLS_OPEN),
             colour = palette.text,
             fontSize = fontSize,
             onClick = disclosure,
@@ -1294,7 +1290,7 @@ private const val HIDDEN_ROW_ALPHA = 0.35f
  * and the row being the percentage alone. Δ is the mark every terminal in this category uses for
  * exactly this figure.
  */
-private const val CHANGE_LABEL = "Δ"
+private val CHANGE_LABEL: String get() = ChartMarks.change
 
 /**
  * Two decimals on the percentage, whatever the instrument's own precision.
@@ -1304,10 +1300,10 @@ private const val CHANGE_LABEL = "Δ"
  */
 private const val CHANGE_PERCENT_DECIMALS = 2
 
-private const val GLYPH_VISIBLE = "◉"
-private const val GLYPH_HIDDEN = "◌"
-private const val GLYPH_SETTINGS = "⋮"
-private const val GLYPH_REMOVE = "✕"
+private val GLYPH_VISIBLE: String get() = ChartMarks.visible
+private val GLYPH_HIDDEN: String get() = ChartMarks.hidden
+private val GLYPH_SETTINGS: String get() = ChartMarks.settings
+private val GLYPH_REMOVE: String get() = ChartMarks.remove
 
 /**
  * The disclosure, closed and open.
@@ -1325,11 +1321,11 @@ private const val GLYPH_REMOVE = "✕"
  * [ChartLegendOverlay] — so nothing here mirrors on its own, and an arrow pointing the wrong way is
  * worse than no arrow. Which one is chosen against the *page's* direction, not the plate's.
  */
-private const val GLYPH_BACK_LTR = "←"
-private const val GLYPH_BACK_RTL = "→"
+private val GLYPH_BACK_LTR: String get() = ChartMarks.backLtr
+private val GLYPH_BACK_RTL: String get() = ChartMarks.backRtl
 
-private const val GLYPH_EXPAND = "⋯"
-private const val GLYPH_COLLAPSE = "⌃"
+private val GLYPH_EXPAND: String get() = ChartMarks.expand
+private val GLYPH_COLLAPSE: String get() = ChartMarks.collapse
 
 /**
  * Between an indicator's name and its reading — «EMA 20 · 2,699.6».
@@ -1338,7 +1334,7 @@ private const val GLYPH_COLLAPSE = "⌃"
  * the one TradingView sets its legend with. Not a hyphen (a minus sign in a row of figures) and not
  * a slash (a currency pair).
  */
-private const val LEGEND_SEPARATOR = "·"
+private val LEGEND_SEPARATOR: String get() = ChartMarks.separator
 
 /** The dot is a mark between two readings, not a third reading: it sits back from both. */
 private const val SEPARATOR_ALPHA = 0.55f
@@ -1350,7 +1346,7 @@ private const val SEPARATOR_ALPHA = 0.55f
  * one the owner named. It is drawn with the count as a single token so the pair cannot break across
  * the end of the row.
  */
-private const val OVERFLOW_MARK = "▸ "
+private val OVERFLOW_MARK: String get() = ChartMarks.overflow
 
 // The legend's controls are named from resources since 4.72.0 — see `legend_hide` and its
 // neighbours in the design system. They were Kotlin constants, in Persian, and a content

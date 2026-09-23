@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.animation.core.Animatable
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -42,7 +40,6 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.foundation.magnifier
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.RoundRect
@@ -50,9 +47,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -71,7 +66,6 @@ import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.foundation.gestures.calculateCentroid
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
@@ -86,21 +80,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.unit.sp
-import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.designsystem.TABULAR_FIGURES
-import com.coinepro.core.designsystem.CoineProLatinFontFamily
-import com.coinepro.core.common.JalaliDate
-import com.coinepro.core.common.NumberStyle
-import com.coinepro.core.common.PersianDateTime
-import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.pageAccent
 import com.coinepro.core.designsystem.LocalCoineProPalette
-import java.time.Instant
-import java.time.ZoneId
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -321,10 +304,10 @@ fun CoineProChart(
      * themselves are bucketed in [CHART_ZONE], so on a phone outside Tehran the bold label landed on
      * a different bar than the month it was naming.
      *
-     * Resolved by the caller and passed in already built. [ZoneId.of] is a lookup and a parse, and
+     * Resolved by the caller and passed in already built. `ZoneId.of` is a lookup and a parse, and
      * the one place it must never happen is inside the draw pass — a zone per label, per frame.
      */
-    zone: ZoneId = CHART_ZONE,
+    zone: ChartTimeZone = CHART_ZONE,
     /** The instrument's name for the legend's first row, or null to leave it as the four prices. */
     seriesLabel: String? = null,
     /** The instrument whose mark opens the legend. See [ChartLegendOverlay]. */
@@ -675,10 +658,10 @@ fun CoineProChart(
     LaunchedEffect(countdownLive) {
         if (!countdownLive) return@LaunchedEffect
         while (true) {
-            nowSeconds = System.currentTimeMillis() / 1_000
+            nowSeconds = currentTimeMillis() / 1_000
             // Aligned to the next whole second rather than a flat one-second sleep, so the digits
             // change on the second instead of drifting a few milliseconds later each minute.
-            delay(1_000 - System.currentTimeMillis() % 1_000)
+            delay(1_000 - currentTimeMillis() % 1_000)
         }
     }
 
@@ -718,7 +701,7 @@ fun CoineProChart(
      * being one because the chart is in a card. A tablet's chart, docked or not, keeps the gutter
      * its labels ask for — there is no shortage of width there to ration.
      */
-    val onPhone = LocalConfiguration.current.screenWidthDp < TABLET_WIDTH_DP
+    val onPhone = screenWidthDp() < TABLET_WIDTH_DP
     val axisWidth = remember(sampleLabel, priceFontSp, density, measurer, onPhone) {
         val labelWidth = measurer
             .measure(sampleLabel, axisStyle(Color.Black, priceFontSp))
@@ -888,7 +871,7 @@ fun CoineProChart(
         }
     }
 
-    val hostView = LocalView.current
+    val host = rememberChartHost()
 
     /** Whether a finger, a stylus or a fling is moving the picture; drives the frame-rate hint. */
     var interacting by remember { mutableStateOf(false) }
@@ -900,7 +883,7 @@ fun CoineProChart(
     // for its highest rate and lets go when it is at rest — `setRequestedFrameRate` on Android 15+,
     // `SurfaceControl.Transaction.setFrameRate` on 12–14. See [ChartFrameRate].
     LaunchedEffect(interacting) {
-        ChartFrameRate.request(hostView, interacting)
+        host.requestHighFrameRate(interacting)
     }
     var flinging by remember { mutableStateOf(false) }
 
@@ -1178,7 +1161,6 @@ fun CoineProChart(
     val freehandArmed = armed?.points == 0
     /** The stroke under the stylus, in plot pixels, drawn live in the cursor layer. */
     var strokePreview by remember { mutableStateOf<List<Offset>>(emptyList()) }
-    val strokePredictor = remember(hostView) { ChartStrokePredictor(hostView) }
 
     // Pull every magnet-bound anchor back onto its channel whenever the bars are replaced.
     //
@@ -1306,14 +1288,11 @@ fun CoineProChart(
     /**
      * Whether the dates along the bottom are written in Solar Hijri. See [formatTimeTick].
      *
-     * Read from the configuration rather than from `Locale.getDefault()`, and that is not a
-     * preference: this app sets its language per-app, so the process default and the configuration
-     * can legitimately disagree — and the configuration is the one every other date in the app is
-     * already drawn from, through `stringResource`. Resolved once here rather than per label,
+     * Where that answer comes from is the platform's — the configuration on the phone, the reader's
+     * own choice in the browser; see [deviceReadsPersian]. Resolved once here rather than per label,
      * because it is read inside a draw pass that runs sixty times a second on a pan.
      */
-    val jalaliDates =
-        LocalConfiguration.current.locales[0]?.language == AppLanguage.PERSIAN.tag
+    val jalaliDates = deviceReadsPersian()
 
     /**
      * The time axis' labels, and the fade that carries them in and out as the zoom changes.
@@ -1638,7 +1617,7 @@ fun CoineProChart(
     // fingertip while a point is dragged and gone on the lift. Below Android 9 the modifier is a
     // no-op, which is the platform's answer and the right one.
     Box(
-        modifier = modifier.magnifier(
+        modifier = modifier.chartMagnifier(
             sourceCenter = { magnifierAt ?: Offset.Unspecified },
             zoom = MAGNIFIER_ZOOM,
             size = DpSize(MAGNIFIER_WIDTH_DP.dp, MAGNIFIER_HEIGHT_DP.dp),
@@ -2129,10 +2108,7 @@ fun CoineProChart(
                                 if (freehandArmed) {
                                     // The predictor speaks MotionEvent; this feeds it and consumes
                                     // nothing, so the handlers below see every event they saw.
-                                    Modifier.pointerInteropFilter { event ->
-                                        strokePredictor.record(event)
-                                        false
-                                    }
+                                    Modifier.recordStylus(host)
                                 } else {
                                     Modifier
                                 },
@@ -2173,12 +2149,12 @@ fun CoineProChart(
                                         }
                                         samples.clear()
                                         strokePreview = emptyList()
-                                        strokePredictor.reset()
+                                        host.resetPrediction()
                                     },
                                     onDragCancel = {
                                         samples.clear()
                                         strokePreview = emptyList()
-                                        strokePredictor.reset()
+                                        host.resetPrediction()
                                     },
                                 )
                             }
@@ -3551,7 +3527,7 @@ fun CoineProChart(
                         for (index in 1 until ink.size) lineTo(ink[index].x, ink[index].y)
                     }
                     drawPath(path, color = palette.crosshair, style = Stroke(width = FREEHAND_PREVIEW_WIDTH_DP.dp.toPx()))
-                    strokePredictor.predicted?.let { ahead ->
+                    host.predicted?.let { ahead ->
                         val plotAhead = frame.toPlot(ahead)
                         drawLine(
                             color = palette.crosshair.copy(alpha = 0.5f),
@@ -3891,7 +3867,7 @@ fun importanceColour(importance: Importance): Color = when (importance) {
  * A top-level `val`, so the lookup and the parse happen once for the process rather than once per
  * label per frame.
  */
-val CHART_ZONE: ZoneId = ZoneId.of("Asia/Tehran")
+val CHART_ZONE: ChartTimeZone = ChartTehranZone
 
 /** The two halves of a baseline split when there is no baseline to split. Allocated once. */
 private val EMPTY_SPLIT: Pair<DoubleArray, DoubleArray> = DoubleArray(0) to DoubleArray(0)
@@ -4861,7 +4837,7 @@ private fun DrawScope.drawRule(
 private fun timeAxisTicks(
     view: ChartViewport,
     type: ChartType,
-    zone: ZoneId,
+    zone: ChartTimeZone,
     minGapPx: Float,
 ): List<TimeTick> {
     if (view.visibleCount <= 0) return emptyList()
@@ -4871,7 +4847,7 @@ private fun timeAxisTicks(
         times = view.series.time,
         first = view.firstVisible,
         last = view.lastVisible,
-        zone = zone.asChartZone(),
+        zone = zone.toChartZone(),
         minGapBars = gapBars,
         maxTicks = MAX_TIME_LABELS,
         dated = type.isTimeBased,
@@ -5323,7 +5299,7 @@ private const val TRADE_BOLT_WIDTH = 0.6f
  * first bar in a different day, which on a normal intraday chart is at most a session's worth of
  * bars and is done once per frame.
  */
-internal fun previousSessionClose(series: CandleSeries, index: Int, zone: ZoneId): Double? {
+internal fun previousSessionClose(series: CandleSeries, index: Int, zone: ChartTimeZone): Double? {
     if (series.size < 2 || index !in 0 until series.size) return null
     val times = series.time
     val interval = times[times.size - 1] - times[times.size - 2]
@@ -5357,8 +5333,7 @@ internal fun previousSessionClose(series: CandleSeries, index: Int, zone: ZoneId
 }
 
 /** The calendar day a moment falls in, in [zone]. Whole days, so a comparison is one subtraction. */
-private fun localDay(epochSeconds: Long, zone: ZoneId): Long =
-    Instant.ofEpochSecond(epochSeconds).atZone(zone).toLocalDate().toEpochDay()
+private fun localDay(epochSeconds: Long, zone: ChartTimeZone): Long = localEpochDay(epochSeconds, zone)
 
 /** A day, for the rule that keeps the previous close off charts that have no session. */
 private const val SECONDS_PER_DAY = 86_400L
@@ -5480,48 +5455,11 @@ private fun DrawScope.drawAxisChip(
     if (shadow > 0f) drawSoftShadowedPath(chip, fill, shadow) else drawPath(chip, color = fill)
 }
 
-/**
- * One filled path with a soft shadow under it.
- *
- * ### Why this reaches for the framework's paint
- *
- * A blur is the one effect Compose's `DrawScope` has no expression for, and the modifier that does
- * — `Modifier.blur` — is banned in this repository and would be the wrong tool anyway: it is a
- * render-effect pass over a whole layer, per frame, and what is wanted here is four points of
- * softness under one small chip. `Paint.setShadowLayer` is the platform's own answer, it costs
- * nothing when nothing asks for it, and it is what a shadow on a canvas is drawn with.
- *
- * The house rule it does **not** break is the one about coloured glows: [SHADOW_INK] is black at low
- * alpha, in both themes, which is exactly what `check-motion-policy.sh` requires of every shadow in
- * the product.
- *
- * ### The paint is shared, and that is safe here
- *
- * One instance for the module rather than one per frame, because this is called on every pointer
- * move while a crosshair is up and a `Paint` per frame at 120 Hz is 120 allocations a second in the
- * one place this chart has spent three runs removing them from. Every draw happens on the UI thread
- * — a `DrawScope` has nowhere else to happen — and the paint is fully reconfigured on each call, so
- * nothing survives between them.
- */
-private fun DrawScope.drawSoftShadowedPath(path: Path, fill: Color, blur: Float) {
-    drawIntoCanvas { canvas ->
-        val paint = chipShadowPaint
-        paint.reset()
-        paint.isAntiAlias = true
-        paint.color = fill.toArgb()
-        paint.setShadowLayer(blur, 0f, blur * SHADOW_DROP, SHADOW_INK.toArgb())
-        canvas.nativeCanvas.drawPath(path.asAndroidPath(), paint)
-    }
-}
-
-/** See [drawSoftShadowedPath] for why there is one of these rather than one per frame. */
-private val chipShadowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
-
 /** Black at low alpha. The only colour a shadow in this product is ever drawn in. */
-private val SHADOW_INK = Color.Black.copy(alpha = 0.45f)
+internal val SHADOW_INK = Color.Black.copy(alpha = 0.45f)
 
 /** How far a shadow falls, as a fraction of its blur. A quarter: lit from high above. */
-private const val SHADOW_DROP = 0.25f
+internal const val SHADOW_DROP = 0.25f
 
 /**
  * Seconds as `m:ss`, `h:mm:ss` or `Nd`, whichever the size calls for.
@@ -5536,15 +5474,17 @@ internal fun formatCountdown(seconds: Long): String {
     val hours = seconds / 3_600
     val minutes = (seconds % 3_600) / 60
     val rest = seconds % 60
-    // `Locale.US`, not the default. `String.format` follows the device locale, and this app's
-    // default locale is Persian — so without it the countdown reads «۱۴:۰۵» in a column of Latin
-    // prices. The price formatter above was fixed for the same reason and this is the same bug.
+    // Built by hand rather than with `String.format(Locale.US, …)`, which is JVM-only. The rule it
+    // kept is unchanged: Kotlin's `toString` is always Latin, so the countdown never reads «۱۴:۰۵»
+    // in a column of Latin prices on a Persian device.
     return if (hours > 0) {
-        String.format(Locale.US, "%d:%02d:%02d", hours, minutes, rest)
+        "$hours:${minutes.twoDigits()}:${rest.twoDigits()}"
     } else {
-        String.format(Locale.US, "%d:%02d", minutes, rest)
+        "$minutes:${rest.twoDigits()}"
     }
 }
+
+private fun Long.twoDigits(): String = toString().padStart(2, '0')
 
 /**
  * A filled label in the price gutter.
@@ -5617,7 +5557,7 @@ private fun DrawScope.drawTimeAxis(
     type: ChartType,
     palette: ChartPalette,
     measurer: TextMeasurer,
-    zone: ZoneId,
+    zone: ChartTimeZone,
     ticks: List<TimeTick>,
     /** Solar Hijri dates. See [formatTimeTick]; resolved once per frame from the composition. */
     jalali: Boolean,
@@ -6088,7 +6028,7 @@ private fun DrawScope.drawCrosshair(
     palette: ChartPalette,
     measurer: TextMeasurer,
     decoration: ChartDecoration,
-    zone: ZoneId,
+    zone: ChartTimeZone,
     mode: DrawingMode = DrawingMode.CURSOR,
     /**
      * The indicator panes' scales, so a pointer standing in one is read on that pane's scale.
@@ -6516,7 +6456,7 @@ internal fun axisStyle(
     fontWeight = if (bold) FontWeight.SemiBold else FontWeight.Normal,
     // The figure face with tabular figures: the axis is a column of numbers, and a column has
     // to line up — and a price label that changes from 2,574.9 to 2,575.0 must not move.
-    fontFamily = CoineProLatinFontFamily,
+    fontFamily = ChartLatinFontFamily,
     fontFeatureSettings = TABULAR_FIGURES,
     textDirection = TextDirection.Ltr,
 )
@@ -6622,9 +6562,8 @@ internal fun dashEffect(style: LineStyleKind, lineWidth: Float): PathEffect? {
 internal fun formatTime(
     epochSeconds: Long,
     spanSeconds: Long = 0L,
-    zone: ZoneId = ZoneId.systemDefault(),
+    zone: ChartTimeZone = systemChartTimeZone(),
 ): String {
-    val zoned = Instant.ofEpochSecond(epochSeconds).atZone(zone)
     val pattern = when {
         spanSeconds >= SPAN_MULTI_YEAR -> "MMM yy"
         spanSeconds >= SPAN_MULTI_DAY -> "d MMM"
@@ -6633,7 +6572,7 @@ internal fun formatTime(
     // The Latin locale formats the month name as well, so a Persian device gets "12 Mar" rather
     // than a Gregorian month rendered in Persian script — which would read as a Jalali date and
     // be wrong by eleven days.
-    return zoned.format(DateTimeFormatter.ofPattern(pattern, Locale.US))
+    return formatZoned(epochSeconds, zone, pattern)
 }
 
 /**
@@ -6657,7 +6596,7 @@ internal fun formatTime(
 internal fun formatTimeTick(
     tick: TimeTick,
     spanSeconds: Long,
-    zone: ZoneId,
+    zone: ChartTimeZone,
     /**
      * Write the dates in Solar Hijri, which is what a Persian reader's calendar actually is.
      *
@@ -6668,15 +6607,15 @@ internal fun formatTimeTick(
      * by eleven days, and refusing to do it was correct. But the conclusion drawn from it, that the
      * axis must therefore print `12 Mar`, made this the **only** surface in the app on a Gregorian
      * calendar. Every other date a reader sees — the economic calendar's rows, a headline's
-     * timestamp, the activity log, a signal's age — is Solar Hijri through [PersianDateTime]. So a
+     * timestamp, the activity log, a signal's age — is Solar Hijri through `PersianDateTime`. So a
      * reader comparing a CPI release at «۶ اسفند» against the candle it moved was asked to convert
      * a calendar in their head, on the one screen where the whole point is lining two things up.
      *
      * The answer is neither of the two the note considered: convert the date properly and then name
      * the month it lands in. «۱۲ اسفند» is the same instant as `2 March`, not a transliteration of
-     * it, and [JalaliDate] is the same conversion the rest of the app has always used.
+     * it, and `JalaliDate` is the same conversion the rest of the app has always used.
      *
-     * The clock is untouched in both calendars. See [PersianDateTime]: `14:30` is a market figure
+     * The clock is untouched in both calendars. See `PersianDateTime`: `14:30` is a market figure
      * read against MetaTrader and LBank, and it stays Latin wherever it appears.
      */
     jalali: Boolean = false,
@@ -6684,7 +6623,7 @@ internal fun formatTimeTick(
     // The boundary the tick stands on rather than the bar's own stamp — see [TimeTick.boundaryTime].
     // On an aligned feed the two are one number; on any other, this is the difference between an
     // axis that reads «00:00 06:00 12:00» and one that reads «11:23» under every day.
-    val at = tick.boundaryTime(zone.asChartZone())
+    val at = tick.boundaryTime(zone.toChartZone())
     if (jalali) return persianTimeTick(tick, at, spanSeconds, zone)
     val pattern = when (tick.unit) {
         TimeTickUnit.YEAR -> "yyyy"
@@ -6695,48 +6634,14 @@ internal fun formatTimeTick(
     }
     // `Locale.US` for the same reason [formatTime] uses it: a Gregorian month name rendered in
     // Persian script reads as a Jalali date and is wrong by eleven days.
-    return Instant.ofEpochSecond(at)
-        .atZone(zone)
-        .format(DateTimeFormatter.ofPattern(pattern, Locale.US))
-}
-
-/**
- * The same label, in Solar Hijri, shaped for the boundary it stands on.
- *
- * The four cases mirror the Gregorian ones exactly, so the axis has the same rhythm in both
- * calendars: a year is a year, a month is a month with the year attached only across a long window,
- * a day is a day and a month, and anything finer is the clock.
- *
- * A date outside [JalaliDate]'s break table returns [PersianDateTime.UNREPRESENTABLE] rather than
- * throwing, which matters here more than anywhere: this runs inside a draw pass, where an exception
- * is a dead frame and then a dead app, and a synthetic timestamp on a Renko bar is exactly the kind
- * of value that reaches it. The axis prints an em dash for that one label and carries on.
- */
-private fun persianTimeTick(tick: TimeTick, at: Long, spanSeconds: Long, zone: ZoneId): String {
-    val moment = Instant.ofEpochSecond(at)
-    val date = moment.atZone(zone).toLocalDate()
-    val day = JalaliDate.fromGregorianOrNull(date) ?: return PersianDateTime.UNREPRESENTABLE
-    return when (tick.unit) {
-        TimeTickUnit.YEAR -> day.year.toPersianDigits()
-        TimeTickUnit.MONTH ->
-            if (spanSeconds >= SPAN_MULTI_YEAR) day.monthName + " " + day.year.toPersianDigits()
-            else day.monthName
-        TimeTickUnit.WEEK, TimeTickUnit.DAY -> day.formatShort()
-        TimeTickUnit.HOUR, TimeTickUnit.MINUTE -> PersianDateTime.clock(moment, zone)
-        // The even-spread case, which is the one place the *span* rather than the boundary decides.
-        null -> when {
-            spanSeconds >= SPAN_MULTI_YEAR -> day.monthName + " " + day.year.toPersianDigits()
-            spanSeconds >= SPAN_MULTI_DAY -> day.formatShort()
-            else -> PersianDateTime.clock(moment, zone)
-        }
-    }
+    return formatZoned(at, zone, pattern)
 }
 
 /** Beyond this much visible time, an axis label is a date rather than a clock. */
-private const val SPAN_MULTI_DAY = 60L * 60 * 24 * 3
+internal const val SPAN_MULTI_DAY = 60L * 60 * 24 * 3
 
 /** And beyond this, a month and a year rather than a day. */
-private const val SPAN_MULTI_YEAR = 60L * 60 * 24 * 400
+internal const val SPAN_MULTI_YEAR = 60L * 60 * 24 * 400
 
 /** The volume band, as a share of the canvas. */
 /**
@@ -6902,7 +6807,7 @@ private const val MAX_COUNTDOWN_SECONDS = 2L * 86_400
  * one more than once. `∅` is neither a number nor a word in any of this app's languages, it is the
  * same glyph in Persian and Latin runs, and it means exactly what it looks like.
  */
-internal const val NO_VALUE = "∅"
+internal val NO_VALUE: String get() = ChartMarks.noValue
 
 
 /**

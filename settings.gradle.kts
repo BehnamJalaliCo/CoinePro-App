@@ -11,22 +11,38 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // `wasm-opt`, for the web terminal's production bundle, and nothing else: the filter keeps
+        // this repository from ever answering for any other module. See build.gradle.kts.
+        exclusiveContent {
+            forRepository {
+                ivy("https://github.com/WebAssembly/binaryen/releases/download") {
+                    name = "Binaryen"
+                    patternLayout { artifact("version_[revision]/binaryen-version_[revision]-[classifier].[ext]") }
+                    metadataSources { artifact() }
+                }
+            }
+            filter { includeModule("com.github.webassembly", "binaryen") }
+        }
     }
 }
 
 rootProject.name = "CoinePro-App"
 include(":app")
 // The chart, split by what it needs from its platform: the engine (nothing) and the Compose
-// layer (Android). Named by role rather than by tier so the web terminal can take the first
-// without the second — docs/engineering/MODULES.md.
+// layer (Android and the browser). Named by role rather than by tier so the web terminal can take
+// the first without the second — docs/engineering/MODULES.md.
 include(":chart-core")
 project(":chart-core").projectDir = file("chart/core")
 include(":chart-ui")
 project(":chart-ui").projectDir = file("chart/ui")
+// The terminal at pro-chart.com/terminal/: the same chart, in a browser — web/build.gradle.kts.
+include(":web")
 // The indicator language, likewise platform-free; `:core:script` is its Android host.
 include(":namascript")
 include(":benchmark")
 include(":core:common")
+// The part of the design system a browser can have — see core/tokens/build.gradle.kts.
+include(":core:tokens")
 include(":core:model")
 include(":core:network")
 include(":core:datastore")

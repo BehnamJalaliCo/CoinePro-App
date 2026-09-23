@@ -12,7 +12,6 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
-import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -508,8 +507,9 @@ private const val CELL_ALPHA_RANGE = 0.56f
 /**
  * A volume as three or four characters.
  *
- * Latin digits and `Locale.US`, like every other market figure this canvas prints: the device
- * locale is Persian and `String.format` follows it, which would put «۱٫۲K» inside a cell in a grid
+ * Latin digits, like every other market figure this canvas prints — `formatFixed` is `Locale.US` on
+ * the phone and the same bytes in the browser. The device locale is Persian and a locale-following
+ * formatter would follow it, which would put «۱٫۲K» inside a cell in a grid
  * of Latin numbers. The suffixes are Latin too, because a footprint cell is four characters wide
  * and there is no room for a word.
  */
@@ -517,11 +517,11 @@ internal fun compactVolume(volume: Double): String {
     val magnitude = abs(volume)
     return when {
         !volume.isFinite() -> NO_VALUE
-        magnitude >= 1_000_000_000 -> String.format(Locale.US, "%.1fB", volume / 1_000_000_000)
-        magnitude >= 1_000_000 -> String.format(Locale.US, "%.1fM", volume / 1_000_000)
-        magnitude >= 1_000 -> String.format(Locale.US, "%.1fK", volume / 1_000)
-        magnitude >= 1 -> String.format(Locale.US, "%.0f", volume)
-        else -> String.format(Locale.US, "%.2f", volume)
+        magnitude >= 1_000_000_000 -> formatFixed(volume / 1_000_000_000, 1) + "B"
+        magnitude >= 1_000_000 -> formatFixed(volume / 1_000_000, 1) + "M"
+        magnitude >= 1_000 -> formatFixed(volume / 1_000, 1) + "K"
+        magnitude >= 1 -> formatFixed(volume, 0)
+        else -> formatFixed(volume, 2)
     }
 }
 

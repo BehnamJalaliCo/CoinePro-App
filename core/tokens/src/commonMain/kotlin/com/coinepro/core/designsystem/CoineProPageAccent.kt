@@ -105,8 +105,11 @@ val CoineProColors.onPageAccent: Color
  * Not a composable, deliberately: the one-accent rule is the kind of claim that is worth a test
  * rather than a screenshot, and a `@Composable` private function can only be checked by rendering
  * something. See `PageAccentTest`.
+ *
+ * Public rather than internal since the web port moved this file into `:core:tokens`: the test
+ * that pins it stayed in `:core:designsystem`, and `internal` stops at a module's edge.
  */
-internal fun CoineProPalette.accentFor(accent: PageAccent, fill: Boolean): Color = when (accent) {
+fun CoineProPalette.accentFor(accent: PageAccent, fill: Boolean): Color = when (accent) {
     // One accent. The fill/ink split is gold's alone and is the reason this cannot simply be a
     // constant: gold as a fill is the brand mid-tone, gold as ink is darkened for white.
     PageAccent.ANALYSIS, PageAccent.SOCIAL, PageAccent.BRAND -> if (fill) accentFill else this.accent
@@ -116,7 +119,7 @@ internal fun CoineProPalette.accentFor(accent: PageAccent, fill: Boolean): Color
 }
 
 /** The ink that reads on a fill of [accentFor]. */
-internal fun CoineProPalette.inkOn(accent: PageAccent): Color = when (accent) {
+fun CoineProPalette.inkOn(accent: PageAccent): Color = when (accent) {
     // White on the one fill that is still a hue; near-black on gold, which is a mid-tone and fails
     // contrast under white in either theme.
     PageAccent.DESTRUCTIVE -> Color.White

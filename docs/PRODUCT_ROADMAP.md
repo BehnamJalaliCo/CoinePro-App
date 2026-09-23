@@ -277,9 +277,11 @@ Runbook: `docs/PHASE17_INCIDENT_RUNBOOK.md`
 app
 chart-core
 chart-ui
+web
 namascript
 benchmark
 core:common
+core:tokens
 core:model
 core:network
 core:datastore

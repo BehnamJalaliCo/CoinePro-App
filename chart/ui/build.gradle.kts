@@ -22,6 +22,10 @@ plugins {
 }
 
 kotlin {
+    // The browser. Sources move into `commonMain` one file at a time with the build green after each
+    // — `docs/web/TERMINAL_BUILD_PROMPT.md` W1b, rule 4. Until a file has moved it is Android-only.
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+    wasmJs { browser() }
     androidLibrary {
         namespace = "com.coinepro.core.chart"
         compileSdk = 36
@@ -31,6 +35,17 @@ kotlin {
         withHostTestBuilder {}.configure { isIncludeAndroidResources = true }
     }
     sourceSets {
+        // What a file needs once it can be drawn in a browser: the engine, the design tokens, and
+        // Compose Multiplatform. On Android these resolve to the androidx artifacts the app already
+        // has, at versions no higher than its BOM — see core/tokens/build.gradle.kts for why that is
+        // pinned rather than latest.
+        commonMain.dependencies {
+            api(project(":chart-core"))
+            api(project(":core:tokens"))
+            implementation(libs.jetbrains.compose.foundation)
+            implementation(libs.jetbrains.compose.ui)
+            implementation(libs.jetbrains.compose.material3)
+        }
         androidMain.dependencies {
             // The engine, re-exported: every consumer of the Compose chart also speaks its types.
             api(project(":chart-core"))

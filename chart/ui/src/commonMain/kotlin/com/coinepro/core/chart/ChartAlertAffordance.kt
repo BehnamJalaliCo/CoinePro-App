@@ -19,14 +19,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
-import com.coinepro.core.designsystem.R as DesignR
 
 /**
  * The chip in the price gutter that offers something at the price the pointer is on.
@@ -137,7 +135,7 @@ internal fun PriceAxisAlertAffordance(
                     // A bell rather than a plus once there are two of them: «+ and a position tool»
                     // does not say which of the two the plus is.
                     Icon(
-                        painter = painterResource(DesignR.drawable.tv_bell),
+                        painter = chartGlyph(ChartGlyph.BELL),
                         contentDescription = null,
                         tint = palette.stage,
                         modifier = Modifier.size(GLYPH_DP),
@@ -145,7 +143,7 @@ internal fun PriceAxisAlertAffordance(
                 }
                 onRequestOrderAt?.let { order ->
                     Icon(
-                        painter = painterResource(DesignR.drawable.tv_tool_longshort),
+                        painter = chartGlyph(ChartGlyph.LONG_SHORT),
                         contentDescription = ORDER_LABEL,
                         tint = palette.stage,
                         modifier = Modifier
