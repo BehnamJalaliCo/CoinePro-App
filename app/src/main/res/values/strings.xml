@@ -121,6 +121,8 @@
     <string name="notify_news_note">Important headlines</string>
     <string name="notify_calendar">Economic calendar</string>
     <string name="notify_calendar_note">Before high-importance releases</string>
+    <string name="notify_morning_brief">Morning brief</string>
+    <string name="notify_morning_brief_note">Your own markets, once a day, at an hour you choose</string>
     <string name="notify_ai_setup">AI setup</string>
     <string name="notify_ai_setup_note">When the AI finds something worth looking at</string>
 

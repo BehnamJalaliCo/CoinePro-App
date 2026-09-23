@@ -250,6 +250,7 @@ object NotificationChannels {
         NotificationCategory.NEWS,
         NotificationCategory.ANNOUNCEMENT,
         NotificationCategory.CALENDAR,
+        NotificationCategory.MORNING_BRIEF,
         NotificationCategory.AI_SETUP,
         -> GROUP_MARKET
 
@@ -302,6 +303,7 @@ fun NotificationCategory.channelNameRes(): Int = when (this) {
     NotificationCategory.NEWS -> R.string.notify_news
     NotificationCategory.ANNOUNCEMENT -> R.string.notify_announcement
     NotificationCategory.CALENDAR -> R.string.notify_calendar
+    NotificationCategory.MORNING_BRIEF -> R.string.notify_morning_brief
     NotificationCategory.AI_SETUP -> R.string.notify_ai_setup
     NotificationCategory.SECURITY -> R.string.notify_security
     NotificationCategory.ACCOUNT -> R.string.notify_account
@@ -322,6 +324,7 @@ fun NotificationCategory.channelDescriptionRes(): Int = when (this) {
     NotificationCategory.NEWS -> R.string.notify_news_note
     NotificationCategory.ANNOUNCEMENT -> R.string.notify_announcement_note
     NotificationCategory.CALENDAR -> R.string.notify_calendar_note
+    NotificationCategory.MORNING_BRIEF -> R.string.notify_morning_brief_note
     NotificationCategory.AI_SETUP -> R.string.notify_ai_setup_note
     NotificationCategory.SECURITY -> R.string.notify_security_note
     NotificationCategory.ACCOUNT -> R.string.notify_account_note

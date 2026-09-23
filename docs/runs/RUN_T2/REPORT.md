@@ -273,3 +273,93 @@ A polyline through the drawing's **stored anchors**, normalised into a 34dp box.
 a touch that is not on the chart in front of them. What the sketch answers is «which of my three
 trend lines is this», which the anchors answer completely. A one-point tool draws as a horizontal
 line, because that is what a price level is, and not as a dot, which would read as a fault.
+
+---
+
+## C6 — the morning brief, and the four things it refuses to say
+
+Once a day, at an hour the reader picks, one notification: how their watchlist stands, which market
+moved most and by how much, what the chart says about it, and a line of that market's night.
+
+The composing is `RasadBrief` in `:chart-core`, beside the coach whose sentence it borrows, and for
+the same reasons — no model, templates over arithmetic the reader can check, and it ships to the web
+terminal with the engine rather than being rewritten against it. What took the thinking was not the
+sentences. It was the four cases where the right answer is to say nothing, and the one where it is
+not.
+
+**Off until switched on.** Every other one of the eighteen notification categories *reacts* to
+something that happened, and arrives because the reader already asked for the thing it reports.
+This one arrives on a clock whether or not anything happened. An app that starts waking somebody
+every morning without being asked is the one they uninstall rather than the one they configure, so
+`MORNING_BRIEF.defaultOn` is false and the hour is theirs.
+
+**No brief about nothing.** An empty watchlist, or a pass where no market's change could be read at
+all, produces null rather than a notification with a blank in it. And a symbol whose quote came back
+*without* a daily change is left out of the count entirely rather than counted as flat — «two of
+your five rose» and a sentence quietly describing three markets nobody measured are different
+claims.
+
+**No story out of noise.** Below a tenth of a percent — inside the spread on most of what this app
+carries — there is no mover. Naming a 0.04 % night as the day's story would be the brief
+manufacturing one, and a reader who acted on it would have learned exactly the wrong lesson.
+
+**But a quiet night is still sent.** This is the decision that goes the other way, and the tempting
+rule — «only send it when something moved» — is wrong. A scheduled brief that sometimes does not
+arrive is indistinguishable from a broken one, and the reader's response is not «nothing happened»;
+it is to stop relying on it and open the app anyway, which is the whole thing the feature was for.
+So a flat night says so in one sentence and costs two seconds.
+
+### The calendar is its own file, because every bug in it takes a day to see
+
+«The brief arrived at four in the afternoon», «the brief arrived twice», «the brief stopped after
+the clocks changed» are one arithmetic slip apart from each other, and none of them can be found by
+running the app — you would have to wait until tomorrow to see the wrong answer. So
+`MorningBriefSchedule` takes the clock as a parameter and each of them is a case in a list.
+
+Two of its rules are load-bearing. **At exactly the chosen minute the delay is a whole day, never
+zero** — zero is how a daily brief becomes a loop that fires, reschedules for now, and fires again.
+And the once-a-day guard is keyed on **the local day** rather than on «at least twenty hours ago»,
+because the second reading silently skips a day whenever a run lands early: 07:05 on Monday and
+06:50 on Tuesday is 23h45m, which fails the test, and Tuesday then gets no brief at all.
+
+**`PeriodicWorkRequest` is the wrong tool** and this is worth writing down. It takes an interval,
+not a time of day; Android runs it anywhere inside the period, so «every 24 hours starting at 07:00»
+drifts a little later every run and after a fortnight the morning brief arrives at lunchtime with
+nothing in the code to say why. Worse, an interval never asks what time it is, so it cannot follow a
+reader across a time zone or across the hour the clocks change. One-time work with a delay computed
+from the device's own clock asks that question every single day. The cost is that the chain must
+re-arm after each run — which `MorningBriefWorker` does **before** the delivery, so a brief that
+throws still books tomorrow's — and that the app re-arms it at start-up, so a run the system dropped
+does not end the schedule for good.
+
+### The picture, and the trap under it
+
+`BriefSparkline` draws the closes of the same bars the coach's sentence was written from: no axes,
+no grid, no labels, nothing that would need a scale a reader cannot read at that size. What survives
+is the shape, which is the part that cannot mislead. The colour is read **first against last** — a
+night that fell all the way and bounced on the final bar is a night that fell, and colouring by the
+last candle would contradict the sentence printed directly above it.
+
+Trying to test that colour rule taught two things, and the second one changed the design.
+
+**Robolectric's default graphics rasterise nothing.** Its `Canvas` records calls, so every pixel of
+every bitmap comes back as the background — and the first version of the colour assertion passed
+against an empty image. `@GraphicsMode(NATIVE)` fixes that and made the test real.
+
+**And then the `:app` suite was killed with SIGKILL.** Exit 137, no failing test in any module, and
+the reason is that native graphics loads a library *outside* the JVM heap: `maxHeapSize = "2g"` does
+not bound it, and the suite already runs near this container's ceiling with four hundred Robolectric
+renders behind it. Raising the heap would not have helped, because the heap was not what overflowed.
+
+So the geometry came out into `BriefSparklineShape`: draw or refuse, which way the night went, where
+each point lands when the span is zero, which closes survive. Ten cases, an ordinary unit test, no
+Android at all — and what is left in the painter is three paint calls with nothing to decide. That
+is the same move `priceAlertChannelId` made in `NotificationChannels` and for the same reason, and
+it is stated there as plainly as it deserves: out here it is a few lines and a unit test.
+
+### What the reader sees on the settings screen, including a contradiction
+
+The brief's hour can fall inside the reader's own quiet hours. The delivery honours the brief —
+they typed that time specifically, and swallowing it would be the app overruling the more specific
+of two instructions and leaving them with a feature that does nothing. But the card says so, where
+both numbers are on the screen together. The contradiction is shown rather than resolved.

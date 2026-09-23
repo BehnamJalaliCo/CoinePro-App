@@ -189,6 +189,7 @@ news_none_readable_hint	state	feature/news
 news_saved_empty_hint	state	feature/news
 news_timestamp_note	state	feature/news
 notifications_alerts_local_note	tip	feature/notifications
+notifications_brief_note	tip	feature/notifications
 notifications_channel_note	tip	feature/notifications
 notifications_master_note	visible	feature/notifications
 notifications_permission_body	visible	feature/notifications
@@ -201,6 +202,7 @@ notify_copy_closed_note	system	app
 notify_copy_failed_note	system	app
 notify_copy_opened_note	system	app
 notify_marketing_note	system	app
+notify_morning_brief_note	tip	app
 notify_new_signal_note	system	app
 notify_news_note	system	app
 notify_price_alert_note	system	app

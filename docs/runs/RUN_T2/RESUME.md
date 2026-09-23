@@ -15,9 +15,9 @@ for the measurements.
 B2, B3, B5, B9 and B10 are this session's work — B9 narrowed on its bundled sound set, which needs
 audio this repository does not hold (`BLOCKED.md §B9`). B6, B7 and B8 are not started.
 
-**Phase C: three pieces built, the rest audited.** C5's legend figure is new; C1's rule —
+**Phase C: four pieces built, the rest audited.** C5's legend figure is new; C1's rule —
 `NotableBars` — is built and tested with its surface still to come, and both rows are ❌ with the
-checklist saying exactly what is missing. **C2 is ✅.** C3, C4 and C6 do not exist.
+checklist saying exactly what is missing. **C2 and C6 are ✅.** C3 and C4 do not exist.
 
 **C2 was not the small row it looked like.** «Mostly shipped already» was true of the engine and
 false of the product: deleting a drawing killed its alerts *silently*, and the alert then sat in
@@ -28,9 +28,9 @@ that fails without the fix. The lesson for the rest of this phase: **a row that 
 exists» is a row nobody has used end to end.**
 
 **Shipped:** 4.93.0 (phase A + B2/B3/B5/B10), 4.94.0 (B9), 4.95.0 (C5's legend), 4.96.0 (C1's rule),
-5.1.0 (C2). Every gate green and the full unit suite passing on each.
+5.1.0 (C2), 5.2.0 (C6). Every gate green and the full unit suite passing on each.
 
-**Not done, and the next session's list in order:** B6, B7, B8, C1's surface, C3, C4, C6. Each is
+**Not done, and the next session's list in order:** B6, B7, B8, C1's surface, C3, C4. Each is
 named below with its files, the data it reads and the trap in it.
 
 ---
@@ -107,10 +107,22 @@ Reads `JournalController` (the discipline chart), the alert audit trail
 over the watchlist. The share image goes through the existing generator —
 `core/designsystem/…/ShareCard.kt`.
 
-### C6 — Rasad's morning brief
+### C6 — Rasad's morning brief: done in 5.2.0
 
-`app/…/sync/BackgroundSyncScheduler.kt` is the WorkManager pattern to copy, and the Rasad templates
-already produce the sentences. The sparkline image is the one new piece.
+The file this section named does not exist; the pattern actually copied was `LocalAlertWorker` and
+`WidgetRefreshWorker`. Three things a next session should know rather than rediscover:
+
+* **`PeriodicWorkRequest` is the wrong tool for a time of day.** It takes an interval, runs anywhere
+  inside it, and cannot ask what time it is — so it drifts and cannot follow a time zone.
+  `MorningBriefWorker` is one-time work that books its own successor, and `CoineProApp` re-arms the
+  chain at every start so a dropped run does not end it for good.
+* **Do not test a bitmap in `:app`.** Robolectric's default graphics rasterise nothing, so an
+  assertion about pixels passes against an empty image; `@GraphicsMode(NATIVE)` makes it real and
+  then loads a graphics library **outside the JVM heap**, which took this suite past the container
+  and had it killed with SIGKILL — exit 137, no failing test anywhere, and `maxHeapSize` does not
+  bound it. Pull the geometry out into a pure object instead. `BriefSparklineShape` is the pattern.
+* **The composer refuses more than it says.** `RasadBrief` is where every «do not send this» lives,
+  and each refusal has a reason written beside it.
 
 ### C3 — Duel with the past
 

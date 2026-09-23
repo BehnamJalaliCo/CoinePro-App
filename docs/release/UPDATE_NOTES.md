@@ -47,6 +47,22 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.2.0
+
+**fa**
+
+> **رصد صبح**: اگر بخواهید، روزی یک‌بار در ساعتی که خودتان انتخاب می‌کنید، یک اعلان می‌گوید فهرست
+> شما چه وضعی دارد، کدام بازار بیشتر تکان خورده و چارتش چه می‌گوید — با یک خط کوچک از شب همان بازار.
+> پیش‌فرض خاموش است؛ در «اعلان‌ها» روشنش کنید. در شب آرام هم می‌آید و همین را می‌گوید، چون اعلانی که
+> بعضی روزها نمی‌آید با اعلان خراب فرقی ندارد.
+
+**en**
+
+> **The morning brief**: once a day, at an hour you pick, one notification says how your watchlist
+> stands, which market moved most and what its chart says — with a small line of that market's
+> night. Off until you switch it on, under Notifications. It arrives on a quiet night too, and says
+> so: a brief that sometimes does not come is indistinguishable from a broken one.
+
 ## 5.1.0
 
 **fa**

@@ -109,6 +109,20 @@ enum class NotificationCategory(
     /** A high-importance economic release is due. Off by default for the same reason. */
     CALENDAR("calendar", null, defaultOn = false, needsAccount = false),
 
+    /**
+     * **رصد صبح** — the reader's own markets, once a day, at an hour they chose.
+     *
+     * Off by default, and that is not timidity. Every other category here is a *reaction* to
+     * something that happened — a signal, a fill, a level reached — and arrives because the reader
+     * already asked for the thing it reports. This one arrives **on a clock**, whether or not
+     * anything happened, and an app that starts waking somebody every morning without being asked
+     * is the app they uninstall rather than the one they configure.
+     *
+     * So it is switched on deliberately, and the reader picks the hour when they do it. See
+     * [NotificationSettings.briefMinuteOfDay].
+     */
+    MORNING_BRIEF("morning_brief", null, defaultOn = false, needsAccount = false),
+
     /* --------------------------------------------------------------------- ai */
 
     /** The AI found a setup worth looking at. */
@@ -166,6 +180,7 @@ enum class NotificationCategory(
             "news" -> NEWS
             "announcement", "announcements", "notice" -> ANNOUNCEMENT
             "calendar", "economic" -> CALENDAR
+            "brief", "morning_brief", "daily_brief" -> MORNING_BRIEF
             "ai", "ai_setup", "setup" -> AI_SETUP
             "security", "login" -> SECURITY
             "account", "membership", "kyc", "subscription" -> ACCOUNT
@@ -242,6 +257,19 @@ data class NotificationSettings(
     val categories: Map<NotificationCategory, Boolean> =
         NotificationCategory.entries.associateWith { it.defaultOn },
     val quietHours: QuietHours = QuietHours(),
+    /**
+     * When the morning brief is delivered, in minutes since local midnight.
+     *
+     * Seven in the morning by default — before the European session opens and after most people
+     * are awake — but the default only matters for somebody who switches the brief on without
+     * changing it, because it is off until they do.
+     *
+     * **Local, and deliberately not a fixed instant.** A brief is about a reader's own morning, so
+     * it follows them across a time zone rather than arriving at four in the afternoon because
+     * they flew somewhere. The scheduler recomputes the next delivery each time it runs; see
+     * `MorningBriefSchedule`.
+     */
+    val briefMinuteOfDay: Int = DEFAULT_BRIEF_MINUTE,
 ) {
     fun isOn(category: NotificationCategory): Boolean =
         if (!category.silenceable) true else categories[category] ?: category.defaultOn
@@ -282,4 +310,22 @@ data class NotificationSettings(
         priceAlerts = enabled && isOn(NotificationCategory.PRICE_ALERT),
         announcements = enabled && isOn(NotificationCategory.ANNOUNCEMENT),
     )
+
+    /**
+     * Whether the daily brief should be scheduled at all.
+     *
+     * The master switch and the mute count, because a scheduled wake-up that is going to be
+     * dropped on arrival is battery spent for nothing — unlike a push, which has already cost its
+     * data by the time the app sees it. Quiet hours are **not** consulted here: they are a
+     * wall-clock window and the brief's own hour is one the reader typed, so a brief scheduled
+     * inside their own quiet hours is a contradiction to resolve on the screen rather than by
+     * silently not delivering.
+     */
+    val briefScheduled: Boolean
+        get() = enabled && isOn(NotificationCategory.MORNING_BRIEF)
+
+    companion object {
+        /** Seven in the morning, local. See [briefMinuteOfDay]. */
+        const val DEFAULT_BRIEF_MINUTE: Int = 7 * 60
+    }
 }

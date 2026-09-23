@@ -121,6 +121,8 @@
     <string name="notify_news_note">تیترهای مهم</string>
     <string name="notify_calendar">تقویم اقتصادی</string>
     <string name="notify_calendar_note">پیش از رویدادهای پراهمیت</string>
+    <string name="notify_morning_brief">رصد صبح</string>
+    <string name="notify_morning_brief_note">بازارهای خودتان، روزی یک‌بار، ساعتی که خودتان انتخاب می‌کنید</string>
     <string name="notify_ai_setup">ستاپ هوش مصنوعی</string>
     <string name="notify_ai_setup_note">وقتی هوش مصنوعی موقعیتی پیدا می‌کند</string>
 

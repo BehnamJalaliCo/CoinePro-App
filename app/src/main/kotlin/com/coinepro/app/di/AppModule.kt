@@ -6,6 +6,9 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.coinepro.app.BuildConfig
 import com.coinepro.app.alerts.AlertFireStateStore
+import com.coinepro.app.brief.AndroidMorningBriefDeliverer
+import com.coinepro.app.brief.MorningBriefEngine
+import com.coinepro.app.brief.PreferencesBriefDeliveryStore
 import com.coinepro.app.alerts.GatewayServerAlerts
 import com.coinepro.app.auth.RegistrationStore
 import com.coinepro.core.academy.AcademyController
@@ -72,6 +75,7 @@ import com.coinepro.core.datastore.IndicatorFavouritesStore
 import com.coinepro.core.datastore.IntervalFavouritesStore
 import com.coinepro.core.datastore.TeachingStore
 import com.coinepro.core.datastore.LocalAlertStore
+import com.coinepro.core.common.AppLocale
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.datastore.PaperLedgerPrefStore
 import com.coinepro.core.datastore.ProfileStore
@@ -210,6 +214,32 @@ object AppModule {
     @Singleton
     fun preferences(@ApplicationContext context: Context): DataStore<Preferences> =
         context.appPreferences
+
+    /**
+     * The morning brief's one pass (run Τ2, C6).
+     *
+     * Assembled here rather than constructor-injected because two of its five collaborators are
+     * decisions rather than dependencies: **which language** — the process-wide `AppLocale`, which
+     * is where code with no screen to ask reads it, and which must be read at delivery rather than
+     * captured now — and **where the brief goes**, which is an interface precisely so a test can
+     * hand it a fake and read back what was composed without an Android notification in the way.
+     */
+    @Provides
+    @Singleton
+    fun morningBriefEngine(
+        watchlists: WatchlistStore,
+        gateway: GuestGateway,
+        settings: NotificationSettingsStore,
+        delivery: PreferencesBriefDeliveryStore,
+        deliverer: AndroidMorningBriefDeliverer,
+    ): MorningBriefEngine = MorningBriefEngine(
+        watchlists = watchlists,
+        gateway = gateway,
+        settings = settings,
+        languageOf = { AppLocale.language },
+        delivery = delivery,
+        deliverer = deliverer,
+    )
 
     @Provides
     @Singleton

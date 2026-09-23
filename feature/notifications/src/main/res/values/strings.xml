@@ -18,6 +18,11 @@
     <string name="notifications_quiet_hour">%1$s</string>
     <string name="notifications_quiet_exception">A copy that opened or failed, and anything about account security, come through anyway — money moved.</string>
 
+    <string name="notifications_brief">Morning brief</string>
+    <string name="notifications_brief_note">Your own watchlist, once a day: how it stands, what moved most, and what the chart says about it</string>
+    <string name="notifications_brief_at">Arrives at</string>
+    <string name="notifications_brief_quiet_clash">This hour falls inside your quiet hours. The brief still arrives — you asked for this time specifically — but move one of them if that is not what you meant.</string>
+
     <string name="notifications_alerts_title">My price alerts</string>
     <string name="notifications_alerts_count">%1$s of %2$s</string>
     <string name="notifications_alerts_empty">You have not made any alerts yet.</string>

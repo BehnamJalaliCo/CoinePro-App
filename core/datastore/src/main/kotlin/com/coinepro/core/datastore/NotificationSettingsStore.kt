@@ -39,6 +39,7 @@ class NotificationSettingsStore(private val dataStore: DataStore<Preferences>) {
                 fromMinuteOfDay = preferences[QUIET_FROM] ?: (23 * 60),
                 toMinuteOfDay = preferences[QUIET_TO] ?: (7 * 60),
             ),
+            briefMinuteOfDay = preferences[BRIEF_MINUTE] ?: NotificationSettings.DEFAULT_BRIEF_MINUTE,
         )
     }
 
@@ -68,6 +69,16 @@ class NotificationSettingsStore(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    /**
+     * When the morning brief arrives, in minutes since local midnight.
+     *
+     * Clamped rather than refused: the picker cannot produce an out-of-range value, and a stored
+     * one that somehow is would otherwise schedule the brief for a moment that never comes.
+     */
+    suspend fun setBriefMinute(minuteOfDay: Int) {
+        dataStore.edit { it[BRIEF_MINUTE] = minuteOfDay.coerceIn(0, 24 * 60 - 1) }
+    }
+
     /** Back to the app's own defaults — every stored choice forgotten, not overwritten. */
     suspend fun reset() {
         dataStore.edit { preferences ->
@@ -76,6 +87,7 @@ class NotificationSettingsStore(private val dataStore: DataStore<Preferences>) {
             preferences.remove(QUIET_ENABLED)
             preferences.remove(QUIET_FROM)
             preferences.remove(QUIET_TO)
+            preferences.remove(BRIEF_MINUTE)
             NotificationCategory.entries.forEach { preferences.remove(key(it)) }
         }
     }
@@ -88,5 +100,6 @@ class NotificationSettingsStore(private val dataStore: DataStore<Preferences>) {
         val QUIET_ENABLED = booleanPreferencesKey("notify_quiet_enabled")
         val QUIET_FROM = intPreferencesKey("notify_quiet_from")
         val QUIET_TO = intPreferencesKey("notify_quiet_to")
+        val BRIEF_MINUTE = intPreferencesKey("notify_brief_minute")
     }
 }

@@ -91,6 +91,10 @@ fun NotificationSettingsScreen(
     onSetEnabled: (Boolean) -> Unit = {},
     onSetCategory: (NotificationCategory, Boolean) -> Unit = { _, _ -> },
     onSetQuietHours: (Boolean, Int, Int) -> Unit = { _, _, _ -> },
+    /** The daily brief's switch. Off until the reader asks — see [NotificationCategory.MORNING_BRIEF]. */
+    onSetBriefOn: (Boolean) -> Unit = { },
+    /** The hour it arrives, in minutes since local midnight. */
+    onSetBriefMinute: (Int) -> Unit = { },
     onAddAlert: () -> Unit = {},
     onToggleAlert: (LocalPriceAlert, Boolean) -> Unit = { _, _ -> },
     onDeleteAlert: (LocalPriceAlert) -> Unit = {},
@@ -124,6 +128,14 @@ fun NotificationSettingsScreen(
             QuietHoursCard(
                 settings = settings,
                 onSet = onSetQuietHours,
+            )
+        }
+
+        item {
+            MorningBriefCard(
+                settings = settings,
+                onSetOn = onSetBriefOn,
+                onSetHour = onSetBriefMinute,
             )
         }
 
@@ -324,6 +336,61 @@ private fun QuietHoursCard(
                     color = CoineProColors.TextMuted,
                     modifier = Modifier.padding(top = CoineProSpacing.One),
                 )
+            }
+        }
+    }
+}
+
+/**
+ * **رصد صبح** — the one notification in this app that arrives on a clock.
+ *
+ * ### Why it has an hour and the other seventeen do not
+ *
+ * Every other category here reacts to something: a signal, a fill, a level reached. Their timing
+ * is the market's. This one is the reader's own morning, so the hour is theirs to set, and the
+ * switch stays off until they set it — an app that starts waking somebody daily without being
+ * asked is the app they uninstall rather than the one they configure.
+ *
+ * ### The contradiction is shown, not resolved
+ *
+ * A brief timed inside the reader's own quiet hours is two instructions disagreeing, and the app
+ * does not silently pick one: the delivery honours the brief's hour (see
+ * `AndroidMorningBriefDeliverer`), and this card says so where both numbers are on the screen
+ * together. Swallowing it quietly is how a feature comes to look broken.
+ */
+@Composable
+private fun MorningBriefCard(
+    settings: NotificationSettings,
+    onSetOn: (Boolean) -> Unit,
+    onSetHour: (Int) -> Unit,
+) {
+    val on = settings.isOn(NotificationCategory.MORNING_BRIEF)
+    val clashes = on && settings.quietHours.contains(settings.briefMinuteOfDay)
+    CoineProCard(modifier = Modifier.fillMaxWidth().padding(horizontal = CoineProSpacing.Gutter)) {
+        Column {
+            CategoryRow(
+                label = stringRes(R.string.notifications_brief),
+                noteRes = R.string.notifications_brief_note,
+                checked = on,
+                enabled = settings.enabled,
+                onChange = onSetOn,
+                padded = false,
+            )
+            if (on) {
+                CoineProRowDivider()
+                HourRow(
+                    label = stringRes(R.string.notifications_brief_at),
+                    minuteOfDay = settings.briefMinuteOfDay,
+                    onChange = onSetHour,
+                )
+                if (clashes) {
+                    Text(
+                        text = stringRes(R.string.notifications_brief_quiet_clash),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CoineProColors.Gold,
+                        modifier = Modifier.padding(top = CoineProSpacing.One),
+                    )
+                }
             }
         }
     }

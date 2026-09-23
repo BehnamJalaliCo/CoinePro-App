@@ -69,6 +69,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.coinepro.app.alerts.InAppAlertBus
 import com.coinepro.app.alerts.LocalAlertScheduler
+import com.coinepro.app.brief.MorningBriefScheduler
 import com.coinepro.app.auth.GoogleSignInClient
 import com.coinepro.app.security.AppIntegrity
 import com.coinepro.core.update.AppUpdate
@@ -955,6 +956,8 @@ fun CoineProApp(
     notificationSettingsStore: NotificationSettingsStore,
     localAlertStore: LocalAlertStore,
     localAlertScheduler: LocalAlertScheduler,
+    /** Books the daily brief, and moves it when the reader changes the hour. */
+    morningBriefScheduler: MorningBriefScheduler,
     watchlistStore: WatchlistStore,
     /** When the reader was last on Home, for «since your last visit» (run Σ, S5). */
     lastVisitStore: LastVisitStore,
@@ -1173,6 +1176,11 @@ fun CoineProApp(
     LaunchedEffect(storedAlerts) {
         localAlertScheduler.sync(hasActiveAlerts = storedAlerts.any { it.active })
     }
+    // And the daily brief, re-armed on every start. The chain is one-time work that books its own
+    // successor (see `MorningBriefWorker`), so a run the system dropped — a force-stop, a restore
+    // from backup, a reboot on a device that lost its queue — would otherwise end the schedule for
+    // good with nothing on screen to say so.
+    LaunchedEffect(Unit) { runCatching { morningBriefScheduler.sync() } }
     // Read here rather than inside the shell, because both branches need it: a guest has a profile
     // in this app and it is the same profile they keep when they sign in.
     val profile by profileStore.profile.collectAsStateWithLifecycle(initialValue = StoredProfile())
@@ -1501,6 +1509,7 @@ fun CoineProApp(
                 notificationSettingsStore = notificationSettingsStore,
                 localAlertStore = localAlertStore,
                 localAlertScheduler = localAlertScheduler,
+                morningBriefScheduler = morningBriefScheduler,
                 accountName = current.profile.name,
                 accountEmail = current.profile.email,
                 onSetDisplayName = { name -> scope.launch { profileStore.setDisplayName(name) } },
@@ -1728,6 +1737,7 @@ fun CoineProApp(
                         notificationSettingsStore = notificationSettingsStore,
                         localAlertStore = localAlertStore,
                         localAlertScheduler = localAlertScheduler,
+                        morningBriefScheduler = morningBriefScheduler,
                         accountName = null,
                         accountEmail = null,
                         onSetDisplayName = { name -> scope.launch { profileStore.setDisplayName(name) } },
@@ -1986,6 +1996,7 @@ private fun MainShell(
     notificationSettingsStore: NotificationSettingsStore,
     localAlertStore: LocalAlertStore,
     localAlertScheduler: LocalAlertScheduler,
+    morningBriefScheduler: MorningBriefScheduler,
     /** What the server calls this reader, and where to reach them. Null for a guest. */
     accountName: String?,
     accountEmail: String?,
@@ -4023,6 +4034,22 @@ private fun MainShell(
                     onSetQuietHours = { on, from, to ->
                         scope.launch { notificationSettingsStore.setQuietHours(on, from, to) }
                     },
+                    onSetBriefOn = { on ->
+                        scope.launch {
+                            notificationSettingsStore.setCategory(NotificationCategory.MORNING_BRIEF, on)
+                            // Booked or cancelled on the spot rather than at the next start-up: a
+                            // reader who switches this on at midnight should get tomorrow's brief,
+                            // not the one after the next time they open the app.
+                            morningBriefScheduler.sync()
+                        }
+                    },
+                    onSetBriefMinute = { minute ->
+                        scope.launch {
+                            notificationSettingsStore.setBriefMinute(minute)
+                            // REPLACE, so the pending run moves to the new hour. See the scheduler.
+                            morningBriefScheduler.sync()
+                        }
+                    },
                     onAddAlert = { composing = true },
                     onToggleAlert = { alert, active ->
                         scope.launch {
@@ -5009,6 +5036,10 @@ private fun MainShell(
  */
 @Composable
 private fun notificationSections(guest: Boolean): List<NotificationSection> {
+    // `MORNING_BRIEF` is deliberately in none of these. It is the one category with a **time** as
+    // well as a switch, and the two belong on one control: `MorningBriefCard` carries both, and
+    // adding the switch here as well would be two controls for one setting — the kind of pair
+    // where a reader turns one off, sees the other still on, and stops trusting the screen.
     val market = NotificationSection(
         title = stringResource(R.string.channel_group_market),
         categories = listOfNotNull(

@@ -78,6 +78,7 @@ import com.coinepro.core.designsystem.CoineProTheme
 import com.coinepro.core.designsystem.LocalLogoProvider
 import com.coinepro.core.designsystem.LogoProvider
 import com.coinepro.app.alerts.LocalAlertScheduler
+import com.coinepro.app.brief.MorningBriefScheduler
 import com.coinepro.app.alerts.InAppAlertBus
 import com.coinepro.core.datastore.LastVisitStore
 import com.coinepro.core.datastore.ScriptInstallStore
@@ -147,6 +148,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var notificationSettingsStore: NotificationSettingsStore
     @Inject lateinit var localAlertStore: LocalAlertStore
     @Inject lateinit var localAlertScheduler: LocalAlertScheduler
+    @Inject lateinit var morningBriefScheduler: MorningBriefScheduler
     @Inject lateinit var alertsController: AlertsController
     @Inject lateinit var inAppAlertBus: InAppAlertBus
     @Inject lateinit var guestGateway: GuestGateway
@@ -327,6 +329,7 @@ class MainActivity : FragmentActivity() {
                 notificationSettingsStore = notificationSettingsStore,
                 localAlertStore = localAlertStore,
                 localAlertScheduler = localAlertScheduler,
+                morningBriefScheduler = morningBriefScheduler,
                 alertsController = alertsController,
                 inAppAlerts = inAppAlertBus,
                 watchlistStore = watchlistStore,

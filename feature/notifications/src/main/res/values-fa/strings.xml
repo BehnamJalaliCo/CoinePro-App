@@ -18,6 +18,11 @@
     <string name="notifications_quiet_hour">%1$s</string>
     <string name="notifications_quiet_exception">باز شدن و خطای کپی، و اعلان‌های امنیتی، در ساعات سکوت هم می‌آیند — چون پول جابه‌جا شده است.</string>
 
+    <string name="notifications_brief">رصد صبح</string>
+    <string name="notifications_brief_note">فهرست خودتان، روزی یک‌بار: چه وضعی دارد، کدام بیشتر تکان خورده، و چارتش چه می‌گوید</string>
+    <string name="notifications_brief_at">ساعت رسیدن</string>
+    <string name="notifications_brief_quiet_clash">این ساعت داخل ساعات سکوت شماست. رصد صبح باز هم می‌رسد — چون همین ساعت را خودتان خواسته‌اید — ولی اگر منظورتان این نبوده، یکی از این دو را جابه‌جا کنید.</string>
+
     <string name="notifications_alerts_title">هشدارهای قیمت من</string>
     <string name="notifications_alerts_count">%1$s از %2$s</string>
     <string name="notifications_alerts_empty">هنوز هشداری نساخته‌اید.</string>
