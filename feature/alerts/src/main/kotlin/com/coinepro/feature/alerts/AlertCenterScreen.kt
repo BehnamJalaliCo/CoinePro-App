@@ -350,8 +350,17 @@ private fun AlertListRow(row: AlertRow, onOpen: () -> Unit, onActions: () -> Uni
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+            // The line this alert watches, where it still has one. It sits at the trailing edge
+            // rather than replacing the instrument's mark at the leading edge: the reader scans
+            // this list by market first, and a drawing alert is still an alert on an instrument.
+            row.drawing?.takeIf { !it.missing }?.let { drawing ->
+                AlertDrawingSketch(points = drawing.points)
+            }
             if (row.venue == AlertVenue.SERVER) {
                 VenuePill()
+            }
+            if (row.orphaned) {
+                OrphanPill()
             }
             if (row.paused) {
                 PausedPill()
@@ -369,6 +378,11 @@ private fun AlertListRow(row: AlertRow, onOpen: () -> Unit, onActions: () -> Uni
  */
 private fun AlertRow.metaLine(): String {
     val parts = buildList {
+        // Which line, by name — «خط روند», «کانال موازی». The sentence above says only that the
+        // alert watches a drawing, because naming it there is the chart's business and this row
+        // has the drawing in hand. A gone drawing contributes nothing here; `OrphanPill` is the
+        // whole of what there is to say about it.
+        drawing?.takeIf { !it.missing }?.label?.takeIf(String::isNotBlank)?.let(::add)
         timeframe?.takeIf(String::isNotBlank)?.let { add(BidiText.isolateLtr(it)) }
         // An alert with no bar policy is governed by the older wall-clock repeat, whose common
         // case is a one-shot and reads as the same word. Better one honest word than a blank.
@@ -428,6 +442,33 @@ private fun VenuePill() {
         modifier = Modifier
             .clip(CoineProPillShape)
             .background(CoineProColors.SurfaceElevated)
+            .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
+    )
+}
+
+/**
+ * The mark on an alert whose drawing is gone.
+ *
+ * ### Why this is the refusal colour and «متوقف» is not
+ *
+ * A paused alert is the reader's own decision and is muted grey. This one is **not a decision** —
+ * the alert is armed in the store and cannot fire, because the line it measures against no longer
+ * exists and `GuestAlertMarketSource` has nothing to resolve. Until this pill the row was
+ * indistinguishable from a live one, so the way a reader found out was by not being told about a
+ * touch. That is the failure this product removes from its own client everywhere else.
+ *
+ * It says what happened rather than what to do: the alert is still theirs to keep — somebody about
+ * to redraw the line is right to — and the long-press menu already deletes it.
+ */
+@Composable
+private fun OrphanPill() {
+    Text(
+        text = stringResource(R.string.alerts_drawing_missing),
+        style = MaterialTheme.typography.labelSmall,
+        color = CoineProColors.Sell,
+        modifier = Modifier
+            .clip(CoineProPillShape)
+            .background(CoineProTint.fill(CoineProColors.Sell, CoineProColors.Surface))
             .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
     )
 }

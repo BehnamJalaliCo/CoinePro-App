@@ -638,17 +638,27 @@ fun ChartScreen(
     val controller = resolvedController
     val state by controller.state.collectAsStateWithLifecycle()
 
-    /** Deletes a drawing and says so, with the way back. See the note on [toaster] above. */
+    val drawingRemovedWithAlertsMessage = stringResource(R.string.chart_drawing_removed_with_alerts)
+
+    /**
+     * Deletes a drawing and says so, with the way back. See the note on [toaster] above.
+     *
+     * Silent where the controller asked a question instead — a drawing that carries alerts puts up
+     * [DrawingAlertDeleteDialog] and nothing has been deleted yet, so a toast saying it has would
+     * be the app announcing something that has not happened. The dialog's own answer raises it.
+     */
     val deleteDrawingAnnounced: (Long) -> Unit = { id ->
         controller.deleteDrawing(id)
-        toaster.show(
-            CoineProToast(
-                message = drawingRemovedMessage,
-                tone = ToastTone.NEUTRAL,
-                actionLabel = undoLabel,
-                onAction = controller::undo,
-            ),
-        )
+        if (controller.state.value.pendingDrawingDelete == null) {
+            toaster.show(
+                CoineProToast(
+                    message = drawingRemovedMessage,
+                    tone = ToastTone.NEUTRAL,
+                    actionLabel = undoLabel,
+                    onAction = controller::undo,
+                ),
+            )
+        }
     }
 
     /**
@@ -1565,16 +1575,21 @@ fun ChartScreen(
                     //
                     // One message for the lot, and one undo: the chart's history records the whole
                     // deletion as one step, so offering a message per drawing would be three toasts
-                    // for one action, each claiming to undo the same thing.
-                    state.drawing.selection.forEach(controller::deleteDrawing)
-                    toaster.show(
-                        CoineProToast(
-                            message = drawingRemovedMessage,
-                            tone = ToastTone.NEUTRAL,
-                            actionLabel = undoLabel,
-                            onAction = controller::undo,
-                        ),
-                    )
+                    // for one action, each claiming to undo the same thing. This used to loop
+                    // `deleteDrawing`, which recorded no step at all — see `removeDrawings`.
+                    controller.deleteDrawings(state.drawing.selection.toList())
+                    // Silent where the selection carried alerts: the dialog is up, nothing has
+                    // been deleted, and its own answer raises the message.
+                    if (controller.state.value.pendingDrawingDelete == null) {
+                        toaster.show(
+                            CoineProToast(
+                                message = drawingRemovedMessage,
+                                tone = ToastTone.NEUTRAL,
+                                actionLabel = undoLabel,
+                                onAction = controller::undo,
+                            ),
+                        )
+                    }
                 },
                 onOpenSettings = { id -> styling = id },
                 onDismiss = controller::clearSelection,
@@ -2918,6 +2933,30 @@ fun ChartScreen(
                 sheet = null
             },
             onDismiss = { confirmClear = false },
+        )
+    }
+
+    state.pendingDrawingDelete?.let { pending ->
+        DrawingAlertDeleteDialog(
+            pending = pending,
+            onConfirm = { alsoAlerts ->
+                controller.confirmDrawingDelete(alsoAlerts)
+                toaster.show(
+                    CoineProToast(
+                        message = if (alsoAlerts) drawingRemovedWithAlertsMessage else drawingRemovedMessage,
+                        tone = ToastTone.NEUTRAL,
+                        actionLabel = undoLabel,
+                        onAction = {
+                            controller.undo()
+                            // The drawing comes back from the chart's own history; the alerts have
+                            // to be put back separately, or «واگرد» would restore the line and
+                            // leave the reader's alerts deleted.
+                            if (alsoAlerts) controller.restoreAlerts(pending.alerts)
+                        },
+                    ),
+                )
+            },
+            onDismiss = controller::cancelDrawingDelete,
         )
     }
 

@@ -2,7 +2,10 @@ package com.coinepro.app.chart
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.coinepro.core.datastore.LocalAlertStore
+import com.coinepro.core.notifications.LocalPriceAlert
 import com.coinepro.feature.chart.ChartController
+import com.coinepro.feature.chart.DrawingAlerts
 import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.DrawingImageStore
 import com.coinepro.core.diagnostics.AppLog
@@ -12,6 +15,7 @@ import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.marketdata.CandleGateway
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 
 /**
  * One chart controller per symbol, living above the navigation graph.
@@ -78,6 +82,14 @@ class ChartControllers(
      * whichever symbol is asked for, and the map only ever has one chart in front of the reader.
      */
     private val ticks: ChartTickSource,
+    /**
+     * The alerts drawn on these charts' lines, so deleting one asks before it kills them.
+     *
+     * Optional, and null is the build that behaves exactly as this app did before run Τ2. See
+     * `DrawingAlerts`: the chart never evaluates an alert and this does not let it — it is a list
+     * it can count and two verbs it can call.
+     */
+    private val drawingAlerts: DrawingAlerts? = null,
 ) {
     private val controllers = LinkedHashMap<String, ChartController>()
 
@@ -104,6 +116,7 @@ class ChartControllers(
             // The real app has a real clock, so the live edge is polled here and nowhere else.
             live = true,
             ticks = ticks,
+            drawingAlerts = drawingAlerts,
         )
         controllers[key] = created
         while (controllers.size > MAX_CONTROLLERS) {
@@ -141,6 +154,30 @@ fun rememberChartControllers(
     cache: CandleCache,
     archive: CandleArchive,
     ticks: ChartTickSource,
-): ChartControllers = remember(gateway, scope, drawings, images, log, cache, archive, ticks) {
-    ChartControllers(gateway, scope, drawings, images, log, cache, archive, ticks)
+    drawingAlerts: DrawingAlerts? = null,
+): ChartControllers = remember(gateway, scope, drawings, images, log, cache, archive, ticks, drawingAlerts) {
+    ChartControllers(gateway, scope, drawings, images, log, cache, archive, ticks, drawingAlerts)
+}
+
+/**
+ * The reader's alerts, as the chart is allowed to see them.
+ *
+ * Four lines over `LocalAlertStore`, and that is the whole of the coupling: the chart gets a list
+ * it can count and two verbs, and nothing that could tempt it into deciding when an alert fires.
+ * `restore` is [LocalAlertStore.upsert] rather than `add` because the alerts being put back already
+ * have ids — the undo beside a deleted drawing must give back *those* alerts, not new ones with
+ * the same conditions, or the audit trail and the evaluator's bookkeeping would both point at rows
+ * that no longer exist.
+ */
+class StoredDrawingAlerts(private val store: LocalAlertStore) : DrawingAlerts {
+
+    override val alerts: Flow<List<LocalPriceAlert>> get() = store.alerts
+
+    override suspend fun remove(alerts: List<LocalPriceAlert>) {
+        alerts.forEach { store.remove(it.id) }
+    }
+
+    override suspend fun restore(alerts: List<LocalPriceAlert>) {
+        alerts.forEach { store.upsert(it) }
+    }
 }

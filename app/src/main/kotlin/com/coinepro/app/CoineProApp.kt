@@ -75,6 +75,7 @@ import com.coinepro.core.update.AppUpdate
 import com.coinepro.core.update.AppUpdateGateway
 import com.coinepro.core.update.AppUpdateStatus
 import com.coinepro.app.auth.GoogleSignInOutcome
+import com.coinepro.app.chart.StoredDrawingAlerts
 import com.coinepro.app.chart.rememberChartControllers
 import com.coinepro.app.notifications.PushCoordinator
 import com.coinepro.app.notifications.channelDescriptionRes
@@ -2462,6 +2463,10 @@ private fun MainShell(
         // the controller so switching platform hands the chart the feed for the markets it is now
         // drawing, rather than a forex socket under a crypto chart.
         ticks = chartTicks,
+        // So a tap on «حذف» over a line that carries alerts asks before it silently kills them.
+        // Remembered on the store rather than rebuilt each recomposition: the controller holder is
+        // keyed on it, and a new instance per frame would rebuild every chart in the map.
+        drawingAlerts = remember(localAlertStore) { StoredDrawingAlerts(localAlertStore) },
     )
 
     // The catalogue's own prices, which is what makes the strips below useful at all.

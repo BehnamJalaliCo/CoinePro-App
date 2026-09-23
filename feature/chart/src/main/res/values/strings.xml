@@ -393,6 +393,16 @@
     <string name="chart_more_span_note">How much history is in front of you. Each span also picks the bar length that fits it.</string>
     <string name="chart_more_goto">Go to a date</string>
     <string name="chart_drawing_removed">Drawing removed</string>
+    <string name="chart_drawing_alerts_title">This drawing carries alerts</string>
+    <string name="chart_drawing_alerts_one">%1$s alerts watch this line. Delete the line and they can never go off again.</string>
+    <string name="chart_drawing_alerts_many">%1$s alerts watch these %2$s drawings. Delete the drawings and they can never go off again.</string>
+    <string name="chart_drawing_alerts_delete_both">Delete the drawing and its alerts</string>
+    <string name="chart_drawing_alerts_delete_both_many">Delete the drawings and their alerts</string>
+    <string name="chart_drawing_alerts_keep">Delete the drawing, keep the alerts</string>
+    <string name="chart_drawing_alerts_keep_many">Delete the drawings, keep the alerts</string>
+    <string name="chart_drawing_alerts_keep_cost">A kept alert is marked in the alert centre as having lost its drawing, and it stays there until you delete it or draw the line again.</string>
+    <string name="chart_drawing_alerts_cancel">Keep the drawing</string>
+    <string name="chart_drawing_removed_with_alerts">Drawing and its alerts removed</string>
     <string name="chart_more_undo">Undo</string>
     <string name="chart_more_undo_note">The last indicator, span, chart type or drawing change</string>
     <string name="chart_more_redo">Redo</string>

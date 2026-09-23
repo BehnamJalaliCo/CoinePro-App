@@ -65,6 +65,8 @@ import com.coinepro.core.datastore.DrawingImageStore
 import com.coinepro.core.datastore.DrawingSyncStore
 import com.coinepro.core.datastore.IndicatorTemplate
 import com.coinepro.core.datastore.StoredDrawing
+import com.coinepro.core.notifications.AlertDrawingLinks
+import com.coinepro.core.notifications.LocalPriceAlert
 import com.coinepro.core.datastore.SymbolChartState
 import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.diagnostics.AppLog
@@ -441,6 +443,13 @@ data class ChartUiState(
      * resolved a Jalali date against the loaded series.
      */
     val focusIndex: Int? = null,
+    /**
+     * A drawing deletion the reader has been asked about, or null — which is the ordinary case.
+     *
+     * Non-null only where the drawings about to go carry alerts. See [PendingDrawingDelete] for
+     * why this is the one deletion in the app that asks, and why the others still do not.
+     */
+    val pendingDrawingDelete: PendingDrawingDelete? = null,
     /**
      * An already-computed [ChartDerived] the controller is carrying forward, or null to compute.
      *
@@ -1359,6 +1368,13 @@ class ChartController(
      * empty, which is why the seconds keys are only offered where a feed exists.
      */
     private val ticks: ChartTickSource = NoChartTicks,
+    /**
+     * The alerts drawn on this chart's lines, or null on a build that has none.
+     *
+     * Null is the default and the fallback: without one, deleting a drawing behaves exactly as it
+     * did before — one tap, no question, undo in the toast. See [DrawingAlerts].
+     */
+    private val drawingAlerts: DrawingAlerts? = null,
 ) {
 
     /** The venue these bars come from, named. See [CandleGateway.sourceName]. */
@@ -1515,6 +1531,9 @@ class ChartController(
      */
     fun start() {
         restoreDrawings()
+        // Before anything can be deleted, so the first tap on a line already knows what hangs on
+        // it. A no-op on a build with no alerts wired in.
+        watchAlerts()
         // Either store is reason enough to read before loading: one carries this symbol's own
         // settings and the other the layout the reader last used, and a caller that bound only the
         // second still expects it to be on the chart when it opens.
@@ -3218,10 +3237,142 @@ class ChartController(
         persistDrawings()
     }
 
-    fun deleteDrawing(id: Long) {
-        _state.update { it.copy(drawing = DrawingActions.delete(it.drawing, id)) }
+    /**
+     * Takes one drawing off the chart — or asks first, where it carries alerts.
+     *
+     * ### The common case is unchanged, deliberately
+     *
+     * With no [DrawingAlerts] wired in, or with none of them watching this line, the drawing goes
+     * on the spot exactly as it did before run Τ2: one tap, no question, and the toast's «واگرد»
+     * is what pays for it. That trade was settled in run Ω2 and it is right for a line that took
+     * two seconds to draw.
+     *
+     * ### And the case that asks is a different object
+     *
+     * An alert is not a two-second artefact — a condition, a repeat policy, a timeframe and a
+     * channel, none of which is on the chart to be looked at — and deleting the line it hangs on
+     * **silently kills it**: `GuestAlertMarketSource` can no longer resolve the level, so the alert
+     * stays in the centre reading as armed and never fires again. So this asks exactly where the
+     * cost is real, and nowhere else.
+     *
+     * Deleting a **selection** collects into one question rather than one per drawing: five
+     * dialogues in a row is not consent, it is a reader tapping through a wall.
+     */
+    fun deleteDrawing(id: Long) = deleteDrawings(listOf(id))
+
+    /**
+     * The same, for a selection — one step on the stack and one question, not one per drawing.
+     *
+     * The selection toolbar used to loop [deleteDrawing], which asked nothing (there was nothing to
+     * ask) and recorded nothing (see below). Five dialogues in a row is not consent, and five undo
+     * steps for one tap is not an undo.
+     */
+    fun deleteDrawings(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        val watching = alertsOnDrawings(ids)
+        if (watching.isEmpty()) {
+            removeDrawings(ids)
+            return
+        }
+        _state.update { current ->
+            val pending = current.pendingDrawingDelete
+            current.copy(
+                pendingDrawingDelete = PendingDrawingDelete(
+                    drawingIds = (pending?.drawingIds.orEmpty() + ids).distinct(),
+                    alerts = (pending?.alerts.orEmpty() + watching).distinctBy(LocalPriceAlert::id),
+                ),
+            )
+        }
+    }
+
+    /**
+     * The deletion itself, with nothing asked. Every path ends here.
+     *
+     * ### The [record] is a fix, not bookkeeping
+     *
+     * Since run Ω2 the toast beside a deleted drawing has offered «واگرد», and it called this
+     * controller's undo — which walks a stack **this method never pushed to**. Every other change
+     * to the drawing layer arrives through [onDrawing], which records a step whenever the shape of
+     * the layer changes; a delete bypassed it and wrote the new state straight in. So the undo
+     * either did nothing or took back whatever unrelated change happened to be on top: a chart
+     * type, an indicator, a bar length. A proof test now asserts the drawing comes back.
+     *
+     * Recorded once for the whole list, so one tap on «حذف» over a selection of five is one step.
+     */
+    private fun removeDrawings(ids: List<Long>) {
+        record()
+        _state.update { current ->
+            current.copy(drawing = ids.fold(current.drawing, DrawingActions::delete))
+        }
         persistDrawings()
     }
+
+    /**
+     * The reader's answer to [PendingDrawingDelete].
+     *
+     * `alsoAlerts` false leaves the alerts stored and pointing at a line that is gone — which is
+     * not a silent failure any more, because the alert centre names exactly that case. Somebody who
+     * is about to redraw the line is right to keep them, and the app should not decide otherwise
+     * on their behalf.
+     */
+    fun confirmDrawingDelete(alsoAlerts: Boolean) {
+        val pending = _state.value.pendingDrawingDelete ?: return
+        _state.update { it.copy(pendingDrawingDelete = null) }
+        removeDrawings(pending.drawingIds)
+        if (!alsoAlerts) return
+        val gateway = drawingAlerts ?: return
+        scope.launch { runCatching { gateway.remove(pending.alerts) } }
+    }
+
+    /** They changed their mind. The drawings stay; nothing was written. */
+    fun cancelDrawingDelete() {
+        _state.update { it.copy(pendingDrawingDelete = null) }
+    }
+
+    /**
+     * Puts alerts back, for the «واگرد» beside a deleted drawing.
+     *
+     * The drawing itself comes back from [history] — the undo restores its colour, its width, its
+     * lock and its place in the stack — and without this the alerts that went with it would not,
+     * which would make «واگرد» a promise the app only half keeps.
+     */
+    fun restoreAlerts(alerts: List<LocalPriceAlert>) {
+        if (alerts.isEmpty()) return
+        val gateway = drawingAlerts ?: return
+        scope.launch { runCatching { gateway.restore(alerts) } }
+    }
+
+    /**
+     * The alerts watching these drawings, from the snapshot this controller keeps.
+     *
+     * Synchronous on purpose. The lookup sits in front of every delete, including the ones on the
+     * selection toolbar, and a suspending read there would put a disk round trip between the tap
+     * and the line disappearing — which is the lag run K spent a whole item removing from this
+     * screen. The snapshot is at most `LocalPriceAlert.MAX_ALERTS` rows and is kept current by the
+     * collector started below.
+     */
+    private fun alertsOnDrawings(ids: List<Long>): List<LocalPriceAlert> {
+        if (drawingAlerts == null || alertSnapshot.isEmpty()) return emptyList()
+        return ids.flatMap { id -> AlertDrawingLinks.on(alertSnapshot, symbol, id) }
+            .distinctBy(LocalPriceAlert::id)
+    }
+
+    /** Every alert this phone holds, kept current while the chart is alive. See [alertsOnDrawings]. */
+    private var alertSnapshot: List<LocalPriceAlert> = emptyList()
+
+    private fun watchAlerts() {
+        val gateway = drawingAlerts ?: return
+        // Once. `start()` is called again on a recomposition and says so itself; a second collector
+        // on the same flow would be a second subscription to the preferences file for every chart
+        // the reader opens.
+        if (alertWatch != null) return
+        alertWatch = scope.launch {
+            runCatching { gateway.alerts.collect { alerts -> alertSnapshot = alerts } }
+        }
+    }
+
+    /** The one collector [watchAlerts] starts, held so it is never started twice. */
+    private var alertWatch: Job? = null
 
     /* -------------------------------------------------------------- comparison */
 

@@ -692,6 +692,17 @@ fun ChartStudioScreen(
         )
     }
 
+    // The same question the chart screen asks, because the studio's object tree and its style sheet
+    // delete the same drawings. A dialog on one screen and silence on the other would mean the
+    // alerts survived or died depending on which list the reader happened to be looking at.
+    state.pendingDrawingDelete?.let { pending ->
+        DrawingAlertDeleteDialog(
+            pending = pending,
+            onConfirm = controller::confirmDrawingDelete,
+            onDismiss = controller::cancelDrawingDelete,
+        )
+    }
+
     helpEntry?.let { entry -> CoineProHelpSheet(entry = entry, onDismiss = { helpId = null }) }
 }
 

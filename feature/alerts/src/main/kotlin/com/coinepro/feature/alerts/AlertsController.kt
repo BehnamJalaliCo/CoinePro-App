@@ -5,6 +5,7 @@ import com.coinepro.core.datastore.LocalAlertStore
 import com.coinepro.core.datastore.StoredDrawing
 import com.coinepro.core.datastore.Watchlist
 import com.coinepro.core.notifications.AlertAuditEntry
+import com.coinepro.core.notifications.AlertDrawingLinks
 import com.coinepro.core.notifications.AlertChannel
 import com.coinepro.core.notifications.AlertFrequency
 import com.coinepro.core.notifications.AlertMessageTemplate
@@ -28,7 +29,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -57,13 +60,54 @@ data class AlertRow(
      * places to get it wrong.
      */
     val venue: AlertVenue = AlertVenue.DEVICE,
+    /**
+     * The line this alert watches, where it watches one — and where its drawings have been read.
+     *
+     * Null for the great majority of alerts, which watch a price rather than a drawing, and also
+     * for a drawing alert whose symbol has not been read yet. See [AlertRowDrawing].
+     */
+    val drawing: AlertRowDrawing? = null,
 ) {
     /** Whether the reader has switched this one off. Drawn as a mark, not as its own section. */
     val paused: Boolean get() = !alert.active && kind == AlertSectionKind.ARMED
 
+    /**
+     * Whether this alert can no longer fire because the line it watches is gone.
+     *
+     * Not «paused» and not «expired»: the reader switched nothing off and nothing ran out. It is
+     * an alert that is armed in the store and dead in fact, and the row says so.
+     */
+    val orphaned: Boolean get() = drawing?.missing == true
+
     /** The server's own id for a server alert, or null for one this phone decides. */
     val serverId: String? get() = ServerAlertRows.serverIdOf(alert.id)
 }
+
+/**
+ * The drawing an alert watches, as the row draws it.
+ *
+ * ### The thumbnail is of the anchors, and it says so
+ *
+ * [points] are the drawing's own stored anchors — time and price, exactly as the reader placed
+ * them. `feature:alerts` does not depend on `core:chart` and must not start (see [AlertDrawings]
+ * for the argument), so what the row draws is a polyline through those points normalised into its
+ * own box: a **sketch of the shape**, not a render of the chart. It is enough to tell one trend
+ * line from another, which is the job, and it deliberately cannot show anything the chart would
+ * draw differently.
+ */
+data class AlertRowDrawing(
+    /** The Persian name of the tool, from [AlertDrawings.labelOf]. */
+    val label: String,
+    /** The stored anchors, oldest first. Empty for a drawing that is gone. */
+    val points: List<Pair<Long, Double>> = emptyList(),
+    /**
+     * Whether the drawing is no longer on the chart — so the alert **cannot fire**.
+     *
+     * Only ever true where that symbol's drawings were actually read; see
+     * [com.coinepro.core.notifications.AlertDrawingLinks.orphanIds].
+     */
+    val missing: Boolean = false,
+)
 
 /** One heading of the list, with its rows already ordered by [AlertGrouping]. */
 data class AlertRowSection(val kind: AlertSectionKind, val rows: List<AlertRow>)
@@ -266,6 +310,47 @@ class AlertsController(
         // refreshed on first composition would refresh again on every rotation, and the alert
         // centre is reached from four places; a controller that is a singleton asks once.
         scope.launch { runCatching { server.refresh() } }
+        watchLinkedDrawings()
+    }
+
+    /**
+     * Keeps the drawings behind every drawing alert in step with the alert list.
+     *
+     * ### Why the list has to know this at all
+     *
+     * An alert on a line the reader has since deleted **cannot fire** — `GuestAlertMarketSource`
+     * can no longer resolve the level, and in its own words the alert «simply never fires». Before
+     * this it still sat under «فعال» looking armed, so the reader found out by not being told.
+     * That is the failure shape this product has spent four runs removing from its own client, and
+     * it had one left in its own alert centre.
+     *
+     * ### Only the symbols that need it, and only when the set changes
+     *
+     * Keyed on the set of symbols with a drawing condition rather than on the alert list, so a
+     * price alert firing does not re-read anybody's drawings. A reader with no drawing alerts —
+     * which is most of them — never touches the store at all.
+     *
+     * A failed read leaves that symbol **out of the map** rather than in it with an empty list,
+     * which is the difference between «this reader has no drawings on gold» and «I could not find
+     * out», and only the first of those is allowed to mark an alert as broken.
+     */
+    private fun watchLinkedDrawings() {
+        scope.launch {
+            store.alerts
+                .map(AlertDrawingLinks::symbolsOf)
+                .distinctUntilChanged()
+                .collect { symbols ->
+                    if (symbols.isEmpty()) {
+                        ui.update { it.copy(linkedDrawings = emptyMap()) }
+                        return@collect
+                    }
+                    val read = LinkedHashMap<String, List<StoredDrawing>>(symbols.size)
+                    symbols.forEach { symbol ->
+                        runCatching { drawingsOf(symbol) }.onSuccess { read[symbol] = it }
+                    }
+                    ui.update { it.copy(linkedDrawings = read) }
+                }
+        }
     }
 
     // ── the list ────────────────────────────────────────────────────────────────────────────
@@ -1091,6 +1176,7 @@ class AlertsController(
                         timeframe = timeframeOf(alert),
                         kind = section.kind,
                         venue = venues[alert.id] ?: AlertVenue.DEVICE,
+                        drawing = drawingOf(alert, extras.linkedDrawings),
                     )
                 },
             )
@@ -1137,6 +1223,38 @@ class AlertsController(
     private fun matches(query: String): List<SymbolMeta> =
         SymbolSearch.search(catalog(), query).take(PICKER_LIMIT).map { it.meta }
 
+    /**
+     * The line one alert watches, resolved against the drawings that have been read.
+     *
+     * Three answers, and the third is the one that had no way of being said before:
+     *
+     * * **null** — this alert does not watch a drawing, or its symbol has not been read yet. The
+     *   row draws nothing extra, which is right for both: an unread symbol is not a broken alert.
+     * * **present** — the drawing is there, and its anchors go on the row as a sketch.
+     * * **missing** — the drawing is gone, so the alert **cannot fire**. Before this it sat under
+     *   «فعال» reading as armed for as long as the reader left it there.
+     *
+     * The **first** drawing condition names the row. An alert can AND several together, but a row
+     * has space for one thumbnail, and it is the id that is missing that decides the verdict — for
+     * which [com.coinepro.core.notifications.AlertDrawingLinks.orphanIds] already looks at all of
+     * them.
+     */
+    private fun drawingOf(
+        alert: LocalPriceAlert,
+        linked: Map<String, List<StoredDrawing>>,
+    ): AlertRowDrawing? {
+        val wanted = AlertDrawingLinks.drawingIdsOf(alert.trigger)
+        if (wanted.isEmpty()) return null
+        val known = linked[alert.symbol.trim().uppercase()] ?: return null
+        val missingId = wanted.firstOrNull { id -> known.none { it.id.toString() == id } }
+        if (missingId != null) return AlertRowDrawing(label = "", missing = true)
+        val drawing = known.first { it.id.toString() == wanted.first() }
+        return AlertRowDrawing(
+            label = AlertDrawings.labelOf(drawing.toolId),
+            points = drawing.points,
+        )
+    }
+
     private fun catalog(): List<SymbolMeta> {
         val source = catalogOf()
         if (source !== catalogSource) {
@@ -1157,6 +1275,15 @@ class AlertsController(
         val draft: AlertDraft? = null,
         /** The drawings loaded for the draft's current symbol. Cleared when the symbol changes. */
         val drawings: List<AlertDrawingOption> = emptyList(),
+        /**
+         * The drawings of the symbols that have a drawing alert on them, keyed upper-cased.
+         *
+         * **A symbol is in this map only once it has been read**, which is the rule
+         * [AlertDrawingLinks.orphanIds] is built around: not knowing a symbol's drawings is not the
+         * same as knowing it has none, and marking the whole list as broken on the first frame —
+         * before anything has loaded — would be a worse lie than the silence it replaces.
+         */
+        val linkedDrawings: Map<String, List<StoredDrawing>> = emptyMap(),
         val actionsFor: String? = null,
         val confirmingDelete: String? = null,
         val auditFor: String? = null,

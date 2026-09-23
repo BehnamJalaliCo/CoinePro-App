@@ -211,3 +211,65 @@ The other three — C3, C4, C6 — do not exist. `RESUME.md` names the data each
 of them needs a backend: the news and the calendar are in `core/marketintel`, the discipline chart
 is in `JournalController`, the alert history is in `AlertAuditStore`, and the share generator is
 `ShareCard.kt`.
+
+---
+
+## C2 — alerts on drawn objects, and the two silences under it
+
+The row read «the engine exists; the run did not audit the gaps», and the gaps were listed as two
+surfaces: a question before deleting a drawing, and a thumbnail on the alert row. Both are built.
+Neither was the point.
+
+### The failure was written down and nobody had read it as a failure
+
+`GuestAlertMarketSource` resolves each alerted drawing's level at the last two closed bars, and its
+own KDoc says what happens when it cannot:
+
+> A drawing the reader deleted, or one whose tool has no price at all, is left out entirely and its
+> alert simply never fires.
+
+As evaluation that is exactly right — an unresolvable level must not fire — and as a product it is
+the failure this app has spent four runs removing from itself. The alert stayed in the centre under
+«فعال», with its sentence, its timeframe and its repeat policy, reading as armed. It could not go
+off. The way a reader would find out is **by not being told about a touch**, which is to say never.
+
+So the dependence is made visible in the only two places it can be seen.
+
+**Before the deletion**, because the chart is the only screen the deletion starts from. Three
+answers, not two: *keep everything*, *take the line and its alerts*, and *take the line and keep the
+alerts*. The third is not a hedge — it is what somebody about to redraw the line wants, and a
+two-button dialog would force them to pick wrong and repair it afterwards. `CoineProChoiceDialog` is
+new in the design system for it, and it inherits `CoineProConfirmDialog`'s rule whole: **ask only
+where recovery is otherwise impossible.** A drawing nothing watches still goes on the tap with no
+question and an undo behind it, which is the trade run Ω2 made and it is untouched.
+
+**After it**, in the alert centre, in the refusal colour rather than «متوقف»'s muted grey — because
+a paused alert is the reader's decision and this is not one.
+
+The rule that makes the mark honest is in `AlertDrawingLinks.orphanIds` and is worth repeating:
+**not knowing a symbol's drawings is not the same as knowing it has none.** Only symbols actually
+read get a verdict. Without that, the first frame of the screen — before any drawing has loaded —
+would mark every drawing alert in the list as broken, which is a worse lie than the silence.
+
+### And the second defect, which the tests found rather than the audit
+
+Writing the proof for «the undo still works» produced a failing test on the **old** behaviour.
+Since run Ω2 the toast beside a deleted drawing has offered «واگرد»; it called the chart's undo,
+which walks a stack `deleteDrawing` **never pushed to**. Every other change to the drawing layer
+arrives through `onDrawing`, which records a step whenever the shape of the layer changes; the
+delete wrote the new state straight in. So the button did nothing, or took back an unrelated
+change — a chart type, an indicator, a bar length — while announcing that it had restored a
+drawing.
+
+It records now, once per deletion rather than once per drawing, which also makes true a comment the
+selection toolbar had been carrying for two runs: «the chart's history records the whole deletion as
+one step». It did not. It does.
+
+### What the thumbnail is, precisely
+
+A polyline through the drawing's **stored anchors**, normalised into a 34dp box. Not a render:
+`feature:alerts` does not depend on `core:chart` and must not start — the argument is in
+`AlertDrawings`' own KDoc and it is that a second geometry engine would one day tell a reader about
+a touch that is not on the chart in front of them. What the sketch answers is «which of my three
+trend lines is this», which the anchors answer completely. A one-point tool draws as a horizontal
+line, because that is what a price level is, and not as a dot, which would read as a fault.

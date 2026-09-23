@@ -47,6 +47,22 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.1.0
+
+**fa**
+
+> اگر روی یک ترسیم هشدار گذاشته باشید و بعد آن ترسیم را پاک کنید، برنامه پیش از پاک‌کردن می‌پرسد:
+> هشدارها هم بروند یا بمانند. هشداری که ترسیمش رفته دیگر هرگز به صدا درنمی‌آمد و در فهرست هم
+> «فعال» به نظر می‌رسید؛ حالا در مرکز هشدارها نشان‌دار می‌شود. کنار هر هشدارِ ترسیمی هم طرح کوچکی
+> از همان خط دیده می‌شود. و «برگرداندن» بعد از پاک‌کردن یک ترسیم، بالاخره واقعاً برش می‌گرداند.
+
+**en**
+
+> Put an alert on a drawing, then delete the drawing, and the app now asks whether the alerts
+> should go with it. An alert whose drawing is gone could never fire again while still reading as
+> live in the list; it is marked now. Each drawing alert also carries a small sketch of the line it
+> watches. And undo after deleting a drawing finally brings the drawing back.
+
 ## 5.0.6
 
 **fa**

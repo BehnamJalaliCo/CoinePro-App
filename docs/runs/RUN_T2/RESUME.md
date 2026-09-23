@@ -15,16 +15,23 @@ for the measurements.
 B2, B3, B5, B9 and B10 are this session's work — B9 narrowed on its bundled sound set, which needs
 audio this repository does not hold (`BLOCKED.md §B9`). B6, B7 and B8 are not started.
 
-**Phase C: two pieces built, the rest audited.** C5's legend figure is new, and C1's rule —
-`NotableBars` — is built and tested with its surface still to come; both rows are ❌ with the
-checklist saying exactly what is missing. C2 turns out to be mostly shipped already. C3, C4 and C6
-do not exist.
+**Phase C: three pieces built, the rest audited.** C5's legend figure is new; C1's rule —
+`NotableBars` — is built and tested with its surface still to come, and both rows are ❌ with the
+checklist saying exactly what is missing. **C2 is ✅.** C3, C4 and C6 do not exist.
 
-**Shipped:** 4.93.0 (phase A + B2/B3/B5/B10), 4.94.0 (B9), 4.95.0 (C5's legend), 4.96.0 (C1's rule).
-Every gate green and the full unit suite passing on each.
+**C2 was not the small row it looked like.** «Mostly shipped already» was true of the engine and
+false of the product: deleting a drawing killed its alerts *silently*, and the alert then sat in
+the centre under «فعال» unable ever to fire. The audit also turned up a second defect nobody had
+reported — the «واگرد» offered beside every deleted drawing had never restored one, because the
+delete bypassed the only place a drawing step was recorded. Both are fixed and both have a test
+that fails without the fix. The lesson for the rest of this phase: **a row that reads «the engine
+exists» is a row nobody has used end to end.**
 
-**Not done, and the next session's list in order:** B6, B7, B8, C1's surface, C2's two gaps, C3, C4,
-C6. Each is named below with its files, the data it reads and the trap in it.
+**Shipped:** 4.93.0 (phase A + B2/B3/B5/B10), 4.94.0 (B9), 4.95.0 (C5's legend), 4.96.0 (C1's rule),
+5.1.0 (C2). Every gate green and the full unit suite passing on each.
+
+**Not done, and the next session's list in order:** B6, B7, B8, C1's surface, C3, C4, C6. Each is
+named below with its files, the data it reads and the trap in it.
 
 ---
 
@@ -118,8 +125,11 @@ seeding and the scoring.
   per compared series, which is real work in the renderer and is the only honest reading of that
   phrase — and pointing the watchlist's «تحلیل» at the overlay, which would cost the side-by-side
   panes. Both want the owner's word before anybody builds them.
-* **C2:** `AlertTrigger.DrawingTouch` and `AlertDrawings.kt` work. What is left is the
-  delete-a-drawing-asks-about-its-alerts flow and the thumbnail in the alert list.
+* **C2: done in 5.1.0.** `AlertDrawingLinks` (`core:notifications`) is the pure tie between an
+  alert and a line, and it carries the one rule worth remembering: **not knowing a symbol's
+  drawings is not knowing it has none**, so an unread symbol gets no verdict and the first frame of
+  the alert centre marks nothing. `DrawingAlerts` is the four-line seam the chart gets — a list it
+  can count and two verbs — and it stays null on any build that does not want it.
 
 ---
 

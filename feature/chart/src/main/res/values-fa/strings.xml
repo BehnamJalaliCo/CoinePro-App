@@ -395,6 +395,16 @@
     <string name="chart_more_span_note">چقدر تاریخچه جلوی چشم باشد. هر بازه، طول کندل مناسب خودش را هم انتخاب می‌کند.</string>
     <string name="chart_more_goto">رفتن به تاریخ</string>
     <string name="chart_drawing_removed">ترسیم برداشته شد</string>
+    <string name="chart_drawing_alerts_title">روی این ترسیم هشدار هست</string>
+    <string name="chart_drawing_alerts_one">%1$s هشدار این خط را می‌پاید. اگر خط برود، دیگر هرگز به صدا درنمی‌آیند.</string>
+    <string name="chart_drawing_alerts_many">%1$s هشدار این %2$s ترسیم را می‌پاید. اگر ترسیم‌ها بروند، دیگر هرگز به صدا درنمی‌آیند.</string>
+    <string name="chart_drawing_alerts_delete_both">ترسیم و هشدارهایش پاک شوند</string>
+    <string name="chart_drawing_alerts_delete_both_many">ترسیم‌ها و هشدارهایشان پاک شوند</string>
+    <string name="chart_drawing_alerts_keep">ترسیم برود، هشدارها بمانند</string>
+    <string name="chart_drawing_alerts_keep_many">ترسیم‌ها بروند، هشدارها بمانند</string>
+    <string name="chart_drawing_alerts_keep_cost">هشداری که می‌ماند، در مرکز هشدارها نشان‌دار می‌شود که ترسیمش رفته، و تا وقتی خودتان پاکش کنید یا خط را دوباره بکشید همان‌جا می‌ماند.</string>
+    <string name="chart_drawing_alerts_cancel">ترسیم بماند</string>
+    <string name="chart_drawing_removed_with_alerts">ترسیم و هشدارهایش برداشته شد</string>
     <string name="chart_more_undo">برگرداندن</string>
     <string name="chart_more_undo_note">آخرین تغییرِ اندیکاتور، بازه، نوعِ چارت یا ترسیم</string>
     <string name="chart_more_redo">انجام دوباره</string>
