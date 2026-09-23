@@ -2,6 +2,7 @@ package com.coinepro.core.marketdata
 
 import com.coinepro.core.common.foldDigitsToLatin
 import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.common.WeekStart
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -85,7 +86,10 @@ enum class Timeframe(val wire: String, val seconds: Long, val label: String) {
     fun bucketStart(epochSeconds: Long, zone: ZoneId = CHART_TIME_ZONE): Long = when (this) {
         D1 -> dateIn(epochSeconds, zone).atStartOfDay(zone).toEpochSecond()
         W1 -> dateIn(epochSeconds, zone)
-            .with(TemporalAdjusters.previousOrSame(weekStartIn(zone)))
+            // `WeekStart` in `core:common`, not a copy here: the reader's own week — see
+            // «هفته‌ی من» — has to open on the same day this bar does, and two definitions of a
+            // week boundary is one that gets corrected alone.
+            .with(TemporalAdjusters.previousOrSame(WeekStart.of(zone)))
             .atStartOfDay(zone)
             .toEpochSecond()
         MN1 -> dateIn(epochSeconds, zone).withDayOfMonth(1).atStartOfDay(zone).toEpochSecond()
@@ -330,30 +334,6 @@ fun secondsOf(wire: String?): ChartInterval.Seconds? {
 /** The reader's calendar date at [epochSeconds], which is the only thing a day boundary can be read from. */
 private fun dateIn(epochSeconds: Long, zone: ZoneId): LocalDate =
     Instant.ofEpochSecond(epochSeconds).atZone(zone).toLocalDate()
-
-/**
- * The day a week starts on, which is a regional fact and not a property of the offset.
- *
- * Iran's week starts on Saturday, as it does across the Gulf, and a weekly bar that opened on Monday
- * would put the two quietest days of an Iranian week in the middle of it rather than at its end.
- * Everywhere else this falls back to the ISO Monday. The zone is the closest thing to a region this
- * layer has: it is what the caller already passes, and it is right for every reader who has not gone
- * out of their way to run an Iranian chart on a foreign clock.
- */
-private fun weekStartIn(zone: ZoneId): DayOfWeek =
-    if (zone.id in SATURDAY_WEEK_ZONES) DayOfWeek.SATURDAY else DayOfWeek.MONDAY
-
-private val SATURDAY_WEEK_ZONES = setOf(
-    "Asia/Tehran",
-    "Asia/Kabul",
-    "Asia/Baghdad",
-    "Asia/Bahrain",
-    "Asia/Dubai",
-    "Asia/Kuwait",
-    "Asia/Muscat",
-    "Asia/Qatar",
-    "Asia/Riyadh",
-)
 
 /**
  * One bar, on the wire.

@@ -415,3 +415,61 @@ One smaller decision, in the same spirit: the events in the sheet are **not** fi
 reader's own glyph switches. Those switches decide what clutters the axis. This is a question asked
 about one bar, and hiding a rate decision inside it because the calendar's glyphs were switched off
 would be answering «why did this move» with a filtered truth.
+
+---
+
+## C4 — «هفته‌ی من», and the number it will not print
+
+A card at the top of the journal: trades closed this week, how many won, alerts that fired against
+alerts still armed, replay sessions. Nothing inferred, no score, no grade, no streak — each number
+is something the reader did that the app already recorded, and a week is far too short a sample for
+anything else to be honest at.
+
+### The week is Saturday's, and that had to be one definition
+
+`core:marketdata` already knew that Iran's week opens on Saturday — it is what keeps a weekly candle
+from putting Thursday and Friday, the two quietest days of an Iranian week, in the middle of the bar
+instead of at its end. The rule was private to that module, serving the candle alone.
+
+The moment the reader's *own* week needed the same boundary there were two choices, and a second
+copy of a boundary is the copy that gets corrected alone. So `WeekStart` moved to `core:common`,
+where the calendar already lives, and `CandleContracts` delegates to it. A weekly bar and «هفته‌ی
+من» now open on the same day by construction rather than by coincidence.
+
+### The win rate is withheld, and that is the feature
+
+**Two of four is fifty percent and means nothing.** One outcome moves that figure by twenty-five
+points. Every app in this market prints it anyway, and the reader who went two-for-four reads «۵۰٪»
+and believes something about themselves that four coin flips produce more often than not.
+
+So under `MyWeek.MINIMUM_TRADES` the percentage is **not shown**. Not rounded, not greyed, not
+wrapped in a caveat — absent, with the count in its place: «۲ از ۴», which is the claim that is
+true, plus one line saying why the percentage is not there. Above the floor it is printed plainly,
+because at that point it is worth something and dressing it in caveats would be the opposite
+failure.
+
+`WeekSummary.winPercent` is null below the floor and the card has **no fallback branch**, which is
+what makes the rule hold: breaking it would take adding one. The share card keeps the same rule for
+a stronger reason — a picture outlives the screen it came from, and a «۵۰٪» posted to a channel is
+read by people who never see the four under it.
+
+### And one row is wired to nothing, deliberately
+
+«Moved most on your list» is in `WeekSummary` and tested, and the shell passes nothing to it.
+
+The only change figure this app holds for a watchlist is the feed's own **24-hour** one. Putting
+that under a heading that says «this week» would be a lie in a confident font — which is the exact
+failure this phase has spent three items removing from the alert centre, the morning brief and the
+notable-bar sheet. So the field stays null, the card omits the row, and `JournalWeekInputs` names
+where to hand in a weekly figure when something actually measures one.
+
+### A gate that crashed instead of reporting
+
+Writing the Persian for this card tripped `tools/i18n/lint_strings.py`'s hamza-on-heh rule — «هفتهٔ»
+where the house spelling is «هفته‌ی» — and the gate died with an `AttributeError` instead of naming
+the file. Its `fail` was typed `Entry | None` while the two Kotlin checks had always passed a plain
+string, so the **first** violation of those two rules would always have crashed it.
+
+A gate that dies on the thing it is watching for reports nothing at all, and reads as a broken tool
+rather than as a violation. It is fixed, it named all fifteen occurrences, and all fifteen are
+corrected.

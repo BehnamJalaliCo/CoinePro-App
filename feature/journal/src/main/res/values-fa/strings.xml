@@ -1,6 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="journal_new">ثبت معامله</string>
+    <string name="journal_week_title">هفته‌ی من</string>
+    <string name="journal_week_since">از %1$s</string>
+    <string name="journal_week_empty">این هفته هنوز چیزی ثبت نشده. هر معامله‌ای که بنویسید، بعداً می‌توانید بخوانیدش — کل کار این صفحه همین است.</string>
+    <string name="journal_week_trades">معامله‌ی بسته‌شده</string>
+    <string name="journal_week_wins">از این‌ها، برنده</string>
+    <string name="journal_week_win_rate">%1$s</string>
+    <string name="journal_week_win_count">%1$s از %2$s</string>
+    <string name="journal_week_win_floor">نرخ برد دست‌کم به %1$s معامله پشتش نیاز دارد. کمتر از آن، یک نتیجه رقم را آن‌قدر جابه‌جا می‌کند که دیگر معنایی ندارد؛ پس به‌جایش شمارش نشان داده می‌شود.</string>
+    <string name="journal_week_alerts">هشدارِ به‌صدا‌درآمده · در انتظار</string>
+    <string name="journal_week_alerts_value">%1$s · %2$s</string>
+    <string name="journal_week_practice">جلسه‌ی بازپخش</string>
+    <string name="journal_week_mover">بیشترین حرکت در فهرست شما</string>
+    <string name="journal_week_share">هم‌رسانی این هفته</string>
+    <string name="journal_week_share_quiet">هفته‌ی آرام</string>
+    <string name="journal_week_share_trades">%1$s معامله‌ی بسته‌شده</string>
+    <string name="journal_week_share_alerts">%1$s هشدار به صدا درآمد</string>
+    <string name="journal_week_share_mover">بیشترین حرکت: %1$s</string>
     <string name="journal_symbol">نماد</string>
     <string name="journal_buy">خرید</string>
     <string name="journal_sell">فروش</string>

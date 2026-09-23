@@ -230,9 +230,22 @@ class Lint:
         self.root = root
         self.failures: list[str] = []
 
-    def fail(self, path: Path, entry: Entry | None, message: str) -> None:
-        where = f"{path.relative_to(self.root)}:{entry.line if entry else 0}"
-        key = f" [{entry.key}]" if entry else ""
+    def fail(self, path: Path, entry: Entry | str | None, message: str) -> None:
+        """Record one failure.
+
+        `entry` is an `Entry` for a resource, a plain string for a Kotlin line — the Kotlin checks
+        have a line number and no key — or None for a file-level complaint. It used to be typed as
+        `Entry | None` and the Kotlin checks passed a string anyway, so the *first* hamza in a
+        Kotlin literal crashed this script with an `AttributeError` instead of naming the file:
+        a gate that dies on the thing it is watching for reports nothing at all, and reads as a
+        broken tool rather than as a violation.
+        """
+        if isinstance(entry, str):
+            where = f"{path.relative_to(self.root)} {entry}"
+            key = ""
+        else:
+            where = f"{path.relative_to(self.root)}:{entry.line if entry else 0}"
+            key = f" [{entry.key}]" if entry else ""
         self.failures.append(f"{where}{key} {message}")
 
     # -- parity -------------------------------------------------------------------------------

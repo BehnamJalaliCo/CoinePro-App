@@ -328,6 +328,9 @@ import com.coinepro.feature.home.toHomeBriefing
 import com.coinepro.feature.home.toHomePortfolio
 import com.coinepro.feature.home.toHomeSubscription
 import com.coinepro.feature.journal.JournalScreen
+import java.time.LocalDate
+import java.time.ZoneId
+import com.coinepro.feature.journal.JournalWeekInputs
 import com.coinepro.feature.kyc.KycScreen
 import com.coinepro.feature.membership.MembershipScreen
 import com.coinepro.feature.menu.MenuAccess
@@ -4127,7 +4130,33 @@ private fun MainShell(
                 )
             }
             composable(JOURNAL_ROUTE) {
-                JournalScreen(controller = journalController, markets = catalogue)
+                val arenaResults by arenaStore.results.collectAsStateWithLifecycle(initialValue = emptyList())
+                val journalZone = remember { ZoneId.systemDefault() }
+                JournalScreen(
+                    controller = journalController,
+                    markets = catalogue,
+                    // «هفته‌ی من» — the three things the journal cannot see. See `JournalWeekInputs`.
+                    week = JournalWeekInputs(
+                        alertFiredAt = shellAlerts.mapNotNull { it.lastFiredAtEpochMillis },
+                        alertsArmed = shellAlerts.count { it.active },
+                        // `ArenaResult` is filed by local day rather than by instant, so the day is
+                        // reopened in the reader's own zone. `epochDay * 86_400_000` would be
+                        // midnight UTC, which puts a Friday-evening session in Tehran into
+                        // Saturday — the first day of the next week, and the wrong one.
+                        practiceFinishedAt = arenaResults.map { result ->
+                            LocalDate.ofEpochDay(result.epochDay)
+                                .atStartOfDay(journalZone)
+                                .toInstant()
+                                .toEpochMilli()
+                        },
+                        // **Deliberately not wired.** The only change figure this app holds for a
+                        // watchlist is the feed's own *24-hour* one, and putting it under «this
+                        // week» would be a lie in a confident font — the exact failure run Τ2 has
+                        // been removing everywhere else. `WeekSummary.moverSymbol` is null until
+                        // something actually measures a week, and the card simply omits the row.
+                        marketChanges = emptyList(),
+                    ),
+                )
             }
             composable(ALERTS_ROUTE) {
                 AlertCenterScreen(controller = alertsController)

@@ -17,6 +17,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import com.coinepro.core.common.MyWeek
+import com.coinepro.core.common.WeekSummary
+import com.coinepro.core.common.WeekTrade
+import com.coinepro.core.designsystem.LocalCoineProPalette
+import com.coinepro.core.designsystem.ShareCard
+import com.coinepro.core.designsystem.ShareImage
+import com.coinepro.core.designsystem.inEnglish
+import java.time.ZoneId
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
@@ -98,10 +110,81 @@ fun JournalScreen(
      * search matches entries filed under it. Empty leaves both as plain text.
      */
     markets: List<SymbolMeta> = emptyList(),
+    /**
+     * The three things «هفته‌ی من» needs that this screen has no way to know — run Τ2, C4.
+     *
+     * Empty by default, and the card degrades honestly rather than disappearing: a build that wires
+     * only the journal still gets the trades and the week, and the rows it cannot fill read as zero
+     * because zero is what this device can see. See [JournalWeekInputs].
+     */
+    week: JournalWeekInputs = JournalWeekInputs(),
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val screenshots = rememberJournalScreenshots()
+
+    // The reader's own clock and zone, read once per composition rather than per row. The zone is
+    // what decides which day the week opens on — see `WeekStart` — so it is the device's and not a
+    // constant.
+    val zone = remember { ZoneId.systemDefault() }
+    val now = remember { System.currentTimeMillis() }
+    val shareScope = rememberCoroutineScope()
+    val weekShareTitle = stringResource(R.string.journal_week_title)
+    val weekShareRtl = !inEnglish()
+    val weekShareDark = LocalCoineProPalette.current.isDark
+    var weekCard by remember { mutableStateOf<WeekSummary?>(null) }
+
+    /**
+     * The week, over the **whole** journal rather than the filtered view.
+     *
+     * A reader who has tapped «ریتست» is asking what their retests do; their *week* did not change
+     * when they tapped it, and a card that quietly re-counted under a filter would be answering a
+     * different question while looking like an answer to theirs. That is the same argument the
+     * stats card makes in the other direction, and the two are different on purpose.
+     */
+    val weekSummary = remember(state.entries, week, now, zone) {
+        MyWeek.of(
+            nowEpochMillis = now,
+            zone = zone,
+            trades = state.entries.mapNotNull { entry ->
+                // A trade with no recorded money is one the reader logged and has not closed the
+                // books on. Counting it as a loss would be the app deciding something about their
+                // trade; leaving it out is the honest reading, and the row then says «closed»,
+                // which is what it counts.
+                entry.pnl?.takeIf { it != 0.0 }?.let { pnl ->
+                    WeekTrade(entry.createdAtEpochMillis, won = pnl > 0.0)
+                }
+            },
+            alertFiredAt = week.alertFiredAt,
+            alertsArmed = week.alertsArmed,
+            practiceFinishedAt = week.practiceFinishedAt,
+            marketChanges = week.marketChanges,
+        )
+    }
+
+    // Rendered off the main thread and handed to the system chooser. The card is drawn by
+    // `ShareCard`, which every other card in this app also goes through, so a week posted to a
+    // channel looks like a chart posted to the same one.
+    weekCard?.let { summary ->
+        LaunchedEffect(summary) {
+            val content = weekShareContent(
+                context = context,
+                week = summary,
+                title = weekShareTitle,
+                zone = zone,
+            )
+            withContext(Dispatchers.Default) {
+                val card = ShareCard.render(
+                    context = context,
+                    dark = weekShareDark,
+                    rtl = weekShareRtl,
+                    content = content,
+                )
+                ShareImage.share(context, card, "week")
+            }
+            weekCard = null
+        }
+    }
 
     var symbol by rememberSaveable { mutableStateOf("") }
     var buy by rememberSaveable { mutableStateOf(true) }
@@ -161,6 +244,11 @@ fun JournalScreen(
         contentPadding = PaddingValues(CoineProSpacing.Two),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
     ) {
+        // First on the screen, because a review starts with the week and the entries are the
+        // evidence under it. Computed from the **whole** journal rather than the filtered view: a
+        // reader who has tapped «ریتست» is asking what their retests do, and their *week* did not
+        // change when they tapped it.
+        item { MyWeekCard(week = weekSummary, zone = zone, onShare = { weekCard = weekSummary }) }
         item { StatsCard(stats, shown.size, state.entries.size, filter.isEverything) }
         item { CoineProTeachingStrip(TeachingSurface.JOURNAL, gutter = false) }
 

@@ -47,6 +47,22 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.4.0
+
+**fa**
+
+> **هفته‌ی من** بالای دفترچه‌ی معاملات آمد: چند معامله بستید، چندتا برنده بود، چند هشدار به صدا درآمد
+> و چند جلسه بازپخش کردید — از شنبه، چون هفته‌ی شما شنبه شروع می‌شود. اگر کمتر از ۵ معامله بسته باشید
+> **درصد برد نشان داده نمی‌شود** و به‌جایش شمارش می‌آید؛ یک نتیجه رقم را آن‌قدر جابه‌جا می‌کند که
+> دیگر معنایی ندارد. هفته‌ی خالی هم چهار تا صفر نیست، یک جمله است. و می‌توانید هفته را هم‌رسانی کنید.
+
+**en**
+
+> **My week** now sits at the top of the journal: trades closed, how many won, alerts that went off,
+> replay sessions — from Saturday, because that is when your week starts. Under five closed trades
+> the **win rate is not shown** and the count is shown instead; one outcome moves the figure too far
+> for it to mean anything. An empty week is a sentence, not four zeros. And you can share the week.
+
 ## 5.3.0
 
 **fa**

@@ -15,8 +15,8 @@ for the measurements.
 B2, B3, B5, B9 and B10 are this session's work — B9 narrowed on its bundled sound set, which needs
 audio this repository does not hold (`BLOCKED.md §B9`). B6, B7 and B8 are not started.
 
-**Phase C: five pieces built.** C5's legend figure is new and its row stays ❌ on two clauses the
-checklist argues against rather than defers. **C1, C2 and C6 are ✅.** C3 and C4 do not exist.
+**Phase C: five of six done.** C5's legend figure is new and its row stays ❌ on two clauses the
+checklist argues against rather than defers. **C1, C2, C4 and C6 are ✅.** Only C3 is unbuilt.
 
 **C2 was not the small row it looked like.** «Mostly shipped already» was true of the engine and
 false of the product: deleting a drawing killed its alerts *silently*, and the alert then sat in
@@ -27,11 +27,11 @@ that fails without the fix. The lesson for the rest of this phase: **a row that 
 exists» is a row nobody has used end to end.**
 
 **Shipped:** 4.93.0 (phase A + B2/B3/B5/B10), 4.94.0 (B9), 4.95.0 (C5's legend), 4.96.0 (C1's rule),
-5.1.0 (C2), 5.2.0 (C6), 5.3.0 (C1's surface). Every gate green and the full unit suite passing on
-each.
+5.1.0 (C2), 5.2.0 (C6), 5.3.0 (C1's surface), 5.4.0 (C4). Every gate green and the full unit suite
+passing on each.
 
-**Not done, and the next session's list in order:** B6, B7, B8, C3, C4. Each is named below with
-its files, the data it reads and the trap in it.
+**Not done, and the next session's list in order:** B6, B7, B8, C3. Each is named below with its
+files, the data it reads and the trap in it.
 
 ---
 
@@ -95,12 +95,20 @@ sheet — and three things it did not say are worth keeping:
   inside them. The sheet says so in a sentence; reaching for the nearest headline would be this app
   manufacturing a cause, which is the thing `RasadCoach` refuses to do on the chart itself.
 
-### C4 — My week
+### C4 — My week: done in 5.4.0
 
-Reads `JournalController` (the discipline chart), the alert audit trail
-(`core/datastore/…/AlertAuditStore.kt`), `ArenaStore` for practice sessions, and the Signal Layer
-over the watchlist. The share image goes through the existing generator —
-`core/designsystem/…/ShareCard.kt`.
+Three things worth inheriting:
+
+* **The week is `WeekStart`'s, in `core:common`.** It was private in `core:marketdata`, serving the
+  weekly candle; the reader's own week has to open on the same day, so it moved rather than being
+  copied. Anything that needs a week boundary uses that one.
+* **`MyWeek.MINIMUM_TRADES` is a product rule, not a formatting choice.** Under it there is no
+  percentage anywhere — not on the card, not on the share image — and the card has no fallback. If
+  a future surface wants one it has to add it deliberately, which is the point.
+* **The mover row is wired to nothing on purpose.** The app holds a 24-hour change for a watchlist
+  and nothing weekly, and «moved most this week» fed by a daily figure is the failure this phase
+  spent three items removing. `JournalWeekInputs.marketChanges` is where to hand one in when
+  something measures a week.
 
 ### C6 — Rasad's morning brief: done in 5.2.0
 

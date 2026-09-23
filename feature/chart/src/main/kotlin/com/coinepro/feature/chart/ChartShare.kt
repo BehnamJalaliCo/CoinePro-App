@@ -1,12 +1,10 @@
 package com.coinepro.feature.chart
 
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.core.content.FileProvider
-import java.io.File
+import com.coinepro.core.designsystem.ShareImage
 
 /**
  * Sharing the chart as a picture.
@@ -41,33 +39,14 @@ object ChartShare {
     /**
      * The same, for an image this app *drew* rather than captured — the 1080 × 1080 share card.
      *
-     * One writer and one intent for both, because everything below the pixels is identical and the
-     * two interesting decisions — the single-file cache directory and the per-intent grant — are
-     * exactly the ones that must not be made twice.
+     * Both of these are now [ShareImage.share] in `core:designsystem`, beside the card it draws.
+     * The move happened when «هفته‌ی من» became the third thing that shares a card and the first one
+     * in a module that cannot see this one; the three rules about the cache directory, the delete
+     * and the per-intent grant are stated there, where the only copy of them is.
+     *
+     * This object stays as the chart's own name for it — the call sites read better for it, and an
+     * `ImageBitmap` overload belongs with the screen that has one.
      */
-    fun share(context: Context, image: Bitmap, symbol: String): Boolean = runCatching {
-        val directory = File(context.cacheDir, "shared").apply {
-            // Cleared, not appended to. One shared image at a time is all this feature needs, and
-            // the alternative is a hidden folder that only grows.
-            deleteRecursively()
-            mkdirs()
-        }
-        val file = File(directory, "${symbol.filter(Char::isLetterOrDigit).ifEmpty { "chart" }}.png")
-        file.outputStream().use { stream ->
-            image.compress(Bitmap.CompressFormat.PNG, 100, stream)
-        }
-
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.shared", file)
-        val send = Intent(Intent.ACTION_SEND).apply {
-            type = "image/png"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        context.startActivity(
-            Intent.createChooser(send, null)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
-        )
-        true
-    }.getOrDefault(false)
+    fun share(context: Context, image: Bitmap, symbol: String): Boolean =
+        ShareImage.share(context, image, symbol)
 }

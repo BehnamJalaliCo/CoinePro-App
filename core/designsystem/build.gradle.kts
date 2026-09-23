@@ -34,6 +34,9 @@ dependencies {
     // an instrument needs the type on its own classpath.
     api(project(":core:symbols"))
     implementation(libs.kotlinx.coroutines.core)
+    // `FileProvider`, for `ShareImage` — the one writer of a shared picture. See its KDoc for
+    // why it lives beside `ShareCard` rather than in the feature that first needed it.
+    implementation(libs.androidx.core.ktx)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material3)
     // The window size classes and the adaptive scaffolds — Material's own numbers and layouts,

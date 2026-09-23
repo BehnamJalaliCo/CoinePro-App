@@ -1,6 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="journal_new">Log a trade</string>
+    <string name="journal_week_title">My week</string>
+    <string name="journal_week_since">From %1$s</string>
+    <string name="journal_week_empty">Nothing logged this week yet. Every trade you write down is one you can read back — that is the whole of what this page is for.</string>
+    <string name="journal_week_trades">Trades closed</string>
+    <string name="journal_week_wins">Of those, won</string>
+    <string name="journal_week_win_rate">%1$s</string>
+    <string name="journal_week_win_count">%1$s of %2$s</string>
+    <string name="journal_week_win_floor">A win rate needs at least %1$s trades behind it. Below that, one outcome moves the figure too far for it to mean anything, so the count is shown instead.</string>
+    <string name="journal_week_alerts">Alerts fired, still waiting</string>
+    <string name="journal_week_alerts_value">%1$s · %2$s</string>
+    <string name="journal_week_practice">Replay sessions</string>
+    <string name="journal_week_mover">Moved most on your list</string>
+    <string name="journal_week_share">Share this week</string>
+    <string name="journal_week_share_quiet">A quiet week</string>
+    <string name="journal_week_share_trades">%1$s trades closed</string>
+    <string name="journal_week_share_alerts">%1$s alerts went off</string>
+    <string name="journal_week_share_mover">Moved most: %1$s</string>
     <string name="journal_symbol">Symbol</string>
     <string name="journal_buy">Buy</string>
     <string name="journal_sell">Sell</string>
