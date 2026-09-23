@@ -173,6 +173,8 @@ kotlin.sourceSets.named("wasmJsMain") { resources.srcDir(exportTerminalStrings) 
  * module's build script), same non-transitive shape.
  */
 val generateWebResources by tasks.registering {
+    // Its action reads helpers declared in this script, which the configuration cache cannot store.
+    notCompatibleWithConfigurationCache("reads script-level helpers")
     val modules = rootProject.subprojects
         .map { it.projectDir }
         .filter { it.resolve("src/main/res").isDirectory && it.resolve("build.gradle.kts").isFile }
@@ -569,6 +571,8 @@ kotlin.compilerOptions {
  * that package sees without an import — exactly as it saw the JVM's.
  */
 val generateJvmCompat by tasks.registering {
+    // Its action reads helpers declared in this script, which the configuration cache cannot store.
+    notCompatibleWithConfigurationCache("reads script-level helpers")
     val roots = sharedSources.flatMap { entry ->
         val module = entry.substringBefore('@')
         if ('@' in entry) listOf(rootProject.file("$module/src/${entry.substringAfter('@')}/kotlin"))

@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.9.1
+
+**fa**
+
+> کل برنامه‌ی پرو چارت در مرورگر هم باز می‌شود: دیده‌بان، رصد، ایده‌ها، ابزارها، اخبار و بقیه‌ی صفحه‌ها، با همان کدی که روی گوشی اجرا می‌شود.
+> در این نسخه‌ی گوشی چیزی عوض نشده است.
+
+**en**
+
+> The whole Pro Chart app opens in a browser: the watchlist, Rasad, ideas, tools, news and every other screen, from
+> the same code that runs on your phone. Nothing on the phone has changed in this version.
+
 ## 5.9.0
 
 **fa**
