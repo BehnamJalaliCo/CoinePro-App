@@ -145,6 +145,8 @@ import com.coinepro.core.chart.axisFontSizeSp
 import com.coinepro.core.chart.timeAxisHeight
 import androidx.compose.ui.graphics.asAndroidBitmap
 import com.coinepro.core.chart.ArenaScore
+import com.coinepro.core.chart.DuelCall
+import com.coinepro.core.chart.DuelRecord
 import com.coinepro.core.chart.RasadCoach
 import com.coinepro.core.chart.TradeFacts
 import com.coinepro.core.chart.TradeFromChart
@@ -481,6 +483,25 @@ fun ChartScreen(
     /** How many days in a row, and the reader's best, for the result sheet. */
     arenaStreak: Int = 0,
     arenaBest: Int? = null,
+    /**
+     * **دوئل با گذشته** — today's round, played on this chart (run Τ2, C3). See [DuelSession].
+     *
+     * [arena]'s shape exactly, and for [arena]'s reason: null is the ordinary chart, non-null adds
+     * one band above the command band and changes nothing else. The reader has to be looking at the
+     * chart they read, not at a quiz that happens to contain a chart.
+     */
+    duel: DuelSession? = null,
+    /**
+     * Judges the call and records it — the shell's, because the record is a preferences store and
+     * this module has no business knowing what one is.
+     */
+    onAnswerDuel: ((DuelCall) -> Unit)? = null,
+    /** Leaves the duel. Null where the shell cannot end one. */
+    onFinishDuel: (() -> Unit)? = null,
+    /** Starts today's round. Null where there is not enough history to set one on this chart. */
+    onStartDuel: (() -> Unit)? = null,
+    /** The reader's record so far, for the line the band prints under a verdict. */
+    duelRecord: DuelRecord = DuelRecord(),
     onCreateAlert: ((symbol: String, price: Double) -> Unit)? = null,
     /**
      * The alerts already set on this symbol, drawn on the plot (run Ω2).
@@ -2061,6 +2082,18 @@ fun ChartScreen(
             }
         }
 
+        // **The duel's question** (run Τ2, C3), in the same place and for the same reason: it is
+        // the one thing the chart itself cannot say. Never both at once — the shell starts one mode
+        // or the other and each clears the other's pending request.
+        duel?.let { session ->
+            DuelBar(
+                session = session,
+                record = duelRecord,
+                onCall = { call -> onAnswerDuel?.invoke(call) },
+                onFinish = { onFinishDuel?.invoke() },
+            )
+        }
+
         AnimatedVisibility(
             visible = !fullscreenRequested,
             enter = slideInVertically(CoineProMotionSpecs.defaultSpatialFor()) { it } + fadeIn(tween(FULLSCREEN_SLIDE_MS)),
@@ -2579,6 +2612,10 @@ fun ChartScreen(
                 // challenge needs history behind it and history in front — see `Arena.challengeFor`,
                 // which answers null rather than a challenge that cannot be played.
                 onArena = onStartArena?.takeIf { arena == null },
+                // Beside the Arena, and offered only where neither mode is already running: two
+                // replay modes on one chart at once is one chart with two ideas about which bar it
+                // is on.
+                onDuel = onStartDuel?.takeIf { duel == null && arena == null },
                 onHelpCenter = {
                     sheet = null
                     onHelp(CHART_HELP_ID)

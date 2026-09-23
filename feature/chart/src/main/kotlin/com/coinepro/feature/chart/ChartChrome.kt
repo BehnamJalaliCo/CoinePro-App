@@ -753,6 +753,14 @@ internal fun ChartMoreSheetBody(
      */
     onArena: (() -> Unit)? = null,
     /**
+     * **دوئل با گذشته** — today's round (run Τ2, C3). Null where a round cannot be set.
+     *
+     * Beside [onArena] because they share an engine, and separate from it because they ask
+     * different questions: the Arena is «could you have traded this», the duel is «which way did it
+     * go». Conflating them would make the smaller question cost five minutes and a paper account.
+     */
+    onDuel: (() -> Unit)? = null,
+    /**
      * **رصد** — the chart read out loud (run Ω4). Null on a chart with too few bars to read.
      *
      * First in the MORE section on the tablet and the phone alike, above «خوانش بازار», because the
@@ -875,6 +883,16 @@ internal fun ChartMoreSheetBody(
                 HubTile(
                     icon = DesignR.drawable.icon_crown_simple,
                     label = stringResource(R.string.arena_name),
+                    onClick = it,
+                )
+            }
+            onDuel?.let {
+                HubTile(
+                    // The forecast tool's own glyph — «where does it go from here», which is the
+                    // question, drawn the way the rail already draws it. Not the crown: that is the
+                    // Arena's and these are two different things.
+                    icon = DesignR.drawable.tv_tool_forecast,
+                    label = stringResource(R.string.duel_name),
                     onClick = it,
                 )
             }

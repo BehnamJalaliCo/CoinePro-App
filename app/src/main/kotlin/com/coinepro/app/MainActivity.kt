@@ -51,6 +51,7 @@ import com.coinepro.core.aisignal.AiSignalController
 import com.coinepro.core.aivision.AiVisionController
 import com.coinepro.core.auth.EmailAuthController
 import com.coinepro.core.datastore.ArenaStore
+import com.coinepro.core.datastore.DuelStore
 import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.SymbolChartStateStore
@@ -174,6 +175,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var teachingStore: TeachingStore
     @Inject lateinit var chartWorkspaceStore: ChartWorkspaceStore
     @Inject lateinit var arenaStore: ArenaStore
+    @Inject lateinit var duelStore: DuelStore
     @Inject lateinit var journalController: JournalController
     @Inject lateinit var paperTradeController: PaperTradeController
     @Inject lateinit var scriptController: ScriptController
@@ -350,6 +352,7 @@ class MainActivity : FragmentActivity() {
                 recentSearchStore = recentSearchStore,
                 chartWorkspaceStore = chartWorkspaceStore,
                 arenaStore = arenaStore,
+                duelStore = duelStore,
                 journalController = journalController,
                 paperTradeController = paperTradeController,
                 scriptController = scriptController,

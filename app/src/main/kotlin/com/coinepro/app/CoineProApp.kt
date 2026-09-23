@@ -105,6 +105,7 @@ import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.chartevents.ChartEventController
 import com.coinepro.core.datastore.ActivePlatformStore
 import com.coinepro.core.datastore.ArenaStore
+import com.coinepro.core.datastore.DuelStore
 import com.coinepro.core.datastore.ChartLayout
 import com.coinepro.core.datastore.ChartDrawingStore
 import com.coinepro.core.datastore.ChartLayoutStore
@@ -243,16 +244,21 @@ import com.coinepro.core.model.MarketType
 import com.coinepro.core.model.SignalDirection
 import com.coinepro.core.navigation.AppDestination
 import com.coinepro.core.chart.Arena
+import com.coinepro.core.chart.Duel
+import com.coinepro.core.chart.DuelRecord
+import com.coinepro.core.chart.DuelVerdict
 import com.coinepro.core.chart.ArenaChallenge
 import com.coinepro.core.chart.ArenaTrade
 import com.coinepro.core.chart.markRevengeTrades
 import com.coinepro.core.datastore.ArenaResult
+import com.coinepro.core.datastore.DuelTally
 import com.coinepro.core.datastore.best
 import com.coinepro.core.datastore.streak
 import com.coinepro.core.designsystem.ShareCard
 import com.coinepro.core.designsystem.ShareCardContent
 import com.coinepro.core.designsystem.ShareCardTone
 import com.coinepro.feature.chart.ArenaSession
+import com.coinepro.feature.chart.DuelSession
 import com.coinepro.core.chart.ChartAlertLine
 import com.coinepro.core.chart.TradeFacts
 import com.coinepro.core.notifications.AlertFrequency
@@ -1003,6 +1009,8 @@ fun CoineProApp(
     chartWorkspaceStore: ChartWorkspaceStore,
     /** The reader's own Arena history, for the streak and the league of one. See [ArenaStore]. */
     arenaStore: ArenaStore,
+    /** The reader's duel record — three counters and a day. See [DuelStore]. */
+    duelStore: DuelStore,
     /** The reader's saved screens. One file for both platforms — a filter is not per backend. */
     screenerStore: ScreenerStore,
     journalController: JournalController,
@@ -1545,6 +1553,7 @@ fun CoineProApp(
                 recentSearchStore = recentSearchStore,
                 chartWorkspaceStore = chartWorkspaceStore,
                 arenaStore = arenaStore,
+                duelStore = duelStore,
                 portfolioController = portfolioControllers.getValue(activePlatform),
                 academyController = academyController,
                 communityController = communityController,
@@ -1783,6 +1792,7 @@ fun CoineProApp(
                 recentSearchStore = recentSearchStore,
                         chartWorkspaceStore = chartWorkspaceStore,
                         arenaStore = arenaStore,
+                        duelStore = duelStore,
                         portfolioController = portfolioControllers.getValue(activePlatform),
                         academyController = academyController,
                         // The community is the app's own and needs no account, so a guest has it.
@@ -2062,6 +2072,8 @@ private fun MainShell(
     chartWorkspaceStore: ChartWorkspaceStore,
     /** The reader's own Arena history, for the streak and the league of one. See [ArenaStore]. */
     arenaStore: ArenaStore,
+    /** The reader's duel record — three counters and a day. See [DuelStore]. */
+    duelStore: DuelStore,
     portfolioController: PortfolioController,
     academyController: AcademyController,
     /** The app's own board. On both platforms and for a guest: it belongs to neither account. */
@@ -3178,6 +3190,56 @@ private fun MainShell(
                 arenaPending = null
             }
 
+            // **دوئل با گذشته — today's round** (run Τ2, C3).
+            //
+            // The Arena's construction above, deliberately duplicated rather than shared: the two
+            // features pick a different instrument by a different arithmetic, one of them needs a
+            // paper-book mark and the other does not, and a helper that took both would be a
+            // helper with a boolean in it. What they do share is the engine, which is where
+            // sharing belongs.
+            // The same local day the Arena reads. One clock for both, so a reader who plays both
+            // on the same evening does not find one of them thinking it is tomorrow.
+            val duelToday = arenaToday
+            val duelTally by duelStore.tally.collectAsStateWithLifecycle(initialValue = DuelTally())
+            val duelRecord = remember(duelTally) {
+                DuelRecord(
+                    played = duelTally.played,
+                    right = duelTally.right,
+                    tooClose = duelTally.tooClose,
+                )
+            }
+            var duelSession by remember { mutableStateOf<DuelSession?>(null) }
+            // **A request, not a round.** The Arena carries its challenge across the navigation and
+            // then checks the new chart is long enough for it; that check can fail for ever — the
+            // window was measured against the *previous* instrument's series, so a shorter one
+            // leaves a request that never starts and a tap that did nothing. Here the request is a
+            // boolean and the round is re-read from whatever chart is now loaded, which is the same
+            // round: `Duel.roundFor` picks the instrument from the date alone, and only the bar
+            // inside it depends on how much history came back. `DuelTest` asserts the resolving bar
+            // is always inside the series the caller loaded, so once there is a round at all, it
+            // fits.
+            var duelPending by remember { mutableStateOf(false) }
+            val duelRound = remember(duelToday, catalogue, chartState.series.bars.size) {
+                Duel.roundFor(
+                    epochDay = duelToday,
+                    symbols = catalogue.map { it.symbol }.sorted(),
+                    historyBars = chartState.series.bars.size,
+                )
+            }
+            // Navigating is asynchronous and loading is slower still, so the start is a request and
+            // this is what completes it. Where it stops the replay is the point — **at the round's
+            // own bar**, because the twenty after it are the answer and `ReplayState.visible` is
+            // what keeps them off the screen.
+            LaunchedEffect(duelPending, activeChartSymbol, duelRound) {
+                if (!duelPending) return@LaunchedEffect
+                val round = duelRound ?: return@LaunchedEffect
+                if (!activeChartSymbol.equals(round.symbol, ignoreCase = true)) return@LaunchedEffect
+                chartController.enterReplay()
+                chartController.replayGoTo(round.atBar)
+                duelSession = DuelSession(round = round, localDay = duelToday)
+                duelPending = false
+            }
+
             val sidePanels = listOf(
                 ChartSidePanel("watchlist", ChartR.string.chart_panel_watchlist, DesignR.drawable.icon_star) {
                     WatchlistScreen(
@@ -3352,6 +3414,46 @@ private fun MainShell(
                 },
                 arenaStreak = arenaHistory.streak(arenaToday),
                 arenaBest = arenaHistory.best()?.total,
+                duel = duelSession,
+                duelRecord = duelRecord,
+                // Offered only where the round exists — `roundFor` answers null rather than a
+                // window whose answer is off the end of the data.
+                onStartDuel = duelRound?.let { round ->
+                    {
+                        duelPending = true
+                        if (!activeChartSymbol.equals(round.symbol, ignoreCase = true)) {
+                            navController.navigate(chartRoute(round.symbol)) {
+                                popUpTo(CHART_PATTERN) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
+                    }
+                },
+                onAnswerDuel = { call ->
+                    val session = duelSession
+                    // Judged against the **whole** series, which is the one place in this feature
+                    // that is allowed to look past the round's own bar. Up to here the chart has
+                    // only ever been handed `ReplayState.visible`.
+                    val outcome = session?.let { Duel.judge(chartState.series, it.round, call) }
+                    if (session != null && outcome != null) {
+                        shellScope.launch {
+                            val recorded = duelStore.answer(
+                                right = outcome.verdict == DuelVerdict.RIGHT,
+                                tooClose = outcome.verdict == DuelVerdict.TOO_CLOSE,
+                                localDay = session.localDay,
+                            )
+                            session.answer(outcome, recorded = recorded)
+                            // And only now do the next twenty bars appear. The reveal is the
+                            // whole point of the mode, and it happens after the call is written
+                            // down rather than before it.
+                            chartController.replayGoTo(session.round.resolveBar)
+                        }
+                    }
+                },
+                onFinishDuel = {
+                    duelSession = null
+                    chartController.exitReplay()
+                },
                 scriptLibrary = scriptLibrary,
                 onCreateScriptAlert = { symbol, name, source, condition ->
                     scriptAlert = ScriptAlertRequest(symbol, name, source, condition)

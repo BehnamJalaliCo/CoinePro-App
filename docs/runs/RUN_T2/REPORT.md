@@ -473,3 +473,121 @@ string, so the **first** violation of those two rules would always have crashed 
 A gate that dies on the thing it is watching for reports nothing at all, and reads as a broken tool
 rather than as a violation. It is fixed, it named all fifteen occurrences, and all fifteen are
 corrected.
+
+---
+
+## C3 — «دوئل با گذشته», and the verdict that is neither
+
+The last unbuilt item in phase C, and the one with the shortest description and the most rules.
+
+The shape: one round a day. A moment out of the reader's own past — 120 bars of context behind it,
+the next 20 hidden — and one question. Up or down. The moment they answer, those 20 bars appear.
+
+### It is the reader's own markets, and that is not a detail
+
+`Duel.roundFor` picks from the catalogue the reader is already watching, sorted so two phones agree
+about what the list is. A duel on an instrument they have never opened is a quiz question; the
+feeling the feature exists for is «I would have caught that» about a market they know.
+
+The pick is written-out arithmetic rather than a platform `Random`, for `Arena.challengeFor`'s
+reason — the same answer has to come out on a phone, on the JVM in a test and in the web terminal —
+and it is deterministic in the date, so closing the app does not reroll the question. A reader who
+could reroll until they liked the look of a chart would not be duelling, they would be playing a
+slot machine.
+
+**Different constants from the Arena's**, and there is a test for it. Two features asking about the
+same instrument on the same day reads as the app having one idea rather than two.
+
+### The rule the whole feature rests on
+
+A move under `Duel.FLAT_PERCENT` is `TOO_CLOSE`: **neither right nor wrong.**
+
+Without it every round resolves. Half of them resolve on noise, a reader converges on fifty percent,
+and what they learn is that a coin flip is a read — which is the single habit this product exists to
+argue against. With it the record counts only the rounds where the market actually did something,
+and says how many it set aside.
+
+Half a percent over twenty bars, which is five times the morning brief's floor, because this one has
+to clear twenty bars of drift rather than describe a single day. A threshold a market crosses by
+standing still is not a threshold.
+
+### What it deliberately does not have
+
+**No timer.** The Arena's five minutes exist because trading under time pressure is part of what it
+rehearses. Reading a chart is not, and a reader who wants to stare at this one for ten minutes is
+doing the thing the feature is for.
+
+**No second call.** Once the outcome is set the buttons are gone, and `DuelSession.answer` ignores a
+second one rather than relying on the band drawing none. A reader who could call again with the next
+twenty bars in front of them would be recording a prediction they did not make.
+
+**No screen.** `ArenaSession`'s argument, unchanged and stronger here: the replay engine, its bar and
+the plot are all in `feature:chart` and all tested there, and a second screen would be a second copy
+of them drifting from the first. More to the point, the whole of this feature is *look at this chart
+and say which way* — a rehearsal on a different-looking chart rehearses the wrong thing.
+
+### The future is never in the series, by construction
+
+The chart in a duel is in replay, stopped at `round.atBar`. What it draws is `ReplayState.visible`,
+which is the same mechanism the replay mode has used since run E — so there is no path by which the
+answer is on screen before the call. `Duel.judge` is handed the whole series because it runs *after*
+the call, and it is the only thing in the feature that ever looks past `atBar`.
+
+The reveal is `replayGoTo(round.resolveBar)`, and it happens **after** the record write returns, not
+before it.
+
+### The request is a boolean, and that is a fix rather than a style
+
+The Arena carries its challenge across the navigation and then checks the arriving chart is long
+enough for it. That check can fail for ever: the window was measured against the **previous**
+instrument's series, so a shorter one leaves a request that never starts — a tap that did nothing,
+with nothing said.
+
+The duel does not carry a round. It carries a boolean, and re-reads the round from whatever chart is
+now loaded. It is the same round: `Duel.roundFor` picks the instrument from the date alone and only
+the bar inside it depends on how much history came back. And `DuelTest` asserts, across every series
+length where the window only just fits, that the resolving bar is inside the series the caller
+loaded — so once there is a round at all, it fits the chart in front of it.
+
+### One round a day, and the refusal is said out loud
+
+`DuelStore.answer` reads the stored day and writes the counters inside a single `edit` — which is
+what makes the guard real, because two taps arriving together would otherwise both read «not
+answered» and both write. A record that could be padded by tapping «up» five times on one chart is
+not a record.
+
+It returns **whether it recorded**, and the band prints «امروز را قبلاً جواب داده‌اید» when it did
+not. A silent refusal is indistinguishable from a counter that stopped working, which is the same
+class of fault as an alert that reads as armed and cannot fire — the failure this run has now
+removed four times.
+
+One thing the store deliberately allows: a day *earlier* than the stored one. Refusing anything not
+strictly later would leave a reader whose phone corrected its clock locked out until the calendar
+caught up.
+
+### And no rate under the floor
+
+`DuelRecord.rightPercent` is null below `Duel.MINIMUM_ROUNDS` judged rounds — `MyWeek`'s rule, with
+`MyWeek`'s shape and for `MyWeek`'s reason. The band has no branch that invents one; it prints the
+count and says a rate needs more than this to mean anything.
+
+The denominator is **judged** rounds, not played ones. Three right out of five judged is sixty
+percent even when four more were set aside, because the four the market did not answer are not
+losses.
+
+### The boundary that cannot be tested
+
+`DuelTest` asserts both sides of `FLAT_PERCENT` and writes down why it does not assert the middle: a
+close of 100.5 against 100.0 comes back as `0.4999999999999858` in binary floating point, so a test
+claiming to hit the floor exactly would be asserting about the arithmetic rather than about the
+rule. The rule is `< FLAT_PERCENT`; the exact boundary is not a state a market can reach.
+
+### What landed
+
+`Duel.kt` and `DuelTest` (18) in `:chart-core`; `DuelStore.kt` and `DuelStoreTest` (8) in
+`:core:datastore` — with `DuelTally` as that module's own type, because a preferences store that
+dragged in the chart engine would be on every gateway's classpath; `DuelSession.kt`, `DuelChrome.kt`
+and `DuelSessionTest` (6) in `:feature:chart`; the pending→navigate→`enterReplay`→`replayGoTo` dance
+in `CoineProApp`, mirroring the Arena's and deliberately not sharing a helper with it — the two pick
+by different arithmetic, one needs a paper-book mark and the other does not, and a helper taking
+both would be a helper with a boolean in it.

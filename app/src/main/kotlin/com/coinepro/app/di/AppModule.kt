@@ -171,6 +171,7 @@ import com.coinepro.core.webhook.WebhookStore
 import com.coinepro.feature.alerts.AlertsController
 import com.coinepro.feature.alerts.StoredWebhooks
 import com.coinepro.core.datastore.ArenaStore
+import com.coinepro.core.datastore.DuelStore
 import com.coinepro.core.datastore.EntitlementStore
 import com.coinepro.core.datastore.LastVisitStore
 import com.coinepro.core.datastore.ScriptInstallStore
@@ -826,6 +827,16 @@ object AppModule {
     @Provides
     @Singleton
     fun arenaStore(dataStore: DataStore<Preferences>): ArenaStore = ArenaStore(dataStore)
+
+    /**
+     * The reader's duel record — three counters and the day they last answered (run Τ2, C3).
+     *
+     * The same preferences file, for the same reason again. See `DuelStore` for why it keeps a
+     * record rather than a row per round.
+     */
+    @Provides
+    @Singleton
+    fun duelStore(dataStore: DataStore<Preferences>): DuelStore = DuelStore(dataStore)
 
     /**
      * When the reader was last on Home, for «since your last visit» (run Σ, S5).

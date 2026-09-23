@@ -47,6 +47,22 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.5.0
+
+**fa**
+
+> **دوئل با گذشته**: هر روز یک لحظه از یکی از بازارهای خودتان، با بیست کندل بعدش پنهان. فقط یک
+> سؤال — بالا یا پایین — و بعد از جواب، همان بیست کندل باز می‌شود. اگر بازار تکان معناداری نخورده
+> باشد، جواب شما **نه درست است نه نادرست**؛ نویز خوانش نیست. روزی یک دور، و تا پنج دور واقعی
+> کامل نشود نرخ درستی نشان داده نمی‌شود.
+
+**en**
+
+> **Duel with the past**: each day, one moment from a market you actually watch, with the next
+> twenty candles hidden. One question — up or down — and the moment you answer, those twenty
+> candles appear. If the market barely moved, your call is **neither right nor wrong**; noise is
+> not a read. One round a day, and no hit rate until five rounds the market actually answered.
+
 ## 5.4.0
 
 **fa**

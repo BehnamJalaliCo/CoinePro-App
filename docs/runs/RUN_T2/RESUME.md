@@ -15,8 +15,8 @@ for the measurements.
 B2, B3, B5, B9 and B10 are this session's work — B9 narrowed on its bundled sound set, which needs
 audio this repository does not hold (`BLOCKED.md §B9`). B6, B7 and B8 are not started.
 
-**Phase C: five of six done.** C5's legend figure is new and its row stays ❌ on two clauses the
-checklist argues against rather than defers. **C1, C2, C4 and C6 are ✅.** Only C3 is unbuilt.
+**Phase C: done but for C5.** C5's legend figure is new and its row stays ❌ on two clauses the
+checklist argues against rather than defers. **C1, C2, C3, C4 and C6 are ✅.**
 
 **C2 was not the small row it looked like.** «Mostly shipped already» was true of the engine and
 false of the product: deleting a drawing killed its alerts *silently*, and the alert then sat in
@@ -27,10 +27,10 @@ that fails without the fix. The lesson for the rest of this phase: **a row that 
 exists» is a row nobody has used end to end.**
 
 **Shipped:** 4.93.0 (phase A + B2/B3/B5/B10), 4.94.0 (B9), 4.95.0 (C5's legend), 4.96.0 (C1's rule),
-5.1.0 (C2), 5.2.0 (C6), 5.3.0 (C1's surface), 5.4.0 (C4). Every gate green and the full unit suite
-passing on each.
+5.1.0 (C2), 5.2.0 (C6), 5.3.0 (C1's surface), 5.4.0 (C4), 5.5.0 (C3). Every gate green and the full
+unit suite passing on each.
 
-**Not done, and the next session's list in order:** B6, B7, B8, C3. Each is named below with its
+**Not done, and the next session's list in order:** B6, B7, B8. Each is named below with its
 files, the data it reads and the trap in it.
 
 ---
@@ -127,11 +127,36 @@ The file this section named does not exist; the pattern actually copied was `Loc
 * **The composer refuses more than it says.** `RasadBrief` is where every «do not send this» lives,
   and each refusal has a reason written beside it.
 
-### C3 — Duel with the past
+### C3 — Duel with the past: done in 5.5.0
 
-The largest of the six, and the one to take last: it is a Replay session seeded a year back with a
-prediction and a score. `ArenaStore` and the replay engine are the pieces; the new part is the
-seeding and the scoring.
+This section's plan was half right. The replay engine was indeed the piece to reuse, and the seeding
+is `Duel.roundFor`. `ArenaStore` was **not** reused: the Arena keeps a row per day because its screen
+shows a history, and a duel has nothing to show per round — «you said up on the 14th» is not a thing
+anybody looks back at — so `DuelStore` keeps three counters and a day. Three integers cannot go out
+of step with a list that does not exist.
+
+Four things worth inheriting:
+
+* **`TOO_CLOSE` is the feature.** A move under `Duel.FLAT_PERCENT` is neither right nor wrong. Score
+  it as a win and the app teaches that noise is a read, which is the habit this product argues
+  against. Any future surface over this record has to carry the third verdict, not fold it into one
+  of the other two.
+* **The hidden bars are hidden by `ReplayState.visible`**, not by a copy of it. The chart in a duel
+  is in replay stopped at `round.atBar`; `Duel.judge` is the only thing in the feature that ever
+  looks past that bar, and it runs after the call. There is no path by which the answer is on screen
+  early, and there must not become one.
+* **`DuelStore.answer` returns a boolean and the band prints the refusal.** The once-a-day guard is
+  a read and a write inside one `edit`. A refusal the screen swallowed would look exactly like a
+  counter that stopped working — the same class of fault as the alert that reads as armed and cannot
+  fire.
+* **The pending→navigate→`enterReplay`→`replayGoTo` dance is duplicated from the Arena on purpose,
+  and it is not a copy.** The two pick by different arithmetic, one needs a paper-book mark and the
+  other does not, and a shared helper would be a helper with a boolean in it. The duel's version
+  carries a **boolean** rather than the round: the Arena measures its window against the chart the
+  reader was on and then waits for the new one to be long enough, which on a shorter instrument is a
+  wait that never ends. The duel re-reads the round from the loaded chart instead — the same round,
+  because the instrument comes from the date alone. **The Arena still has the original shape; if
+  anybody reports «میدان did nothing», that is where it is.**
 
 ### C5 and C2 — finish rather than build
 
