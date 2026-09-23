@@ -193,6 +193,8 @@ import com.coinepro.core.designsystem.ShareCardContent
 import com.coinepro.core.designsystem.ShareCardTone
 import com.coinepro.core.designsystem.LocalCoineProPalette
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProSavedBar
+import com.coinepro.core.designsystem.rememberSavedAge
 import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProMotionSpecs
 import com.coinepro.core.designsystem.CoineProConfirmDialog
@@ -1926,6 +1928,15 @@ fun ChartScreen(
         // TradingView closes its header with a one-point rule (`#2E2E2E` on `#0F0F0F`); this
         // system's strong border is the same step above the page.
         HorizontalDivider(color = CoineProColors.BorderStrong, thickness = 1.dp)
+
+        // **How old these candles are** (run Τ2, B6), above the plot and nowhere else.
+        //
+        // The dimming already says «being replaced»; it does not say *how old*, and after two
+        // failed attempts the dimming comes off deliberately (see `ChartController`'s failure
+        // branch: «the banner is what says they are old»). This is that banner. A reader looking
+        // at bars from disk needs the difference between ten minutes and two days, because those
+        // lead to opposite decisions and the chart looks identical either way.
+        CoineProSavedBar(age = rememberSavedAge(state.savedAtEpochMillis))
 
         // The plot, bled to both edges of the phone.
         //

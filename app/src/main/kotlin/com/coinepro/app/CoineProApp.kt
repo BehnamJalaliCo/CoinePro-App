@@ -165,6 +165,7 @@ import com.coinepro.core.designsystem.CoineProOfflineBar
 import com.coinepro.core.designsystem.CoineProPriceFeedBar
 import com.coinepro.core.designsystem.PriceFeedReading
 import com.coinepro.core.designsystem.CoineProToast
+import com.coinepro.core.designsystem.savedAgeSentenceOrNull
 import com.coinepro.core.designsystem.LocalTeachingDismissals
 import com.coinepro.core.designsystem.LocalToaster
 import com.coinepro.core.designsystem.ToastTone
@@ -226,6 +227,7 @@ import com.coinepro.core.marketdata.MarketDataController
 import com.coinepro.core.marketdata.ChartTickSource
 import com.coinepro.core.marketdata.NoChartTicks
 import com.coinepro.core.marketdata.chartTicks
+import com.coinepro.core.marketdata.MarketDataOrigin
 import com.coinepro.core.marketdata.MarketDataState
 import com.coinepro.core.marketdata.MarketDataSymbols
 import com.coinepro.core.marketdata.MarketMood
@@ -1337,7 +1339,11 @@ fun CoineProApp(
             tone = marketState.connection.tone(),
             label = stringResource(marketState.connection.labelRes()),
             subscribedSymbols = marketState.quotes.size,
-            cacheAgeLabel = marketState.cacheStoredAtEpochMillis?.let { BidiText.isolateLtr(it.toString()) },
+            // **«۲ دقیقه پیش», not «1758592800000».** This field was `it.toString()` on the raw
+            // epoch millis, so the diagnostics page had been printing a thirteen-digit number
+            // where a sentence belongs since the field was added — one of the shapes run Τ2 keeps
+            // finding: a surface nobody reads until the day it matters. See `SavedAge`.
+            cacheAgeLabel = savedAgeSentenceOrNull(marketState.cacheStoredAtEpochMillis),
         ),
         push = PushStatus(
             permission = notificationPermissionState.toHubPermission(),
@@ -3249,6 +3255,11 @@ private fun MainShell(
                         onOpenSymbol = { symbol -> navController.navigate(chartRoute(symbol)) },
                         watchlistSync = watchlistSyncController,
                         onCompare = { symbols -> navController.navigate(compareRoute(symbols)) },
+                        // The prices on these rows are the market feed's, so the age is the feed's
+                        // cache — and only while the feed is actually serving from it. See
+                        // `CoineProSavedBar`: a live list must not be labelled «ذخیره‌شده».
+                        savedAtMillis = marketState.cacheStoredAtEpochMillis
+                            ?.takeIf { marketState.origin == MarketDataOrigin.CACHE },
                     )
                 },
                 ChartSidePanel("depth", ChartR.string.chart_panel_depth, DesignR.drawable.tv_chart_columns) {
@@ -4931,6 +4942,11 @@ private fun MainShell(
                     },
                     // «تحلیل» — the same comparison the markets tab's watchlist offers (U6).
                     onCompare = { symbols -> navController.navigate(compareRoute(symbols)) },
+                    // The prices on these rows are the market feed's, so the age is the feed's
+                    // cache — and only while the feed is actually serving from it. See
+                    // `CoineProSavedBar`: a live list must not be labelled «ذخیره‌شده».
+                    savedAtMillis = marketState.cacheStoredAtEpochMillis
+                        ?.takeIf { marketState.origin == MarketDataOrigin.CACHE },
                 )
             }
             composable(ACTIVITY_ROUTE) {

@@ -8,6 +8,7 @@ import com.coinepro.core.notifications.AlertAuditEntry
 import com.coinepro.core.notifications.AlertDrawingLinks
 import com.coinepro.core.notifications.AlertChannel
 import com.coinepro.core.notifications.AlertFrequency
+import com.coinepro.core.notifications.AlertReach
 import com.coinepro.core.notifications.AlertMessageTemplate
 import com.coinepro.core.notifications.AuditEvent
 import com.coinepro.core.notifications.ChannelOp
@@ -67,6 +68,15 @@ data class AlertRow(
      * for a drawing alert whose symbol has not been read yet. See [AlertRowDrawing].
      */
     val drawing: AlertRowDrawing? = null,
+    /**
+     * Whether this alert has never once been compared against a market — run Τ2, B6.
+     *
+     * Not «paused» and not «orphaned»: nothing is switched off and nothing is missing. The alert
+     * is stored, it reads as armed, and no pass has read prices since it was made — which is where
+     * a reader who armed one with no network is, and where the screen used to say «فعال» and
+     * nothing else. See `AlertReach`.
+     */
+    val unchecked: Boolean = false,
 ) {
     /** Whether the reader has switched this one off. Drawn as a mark, not as its own section. */
     val paused: Boolean get() = !alert.active && kind == AlertSectionKind.ARMED
@@ -277,6 +287,18 @@ class AlertsController(
      * history sheet — which is the only place somebody thinks to look when a bot did nothing.
      */
     private val webhooks: AlertWebhooks = NoWebhooks,
+    /**
+     * When a pass last read prices — run Τ2, B6. Null while none ever has.
+     *
+     * A `Flow` because it changes under the screen: a reader watching the alert centre when the
+     * network comes back should see the pills clear, not find out on the next visit. Hoisted for
+     * [forgetFireState]'s reason — the store belongs to the application module and this feature
+     * cannot see it. What comes across is one number, and `AlertReach` turns it into the rule.
+     *
+     * Defaults to a flow of null, which marks every alert unchecked. That is the right default for
+     * a build with no evaluator behind it at all: there, nothing is checking them.
+     */
+    private val lastCheckedAt: Flow<Long?> = flowOf(null),
     /** Injected so the grouping boundaries are testable without waiting a day. */
     private val now: () -> Long = System::currentTimeMillis,
     /** Hexadecimal, because the store's delimited format reserves `;` and `|`. */
@@ -311,6 +333,9 @@ class AlertsController(
         // centre is reached from four places; a controller that is a singleton asks once.
         scope.launch { runCatching { server.refresh() } }
         watchLinkedDrawings()
+        // Followed rather than read once, so a reader watching this screen when the network comes
+        // back sees the pills clear rather than finding out on their next visit.
+        scope.launch { lastCheckedAt.collect { at -> ui.update { it.copy(lastCheckedAt = at) } } }
     }
 
     /**
@@ -1166,6 +1191,10 @@ class AlertsController(
         val converted = serverAlerts.map { alert ->
             ServerAlertRows.asLocal(alert).also { venues[it.id] = AlertVenue.SERVER }
         }
+        // Which of these have never been compared against a market. Device alerts only — a
+        // server alert is watched by a server that does not stop when this phone does, so the
+        // question does not arise for one. See `AlertReach`.
+        val unchecked = AlertReach.uncheckedIds(alerts, extras.lastCheckedAt)
         val sections = AlertGrouping.group(alerts + converted, stamp).map { section ->
             AlertRowSection(
                 kind = section.kind,
@@ -1177,6 +1206,7 @@ class AlertsController(
                         kind = section.kind,
                         venue = venues[alert.id] ?: AlertVenue.DEVICE,
                         drawing = drawingOf(alert, extras.linkedDrawings),
+                        unchecked = alert.id in unchecked,
                     )
                 },
             )
@@ -1294,6 +1324,8 @@ class AlertsController(
         val webhooksOpen: Boolean = false,
         val webhookDraft: WebhookDraft? = null,
         val webhookTest: WebhookAttempt? = null,
+        /** When a pass last read prices. See the constructor's `lastCheckedAt`. */
+        val lastCheckedAt: Long? = null,
     )
 
     private companion object {

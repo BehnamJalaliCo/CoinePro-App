@@ -9,6 +9,7 @@
     <string name="alerts_section_expired">Expired</string>
     <string name="alerts_paused">Paused</string>
     <string name="alerts_drawing_missing">Drawing gone</string>
+    <string name="alerts_not_checked_yet">Not checked yet</string>
     <string name="alerts_centre_empty">You have not made an alert yet</string>
     <string name="alerts_centre_empty_hint">Pick a market and a condition, and we will tell you when it happens.</string>
     <string name="alerts_centre_empty_action">Make an alert</string>

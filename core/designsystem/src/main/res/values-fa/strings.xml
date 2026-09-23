@@ -42,6 +42,22 @@
     <string name="price_feed_full">قیمت زنده‌ی صرافی قطع است و کندتر به‌روز می‌شود</string>
     <string name="price_feed_unknown">وضعیت فید قیمت نامعلوم است</string>
 
+    <!-- سن تصویری که روی صفحه است. CoineProSavedBar — این با «قطع بودن اینترنت» یکی نیست. -->
+    <string name="saved_ago">ذخیره‌شده · %1$s</string>
+    <string name="saved_moments">همین حالا</string>
+    <plurals name="saved_minutes">
+        <item quantity="one">%1$s دقیقه پیش</item>
+        <item quantity="other">%1$s دقیقه پیش</item>
+    </plurals>
+    <plurals name="saved_hours">
+        <item quantity="one">%1$s ساعت پیش</item>
+        <item quantity="other">%1$s ساعت پیش</item>
+    </plurals>
+    <plurals name="saved_days">
+        <item quantity="one">%1$s روز پیش</item>
+        <item quantity="other">%1$s روز پیش</item>
+    </plurals>
+
     <!-- ── teaching banners ──────────────────────────────────────────────────────────
          One sentence saying what a screen does, and one saying the thing a first-time
          reader gets wrong. Persian is the source; values-en is the translation.

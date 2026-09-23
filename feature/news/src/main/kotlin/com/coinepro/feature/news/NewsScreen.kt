@@ -58,7 +58,9 @@ import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProProse
 import com.coinepro.core.designsystem.CoineProPullToRefresh
 import com.coinepro.core.designsystem.CoineProSecondaryButton
+import com.coinepro.core.designsystem.CoineProSavedBar
 import com.coinepro.core.designsystem.CoineProSegmentedControl
+import com.coinepro.core.designsystem.rememberSavedAge
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.designsystem.R as DesignR
@@ -380,6 +382,18 @@ fun NewsScreen(
                 },
             )
             CoineProTeachingStrip(TeachingSurface.NEWS, gutter = false)
+
+            // **How old these headlines are** (run Τ2, B6).
+            //
+            // Only when the list on screen was *held* — a refresh that answered with no news keeps
+            // the news already there, and a held feed and a quiet morning look identical while
+            // meaning opposite things. See `MarketIntelState.newsIsHeld`. Not drawn over the saved
+            // list: those are the reader's own and were never fetched for this screen.
+            if (!savedOnly) {
+                CoineProSavedBar(
+                    age = rememberSavedAge(state.newsFetchedAtEpochMillis.takeIf { state.newsIsHeld }),
+                )
+            }
 
             // The two newsrooms, named. Above the relevance chips because it answers the earlier
             // question — *whose* news am I reading — and a reader who came here from the crypto

@@ -95,6 +95,20 @@ interface AlertMarketSource {
     suspend fun read(requests: List<AlertMarketRequest>): AppResult<Map<String, AlertSample>>
 }
 
+/**
+ * Records that a pass read prices — run Τ2, B6.
+ *
+ * The narrowest possible seam, for the reason every other seam on this class is narrow: the
+ * evaluator is the most delicate code in the app and the last thing it should grow is a
+ * preferences dependency. What it knows is the one moment worth recording — prices arrived — and
+ * `AlertCheckStore` is what turns that into a pill on an alert that has never been checked.
+ */
+fun interface AlertChecks {
+
+    /** Called once per pass, and only after the price route answered. */
+    suspend fun markChecked(atEpochMillis: Long)
+}
+
 /** The audit log, narrowed to the one thing the evaluator does with it. */
 interface AlertAuditLog {
 
@@ -216,6 +230,13 @@ class AlertEvaluator(
      * without the module still evaluates alerts.
      */
     private val webhooks: suspend (WebhookEvent) -> List<WebhookAttempt> = { emptyList() },
+    /**
+     * Told when a pass actually read prices. See [AlertChecks].
+     *
+     * Defaults to doing nothing, so every existing test of this class is unchanged and a build
+     * without the store still evaluates alerts.
+     */
+    private val checks: AlertChecks = AlertChecks { },
 ) {
 
     /**
@@ -246,6 +267,10 @@ class AlertEvaluator(
             // Nothing is written on this path, deliberately. See [AlertPassResult.Unavailable].
             is AppResult.Failure -> return AlertPassResult.Unavailable(result.message ?: result.kind.name)
         }
+        // **Here and nowhere else**: prices arrived, so every alert in this list has now been
+        // compared against a market. Stamping earlier would mark alerts as checked on the passes
+        // that checked nothing, which is the one thing `AlertReach` exists to stop.
+        checks.markChecked(nowEpochMillis)
 
         val fired = coverage.flatMap { (alert, symbols) ->
             symbols.mapNotNull { symbol -> fire(alert, symbol, samples[symbol], states, nowEpochMillis) }

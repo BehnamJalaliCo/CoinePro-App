@@ -65,6 +65,22 @@ interface CandleCache {
         write(symbol, preset.timeframe, bars)
     }
 
+    /**
+     * When this series was last written, or null where nothing is held — run Τ2, B6.
+     *
+     * The age of the picture, so a chart drawn from disk can **say** how old it is rather than
+     * only being dimmed. Dimming answers «is this live»; it does not answer «is this ten minutes
+     * or two days old», and those lead to opposite decisions.
+     *
+     * The write time rather than the newest bar's own timestamp, deliberately: a daily candle is
+     * legitimately twenty hours old on a live chart, so the bar's time measures the market's
+     * cadence and not this app's. What the reader is being told is when the app last heard from
+     * the venue.
+     *
+     * Never throws, for [read]'s reason.
+     */
+    suspend fun storedAt(symbol: String, interval: ChartInterval): Long? = null
+
     /** Everything. What a sign-out does — see the note in [NoOpCandleCache]. */
     suspend fun clear()
 

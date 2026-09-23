@@ -152,6 +152,30 @@ class AlertEvaluatorTest {
     }
 
     @Test
+    fun `a pass that read prices says so, and one that could not does not`() = runTest {
+        // What `AlertReach` reads. Stamping the failed pass would clear the «هنوز بررسی نشده» mark
+        // on exactly the passes that checked nothing — the pill would vanish when it is true.
+        val world = World(listOf(alert(trigger = AlertTrigger.Price(PriceOp.GREATER_THAN, 100.0))))
+        world.failure = AppResult.Failure(ErrorKind.NETWORK, "timed out")
+        world.evaluator.evaluate(1_000L)
+        assertTrue("a failed pass checked nothing", world.checked.isEmpty())
+
+        world.failure = null
+        world.samples = mapOf("BTCUSDT" to sample(price = 1.0))
+        world.evaluator.evaluate(2_000L)
+        assertEquals(listOf(2_000L), world.checked)
+    }
+
+    @Test
+    fun `a pass with nothing to evaluate does not claim to have checked anything`() = runTest {
+        // No alerts means the price route was never asked, so there is nothing to report. The
+        // stamp means «prices arrived», not «a worker ran».
+        val world = World(emptyList())
+        assertEquals(AlertPassResult.Idle, world.evaluator.evaluate(1_000L))
+        assertTrue(world.checked.isEmpty())
+    }
+
+    @Test
     fun `a plain one-shot alert is still stamped on its own row`() = runTest {
         val world = World(
             listOf(
@@ -245,6 +269,9 @@ class AlertEvaluatorTest {
         val market = FakeMarket()
         var listMembers: Map<String, List<String>> = emptyMap()
 
+        /** Every instant a pass reported as «prices arrived». See `AlertChecks`. */
+        val checked = mutableListOf<Long>()
+
         var samples: Map<String, AlertSample>
             get() = market.samples
             set(value) {
@@ -266,6 +293,7 @@ class AlertEvaluatorTest {
             market = market,
             audit = audit,
             deliverer = deliverer,
+            checks = { at -> checked += at },
         )
     }
 

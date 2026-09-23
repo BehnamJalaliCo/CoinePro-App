@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.coinepro.app.BuildConfig
+import com.coinepro.app.alerts.AlertCheckStore
 import com.coinepro.app.alerts.AlertFireStateStore
 import com.coinepro.app.brief.AndroidMorningBriefDeliverer
 import com.coinepro.app.brief.MorningBriefEngine
@@ -922,6 +923,8 @@ object AppModule {
         store: LocalAlertStore,
         audit: AlertAuditStore,
         fireStates: AlertFireStateStore,
+        /** When a pass last read prices, for the «هنوز بررسی نشده» mark. See `AlertReach`. */
+        checks: AlertCheckStore,
         chartStates: SymbolChartStateStore,
         marketCache: MarketDataCache,
         @ForexPlatform forexCatalog: MarketCatalogGateway,
@@ -954,6 +957,7 @@ object AppModule {
             watchlists = watchlist.lists(),
             server = serverAlerts,
             webhooks = StoredWebhooks(webhookStore, webhookDispatcher),
+            lastCheckedAt = checks.lastCheckedAt,
         )
     }
 

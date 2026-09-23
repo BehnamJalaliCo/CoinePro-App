@@ -33,6 +33,13 @@ class MarketIntelController(
      * guest's — and because the answer is per platform, which is a fact this object already holds.
      */
     private val bodies: NewsBodySource = NoNewsBodySource,
+    /**
+     * The wall clock, so «this is from an hour ago» can be tested without waiting an hour.
+     *
+     * A lambda rather than a `Clock`, matching the rest of this repository's controllers: what is
+     * needed is one number, and a fake clock for one number is more machinery than the fact.
+     */
+    private val now: () -> Long = System::currentTimeMillis,
 ) {
     private val mutableState = MutableStateFlow(MarketIntelState())
     val state: StateFlow<MarketIntelState> = mutableState.asStateFlow()
@@ -76,6 +83,10 @@ class MarketIntelController(
                     val samePlatform = before.platform == null || before.platform == snapshot.platform
                     val keepCalendar = samePlatform && snapshot.calendar.isEmpty() && before.calendar.isNotEmpty()
                     val keepNews = samePlatform && snapshot.news.isEmpty() && before.news.isNotEmpty()
+                    // Read once, so the two sections and the reference cannot disagree about
+                    // what «now» was — which is what would make a section look held on the very
+                    // fetch that refreshed it.
+                    val fetchedAt = now()
                     mutableState.value = MarketIntelState(
                         news = if (keepNews) before.news else snapshot.news,
                         calendar = if (keepCalendar) before.calendar else snapshot.calendar,
@@ -83,6 +94,13 @@ class MarketIntelController(
                         calendarSource = if (keepCalendar) before.calendarSource else snapshot.calendarSource,
                         newsSource = if (keepNews) before.newsSource else snapshot.newsSource,
                         platform = snapshot.platform,
+                        // A held section keeps its own age; a refreshed one takes this fetch's.
+                        // See `MarketIntelState.newsIsHeld` for what the difference is read as.
+                        newsFetchedAtEpochMillis =
+                            if (keepNews) before.newsFetchedAtEpochMillis else fetchedAt,
+                        calendarFetchedAtEpochMillis =
+                            if (keepCalendar) before.calendarFetchedAtEpochMillis else fetchedAt,
+                        fetchedAtEpochMillis = fetchedAt,
                     )
                     onSnapshot(snapshot)
                 }

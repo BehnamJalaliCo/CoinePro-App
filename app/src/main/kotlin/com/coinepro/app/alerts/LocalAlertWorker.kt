@@ -73,6 +73,8 @@ class LocalAlertWorker @AssistedInject constructor(
      * and stays testable without one.
      */
     webhooks: WebhookDispatcher,
+    /** Stamps the pass that read prices, so the screen can say which alerts have not been. */
+    checks: AlertCheckStore,
 ) : CoroutineWorker(context, parameters) {
 
     private val evaluator = AlertEvaluator(
@@ -83,6 +85,7 @@ class LocalAlertWorker @AssistedInject constructor(
         audit = audit,
         deliverer = deliverer,
         webhooks = webhooks::dispatch,
+        checks = checks,
     )
 
     override suspend fun doWork(): Result =

@@ -125,6 +125,15 @@ object CoineProIcons {
     @DrawableRes val Info = R.drawable.icon_info
 
     /**
+     * A clock: «this is from a while ago». See `CoineProSavedBar`.
+     *
+     * Its own token rather than [Warning]'s glyph, because a saved picture is not a fault — every
+     * screen in this app is meant to be readable from the cache, and a warning triangle over that
+     * would say the thing the app was designed to do has gone wrong.
+     */
+    @DrawableRes val Age = R.drawable.icon_clock
+
+    /**
      * A circled question mark: "ask us".
      *
      * The chart's «؟» dots already use this drawable, and reusing it for the support row is the

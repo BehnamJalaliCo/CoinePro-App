@@ -33,6 +33,8 @@ import com.coinepro.core.datastore.WatchlistStore
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProEmptyState
 import com.coinepro.core.designsystem.CoineProIcons
+import com.coinepro.core.designsystem.CoineProSavedBar
+import com.coinepro.core.designsystem.rememberSavedAge
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.ProChartTapeStream
 import com.coinepro.core.designsystem.CoineProSpacing
@@ -96,6 +98,15 @@ fun WatchlistScreen(
     onCreateAlert: ((String) -> Unit)? = null,
     /** «تحلیل» — the list side by side. See `WatchlistPanel.onCompare`. */
     onCompare: ((List<String>) -> Unit)? = null,
+    /**
+     * When the prices on these rows were stored, where they came from the cache (run Τ2, B6).
+     *
+     * Null on live prices, and null is also what a build with no market controller behind it
+     * passes — this screen takes a catalogue and a store, not a feed, so the fact is hoisted for
+     * the reason every other fact on it is. `MarketDataState.cacheStoredAtEpochMillis` is what the
+     * shell hands in, and only while the origin is the cache: a live list must not be labelled.
+     */
+    savedAtMillis: Long? = null,
 ) {
     LaunchedEffect(controller) { controller.start() }
     val state by controller.state.collectAsStateWithLifecycle()
@@ -103,6 +114,9 @@ fun WatchlistScreen(
 
     Column(modifier = modifier.fillMaxSize().background(CoineProColors.Stage)) {
         WatchlistHeader(onOpenSearch = onOpenSearch)
+        // How old the figures on these rows are. Under the header rather than over it, so the
+        // page's own name is still the first thing read.
+        CoineProSavedBar(age = rememberSavedAge(savedAtMillis))
         when {
             // The panel draws every row from the catalogue, so before it arrives there is nothing
             // to draw — not even an empty list, which would say «این فهرست خالی است» about a list

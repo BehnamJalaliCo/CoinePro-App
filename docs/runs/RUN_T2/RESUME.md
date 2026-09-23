@@ -11,9 +11,9 @@ carries it — so the phase became an audit with every number re-measured on thi
 clause run Τ left untested. See `CHECKLIST.md`, which opens with the correction, and `REPORT.md`
 for the measurements.
 
-**Phase B: five of ten done.** B1 and B4 were already shipped by runs Φ and Υ and are audited rows.
-B2, B3, B5, B9 and B10 are this session's work — B9 narrowed on its bundled sound set, which needs
-audio this repository does not hold (`BLOCKED.md §B9`). B6, B7 and B8 are not started.
+**Phase B: six of ten done.** B1 and B4 were already shipped by runs Φ and Υ and are audited rows.
+B2, B3, B5, B9, B10 and now B6 are built — B9 narrowed on its bundled sound set, which needs audio
+this repository does not hold (`BLOCKED.md §B9`). B7 and B8 are not started.
 
 **Phase C: done but for C5.** C5's legend figure is new and its row stays ❌ on two clauses the
 checklist argues against rather than defers. **C1, C2, C3, C4 and C6 are ✅.**
@@ -27,10 +27,10 @@ that fails without the fix. The lesson for the rest of this phase: **a row that 
 exists» is a row nobody has used end to end.**
 
 **Shipped:** 4.93.0 (phase A + B2/B3/B5/B10), 4.94.0 (B9), 4.95.0 (C5's legend), 4.96.0 (C1's rule),
-5.1.0 (C2), 5.2.0 (C6), 5.3.0 (C1's surface), 5.4.0 (C4), 5.5.0 (C3). Every gate green and the full
-unit suite passing on each.
+5.1.0 (C2), 5.2.0 (C6), 5.3.0 (C1's surface), 5.4.0 (C4), 5.5.0 (C3), 5.6.0 (B6). Every gate green
+and the full unit suite passing on each.
 
-**Not done, and the next session's list in order:** B6, B7, B8. Each is named below with its
+**Not done, and the next session's list in order:** B7, B8. Each is named below with its
 files, the data it reads and the trap in it.
 
 ---
@@ -41,17 +41,26 @@ files, the data it reads and the trap in it.
 than on work: once the files are in `res/main/res/raw/`, it is four more entries in
 `NotificationChannels` and a tone field on the alert beside `soundLevel`.
 
-### B6 — offline as a first-class state
+### B6 — offline as a first-class state: done in 5.6.0
 
-* **Exists:** `CoineProOfflineBar` (one line, no dismiss, no retry — read its KDoc before changing
-  it, the argument is good), `NetworkStatus`, `CandleCache` and `CandleArchive` for bars, the
-  watchlist in preferences.
-* **Missing:** the banner that says **how old** the cached picture is — «ذخیره‌شده · %s پیش» /
-  "Saved · %s ago" — on the chart, the watchlist, news and the calendar; the **queued alert** (an
-  alert created offline, with a badge, flushed on reconnect).
-* **Note:** this is a new component beside `CoineProOfflineBar`, not a change to it. «No network»
-  and «this is from an hour ago» are different sentences and a reader needs the second one even
-  when the first is not true.
+The note above was right and is worth keeping: it is a **new component beside**
+`CoineProOfflineBar`, not a change to it. Four more things a next session should not rediscover:
+
+* **The second half was not a queue, and building one would have been machinery that could never
+  run.** A local alert is not sent anywhere; `LocalAlertWorker` compares it against prices under a
+  *connected* constraint. So «created offline, flushed on reconnect» is really «never once read
+  against a market», which is this run's recurring failure shape and now says «هنوز بررسی نشده».
+  If a **server**-side alert queue is ever wanted, that is a different feature with a different
+  store; do not attach it to `AlertReach`.
+* **The check stamp is written only after the price route answered.** Stamping at the start of a
+  pass would clear the pill on exactly the passes that checked nothing. `AlertEvaluatorTest` holds
+  both directions; do not move the `checks.markChecked` call.
+* **Each surface dates what it is showing, not when it last tried.** News and the calendar are
+  per section because the controller holds a section independently; the chart uses the cache's
+  write time because a daily candle is legitimately twenty hours old on a live chart.
+* **`rememberSavedAge` ticks.** A frozen «۲ دقیقه پیش» is the lie the bar exists to remove, and it
+  looks identical to a current one. Anything that reads `SavedAge` on a screen that stays open
+  should use that helper rather than computing once.
 
 ### B8 — Picture-in-Picture
 

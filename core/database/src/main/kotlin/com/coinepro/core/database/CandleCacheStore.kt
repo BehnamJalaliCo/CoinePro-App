@@ -109,6 +109,19 @@ interface CandleCacheDao {
     )
     suspend fun span(symbol: String, intervalWire: String): CachedSpanRow?
 
+    /**
+     * When one series was last written, or null where nothing is held — run Τ2, B6.
+     *
+     * `MAX` rather than the newest bar's own write time, because a merge writes the whole page
+     * with one stamp and a trim removes rows from the other end: what is wanted is «when did this
+     * app last hear from the venue about this series», and that is the most recent stamp in it.
+     */
+    @Query(
+        "SELECT MAX(cachedAtEpochMillis) FROM cached_candles " +
+            "WHERE symbol = :symbol AND `interval` = :intervalWire",
+    )
+    suspend fun storedAt(symbol: String, intervalWire: String): Long?
+
     /** Bars held across every series, which is what the archive's total bound is measured against. */
     @Query("SELECT COUNT(*) FROM cached_candles")
     suspend fun totalBars(): Int

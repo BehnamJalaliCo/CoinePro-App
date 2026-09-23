@@ -59,7 +59,9 @@ import com.coinepro.core.designsystem.CoineProListHeader
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProPullToRefresh
 import com.coinepro.core.designsystem.CoineProSecondaryButton
+import com.coinepro.core.designsystem.CoineProSavedBar
 import com.coinepro.core.designsystem.CoineProSegmentedControl
+import com.coinepro.core.designsystem.rememberSavedAge
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.designsystem.R as DesignR
@@ -133,6 +135,16 @@ fun EconomicCalendarScreen(
             },
         )
         CoineProTeachingStrip(TeachingSurface.CALENDAR, gutter = false)
+
+        // **How old this week's rows are** (run Τ2, B6).
+        //
+        // Drawn only when the calendar on screen was *held* — a refresh that answered with an
+        // empty calendar keeps the one already there, which is right, and used to be silent, which
+        // was not: a held calendar and a quiet week look identical and lead to opposite decisions.
+        // See `MarketIntelState.calendarIsHeld`.
+        CoineProSavedBar(
+            age = rememberSavedAge(state.calendarFetchedAtEpochMillis.takeIf { state.calendarIsHeld }),
+        )
 
         // Impact is the only filter that survives. The market filter went with it: the calendar is
         // macro data that moves both platforms, so filtering it by instrument hid the releases a

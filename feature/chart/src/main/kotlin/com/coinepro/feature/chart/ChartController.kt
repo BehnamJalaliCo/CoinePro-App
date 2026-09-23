@@ -153,6 +153,18 @@ data class ChartUiState(
      * at is on its way out without losing the prices while it goes.
      */
     val stale: Boolean = false,
+    /**
+     * When the bars on screen were written to disk, where they came from disk — run Τ2, B6.
+     *
+     * Null on a chart the venue answered, which is the ordinary case and draws nothing. Non-null
+     * only beside [stale], and it is the half [stale] does not carry: dimming answers «is this
+     * live», and a reader deciding whether to act needs «is this ten minutes or two days old».
+     * Those are different questions and the second is the one that changes what they do.
+     *
+     * The cache's write time rather than the newest bar's own, for `CandleCache.storedAt`'s
+     * reason: a daily candle is legitimately twenty hours old on a live chart.
+     */
+    val savedAtEpochMillis: Long? = null,
     val error: ChartError? = null,
     val activeIndicators: Set<String> = emptySet(),
     /**
@@ -3915,6 +3927,8 @@ class ChartController(
                             loading = false,
                             error = null,
                             stale = false,
+                            // These bars are the venue's now, so there is nothing to date.
+                            savedAtEpochMillis = null,
                             hasMore = !it.series.isEmpty,
                             venueExhausted = true,
                         )
@@ -3959,6 +3973,8 @@ class ChartController(
                             // In place, in one frame: the bars change and the dimming comes off
                             // together, because they are one publication of one state.
                             stale = false,
+                            // These bars are the venue's now, so there is nothing to date.
+                            savedAtEpochMillis = null,
                             hasMore = page.hasMore,
                             venueExhausted = false,
                         )
@@ -3999,6 +4015,9 @@ class ChartController(
                         // attempts and a banner nothing is being replaced any more — a chart left
                         // at forty per cent for as long as the reader has no signal reads as
                         // broken, and these prices are real. The banner is what says they are old.
+                        // `savedAtEpochMillis` is deliberately **not** cleared here. The bars on
+                        // screen are still the cache's, and this is the branch the comment above
+                        // means by «the banner is what says they are old» — see `CoineProSavedBar`.
                         it.copy(loading = false, stale = false, error = failure.toChartError())
                     }
                     log?.warn(
@@ -4508,6 +4527,10 @@ class ChartController(
         val current = _state.value
         if (current.symbol != symbol || current.interval != interval) return
         if (!current.series.isEmpty && !current.stale) return
+        // How old these bars are, read beside them rather than derived from them. Null where the
+        // cache cannot say — an archive fallback has no write time of its own — and null draws no
+        // bar at all, which is `SavedAge.of`'s rule: an unknown age is not a fresh one.
+        val storedAt = runCatching { cache.storedAt(symbol, interval) }.getOrNull()
         val series = buildSeries { CandleSeries(cached.map(OhlcBar::toCandle)) }
         _state.update { latest ->
             if (latest.symbol != symbol || latest.interval != interval) {
@@ -4519,7 +4542,7 @@ class ChartController(
                 // the disk's rather than the venue's, and the reader now has something to look at
                 // while it runs. Those are not in conflict — which is item (c) of the run, a cold
                 // open that shows cached candles dimmed instead of a spinner over nothing.
-                latest.copy(series = series, stale = true)
+                latest.copy(series = series, stale = true, savedAtEpochMillis = storedAt)
             }
         }
     }

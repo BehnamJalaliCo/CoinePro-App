@@ -36,6 +36,22 @@
     <string name="price_feed_full">The venue\'s live price feed is down and updates more slowly</string>
     <string name="price_feed_unknown">The price feed\'s state is unknown</string>
 
+    <!-- How old the picture on screen is. See CoineProSavedBar; not the same fact as offline. -->
+    <string name="saved_ago">Saved · %1$s</string>
+    <string name="saved_moments">just now</string>
+    <plurals name="saved_minutes">
+        <item quantity="one">%1$s minute ago</item>
+        <item quantity="other">%1$s minutes ago</item>
+    </plurals>
+    <plurals name="saved_hours">
+        <item quantity="one">%1$s hour ago</item>
+        <item quantity="other">%1$s hours ago</item>
+    </plurals>
+    <plurals name="saved_days">
+        <item quantity="one">%1$s day ago</item>
+        <item quantity="other">%1$s days ago</item>
+    </plurals>
+
     <!-- Teaching banners. See CoineProTeaching.kt; the Persian in values/ is the source. -->
     <string name="teaching_dismiss">Close this explanation</string>
     <string name="teaching_what_is_this">What is this screen?</string>

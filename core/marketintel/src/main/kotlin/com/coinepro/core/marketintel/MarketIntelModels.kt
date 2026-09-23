@@ -195,7 +195,45 @@ data class MarketIntelState(
     val newsSource: NewsFeedOutcome? = null,
     /** See [MarketIntelSnapshot.platform]. Null until a fetch has answered. */
     val platform: MarketPlatform? = null,
-)
+    /**
+     * When the news on screen was actually fetched, and when the calendar was — run Τ2, B6.
+     *
+     * **Per section, because they are held per section.** A refresh that answers with news and an
+     * empty calendar keeps the calendar that was already there (see the controller), so after it
+     * the two halves of this screen are of different ages and a single timestamp would be wrong
+     * about one of them.
+     *
+     * Null until a fetch has put something there.
+     */
+    val newsFetchedAtEpochMillis: Long? = null,
+    val calendarFetchedAtEpochMillis: Long? = null,
+    /**
+     * When the last fetch **succeeded**, whatever it contained.
+     *
+     * The reference the two above are compared against: a section whose own time is older than
+     * this one is a section that was held rather than refreshed, which is the fact
+     * [newsIsHeld] and [calendarIsHeld] report.
+     */
+    val fetchedAtEpochMillis: Long? = null,
+) {
+
+    /**
+     * Whether what is on screen is older than the last successful fetch.
+     *
+     * The screens draw `CoineProSavedBar` on this. Holding a section rather than blanking it is
+     * right — the release times have not changed, only this fetch's luck has — but holding it
+     * **silently** means a reader cannot tell a quiet feed from one that has not been read since
+     * this morning, and those lead to opposite decisions.
+     *
+     * [failed] counts too: a fetch that threw leaves everything on screen at its old age, and that
+     * is the case where saying so matters most.
+     */
+    val newsIsHeld: Boolean
+        get() = failed || (newsFetchedAtEpochMillis != null && newsFetchedAtEpochMillis != fetchedAtEpochMillis)
+
+    val calendarIsHeld: Boolean
+        get() = failed || (calendarFetchedAtEpochMillis != null && calendarFetchedAtEpochMillis != fetchedAtEpochMillis)
+}
 
 fun List<EconomicEvent>.highImpactWarningsFor(
     symbol: String,

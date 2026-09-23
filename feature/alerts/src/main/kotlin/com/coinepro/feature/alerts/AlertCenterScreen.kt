@@ -362,6 +362,12 @@ private fun AlertListRow(row: AlertRow, onOpen: () -> Unit, onActions: () -> Uni
             if (row.orphaned) {
                 OrphanPill()
             }
+            // Only where the row is not already saying something stronger. An orphaned alert
+            // cannot fire at all and a paused one was told not to; adding «هنوز بررسی نشده» beside
+            // either would be a second, weaker sentence about the same row.
+            if (row.unchecked && !row.orphaned && !row.paused) {
+                UncheckedPill()
+            }
             if (row.paused) {
                 PausedPill()
             }
@@ -469,6 +475,33 @@ private fun OrphanPill() {
         modifier = Modifier
             .clip(CoineProPillShape)
             .background(CoineProTint.fill(CoineProColors.Sell, CoineProColors.Surface))
+            .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
+    )
+}
+
+/**
+ * The mark on an alert that has never been compared against a market — run Τ2, B6.
+ *
+ * ### Why this is not the orphan's red
+ *
+ * Nothing is broken. The alert is stored, it is armed, and it will be checked on the first pass
+ * that reads prices — which on a phone that has had no network since it was made has simply not
+ * happened yet. Red would say «this will never fire», which is `OrphanPill`'s sentence and is a
+ * different and much worse fact.
+ *
+ * What it replaces is silence. The row said «فعال» over an alert that had not once been looked at,
+ * and a reader who armed one on a plane had no way to tell that from one that had been watching
+ * all morning. It is the same shape of failure this run has now removed four times.
+ */
+@Composable
+private fun UncheckedPill() {
+    Text(
+        text = stringResource(R.string.alerts_not_checked_yet),
+        style = MaterialTheme.typography.labelSmall,
+        color = CoineProColors.TextSecondary,
+        modifier = Modifier
+            .clip(CoineProPillShape)
+            .background(CoineProColors.SurfaceElevated)
             .padding(horizontal = CoineProSpacing.One, vertical = 4.dp),
     )
 }

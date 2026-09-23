@@ -38,6 +38,13 @@ class RoomCandleCache(
     override suspend fun write(symbol: String, interval: ChartInterval, bars: List<OhlcBar>) =
         writeWire(symbol, interval.wire, bars)
 
+    override suspend fun storedAt(symbol: String, interval: ChartInterval): Long? =
+        // Swallowed like every other read here: a chart that could not say how old it is still
+        // draws, and the bar simply does not appear.
+        runCatching { dao.storedAt(symbol.uppercase(), interval.wire) }
+            .getOrNull()
+            ?.takeIf { it > 0L }
+
     override suspend fun clear() {
         runCatching { dao.clearAll() }
     }

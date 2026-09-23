@@ -47,6 +47,22 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.6.0
+
+**fa**
+
+> حالا هر صفحه‌ای که تصویر ذخیره‌شده نشان می‌دهد، **می‌گوید چقدر قدیمی است** — چارت، دیده‌بان، اخبار
+> و تقویم: «ذخیره‌شده · ۲ ساعت پیش». کم‌رنگ شدن می‌گفت «زنده نیست»؛ این می‌گوید ده دقیقه یا دو روز،
+> که تصمیم را عوض می‌کند. و هشداری که ساخته‌اید ولی هنوز یک‌بار هم با بازار مقایسه نشده، به‌جای
+> «فعال» می‌گوید **هنوز بررسی نشده**.
+
+**en**
+
+> Every screen that shows you a saved picture now **says how old it is** — the chart, the
+> watchlist, news and the calendar: «Saved · 2 hours ago». Dimming said «not live»; this says ten
+> minutes or two days, which is what changes the decision. And an alert you armed that has never
+> once been compared against a market now says **not checked yet** instead of «armed».
+
 ## 5.5.0
 
 **fa**

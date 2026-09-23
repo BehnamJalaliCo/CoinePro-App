@@ -9,6 +9,7 @@
     <string name="alerts_section_expired">منقضی</string>
     <string name="alerts_paused">متوقف</string>
     <string name="alerts_drawing_missing">ترسیمش نیست</string>
+    <string name="alerts_not_checked_yet">هنوز بررسی نشده</string>
     <string name="alerts_centre_empty">هنوز هشداری نساخته‌اید</string>
     <string name="alerts_centre_empty_hint">یک نماد و یک شرط انتخاب کنید تا وقتی بازار به آن رسید خبرتان کنیم.</string>
     <string name="alerts_centre_empty_action">ساختن هشدار</string>

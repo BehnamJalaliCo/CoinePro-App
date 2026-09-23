@@ -591,3 +591,89 @@ and `DuelSessionTest` (6) in `:feature:chart`; the pending→navigate→`enterRe
 in `CoineProApp`, mirroring the Arena's and deliberately not sharing a helper with it — the two pick
 by different arithmetic, one needs a paper-book mark and the other does not, and a helper taking
 both would be a helper with a boolean in it.
+
+---
+
+## B6 — offline as a first-class state, and the queue that does not exist
+
+Two halves. The first was the row as written; the second turned out to be a different feature than
+the row described, and the difference is the interesting part.
+
+### «ذخیره‌شده · ۲ ساعت پیش» is a second sentence, not a better offline bar
+
+`CoineProOfflineBar` answers **«is the phone online»**. It clears when the reader walks to a window,
+and it says nothing at all about age: a phone that dropped its network ten seconds ago and one that
+has been in a basement since yesterday draw exactly the same bar.
+
+`CoineProSavedBar` answers **«how old is what I am looking at»**, and that question is live on a
+perfect connection too — a screen restored from the cache while a request is still in flight is just
+as old as one restored with no network at all. Folding the two into one line would mean telling
+somebody to check their connection over a problem no connection of theirs can fix, which is the
+mistake `CoineProPriceFeedBar` already exists to avoid at the other end.
+
+It is drawn in the **muted ink**, not the offline bar's red and not the feed bar's amber. Saved is
+not a fault: every screen in this app is meant to be readable from the cache, and painting that fact
+in a warning colour would tell a reader that the thing the app was designed to do has gone wrong.
+
+### The age ticks, and that is not a nicety
+
+A bar that read «۲ دقیقه پیش» when the page opened and still said it forty minutes later would be
+the lie the bar exists to remove — and the reader has no way to tell, because a frozen sentence and
+a current one look identical. `rememberSavedAge` recomputes on a thirty-second tick, and never
+starts one at all when there is nothing to date, so a screen showing live content pays nothing.
+
+### Each surface dates what it is actually showing
+
+* **News and the calendar, per section.** The controller keeps a section rather than blanking it
+  when a refresh comes back empty — right, because the release times have not changed, only this
+  fetch's luck has — and it did that **silently**, so a held calendar and a quiet week looked
+  identical. They are now dated separately, because after one such refresh the two halves of the
+  page are genuinely of different ages and one timestamp would be wrong about one of them.
+* **The watchlist**, from the market feed's own cache stamp, and only while the feed is actually
+  serving from it.
+* **The chart**, from the cache's **write time** rather than the newest bar's own timestamp: a daily
+  candle is legitimately twenty hours old on a live chart, so the bar's time measures the market's
+  cadence and not this app's. What the reader is told is when the app last heard from the venue.
+
+The chart's failure branch had been carrying the comment «the dimming comes off … the banner is what
+says they are old» about a banner that did not exist. It does now, and `savedAtEpochMillis` is
+deliberately *not* cleared on that branch for exactly that reason.
+
+### The second half is not a queue
+
+The row asked for «an alert created offline, with a badge, flushed on reconnect». A local alert is
+not sent anywhere. It is stored on the phone and `LocalAlertWorker` compares it against prices on
+Android's schedule, under a **connected** constraint — there are no prices without a network.
+
+So an alert armed on a plane is not waiting to be uploaded. It is waiting to be *read against a
+market*, and until that happens it has never been checked even once while the screen says «فعال».
+That is this run's recurring failure shape — a thing that reads as armed and cannot fire — and it is
+the same defect C2 found behind an orphaned drawing and C6 found behind a brief that sometimes did
+not arrive.
+
+Building a flush for a queue that does not exist would have been machinery that could never run. The
+pill says **«هنوز بررسی نشده»** instead, and it clears itself on the first pass that reads prices,
+which is precisely «flushed on reconnect» in the only sense this architecture has.
+
+One timestamp for the whole list, not one per alert: a pass reads every alert's symbols together, so
+«prices arrived» is a fact about the pass. And it is stamped **only after the price route answered** —
+stamping at the start would clear the pill on exactly the passes that checked nothing, which is the
+one thing the rule exists to stop. There is a test for each direction.
+
+### A defect nobody had reported
+
+`CoineProApp` fed the diagnostics page's cache-age field with `it.toString()` on the raw epoch
+millis. It had been printing `1758592800000` where a sentence belongs since the field was added —
+the fixture beside it has said `«۲ دقیقه پیش»` the whole time. Another surface nobody reads until
+the day it matters. It now goes through `savedAgeSentenceOrNull`, which is the same arithmetic and
+the same wording the bar uses.
+
+### What landed
+
+`SavedAge` and `SavedAgeTest` (11) in `core:common`; `CoineProSavedBar`, `rememberSavedAge`,
+`savedAgeSentence` and the plurals in `core:designsystem`; per-section fetch times and
+`newsIsHeld`/`calendarIsHeld` in `core:marketintel` with `MarketIntelHeldTest` (5);
+`CandleCache.storedAt` with its Room query; `ChartUiState.savedAtEpochMillis`; `AlertReach` and
+`AlertReachTest` (8) in `core:notifications`; `AlertCheckStore` and the `AlertChecks` seam on the
+evaluator with two more cases in `AlertEvaluatorTest`; and the bar on the chart, the watchlist, news
+and the calendar.
