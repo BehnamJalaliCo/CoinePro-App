@@ -327,25 +327,39 @@ relay with no account cannot open **zero** connections to it, not one.
 So Phase 3 is **forex-complete and crypto-closed**, and the contract says so in its first frame
 rather than leaving a chart to tick silently forever:
 
-```
-← {"type":"welcome","venues":{
-     "forex":  {"live": true,  "reason": null},
-     "crypto": {"live": false, "reason": "upstream requires an account (PLAN.md §6.2, Phase 4)"}}}
+The frame as it is served, read off the live socket on 2026-09-23 rather than quoted from the
+version this document used to specify:
 
-> **That reason string is stale and the fact in it is not.** Raised again on 2026-09-23 by the
-> server's agent, who read «Phase 4» and reasonably asked whether it was work the brief had
-> missed. It is not, and the confusion is the citation's fault: «Phase 4» there is `PLAN.md`'s old
-> numbering, not `SERVER_BUILD_PROMPT.md`'s.
->
-> **Building the Pro Chart account does nothing for it.** TradeYar's crypto socket wants a
-> *TradeYar* session, and a Pro Chart account is not one — which is the whole point of §4.4. The
-> only thing that could open it is a reader's own linked upstream session, and whether to use one
-> that way is §4.2.1's «wait», still unanswered and deliberately so.
->
-> Nothing is broken meanwhile: crypto prices come over REST, 861 symbols, `stale: false`. At the
-> next deploy the string should cite **§4.2.1** — the decision that actually governs it — rather
-> than a phase number in a retired document.
 ```
+← {"type":"welcome",
+   "venues":{"forex":  {"live": true,  "reason": null},
+             "crypto": {"live": false,
+                        "reason": "upstream requires a tradeyar session (SERVER.md §4.2.1)"}},
+   "limits":{"sockets_per_address": 1, "symbols_per_subscription": 200}}
+```
+
+> **The old string cited «PLAN.md §6.2, Phase 4» and both halves of that were misleading.** The
+> server's agent read «Phase 4» on 2026-09-23 and reasonably asked whether it was work the brief
+> had missed. It was not: «Phase 4» there is `PLAN.md`'s old numbering, not
+> `SERVER_BUILD_PROMPT.md`'s. **Building the Pro Chart account does nothing for it** — TradeYar's
+> crypto socket wants a *TradeYar* session, and a Pro Chart account is not one, which is the whole
+> point of §4.4. The only thing that could open it is a reader's own linked upstream session, and
+> whether to use one that way is §4.2.1's «wait», still unanswered and deliberately so.
+>
+> **The replacement is better than the one I asked for, and the difference is worth writing down.**
+> The instruction was «cite §4.2.1» — which, taken literally, would have put the sentence *«upstream
+> requires a TradeYar session»* into a branch that **every venue shares**. Forex closes `4401` too
+> when it refuses; a hardcoded name would have told a reader that the *forex* feed wanted a TradeYar
+> account. The server generalised instead: the venue that refused names **itself**, so the string
+> stays true for a third venue nobody has added yet. A constant that happens to be right for one of
+> two cases is a defect waiting for the second.
+>
+> **And it carries `limits`, which this document had only ever stated as refusals.** §4.11's
+> ceilings — one socket per address, 200 symbols per subscription — arrived at the client as a
+> `403` and an error frame, i.e. only by being hit. Announcing them in the first frame lets a
+> terminal chunk its own subscription instead of discovering the wall with a dropped connection.
+>
+> Nothing is broken meanwhile: crypto prices come over REST, 861 symbols, `stale: false`.
 
 **The difference between a chart that says «there is no crypto feed» and a chart that simply never
 ticks is this one frame.** A terminal must read it and say so; a silent chart is the failure this
@@ -752,6 +766,10 @@ took somebody to measure it, and correct on both sides of that window.
 **The ceiling refuses rather than truncates**, which is the behaviour `webSocketUrl`'s own comment in
 the app warns about: a silently shortened subscription is a chart that never ticks for a symbol the
 reader asked for and was never told about.
+
+**Both ceilings are now announced rather than only enforced.** The welcome frame carries
+`"limits":{"sockets_per_address":1,"symbols_per_subscription":200}` (§4.2, measured 2026-09-23), so a
+terminal can split an over-long subscription itself instead of learning the number from a `403`.
 
 One measurement the server had to make to test at all, worth keeping: **the forex market is shut at
 the weekend.** Upstream still sends a frame a second, with frozen values — 45 seconds, 45 frames,

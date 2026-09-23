@@ -365,14 +365,23 @@ What the relay does about that is the part worth keeping. It declares the venue 
 live, in the first frame every client receives:
 
 ```json
-{"type":"welcome","venues":{
-   "forex":  {"live": true,  "reason": null},
-   "crypto": {"live": false, "reason": "upstream requires an account (PLAN.md §6.2, Phase 4)"}}}
+{"type":"welcome",
+ "venues":{"forex":  {"live": true,  "reason": null},
+           "crypto": {"live": false,
+                      "reason": "upstream requires a tradeyar session (SERVER.md §4.2.1)"}},
+ "limits":{"sockets_per_address": 1, "symbols_per_subscription": 200}}
 ```
 
 **The difference between a chart that says «there is no crypto feed» and a chart that simply never
 ticks is that one frame.** This product has spent three runs removing silent failures from its own
 client; it would have been absurd to accept one in its own protocol.
+
+The frame above is the one read off the live socket on 2026-09-23, not the one this run first
+specified. Two things changed and both are improvements the server made rather than took: the reason
+**names the venue that refused** instead of hardcoding «TradeYar» into a branch every venue shares —
+forex closes `4401` too, so the literal reading of my instruction would eventually have told a reader
+the *forex* feed wanted a TradeYar account — and the frame now carries the two ceilings of §4.11,
+which until then a client could only discover by hitting them.
 
 ### The question, and why the answer is «wait»
 
