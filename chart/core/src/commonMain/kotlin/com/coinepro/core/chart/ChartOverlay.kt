@@ -362,6 +362,25 @@ data class ChartDecoration(
      */
     val events: List<EventMark> = emptyList(),
     /**
+     * The bars worth asking «چرا؟» about, in ascending order — run Τ2, C1.
+     *
+     * [NotableBars.of] decides them, from the series alone: it is a property of the bars and not of
+     * the viewport, so the caller recomputes it when the series changes and never when the reader
+     * pans. The renderer draws a small dot for the visible ones in the **same strip** the event
+     * glyphs live in, below the bars, and nothing over the candles.
+     *
+     * ### Why not in the plot
+     *
+     * A tap on the plot already means a drawing, an eraser stroke or a trade ring, and a long press
+     * already opens the context menu. Taking one of those over for this would put the app's most
+     * delicate gesture path at risk for a feature nobody has asked for yet. The strip is already
+     * «things that happened at this time», and an unusually large bar is exactly that.
+     *
+     * An event glyph on the same bar **wins**: it names something that happened, and the dot only
+     * says the bar was large. The two never draw on top of each other — see the renderer.
+     */
+    val notableBars: List<Int> = emptyList(),
+    /**
      * Strips below the price, each on its own scale — oscillators, and a script's own-pane plots.
      *
      * Order is top to bottom. Empty is the common case and costs nothing.

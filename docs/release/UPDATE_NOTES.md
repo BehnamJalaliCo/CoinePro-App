@@ -47,6 +47,22 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.3.0
+
+**fa**
+
+> کندلی که به‌طور غیرعادی بزرگ است حالا زیر خودش یک نقطه‌ی کوچک دارد، در همان نوار زیر چارت که
+> نشانه‌های رویداد آنجا هستند. با زدنش می‌بینید چقدر بزرگ بوده نسبت به معمولِ اخیرِ همان چارت، از باز
+> تا بسته چقدر حرکت کرده، و چه چیزی در تقویم و اخبار **داخل همان کندل** افتاده. اگر چیزی نیفتاده،
+> همین را می‌گوید — نزدیک‌ترین خبر را به‌عنوان «دلیل» جا نمی‌زند.
+
+**en**
+
+> An unusually large candle now carries a small dot beneath it, in the same strip the event glyphs
+> live in. Tapping it says how big the bar was against that chart's own recent normal, how far it
+> moved open to close, and what was on the calendar and the wire **inside that bar**. Where nothing
+> was, it says so — rather than putting the nearest headline under «why».
+
 ## 5.2.0
 
 **fa**

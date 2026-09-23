@@ -15,9 +15,8 @@ for the measurements.
 B2, B3, B5, B9 and B10 are this session's work — B9 narrowed on its bundled sound set, which needs
 audio this repository does not hold (`BLOCKED.md §B9`). B6, B7 and B8 are not started.
 
-**Phase C: four pieces built, the rest audited.** C5's legend figure is new; C1's rule —
-`NotableBars` — is built and tested with its surface still to come, and both rows are ❌ with the
-checklist saying exactly what is missing. **C2 and C6 are ✅.** C3 and C4 do not exist.
+**Phase C: five pieces built.** C5's legend figure is new and its row stays ❌ on two clauses the
+checklist argues against rather than defers. **C1, C2 and C6 are ✅.** C3 and C4 do not exist.
 
 **C2 was not the small row it looked like.** «Mostly shipped already» was true of the engine and
 false of the product: deleting a drawing killed its alerts *silently*, and the alert then sat in
@@ -28,10 +27,11 @@ that fails without the fix. The lesson for the rest of this phase: **a row that 
 exists» is a row nobody has used end to end.**
 
 **Shipped:** 4.93.0 (phase A + B2/B3/B5/B10), 4.94.0 (B9), 4.95.0 (C5's legend), 4.96.0 (C1's rule),
-5.1.0 (C2), 5.2.0 (C6). Every gate green and the full unit suite passing on each.
+5.1.0 (C2), 5.2.0 (C6), 5.3.0 (C1's surface). Every gate green and the full unit suite passing on
+each.
 
-**Not done, and the next session's list in order:** B6, B7, B8, C1's surface, C3, C4. Each is
-named below with its files, the data it reads and the trap in it.
+**Not done, and the next session's list in order:** B6, B7, B8, C3, C4. Each is named below with
+its files, the data it reads and the trap in it.
 
 ---
 
@@ -79,26 +79,21 @@ Nothing exists. The shape it wants:
   the existing one works and a Glance rewrite of a working widget is risk with no reader-visible
   gain. If it stays RemoteViews, the row says so and stays ❌.
 
-### C1 — «Why this move?»
+### C1 — «Why this move?»: done in 5.3.0
 
-**The rule is built and tested**: `NotableBars` in `:chart-core`, and `NotableBarsTest` beside it.
-What is left is the surface, and the design decision worth inheriting is *where the dot goes*.
+This section's plan was followed almost exactly — the strip, the decoration field, the hit-test, the
+sheet — and three things it did not say are worth keeping:
 
-**Not in the plot's gestures.** A tap on the plot already means a drawing, an eraser stroke or a
-trade ring, and a long press already opens the context menu; taking one of them over for this would
-put the app's most delicate gesture path at risk for a feature nobody has asked for yet.
-
-**In the event strip**, under the bars, where `EventMark` glyphs already live. That strip is already
-«things that happened at this time», an unusually large bar is exactly that, and the whole hit-test
-is already written — `ChartEvents.markAt`, called from `CoineProChart.kt:2527`, confined to the few
-points of height below `timeAxisTop`. The work is: carry the notable indices on the decoration
-beside `decoration.events`, draw a dot for the visible ones in `drawEventMarks`, extend the strip's
-hit-test to answer with a bar index, and open a sheet.
-
-**The sheet's content needs no backend.** News and the economic calendar are already on the chart —
-`ChartEventController` holds them for the window in front of the reader, unfiltered — and the Signal
-Layer's events are on `decoration.signal`. The bar's own window is `series.time[index]` to the next
-bar's time. Where nothing falls inside it, one plain sentence and «news for this time».
+* **The precedence between a glyph and a dot has to be written down in both places.** The renderer
+  skips a dot on a bar an event glyph holds, and `ChartEvents.notableAt` takes the same set as
+  `exclude`. Either alone leaves a mark a reader can see and cannot open, or a tap that opens the
+  wrong thing.
+* **The sheet must not re-derive the figure.** `NotableBars.ratioAt` lives beside `of` and repeats
+  its rules exactly, and the first case in `NotableBarReadingTest` asserts the two agree. A dot on
+  a bar whose sheet says nothing unusual happened is the one outcome worse than no dot.
+* **The empty state is the feature, not a gap.** Most large bars have nothing on the calendar
+  inside them. The sheet says so in a sentence; reaching for the nearest headline would be this app
+  manufacturing a cause, which is the thing `RasadCoach` refuses to do on the chart itself.
 
 ### C4 — My week
 

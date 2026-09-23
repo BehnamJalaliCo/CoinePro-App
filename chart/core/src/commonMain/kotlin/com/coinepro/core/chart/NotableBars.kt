@@ -100,4 +100,39 @@ object NotableBars {
      * nothing unusual about it.
      */
     fun covers(series: CandleSeries, index: Int): Boolean = index in of(series)
+
+    /**
+     * One bar's range as a multiple of its own baseline, or null where there is no baseline.
+     *
+     * What the sheet prints — «۳٫۱ برابر معمولِ این چارت» — and it **must** be computed the same
+     * way [of] computes it or the dot and its own sheet will disagree: a mark on a bar whose sheet
+     * says there is nothing unusual about it is the worst outcome this feature has available.
+     *
+     * So the rules are repeated exactly rather than approximated: the [WINDOW] **preceding** bars,
+     * the bar itself never in its own baseline, and an average over the bars that actually traded
+     * rather than over the window's length. Null for an index inside the first window, for a
+     * non-finite bar, and for a baseline of zero — the three cases [of] also refuses.
+     */
+    fun ratioAt(series: CandleSeries, index: Int): Double? {
+        if (index < WINDOW || index >= series.size) return null
+        val high = series.high
+        val low = series.low
+        val h = high[index]
+        val l = low[index]
+        if (!h.isFinite() || !l.isFinite() || h < l) return null
+        var sum = 0.0
+        var counted = 0
+        for (behind in index - WINDOW until index) {
+            val bh = high[behind]
+            val bl = low[behind]
+            if (bh.isFinite() && bl.isFinite() && bh >= bl) {
+                sum += bh - bl
+                counted++
+            }
+        }
+        if (counted == 0) return null
+        val average = sum / counted
+        if (average <= 0.0) return null
+        return (h - l) / average
+    }
 }

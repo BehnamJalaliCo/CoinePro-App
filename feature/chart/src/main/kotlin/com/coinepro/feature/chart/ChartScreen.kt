@@ -154,12 +154,14 @@ import com.coinepro.core.chart.changeAcrossVisible
 import com.coinepro.core.chart.ComparisonSeries
 import com.coinepro.core.chart.MAX_COMPARISONS
 import com.coinepro.core.chart.MarkerStyle
+import com.coinepro.core.chart.NotableBarReadings
 import com.coinepro.core.chart.PriceScaleMode
 import com.coinepro.core.chart.decimalsFor
 import com.coinepro.core.chart.formatPrice
 import com.coinepro.core.chartevents.ChartEventController
 import com.coinepro.core.chartevents.ChartEventSettings
 import com.coinepro.core.chartevents.ChartEventSheet
+import com.coinepro.core.chartevents.NotableBarSheet
 import com.coinepro.core.chartevents.ChartEventState
 import com.coinepro.core.chartevents.SERVED_EVENT_KINDS
 import com.coinepro.core.common.MarketNumberFormatter
@@ -764,6 +766,14 @@ fun ChartScreen(
     /** The glyph a reader tapped, or null. Opens everything that landed in that bar. */
     var openedMark by remember { mutableStateOf<EventMark?>(null) }
     /**
+     * The unusually large bar a reader tapped, or null — run Τ2, C1.
+     *
+     * The index rather than a reading, because the reading is built from the series the state holds
+     * *now*: a bar the reader opened and then watched the feed extend should read against the bars
+     * on screen, not against a snapshot taken at the tap.
+     */
+    var openedNotable by remember { mutableStateOf<Int?>(null) }
+    /**
      * The bars the events are placed against — what the canvas draws, not what the feed sent.
      *
      * Remembered rather than transformed inside the viewport callback, which fires on every frame
@@ -1231,6 +1241,10 @@ fun ChartScreen(
                         // boundary `ChartDecoration.events` documents: bucketing needs the series
                         // and the reader's filter, and the renderer has neither.
                         events = eventMarks,
+                        // Item C1's rule, reaching the glass at last. The controller computes it
+                        // over the bars the canvas is given; the renderer draws a dot for the
+                        // visible ones and nothing anywhere else. See `ChartUiState.notableBars`.
+                        notableBars = state.notableBars,
                     ),
                     // The bar «رفتن به تاریخ» resolved, or null. The canvas pans to it and the
                     // controller clears it, so a reader who then pans away is not dragged back on
@@ -1370,6 +1384,10 @@ fun ChartScreen(
                     // either way, and a glyph that answers nothing when you tap it is worse than
                     // no glyph.
                     onEventMark = events?.let { { mark -> openedMark = mark } },
+                    // The dot under an unusually large bar. Offered on every build, unlike the
+                    // glyphs: the sheet's two figures come from the bars themselves, so it answers
+                    // something even where nothing fetched a calendar — and it says so.
+                    onNotableBar = { index -> openedNotable = index },
                     // The purple ring under the live bar, on the same handler as the hub's trade
                     // card. Absent on a build with nowhere to trade from.
                     onTradeRing = onTrade,
@@ -2148,6 +2166,31 @@ fun ChartScreen(
 
     openedMark?.let { mark ->
         ChartEventSheet(mark = mark, onDismiss = { openedMark = null })
+    }
+
+    openedNotable?.let { index ->
+        // Built here rather than held, so the sheet reads the bars that are on screen now. A null
+        // reading is a bar the series no longer holds — the feed re-gridded under a reader with
+        // the sheet open — and closing is the only honest answer to that.
+        val reading = remember(index, state.visibleSeries, eventMarks) {
+            NotableBarReadings.of(
+                series = state.visibleSeries,
+                index = index,
+                // Every event the chart placed, not the filtered strip: the reader asked about one
+                // bar, and hiding a rate decision because they had the calendar's glyphs switched
+                // off would be answering «why did this move» with a filtered truth.
+                events = eventMarks.flatMap(EventMark::events),
+            )
+        }
+        if (reading == null) {
+            openedNotable = null
+        } else {
+            NotableBarSheet(
+                reading = reading,
+                zone = chartZone,
+                onDismiss = { openedNotable = null },
+            )
+        }
     }
 
     when (sheet) {

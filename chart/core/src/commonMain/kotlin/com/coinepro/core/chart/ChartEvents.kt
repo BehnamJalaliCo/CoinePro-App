@@ -156,6 +156,17 @@ object EventGlyphs {
      * stylus can open.
      */
     const val TOUCH_RADIUS_DP: Float = 24f
+
+    /**
+     * The notable-bar dot's diameter — run Τ2, C1.
+     *
+     * Five, against the event glyph's twelve, and the difference is the point. An event glyph says
+     * *this happened*; the dot says only *this bar was unusually large*, which is a weaker claim,
+     * and a mark of the same weight would read as a second kind of news. It is hit-tested at
+     * [TOUCH_RADIUS_DP] like everything else in this strip, because a target the size of the
+     * picture is a target only a stylus can hit.
+     */
+    const val NOTABLE_DOT_DP: Float = 5f
 }
 
 /**
@@ -294,6 +305,33 @@ object ChartEvents {
         xOf: (Int) -> Float,
     ): EventMark? = marks
         .map { mark -> mark to abs(xOf(mark.barIndex) - xPixels) }
+        .filter { (_, distance) -> distance <= radiusPixels }
+        .minByOrNull { (_, distance) -> distance }
+        ?.first
+
+    /**
+     * The notable bar a touch in the strip landed on, or null.
+     *
+     * The same shape as [markAt] and for the same reasons — nearest rather than first, and no
+     * vertical test — and deliberately a second function rather than a flag on that one: an event
+     * mark and a notable bar are different answers, the caller tries them in order, and a single
+     * function returning «one or the other» would put that precedence somewhere a caller could not
+     * see it.
+     *
+     * [exclude] is the bar an event glyph already occupies. Passing it keeps the two marks from
+     * competing for one touch: the glyph is the more specific answer and wins, and without this a
+     * tap that misses the glyph by a few points would open the dot's sheet instead of the event's.
+     */
+    fun notableAt(
+        notable: List<Int>,
+        xPixels: Float,
+        radiusPixels: Float,
+        exclude: Set<Int> = emptySet(),
+        xOf: (Int) -> Float,
+    ): Int? = notable
+        .asSequence()
+        .filter { it !in exclude }
+        .map { index -> index to abs(xOf(index) - xPixels) }
         .filter { (_, distance) -> distance <= radiusPixels }
         .minByOrNull { (_, distance) -> distance }
         ?.first

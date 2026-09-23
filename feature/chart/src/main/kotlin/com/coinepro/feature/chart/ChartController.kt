@@ -40,6 +40,7 @@ import com.coinepro.core.chart.IndicatorSource
 import com.coinepro.core.chart.LineStyleKind
 import com.coinepro.core.chart.MagnetMode
 import com.coinepro.core.chart.MarkerStyle
+import com.coinepro.core.chart.NotableBars
 import com.coinepro.core.chart.MAX_COMPARISONS
 import com.coinepro.core.chart.ObjectTree
 import com.coinepro.core.chart.PriceChannel
@@ -1072,6 +1073,21 @@ data class ChartUiState(
      * axis, the last-price line and the indicator panes, one at a time.
      */
     val visibleSeries: CandleSeries get() = if (replay.isOn) replay.visible else series
+
+    /**
+     * The bars worth asking «چرا؟» about, over the bars the canvas is given — run Τ2, C1.
+     *
+     * Indices into [visibleSeries], because that is what the renderer's `xOf` and the strip's
+     * hit-test count in. A replay therefore re-marks as it advances, which is correct: the reader
+     * is being shown a moving present, and a dot on a bar the replay has not reached yet would be
+     * this chart knowing the future.
+     *
+     * `by lazy` rather than a getter for [chainPlot]'s reason — a state is immutable, so the answer
+     * cannot go stale inside one, and both the decoration and the sheet read it. `NotableBars.of`
+     * is one `O(n)` pass with no allocation beyond the result, so the cost is a pass per change to
+     * the bars rather than one per frame.
+     */
+    val notableBars: List<Int> by lazy(LazyThreadSafetyMode.NONE) { NotableBars.of(visibleSeries) }
 
     /**
      * The setup the reader has drawn, as numbers.

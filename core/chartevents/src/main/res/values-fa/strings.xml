@@ -2,6 +2,14 @@
 <!-- Default language: Persian. -->
 <resources>
     <string name="chart_events_sheet_title">رویداد روی این کندل</string>
+    <string name="chart_notable_title">چرا این حرکت؟</string>
+    <string name="chart_notable_size">چقدر بزرگ، نسبت به معمولِ اخیرِ همین چارت</string>
+    <string name="chart_notable_times">%1$s برابر</string>
+    <string name="chart_notable_move">باز تا بسته</string>
+    <string name="chart_notable_move_up">%1$s%% بالا</string>
+    <string name="chart_notable_move_down">%1$s%% پایین</string>
+    <string name="chart_notable_within">در تقویم و اخبار، داخل همین کندل</string>
+    <string name="chart_notable_nothing">این کندل به‌طور غیرعادی بزرگ است و هیچ‌چیزی که این برنامه دارد داخلش نیفتاده — نه رویدادی، نه خبری. بازار گاهی به دلایلی تکان می‌خورد که جایی منتشر نمی‌شوند، و نام‌بردن نزدیک‌ترین خبر حدس است نه پاسخ.</string>
     <string name="chart_events_sheet_one">یک رویداد در بازه‌ی این کندل</string>
     <string name="chart_events_sheet_many">%1$s رویداد در بازه‌ی این کندل، به ترتیب وقوع</string>
     <string name="chart_events_settings_title">رویدادها روی چارت</string>

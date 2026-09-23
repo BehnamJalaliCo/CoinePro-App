@@ -93,12 +93,16 @@ fun ChartEventSheet(
 /**
  * One event, as a card.
  *
+ * Internal rather than file-private because `NotableBarSheet` draws the same rows: a release
+ * reached through the «چرا این حرکت؟» sheet and one reached through its own glyph must look
+ * identical, and two renderings of one event is one that gets improved alone.
+ *
  * Everything the feed gave and nothing it did not: a release with no figures shows no figure line
  * and an item with no attribution shows no source, rather than an em dash standing in for a fact
  * nobody published.
  */
 @Composable
-private fun ChartEventRow(event: ChartEvent, zone: ZoneId) {
+internal fun ChartEventRow(event: ChartEvent, zone: ZoneId) {
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
             Row(
@@ -190,4 +194,10 @@ private fun EventPill(text: String, colour: Color) {
  * A cap rather than the sheet's own height: a bar holding ten events would otherwise push the sheet
  * to full screen and take the chart — the thing the reader is looking at — off the display entirely.
  */
-private val SHEET_LIST_MAX_HEIGHT = 420.dp
+/**
+ * How tall a list of events may get inside a sheet.
+ *
+ * Internal rather than file-private since `NotableBarSheet` shares it: both sheets list the same
+ * rows and a sheet that swallowed the chart behind it would do so at the same height in both.
+ */
+internal val SHEET_LIST_MAX_HEIGHT = 420.dp

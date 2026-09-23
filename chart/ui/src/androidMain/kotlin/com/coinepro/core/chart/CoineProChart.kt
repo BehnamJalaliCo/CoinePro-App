@@ -452,6 +452,18 @@ fun CoineProChart(
      */
     onEventMark: ((EventMark) -> Unit)? = null,
     /**
+     * A tap on the dot under an unusually large bar — run Τ2, C1.
+     *
+     * The bar's index, because that is what the sheet needs to ask every other question: the bar's
+     * own window is `series.time[index]` to the next bar's time, and the news, the calendar and the
+     * Signal Layer are all already on this chart for the window in front of the reader.
+     *
+     * Null draws the dots and does not offer them — which is the honest state for a screen with
+     * nowhere to open one, exactly as [onEventMark] is. Taken inside the axis strip only, after the
+     * event glyphs have had their chance, so nothing on the plot changes meaning.
+     */
+    onNotableBar: ((Int) -> Unit)? = null,
+    /**
      * The purple ring under the live bar — TradingView's trade button.
      *
      * The phone app hangs a 20 pt ring with a lightning bolt at the bottom of the plot, under the
@@ -1099,6 +1111,8 @@ fun CoineProChart(
     // recomposes with the price is every second. `rememberUpdatedState` is the way out of both.
     val currentEvents = rememberUpdatedState(decoration.events)
     val currentEventMark = rememberUpdatedState(onEventMark)
+    val currentNotable = rememberUpdatedState(decoration.notableBars)
+    val currentNotableTap = rememberUpdatedState(onNotableBar)
     val currentLevels = rememberUpdatedState(decoration.levels)
     val currentAlert = rememberUpdatedState(onRequestAlertAt)
     val currentAxisMenu = rememberUpdatedState(onPriceAxisMenu)
@@ -1516,6 +1530,15 @@ fun CoineProChart(
         medium = importanceColour(Importance.MEDIUM),
         low = importanceColour(Importance.LOW),
     )
+
+    /**
+     * The notable-bar dot's ink, read once for the same reason.
+     *
+     * Muted rather than gold: gold in this app is the primary action of a screen, and a row of gold
+     * dots under the bars would read as something to do. This is an offer to look, and the reader
+     * who has not noticed it has lost nothing.
+     */
+    val notableColour = CoineProColors.TextMuted
 
     /** Half a pixel, or nothing at all. See the `conflate` parameter. */
     val conflateGap = if (conflate) CONFLATION_GAP_PX else 0f
@@ -2670,6 +2693,27 @@ fun CoineProChart(
                                                 return@detectTapGestures
                                             }
                                         }
+                                        // And then the notable-bar dot, in the same strip and
+                                        // after the glyphs have had their chance — a glyph names
+                                        // something that happened and the dot only says the bar was
+                                        // large, so where both could take the touch the glyph does.
+                                        val onNotable = currentNotableTap.value
+                                        if (axisTop > 0f && position.y >= axisTop && onNotable != null) {
+                                            val placed = lastView[0]
+                                            val bar = placed?.let { seen ->
+                                                ChartEvents.notableAt(
+                                                    notable = currentNotable.value,
+                                                    xPixels = frameOf(size.width.toFloat()).toPlot(position).x,
+                                                    radiusPixels = EventGlyphs.TOUCH_RADIUS_DP.dp.toPx(),
+                                                    exclude = currentEvents.value.mapTo(mutableSetOf(), EventMark::barIndex),
+                                                    xOf = seen::xOf,
+                                                )
+                                            }
+                                            if (bar != null) {
+                                                onNotable(bar)
+                                                return@detectTapGestures
+                                            }
+                                        }
                                         val state = currentDrawing.value ?: return@detectTapGestures
                                         val emit = currentOnDrawing.value ?: return@detectTapGestures
                                         val view = lastView[0] ?: return@detectTapGestures
@@ -3408,6 +3452,15 @@ fun CoineProChart(
                             fade = axisFade.value,
                         )
                         drawEventMarks(view, decoration.events, plotHeight + paneHeight, eventColours)
+                        drawNotableBars(
+                            view = view,
+                            notable = decoration.notableBars,
+                            // The bars an event glyph already occupies. A dot under a glyph would
+                            // be two marks for one bar, and the tap they share goes to the glyph.
+                            taken = decoration.events.mapTo(mutableSetOf(), EventMark::barIndex),
+                            axisTop = plotHeight + paneHeight,
+                            colour = notableColour,
+                        )
                     }
                     // The frame — item 6 of the owner's list, «چارت چهارچوب ندارد».
                     //
@@ -3755,6 +3808,37 @@ private fun DrawScope.drawEventMarks(
             size = Size(side, side),
             cornerRadius = radius,
         )
+    }
+}
+
+/**
+ * A dot under each unusually large bar, in the strip the event glyphs live in — run Τ2, C1.
+ *
+ * Smaller than a glyph and in one colour, because it is a weaker claim: a glyph says *this
+ * happened*, the dot says only *this bar was big for this chart, lately*. Which bars those are is
+ * `NotableBars`'; this draws what it was given and decides nothing.
+ *
+ * A bar that already carries an event glyph gets no dot. Two marks for one bar is one mark too
+ * many, and the tap they would share belongs to the glyph — which names something.
+ */
+private fun DrawScope.drawNotableBars(
+    view: ChartViewport,
+    notable: List<Int>,
+    taken: Set<Int>,
+    axisTop: Float,
+    colour: Color,
+) {
+    if (notable.isEmpty()) return
+    val diameter = EventGlyphs.NOTABLE_DOT_DP.dp.toPx()
+    // Centred on the same line the glyphs are centred on, so the strip reads as one row rather
+    // than as two things at slightly different heights.
+    val centreY = axisTop + EventGlyphs.AXIS_GAP_DP.dp.toPx() + EventGlyphs.SIZE_DP.dp.toPx() / 2
+    for (index in notable) {
+        if (index in taken) continue
+        if (index < view.firstVisible || index > view.lastVisible) continue
+        val x = view.xOf(index)
+        if (x < 0f || x > view.plotWidth) continue
+        drawCircle(color = colour, radius = diameter / 2, center = Offset(x, centreY))
     }
 }
 

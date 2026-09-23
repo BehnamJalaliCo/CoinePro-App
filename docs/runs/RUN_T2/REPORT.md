@@ -363,3 +363,55 @@ The brief's hour can fall inside the reader's own quiet hours. The delivery hono
 they typed that time specifically, and swallowing it would be the app overruling the more specific
 of two instructions and leaving them with a feature that does nothing. But the card says so, where
 both numbers are on the screen together. The contradiction is shown rather than resolved.
+
+---
+
+## C1 — the dot, and the sentence it refuses to write
+
+`NotableBars` shipped in 4.96.0 as a rule with no surface: it decided which bars a reader might ask
+«چرا؟» about and nothing on screen changed. The row was ❌ for that reason and it is ✅ now.
+
+### Where the mark goes was the whole design
+
+**Not in the plot.** A tap there already means a drawing, an eraser stroke or a trade ring, and a
+long press already opens the context menu. Taking one of them over for a feature nobody has asked
+for yet would put the app's most delicate gesture path at risk, and the failure would not be «the
+new feature does not work» — it would be that drawing a trend line started doing something else.
+
+**In the event strip**, under the bars, where the glyphs already live. That strip is already «things
+that happened at this time» and an unusually large bar is exactly that; the hit-test is already
+written and already confined to the few points of height below the time axis.
+
+Which raised the one question the plan had not: what happens on a bar that has both. A glyph *names*
+something; the dot only says the bar was large. So the glyph wins, and it wins **twice** — the
+renderer draws no dot under a bar a glyph holds, and `ChartEvents.notableAt` takes the same set as
+`exclude`. Either half alone is a defect: skip only the drawing and a reader can tap an invisible
+dot; skip only the hit-test and a tap that misses the glyph by four points opens the wrong sheet.
+
+### The sheet is bound to the rule, by construction
+
+`NotableBars.ratioAt` lives beside `of`, repeats its rules exactly — twenty preceding bars, the bar
+never in its own baseline, an average over the bars that actually traded — and is the only place the
+sheet's figure comes from. The first case in `NotableBarReadingTest` asserts that the rule marks the
+bar *and* that the ratio agrees, on the same series.
+
+That test exists because of the one outcome worse than no feature: a dot on a bar whose sheet says
+there was nothing unusual about it. Two implementations of one threshold drift, and this drift would
+be invisible until a reader tapped.
+
+### And what it will not say
+
+The feature's name is a question, and the honest answer to it is usually «nobody published one».
+What the sheet carries is *what was on the calendar and on the wire inside that bar's own half-open
+window* — presented as that, not as a reason. Where the window holds nothing, it says so in a
+sentence and stops.
+
+The tempting alternative is to widen the window until something falls in and print it under «چرا».
+That is the same move `RasadCoach` was built to refuse on the chart itself, and it fails the same
+way: not with a worse sentence but with a **confident wrong one**, which a reader has no way to
+check and every reason to act on.
+
+One smaller decision, in the same spirit: the events in the sheet are **not** filtered by the
+reader's own glyph switches. Those switches decide what clutters the axis. This is a question asked
+about one bar, and hiding a rate decision inside it because the calendar's glyphs were switched off
+would be answering «why did this move» with a filtered truth.
