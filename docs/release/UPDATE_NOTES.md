@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.10.2
+
+**fa**
+
+> نسخه‌ی وب پرو چارت حالا روی pro-chart.com در دسترس است، با همان صفحه‌ها و همان حساب گوشی. مثل یک برنامه نصب می‌شود و بدون اینترنت هم باز می‌شود.
+> در این نسخه‌ی گوشی چیزی عوض نشده است.
+
+**en**
+
+> The Pro Chart web version is now live at pro-chart.com, with the same screens and the same account as your phone.
+> It installs like an app and opens with no connection. Nothing on the phone has changed in this version.
+
 ## 5.10.1
 
 **fa**

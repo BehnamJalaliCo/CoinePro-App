@@ -70,8 +70,8 @@ the frame says otherwise.
 | Item | State | Evidence |
 |---|---|---|
 | The bundle | ✅ | `./gradlew :web:terminalBundle` → `web/build/terminal/`. CI builds it and keeps it as the `pro-chart-terminal` artefact |
-| On `pro-chart.com/terminal/` | ⏳ **owed to the server agent** | `BLOCKED.md` B1 |
+| On `pro-chart.com/terminal/` | ✅ **live since 2026-09-24** (5.10.1) | `BLOCKED.md` B1: the server's checks, plus a browser here loading the live page |
 | The relay for signed-in screens and news photos | ✅ **written and tested here**: `web/relay/` — the `/up/` passthrough with the token swap (§4.12) and `/api/img` (§4.13). Sixteen tests against fake backends, run in CI; driven locally behind the page, where all six news photos came through it | — **a service.** `python3 -m unittest test_relay` |
 | …running on pro-chart.com | ✅ **since 2026-09-24**, per the server's own review: `/up/tradeyar/api/mobile/v1/auth/methods` 200, `/api/img` of a public photo 200, of `127.0.0.1` 400, the image's own 13 tests green inside the container, 26 MiB | — **a server check**, quoted in `REPORT.md` §8 |
 | The bundle downloadable without a GitHub login | ✅ the `web-latest` release, replaced on every push to main | — **a download**, `web/relay/README.md` |
-| Google sign-in from the page | ⏳ **owed to the owner** | `BLOCKED.md` B4 |
+| Google sign-in from the page | ✅ both OAuth clients carry the page's origin and callback (owner, 2026-09-24) | `BLOCKED.md` B4 |

@@ -8,8 +8,13 @@ browser (`CHECKLIST.md`). The phone is unchanged: suite and goldens green, relea
 It installs as an app with the phone's icon and opens with no network. The relay the server needs
 for signed-in screens and news photos is written and tested in `web/relay/`.
 
-**Waiting on the server agent** to put the bundle at `site/terminal` (B1) and run `web/relay`
-(B2). **Waiting on the owner** for the Google origin (B4) and, if wanted, Web Push keys (B5). See `BLOCKED.md`.
+**Live on `pro-chart.com/terminal/` since 2026-09-24** (5.10.1), the relay on the server's private
+network, Google sign-in registered for the page. What is left is only B5 (Web Push while the tab is
+closed), if it is wanted. See `BLOCKED.md`.
+
+**A release reaches readers by itself.** Every push to main republishes `web-latest`, the server
+deploys it as in `web/relay/README.md`, and `sw.js` fetches every file from the network first, so the
+next page load carries it.
 
 ## When a phone screen changes
 

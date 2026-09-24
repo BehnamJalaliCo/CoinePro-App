@@ -4,6 +4,9 @@ WORKDIR /relay
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY relay.py .
+# The tests ride along, so the image can check itself where it runs:
+#   docker compose exec -T web-relay python -m unittest test_relay
+COPY test_relay.py .
 USER nobody
 ENV RELAY_HOST=0.0.0.0 RELAY_PORT=8790
 EXPOSE 8790
