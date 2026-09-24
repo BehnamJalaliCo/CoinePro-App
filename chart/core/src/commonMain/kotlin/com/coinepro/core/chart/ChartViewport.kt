@@ -260,6 +260,13 @@ data class ChartViewport(
      * renderer already reads its geometry from this one object.
      */
     val scaleSide: ScaleSide = ScaleSide.RIGHT,
+    /**
+     * TradingView's «Margins» (Chart settings → Canvas, 5.16.0): the share of the plot's height left
+     * empty above the highest visible price and below the lowest. Its defaults are 10 % and 8 %,
+     * so a chart has a little more air over the price than under it, which is where the eye goes.
+     */
+    val topMargin: Double = TOP_MARGIN,
+    val bottomMargin: Double = BOTTOM_MARGIN,
 ) {
     /**
      * The old boolean shape of [scaleMode], for the call sites written before there were four modes.
@@ -377,8 +384,8 @@ data class ChartViewport(
     /**
      * The price range on screen, with headroom.
      *
-     * The padding is eight percent of the visible range, which keeps the highest wick off the top
-     * edge. Two fallbacks matter: a perfectly flat series has no range to take a percentage of, and
+     * The padding is TradingView's margins — [topMargin] and [bottomMargin] of the height — which
+     * keep the highest wick off the top edge. Two fallbacks matter: a perfectly flat series has no range to take a percentage of, and
      * an empty one has no prices at all. Both would otherwise collapse the axis to a single value
      * and divide by zero.
      *
@@ -405,29 +412,40 @@ data class ChartViewport(
         }
         // The headroom has to be taken in the same space the axis is drawn in.
         //
-        // Additive padding on a log axis is wrong twice over. On a range like 100–10,000 eight
-        // percent of the span is 792, so the bottom of the axis becomes −692 — a price with no
-        // logarithm, which sent the whole axis back to the linear fallback and made the log toggle
-        // do nothing at all. And even where it stayed positive it would be invisible at the top
-        // and enormous at the bottom, because a fixed amount of money is a different percentage at
-        // each end. Multiplicative padding is the same eight percent of the *visible height* at
-        // both ends, which is what the linear branch means by it too.
+        // Additive padding on a log axis is wrong twice over. On a range like 100–10,000 a margin
+        // of the span in money is hundreds under the low — a price with no logarithm, which sent
+        // the whole axis back to the linear fallback. So on a log axis the margins are shares of
+        // the log span, which is what the linear branch means by them too: a share of the *height*.
+        //
+        // TradingView's rule (5.16.0): the bars fill the height less [topMargin] and [bottomMargin],
+        // each a share of the whole height, so the span is divided by what is left. The range is
+        // the same inverted or not — inversion stays a pure reflection, applied last (see
+        // [inverted]) — so an inverted chart keeps the larger margin over the *highest* price.
         val zoom = priceZoom.coerceIn(MIN_PRICE_ZOOM, MAX_PRICE_ZOOM).toDouble()
+        val top = topMargin.coerceIn(0.0, MAX_MARGIN)
+        val bottom = bottomMargin.coerceIn(0.0, MAX_MARGIN)
+        val usable = 1.0 - top - bottom
         if (scaleMode == PriceScaleMode.LOGARITHMIC && low > 0.0 && high > low) {
-            // Widened about the geometric middle rather than the arithmetic one: on a log axis
-            // that is the point that stays still, and expanding about the wrong centre would slide
-            // the whole chart up the plot as the reader dragged.
-            val middle = exp((ln(low) + ln(high)) / 2)
-            val half = ln(high / low) / 2 * (1 + PRICE_PADDING * 2) * zoom
-            return@lazy (middle / exp(half))..(middle * exp(half))
+            val span = ln(high / low) / usable
+            val lo = ln(low) - span * bottom
+            val hi = ln(high) + span * top
+            // Widened about the middle of the padded range, the point that stays still as the
+            // reader drags the scale.
+            val middle = (lo + hi) / 2
+            val half = (hi - lo) / 2 * zoom
+            return@lazy exp(middle - half)..exp(middle + half)
         }
-        val padding = when {
-            high > low -> (high - low) * PRICE_PADDING
-            high != 0.0 -> abs(high) * 0.02
-            else -> 1.0
+        val (lo, hi) = when {
+            high > low -> {
+                val span = (high - low) / usable
+                (low - span * bottom) to (high + span * top)
+            }
+            // A perfectly flat series has no range to take a share of.
+            high != 0.0 -> (low - abs(high) * 0.02) to (high + abs(high) * 0.02)
+            else -> (low - 1.0) to (high + 1.0)
         }
-        val middle = (low + high) / 2
-        val half = (high - low) / 2 + padding
+        val middle = (lo + hi) / 2
+        val half = (hi - lo) / 2
         (middle - half * zoom)..(middle + half * zoom)
     }
 
@@ -882,8 +900,14 @@ data class ChartViewport(
         /** And above this it stops growing, so a zoomed-out chart is bars rather than air. */
         const val MAX_RIGHT_SLOTS = 24
 
-        /** Headroom above the highest wick and below the lowest, as a share of the visible range. */
-        const val PRICE_PADDING = 0.08
+        /** TradingView's default top margin: 10 % of the plot's height above the highest price. */
+        const val TOP_MARGIN = 0.10
+
+        /** And its bottom margin: 8 % under the lowest. */
+        const val BOTTOM_MARGIN = 0.08
+
+        /** Past this the two margins would leave the bars no room at all. */
+        const val MAX_MARGIN = 0.4
 
         /** Below this the visible bars are several times the plot's height. See [priceZoom]. */
         const val MIN_PRICE_ZOOM = 0.25f

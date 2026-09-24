@@ -115,6 +115,12 @@ import java.time.Instant
  * production code.
  */
 object ScreenshotFixtures {
+
+    init {
+        // The desktop bar's clock (5.16.0), fixed so a golden frame does not change every second:
+        // 2026-09-24 12:00 UTC.
+        com.coinepro.feature.chart.ChartClock.now = { 1_790_251_200_000L }
+    }
     const val NOW_MILLIS: Long = 1_772_000_000_000L
     private val NOW: Instant = Instant.ofEpochMilli(NOW_MILLIS)
 

@@ -273,6 +273,9 @@ fun CoineProChart(
     priceBarLock: Boolean = false,
     /** Pin every label's precision, or null to derive it. See [ChartViewport.decimals]. */
     decimals: Int? = null,
+    /** TradingView's margins over and under the price, as shares of the plot (5.16.0). */
+    topMargin: Double = ChartViewport.TOP_MARGIN,
+    bottomMargin: Double = ChartViewport.BOTTOM_MARGIN,
     /**
      * Which gutter the price axis is drawn in. See [ScaleSide].
      *
@@ -589,7 +592,7 @@ fun CoineProChart(
     // Applied separately from the series, because it changes on its own — a reader toggling the
     // axis has not changed a single bar, and folding it into the block above would make the
     // toggle a no-op until the next series arrived.
-    remember(logScale, scaleMode, inverted, priceBarLock, decimals, scaleSide) {
+    remember(logScale, scaleMode, inverted, priceBarLock, decimals, scaleSide, topMargin, bottomMargin) {
         // The mode wins over the boolean when they disagree. See the `scaleMode` parameter: a
         // caller that has both is a caller migrating from one to the other, and the explicit choice
         // is the newer of the two.
@@ -600,7 +603,7 @@ fun CoineProChart(
         }
         viewport = viewport
             .withScaleMode(mode)
-            .copy(inverted = inverted, priceBarLock = priceBarLock)
+            .copy(inverted = inverted, priceBarLock = priceBarLock, topMargin = topMargin, bottomMargin = bottomMargin)
             .withDecimals(decimals)
             .withScaleSide(scaleSide)
     }
@@ -3014,7 +3017,15 @@ fun CoineProChart(
                 with(staticLayer) {
                     drawCached(staticKey, density, layoutDirection, Offset(-frame.left, 0f)) {
                         translate(left = frame.left) {
-                if (decoration.showAxes) drawGrid(view, plotWidth, palette, ticks, timeTicks)
+                if (decoration.showAxes) {
+                    drawGrid(
+                        view,
+                        plotWidth,
+                        palette,
+                        if (decoration.gridHorizontal) ticks else PriceTicks.EMPTY,
+                        if (decoration.gridVertical) timeTicks else emptyList(),
+                    )
+                }
                 // The setup goes *under* the price. It is context for the bars, and drawn over them
                 // it tints every candle it covers — which on a full-height risk band is most of them.
                 decoration.signal?.let { drawSignal(view, it, palette, measurer) }
@@ -3090,7 +3101,8 @@ fun CoineProChart(
                         // line, which is what the reference does at the same zoom.
                         view.barWidth < LINE_FALLBACK_PX ->
                             drawLineSeries(view, palette, filled = false, conflateGap = conflateGap)
-                        drawnType == ChartType.BARS -> drawOhlcBars(view, palette, metrics, decoration.barColours)
+                        drawnType == ChartType.BARS ->
+                            drawOhlcBars(view, palette, metrics, decoration.barColours, decoration.colourOnPreviousClose)
                         else -> drawCandles(
                             view = view,
                             palette = palette,
@@ -3098,6 +3110,9 @@ fun CoineProChart(
                             metrics = metrics,
                             liveClose = liveCloseNow,
                             barColours = decoration.barColours,
+                            onPreviousClose = decoration.colourOnPreviousClose,
+                            bodies = decoration.drawBodies,
+                            wicks = decoration.drawWicks,
                         )
                     }
                 }
@@ -3660,6 +3675,16 @@ fun CoineProChart(
                 onToggleLogarithmic = onToggleLogScale,
             )
         }
+        // TradingView's «»» (5.16.0): back to the newest bar, once the reader has left it.
+        if (interactive && decoration.showAxes) {
+            ScrollToRealtimeButton(
+                frame = frames[0],
+                plotBottom = viewport.plotHeight,
+                visible = !viewport.isAtLiveEdge,
+                palette = palette,
+                onClick = { viewport = viewport.atRest() },
+            )
+        }
     }
 }
 
@@ -3779,6 +3804,13 @@ private fun DrawScope.drawEventMarks(
         if (mark.barIndex < view.firstVisible || mark.barIndex > view.lastVisible) continue
         val x = view.xOf(mark.barIndex)
         if (x < 0f || x > view.plotWidth) continue
+        // **News is TradingView's purple lightning** (5.16.0): the latest story on a bar is a bolt on
+        // the time axis in `#9C27B0`, the palette's purple, whatever its importance — a reader who
+        // knows that chart finds the news by its shape. Calendar releases keep their square.
+        if (mark.kind == EventKind.NEWS) {
+            drawLightning(Offset(x, centreY), side)
+            continue
+        }
         val colour = colours.of(mark.importance)
         if (mark.isCluster) {
             drawRoundRect(
@@ -3828,6 +3860,29 @@ private fun DrawScope.drawNotableBars(
         drawCircle(color = colour, radius = diameter / 2, center = Offset(x, centreY))
     }
 }
+
+/**
+ * A lightning bolt centred on [centre], [side] tall — TradingView's news mark. A disc of the purple
+ * behind a white bolt, so it reads on both panes and at the glyph's small size.
+ */
+private fun DrawScope.drawLightning(centre: Offset, side: Float) {
+    drawCircle(color = NEWS_PURPLE, radius = side / 2, center = centre)
+    val h = side * 0.62f
+    val w = side * 0.42f
+    val bolt = Path().apply {
+        moveTo(centre.x + w * 0.15f, centre.y - h / 2)
+        lineTo(centre.x - w / 2, centre.y + h * 0.08f)
+        lineTo(centre.x - w * 0.02f, centre.y + h * 0.08f)
+        lineTo(centre.x - w * 0.15f, centre.y + h / 2)
+        lineTo(centre.x + w / 2, centre.y - h * 0.1f)
+        lineTo(centre.x + w * 0.02f, centre.y - h * 0.1f)
+        close()
+    }
+    drawPath(bolt, color = Color.White)
+}
+
+/** TradingView's palette purple, `#9C27B0` — the news bolt. */
+private val NEWS_PURPLE = Color(0xFF9C27B0)
 
 /** How far the cluster's outline sits behind the glyph in front of it. */
 private const val EVENT_STACK_PX = 2f
@@ -3943,6 +3998,11 @@ private fun DrawScope.drawCandles(
     liveClose: Double? = null,
     /** A script's `barcolor`, by bar time (5.15.0). */
     barColours: Map<Long, Long> = emptyMap(),
+    /** Colour against the previous close — TradingView's `barColorsOnPrevClose` (5.16.0). */
+    onPreviousClose: Boolean = false,
+    /** Draw the bodies and the wicks — `drawBody` and `drawWick`. */
+    bodies: Boolean = true,
+    wicks: Boolean = true,
 ) {
     val body = metrics.body
     val wick = crispStroke(metrics.wick)
@@ -3963,15 +4023,18 @@ private fun DrawScope.drawCandles(
         val x = strokeCentre(left + body / 2f, wick)
         // A hollow chart colours by the *previous close*, not by the bar's own open — that is what
         // makes a run of gaps up read as one colour even when individual bars closed down.
-        val rising = if (hollow && index > 0) bar.c >= view.series.close[index - 1] else bar.up
+        val rising = if ((hollow || onPreviousClose) && index > 0) bar.c >= view.series.close[index - 1] else bar.up
         val colour = barColours[bar.t]?.let { Color(it) } ?: if (rising) palette.up else palette.down
 
-        drawLine(
-            color = colour,
-            start = Offset(x, view.yOf(bar.h)),
-            end = Offset(x, view.yOf(bar.l)),
-            strokeWidth = wick,
-        )
+        if (wicks) {
+            drawLine(
+                color = colour,
+                start = Offset(x, view.yOf(bar.h)),
+                end = Offset(x, view.yOf(bar.l)),
+                strokeWidth = wick,
+            )
+        }
+        if (!bodies) continue
         val top = min(view.yOf(bar.o), view.yOf(bar.c))
         // A doji has no body height at all, and a zero-height rectangle draws nothing — so it is
         // given a hairline. Without it a flat bar vanishes and the chart appears to have a gap.
@@ -4160,8 +4223,12 @@ private fun DrawScope.drawOhlcBars(
     palette: ChartPalette,
     metrics: CandleMetrics,
     barColours: Map<Long, Long> = emptyMap(),
+    onPreviousClose: Boolean = false,
 ) {
-    val tick = metrics.body / 2
+    // TradingView's bar (5.16.0): each tick is 30 % of the slot — `floor(barSpacing · 0.3)` in the
+    // open-source engine — so a bar chart keeps its air at every zoom instead of the ticks of
+    // neighbouring bars meeting once the candles' body share would have filled the slot.
+    val tick = max(1f, floor(view.barWidth * OHLC_TICK_SHARE))
     val stroke = crispStroke(metrics.wick)
     for (index in view.firstVisible..view.lastVisible) {
         val bar = view.series[index]
@@ -4169,7 +4236,8 @@ private fun DrawScope.drawOhlcBars(
         // but three strokes, so a bar chart is the type where a half-pixel offset is *all* the
         // reader sees. The two ticks take the mast's own registered x so they meet it exactly.
         val x = strokeCentre(view.xOf(index), stroke)
-        val colour = barColours[bar.t]?.let { Color(it) } ?: if (bar.up) palette.up else palette.down
+        val rising = if (onPreviousClose && index > 0) bar.c >= view.series.close[index - 1] else bar.up
+        val colour = barColours[bar.t]?.let { Color(it) } ?: if (rising) palette.up else palette.down
         val high = view.yOf(bar.h)
         val low = view.yOf(bar.l)
         val open = strokeCentre(view.yOf(bar.o), stroke)
@@ -4723,7 +4791,12 @@ private fun priceTicks(view: ChartViewport, density: Float = 0f): PriceTicks {
 private class PriceTicks(
     private val prices: List<Double>,
     val step: Double,
-) : List<Double> by prices
+) : List<Double> by prices {
+    companion object {
+        /** No rules — the Canvas tab's horizontal grid switched off (5.16.0). */
+        val EMPTY = PriceTicks(emptyList(), 1.0)
+    }
+}
 
 /**
  * How many decimals a label needs to distinguish it from the label above it.
@@ -6120,11 +6193,12 @@ private fun DrawScope.drawCrosshair(
     // price plot the price is an extrapolation and printing it is the chart naming a price nobody
     // quoted.
     val band = paneBands.firstOrNull { it.contains(y) }
-    // A tighter pattern than the level rules use. The crosshair is transient and has to be
-    // distinguishable at a glance from the dashed levels it crosses; a shorter dash is the cheapest
-    // way to say "this one is yours and it is not part of the chart".
+    // TradingView's crosshair (5.16.0, the dissection's §09): `LargeDashed` at width one — six on,
+    // six off — which is the long, calm dash every reader of that chart knows at a glance. It used
+    // to be the short two-and-two, chosen to stand apart from the levels; the levels are dotted
+    // or sparse, so the long dash stands apart from them just as well and is the one they expect.
     val hairline = crispStroke(HAIRLINE_DP.toPx())
-    val dash = dashEffect(LineStyleKind.DASHED, hairline)
+    val dash = dashEffect(LineStyleKind.LARGE_DASHED, hairline)
     when (mode) {
         DrawingMode.ARROW_CURSOR -> Unit
         DrawingMode.DOT -> {
@@ -7154,7 +7228,11 @@ private const val TIME_LABEL_SAMPLE = "30 Sep"
  * candles, and Compose resolves the fraction to a real subpixel rather than rounding it away.
  */
 internal val HAIRLINE_DP = 0.8.dp
-internal val LINE_WIDTH_DP = 1.6.dp
+// TradingView's `lineStyle.linewidth`: 2 (5.16.0). One of the only two-pixel strokes on its canvas.
+internal val LINE_WIDTH_DP = 2.dp
+
+/** An OHLC bar's open and close ticks, as a share of the slot. TradingView's `0.3`. */
+private const val OHLC_TICK_SHARE = 0.3f
 // Ten, measured: TradingView sets its price labels 10 css px in from the axis edge (tick 5 + inner
 // padding 5, in Lightweight Charts' own terms), and the live-price tag's text at the same x.
 internal val AXIS_PADDING_DP = 10.dp

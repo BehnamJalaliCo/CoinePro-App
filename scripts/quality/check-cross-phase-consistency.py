@@ -205,6 +205,10 @@ def check_learned_surfaces() -> None:
         # Run Ω4's Arena result: the two halves of the score, what they were made of, and the
         # streak. Opened by the five-minute clock running out and by «تمام». See `ArenaResultBody`.
         "ARENA",
+        # 5.16.0: TradingView's «Chart settings» — Symbol, Status line, Scales, Appearance, Trading,
+        # Events. Opened by Ctrl+, the gear on the desktop toolbar, the hub and the chart's menu.
+        # See `ChartSettingsBody`.
+        "SETTINGS",
     ]
     require(
         entries == expected_sheets,

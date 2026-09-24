@@ -51,6 +51,13 @@ enum class ChartLayoutPreset(
 
     /** Four by two — three by three on a tablet, which is the most it can afford. */
     EIGHT("8", 8, 4),
+
+    /** TradingView's larger grids, offered only on a desktop-wide window (5.16.0). */
+    NINE("9", 9, 3),
+
+    TWELVE("12", 12, 4),
+
+    SIXTEEN("16", 16, 4),
     ;
 
     /** The rows this layout takes at its asked-for width. */

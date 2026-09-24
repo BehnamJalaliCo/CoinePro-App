@@ -1,5 +1,8 @@
 package com.coinepro.core.chart
 
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -587,25 +590,33 @@ internal fun ChartLegendOverlay(
     // phone legend — the price and its change on one line, `77,414.00 −17.01 (−0.02%)` — because a
     // reader glancing at the chart wants the day's move, not four numbers about the newest bar.
     val move = legendChangeRow(bar = bar, decimals = decimalsFor(bar.c), change = session)
-        .takeIf { tracking }
-    val restingHead = if (tracking) {
+        .takeIf { tracking && decoration.legendChange }
+    // The Status line tab (5.16.0): with OHLC switched off the head stays the resting price line
+    // under a crosshair too, and with the change switched off that line is the price alone.
+    val restingHead = if (tracking && decoration.legendOhlc) {
         rows.first()
     } else {
         val decimals = decimalsFor(bar.c)
         val price = groupThousands(formatPrice(bar.c, decimals))
         val delta = legendChangeRow(bar = bar, decimals = decimals, change = session).alternatives
-        rows.first().copy(alternatives = listOf("$price  ${delta.first()}", "$price  ${delta.last()}", price))
+        val options = if (decoration.legendChange) {
+            listOf("$price  ${delta.first()}", "$price  ${delta.last()}", price)
+        } else {
+            listOf(price)
+        }
+        rows.first().copy(alternatives = options)
     }
     val movedUp = (session?.absolute ?: (bar.c - bar.o)) >= 0.0
     val rising = bar.up
     val lines = if (tracking) TRACKING_LEGEND_LINES else LEGEND_LINES
-    val body = rows.drop(1)
+    val body = if (decoration.legendStudies) rows.drop(1) else emptyList()
 
     // Read **before** the plate forces itself left-to-right, because the back mark is the one thing
     // on this plate that belongs to the page rather than to the chart: a chart reads left to right
     // in every locale, but «back» points the way the reader's own language came from.
     val backGlyph = if (LocalLayoutDirection.current == LayoutDirection.Rtl) GLYPH_BACK_RTL else GLYPH_BACK_LTR
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        var hover by remember { mutableStateOf(false) }
         BoxWithConstraints(modifier = modifier) {
             val density = LocalDensity.current
             /**
@@ -618,7 +629,11 @@ internal fun ChartLegendOverlay(
              * It resets on the study list, so removing the last indicator closes the panel it was
              * removed from rather than leaving three buttons hanging beside the price.
              */
-            var expanded by rememberSaveable { mutableStateOf(false) }
+            var toggled by rememberSaveable { mutableStateOf(false) }
+            // **Hover, the way TradingView's desktop legend does it** (5.16.0): a mouse resting on
+            // the plate shows each row's eye, gear and cross without a click, and they go when it
+            // leaves. Only a mouse hovers, so on a phone nothing changes — the «⋯» still opens them.
+            val expanded = toggled || hover
             // At rest the studies are **one line**: the first of them, its value, and «+N» for the
             // rest. Run F, and the complaint behind it is exact — a legend five rows deep prints
             // over the candles at the left of the plot, which is the part of the chart a reader
@@ -701,6 +716,19 @@ internal fun ChartLegendOverlay(
             Column(
                 modifier = Modifier
                     .padding(LEGEND_INSET_DP)
+                    // The plate's own hover — see [expanded]. On the plate, not the plot, so a
+                    // mouse crossing the candles does not open anything.
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                                when (event.type) {
+                                    PointerEventType.Enter -> hover = true
+                                    PointerEventType.Exit -> hover = false
+                                }
+                            }
+                        }
+                    }
                     .widthIn(max = maxWidth - LEGEND_INSET_DP * 2)
                     .heightIn(max = budget)
                     // Painted, not clipped. `Modifier.clip` would take the rounded plate *and* the
@@ -723,7 +751,7 @@ internal fun ChartLegendOverlay(
                     palette = palette,
                     fontSize = size,
                     dimmed = ChartLegendTarget.Series in hidden,
-                    disclosure = { expanded = !expanded },
+                    disclosure = { toggled = !expanded },
                     disclosed = expanded,
                     onBack = onBack,
                     backGlyph = backGlyph,
@@ -780,7 +808,7 @@ internal fun ChartLegendOverlay(
                         row = row,
                         overflowChip = (OVERFLOW_MARK + "+" + hiddenCount.toString())
                             .takeIf { collapsed && position == 0 && hiddenCount > 0 },
-                        onOverflowClick = { expanded = true },
+                        onOverflowClick = { toggled = true },
                         onExplain = onExplain,
                         colour = row.colour?.let { Color(opaqueArgb(it)) } ?: palette.text,
                         palette = palette,

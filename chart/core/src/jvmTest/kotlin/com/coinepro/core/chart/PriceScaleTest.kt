@@ -137,15 +137,14 @@ class PriceScaleTest {
     }
 
     @Test
-    fun `the default is exactly what the chart drew before this existed`() {
-        // The guard against the feature having changed every chart in the app by arriving. At
-        // zoom 1 the range has to be the old fit-plus-eight-percent, to the bit.
+    fun `the default is TradingView's margins, ten percent over and eight under`() {
+        // At zoom 1 the bars fill the height less the two margins, to the bit.
         val view = viewport()
         val low = series.low.min()
         val high = series.high.max()
-        val padding = (high - low) * ChartViewport.PRICE_PADDING
-        assertEquals(low - padding, view.priceRange.start, 1e-9)
-        assertEquals(high + padding, view.priceRange.endInclusive, 1e-9)
+        val total = view.priceRange.endInclusive - view.priceRange.start
+        assertEquals(ChartViewport.TOP_MARGIN, (view.priceRange.endInclusive - high) / total, 1e-9)
+        assertEquals(ChartViewport.BOTTOM_MARGIN, (low - view.priceRange.start) / total, 1e-9)
     }
 
     // ------------------------------------------------------------------ the four modes
@@ -286,10 +285,11 @@ class PriceScaleTest {
         assertTrue("the low went non-positive", view.priceRange.start > 0.0)
         assertTrue(view.priceRange.start < decades.low.min())
         assertTrue(view.priceRange.endInclusive > decades.high.max())
-        // Multiplicative means the padding is the same *ratio* at both ends.
-        val lowRatio = decades.low.min() / view.priceRange.start
-        val highRatio = view.priceRange.endInclusive / decades.high.max()
-        assertEquals(lowRatio, highRatio, 1e-9)
+        // Multiplicative means each margin is its share of the *log* span — TradingView's 10 % over
+        // and 8 % under (5.16.0).
+        val logSpan = Math.log(view.priceRange.endInclusive / view.priceRange.start)
+        assertEquals(ChartViewport.TOP_MARGIN, Math.log(view.priceRange.endInclusive / decades.high.max()) / logSpan, 1e-9)
+        assertEquals(ChartViewport.BOTTOM_MARGIN, Math.log(decades.low.min() / view.priceRange.start) / logSpan, 1e-9)
     }
 
     @Test

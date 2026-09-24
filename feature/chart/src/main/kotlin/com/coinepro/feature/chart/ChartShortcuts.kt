@@ -59,7 +59,19 @@ fun Modifier.chartShortcuts(
      * the screen has nothing for right now (Delete with nothing selected) goes on to the platform.
      */
     onAction: ((ChartKeyAction.Hit) -> Boolean)? = null,
+    /**
+     * Ctrl or ⌘ going down and coming up (5.16.0) — TradingView's momentary magnet while drawing.
+     * Never consumes the key, so every Ctrl chord below still reaches its own binding.
+     */
+    onModifierHeld: ((Boolean) -> Unit)? = null,
 ): Modifier = onKeyEvent { event ->
+    if (onModifierHeld != null && event.key in MAGNET_KEYS) {
+        when (event.type) {
+            KeyEventType.KeyDown -> onModifierHeld(true)
+            KeyEventType.KeyUp -> onModifierHeld(false)
+        }
+        return@onKeyEvent false
+    }
     if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
     val hit = ChartKeyAction.of(
         key = event.key,
@@ -250,3 +262,6 @@ enum class ChartKeyAction(
         }
     }
 }
+
+/** The keys that hold the magnet: Ctrl on either side, and ⌘ on a Mac keyboard. */
+private val MAGNET_KEYS = setOf(Key.CtrlLeft, Key.CtrlRight, Key.MetaLeft, Key.MetaRight)

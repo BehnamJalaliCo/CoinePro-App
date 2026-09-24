@@ -262,8 +262,8 @@ class ChartWorkspaceStore(private val dataStore: DataStore<Preferences>) {
          */
         const val PANE_SEPARATOR = ','
 
-        /** The first pane is not stored, so this is [CoineProWindowClass.TABLET_MAX_PANES] less one. */
-        const val MAX_EXTRA_PANES = CoineProWindowClass.TABLET_MAX_PANES - 1
+        /** The first pane is not stored, so this is [CoineProWindowClass.DESKTOP_MAX_PANES] less one. */
+        const val MAX_EXTRA_PANES = CoineProWindowClass.DESKTOP_MAX_PANES - 1
 
         /** Two is what makes this screen a pane screen at all. */
         const val MIN_PANES = CoineProWindowClass.PHONE_MAX_PANES

@@ -122,6 +122,24 @@ colour (`ohlcAnnotated`), the change row under it, every figure grouped, and the
 | Drawings — zoom in / out | two outlined tiles at the foot of the modes | `onZoomIn` / `onZoomOut` → `ChartZoomNudge` (one step = ×1.25 through `ChartViewport.zoomedBy`) | `ToolRail`, `CoineProChart.zoomNudge` |
 | Crosshair tags | 24 px tall, 8 px at either side of the text | `CROSSHAIR_TAG_PADDING_DP = 4.dp`, `CROSSHAIR_TAG_INSET_DP = 8.dp` | `drawCrosshair`, `drawAxisTag` |
 
+## The third round: the owner's dissection, §09 (5.16.0)
+
+| Element | TradingView | App | Where |
+|---|---|---|---|
+| Crosshair | `LargeDashed`, width 1 → `[6, 6]` | same | `drawCrosshair` |
+| Series line | `linewidth: 2` | `LINE_WIDTH_DP = 2.dp` | `CoineProChart` |
+| OHLC bar ticks | `floor(barSpacing · 0.3)` | same | `drawOhlcBars` |
+| Price margins | Canvas → Margins 10 % / 8 % | `ChartViewport.TOP_MARGIN / BOTTOM_MARGIN`, set in the settings dialog | `ChartViewport.fittedPriceRange` |
+| News mark | purple lightning on the time axis | `#9C27B0` disc, white bolt | `drawLightning` |
+| Scroll to realtime | round `»` bottom-right of the pane, off the live edge only | 28 dp disc | `ScrollToRealtimeButton` |
+| Desktop toolbar | symbol · compare · intervals · type · indicators · templates · alert · replay · undo/redo … layouts · settings · fullscreen · snapshot · trade | same order, 40 dp, 32 dp controls, 20 dp glyphs | `ChartDesktopToolbar` |
+| Desktop bottom bar | `1D 5D 1M 3M 6M YTD 1Y 5Y All` · clock `(UTC±h)` · `%` · `log` | same | `ChartDesktopBottomBar` |
+| Chart settings | six tabs: Symbol, Status line, Scales, Canvas, Trading, Events | same six | `ChartSettingsBody`, `ChartAppearance` |
+| Indicator templates | six built-ins | same six | `BuiltInIndicatorTemplates` |
+| Legend | Hide / Settings / Remove on hover | on hover of the plate | `ChartLegendOverlay` |
+| Magnet | Ctrl / ⌘ held = momentary | same | `ChartController.holdMagnet` |
+| Charts per layout | up to 16 | 16 on a desktop window, 8 on a tablet | `CoineProWindowClass.DESKTOP_MAX_PANES` |
+
 ## The references, checked in
 
 `docs/design/reference/tradingview-phone/` holds the owner's screenshots at 1× (440 pt wide), the

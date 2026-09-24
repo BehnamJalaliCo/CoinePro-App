@@ -285,6 +285,20 @@ class ChartLayoutStore(private val dataStore: DataStore<Preferences>) {
     }
 
     /**
+     * The chart settings dialog's switches (5.16.0), as `ChartAppearance.encode` wrote them — one
+     * line, only what differs from TradingView's defaults. Null until the reader changes one.
+     */
+    fun appearance(): Flow<String?> = dataStore.data
+        .map { preferences -> preferences[APPEARANCE] }
+        .distinctUntilChanged()
+
+    suspend fun setAppearance(line: String) {
+        dataStore.edit { preferences ->
+            if (line.isBlank()) preferences.remove(APPEARANCE) else preferences[APPEARANCE] = line
+        }
+    }
+
+    /**
      * Every colour template: the two that ship with the app first, then the reader's own.
      *
      * Built-ins are prepended at read time rather than written to disk on first launch. Writing
@@ -341,6 +355,7 @@ class ChartLayoutStore(private val dataStore: DataStore<Preferences>) {
         internal val LAYOUTS = stringPreferencesKey("chart_layouts_v2")
         internal val TEMPLATES = stringPreferencesKey("chart_colour_templates")
         internal val LAST_OPENED = stringPreferencesKey("chart_last_opened_layout")
+        internal val APPEARANCE = stringPreferencesKey("chart_appearance")
 
         /** Between records. ASCII group separator. */
         private const val GROUP = "\u001D"

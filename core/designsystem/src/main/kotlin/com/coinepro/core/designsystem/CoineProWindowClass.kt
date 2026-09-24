@@ -144,7 +144,13 @@ data class CoineProWindowClass(
      * restore against the same value.
      */
     val maxChartPanes: Int
-        get() = if (width == CoineProWindowSize.COMPACT) PHONE_MAX_PANES else TABLET_MAX_PANES
+        get() = when {
+            width == CoineProWindowSize.COMPACT -> PHONE_MAX_PANES
+            // A desktop window gets TradingView's own ceiling (5.16.0): up to sixteen charts in one
+            // layout. A tablet stays at eight — sixteen on ten inches is sixteen thumbnails.
+            widthDp >= DESKTOP_WIDTH_DP -> DESKTOP_MAX_PANES
+            else -> TABLET_MAX_PANES
+        }
 
     companion object {
         /**
@@ -182,6 +188,15 @@ data class CoineProWindowClass(
         /** See `ChartPanesScreen` for the argument. Named here so the cap is one number. */
         const val PHONE_MAX_PANES = 2
         const val TABLET_MAX_PANES = 8
+
+        /** TradingView's sixteen charts per layout, on a desktop-wide window (5.16.0). */
+        const val DESKTOP_MAX_PANES = 16
+
+        /**
+         * Where a window is a desktop rather than a tablet: past the widest tablet held sideways
+         * (a 12.9-inch one is 1366 wide), so 1440-and-up browsers get sixteen and tablets keep eight.
+         */
+        const val DESKTOP_WIDTH_DP = 1400
 
         /**
          * The class of a window that is [widthDp] by [heightDp].

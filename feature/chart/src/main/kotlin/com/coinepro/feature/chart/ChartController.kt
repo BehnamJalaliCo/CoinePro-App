@@ -22,6 +22,8 @@ import com.coinepro.core.chart.ChartOrder
 import com.coinepro.core.chart.ChartPane
 import com.coinepro.core.chart.ChartPoint
 import com.coinepro.core.chart.ChartStudyRow
+import com.coinepro.core.chart.BuiltInIndicatorTemplate
+import com.coinepro.core.chart.ChartAppearance
 import com.coinepro.core.chart.ChartType
 import com.coinepro.core.chart.ChartViewport
 import com.coinepro.core.chart.ComparisonBasis
@@ -194,6 +196,8 @@ data class ChartUiState(
     val priceBarLock: Boolean = false,
     /** A pinned label precision, or null to let the axis derive one from the range. */
     val decimals: Int? = null,
+    /** The chart settings dialog's switches — TradingView's six tabs, 5.16.0. */
+    val appearance: ChartAppearance = ChartAppearance(),
     /** Which gutter carries the price labels. See `ScaleSide`, and `MERGED` when comparing. */
     val scaleSide: ScaleSide = ScaleSide.RIGHT,
     /**
@@ -1548,7 +1552,22 @@ class ChartController(
         drawingSync: DrawingSyncStore? = null,
     ) {
         symbolStates?.let { this.symbolStates = it }
-        layouts?.let { this.layouts = it }
+        layouts?.let { store ->
+            val first = this.layouts == null || !appearanceBound
+            this.layouts = store
+            // Collected, like the sync default below: the dialog is global, and a second chart on
+            // the same screen has to change with it rather than on its next opening.
+            if (first) {
+                appearanceBound = true
+                scope.launch {
+                    runCatching {
+                        store.appearance().collect { line ->
+                            _state.update { it.copy(appearance = ChartAppearance.decode(line)) }
+                        }
+                    }
+                }
+            }
+        }
         drawingSync?.let { store ->
             if (syncStore == null) {
                 syncStore = store
@@ -1981,6 +2000,18 @@ class ChartController(
 
     /** Pin the label precision, or pass null to go back to deriving it from the range. */
     fun setDecimals(decimals: Int?) = _state.update { it.copy(decimals = decimals) }
+
+    /** Whether the appearance collector has been started. See [bindStores]. */
+    private var appearanceBound = false
+
+    /**
+     * One of the chart settings dialog's switches changed (5.16.0). Applied at once and written
+     * through, so every chart bound to the same store follows.
+     */
+    fun setAppearance(appearance: ChartAppearance) {
+        _state.update { it.copy(appearance = appearance) }
+        layouts?.let { store -> scope.launch { runCatching { store.setAppearance(appearance.encode()) } } }
+    }
 
     /** Move the price gutter, or merge every series onto one axis. See `ScaleSide`. */
     fun setScaleSide(side: ScaleSide) = _state.update { it.copy(scaleSide = side) }
@@ -2812,6 +2843,17 @@ class ChartController(
      */
     fun cycleMagnet() = _state.update { it.copy(drawing = DrawingActions.cycleMagnet(it.drawing)) }
 
+    /**
+     * TradingView's momentary magnet from the keyboard (5.16.0): Ctrl (⌘ on a Mac) held while a
+     * tool is armed snaps to OHLC for as long as it is down. The canvas has the two-finger version;
+     * this is the desktop's.
+     */
+    fun holdMagnet(held: Boolean) = _state.update { current ->
+        if (held && current.drawing.tool == null) return@update current
+        val drawing = if (held) DrawingActions.holdMagnet(current.drawing) else DrawingActions.releaseMagnet(current.drawing)
+        if (drawing === current.drawing) current else current.copy(drawing = drawing)
+    }
+
     /** The magnet set to one mode outright, from the Drawings sheet's menu. */
     fun setMagnet(mode: MagnetMode) = _state.update { it.copy(drawing = DrawingActions.setMagnet(it.drawing, mode)) }
 
@@ -3014,6 +3056,20 @@ class ChartController(
         }
         persistSymbolState()
     }
+
+    /**
+     * One of TradingView's six ready-made templates (5.16.0), down the same path a saved one takes:
+     * it replaces the studies on the chart and touches nothing else.
+     */
+    fun applyBuiltInTemplate(template: BuiltInIndicatorTemplate) = applyIndicatorTemplate(
+        IndicatorTemplate(
+            id = template.id,
+            name = template.id,
+            indicators = template.indicators,
+            periods = template.periods,
+            params = template.params,
+        ),
+    )
 
     /** This chart's studies, ready to be saved under [name]. See [applyIndicatorTemplate]. */
     fun indicatorTemplateOf(id: String, name: String, now: Long): IndicatorTemplate {

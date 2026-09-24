@@ -116,8 +116,8 @@ class ChartPaneCapTest {
             val store = ChartWorkspaceStore(FakeWorkspacePreferences())
             store.setExtraPaneSymbols(List(40) { index -> "SYM$index" })
             val stored = store.extraPaneSymbols.first()
-            // Seven, because the first pane is not in this list.
-            assertEquals(CoineProWindowClass.TABLET_MAX_PANES - 1, stored.size)
+            // Fifteen, because the first pane is not in this list and a desktop carries sixteen.
+            assertEquals(CoineProWindowClass.DESKTOP_MAX_PANES - 1, stored.size)
         }
 
     @Test

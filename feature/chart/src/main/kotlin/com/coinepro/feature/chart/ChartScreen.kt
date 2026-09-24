@@ -1,5 +1,7 @@
 package com.coinepro.feature.chart
 
+import androidx.compose.runtime.DisposableEffect
+import com.coinepro.core.designsystem.WindowTitle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -729,6 +731,17 @@ fun ChartScreen(
         }
     }
     var sheet by remember { mutableStateOf<ChartSheet?>(null) }
+    // The chart settings dialog's open tab (5.16.0), kept while the screen lives so it reopens where it was left.
+    var settingsTab by remember { mutableStateOf(ChartSettingsTab.SYMBOL) }
+
+    // TradingView's tab title (5.16.0): `XAUUSD 2,551.7 ▼ −1.74%`. A no-op on a phone; in a browser
+    // it is what a reader with ten tabs open watches the market by.
+    val titlePrice = state.lastPrice
+    val titleMove = state.changePercent
+    LaunchedEffect(state.symbol, titlePrice, titleMove) {
+        titlePrice?.let { price -> WindowTitle.set(tabTitle(state.symbol, price, titleMove)) }
+    }
+    DisposableEffect(Unit) { onDispose { WindowTitle.reset() } }
     /**
      * Which study the Explain sheet is about, or null for the chart as a whole (run Ω1).
      *
@@ -1194,7 +1207,7 @@ fun ChartScreen(
             // opens the price-scale sheet, which is the nearest thing this chart has to a choice
             // of unit. Drawn only when there is a chart under it.
             if (!(state.loading && state.series.isEmpty) && !(state.error != null && state.series.isEmpty)) {
-                QuoteChip(
+                if (state.appearance.quoteChip) QuoteChip(
                     quote = SymbolClassifier.classify(state.symbol).quote ?: "USD",
                     onClick = { sheet = ChartSheet.SCALE },
                     // Absolute: the price scale is on the right whichever way the page reads, and
@@ -1243,7 +1256,7 @@ fun ChartScreen(
                 // The watermark, bottom-left of the plot, where TradingView signs its chart.
                 // Absolute for the same reason as the chip: the time axis reads left to right on
                 // every locale and the mark sits at its origin.
-                ChartWatermark(
+                if (state.appearance.watermark) ChartWatermark(
                     lead = watermarkLead(canvasWidthPx),
                     modifier = Modifier
                         .align(AbsoluteAlignment.BottomLeft)
@@ -1294,7 +1307,8 @@ fun ChartScreen(
                     seriesLabel = SymbolClassifier.classify(state.symbol).description(inEnglish()),
                     // No mark for a spread: `EURUSD/GBPUSD` has no artwork, and a lettered disc
                     // is what the rule on symbol artwork forbids.
-                    legendLogo = state.symbol.takeUnless(SymbolExpression::isExpression),
+                    legendLogo = state.symbol.takeUnless(SymbolExpression::isExpression)
+                        .takeIf { state.appearance.legendLogo },
                     decoration = ChartDecoration(
                         overlays = state.overlays,
                         signal = drawnSetup,
@@ -1313,7 +1327,19 @@ fun ChartScreen(
                         // down to a close on one of those would be counting down to something that
                         // already happened. The replay is history too, so it turns the countdown
                         // off with it.
-                        showCountdown = !state.replay.isOn,
+                        showCountdown = !state.replay.isOn && state.appearance.countdown,
+                        // The chart settings dialog's switches (5.16.0) — see [ChartAppearance].
+                        showLastPrice = state.appearance.lastPriceLine,
+                        showPreviousClose = state.appearance.previousCloseLine,
+                        showVolume = state.appearance.volume,
+                        colourOnPreviousClose = state.appearance.colourOnPreviousClose,
+                        drawBodies = state.appearance.bodies,
+                        drawWicks = state.appearance.wicks,
+                        gridVertical = state.appearance.gridVertical,
+                        gridHorizontal = state.appearance.gridHorizontal,
+                        legendOhlc = state.appearance.legendOhlc,
+                        legendChange = state.appearance.legendChange,
+                        legendStudies = state.appearance.legendIndicators,
                         // The overlays and how they are expressed. Handed over raw rather than
                         // rebased here, because the anchor a percentage comparison is measured
                         // from is the leftmost *visible* bar — and this screen does not know
@@ -1368,6 +1394,8 @@ fun ChartScreen(
                     priceBarLock = state.priceBarLock,
                     decimals = state.decimals,
                     scaleSide = state.scaleSide,
+                    topMargin = state.appearance.topMargin,
+                    bottomMargin = state.appearance.bottomMargin,
                     onScalePanes = controller::scalePanes,
                     // A long press on a drawn level offers an alert at exactly that price.
                     //
@@ -1481,7 +1509,7 @@ fun ChartScreen(
                     onNotableBar = { index -> openedNotable = index },
                     // The purple ring under the live bar, on the same handler as the hub's trade
                     // card. Absent on a build with nowhere to trade from.
-                    onTradeRing = onTrade,
+                    onTradeRing = onTrade.takeIf { state.appearance.tradeRing },
                     zoomNudge = zoomNudge,
                     // Item 108. The window's move, and the market's state, on the legend itself —
                     // which is the only place the two-pane layout has, since it draws no header.
@@ -1580,6 +1608,11 @@ fun ChartScreen(
                                         text = { Text(stringResource(R.string.chart_menu_scale)) },
                                         onClick = { sheet = ChartSheet.SCALE; contextMenu = null },
                                         modifier = Modifier.semantics { contentDescription = "chart-menu-scale" },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.chart_sheet_settings)) },
+                                        onClick = { sheet = ChartSheet.SETTINGS; contextMenu = null },
+                                        modifier = Modifier.semantics { contentDescription = "chart-menu-settings" },
                                     )
                                     // 5.14.0 — the terminal's menu, item for item: the data window,
                                     // replay from the bar under the pointer, and the chart's picture.
@@ -2001,6 +2034,10 @@ fun ChartScreen(
     // نوار ابزار ۲۵–۳۵٪ فضای خالی». So on a roomy window the column does not scroll and the plot
     // takes every point the bands above and below it did not.
     val fills = columns != ChartWorkbenchColumns.NONE
+    // **The desktop chrome needs a desktop** (5.16.0): a wide window that is also tall. A phone held
+    // sideways is wide and 411 points tall, and there the phone's own band under the plot stays —
+    // two bars of chrome would take a fifth of that height from the chart.
+    val desktopChrome = fills && coineProWindowClass().heightDp >= DESKTOP_CHROME_MIN_HEIGHT_DP
     Column(
         modifier = workbenchModifier
             .background(CoineProColors.Stage)
@@ -2018,6 +2055,7 @@ fun ChartScreen(
                 onZoom = { zoomIn -> zoomBy(if (zoomIn) ChartZoomNudge.STEP else 1f / ChartZoomNudge.STEP) },
                 onArmTool = { id -> DrawingTools.ALL.firstOrNull { it.id == id }?.let(controller::arm) },
                 onSearch = onOpenSymbolSearch,
+                onModifierHeld = controller::holdMagnet,
                 // The rest of the terminal's map (5.14.0). Each answers whether it acted, so a key
                 // with nothing to do right now goes on to the platform rather than being swallowed.
                 onAction = { hit ->
@@ -2065,7 +2103,7 @@ fun ChartScreen(
                             true
                         }
                         ChartKeyAction.INDICATORS -> { sheet = ChartSheet.INDICATORS; true }
-                        ChartKeyAction.SETTINGS -> { sheet = ChartSheet.SCALE; true }
+                        ChartKeyAction.SETTINGS -> { sheet = ChartSheet.SETTINGS; true }
                         ChartKeyAction.FULLSCREEN -> {
                             if (fullscreen || fullscreenRequested) {
                                 fullscreen = false
@@ -2100,6 +2138,33 @@ fun ChartScreen(
         // TradingView closes its header with a one-point rule (`#2E2E2E` on `#0F0F0F`); this
         // system's strong border is the same step above the page.
         HorizontalDivider(color = CoineProColors.BorderStrong, thickness = 1.dp)
+
+        // **TradingView's desktop toolbar** (5.16.0), on a window wide enough to be a desktop —
+        // the browser, a tablet held sideways. It takes the band's place: the phone keeps
+        // TradingView's phone band under the plot, a desktop gets TradingView's desktop row over it.
+        if (desktopChrome && !fullscreenRequested) {
+            ChartDesktopToolbar(
+                symbol = state.symbol,
+                interval = state.interval,
+                starred = starredWires,
+                chartType = state.chartType,
+                indicators = state.activeIndicators.size,
+                replayOn = state.replay.isOn,
+                onSymbolSearch = onOpenSymbolSearch,
+                onSelectInterval = controller::setInterval,
+                onOpen = { sheet = it },
+                onTemplate = controller::applyBuiltInTemplate,
+                onAlert = onCreateAlert?.let { create ->
+                    { (lastCrosshairPrice ?: state.lastPrice)?.let { price -> create(state.symbol, price) } }
+                },
+                onReplay = { if (state.replay.isOn) controller.exitReplay() else controller.enterReplay() },
+                onUndo = controller::undo.takeIf { state.canUndo },
+                onRedo = controller::redo.takeIf { state.canRedo },
+                onFullscreen = { fullscreenRequested = true },
+                onSnapshot = copyPicture,
+                onTrade = onTrade,
+            )
+        }
 
         // **How old these candles are** (run Τ2, B6), above the plot and nowhere else.
         //
@@ -2137,6 +2202,31 @@ fun ChartScreen(
                 },
         )
         HorizontalDivider(color = CoineProColors.Border)
+        // TradingView's desktop bar under the plot (5.16.0) — the ranges, the clock, `%` and `log`.
+        if (desktopChrome && !fullscreenRequested) {
+            ChartDesktopBottomBar(
+                range = state.range,
+                zone = chartZone,
+                percent = state.scaleMode == PriceScaleMode.PERCENT,
+                logarithmic = state.scaleMode == PriceScaleMode.LOGARITHMIC,
+                onRange = controller::setRange,
+                onZone = {
+                    settingsTab = ChartSettingsTab.SCALES
+                    sheet = ChartSheet.SETTINGS
+                },
+                onPercent = {
+                    controller.setScaleMode(
+                        if (state.scaleMode == PriceScaleMode.PERCENT) PriceScaleMode.REGULAR else PriceScaleMode.PERCENT,
+                    )
+                },
+                onLog = {
+                    controller.setScaleMode(
+                        if (state.scaleMode == PriceScaleMode.LOGARITHMIC) PriceScaleMode.REGULAR else PriceScaleMode.LOGARITHMIC,
+                    )
+                },
+            )
+            HorizontalDivider(color = CoineProColors.Border)
+        }
 
         // **What the chart is saying** (4.75.0, run Ω1): the Setup score and one pill per study.
         //
@@ -2280,7 +2370,8 @@ fun ChartScreen(
         }
 
         AnimatedVisibility(
-            visible = !fullscreenRequested,
+            // Not on a desktop-wide window, which has TradingView's desktop row over the plot instead.
+            visible = !fullscreenRequested && !desktopChrome,
             enter = slideInVertically(CoineProMotionSpecs.defaultSpatialFor()) { it } + fadeIn(tween(FULLSCREEN_SLIDE_MS)),
             exit = slideOutVertically(CoineProMotionSpecs.defaultSpatialFor()) { it } + fadeOut(tween(FULLSCREEN_SLIDE_MS)),
         ) {
@@ -2476,13 +2567,21 @@ fun ChartScreen(
                 // The reader's own studies, at the foot of the same scroll — see
                 // `ScriptPickerSection` for why they moved from the head of the sheet to here.
                 trailing = {
-                    ScriptPickerSection(
-                        library = scriptLibrary,
-                        onChart = state.scripts,
-                        onAdd = { entry -> controller.putScript(entry.name, entry.source) },
-                        onRemove = { instance -> controller.removeScript(instance.instanceId) },
-                        collapsible = true,
-                    )
+                    Column {
+                        // TradingView's «Indicator templates» (5.16.0): six ready-made sets, each
+                        // replacing what is on the chart.
+                        IndicatorTemplateSection(onApply = { template ->
+                            controller.applyBuiltInTemplate(template)
+                            sheet = null
+                        })
+                        ScriptPickerSection(
+                            library = scriptLibrary,
+                            onChart = state.scripts,
+                            onAdd = { entry -> controller.putScript(entry.name, entry.source) },
+                            onRemove = { instance -> controller.removeScript(instance.instanceId) },
+                            collapsible = true,
+                        )
+                    }
                 },
                 modifier = Modifier.fillMaxHeight(INDICATOR_SHEET_HEIGHT),
             )
@@ -2592,6 +2691,60 @@ fun ChartScreen(
                 controller = controller,
                 zoneId = timeZones?.let { storedZone },
                 onSelectZone = { id -> timeZones?.let { store -> zoneScope.launch { store.setZone(id) } } },
+            )
+        }
+
+        // TradingView's «Chart settings», its six tabs (5.16.0). The scale, colour and event
+        // sections are the same composables their own sheets draw.
+        ChartSheet.SETTINGS -> CoineProSheet(
+            title = stringResource(R.string.chart_sheet_settings),
+            subtitle = stringResource(settingsTab.labelRes),
+            onDismiss = { sheet = null },
+        ) {
+            ChartSettingsBody(
+                tab = settingsTab,
+                onTab = { settingsTab = it },
+                appearance = state.appearance,
+                onChange = controller::setAppearance,
+                scales = {
+                    PriceScaleSheetBody(
+                        state = state,
+                        controller = controller,
+                        zoneId = timeZones?.let { storedZone },
+                        onSelectZone = { id -> timeZones?.let { store -> zoneScope.launch { store.setZone(id) } } },
+                    )
+                },
+                colours = chartLayoutStore?.let { store ->
+                    {
+                        ColourTemplateSection(
+                            templates = colourTemplates,
+                            selected = state.colourTemplate,
+                            onSelect = controller::setColourTemplate,
+                            onSave = { template -> storeScope.launch { runCatching { store.saveTemplate(template) } } },
+                            onDelete = { id ->
+                                if (state.colourTemplate?.id == id) controller.setColourTemplate(null)
+                                storeScope.launch { runCatching { store.deleteTemplate(id) } }
+                            },
+                        )
+                    }
+                },
+                events = events?.let { controllerForEvents ->
+                    {
+                        ChartEventSettings(
+                            visibility = eventState.visibility,
+                            onChange = { next ->
+                                controllerForEvents.setVisibility(next)
+                                chartEventPrefs?.let { store ->
+                                    val moved = ChartEventKinds.changes(eventState.visibility, next)
+                                    storeScope.launch {
+                                        moved.forEach { (id, on) -> runCatching { store.setKind(id, on) } }
+                                    }
+                                }
+                            },
+                            notice = eventState.notice,
+                        )
+                    }
+                },
             )
         }
 
@@ -3557,7 +3710,7 @@ internal fun rememberHelpCatalog(wanted: Boolean): HelpCatalog? {
  * used to own a permanent band under the plot, and it is all behind that one word now. Internal
  * rather than private because `ChartChrome.kt` names these in the callbacks it hands back.
  */
-internal enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP, BACKTEST, LAYOUTS, INTERVAL, SCALE, COMPARE, EVENTS, MORE, PARTNERS, EXPLAIN, READINGS, RASAD, ARENA }
+internal enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP, BACKTEST, LAYOUTS, INTERVAL, SCALE, COMPARE, EVENTS, MORE, PARTNERS, EXPLAIN, READINGS, RASAD, ARENA, SETTINGS }
 
 /**
  * Binds the stores and starts the controller, in that order and in one effect.
@@ -5684,3 +5837,26 @@ private fun resolveArgument(value: Any, separator: String): String = when (value
 
 /** What a legend cell with nothing to measure prints. Not a zero, which would be a claim. */
 private const val EM_DASH = "\u2014"
+
+/**
+ * The browser tab's line, TradingView's shape: ticker, price grouped, an arrow and the move. Latin
+ * figures in both languages — it is a market figure — and the typographic minus.
+ */
+internal fun tabTitle(symbol: String, price: Double, movePercent: Double?): String {
+    // The chart's own precision, except between one and fifty — a currency pair's range — where a
+    // tab is read for the pip: five places, as a pair is quoted. Grouped like the axis.
+    val places = if (price >= 1.0 && price < 50.0) 5 else decimalsFor(price)
+    val plain = formatPrice(price, places)
+    val whole = plain.substringBefore('.')
+    val grouped = whole.reversed().chunked(3).joinToString(",").reversed().replace("-,", "-")
+    val figure = if ('.' in plain) grouped + "." + plain.substringAfter('.') else grouped
+    val move = movePercent?.let { percent ->
+        val arrow = if (percent >= 0) "▲" else "▼"
+        val sign = if (percent >= 0) "+" else "−"
+        " $arrow $sign" + formatPrice(kotlin.math.abs(percent), 2) + "%"
+    }.orEmpty()
+    return "$symbol $figure$move"
+}
+
+/** How tall a wide window must be before it gets TradingView's desktop bars (5.16.0). */
+private const val DESKTOP_CHROME_MIN_HEIGHT_DP = 600

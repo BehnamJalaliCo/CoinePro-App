@@ -2,6 +2,7 @@ package com.coinepro.core.chart
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -158,3 +159,51 @@ private const val MINI_GROUND_ALPHA = 0.18f
 private const val AUTO_LABEL = "جا دادن قیمت‌های دیده‌شده در صفحه"
 
 private const val LOG_LABEL = "محور قیمت لگاریتمی"
+
+/**
+ * TradingView's «Scroll to the most recent bar» button (5.16.0): a round `»` in the plot's
+ * bottom-right corner, shown only once the reader has panned away from the live edge, gone the
+ * moment they are back. One tap returns the chart to rest at the newest bar.
+ */
+@Composable
+internal fun ScrollToRealtimeButton(
+    frame: PlotFrame?,
+    plotBottom: Float,
+    visible: Boolean,
+    palette: ChartPalette,
+    onClick: () -> Unit,
+) {
+    if (!visible || frame == null || frame.width <= 0f) return
+    val density = LocalDensity.current
+    val side = with(density) { REALTIME_DP.toPx() }
+    val inset = with(density) { REALTIME_INSET_DP.toPx() }
+    val top = plotBottom - side - inset
+    if (top < 0f) return
+    val left = frame.right - side - inset
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(left.roundToInt(), top.roundToInt()) }
+                .size(REALTIME_DP)
+                .clip(RoundedCornerShape(REALTIME_DP / 2))
+                .background(palette.stage)
+                .border(1.dp, palette.crosshair.copy(alpha = 0.6f), RoundedCornerShape(REALTIME_DP / 2))
+                .chartControl(onClick = onClick)
+                .semantics { contentDescription = REALTIME_LABEL },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "»",
+                color = palette.text,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+/** TradingView's button is a 28 px disc, a little in from the plot's corner. */
+private val REALTIME_DP = 28.dp
+private val REALTIME_INSET_DP = 8.dp
+internal const val REALTIME_LABEL = "chart-scroll-to-realtime"

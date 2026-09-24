@@ -527,6 +527,8 @@ val replacedFiles = listOf(
     // android.graphics + StaticLayout → Skia paragraph: web/src/wasmJsMain/.../designsystem/ShareCard.web.kt
     "com/coinepro/core/designsystem/ShareCard.kt",
     "com/coinepro/core/designsystem/ShareImage.kt",
+    // No title on a phone → the tab's title: web/src/wasmJsMain/.../designsystem/WindowTitle.web.kt
+    "com/coinepro/core/designsystem/WindowTitle.kt",
 )
 
 /**

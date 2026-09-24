@@ -166,6 +166,8 @@ class WindowClassTest {
         assertEquals(CoineProWindowClass.PHONE_MAX_PANES, CoineProWindowClass.of(599, 900).maxChartPanes)
         assertEquals(CoineProWindowClass.TABLET_MAX_PANES, CoineProWindowClass.of(600, 900).maxChartPanes)
         assertEquals(CoineProWindowClass.TABLET_MAX_PANES, CoineProWindowClass.of(1280, 800).maxChartPanes)
+        assertEquals(CoineProWindowClass.TABLET_MAX_PANES, CoineProWindowClass.of(1366, 1024).maxChartPanes)
+        assertEquals(CoineProWindowClass.DESKTOP_MAX_PANES, CoineProWindowClass.of(1920, 1080).maxChartPanes)
     }
 
     @Test

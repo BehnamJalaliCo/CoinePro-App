@@ -519,6 +519,22 @@ data class ChartDecoration(
      * together, which is the one bit that already separates a chart from a picture of one.
      */
     val showPreviousClose: Boolean = true,
+    /**
+     * TradingView's `barColorsOnPrevClose` (5.16.0, [ChartAppearance]): a candle or bar is coloured
+     * by its close against the previous bar's close rather than against its own open.
+     */
+    val colourOnPreviousClose: Boolean = false,
+    /** Whether candle bodies are drawn — TradingView's `drawBody`. */
+    val drawBodies: Boolean = true,
+    /** Whether candle wicks are drawn — `drawWick`. */
+    val drawWicks: Boolean = true,
+    /** The grid's two directions, each switched on its own as in TradingView's Canvas tab. */
+    val gridVertical: Boolean = true,
+    val gridHorizontal: Boolean = true,
+    /** The status line's parts — TradingView's Status line tab (5.16.0). */
+    val legendOhlc: Boolean = true,
+    val legendChange: Boolean = true,
+    val legendStudies: Boolean = true,
 )
 
 /** Where the crosshair is, in chart space. Null when nobody is touching the chart. */

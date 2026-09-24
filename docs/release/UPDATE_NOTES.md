@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.16.0
+
+**fa**
+
+> نسخه‌ی وب و تبلت افقی حالا نوار ابزار دسکتاپ تریدینگ‌ویو را دارد: نماد، مقایسه، تایم‌فریم‌ها، نوع چارت، اندیکاتورها، قالب‌ها، هشدار، بازپخش، و زیر چارت بازه‌ها، ساعت و درصد و لگاریتمی.
+> پنجره‌ی «تنظیمات چارت» با شش زبانه‌ی تریدینگ‌ویو، شش قالب آماده‌ی اندیکاتور، حاشیه‌های ۱۰٪ و ۸٪، خط‌چین کراس‌هیر، آذرخش بنفش اخبار، دکمه‌ی بازگشت به آخرین کندل و تا ۱۶ چارت در یک چیدمان روی دسکتاپ.
+
+**en**
+
+> The web and a sideways tablet now carry TradingView's desktop toolbar: symbol, compare, intervals, chart type, indicators, templates, alert and replay, with the ranges, clock, percent and log under the chart.
+> A six-tab Chart settings dialog, six indicator templates, 10 % and 8 % margins, the purple news bolt, a scroll-to-latest button and up to 16 charts on a desktop.
+
 ## 5.15.0
 
 **fa**

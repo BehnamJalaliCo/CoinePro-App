@@ -821,6 +821,12 @@ internal fun ChartMoreSheetBody(
                 marked = scaleAdjusted,
                 onClick = { onOpen(ChartSheet.SCALE) },
             )
+            // TradingView's «Chart settings» dialog, its six tabs (5.16.0).
+            HubTile(
+                icon = DesignR.drawable.tv_settings2,
+                label = stringResource(R.string.chart_sheet_settings),
+                onClick = { onOpen(ChartSheet.SETTINGS) },
+            )
             HubTile(
                 icon = DesignR.drawable.icon_camera,
                 label = stringResource(R.string.chart_more_share),

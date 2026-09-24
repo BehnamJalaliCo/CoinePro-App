@@ -13,7 +13,7 @@ class ChartLayoutPresetTest {
         val ids = ChartLayoutPreset.entries.map { it.id }
         assertEquals(ids.size, ids.toSet().size)
         // What is on readers' tablets. Renaming an entry is fine; changing an id is a migration.
-        assertEquals(listOf("1", "2h", "2v", "3", "3v", "4", "4h", "4v", "6", "8"), ids)
+        assertEquals(listOf("1", "2h", "2v", "3", "3v", "4", "4h", "4v", "6", "8", "9", "12", "16"), ids)
         ChartLayoutPreset.entries.forEach { assertEquals(it, ChartLayoutPreset.byId(it.id)) }
     }
 
@@ -31,6 +31,8 @@ class ChartLayoutPresetTest {
         assertEquals(CoineProWindowClass.TABLET_MAX_PANES, ChartLayoutPreset.EIGHT.count)
         assertEquals(ChartLayoutPreset.EIGHT, ChartLayoutPreset.largestWithin(CoineProWindowClass.TABLET_MAX_PANES))
         assertEquals(ChartLayoutPreset.TWO_ACROSS, ChartLayoutPreset.largestWithin(CoineProWindowClass.PHONE_MAX_PANES))
+        // A desktop window has TradingView's sixteen (5.16.0).
+        assertEquals(ChartLayoutPreset.SIXTEEN, ChartLayoutPreset.largestWithin(CoineProWindowClass.DESKTOP_MAX_PANES))
     }
 
     @Test

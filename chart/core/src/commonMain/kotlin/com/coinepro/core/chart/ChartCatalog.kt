@@ -1421,6 +1421,7 @@ object ChartCatalog {
             factor("offset", "آفست", "Offset", 0.85, 0.0, 1.0, 0.05),
             factor("sigma", "سیگما", "Sigma", 6.0, 0.5, 20.0, 0.5),
         ),
+        "ema" to listOf(bars("shift", "جابه‌جایی", "Offset", 0, 0, 200)),
         "maribbon" to listOf(bars("base", "طول پایه", "Base length", 20), bars("step", "گام", "Step", 10, 1, 100), bars("count", "تعداد خط", "Lines", 6, 2, 8)),
         "macross" to listOf(bars("fast", "تند", "Fast", 10), bars("slow", "کند", "Slow", 30)),
         "mtfema" to listOf(bars("factor", "ضریب تایم‌فریم", "Timeframe factor", 4, 2, 12)),
@@ -1504,7 +1505,14 @@ object ChartCatalog {
         val n = periodFor(option.id, period)
         return when (option.id) {
             "sma" -> listOf(ChartLine(Indicators.sma(close, n), option.colour, label = "SMA $n"))
-            "ema" -> listOf(ChartLine(Indicators.ema(close, n), option.colour, label = "EMA $n"))
+            // TradingView's EMA has an «Offset» input, which is what its «Displaced EMA» template
+            // turns (5.16.0): the line drawn [shift] bars to the right of where it was computed.
+            "ema" -> {
+                val shift = pi("shift")
+                val base = Indicators.ema(close, n)
+                val line = if (shift <= 0) base else Line.of(base.size) { base[it - shift] }
+                listOf(ChartLine(line, option.colour, label = if (shift <= 0) "EMA $n" else "EMA $n +$shift"))
+            }
             "wma" -> listOf(ChartLine(Indicators.wma(close, n), option.colour, label = "WMA $n"))
             "hma" -> listOf(ChartLine(Indicators.hma(close, n), option.colour, label = "HMA $n"))
             "bollinger" -> Indicators.bollinger(close, n, p("deviation")).let { band ->

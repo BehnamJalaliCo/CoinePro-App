@@ -208,3 +208,43 @@ object IndicatorTemplates {
         )
     }
 }
+
+/**
+ * One of TradingView's six ready-made indicator templates (5.16.0).
+ *
+ * The same shape a reader's own template has once it is resolved — indicator ids, periods and
+ * parameters — so applying one goes down exactly the path a saved template does and replaces the
+ * studies on the chart, which is what TradingView's does too. The name is the screen's to translate;
+ * this module holds only the id.
+ */
+data class BuiltInIndicatorTemplate(
+    val id: String,
+    val indicators: List<String>,
+    val periods: Map<String, Int> = emptyMap(),
+    val params: Map<String, Map<String, Double>> = emptyMap(),
+)
+
+/**
+ * TradingView's six, in its menu's order. What each holds is TradingView's where the product says
+ * (the Alligator is Bill Williams' three lines; the ribbon is the exponential MA ribbon) and this
+ * chart's nearest honest reading where it does not publish the list.
+ */
+object BuiltInIndicatorTemplates {
+    val ALL: List<BuiltInIndicatorTemplate> = listOf(
+        BuiltInIndicatorTemplate(id = "tv_bw3lines", indicators = listOf("alligator")),
+        BuiltInIndicatorTemplate(
+            id = "tv_displaced_ema",
+            indicators = listOf("ema"),
+            periods = mapOf("ema" to 20),
+            params = mapOf("ema" to mapOf("shift" to 5.0)),
+        ),
+        BuiltInIndicatorTemplate(id = "tv_ma_exp_ribbon", indicators = listOf("maribbon")),
+        BuiltInIndicatorTemplate(id = "tv_oscillators", indicators = listOf("rsi", "macd", "stochastic")),
+        BuiltInIndicatorTemplate(
+            id = "tv_swing",
+            indicators = listOf("ema", "sma", "rsi"),
+            periods = mapOf("ema" to 20, "sma" to 50),
+        ),
+        BuiltInIndicatorTemplate(id = "tv_volume_based", indicators = listOf("vwap", "obv", "mfi", "cmf")),
+    )
+}
