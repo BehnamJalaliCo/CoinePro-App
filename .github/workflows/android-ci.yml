@@ -130,6 +130,14 @@ jobs:
       - name: Enforce Phase 1-17 repository consistency
         run: python3 scripts/quality/check-cross-phase-consistency.py
 
+      # The relay pro-chart.com runs for the web app (web/relay): the passthrough, the token swap
+      # and the image route, against fake backends. No network.
+      - name: The web relay passes its tests
+        working-directory: web/relay
+        run: |
+          python3 -m pip install --quiet -r requirements.txt
+          python3 -m unittest test_relay
+
       # The engine, the language, the Compose chart and the design tokens compile for the browser,
       # and the web version builds: the whole phone app, compiled from the phone's own sources
       # (web/tools/share_sources.py, python3 from the runner). This is the job that notices a phone

@@ -34,7 +34,7 @@ the frame says otherwise.
 | Community | ✅ | `web-app-community-fa-phone.png`. The forum is empty because the server's feed is `{"posts":[]}` today, and the phone shows the same |
 | Menu, every row | ✅ | `web-app-menu-fa-phone.png` |
 | Search, screener, heatmap, markets, explore | ✅ | `web-app-{search,screener,heatmap,markets,explore}-fa-phone.png` |
-| News with photos, calendar | ✅ | `web-app-news-fa-phone.png`, `web-app-calendar-fa-phone.png`. The photos need `/api/img` (`SERVER.md` §4.13); without it each card says «تصویر نیامد», which is the phone's own words for a photo that did not load |
+| News with photos, calendar | ✅ | `web-app-news-fa-phone.png`, `web-app-calendar-fa-phone.png`. The photos come through `/api/img` (`SERVER.md` §4.13, `web/relay`); the frame was taken behind the relay. Without it each card says «تصویر نیامد», the phone's own words for a photo that did not load |
 | Paper trading, journal | ✅ | `web-app-paper-fa-phone.png`, `web-app-journal-fa-phone.png` |
 | Chart studio, NamaScript, alerts, trader's toolbox | ✅ | `web-app-{studio,backtest,alerts,toolbox}-fa-phone.png` |
 | Security and release notes, profile, notification settings | ✅ | `web-app-{security,profile,notif}-fa-phone.png` |
@@ -42,6 +42,8 @@ the frame says otherwise.
 | English, light theme | ✅ | `web-app-menu-en-light-phone.png`, `web-app-rasad-en-light-phone.png` |
 | Wide window: navigation rail, list-detail | ✅ | `web-app-watchlist-en-light-desktop.png` |
 | Tablet grid, four charts | ✅ | `web-app-tablet-grid-fa.png` |
+| Installable, with the phone's launcher icon | ✅ | `manifest.webmanifest`, icons from `scripts/design/build-web-icons.py`, `sw.js`. Chromium's installability check reports nothing but «in-incognito», which is the test browser's own mode — no **frame**: a check result, printed by the run in `REPORT.md` §7 |
+| Opens with no network | ✅ | `sw.js` keeps the last good copy of each bundle file. `web-app-offline-start-fa-phone.png`: reloaded offline, the app opens with the phone's own offline banner. A guest's prices are blank there on the phone too — the guest feed is not cached on either |
 
 ## Faults found and fixed in the browser
 
@@ -58,6 +60,7 @@ the frame says otherwise.
 | Home-screen widgets (markets, single symbol) | ❌ **no such thing on the web.** `Widgets.web.kt` keeps the calls and draws nothing |
 | Picture-in-picture watch mode | ❌ a tab cannot shrink into its own floating window; `onKeepWatching = null`, so the hub offers no tile, as on a phone without the mode |
 | Push while the app is closed (FCM) | ⏳ needs a Web Push key pair and a server sender; while the tab is open, the Notification API shows the same notifications |
+| The launcher icon | ✅ the installed web app carries it (above) |
 | Play Integrity | ❌ Android-only; the header is not sent, which the backends already accept from a phone without Play services |
 | Background sync when closed | ❌ WorkManager's jobs run on timers while the tab is open |
 | Opening the system notification settings | ❌ a page cannot; the phone's screen already says where the switch is |
@@ -68,6 +71,6 @@ the frame says otherwise.
 |---|---|---|
 | The bundle | ✅ | `./gradlew :web:terminalBundle` → `web/build/terminal/`. CI builds it and keeps it as the `pro-chart-terminal` artefact |
 | On `pro-chart.com/terminal/` | ⏳ **owed to the server agent** | `BLOCKED.md` B1 |
-| Signed-in screens against the live backends | ⏳ **owed to the server agent** | `SERVER.md` §4.12, the `/up/` passthrough with the token swap. `BLOCKED.md` B2 |
-| News photos | ⏳ **owed to the server agent** | `SERVER.md` §4.13. `BLOCKED.md` B3 |
+| The relay for signed-in screens and news photos | ✅ **written and tested here**: `web/relay/` — the `/up/` passthrough with the token swap (§4.12) and `/api/img` (§4.13). Thirteen tests against fake backends, run in CI; driven locally behind the page, where all six news photos came through it | — **a service.** `python3 -m unittest test_relay` |
+| …running on pro-chart.com | ⏳ **owed to the server agent** | `BLOCKED.md` B2: one compose service and two Caddy lines, in `web/relay/README.md` |
 | Google sign-in from the page | ⏳ **owed to the owner** | `BLOCKED.md` B4 |

@@ -10,17 +10,14 @@ What is left is owed to the server agent or the owner. Nothing here needs a chan
 `bin/precompress.sh site/terminal`. `.wasm` is already `application/wasm` and the SPA fallback on
 `/terminal/*` is already on.
 
-## B2 — the passthrough for signed-in screens (server agent)
+## B2 — run the relay (server agent)
 
-`SERVER.md` §4.12: `/up/tradeyar/…` and `/up/coineprofx/…`, every method and the WebSocket upgrade,
-the header allowlist, and the bearer kept server-side behind an `HttpOnly` cookie. Until it exists,
-everything a guest sees works (the named relay routes), and every signed-in screen says it cannot
-reach the server, which is what the phone says with no network.
-
-## B3 — publishers' photos (server agent)
-
-`SERVER.md` §4.13: `GET /api/img?url=`, `https://` only, image types only, 5 MB, no private
-addresses. Until it exists the news cards say «تصویر نیامد».
+`web/relay/` is the service `SERVER.md` §4.12 and §4.13 describe, written and tested in this
+repository: the `/up/tradeyar/…` and `/up/coineprofx/…` passthrough (every method, WebSocket too,
+the bearer kept server-side behind an `HttpOnly` cookie) and `/api/img` for the news photos. What is
+left is running it: one compose service and two Caddy `handle` lines, both in `web/relay/README.md`.
+Until then, everything a guest sees works, signed-in screens say they cannot reach the server, and
+news cards say «تصویر نیامد».
 
 ## B4 — Google sign-in from the page (owner)
 

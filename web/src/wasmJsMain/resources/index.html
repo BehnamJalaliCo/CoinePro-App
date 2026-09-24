@@ -8,6 +8,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Pro Chart — live crypto and forex charts in the browser.">
   <title>Pro Chart</title>
+  <!-- Installable as an app, with the phone's launcher icon (scripts/design/build-web-icons.py). -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0E1118">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <style>
     html, body { margin: 0; height: 100%; background: #0b0e11; overflow: hidden; }
     #terminal { position: fixed; inset: 0; }
@@ -22,5 +28,19 @@
   <!-- The one package the compiled code imports by name; see terminalBundle in web/build.gradle.kts. -->
   <script type="importmap">{ "imports": { "@js-joda/core": "./js-joda.esm.js" } }</script>
   <script type="module" src="terminal.mjs"></script>
+  <script>
+    // sw.js: network first, the last good copy when offline. A new worker takes over and the page
+    // reloads once, so a release is never half old and half new.
+    if ('serviceWorker' in navigator) {
+      var reloading = false, hadController = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (hadController && !reloading) { reloading = true; window.location.reload(); }
+        hadController = true;
+      });
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').then(function (r) { r.update().catch(function () {}); }).catch(function () {});
+      });
+    }
+  </script>
 </body>
 </html>

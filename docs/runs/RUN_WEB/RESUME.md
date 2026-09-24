@@ -5,9 +5,11 @@
 **The web version is the phone app.** Every screen, from the phone's own Kotlin, compiled for the
 browser (`CHECKLIST.md`). The phone is unchanged: suite and goldens green, release builds.
 
-**Waiting on the server agent** for the bundle at `site/terminal` (B1), the `/up/` passthrough for
-signed-in screens (B2) and `/api/img` for news photos (B3). **Waiting on the owner** for the Google
-origin (B4) and, if wanted, Web Push keys (B5). See `BLOCKED.md`.
+It installs as an app with the phone's icon and opens with no network. The relay the server needs
+for signed-in screens and news photos is written and tested in `web/relay/`.
+
+**Waiting on the server agent** to put the bundle at `site/terminal` (B1) and run `web/relay`
+(B2). **Waiting on the owner** for the Google origin (B4) and, if wanted, Web Push keys (B5). See `BLOCKED.md`.
 
 ## When a phone screen changes
 

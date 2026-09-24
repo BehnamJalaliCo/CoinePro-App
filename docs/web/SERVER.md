@@ -781,6 +781,10 @@ above is real; its price simply has not moved, because nothing is trading.
 
 ### 4.12 The whole app in the browser — the passthrough it needs (2026-09-23)
 
+> **Implemented in `web/relay/` (2026-09-24)** — this section and §4.13 as one tested service, with
+> the compose and Caddy lines to run it in `web/relay/README.md`. What follows is the specification
+> it meets.
+
 **What changed.** `/terminal/` is no longer the chart alone. It is the phone app — every screen,
 compiled from the phone's own Kotlin (`web/build.gradle.kts`, `web/tools/share_sources.py`) — and
 the phone app talks to both backends on ~140 routes, not the eight §4.1–§4.3 relay. The page maps

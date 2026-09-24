@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.10.0
+
+**fa**
+
+> نسخه‌ی وب پرو چارت حالا مثل یک برنامه نصب می‌شود، با همان آیکون گوشی، و بدون اینترنت هم باز می‌شود. عکس خبرها هم در مرورگر نمایش داده می‌شود.
+> در این نسخه‌ی گوشی چیزی عوض نشده است.
+
+**en**
+
+> The Pro Chart web version now installs like an app, with the same icon as on your phone, and opens with no
+> connection. News photos now show in the browser too. Nothing on the phone has changed in this version.
+
 ## 5.9.1
 
 **fa**

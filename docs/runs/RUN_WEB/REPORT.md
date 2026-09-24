@@ -89,3 +89,40 @@ Push keys (`BLOCKED.md` B5).
 files, fetched as they are first drawn; the fa/en string tables; the help and legal assets; the four
 IRANYekanX weights. No webpack, for the reason in the W1b section of this report's history: the
 compiler's ES modules are served as they are.
+
+## 7. An app to install, and the relay the server runs (5.10.0)
+
+**Installable.** The old Pro-Chart web app (`BehnamJalaliCo/Pro-Chart`, `frontend/prochart`) had
+learnt one thing the hard way: its first service worker cached the bundle and readers got stuck on an
+old release, so its second one cached nothing. This one keeps both lessons. `sw.js` asks the network
+for every bundle file, every time, and keeps the last good copy only for when the network does not
+answer. `manifest.webmanifest` carries the phone's launcher icon, stacked from its two adaptive
+layers by `scripts/design/build-web-icons.py`. Chromium's own checks on the local page:
+
+```
+installability errors: [{"errorId":"in-incognito","errorArguments":[]}]   ← the test browser's mode, nothing else
+manifest url: http://127.0.0.1:8765/terminal/manifest.webmanifest errors: []
+service worker: {"scope":"http://127.0.0.1:8765/terminal/","active":true}
+offline title: Pro Chart                                                  ← reloaded with the network off
+```
+
+**The relay.** `SERVER.md` §4.12 and §4.13 were written as asks, and the relay behind
+`pro-chart.com` lives on its server, not in any repository. So the two routes are now written and
+tested here, in `web/relay/relay.py` (aiohttp, one file), for the server to run as it is:
+
+* `/up/tradeyar/…`, `/up/coineprofx/…`: every method, and WebSocket upgrades. Only the headers the
+  phone sends go through, and never the reader's cookies.
+* **Token swap.** A sign-in or refresh answer's tokens become `pch_…` handles, and the real ones stay
+  in the relay against an `HttpOnly; SameSite=Strict` cookie. A handle from another browser is
+  dropped, not forwarded. A browser cannot put an `Authorization` header on a WebSocket, so an upgrade
+  gets the session's bearer from the cookie. That is the one thing the page could not have done alone.
+* `/api/img`: `https://` only, image types only, 5 MB, up to three redirects. Private, loopback and
+  link-local addresses are refused both as literals and after resolution, and the address checked is
+  the address connected to.
+
+Thirteen tests (`web/relay/test_relay.py`) drive it against a fake of each backend and a fake
+publisher, and CI runs them. Locally the page ran behind it: the local server forwarded `/up/*` and
+`/api/img` to the relay as the Caddy lines in `web/relay/README.md` will, and the news cards drew
+their photos through it: six of six. The first run gave two `415`s — `cryptoslate.com` serves its WebP
+with no `Content-Type` at all — so a photo with no type, or a generic one, is now judged by its first
+bytes, and a body that is not an image is still refused.
