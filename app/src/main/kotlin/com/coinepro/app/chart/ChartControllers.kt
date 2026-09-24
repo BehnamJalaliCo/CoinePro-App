@@ -13,6 +13,7 @@ import com.coinepro.core.marketdata.CandleArchive
 import com.coinepro.core.marketdata.ChartTickSource
 import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.marketdata.CandleGateway
+import com.coinepro.core.marketdata.SymbolExpressionGateway
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -156,7 +157,9 @@ fun rememberChartControllers(
     ticks: ChartTickSource,
     drawingAlerts: DrawingAlerts? = null,
 ): ChartControllers = remember(gateway, scope, drawings, images, log, cache, archive, ticks, drawingAlerts) {
-    ChartControllers(gateway, scope, drawings, images, log, cache, archive, ticks, drawingAlerts)
+    // Wrapped so a spread or ratio typed as a symbol — `EURUSD/GBPUSD` — charts (5.14.0). A plain
+    // symbol goes straight through to the platform's own gateway.
+    ChartControllers(SymbolExpressionGateway(gateway), scope, drawings, images, log, cache, archive, ticks, drawingAlerts)
 }
 
 /**

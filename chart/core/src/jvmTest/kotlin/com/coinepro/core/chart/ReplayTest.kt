@@ -212,4 +212,32 @@ class ReplayTest {
         assertEquals(41, replayed.size)
         assertEquals(all[40].t, replayed.time.last())
     }
+
+    // ── 5.14.0: the terminal's large steps and its start ─────────────────────────────────
+
+    @Test
+    fun `ten at a time clamps at both ends and pauses`() {
+        val on = Replay.play(Replay.enter(bars(100), startIndex = 50)!!)
+        val forward = Replay.stepBy(on, 10)
+        assertEquals(60, forward.cursor)
+        assertFalse(forward.playing)
+        assertEquals(99, Replay.stepBy(forward, 10 * 10).cursor)
+        assertEquals(0, Replay.stepBy(forward, -1_000).cursor)
+        assertSame(on, Replay.stepBy(on, 0))
+        assertFalse(Replay.stepBy(ReplayState(), 10).isOn)
+    }
+
+    @Test
+    fun `back to the start lands on the first readable bar, not bar zero`() {
+        val on = Replay.enter(bars(100), startIndex = 80)!!
+        assertEquals(Replay.MINIMUM_BARS, Replay.toStart(on).cursor)
+        assertFalse(Replay.toStart(ReplayState()).isOn)
+    }
+
+    @Test
+    fun `replay from here enters on the picked bar by time`() {
+        val all = bars(100)
+        val entered = Replay.enter(all, startTime = all[42].t + 60)!!
+        assertEquals(42, entered.cursor)
+    }
 }

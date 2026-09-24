@@ -171,4 +171,6 @@
     <string name="watchlist_move_up">Move up</string>
     <string name="watchlist_move_down">Move down</string>
     <string name="watchlist_compare">Compare</string>
+    <string name="search_spread_open">Chart %1$s</string>
+    <string name="search_spread_caption">A spread or ratio of symbols, built from the bars they share</string>
 </resources>

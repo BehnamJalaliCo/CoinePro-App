@@ -1,5 +1,7 @@
 package com.coinepro.core.designsystem
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -64,6 +66,35 @@ object ShareImage {
         )
         true
     }.getOrDefault(false)
+
+    /**
+     * Puts [image] on the clipboard as a picture — the terminal's «کپی تصویر» (5.14.0). The same
+     * file and the same provider as [share], so the three rules above hold; the clip carries the
+     * URI and the grant goes with it. False where the file could not be written.
+     */
+    fun copy(context: Context, image: Bitmap, name: String): Boolean = runCatching {
+        val file = write(context, image, name)
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.shared", file)
+        val clipboard = context.getSystemService(ClipboardManager::class.java) ?: return false
+        clipboard.setPrimaryClip(ClipData.newUri(context.contentResolver, file.name, uri))
+        true
+    }.getOrDefault(false)
+
+    /**
+     * Saves [image] — on a phone, through the same chooser as [share], where «ذخیره در فایل‌ها» and
+     * the gallery are; the browser's copy of this object downloads it instead.
+     */
+    fun save(context: Context, image: Bitmap, name: String): Boolean = share(context, image, name)
+
+    private fun write(context: Context, image: Bitmap, name: String): File {
+        val directory = File(context.cacheDir, DIRECTORY).apply {
+            deleteRecursively()
+            mkdirs()
+        }
+        val file = File(directory, name.filter(Char::isLetterOrDigit).ifEmpty { FALLBACK } + ".png")
+        file.outputStream().use { stream -> image.compress(Bitmap.CompressFormat.PNG, 100, stream) }
+        return file
+    }
 
     /** The one directory the FileProvider exposes. Named here because the manifest names it too. */
     private const val DIRECTORY = "shared"

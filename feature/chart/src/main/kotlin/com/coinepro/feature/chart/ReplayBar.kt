@@ -91,6 +91,10 @@ internal fun ReplayBar(
     onStep: () -> Unit,
     onStepBack: () -> Unit,
     onSeek: (Float) -> Unit,
+    /** Ten bars back (negative) or forward — the terminal's large step. Defaulted for old hosts. */
+    onStepBy: (Int) -> Unit = {},
+    /** Back to the first readable bar. See `Replay.toStart`. */
+    onToStart: () -> Unit = {},
     onSpeed: (ReplaySpeed) -> Unit,
     /** Reveals the rest of the snapshot without leaving replay. See `Replay.jumpToLive`. */
     onJumpToLive: () -> Unit,
@@ -151,16 +155,28 @@ internal fun ReplayBar(
             TransportButton(DesignR.drawable.icon_x, stringResource(R.string.replay_exit), onExit)
         }
 
-        Slider(
-            value = state.progress,
-            onValueChange = onSeek,
-            colors = SliderDefaults.colors(
-                thumbColor = CoineProColors.AccentFill,
-                activeTrackColor = CoineProColors.AccentFill,
-                inactiveTrackColor = CoineProColors.Border,
-            ),
-            modifier = Modifier.fillMaxWidth().height(20.dp),
-        )
+        // The large steps sit either side of the scrub rather than in the row above, which is
+        // already five buttons wide on a phone: back to the start and ten back on the left of the
+        // track, ten forward on the right, the way the terminal's transport lays them out.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TransportButton(CoineProIcons.StepBack, stringResource(R.string.replay_to_start), onToStart)
+            TransportButton(DesignR.drawable.icon_rewind, stringResource(R.string.replay_back_ten), onClick = { onStepBy(-REPLAY_LARGE_STEP) })
+            Slider(
+                value = state.progress,
+                onValueChange = onSeek,
+                colors = SliderDefaults.colors(
+                    thumbColor = CoineProColors.AccentFill,
+                    activeTrackColor = CoineProColors.AccentFill,
+                    inactiveTrackColor = CoineProColors.Border,
+                ),
+                modifier = Modifier.weight(1f).height(20.dp),
+            )
+            TransportButton(DesignR.drawable.icon_fast_forward, stringResource(R.string.replay_forward_ten), onClick = { onStepBy(REPLAY_LARGE_STEP) })
+        }
 
         // Nine steps, and the row scrolls rather than shrinking the chips: a speed control whose
         // targets are smaller than a fingertip is a speed control that gets the wrong speed.
@@ -858,6 +874,9 @@ internal fun indexOfTypedDate(typed: String, bars: List<Candle>): Int? {
     }
     return best
 }
+
+/** The transport's large step, in bars: the terminal's «۱۰ کندل جلو / عقب». */
+internal const val REPLAY_LARGE_STEP = 10
 
 @Composable
 private fun TransportButton(

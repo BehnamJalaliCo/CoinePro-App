@@ -1,5 +1,11 @@
 package com.coinepro.feature.search
 
+import com.coinepro.core.designsystem.pageAccentInk
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import com.coinepro.core.designsystem.R as DesignR
+import com.coinepro.core.designsystem.coineProControl
+import com.coinepro.core.marketdata.SymbolExpression
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -199,6 +205,11 @@ fun SearchScreen(
         if (access == null || !offersSurfaces) emptyList() else AppSurfaceSearch.search(state.query, access)
     }
 
+    // A spread typed into the field (5.14.0) — see the row under the chips.
+    val expression = remember(state.query) {
+        state.query.takeIf { SymbolExpression.isExpression(it) }?.filterNot { it == ' ' }?.uppercase()
+    }
+
     Column(
         modifier = Modifier.fillMaxSize().background(CoineProColors.Stage),
     ) {
@@ -217,6 +228,14 @@ fun SearchScreen(
             )
             CategoryChips(selected = state.category, onSelect = controller::setCategory)
             CoineProTeachingStrip(TeachingSurface.SEARCH, gutter = false)
+            // **A spread or a ratio** (5.14.0). The terminal charted `EURUSD/GBPUSD`,
+            // `XAUUSD*2` or `(BTCUSDT+ETHUSDT)/2` typed straight into its search, and so does this:
+            // when the field holds arithmetic over symbols, the first row charts it. Straight to
+            // the chart rather than through the recent list, whose chips carry each market's mark
+            // and an expression has none.
+            if (expression != null && onOpenSymbol != null) {
+                SpreadRow(expression = expression, onOpen = { onOpenSymbol(expression) })
+            }
         }
 
         when {
@@ -242,7 +261,8 @@ fun SearchScreen(
                 }
             }
 
-            state.empty && surfaces.isEmpty() -> Centered {
+            // Not «nothing found» under a spread's own row: the row is what was found.
+            state.empty && surfaces.isEmpty() && expression == null -> Centered {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
@@ -704,4 +724,39 @@ private fun MarketQuote.decimals(): Int = when {
     price >= 1_000 -> 2
     price >= 1 -> 4
     else -> 6
+}
+
+/** The one row a typed expression gets: what will be charted, and how it is built. */
+@Composable
+private fun SpreadRow(expression: String, onOpen: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(CoineProShapes.medium)
+            .background(CoineProColors.SurfaceElevated)
+            .coineProControl(onClick = onOpen)
+            .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.OneHalf)
+            .semantics { contentDescription = "search-spread" },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+    ) {
+        Icon(
+            painter = painterResource(DesignR.drawable.tv_chart_line),
+            contentDescription = null,
+            tint = CoineProColors.pageAccentInk,
+            modifier = Modifier.size(20.dp),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.search_spread_open, BidiText.isolateLtr(expression)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = CoineProColors.TextPrimary,
+            )
+            Text(
+                text = stringResource(R.string.search_spread_caption),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+            )
+        }
+    }
 }

@@ -177,6 +177,30 @@ private fun sharePngJs(bytes: JsAny, name: String): Unit = js(
     })()""",
 )
 
+private fun downloadPngJs(bytes: JsAny, name: String): Unit = js(
+    """(function () {
+        try {
+            var blob = new Blob([bytes], { type: 'image/png' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = name;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(function () { URL.revokeObjectURL(a.href); }, 10000);
+        } catch (e) {}
+    })()""",
+)
+
+private fun copyPngJs(bytes: JsAny): Boolean = js(
+    """(function () {
+        try {
+            if (!navigator.clipboard || typeof ClipboardItem === 'undefined') return false;
+            var blob = new Blob([bytes], { type: 'image/png' });
+            navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).catch(function () {});
+            return true;
+        } catch (e) { return false; }
+    })()""",
+)
+
 private fun newUint8(length: Int): JsAny = js("new Uint8Array(length)")
 private fun setByte(array: JsAny, index: Int, value: Int): Unit = js("array[index] = value")
 
@@ -189,6 +213,24 @@ object ShareImage {
         sharePngJs(array, name.filter(Char::isLetterOrDigit).ifEmpty { "chart" } + ".png")
         true
     }.getOrDefault(false)
+
+    /** Puts [image] on the clipboard as a PNG. False where the browser has no image clipboard. */
+    fun copy(context: Context, image: Bitmap, name: String): Boolean = runCatching {
+        copyPngJs(pngArray(image) ?: return false)
+    }.getOrDefault(false)
+
+    /** Downloads [image] as `[name].png` — never the share sheet, which is [share]'s. */
+    fun save(context: Context, image: Bitmap, name: String): Boolean = runCatching {
+        downloadPngJs(pngArray(image) ?: return false, name.filter(Char::isLetterOrDigit).ifEmpty { "chart" } + ".png")
+        true
+    }.getOrDefault(false)
+
+    private fun pngArray(image: Bitmap): JsAny? {
+        val png = image.image.asSkiaImage().encodeToData(EncodedImageFormat.PNG)?.bytes ?: return null
+        val array = newUint8(png.size)
+        png.forEachIndexed { i, b -> setByte(array, i, b.toInt() and 0xff) }
+        return array
+    }
 }
 
 private fun androidx.compose.ui.graphics.ImageBitmap.asSkiaImage(): Image = Image.makeFromBitmap(this.asSkiaBitmap())

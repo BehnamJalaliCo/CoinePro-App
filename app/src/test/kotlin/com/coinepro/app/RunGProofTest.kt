@@ -1,6 +1,21 @@
 package com.coinepro.app
 
 import android.content.res.Configuration
+import com.coinepro.feature.search.SearchScreen
+import com.coinepro.feature.chart.ChartShortcutsList
+import com.coinepro.feature.chart.ChartDataWindow
+import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.chart.DataWindow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.AbsoluteAlignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Looper
@@ -200,6 +215,64 @@ class RunGProofTest {
         proof("gap-fourth-pack-fa", dark = true, persian = true) {
             Chart(studies = listOf("alma", "chandelier", "stc", "elderray"))
         }
+    }
+
+    // ── 5.14.0: the old terminal's data window, replay steps, keys and spreads ───────────────
+
+    @Test
+    fun theDataWindowReadsEveryStudyAtTheBar() {
+        proof("gap-data-window-fa", dark = true, persian = true) {
+            val controller = remember {
+                chartController("XAUUSD").also { chart -> listOf("ema", "rsi", "macd").forEach(chart::toggleIndicator) }
+            }
+            val state by controller.state.collectAsState()
+            Box(Modifier.fillMaxSize()) {
+                ChartScreen(controller = controller)
+                DataWindow.at(state.visibleSeries, state.visibleSeries.size - 20, state.overlays, state.panes)?.let { reading ->
+                    ChartDataWindow(
+                        reading = reading,
+                        onClose = {},
+                        modifier = Modifier.align(AbsoluteAlignment.TopRight).padding(top = 40.dp, end = 72.dp),
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    fun theReplayTransportCarriesTheLargeSteps() {
+        proof("gap-replay-steps-fa", dark = true, persian = true) {
+            val controller = remember { chartController("XAUUSD").also { it.enterReplay() } }
+            ChartScreen(controller = controller)
+        }
+        val shown = composeRule.onAllNodesWithContentDescription("۱۰ کندل جلو").fetchSemanticsNodes()
+        assertTrue("the ten-bar step is on the transport", shown.isNotEmpty())
+    }
+
+    @Test
+    fun theShortcutListIsTheWholeMap() {
+        proof("gap-shortcuts-fa", dark = true, persian = true) {
+            Box(Modifier.fillMaxSize().background(CoineProColors.Stage)) {
+                ChartShortcutsList(modifier = Modifier.verticalScroll(rememberScrollState()))
+            }
+        }
+        assertTrue("the list names Alt+T", texts().any { it.contains("Alt+T") })
+    }
+
+    @Test
+    fun aTypedSpreadOffersItsChart() {
+        proof("gap-spread-search-fa", dark = true, persian = true) {
+            SearchScreen(
+                controller = remember {
+                    MarketSearchController(ScreenshotFixtures.searchCatalog(), scope).also {
+                        it.start()
+                        it.setQuery("EURUSD/GBPUSD")
+                    }
+                },
+                onOpenSymbol = {},
+            )
+        }
+        assertTrue("the spread row is drawn", texts().any { it.contains("EURUSD/GBPUSD") })
     }
 
     // ── D. the legend's format ───────────────────────────────────────────────────────────────

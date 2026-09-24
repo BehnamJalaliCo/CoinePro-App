@@ -231,6 +231,25 @@ object Replay {
     fun stepBack(state: ReplayState): ReplayState =
         if (!state.isOn || state.cursor <= 0) state else state.copy(cursor = state.cursor - 1)
 
+    /**
+     * Move the cursor [bars] at a time — ten forward or back from the transport, the terminal's
+     * large step. Clamped at both ends rather than refused, and it pauses: a reader skipping ten
+     * bars is looking for something, and playback carrying on from where they landed would take
+     * it away from them.
+     */
+    fun stepBy(state: ReplayState, bars: Int): ReplayState {
+        if (!state.isOn || bars == 0) return state
+        return state.copy(cursor = (state.cursor + bars).coerceIn(0, state.bars.size - 1), playing = false)
+    }
+
+    /**
+     * Back to the first bar there is anything to read against — [MINIMUM_BARS] in, the terminal's
+     * «پرش به ابتدا». Not bar zero: a cursor on the first bar leaves one candle on the chart and
+     * every indicator empty, which is a start in name only.
+     */
+    fun toStart(state: ReplayState): ReplayState =
+        if (!state.isOn) state else goTo(state, minOf(MINIMUM_BARS, state.bars.size - 1))
+
     fun seek(state: ReplayState, index: Int? = null, time: Long? = null): ReplayState {
         if (!state.isOn) return state
         val target = when {

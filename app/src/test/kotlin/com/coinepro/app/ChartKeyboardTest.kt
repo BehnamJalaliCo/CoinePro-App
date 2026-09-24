@@ -64,6 +64,7 @@ class ChartKeyboardTest {
                         onZoom = { log += if (it) "zoom-in" else "zoom-out" },
                         onArmTool = { log += "arm:$it" },
                         onSearch = { log += "search" },
+                        onAction = { hit -> log += "action:${hit.action.name}:${hit.index}"; true },
                     )
                     .focusRequester(focus)
                     .focusable(),
@@ -128,6 +129,30 @@ class ChartKeyboardTest {
             pressKey(Key.Slash)
         }
         assertEquals(listOf("undo", "redo", "redo", "search"), log)
+    }
+
+    @Test
+    fun `the terminal's keys reach the terminal's actions`() {
+        compose()
+        rule.onNodeWithTag(TAG).performKeyInput {
+            withKeyDown(Key.AltLeft) { pressKey(Key.T) }
+            withKeyDown(Key.AltLeft) { pressKey(Key.D) }
+            withKeyDown(Key.ShiftLeft) { pressKey(Key.Slash) }
+            withKeyDown(Key.ShiftLeft) { pressKey(Key.Four) }
+            withKeyDown(Key.AltLeft) { pressKey(Key.Two) }
+            withKeyDown(Key.CtrlLeft) { withKeyDown(Key.AltLeft) { pressKey(Key.H) } }
+        }
+        assertEquals(
+            listOf(
+                "arm:trend",
+                "action:DATA_WINDOW:0",
+                "action:HELP:0",
+                "tf:${Timeframe.H4.name}",
+                "action:CHART_TYPE:1",
+                "action:HIDE_ALL:0",
+            ),
+            log,
+        )
     }
 
     private companion object {

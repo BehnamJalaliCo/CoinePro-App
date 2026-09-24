@@ -172,4 +172,6 @@
     <string name="watchlist_move_up">بالاتر</string>
     <string name="watchlist_move_down">پایین‌تر</string>
     <string name="watchlist_compare">تحلیل</string>
+    <string name="search_spread_open">چارت %1$s</string>
+    <string name="search_spread_caption">اسپرد یا نسبت چند نماد، ساخته از کندل‌های مشترکشان</string>
 </resources>

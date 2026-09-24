@@ -131,6 +131,9 @@ import com.coinepro.core.chart.ChartTypePicker
 import com.coinepro.core.chart.CoineProChart
 import com.coinepro.core.chart.DrawingImages
 import com.coinepro.core.chart.DrawingTools
+import com.coinepro.core.marketdata.SymbolExpression
+import com.coinepro.core.chart.DrawingLayer
+import com.coinepro.core.chart.DataWindow
 import com.coinepro.core.chart.DrawingTool
 import com.coinepro.core.chart.drawableRes
 import com.coinepro.core.chart.EventMark
@@ -746,6 +749,13 @@ fun ChartScreen(
     var pendingOrder by remember { mutableStateOf<ChartOrder?>(null) }
     // The desk's right-click menu: the price it landed on and where, or null while closed.
     var contextMenu by remember { mutableStateOf<ChartContextMenu?>(null) }
+    // The data window (5.14.0): the crosshair's bar, or the newest, as a table over the plot. Saved,
+    // because a reader who keeps it open keeps it open across a rotation.
+    var dataWindowOpen by rememberSaveable { mutableStateOf(false) }
+    // The bar under the crosshair, for the data window and «بازپخش از اینجا»; null with none.
+    var crosshairIndex by remember { mutableStateOf<Int?>(null) }
+    // «?» — the keyboard's own list (5.14.0).
+    var shortcutsOpen by remember { mutableStateOf(false) }
     /** Which drawing's own settings are open, or null. Opened from the object tree's row. */
     var styling by remember { mutableStateOf<Long?>(null) }
     /** Which indicator's settings sheet is open, by id, or null. Opened from the legend's gear. */
@@ -758,6 +768,7 @@ fun ChartScreen(
      * note tool ends up used once.
      */
     var labelling by remember { mutableStateOf<Long?>(null) }
+    if (shortcutsOpen) ChartShortcutsSheet(onDismiss = { shortcutsOpen = false })
 
     /**
      * The image drawing waiting for a picture, or null — item 35.
@@ -1039,6 +1050,19 @@ fun ChartScreen(
     val shareScope = rememberCoroutineScope()
     val context = LocalContext.current
 
+    // **The chart's picture as it is** (5.14.0) — the terminal's camera menu, beside the share card:
+    // saved as a file, or copied for pasting into a chat. The plot alone, no card around it, which
+    // is what «عکس چارت» meant there.
+    val pictureCopiedMessage = stringResource(R.string.chart_picture_copied)
+    val copyPicture: () -> Unit = {
+        shareScope.launch {
+            if (ChartShare.copy(context, chartLayer.toImageBitmap(), state.symbol)) toaster.show(pictureCopiedMessage)
+        }
+    }
+    val savePicture: () -> Unit = {
+        shareScope.launch { ChartShare.save(context, chartLayer.toImageBitmap(), state.symbol) }
+    }
+
     // **What a shared card says** (run Ω4). Hoisted here rather than built inside the share lambda
     // because every one of these is a `stringResource` or a composition read, and the lambda runs on
     // a coroutine after the sheet has closed — reading a composition local there is reading a
@@ -1185,6 +1209,24 @@ fun ChartScreen(
                         .absolutePadding(right = gutter)
                         .zIndex(1f),
                 )
+                // The data window, under the quote chip and inside the plot for the same reason
+                // the chip is: the price axis stays readable beside it.
+                if (dataWindowOpen) {
+                    val reading = remember(state.visibleSeries, crosshairIndex, state.overlays, state.panes) {
+                        DataWindow.at(state.visibleSeries, crosshairIndex, state.overlays, state.panes)
+                    }
+                    reading?.let {
+                        ChartDataWindow(
+                            reading = it,
+                            onClose = { dataWindowOpen = false },
+                            modifier = Modifier
+                                .align(AbsoluteAlignment.TopRight)
+                                .windowInsetsPadding(WindowInsets.safeDrawing)
+                                .absolutePadding(right = gutter + 6.dp, top = 40.dp)
+                                .zIndex(1f),
+                        )
+                    }
+                }
                 // The watermark, bottom-left of the plot, where TradingView signs its chart.
                 // Absolute for the same reason as the chip: the time axis reads left to right on
                 // every locale and the mark sits at its origin.
@@ -1237,7 +1279,9 @@ fun ChartScreen(
                     // The legend's first line, as TradingView's phone sets it: the mark and the
                     // instrument's name — «Bitcoin / TetherUS» — not the ticker.
                     seriesLabel = SymbolClassifier.classify(state.symbol).description(inEnglish()),
-                    legendLogo = state.symbol,
+                    // No mark for a spread: `EURUSD/GBPUSD` has no artwork, and a lettered disc
+                    // is what the rule on symbol artwork forbids.
+                    legendLogo = state.symbol.takeUnless(SymbolExpression::isExpression),
                     decoration = ChartDecoration(
                         overlays = state.overlays,
                         signal = drawnSetup,
@@ -1370,6 +1414,7 @@ fun ChartScreen(
                     // haptic under the finger as a shape is tapped out.
                     onPlace = { haptics.select() },
                     onCrosshairMove = { crosshair ->
+                        crosshairIndex = crosshair?.index
                         val price = crosshair?.price
                         val previous = lastCrosshairPrice
                         // The crosshair taking hold under a long press: the platform's long-press
@@ -1520,6 +1565,37 @@ fun ChartScreen(
                                         text = { Text(stringResource(R.string.chart_menu_scale)) },
                                         onClick = { sheet = ChartSheet.SCALE; contextMenu = null },
                                         modifier = Modifier.semantics { contentDescription = "chart-menu-scale" },
+                                    )
+                                    // 5.14.0 — the terminal's menu, item for item: the data window,
+                                    // replay from the bar under the pointer, and the chart's picture.
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.chart_data_window)) },
+                                        onClick = { dataWindowOpen = !dataWindowOpen; contextMenu = null },
+                                        modifier = Modifier.semantics { contentDescription = "chart-menu-data-window" },
+                                    )
+                                    // By the bar's time, read when the item is chosen: the crosshair
+                                    // is still on the bar the menu opened over.
+                                    crosshairIndex?.let { state.visibleSeries.time.getOrNull(it) }?.let { time ->
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.chart_menu_replay_here)) },
+                                            onClick = { controller.enterReplayAt(time); contextMenu = null },
+                                            modifier = Modifier.semantics { contentDescription = "chart-menu-replay-here" },
+                                        )
+                                    }
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.chart_menu_picture_save)) },
+                                        onClick = { contextMenu = null; savePicture() },
+                                        modifier = Modifier.semantics { contentDescription = "chart-menu-picture-save" },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.chart_menu_picture_copy)) },
+                                        onClick = { contextMenu = null; copyPicture() },
+                                        modifier = Modifier.semantics { contentDescription = "chart-menu-picture-copy" },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.chart_menu_shortcuts)) },
+                                        onClick = { contextMenu = null; shortcutsOpen = true },
+                                        modifier = Modifier.semantics { contentDescription = "chart-menu-shortcuts" },
                                     )
                                     if (onOpenSymbolSearch != null) {
                                         DropdownMenuItem(
@@ -1927,6 +2003,79 @@ fun ChartScreen(
                 onZoom = { zoomIn -> zoomBy(if (zoomIn) ChartZoomNudge.STEP else 1f / ChartZoomNudge.STEP) },
                 onArmTool = { id -> DrawingTools.ALL.firstOrNull { it.id == id }?.let(controller::arm) },
                 onSearch = onOpenSymbolSearch,
+                // The rest of the terminal's map (5.14.0). Each answers whether it acted, so a key
+                // with nothing to do right now goes on to the platform rather than being swallowed.
+                onAction = { hit ->
+                    val drawing = state.drawing
+                    val selected = drawing.selectedId
+                    when (hit.action) {
+                        ChartKeyAction.MAGNET -> { controller.cycleMagnet(); true }
+                        ChartKeyAction.KEEP_DRAWING -> { controller.setKeepDrawing(!drawing.keepDrawing); true }
+                        ChartKeyAction.DELETE -> when {
+                            drawing.selection.size > 1 -> { controller.deleteDrawings(drawing.selection.toList()); true }
+                            selected != null -> { deleteDrawingAnnounced(selected); true }
+                            else -> false
+                        }
+                        ChartKeyAction.CLONE -> selected?.let { controller.cloneDrawing(it); true } ?: false
+                        ChartKeyAction.COPY ->
+                            if (selected != null || drawing.selection.isNotEmpty()) { controller.copySelection(); true } else false
+                        ChartKeyAction.PASTE -> if (drawing.clipboard.isNotEmpty()) { controller.pasteClipboard(); true } else false
+                        ChartKeyAction.LOCK -> selected?.let { id ->
+                            controller.setDrawingLocked(id, drawing.drawings.firstOrNull { it.id == id }?.locked != true)
+                            true
+                        } ?: false
+                        ChartKeyAction.REMOVE_ALL -> { controller.clearDrawings(); true }
+                        ChartKeyAction.HIDE_ALL -> {
+                            controller.setLayerHidden(DrawingLayer.DRAWINGS, DrawingLayer.DRAWINGS !in drawing.hidden)
+                            true
+                        }
+                        ChartKeyAction.TIMEFRAME_NEXT, ChartKeyAction.TIMEFRAME_PREVIOUS -> {
+                            val ladder = Timeframe.entries.sortedBy { it.seconds }
+                            val now = state.interval.seconds
+                            val next = if (hit.action == ChartKeyAction.TIMEFRAME_NEXT) {
+                                ladder.firstOrNull { it.seconds > now }
+                            } else {
+                                ladder.lastOrNull { it.seconds < now }
+                            }
+                            next?.let { controller.setTimeframe(it); true } ?: false
+                        }
+                        ChartKeyAction.CHART_TYPE -> { controller.setChartType(ALT_DIGIT_TYPES[hit.index]); true }
+                        ChartKeyAction.NEWEST -> { controller.focusBar(state.visibleSeries.size - 1); true }
+                        ChartKeyAction.OLDEST -> { controller.focusBar(0); true }
+                        ChartKeyAction.GO_TO_DATE -> { sheet = ChartSheet.MORE; true }
+                        ChartKeyAction.INVERT -> { controller.toggleInverted(); true }
+                        ChartKeyAction.PERCENT, ChartKeyAction.LOG -> {
+                            val mode = if (hit.action == ChartKeyAction.LOG) PriceScaleMode.LOGARITHMIC else PriceScaleMode.PERCENT
+                            controller.setScaleMode(if (state.scaleMode == mode) PriceScaleMode.REGULAR else mode)
+                            true
+                        }
+                        ChartKeyAction.INDICATORS -> { sheet = ChartSheet.INDICATORS; true }
+                        ChartKeyAction.SETTINGS -> { sheet = ChartSheet.SCALE; true }
+                        ChartKeyAction.FULLSCREEN -> {
+                            if (fullscreen || fullscreenRequested) {
+                                fullscreen = false
+                                fullscreenRequested = false
+                            } else {
+                                fullscreenRequested = true
+                            }
+                            true
+                        }
+                        ChartKeyAction.DATA_WINDOW -> { dataWindowOpen = !dataWindowOpen; true }
+                        ChartKeyAction.SCREENSHOT -> { copyPicture(); true }
+                        ChartKeyAction.HELP -> { shortcutsOpen = true; true }
+                        ChartKeyAction.ALERT -> onCreateAlert?.let { create ->
+                            (lastCrosshairPrice ?: state.lastPrice)?.let { price -> create(state.symbol, price); true }
+                        } ?: false
+                        ChartKeyAction.TRADE -> onTrade?.let { it(); true } ?: false
+                        ChartKeyAction.REPLAY_ENTER -> {
+                            if (state.replay.isOn) controller.exitReplay() else controller.enterReplay()
+                            true
+                        }
+                        ChartKeyAction.REPLAY_TEN_FORWARD -> { controller.replayStepBy(REPLAY_LARGE_STEP); true }
+                        ChartKeyAction.REPLAY_TEN_BACK -> { controller.replayStepBy(-REPLAY_LARGE_STEP); true }
+                        else -> false
+                    }
+                },
             ),
     ) {
         // No header. TradingView's phone chart starts at the top of the screen: the instrument's
@@ -2045,6 +2194,8 @@ fun ChartScreen(
                 onStep = controller::replayStep,
                 onStepBack = controller::replayStepBack,
                 onSeek = controller::replaySeek,
+                onStepBy = controller::replayStepBy,
+                onToStart = controller::replayToStart,
                 // The ladder overload, not the `Double` one: the picker hands over a step and the
                 // type is what makes an unknown speed impossible rather than merely ignored.
                 onSpeed = { step -> controller.replaySetSpeed(step) },

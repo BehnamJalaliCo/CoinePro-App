@@ -31,11 +31,11 @@ States: ✅ done · ❌ not done yet · ⏳ owed to the server or the owner.
 | RSI divergence detection (regular and hidden) | ✅ 5.13.0 | The «واگرایی RSI خودکار» study, a port of `divergence.js`: pivots five bars either side, the two points joined on the price, hidden ones dashed | `docs/runs/RUN_GAP/frames/gap-detections-rating-fa.png` |
 | Price gap detection | ✅ 5.13.0 | The «گپ‌های قیمت» study, a port of `gaps.js` at its 0.1% threshold (`Detections.gaps`, `DetectionsTest`) | — **the frame's walk has no gap**; `DetectionsTest` plants one and finds exactly it |
 | Technical rating (15 averages, 11 oscillators) | ✅ 5.13.0 | The «امتیاز تکنیکال» pane, a port of `techRating.js` computed for every bar: overall, averages and oscillators lines, the verdict in the title (`TechnicalRating`, `DetectionsTest`) | `docs/runs/RUN_GAP/frames/gap-detections-rating-fa.png` |
-| Data window | ❌ | — | — **not built yet** |
-| Keyboard shortcuts past the fifteen, and the «?» list | ❌ | — | — **not built yet** |
-| Screenshot to clipboard and file | ❌ | — | — **not built yet** |
-| Spread and ratio symbols (`EURUSD/GBPUSD`) | ❌ | — | — **not built yet** |
-| Replay: ten bars at a time, back to the start, «replay from here» | ❌ | — | — **not built yet** |
+| Data window | ✅ 5.14.0 | `DataWindow.at` (chart-core) and `ChartDataWindow`: the crosshair's bar or the newest, O/H/L/C, change from the previous close in price and percent, volume, then every study's value at that bar, a pane's lines on one row; from the chart's menu or Alt+D (`DataWindowTest`) | `docs/runs/RUN_GAP/frames/gap-data-window-fa.png` |
+| Keyboard shortcuts past the fifteen, and the «?» list | ✅ 5.14.0 | `ChartKeyAction`: the terminal's `hotkeys.js` map — Alt letters arm the tools, Ctrl+Alt the chart-wide switches, Alt+digit the type, Shift+digit its five timeframes, `,` `.` step the timeframe, Home/End, Alt+I/P/L the scale, Ctrl+Alt+F, Alt+A alert, Ctrl+Alt+P replay — one table for the keys and the «?» sheet (`ChartKeyActionTest`: no chord bound twice; `ChartKeyboardTest`) | `docs/runs/RUN_GAP/frames/gap-shortcuts-fa.png` |
+| Screenshot to clipboard and file | ✅ 5.14.0 | «ذخیره‌ی تصویر» and «کپی تصویر» in the chart's menu, and Alt+S: the plot's own picture, not the share card (`ShareImage.copy` / `save`; the page writes the clipboard with `ClipboardItem` and downloads the PNG) | — **a clipboard and a file are not a picture of a screen**; the menu items are in the code named |
+| Spread and ratio symbols (`EURUSD/GBPUSD`) | ✅ 5.14.0 | `SymbolExpression`, a port of `symbolExpr.js` (`+ - * /`, parentheses, constants), and `SymbolExpressionGateway`, which loads each leg and joins them on shared times; typed into search it offers its chart (`SymbolExpressionTest`) | `docs/runs/RUN_GAP/frames/gap-spread-search-fa.png` |
+| Replay: ten bars at a time, back to the start, «replay from here» | ✅ 5.14.0 | `Replay.stepBy` / `toStart` beside the scrub, Ctrl+←/→; «بازپخش از اینجا» in the chart's menu enters replay on the bar under the pointer (`ChartController.enterReplayAt`, `ReplayTest`) | `docs/runs/RUN_GAP/frames/gap-replay-steps-fa.png` |
 
 ## Not a gap
 

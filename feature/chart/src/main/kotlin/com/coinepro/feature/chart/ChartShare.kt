@@ -49,4 +49,12 @@ object ChartShare {
      */
     fun share(context: Context, image: Bitmap, symbol: String): Boolean =
         ShareImage.share(context, image, symbol)
+
+    /** The chart's picture as it is, on the clipboard — the terminal's Alt+S (5.14.0). */
+    fun copy(context: Context, image: ImageBitmap, symbol: String): Boolean =
+        ShareImage.copy(context, image.asAndroidBitmap(), symbol)
+
+    /** The chart's picture as it is, saved — the terminal's «ذخیره‌ی تصویر» (5.14.0). */
+    fun save(context: Context, image: ImageBitmap, symbol: String): Boolean =
+        ShareImage.save(context, image.asAndroidBitmap(), symbol)
 }

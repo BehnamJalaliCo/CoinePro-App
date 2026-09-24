@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.14.0
+
+**fa**
+
+> پنجره‌ی داده به چارت آمد: قیمت‌ها، تغییر، حجم و مقدار همه‌ی اندیکاتورها زیر نشانگر. میان‌برهای صفحه‌کلید پرو چارت قدیم با فهرست «?»، ذخیره و کپی تصویر چارت، و چارت اسپرد و نسبت مثل EURUSD/GBPUSD از جست‌وجو.
+> بازپخش حالا ۱۰ کندل جلو و عقب می‌رود، به ابتدا برمی‌گردد و از هر کندلی شروع می‌شود.
+
+**en**
+
+> A data window on the chart: prices, change, volume and every indicator's value under the crosshair. The old Pro Chart's keyboard shortcuts with a «?» list, saving and copying the chart's picture, and spread and ratio charts like EURUSD/GBPUSD from search.
+> Replay now steps ten bars at a time, goes back to the start, and starts from any bar.
+
 ## 5.13.0
 
 **fa**

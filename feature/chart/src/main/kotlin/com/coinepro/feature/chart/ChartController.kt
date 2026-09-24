@@ -3520,6 +3520,22 @@ class ChartController(
         _state.update { it.copy(replay = entered) }
     }
 
+    /**
+     * «بازپخش از اینجا» — enter replay with the cursor on the bar the reader pointed at, the
+     * terminal's pick-a-bar entry. By time rather than index, because the bar was picked on the
+     * drawn series and Heikin Ashi, Renko and the other re-gridded types do not share the raw
+     * series' indices. If replay is already on, the cursor simply moves there.
+     */
+    fun enterReplayAt(time: Long) {
+        val current = _state.value.replay
+        if (current.isOn) {
+            withReplay { Replay.goTo(it, Replay.indexOfTime(it.bars, time)) }
+            return
+        }
+        val entered = Replay.enter(_state.value.series.bars, startTime = time) ?: return
+        _state.update { it.copy(replay = entered) }
+    }
+
     fun exitReplay() {
         replayJob?.cancel()
         replayJob = null
@@ -3529,6 +3545,12 @@ class ChartController(
     fun replayStep() = withReplay(Replay::step)
 
     fun replayStepBack() = withReplay(Replay::stepBack)
+
+    /** Ten bars at a time, or any number; see `Replay.stepBy`. */
+    fun replayStepBy(bars: Int) = withReplay { Replay.stepBy(it, bars) }
+
+    /** Back to the first readable bar; see `Replay.toStart`. */
+    fun replayToStart() = withReplay(Replay::toStart)
 
     fun replaySeek(fraction: Float) = withReplay { current ->
         Replay.seek(current, index = ((current.bars.size - 1) * fraction).toInt())
