@@ -1,18 +1,27 @@
 package com.coinepro.core.chart
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -25,6 +34,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import org.jetbrains.skia.Image as SkiaImage
 
@@ -198,6 +208,49 @@ internal actual fun chartGlyph(glyph: ChartGlyph): Painter {
     }
     return rememberVectorPainter(vector)
 }
+
+/**
+ * The page's own arrow, on a disc of the title's colour — see the `expect` for why the page does
+ * not print a mark here. The same arrow as the phone's app bar used to hold (Material's
+ * `arrow_back`, 24-unit viewport), turned to point the way the reader's language came from.
+ */
+@Composable
+internal actual fun ChartBackMark(glyph: String, pointsRight: Boolean, colour: Color, fontSize: TextUnit) {
+    val painter = rememberVectorPainter(remember { backArrowVector() })
+    Box(
+        modifier = Modifier
+            .size(BACK_DISC_DP)
+            .clip(CircleShape)
+            .background(colour.copy(alpha = BACK_DISC_ALPHA))
+            .pointerHoverIcon(PointerIcon.Hand),
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(
+            painter = painter,
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(colour),
+            modifier = Modifier
+                .size(BACK_ARROW_DP)
+                .graphicsLayer { scaleX = if (pointsRight) -1f else 1f },
+        )
+    }
+}
+
+private fun backArrowVector(): ImageVector =
+    ImageVector.Builder(
+        name = "back",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).apply {
+        addPath(pathData = addPathNodes(BACK_ARROW_PATH), fill = SolidColor(Color.Black))
+    }.build()
+
+private const val BACK_ARROW_PATH = "M20,11H7.83l5.59,-5.59L12,4l-8,8 8,8 1.41,-1.41L7.83,13H20v-2z"
+private val BACK_DISC_DP = 24.dp
+private val BACK_ARROW_DP = 18.dp
+private const val BACK_DISC_ALPHA = 0.16f
 
 @Composable
 internal actual fun chartText(text: ChartText): String {

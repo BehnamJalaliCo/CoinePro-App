@@ -1075,6 +1075,7 @@ private fun LegendButton(
     description: String,
     colour: Color,
     fontSize: TextUnit,
+    mark: @Composable () -> Unit = { Text(text = glyph, color = colour, fontSize = fontSize) },
     onClick: () -> Unit,
 ) {
     Box(
@@ -1085,7 +1086,7 @@ private fun LegendButton(
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        Text(text = glyph, color = colour, fontSize = fontSize)
+        mark()
     }
 }
 
@@ -1184,6 +1185,14 @@ private fun LegendHead(
                 colour = palette.title,
                 fontSize = fontSize * TITLE_SCALE,
                 onClick = back,
+                mark = {
+                    ChartBackMark(
+                        glyph = backGlyph,
+                        pointsRight = backGlyph == GLYPH_BACK_RTL,
+                        colour = palette.title,
+                        fontSize = fontSize * TITLE_SCALE,
+                    )
+                },
             )
         }
         logoSymbol?.let { ChartAssetLogo(symbol = it, size = LEGEND_LOGO_DP) }

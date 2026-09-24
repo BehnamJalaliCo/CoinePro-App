@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.10.3
+
+**fa**
+
+> در نسخه‌ی وب، نمودار حالا یک دکمه‌ی بازگشت روشن دارد: فلش کنار نام نماد، روی یک دایره.
+> در این نسخه‌ی گوشی چیزی عوض نشده است.
+
+**en**
+
+> On the web, the chart now has a clear back button: the arrow beside the symbol's name, on a disc.
+> Nothing on the phone has changed in this version.
+
 ## 5.10.2
 
 **fa**

@@ -16,7 +16,7 @@ States: ✅ done · ❌ not done, or narrowed (the row says exactly how) · ⏳ 
 | **The phone's sources, not a port** | ✅ | `web/build.gradle.kts` `sharedSources` lists `app`, all 37 `core/*` modules, every `feature/*` module and `chart/ui`. `web/tools/share_sources.py` copies them into `web/build/generated/shared` and makes only mechanical changes: a serializer for every wire class, a `<Name>Web` class for every Retrofit interface, and the dependency graph Hilt builds (`WebGraph.kt`) generated from `AppModule` and the `@Inject` constructors. **606 files, 141 wire classes, 31 services** on this tree | — **a build step.** Its log line reads `shared 606 files, 141 wire classes, 31 services` |
 | **What stands in for Android** | ✅ | `web/src/shims/kotlin`: the Android, AndroidX, OkHttp, Retrofit, Room, DataStore, WorkManager, Gson and JVM APIs the sources call, under the same names. Each one is backed by the browser: `fetch` for HTTP, `WebSocket`, `localStorage` for preferences, files and the database, WebAuthn for biometrics, `getUserMedia` for the camera, the Notification API, the share sheet and the clipboard | — **source.** One file per package |
 | **Only a few files replaced** | ✅ | `replacedFiles`: `MainActivity`, `CoineProApplication`, the two widget classes and their configuration activities, the widget snapshot bridge, `GoogleSignIn`, the chart's three platform files and the two share-image files. Each browser version is in `web/src/wasmJsMain` and says what the page does in their place | — **a list**, in `web/build.gradle.kts` |
-| **The phone did not change** | ✅ | No file under `app/`, `core/`, `feature/` or `chart/` changed in this run. `./gradlew testDebugUnitTest` (every golden) and `./gradlew :app:assembleRelease` green | — **the goldens are the frames** |
+| **The phone did not change** | ✅ | No file under `app/`, `core/` or `feature/` changed in this run. In `chart/ui`, one `expect` (`ChartBackMark`, 5.10.3) whose Android `actual` is the `Text` it replaced. `./gradlew testDebugUnitTest` (every golden) and `./gradlew :app:assembleRelease` green | — **the goldens are the frames** |
 
 ## Every screen, in the browser
 
@@ -52,6 +52,7 @@ the frame says otherwise.
 | Three watchlist toolbar icons and a caret stayed blank | `Drawables.ensure`: the fetch belongs to the page now, not to the composable that first asked. A row composed for one frame and then dropped used to cancel the fetch halfway, and the name stayed «loading» for the whole visit |
 | Characters IRANYekanX does not have: `○` in the watchlist, and any `\uXXXX` escape | `web/tools/glyphs.json` maps them, `share_sources.py` also maps them when written as escapes, and `check_web_glyph_map` now reads every Kotlin string literal as well as the string tables |
 | Publishers' photos: a page may not read another site's bytes | `WebRoutes.mapImage` → `/api/img?url=` (`SERVER.md` §4.13) |
+| The chart's way back read as nothing: IRANYekanX's nearest mark to an arrow is a thin «›», and readers did not take it for a button (owner, 2026-09-24) | `ChartBackMark` (5.10.3): the legend's back button draws through an `expect`. The phone's `actual` prints the same arrow character it always did; the page's draws Material's back arrow on a disc of the title colour. `web-app-chart-fa-phone.png` |
 
 ## What a browser cannot do — not a gap in the port
 
