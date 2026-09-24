@@ -212,12 +212,18 @@ object SignalSpec {
         "bbpercent" to 0.0..1.0,
         "fisher" to -2.0..2.0,
         "aroonosc" to -50.0..50.0,
+        "mtfrsi" to 30.0..70.0,
+        "stc" to 25.0..75.0,
+        "rvivol" to 20.0..80.0,
     )
 
     /** The studies whose reading has no direction in it. They report and never fire. */
     val MEASURES: Set<String> = setOf(
         "atr", "adx", "choppiness", "stddev", "hv", "chaikinVol", "bbw", "massindex",
         "volumeprofile_ind", "correlation", "rvol",
+        // The fourth pack's: a range, a drawdown and two running indices, none of which says which
+        // way to trade — PVI and NVI are read by their slope over months, not by a crossing.
+        "adr", "ulcer", "pvi", "nvi", "volumeosc",
     )
 
     /**
@@ -246,7 +252,7 @@ object SignalSpec {
                 val line = firstLineOf(option, series, period, params) ?: return SignalRead.quiet(id)
                 bounded(id, name, line, bounds, series, english)
             }
-            id == "supertrend" || id == "sar" || id == "volatilitystop" || id == "chandekroll" ->
+            id == "supertrend" || id == "sar" || id == "volatilitystop" || id == "chandekroll" || id == "chandelier" ->
                 flipping(id, name, option, series, period, params, english)
             id == "donchian" -> breakout(id, series, period ?: ChartCatalog.periodOf(id)?.default ?: 20, english)
             option.pane == IndicatorPane.PRICE -> {

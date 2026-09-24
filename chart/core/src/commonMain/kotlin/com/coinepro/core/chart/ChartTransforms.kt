@@ -80,6 +80,18 @@ enum class ChartType {
 
     /** A letter per price row per time bracket, so the session's shape is the shape of the profile. */
     TPO,
+
+    /**
+     * The close as a column rising from the foot of the plot, coloured by the close against the one
+     * before. Pro-Chart's terminal offered it (5.11.0); it reads as a histogram of the close.
+     */
+    COLUMNS,
+
+    /**
+     * Each bar's high-to-low range as a solid block, coloured by the close against the one before:
+     * the reach of every bar with the open and close left out. From Pro-Chart's terminal (5.11.0).
+     */
+    HIGH_LOW,
     ;
 
     /**

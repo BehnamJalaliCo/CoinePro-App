@@ -671,15 +671,20 @@ def check_web_glyph_map() -> None:
                 continue
             require(False, f"{path.relative_to(ROOT)}: {ch!r} U+{ord(ch):04X} has no glyph in IRANYekanX and no entry in web/tools/glyphs.json")
     # The Kotlin sources the page is built from write text too — «○», «↓» — so their string
-    # literals are read with the same lexer the browser build uses. Letters (a Persian regex range in
-    # the legal renderer) and controls are not drawn marks and are left alone.
+    # literals are read with the same lexer the browser build uses. Persian and Latin letters are in
+    # the typeface by definition and controls are not drawn, so they are left alone; any other
+    # letter is checked like a mark — «σ» in a legend label was a blank box on the page (5.11.0).
     import importlib.util
     spec = importlib.util.spec_from_file_location("share_sources", ROOT / "web/tools/share_sources.py")
     lexer = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(lexer)  # type: ignore[union-attr]
     arabic = lambda ch: 0x0600 <= ord(ch) <= 0x08FF or 0xFB50 <= ord(ch) <= 0xFEFF
-    drawn = lambda ch: unicodedata.category(ch)[0] in "SP" and ord(ch) >= 0x80 and not arabic(ch)
-    sources = [p for pattern in ("app/src/main/**/*.kt", "feature/*/src/main/**/*.kt", "core/*/src/main/**/*.kt", "chart/ui/src/commonMain/**/*.kt")
+    drawn = lambda ch: ord(ch) >= 0x80 and not arabic(ch) and (
+        unicodedata.category(ch)[0] in "SP" or (unicodedata.category(ch)[0] == "L" and ord(ch) >= 0x0250)
+    )
+    sources = [p for pattern in ("app/src/main/**/*.kt", "feature/*/src/main/**/*.kt", "core/*/src/main/**/*.kt",
+                                 "chart/ui/src/commonMain/**/*.kt", "chart/core/src/commonMain/**/*.kt",
+                                 "namascript/src/commonMain/**/*.kt")
                for p in ROOT.glob(pattern)]
     for path in sources:
         text = path.read_text(encoding="utf-8")

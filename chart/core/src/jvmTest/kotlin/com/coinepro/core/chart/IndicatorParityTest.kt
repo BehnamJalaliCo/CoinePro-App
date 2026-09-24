@@ -193,6 +193,61 @@ class IndicatorParityTest {
     }
 
     @Test
+    fun `the fourth pack matches the studies it was ported from`() {
+        // Every study Pro-Chart's terminal offered and this app did not, until 5.11.0. The fixture
+        // is the JavaScript's own output (`generate-indicator-parity.mjs`, `RECORD_CORE` and the
+        // pack-B additions), so each of these is a port checked against the thing it was ported
+        // from, not a formula checked against itself.
+        fun match(name: String, values: DoubleArray) =
+            fixture.assertMatches(name, Line.of(values.size) { values[it].takeIf(Double::isFinite) })
+        val hl2 = DoubleArray(close.size) { (high[it] + low[it]) / 2 }
+
+        match("alma9", IndicatorsExtD.alma(close, 9, 0.85, 6.0))
+        match("stc", IndicatorsExtD.schaffTrendCycle(close, 23, 50, 10))
+        match("mtfEma50x4", IndicatorsExtD.higherTimeframeEma(close, 50, 4))
+        match("mtfRsi14x4", IndicatorsExtD.higherTimeframeRsi(close, 14, 4))
+        val ribbon = IndicatorsExtD.movingAverageRibbon(close, 20, 10, 6)
+        match("ribbon0", ribbon[0])
+        match("ribbon5", ribbon[5])
+        val guppy = IndicatorsExtD.guppy(close)
+        match("gmmaShort3", guppy.short.first())
+        match("gmmaLong60", guppy.long.last())
+        val cross = IndicatorsExtD.movingAverageRibbon(close, 10, 20, 2)
+        match("maCrossFast10", cross[0])
+        match("maCrossSlow30", cross[1])
+        val anchored = IndicatorsExtD.anchoredVwap(high, low, close, volume, 100, 1.0)
+        match("avwap100", anchored.basis)
+        match("avwap100Upper", anchored.upper)
+        val stdErr = IndicatorsExtD.standardErrorBands(close, 21, 2.0)
+        match("stdErrMid21", stdErr.basis)
+        match("stdErrUp21", stdErr.upper)
+        val elder = IndicatorsExtD.elderRay(high, low, close, 13)
+        match("elderBull13", elder.bull)
+        match("elderBear13", elder.bear)
+
+        match("aroonOsc14", IndicatorsExtD.aroonOscillator(high, low, 14))
+        match("adr14", IndicatorsExtD.averageDailyRange(high, low, 14))
+        match("medianHl2_3", IndicatorsExtD.rollingMedian(hl2, 3))
+        match("typicalPrice", IndicatorsExtD.typicalPrice(high, low, close))
+        match("weightedClose", IndicatorsExtD.weightedClose(high, low, close))
+        val pmo = IndicatorsExtD.priceMomentumOscillator(close, 35, 20, 10)
+        match("pmo", pmo.line)
+        match("pmoSignal", pmo.signal)
+        match("pvi", IndicatorsExtD.volumeIndex(close, volume, positive = true))
+        match("nvi", IndicatorsExtD.volumeIndex(close, volume, positive = false))
+        match("rviVol", IndicatorsExtD.relativeVolatilityIndex(close, 14, 10))
+        match("ulcer14", IndicatorsExtD.ulcerIndex(close, 14))
+        match("volumeOsc", IndicatorsExtD.volumeOscillator(volume, 5, 10))
+        val channel = IndicatorsExtD.linearRegressionChannel(close, 100, 2.0)
+        match("linRegChannelUpper", channel.upper)
+        match("linRegChannelBasis", channel.basis)
+        match("linRegChannelLower", channel.lower)
+        val chandelier = IndicatorsExtD.chandelierExit(high, low, close, 22, 3.0)
+        match("chandelierLong22", chandelier.long)
+        match("chandelierShort22", chandelier.short)
+    }
+
+    @Test
     fun `the zigzag picks the same turns`() {
         // The one study whose output is a shape rather than a number, checked as a series anyway:
         // a turn one bar out is a different level, and the two products would disagree about it.

@@ -156,6 +156,7 @@ object RepaintClaims {
         "pivots" to RepaintClaim.SETTLED,
         "swings" to RepaintClaim.LATE,
         "fractals" to RepaintClaim.LATE,
+        "pivothl" to RepaintClaim.LATE,
         "sr" to RepaintClaim.LATE,
         "supplydemand" to RepaintClaim.LATE,
         "zigzag" to RepaintClaim.REPAINTS,

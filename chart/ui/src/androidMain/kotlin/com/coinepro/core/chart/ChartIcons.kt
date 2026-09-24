@@ -24,6 +24,7 @@ object ChartIcons {
         "tv_chart_columns" -> DesignR.drawable.tv_chart_columns
         "tv_chart_footprint" -> DesignR.drawable.tv_chart_footprint
         "tv_chart_heikin" -> DesignR.drawable.tv_chart_heikin
+        "tv_chart_highlow" -> DesignR.drawable.tv_chart_highlow
         "tv_chart_hlcarea" -> DesignR.drawable.tv_chart_hlcarea
         "tv_chart_hollow" -> DesignR.drawable.tv_chart_hollow
         "tv_chart_kagi" -> DesignR.drawable.tv_chart_kagi
@@ -140,6 +141,7 @@ object ChartIcons {
         "tv_chart_columns",
         "tv_chart_footprint",
         "tv_chart_heikin",
+        "tv_chart_highlow",
         "tv_chart_hlcarea",
         "tv_chart_hollow",
         "tv_chart_kagi",

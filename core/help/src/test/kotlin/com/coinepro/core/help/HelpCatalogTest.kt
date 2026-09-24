@@ -39,7 +39,11 @@ class HelpCatalogTest {
         //
         // Then six for the language's 4.61.0 surface — `na`, `var`, `str`, `labelnew`, `linenew`,
         // `boxnew` — written in both languages, with no image for the same reason as the nine.
-        assertEquals(177 - 4 + 9 + 55 + 1 + 6, catalog.size)
+        //
+        // Then eighteen for the fourth indicator pack (5.11.0), the studies Pro-Chart's terminal had
+        // and this app did not. Its other six — `mtfEma`, `mtfRsi`, `avwap`, `stdErrBands`, `stc`,
+        // `elderRay` — were already in the export and are pointed at, not rewritten.
+        assertEquals(177 - 4 + 9 + 55 + 1 + 6 + 18, catalog.size)
     }
 
     @Test

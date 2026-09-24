@@ -430,6 +430,54 @@ internal fun DrawScope.drawVolumeCandles(
     }
 }
 
+// ---------------------------------------------------------------------------- columns and high-low
+
+/**
+ * Whether bar [index] closed at or above the bar before it — the colour rule both of the two types
+ * below share with Pro-Chart's terminal. The first bar has nothing before it and counts as rising.
+ */
+private fun ChartViewport.closedUp(index: Int): Boolean =
+    index == 0 || series[index].c >= series[index - 1].c
+
+/**
+ * The close as a column from the foot of the plot.
+ *
+ * Softened rather than solid: a wall of full-height columns is the heaviest thing on the canvas,
+ * and the studies over it are what the reader came to read. The top edge, which is the close, is
+ * drawn at full strength so the reading itself is never faint.
+ */
+internal fun DrawScope.drawColumns(view: ChartViewport, palette: ChartPalette, metrics: CandleMetrics) {
+    val body = max(1f, round(metrics.body))
+    for (index in view.firstVisible..view.lastVisible) {
+        val bar = view.series[index]
+        val colour = if (view.closedUp(index)) palette.up else palette.down
+        val left = barLeft(view.xOf(index), body)
+        val top = round(view.yOf(bar.c))
+        val height = max(1f, view.plotHeight - top)
+        drawRect(color = colour.copy(alpha = COLUMN_ALPHA), topLeft = Offset(left, top), size = Size(body, height))
+        drawRect(color = colour, topLeft = Offset(left, top), size = Size(body, min(height, COLUMN_CAP_DP.toPx())))
+    }
+}
+
+/** Each bar's high-to-low range as one block, with no wick and no open or close. */
+internal fun DrawScope.drawHighLow(view: ChartViewport, palette: ChartPalette, metrics: CandleMetrics) {
+    val body = max(1f, round(metrics.body))
+    for (index in view.firstVisible..view.lastVisible) {
+        val bar = view.series[index]
+        val colour = if (view.closedUp(index)) palette.up else palette.down
+        val left = barLeft(view.xOf(index), body)
+        val top = round(view.yOf(bar.h))
+        val height = max(1f, round(view.yOf(bar.l)) - top)
+        drawRect(color = colour, topLeft = Offset(left, top), size = Size(body, height))
+    }
+}
+
+/** How much of a column's colour its body keeps. See [drawColumns]. */
+private const val COLUMN_ALPHA = 0.55f
+
+/** The full-strength edge along a column's top, where the close is. */
+private val COLUMN_CAP_DP = 1.5.dp
+
 // ---------------------------------------------------------------------------- footprint
 
 /**

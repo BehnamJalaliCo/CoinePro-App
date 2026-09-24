@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.11.0
+
+**fa**
+
+> بیست‌وچهار اندیکاتور تازه از پرو چارت قدیم آمد: ALMA، نوار میانگین‌ها، GMMA، تقاطع میانگین‌ها، EMA و RSI تایم‌فریم بالاتر، VWAP لنگرشده، STC، اِلدر ری، خروج چاندلیر، کانال رگرسیون، PMO، اولسر و بقیه، هر کدام با راهنمای فارسی.
+> دو نوع نمودار تازه هم هست: ستونی و سقف و کف.
+
+**en**
+
+> Twenty-four indicators from the old Pro Chart: ALMA, MA Ribbon, GMMA, MA Cross, higher-timeframe EMA and RSI, anchored VWAP, STC, Elder Ray, Chandelier Exit, the regression channel, PMO, Ulcer and more, each with its own help.
+> Two new chart types too: Columns and High-Low.
+
 ## 5.10.3
 
 **fa**

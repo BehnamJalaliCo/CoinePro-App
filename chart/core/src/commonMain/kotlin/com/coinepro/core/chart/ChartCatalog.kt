@@ -252,6 +252,9 @@ object ChartCatalog {
         ChartTypeOption(ChartType.VOLUME_CANDLES, "کندل حجمی", "volcandles", ChartIcon("tv_chart_volcandles")),
         ChartTypeOption(ChartType.FOOTPRINT, "فوت‌پرینت", "footprint", ChartIcon("tv_chart_footprint")),
         ChartTypeOption(ChartType.TPO, "پروفایل زمانی", "tpo", ChartIcon("tv_chart_tpo")),
+        // The two Pro-Chart's terminal drew and this app did not, until 5.11.0.
+        ChartTypeOption(ChartType.COLUMNS, "ستونی", "columns", ChartIcon("tv_chart_columns")),
+        ChartTypeOption(ChartType.HIGH_LOW, "سقف و کف", "highlow", ChartIcon("tv_chart_highlow")),
     )
 
     /**
@@ -286,26 +289,32 @@ object ChartCatalog {
             "sma", "ema", "wma", "hma", "ichimoku", "supertrend", "smma", "zlema", "kama", "t3",
             "mcginley", "linreg", "lsma", "envelopes", "sar", "vwma", "tema", "dema", "chandekroll",
             "volstop", "adx", "dmi", "aroon", "vortex", "kst", "coppock", "dpo", "trix", "massindex",
+            // The fourth pack (5.11.0).
+            "alma", "maribbon", "gmma", "macross", "mtfema", "median", "typicalprice", "weightedclose",
+            "chandelier", "linregchannel", "aroonosc",
         )
         put(
             IndicatorCategory.MOMENTUM,
             "rsi", "macd", "stochastic", "cci", "williams", "mom", "roc", "uo", "fisher", "crsi",
             "smiErgodic", "smi", "bop", "stochrsi", "tsi", "ppo", "cmo", "rvi", "woodiescci",
             "correlation", "choppiness",
+            "mtfrsi", "stc", "elderray", "pmo",
         )
         put(
             IndicatorCategory.VOLATILITY,
             "bollinger", "keltner", "donchian", "atr", "stddev", "hv", "chaikinVol", "bbpercent", "bbw",
+            "stderrbands", "adr", "rvivol", "ulcer",
         )
         put(
             IndicatorCategory.VOLUME,
             "vwap", "obv", "adline", "chaikinOsc", "eom", "forceIndex", "klinger", "pvt",
             "volumeprofile_ind", "mfi", "cmf", "pvo", "netvolume",
+            "avwap", "pvi", "nvi", "volumeosc",
         )
         put(IndicatorCategory.BILL_WILLIAMS, "alligator", "ao", "ac", "fractals")
         put(
             IndicatorCategory.STRUCTURE,
-            "pivots", "swings", "zigzag", "autofib", "sr", "supplydemand", "chopzone",
+            "pivots", "swings", "zigzag", "autofib", "sr", "supplydemand", "chopzone", "pivothl",
         )
     }
 
@@ -325,12 +334,14 @@ object ChartCatalog {
     val VOLUME_ONLY_INDICATORS: Set<String> = setOf(
         "vwap", "obv", "adline", "chaikinOsc", "eom", "forceIndex", "klinger", "pvt",
         "vwma", "volumeprofile_ind", "mfi", "cmf", "pvo", "netvolume",
+        "avwap", "pvi", "nvi", "volumeosc",
     )
 
     /**
-     * The eighty-three indicators the engine computes, grouped the way a trader thinks about them.
+     * The hundred and seven indicators the engine computes, grouped the way a trader thinks about
+     * them.
      *
-     * Twenty-six draw on the price, forty-nine in a pane of their own and eight as structure. That
+     * Thirty-eight draw on the price, sixty in a pane of their own and nine as structure. That
      * is far past the point where a list can be scanned, which is why the picker grew a search
      * field and a pane filter before this list grew past twenty. The order is the useful one and
      * not an alphabet: within each pane, the ones most readers reach for first.
@@ -448,6 +459,37 @@ object ChartCatalog {
         // is a regime reading, one verdict per bar, and the thing it belongs beside is the candle
         // it describes. See [CHOP_ZONE_COLOURS].
         IndicatorOption("chopzone", "ناحیه‌ی چاپ (Chop Zone)", "chopzone", IndicatorPane.STRUCTURE, 0xFF7FA3C7, ChartIcon("tv_layout_grid")),
+
+        // ── The fourth pack (5.11.0): what Pro-Chart's web terminal offered and this app did not ──
+        // Every one is a port of the terminal's own JavaScript and is held to its output by
+        // `IndicatorParityTest` — see [IndicatorsExtD].
+        // On the price.
+        IndicatorOption("alma", "میانگین آرنو لگو (ALMA)", "alma", IndicatorPane.PRICE, 0xFF2DD4BF, ChartIcon("tv_chart_line")),
+        IndicatorOption("maribbon", "نوار میانگین‌ها (MA Ribbon)", "maRibbon", IndicatorPane.PRICE, 0xFF60A5FA, ChartIcon("tv_tool_doublecurve")),
+        IndicatorOption("gmma", "میانگین‌های گاپی (GMMA)", "gmma", IndicatorPane.PRICE, 0xFF3B82F6, ChartIcon("tv_tool_doublecurve")),
+        IndicatorOption("macross", "تقاطع میانگین‌ها (MA Cross)", "maCross", IndicatorPane.PRICE, 0xFF22C55E, ChartIcon("tv_tool_doublecurve")),
+        IndicatorOption("mtfema", "EMA تایم‌فریم بالاتر", "mtfEma", IndicatorPane.PRICE, 0xFF22D3EE, ChartIcon("tv_chart_line")),
+        IndicatorOption("avwap", "VWAP لنگرشده با باند انحراف", "avwap", IndicatorPane.PRICE, 0xFFE879F9, ChartIcon("tv_chart_volcandles")),
+        IndicatorOption("stderrbands", "باندهای خطای معیار", "stdErrBands", IndicatorPane.PRICE, 0xFF3B82F6, ChartIcon("tv_tool_flatchannel")),
+        IndicatorOption("median", "میانه‌ی متحرک", "median", IndicatorPane.PRICE, 0xFFA78BFA, ChartIcon("tv_chart_line")),
+        IndicatorOption("typicalprice", "قیمت تیپیک (HLC3)", "typicalPrice", IndicatorPane.PRICE, 0xFFA78BFA, ChartIcon("tv_chart_line")),
+        IndicatorOption("weightedclose", "قیمت وزنی بسته شدن", "weightedClose", IndicatorPane.PRICE, 0xFFFB923C, ChartIcon("tv_chart_line")),
+        IndicatorOption("chandelier", "خروج چاندلیر (Chandelier)", "chandelier", IndicatorPane.PRICE, 0xFF22C55E, ChartIcon("tv_tool_longshort")),
+        IndicatorOption("linregchannel", "کانال رگرسیون خطی", "linRegChannel", IndicatorPane.PRICE, 0xFF22D3EE, ChartIcon("tv_tool_regchannel")),
+        // On their own scale.
+        IndicatorOption("mtfrsi", "RSI تایم‌فریم بالاتر", "mtfRsi", IndicatorPane.SEPARATE, 0xFFF59E0B, ChartIcon("tv_tool_sine")),
+        IndicatorOption("stc", "چرخه‌ی روند شاف (STC)", "stc", IndicatorPane.SEPARATE, 0xFF8B5CF6, ChartIcon("tv_tool_sine")),
+        IndicatorOption("elderray", "اِلدر ری (قدرت خریدار و فروشنده)", "elderRay", IndicatorPane.SEPARATE, 0xFF22C55E, ChartIcon("tv_chart_columns")),
+        IndicatorOption("aroonosc", "اسیلاتور آرون", "aroonOsc", IndicatorPane.SEPARATE, 0xFF22C55E, ChartIcon("tv_tool_arrowdir")),
+        IndicatorOption("adr", "میانگین دامنه‌ی روزانه (ADR)", "adr", IndicatorPane.SEPARATE, 0xFFF59E0B, ChartIcon("tv_ruler")),
+        IndicatorOption("pmo", "اسیلاتور مومنتوم قیمت (PMO)", "pmo", IndicatorPane.SEPARATE, 0xFF60A5FA, ChartIcon("tv_tool_sine")),
+        IndicatorOption("rvivol", "شاخص نوسان نسبی", "rviVol", IndicatorPane.SEPARATE, 0xFFA78BFA, ChartIcon("tv_ruler")),
+        IndicatorOption("ulcer", "شاخص اولسر (Ulcer)", "ulcer", IndicatorPane.SEPARATE, 0xFFF59E0B, ChartIcon("tv_ruler")),
+        IndicatorOption("pvi", "شاخص حجم مثبت (PVI)", "pvi", IndicatorPane.SEPARATE, 0xFF22C55E, ChartIcon("tv_chart_volcandles")),
+        IndicatorOption("nvi", "شاخص حجم منفی (NVI)", "nvi", IndicatorPane.SEPARATE, 0xFFEF4444, ChartIcon("tv_chart_volcandles")),
+        IndicatorOption("volumeosc", "اسیلاتور حجم", "volumeOsc", IndicatorPane.SEPARATE, 0xFF22C55E, ChartIcon("tv_chart_columns")),
+        // Structure.
+        IndicatorOption("pivothl", "نقاط چرخش سقف و کف", "pivotHL", IndicatorPane.STRUCTURE, 0xFFF59E0B, ChartIcon("tv_tool_arrowdir")),
     )
 
     /**
@@ -473,6 +515,20 @@ object ChartCatalog {
             // colour for its whole length and the colour here *is* the reading — and a
             // `PriceLevel` cannot either, because the verdict changes bar to bar.
             "chopzone" -> StructureOverlay(markers = chopZoneMarks(series))
+            // Five bars either side, the terminal's default. A pivot is only known five bars after
+            // it, so the marks are late and never move — the repaint claim says so.
+            "pivothl" -> StructureOverlay(
+                markers = IndicatorsExtD.pivotHighLow(series.high, series.low, PIVOT_SPAN, PIVOT_SPAN).map { pivot ->
+                    ChartMarker(
+                        time = series.time[pivot.index],
+                        price = if (pivot.high) series.high[pivot.index] else series.low[pivot.index],
+                        above = pivot.high,
+                        colour = if (pivot.high) 0xFFF6465D else 0xFF00B15C,
+                        glyph = if (pivot.high) MarkerGlyph.ARROW_DOWN else MarkerGlyph.ARROW_UP,
+                        text = if (pivot.high) "H" else "L",
+                    )
+                },
+            )
             else -> StructureOverlay()
         }
     }
@@ -808,6 +864,58 @@ object ChartCatalog {
                     levels = listOf(band(100.0), band(0.0, faint = true), band(-100.0)),
                 )
             }
+            // ── The fourth pack's own-scale entries ───────────────────────────────────────
+            "mtfrsi" -> pane(
+                "RSI $n ×${pi("factor")}",
+                ChartLine(IndicatorsExtD.higherTimeframeRsi(close, n, pi("factor")).asLine(), colour, label = "RSI ×${pi("factor")}"),
+                levels = listOf(band(70.0), band(50.0, faint = true), band(30.0)),
+            )
+            "stc" -> pane(
+                "STC ${pi("fast")}/${pi("slow")}/${pi("cycle")}",
+                ChartLine(IndicatorsExtD.schaffTrendCycle(close, pi("fast"), pi("slow"), pi("cycle")).asLine(), colour),
+                levels = listOf(band(75.0), band(25.0)),
+            )
+            "elderray" -> IndicatorsExtD.elderRay(high, low, close, n).let { elder ->
+                // Two lines rather than the terminal's two histograms: a pane here carries one
+                // histogram, and bull and bear power are read against each other and against zero.
+                pane(
+                    "Elder Ray $n",
+                    ChartLine(elder.bull.asLine(), 0xFF00B15C, label = "Bull"),
+                    ChartLine(elder.bear.asLine(), 0xFFF6465D, label = "Bear"),
+                    levels = listOf(band(0.0, faint = true)),
+                )
+            }
+            "aroonosc" -> pane(
+                "Aroon Osc $n",
+                ChartLine(IndicatorsExtD.aroonOscillator(high, low, n).asLine(), colour),
+                levels = listOf(band(50.0), band(0.0, faint = true), band(-50.0)),
+            )
+            "adr" -> pane("ADR $n", ChartLine(IndicatorsExtD.averageDailyRange(high, low, n).asLine(), colour))
+            "pmo" -> IndicatorsExtD.priceMomentumOscillator(close, pi("first"), pi("second"), pi("signal")).let { pmo ->
+                pane(
+                    "PMO ${pi("first")}/${pi("second")}/${pi("signal")}",
+                    ChartLine(pmo.line.asLine(), colour, label = "PMO"),
+                    ChartLine(pmo.signal.asLine(), second, label = "سیگنال"),
+                    levels = listOf(band(0.0, faint = true)),
+                )
+            }
+            "rvivol" -> pane(
+                "RVI (vol) $n/${pi("deviation")}",
+                ChartLine(IndicatorsExtD.relativeVolatilityIndex(close, n, pi("deviation")).asLine(), colour),
+                levels = listOf(band(80.0), band(50.0, faint = true), band(20.0)),
+            )
+            "ulcer" -> pane(
+                "Ulcer $n",
+                ChartLine(IndicatorsExtD.ulcerIndex(close, n).asLine(), colour),
+                levels = listOf(band(5.0, faint = true)),
+            )
+            "pvi" -> pane("PVI", ChartLine(IndicatorsExtD.volumeIndex(close, volume, positive = true).asLine(), colour))
+            "nvi" -> pane("NVI", ChartLine(IndicatorsExtD.volumeIndex(close, volume, positive = false).asLine(), colour))
+            "volumeosc" -> pane(
+                "Volume Osc ${pi("short")}/${pi("long")}",
+                ChartLine(IndicatorsExtD.volumeOscillator(volume, pi("short"), pi("long")).asLine(), colour),
+                levels = listOf(band(0.0, faint = true)),
+            )
             "correlation" -> {
                 // The one indicator here that is not a function of this symbol alone.
                 //
@@ -882,6 +990,14 @@ object ChartCatalog {
      * bars, and honest: the value really is the same on every bar.
      */
     private fun flat(size: Int, price: Double): Line = Line.constant(size, price)
+
+    /** Bars either side a pivot high or low must beat — the terminal's default for `pivotHL`. */
+    private const val PIVOT_SPAN = 5
+
+    /** The ribbon's shades, blue to yellow: the terminal's palette, shortest average first. */
+    private val RIBBON_COLOURS: List<Long> = listOf(
+        0xFF60A5FA, 0xFF38BDF8, 0xFF22D3EE, 0xFF2DD4BF, 0xFF34D399, 0xFF4ADE80, 0xFFA3E635, 0xFFFACC15,
+    )
 
     /** The window the chop zone normalises its slope over. Fixed; see the note under [PERIODS]. */
     private const val CHOP_ZONE_PERIOD = 30
@@ -1084,6 +1200,21 @@ object ChartCatalog {
         // Two bars is a correlation of exactly ±1 on any pair, which is arithmetic rather than a
         // reading, so this one starts at five.
         "correlation" to IndicatorPeriod(20, min = 5),
+        // ── The fourth pack (5.11.0), the terminal's own defaults ───────────────────────
+        "alma" to IndicatorPeriod(9),
+        // Twenty, not the terminal's fifty: fifty on a four-to-one higher timeframe needs two hundred
+        // bars before it draws, and a phone chart opens on fewer than that.
+        "mtfema" to IndicatorPeriod(20),
+        "mtfrsi" to IndicatorPeriod(14),
+        "stderrbands" to IndicatorPeriod(21, min = 3),
+        "median" to IndicatorPeriod(3),
+        "chandelier" to IndicatorPeriod(22),
+        "linregchannel" to IndicatorPeriod(100, min = 2),
+        "elderray" to IndicatorPeriod(13),
+        "aroonosc" to IndicatorPeriod(14),
+        "adr" to IndicatorPeriod(14),
+        "rvivol" to IndicatorPeriod(14),
+        "ulcer" to IndicatorPeriod(14),
     )
 
     /*
@@ -1171,6 +1302,23 @@ object ChartCatalog {
         "kama" to listOf(bars("fast", "تند", "Fast", 2), bars("slow", "کند", "Slow", 30)),
         "sar" to listOf(factor("step", "گام", "Step", 0.02, 0.001, 0.5, 0.01), factor("max", "بیشینه", "Maximum", 0.2, 0.01, 1.0, 0.01)),
         "hv" to listOf(bars("annual", "روز در سال", "Days per year", 365, 200, 366)),
+        // ── The fourth pack ─────────────────────────────────────────────────────────────
+        "alma" to listOf(
+            factor("offset", "آفست", "Offset", 0.85, 0.0, 1.0, 0.05),
+            factor("sigma", "سیگما", "Sigma", 6.0, 0.5, 20.0, 0.5),
+        ),
+        "maribbon" to listOf(bars("base", "طول پایه", "Base length", 20), bars("step", "گام", "Step", 10, 1, 100), bars("count", "تعداد خط", "Lines", 6, 2, 8)),
+        "macross" to listOf(bars("fast", "تند", "Fast", 10), bars("slow", "کند", "Slow", 30)),
+        "mtfema" to listOf(bars("factor", "ضریب تایم‌فریم", "Timeframe factor", 4, 2, 12)),
+        "mtfrsi" to listOf(bars("factor", "ضریب تایم‌فریم", "Timeframe factor", 4, 2, 12)),
+        "avwap" to listOf(bars("anchor", "کندل‌های لنگر", "Anchor bars", 100, 5, 2000), factor("multiplier", "ضریب انحراف معیار", "StdDev factor", 1.0, 0.5, 4.0)),
+        "stderrbands" to listOf(factor("multiplier", "ضریب", "Multiplier", 2.0, 0.5, 5.0)),
+        "chandelier" to listOf(factor("multiplier", "ضریب ATR", "ATR factor", 3.0, 0.5, 10.0)),
+        "linregchannel" to listOf(factor("multiplier", "ضریب انحراف", "Deviation factor", 2.0, 0.5, 5.0)),
+        "stc" to listOf(bars("fast", "تند", "Fast", 23), bars("slow", "کند", "Slow", 50), bars("cycle", "چرخه", "Cycle", 10, 2, 100)),
+        "pmo" to listOf(bars("first", "هموارسازی اول", "First smoothing", 35), bars("second", "هموارسازی دوم", "Second smoothing", 20), bars("signal", "سیگنال", "Signal", 10)),
+        "rvivol" to listOf(bars("deviation", "طول انحراف معیار", "StdDev length", 10, 2, 100)),
+        "volumeosc" to listOf(bars("short", "کوتاه", "Short", 5), bars("long", "بلند", "Long", 10, 2, 400)),
     )
 
     /**
@@ -1381,6 +1529,86 @@ object ChartCatalog {
                     if (flipped) null else value
                 }
                 listOf(ChartLine(split, option.colour, widthDp = 1.4f, label = "Volatility Stop $n/${figure(p("multiplier"))}"))
+            }
+            // ── The fourth pack's price-scale entries ─────────────────────────────────────
+            "alma" -> listOf(
+                ChartLine(
+                    IndicatorsExtD.alma(close, n, p("offset"), p("sigma")).asLine(),
+                    option.colour,
+                    label = "ALMA $n/${figure(p("offset"))}/${figure(p("sigma"))}",
+                ),
+            )
+            "maribbon" -> IndicatorsExtD.movingAverageRibbon(close, pi("base"), pi("step"), pi("count")).mapIndexed { k, line ->
+                ChartLine(
+                    line.asLine(),
+                    RIBBON_COLOURS[k % RIBBON_COLOURS.size],
+                    widthDp = 1f,
+                    label = if (k == 0) "Ribbon ${pi("base")}+${pi("step")}×${pi("count")}" else null,
+                )
+            }
+            "gmma" -> IndicatorsExtD.guppy(close).let { guppy ->
+                guppy.short.mapIndexed { k, line ->
+                    ChartLine(line.asLine(), 0xFF3B82F6, widthDp = 0.9f, label = if (k == 0) "GMMA" else null)
+                } + guppy.long.map { line -> ChartLine(line.asLine(), 0xFFEF4444, widthDp = 0.9f) }
+            }
+            "macross" -> listOf(
+                ChartLine(IndicatorsExtD.movingAverageRibbon(close, pi("fast"), 0, 1).first().asLine(), 0xFF22C55E, label = "MA ${pi("fast")}/${pi("slow")}"),
+                ChartLine(IndicatorsExtD.movingAverageRibbon(close, pi("slow"), 0, 1).first().asLine(), 0xFFEF4444),
+            )
+            "mtfema" -> listOf(
+                ChartLine(
+                    IndicatorsExtD.higherTimeframeEma(close, n, pi("factor")).asLine(),
+                    option.colour,
+                    widthDp = 1.4f,
+                    label = "EMA $n ×${pi("factor")}",
+                ),
+            )
+            "avwap" -> IndicatorsExtD.anchoredVwap(high, low, close, series.volume, pi("anchor"), p("multiplier")).let { band ->
+                listOf(
+                    ChartLine(band.basis.asLine(), option.colour, label = "AVWAP ${pi("anchor")} ±${figure(p("multiplier"))} SD"),
+                    ChartLine(band.upper.asLine(), 0xFFA855F7, widthDp = 0.9f),
+                    ChartLine(band.lower.asLine(), 0xFFA855F7, widthDp = 0.9f),
+                )
+            }
+            "stderrbands" -> IndicatorsExtD.standardErrorBands(close, n, p("multiplier")).let { band ->
+                listOf(
+                    ChartLine(band.basis.asLine(), option.colour, label = "StdErr $n/${figure(p("multiplier"))}"),
+                    ChartLine(band.upper.asLine(), 0xFF60A5FA, widthDp = 0.9f),
+                    ChartLine(band.lower.asLine(), 0xFF60A5FA, widthDp = 0.9f),
+                )
+            }
+            "median" -> listOf(
+                ChartLine(
+                    IndicatorsExtD.rollingMedian(DoubleArray(series.size) { (high[it] + low[it]) / 2 }, n).asLine(),
+                    option.colour,
+                    label = "Median $n",
+                ),
+            )
+            "typicalprice" -> listOf(
+                ChartLine(IndicatorsExtD.typicalPrice(high, low, close).asLine(), option.colour, label = "HLC3"),
+            )
+            "weightedclose" -> listOf(
+                ChartLine(IndicatorsExtD.weightedClose(high, low, close).asLine(), option.colour, label = "HLCC4"),
+            )
+            "chandelier" -> IndicatorsExtD.chandelierExit(high, low, close, n, p("multiplier")).let { stop ->
+                // Only the active side has a value on any bar, so the two lines never overlap and
+                // the colour is the side: green under the price while long, red over it while short.
+                // A side that was never active on this series is left out rather than drawn empty,
+                // and the label goes on whichever side is there.
+                val label = "Chandelier $n/${figure(p("multiplier"))}"
+                listOf(stop.long to 0xFF00B15C, stop.short to 0xFFF6465D)
+                    .map { (values, colour) -> values.asLine() to colour }
+                    .filter { (line, _) -> (0 until series.size).any(line::isPresent) }
+                    .mapIndexed { k, (line, colour) ->
+                        ChartLine(line, colour, widthDp = 1.4f, label = if (k == 0) label else null)
+                    }
+            }
+            "linregchannel" -> IndicatorsExtD.linearRegressionChannel(close, n, p("multiplier")).let { band ->
+                listOf(
+                    ChartLine(band.basis.asLine(), option.colour, label = "LinReg Ch $n/${figure(p("multiplier"))}"),
+                    ChartLine(band.upper.asLine(), option.colour, widthDp = 0.9f),
+                    ChartLine(band.lower.asLine(), option.colour, widthDp = 0.9f),
+                )
             }
             "volumeprofile_ind" -> volumeProfileFor(series, window).let { profile ->
                 // Three prices *and* the histogram they were read off — item 54.

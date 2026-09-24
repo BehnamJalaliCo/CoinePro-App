@@ -3052,6 +3052,8 @@ fun CoineProChart(
                         drawnType == ChartType.LINE_MARKERS -> drawLineMarkers(view, palette, conflateGap)
                         drawnType == ChartType.VOLUME_CANDLES ->
                             drawVolumeCandles(view, palette, metrics, barWidths)
+                        drawnType == ChartType.COLUMNS -> drawColumns(view, palette, metrics)
+                        drawnType == ChartType.HIGH_LOW -> drawHighLow(view, palette, metrics)
                         drawnType == ChartType.FOOTPRINT -> drawFootprint(
                             view = view,
                             palette = palette,

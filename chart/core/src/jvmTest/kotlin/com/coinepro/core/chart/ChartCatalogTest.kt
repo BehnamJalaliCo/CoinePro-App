@@ -270,15 +270,28 @@ class ChartCatalogTest {
 
     @Test
     fun `the catalogue is the size the help and the picker were written against`() {
-        assertEquals(83, ChartCatalog.INDICATORS.size)
-        assertEquals(26, ChartCatalog.INDICATORS.count { it.pane == IndicatorPane.PRICE })
-        assertEquals(49, ChartCatalog.INDICATORS.count { it.pane == IndicatorPane.SEPARATE })
-        assertEquals(8, ChartCatalog.INDICATORS.count { it.pane == IndicatorPane.STRUCTURE })
+        assertEquals(107, ChartCatalog.INDICATORS.size)
+        assertEquals(38, ChartCatalog.INDICATORS.count { it.pane == IndicatorPane.PRICE })
+        assertEquals(60, ChartCatalog.INDICATORS.count { it.pane == IndicatorPane.SEPARATE })
+        assertEquals(9, ChartCatalog.INDICATORS.count { it.pane == IndicatorPane.STRUCTURE })
         assertEquals(27, thirdPack.size)
-        for (id in thirdPack) {
+        assertEquals(24, fourthPack.size)
+        for (id in thirdPack + fourthPack) {
             assertTrue("$id was never registered", ChartCatalog.INDICATORS.any { it.id == id })
         }
     }
+
+    /**
+     * The twenty-four ids of the fourth pack (5.11.0): the studies Pro-Chart's web terminal offered
+     * and this app did not. Written out for the reason [thirdPack] is.
+     */
+    private val fourthPack = listOf(
+        "alma", "maribbon", "gmma", "macross", "mtfema", "avwap", "stderrbands", "median",
+        "typicalprice", "weightedclose", "chandelier", "linregchannel",
+        "mtfrsi", "stc", "elderray", "aroonosc", "adr", "pmo", "rvivol", "ulcer", "pvi", "nvi",
+        "volumeosc",
+        "pivothl",
+    )
 
     @Test
     fun `every indicator in the third pack draws a value at the right-hand edge`() {
@@ -289,7 +302,10 @@ class ChartCatalogTest {
         // line at a flip, so all three legitimately have no value on the very last bar.
         val series = wavySeries()
         val tail = series.size - 20
-        for (id in thirdPack) {
+        // `pivothl` is left out of this one and only this one: a pivot needs five bars after it, and
+        // on this walk the last turn is further back than twenty bars. That it marks something at
+        // all is held by the structure test above.
+        for (id in thirdPack + fourthPack - "pivothl") {
             val option = ChartCatalog.INDICATORS.first { it.id == id }
             when (option.pane) {
                 IndicatorPane.PRICE -> {

@@ -17,7 +17,7 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * Every series type, on a phone and on a tablet, as pixels.
  *
- * The chart screen with the golden fixture's two hundred bars, switched to each of the eighteen
+ * The chart screen with the golden fixture's two hundred bars, switched to each of the twenty
  * types the catalogue offers. A transform that silently stopped emitting, a painter that lost its
  * wicks, a Renko brick drawn a pixel off its neighbour: none of those fail a numerical test, and
  * all of them fail this one. The tablet variant is the layout at 840dp — the width past which the
@@ -181,6 +181,22 @@ class ChartTypeGoldenTest {
     @Test
     @Config(sdk = [34], qualifiers = FA_840)
     fun tpoTablet() = golden("chart-type-tpo-fa-840", ChartType.TPO)
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_411)
+    fun columnsPhone() = golden("chart-type-columns-fa-411", ChartType.COLUMNS)
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_840)
+    fun columnsTablet() = golden("chart-type-columns-fa-840", ChartType.COLUMNS)
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_411)
+    fun highLowPhone() = golden("chart-type-high-low-fa-411", ChartType.HIGH_LOW)
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_840)
+    fun highLowTablet() = golden("chart-type-high-low-fa-840", ChartType.HIGH_LOW)
 
     private companion object {
         const val FA_411 = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi"
