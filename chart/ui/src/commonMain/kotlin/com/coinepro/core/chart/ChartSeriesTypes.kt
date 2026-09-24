@@ -5,13 +5,16 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -477,6 +480,62 @@ private const val COLUMN_ALPHA = 0.55f
 
 /** The full-strength edge along a column's top, where the close is. */
 private val COLUMN_CAP_DP = 1.5.dp
+
+// ---------------------------------------------------------------------------- sessions and rules
+
+/**
+ * Trading sessions as shaded columns and period boundaries as dashed rules — see [TimeBand].
+ *
+ * Placed by time, not by bar, with `xOfTime`, so a session that opens between two bars opens
+ * between them here. A session's short name sits at the foot of its band, small and in the axis
+ * colour — the top is the legend's — and a name that would run into the one before it is left out
+ * rather than printed over it. The rules carry no text: the time axis under them already says what
+ * they are.
+ */
+internal fun DrawScope.drawTimeBands(
+    view: ChartViewport,
+    bands: List<TimeBand>,
+    plotWidth: Float,
+    plotHeight: Float,
+    measurer: TextMeasurer,
+    labelColour: Color,
+) {
+    if (view.series.isEmpty) return
+    val dash = PathEffect.dashPathEffect(floatArrayOf(RULE_DASH_DP.toPx(), RULE_DASH_DP.toPx()))
+    val inset = BAND_LABEL_INSET_DP.toPx()
+    val style = TextStyle(color = labelColour.copy(alpha = BAND_LABEL_ALPHA), fontSize = BAND_LABEL_SP.sp, fontFamily = ChartLatinFontFamily)
+    var lastLabelEnd = Float.NEGATIVE_INFINITY
+    for (band in bands) {
+        val left = view.xOfTime(band.from)
+        if (band.isRule) {
+            if (left < 0f || left > plotWidth) continue
+            drawLine(
+                color = Color(band.colour),
+                start = Offset(left, 0f),
+                end = Offset(left, plotHeight),
+                strokeWidth = 1f,
+                pathEffect = dash,
+            )
+            continue
+        }
+        val right = view.xOfTime(band.to)
+        if (right < 0f || left > plotWidth || right <= left) continue
+        drawRect(color = Color(band.colour), topLeft = Offset(left, 0f), size = Size(right - left, plotHeight))
+        val label = band.label ?: continue
+        val layout = measurer.measure(label, style)
+        // Printed only where the band is wide enough to hold its own name, and clear of the last.
+        if (right - left < layout.size.width + inset * 2) continue
+        val x = max(left, 0f) + inset
+        if (x < lastLabelEnd + inset) continue
+        drawText(layout, topLeft = Offset(x, plotHeight - layout.size.height - inset))
+        lastLabelEnd = x + layout.size.width
+    }
+}
+
+private val RULE_DASH_DP = 3.dp
+private val BAND_LABEL_INSET_DP = 3.dp
+private const val BAND_LABEL_SP = 9
+private const val BAND_LABEL_ALPHA = 0.7f
 
 // ---------------------------------------------------------------------------- footprint
 

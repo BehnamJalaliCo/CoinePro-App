@@ -68,6 +68,24 @@ data class ChartLine(
 )
 
 /**
+ * A stretch of time shaded behind the candles — a trading session — or, when [from] equals [to],
+ * one vertical rule at that moment: a day, month or year boundary (5.12.0, from Pro-Chart's
+ * terminal). Times are bar times in epoch seconds; the renderer places them with
+ * `ChartViewport.xOfTime`, so a band that starts between two bars starts between them on screen.
+ */
+data class TimeBand(
+    val from: Long,
+    val to: Long,
+    /** ARGB. A band is drawn at this colour as it is, so its alpha is the band's weight. */
+    val colour: Long,
+    /** Printed small at the band's top edge — a session's short name — or nothing. */
+    val label: String? = null,
+) {
+    /** A rule rather than a band. */
+    val isRule: Boolean get() = from == to
+}
+
+/**
  * A horizontal line at one price, with a label.
  *
  * Not a [ChartLine] with the same value in every slot. A level has no time dimension at all — it is
@@ -361,6 +379,11 @@ data class ChartDecoration(
      * the edge, because a glyph at the edge claims something happened at a time it did not.
      */
     val events: List<EventMark> = emptyList(),
+    /**
+     * Sessions shaded and period rules drawn behind the candles — see [TimeBand]. Empty on every
+     * chart that has not switched one of the two studies on, and then nothing is drawn.
+     */
+    val timeBands: List<TimeBand> = emptyList(),
     /**
      * The bars worth asking «چرا؟» about, in ascending order — run Τ2, C1.
      *

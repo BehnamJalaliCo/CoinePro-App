@@ -162,6 +162,7 @@
     <string name="range_all">All</string>
     <string name="range_5y">5 years</string>
     <string name="range_1y">1 year</string>
+    <string name="range_ytd">YTD</string>
     <string name="range_6m">6 months</string>
     <string name="range_3m">3 months</string>
     <string name="range_1m">1 month</string>
@@ -219,6 +220,19 @@
     <string name="chart_zone_new_york">New York</string>
     <string name="chart_zone_london">London</string>
     <string name="chart_zone_utc" translatable="false">UTC</string>
+    <string name="chart_zone_los_angeles">Los Angeles</string>
+    <string name="chart_zone_chicago">Chicago</string>
+    <string name="chart_zone_sao_paulo">Sao Paulo</string>
+    <string name="chart_zone_frankfurt">Frankfurt</string>
+    <string name="chart_zone_zurich">Zurich</string>
+    <string name="chart_zone_moscow">Moscow</string>
+    <string name="chart_zone_dubai">Dubai</string>
+    <string name="chart_zone_mumbai">Mumbai</string>
+    <string name="chart_zone_singapore">Singapore</string>
+    <string name="chart_zone_hong_kong">Hong Kong</string>
+    <string name="chart_zone_shanghai">Shanghai</string>
+    <string name="chart_zone_tokyo">Tokyo</string>
+    <string name="chart_zone_sydney">Sydney</string>
     <string name="chart_scale_side_right">Right</string>
     <string name="chart_scale_side_left">Left</string>
     <string name="chart_scale_side_both">Both</string>

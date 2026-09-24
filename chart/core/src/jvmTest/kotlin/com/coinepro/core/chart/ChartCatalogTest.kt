@@ -270,10 +270,10 @@ class ChartCatalogTest {
 
     @Test
     fun `the catalogue is the size the help and the picker were written against`() {
-        assertEquals(107, ChartCatalog.INDICATORS.size)
+        assertEquals(110, ChartCatalog.INDICATORS.size)
         assertEquals(38, ChartCatalog.INDICATORS.count { it.pane == IndicatorPane.PRICE })
         assertEquals(60, ChartCatalog.INDICATORS.count { it.pane == IndicatorPane.SEPARATE })
-        assertEquals(9, ChartCatalog.INDICATORS.count { it.pane == IndicatorPane.STRUCTURE })
+        assertEquals(12, ChartCatalog.INDICATORS.count { it.pane == IndicatorPane.STRUCTURE })
         assertEquals(27, thirdPack.size)
         assertEquals(24, fourthPack.size)
         for (id in thirdPack + fourthPack) {

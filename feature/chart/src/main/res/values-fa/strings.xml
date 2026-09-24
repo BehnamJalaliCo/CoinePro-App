@@ -162,6 +162,7 @@
     <string name="range_all">همه</string>
     <string name="range_5y">۵ سال</string>
     <string name="range_1y">۱ سال</string>
+    <string name="range_ytd">از ابتدای سال</string>
     <string name="range_6m">۶ ماه</string>
     <string name="range_3m">۳ ماه</string>
     <string name="range_1m">۱ ماه</string>
@@ -219,6 +220,19 @@
     <string name="chart_zone_new_york">نیویورک</string>
     <string name="chart_zone_london">لندن</string>
     <string name="chart_zone_utc" translatable="false">UTC</string>
+    <string name="chart_zone_los_angeles">لس‌آنجلس</string>
+    <string name="chart_zone_chicago">شیکاگو</string>
+    <string name="chart_zone_sao_paulo">سائوپائولو</string>
+    <string name="chart_zone_frankfurt">فرانکفورت</string>
+    <string name="chart_zone_zurich">زوریخ</string>
+    <string name="chart_zone_moscow">مسکو</string>
+    <string name="chart_zone_dubai">دبی</string>
+    <string name="chart_zone_mumbai">بمبئی</string>
+    <string name="chart_zone_singapore">سنگاپور</string>
+    <string name="chart_zone_hong_kong">هنگ‌کنگ</string>
+    <string name="chart_zone_shanghai">شانگهای</string>
+    <string name="chart_zone_tokyo">توکیو</string>
+    <string name="chart_zone_sydney">سیدنی</string>
     <string name="chart_scale_side_right">راست</string>
     <string name="chart_scale_side_left">چپ</string>
     <string name="chart_scale_side_both">هر دو</string>

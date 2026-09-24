@@ -43,7 +43,8 @@ class HelpCatalogTest {
         // Then eighteen for the fourth indicator pack (5.11.0), the studies Pro-Chart's terminal had
         // and this app did not. Its other six — `mtfEma`, `mtfRsi`, `avwap`, `stdErrBands`, `stc`,
         // `elderRay` — were already in the export and are pointed at, not rewritten.
-        assertEquals(177 - 4 + 9 + 55 + 1 + 6 + 18, catalog.size)
+        // Then three for the session, separator and prior-period studies (5.12.0).
+        assertEquals(177 - 4 + 9 + 55 + 1 + 6 + 18 + 3, catalog.size)
     }
 
     @Test

@@ -153,8 +153,10 @@ data class StructureOverlay(
     val lines: List<ChartLine> = emptyList(),
     val levels: List<PriceLevel> = emptyList(),
     val markers: List<ChartMarker> = emptyList(),
+    /** Sessions and period rules, behind the candles — see [TimeBand]. */
+    val bands: List<TimeBand> = emptyList(),
 ) {
-    val isEmpty: Boolean get() = lines.isEmpty() && levels.isEmpty() && markers.isEmpty()
+    val isEmpty: Boolean get() = lines.isEmpty() && levels.isEmpty() && markers.isEmpty() && bands.isEmpty()
 }
 
 /**
@@ -315,6 +317,7 @@ object ChartCatalog {
         put(
             IndicatorCategory.STRUCTURE,
             "pivots", "swings", "zigzag", "autofib", "sr", "supplydemand", "chopzone", "pivothl",
+            "sessions", "separators", "prevlevels",
         )
     }
 
@@ -338,10 +341,10 @@ object ChartCatalog {
     )
 
     /**
-     * The hundred and seven indicators the engine computes, grouped the way a trader thinks about
+     * The hundred and ten indicators the engine computes, grouped the way a trader thinks about
      * them.
      *
-     * Thirty-eight draw on the price, sixty in a pane of their own and nine as structure. That
+     * Thirty-eight draw on the price, sixty in a pane of their own and twelve as structure. That
      * is far past the point where a list can be scanned, which is why the picker grew a search
      * field and a pane filter before this list grew past twenty. The order is the useful one and
      * not an alphabet: within each pane, the ones most readers reach for first.
@@ -490,6 +493,10 @@ object ChartCatalog {
         IndicatorOption("volumeosc", "اسیلاتور حجم", "volumeOsc", IndicatorPane.SEPARATE, 0xFF22C55E, ChartIcon("tv_chart_columns")),
         // Structure.
         IndicatorOption("pivothl", "نقاط چرخش سقف و کف", "pivotHL", IndicatorPane.STRUCTURE, 0xFFF59E0B, ChartIcon("tv_tool_arrowdir")),
+        // ── 5.12.0: sessions, period rules and the prior period's levels ──────────────────
+        IndicatorOption("sessions", "سشن‌های معاملاتی", "sessions", IndicatorPane.STRUCTURE, 0xFF3B82F6, ChartIcon("tv_tool_daterange")),
+        IndicatorOption("separators", "جداکننده‌ی دوره‌ها", "separators", IndicatorPane.STRUCTURE, 0xFF848E9C, ChartIcon("tv_tool_vline")),
+        IndicatorOption("prevlevels", "سقف، کف و بسته شدن دوره‌ی قبل", "prevLevels", IndicatorPane.STRUCTURE, 0xFFE0A85C, ChartIcon("tv_tool_hline")),
     )
 
     /**
@@ -515,6 +522,19 @@ object ChartCatalog {
             // colour for its whole length and the colour here *is* the reading — and a
             // `PriceLevel` cannot either, because the verdict changes bar to bar.
             "chopzone" -> StructureOverlay(markers = chopZoneMarks(series))
+            // ── 5.12.0: the terminal's session, separator and prior-period studies ───────────
+            "sessions" -> StructureOverlay(bands = Sessions.sessionBands(series))
+            "separators" -> StructureOverlay(bands = Sessions.periodSeparators(series))
+            "prevlevels" -> Sessions.previousPeriodLevels(series)?.let { levels ->
+                StructureOverlay(
+                    lines = listOf(
+                        ChartLine(levels.high, 0xFF00B15C, widthDp = 1f, dashed = true, label = "PH"),
+                        ChartLine(levels.low, 0xFFF6465D, widthDp = 1f, dashed = true, label = "PL"),
+                        ChartLine(levels.close, 0xFF94A3B8, widthDp = 1f, dashed = true, label = "PC"),
+                        ChartLine(levels.open, 0xFFE0A85C, widthDp = 1f, label = "O"),
+                    ),
+                )
+            } ?: StructureOverlay()
             // Five bars either side, the terminal's default. A pivot is only known five bars after
             // it, so the marks are late and never move — the repaint claim says so.
             "pivothl" -> StructureOverlay(

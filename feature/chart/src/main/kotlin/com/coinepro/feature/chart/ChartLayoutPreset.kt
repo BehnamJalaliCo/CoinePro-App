@@ -34,8 +34,17 @@ enum class ChartLayoutPreset(
     /** Three across. */
     THREE("3", 3, 3),
 
+    /** Three stacked: one instrument on three bar lengths, read top to bottom (5.12.0). */
+    THREE_DOWN("3v", 3, 1),
+
     /** Two by two. */
     FOUR("4", 4, 2),
+
+    /** Four across, in one row — the widest glass only reads it (5.12.0). */
+    FOUR_ACROSS("4h", 4, 4),
+
+    /** Four stacked (5.12.0). */
+    FOUR_DOWN("4v", 4, 1),
 
     /** Three by two. */
     SIX("6", 6, 3),
@@ -59,8 +68,13 @@ enum class ChartLayoutPreset(
          * count clamped by a smaller window: the first preset with that many charts, which for two
          * is side by side — what the width-decided grid gave a landscape tablet.
          */
-        fun forCount(count: Int): ChartLayoutPreset =
-            entries.firstOrNull { it.count == count } ?: entries.last { it.count <= count.coerceAtLeast(1) }
+        fun forCount(count: Int): ChartLayoutPreset {
+            entries.firstOrNull { it.count == count }?.let { return it }
+            // The largest count under it, and of the layouts with that count the first — the
+            // grid, not a stacked variant added later (5.12.0).
+            val nearest = entries.filter { it.count <= count.coerceAtLeast(1) }.maxOf { it.count }
+            return entries.first { it.count == nearest }
+        }
 
         /** The largest layout that fits [maxPanes], for a stored one the window cannot hold. */
         fun largestWithin(maxPanes: Int): ChartLayoutPreset =

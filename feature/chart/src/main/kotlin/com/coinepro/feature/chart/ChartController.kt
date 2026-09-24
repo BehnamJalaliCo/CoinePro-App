@@ -33,6 +33,7 @@ import com.coinepro.core.chart.DrawingState
 import com.coinepro.core.chart.DrawingSync
 import com.coinepro.core.chart.DrawingTool
 import com.coinepro.core.chart.DrawingTools
+import com.coinepro.core.chart.TimeBand
 import com.coinepro.core.chart.ToolGroup
 import com.coinepro.core.chart.IndicatorChain
 import com.coinepro.core.chart.IndicatorPane
@@ -1041,6 +1042,10 @@ data class ChartUiState(
      * — see [patterns] — and `CandlePatterns.markersFor` already answers with nothing when none is
      * switched on, so a chart without them allocates one empty list.
      */
+    /** The sessions and period rules behind the candles, less the studies the reader hid. */
+    val timeBands: List<TimeBand>
+        get() = if (indicatorsHidden) emptyList() else ownedShown(derived.bands, derived.bandOwners, hiddenIndicators)
+
     val markers: List<ChartMarker>
         get() {
             if (indicatorsHidden) return emptyList()
@@ -2835,7 +2840,7 @@ class ChartController(
         // that lands on the same bar length still being one step, so undoing «۶ ماه» gives back
         // the span rather than silently doing nothing.
         record()
-        setInterval(range.interval)
+        setInterval(range.intervalAt(System.currentTimeMillis() / 1000))
         _state.update { it.copy(range = range) }
     }
 
@@ -4708,6 +4713,9 @@ data class ChartDerived internal constructor(
      */
     val levelOwners: List<String> = emptyList(),
     val markerOwners: List<String> = emptyList(),
+    /** The sessions and period rules the structure studies drew (5.12.0), and whose each one is. */
+    val bands: List<TimeBand> = emptyList(),
+    val bandOwners: List<String> = emptyList(),
 ) {
     /** What [ChartDerived] was computed from. See [key]. */
     internal data class Key(
@@ -4923,6 +4931,8 @@ data class ChartDerived internal constructor(
                 .flatMap { (option, structure) -> structure.levels.map { option.id to it } }
             val structureMarks = structured
                 .flatMap { (option, structure) -> structure.markers.map { option.id to it } }
+            val structureBands = structured
+                .flatMap { (option, structure) -> structure.bands.map { option.id to it } }
             val separatePanes = chosen
                 .filter { it.pane == IndicatorPane.SEPARATE }
                 .mapNotNull { option ->
@@ -4937,6 +4947,8 @@ data class ChartDerived internal constructor(
                 levelOwners = structureLevels.map { it.first },
                 markers = structureMarks.map { it.second },
                 markerOwners = structureMarks.map { it.first },
+                bands = structureBands.map { it.second },
+                bandOwners = structureBands.map { it.first },
                 paneOwners = separatePanes
                     .filter { it.second.lines.isNotEmpty() || it.second.histogram != null }
                     .map { it.first },

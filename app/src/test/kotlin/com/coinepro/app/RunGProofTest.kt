@@ -176,6 +176,25 @@ class RunGProofTest {
         assertTrue("no Persian word inside an English pill", texts().none { it.contains("امروز") })
     }
 
+    // ── The old Pro-Chart's studies, drawn here (5.11.0, 5.12.0) ─────────────────────────────
+    //
+    // Frames for docs/runs/RUN_GAP: the session bands, the day rules and yesterday's levels on
+    // an hourly chart, and four of the twenty-four indicators the fourth pack brought over.
+
+    @Test
+    fun theSessionsAndPeriodStudiesDraw() {
+        proof("gap-sessions-periods-fa", dark = true, persian = true) {
+            Chart(studies = listOf("sessions", "separators", "prevlevels"))
+        }
+    }
+
+    @Test
+    fun theFourthPackDraws() {
+        proof("gap-fourth-pack-fa", dark = true, persian = true) {
+            Chart(studies = listOf("alma", "chandelier", "stc", "elderray"))
+        }
+    }
+
     // ── D. the legend's format ───────────────────────────────────────────────────────────────
 
     @Test

@@ -37,6 +37,7 @@ fun ChartMirror(controller: ChartController, modifier: Modifier = Modifier) {
             overlays = state.overlays,
             levels = state.levels,
             markers = state.markers,
+            timeBands = state.timeBands,
             panes = state.panes,
             drawings = state.canvasDrawing.drawings,
             comparisons = state.comparisons,

@@ -1243,6 +1243,7 @@ fun ChartScreen(
                         signal = drawnSetup,
                         levels = state.levels,
                         markers = state.markers,
+                        timeBands = state.timeBands,
                         panes = state.panes,
                         // The studies that draw the levels and the marks above and own no row of
                         // their own on either scale. Without this the legend has no way to name
@@ -4477,7 +4478,7 @@ private val INTERVAL_GROUPS: List<Pair<Int, List<Timeframe>>> = listOf(
         Timeframe.M45,
     ),
     R.string.chart_interval_group_hours to listOf(Timeframe.H1, Timeframe.H2, Timeframe.H3, Timeframe.H4),
-    R.string.chart_interval_group_days to listOf(Timeframe.D1, Timeframe.W1, Timeframe.MN1),
+    R.string.chart_interval_group_days to listOf(Timeframe.D1, Timeframe.W1, Timeframe.MN1, Timeframe.MN3),
 )
 
 /**
@@ -4527,15 +4528,30 @@ internal const val CONFLATE_FROM_BARS = 800
  * because it is the one every exchange actually stamps and the only one with no daylight saving to
  * shift a candle boundary twice a year.
  *
- * Four and not `ZoneId.getAvailableZoneIds()`. Six hundred rows in a chip row is not a list, it is
- * a search screen, and none of the other five hundred and ninety-six answers a question anybody
- * reading these two markets has.
+ * Seventeen and not `ZoneId.getAvailableZoneIds()` — the four above, then the market centres
+ * Pro-Chart's terminal offered (5.12.0). Six hundred rows in a chip row is not a list, it is a
+ * search screen.
  */
 private val CHART_ZONES: List<Pair<String, Int>> = listOf(
     "Asia/Tehran" to R.string.chart_zone_tehran,
     "America/New_York" to R.string.chart_zone_new_york,
     "Europe/London" to R.string.chart_zone_london,
     "UTC" to R.string.chart_zone_utc,
+    // The rest of the seventeen Pro-Chart's terminal offered (5.12.0), west to east. The row
+    // scrolls, and the four above stay first because they are the ones this app's readers use.
+    "America/Los_Angeles" to R.string.chart_zone_los_angeles,
+    "America/Chicago" to R.string.chart_zone_chicago,
+    "America/Sao_Paulo" to R.string.chart_zone_sao_paulo,
+    "Europe/Berlin" to R.string.chart_zone_frankfurt,
+    "Europe/Zurich" to R.string.chart_zone_zurich,
+    "Europe/Moscow" to R.string.chart_zone_moscow,
+    "Asia/Dubai" to R.string.chart_zone_dubai,
+    "Asia/Kolkata" to R.string.chart_zone_mumbai,
+    "Asia/Singapore" to R.string.chart_zone_singapore,
+    "Asia/Hong_Kong" to R.string.chart_zone_hong_kong,
+    "Asia/Shanghai" to R.string.chart_zone_shanghai,
+    "Asia/Tokyo" to R.string.chart_zone_tokyo,
+    "Australia/Sydney" to R.string.chart_zone_sydney,
 )
 
 private val SCALE_SIDES: List<Pair<ScaleSide, Int>> = listOf(

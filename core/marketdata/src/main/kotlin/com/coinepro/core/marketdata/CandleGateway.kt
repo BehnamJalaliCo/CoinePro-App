@@ -566,7 +566,7 @@ fun sourceTimeframeFor(
  * one day serves H4 but not D1 must be told it cannot draw a daily bar rather than quietly drawing
  * one three and a half hours out of step.
  */
-private val CALENDAR_TIMEFRAMES = setOf(Timeframe.D1, Timeframe.W1, Timeframe.MN1)
+private val CALENDAR_TIMEFRAMES = setOf(Timeframe.D1, Timeframe.W1, Timeframe.MN1, Timeframe.MN3)
 
 /**
  * How many [source] bars make one [interval] bar, for sizing a request.
@@ -575,14 +575,16 @@ private val CALENDAR_TIMEFRAMES = setOf(Timeframe.D1, Timeframe.W1, Timeframe.MN
  * guessing low is the expensive mistake: too small a request draws a month short of its last days,
  * and the reader sees a monthly candle that closed early. Too large a request costs bytes.
  */
-private fun foldFactorFor(interval: ChartInterval, source: Timeframe): Int =
-    if (interval is ChartInterval.Preset && interval.timeframe == Timeframe.MN1) {
-        LONGEST_MONTH_DAYS
-    } else {
-        (interval.seconds / source.seconds).toInt().coerceAtLeast(1)
-    }
+private fun foldFactorFor(interval: ChartInterval, source: Timeframe): Int = when {
+    interval is ChartInterval.Preset && interval.timeframe == Timeframe.MN1 -> LONGEST_MONTH_DAYS
+    interval is ChartInterval.Preset && interval.timeframe == Timeframe.MN3 -> LONGEST_QUARTER_DAYS
+    else -> (interval.seconds / source.seconds).toInt().coerceAtLeast(1)
+}
 
 private const val LONGEST_MONTH_DAYS = 31
+
+/** Two thirty-one-day months and a thirty — the longest a quarter runs. Sized high, as the month is. */
+private const val LONGEST_QUARTER_DAYS = 92
 
 /**
  * The coarsest of [natives] that is no longer than [ceilingSeconds] and divides [seconds] exactly.

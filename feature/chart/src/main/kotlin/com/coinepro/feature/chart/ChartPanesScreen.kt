@@ -560,6 +560,7 @@ private fun ChartPane(
                         overlays = state.overlays,
                         levels = state.levels,
                         markers = state.markers,
+                        timeBands = state.timeBands,
                         panes = state.panes,
                         // Named here too. This layout offers no per-row controls, but a legend that
                         // names every study but the ones drawing the levels is a legend that lies

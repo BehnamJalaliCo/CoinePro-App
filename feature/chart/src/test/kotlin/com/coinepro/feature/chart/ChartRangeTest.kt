@@ -21,7 +21,9 @@ class ChartRangeTest {
     @Test
     fun `every range with a span fits on one page and still has candles to read`() {
         for (range in ChartRange.OFFERED) {
-            if (range == ChartRange.ALL) continue
+            // The two open-ended ranges: the whole history, and the year so far, whose span is
+            // checked on its own below because it depends on the day.
+            if (range == ChartRange.ALL || range == ChartRange.YTD) continue
             val bars = range.barsAcross
             assertTrue(
                 "${range.name} draws $bars bars, below the readable floor",
@@ -51,13 +53,28 @@ class ChartRangeTest {
     fun `a shorter range is never drawn on a longer bar than a longer range`() {
         // The ordering that makes the row make sense: «۱ روز» must not end up on a coarser length
         // than «۱ ماه». It is the mistake a hand-written table invites and nothing else would catch.
-        val spans = ChartRange.OFFERED.filter { it != ChartRange.ALL }.sortedBy { it.seconds }
+        val spans = ChartRange.OFFERED.filter { it.seconds > 0 }.sortedBy { it.seconds }
         for (index in 1 until spans.size) {
             assertTrue(
                 "${spans[index - 1].name} is drawn coarser than ${spans[index].name}",
                 spans[index - 1].timeframe.seconds <= spans[index].timeframe.seconds,
             )
         }
+    }
+
+    @Test
+    fun `the year so far always has a readable number of bars`() {
+        // Every day of a year, a leap year: the length chosen for the day must draw at least the
+        // readable floor and fit one page.
+        val start = java.time.LocalDate.of(2028, 1, 1).toEpochDay() * 86_400L
+        for (day in 0 until 366) {
+            val now = start + day * 86_400L + 43_200L
+            val frame = (ChartRange.YTD.intervalAt(now) as com.coinepro.core.marketdata.ChartInterval.Preset).timeframe
+            val bars = ((day + 0.5) * 86_400 / frame.seconds).toInt()
+            assertTrue("day $day on ${frame.wire} draws $bars bars", bars <= ChartRange.MAX_BARS)
+            if (day >= 10) assertTrue("day $day on ${frame.wire} draws $bars bars", bars >= ChartRange.MIN_BARS)
+        }
+        assertEquals(ChartRange.M1.interval, ChartRange.M1.intervalAt(start))
     }
 
     @Test

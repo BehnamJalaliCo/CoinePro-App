@@ -3030,6 +3030,13 @@ fun CoineProChart(
                 // label and leaves the candles standing is the defect, not the feature. The axes,
                 // the grid and the studies stay, which is the point of hiding it: reading two
                 // oscillators against each other without the bars in the way.
+                // Sessions and period rules (5.12.0) go first of all, under the volume and the
+                // candles: they say *when*, and everything drawn after them says *what*.
+                if (decoration.timeBands.isNotEmpty()) {
+                    clipRect(0f, 0f, plotWidth, plotHeight) {
+                        drawTimeBands(view, decoration.timeBands, plotWidth, plotHeight, measurer, palette.text)
+                    }
+                }
                 val volumeBand = priceShown && decoration.showVolume && series.hasVolume &&
                     drawnType != ChartType.FOOTPRINT && drawnType != ChartType.TPO
                 if (volumeBand) {

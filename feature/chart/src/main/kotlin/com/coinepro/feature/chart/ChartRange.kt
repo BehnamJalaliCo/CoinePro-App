@@ -3,6 +3,7 @@ package com.coinepro.feature.chart
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.ChartInterval
 import com.coinepro.core.marketdata.Timeframe
+import java.time.LocalDate
 
 /**
  * How much history the reader wants in front of them, in the words they use for it.
@@ -51,6 +52,12 @@ enum class ChartRange(
     ALL(R.string.range_all, 0L, Timeframe.MN1),
     Y5(R.string.range_5y, 5 * YEAR_SECONDS, Timeframe.W1),
     Y1(R.string.range_1y, YEAR_SECONDS, Timeframe.D1),
+
+    /**
+     * Since the first of January (5.12.0, from Pro-Chart's terminal). Its span grows through the
+     * year, so it has no fixed [seconds] and its bar length is chosen on the day — see [intervalAt].
+     */
+    YTD(R.string.range_ytd, 0L, Timeframe.D1),
     M6(R.string.range_6m, 182 * DAY_SECONDS, Timeframe.D1),
     M3(R.string.range_3m, 91 * DAY_SECONDS, Timeframe.D1),
     M1(R.string.range_1m, 31 * DAY_SECONDS, Timeframe.H4),
@@ -60,6 +67,17 @@ enum class ChartRange(
 
     /** The interval a tap on this pill puts the chart on. */
     val interval: ChartInterval get() = ChartInterval.Preset(timeframe)
+
+    /**
+     * The interval a tap puts the chart on at [nowSeconds]. The same as [interval] for every range
+     * but [YTD], whose span is two months in March and eleven in December: four-hour bars while
+     * the year is young enough for daily ones to draw fewer than [MIN_BARS], daily after.
+     */
+    fun intervalAt(nowSeconds: Long): ChartInterval {
+        if (this != YTD) return interval
+        val dayOfYear = LocalDate.ofEpochDay(Math.floorDiv(nowSeconds, DAY_SECONDS)).dayOfYear
+        return ChartInterval.Preset(if (dayOfYear <= MIN_BARS) Timeframe.H4 else Timeframe.D1)
+    }
 
     /**
      * How many bars of [timeframe] this range spans.
@@ -80,7 +98,7 @@ enum class ChartRange(
          * text itself implies. Reversing it would put «۱ روز» under the thumb and «همه» off the
          * far edge, which is backwards: the short ranges are the ones somebody taps repeatedly.
          */
-        val OFFERED: List<ChartRange> = listOf(ALL, Y5, Y1, M6, M3, M1, D5, D1)
+        val OFFERED: List<ChartRange> = listOf(ALL, Y5, Y1, YTD, M6, M3, M1, D5, D1)
 
         /**
          * The most bars a range may ask a single page for before it is lying about its length.

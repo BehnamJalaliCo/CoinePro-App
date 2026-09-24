@@ -70,6 +70,13 @@ enum class Timeframe(val wire: String, val seconds: Long, val label: String) {
      * calendar. Multiplying this constant by a bar count drifts by up to three days a year.
      */
     MN1("MN1", 2_592_000, "۱ ماه"),
+
+    /**
+     * Three months — a calendar quarter — and nominal in the same way [MN1] is (ninety days here).
+     * Pro-Chart's terminal offered it (5.12.0). No venue serves one; it is folded from daily bars,
+     * the same way the month is, because a day belongs to exactly one quarter.
+     */
+    MN3("MN3", 7_776_000, "۳ ماه"),
     ;
 
     /**
@@ -93,6 +100,9 @@ enum class Timeframe(val wire: String, val seconds: Long, val label: String) {
             .atStartOfDay(zone)
             .toEpochSecond()
         MN1 -> dateIn(epochSeconds, zone).withDayOfMonth(1).atStartOfDay(zone).toEpochSecond()
+        MN3 -> dateIn(epochSeconds, zone).let { date ->
+            date.withDayOfMonth(1).withMonth((date.monthValue - 1) / 3 * 3 + 1).atStartOfDay(zone).toEpochSecond()
+        }
         else -> Math.floorDiv(epochSeconds, seconds) * seconds
     }
 

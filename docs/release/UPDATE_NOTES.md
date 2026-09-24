@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.12.0
+
+**fa**
+
+> نمودار حالا سشن‌های سیدنی، توکیو، لندن و نیویورک را پشت کندل‌ها سایه می‌زند، شروع هر روز یا ماه را با خط جدا می‌کند و سقف، کف و بسته شدن دیروز را نشان می‌دهد.
+> تایم‌فریم سه‌ماهه، بازه‌ی «از ابتدای سال»، هفده منطقه‌ی زمانی و سه چیدمان تازه برای چند نمودار هم اضافه شد.
+
+**en**
+
+> The chart now shades the Sydney, Tokyo, London and New York sessions behind the candles, rules off each new day or month, and shows yesterday's high, low and close.
+> Also new: three-month bars, a year-to-date range, seventeen time zones and three more multi-chart layouts.
+
 ## 5.11.0
 
 **fa**

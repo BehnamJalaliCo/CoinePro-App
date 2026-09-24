@@ -13,7 +13,7 @@ class ChartLayoutPresetTest {
         val ids = ChartLayoutPreset.entries.map { it.id }
         assertEquals(ids.size, ids.toSet().size)
         // What is on readers' tablets. Renaming an entry is fine; changing an id is a migration.
-        assertEquals(listOf("1", "2h", "2v", "3", "4", "6", "8"), ids)
+        assertEquals(listOf("1", "2h", "2v", "3", "3v", "4", "4h", "4v", "6", "8"), ids)
         ChartLayoutPreset.entries.forEach { assertEquals(it, ChartLayoutPreset.byId(it.id)) }
     }
 
@@ -36,7 +36,7 @@ class ChartLayoutPresetTest {
     @Test
     fun `a phone offers only the pair and a tablet offers everything past one`() {
         assertEquals(listOf(ChartLayoutPreset.TWO_ACROSS, ChartLayoutPreset.TWO_DOWN), ChartLayoutPreset.offered(2))
-        assertEquals(6, ChartLayoutPreset.offered(8).size)
+        assertEquals(9, ChartLayoutPreset.offered(8).size)
         assertTrue(ChartLayoutPreset.ONE !in ChartLayoutPreset.offered(8))
     }
 
@@ -44,6 +44,7 @@ class ChartLayoutPresetTest {
     fun `a bare count means the first layout with that count`() {
         assertEquals(ChartLayoutPreset.TWO_ACROSS, ChartLayoutPreset.forCount(2))
         assertEquals(ChartLayoutPreset.FOUR, ChartLayoutPreset.forCount(4))
+        assertEquals(ChartLayoutPreset.THREE, ChartLayoutPreset.forCount(3))
         // Five panes — a count the old row allowed — reads as the largest named layout under it.
         assertEquals(ChartLayoutPreset.FOUR, ChartLayoutPreset.forCount(5))
     }
