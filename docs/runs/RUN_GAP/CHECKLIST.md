@@ -27,10 +27,10 @@ States: ✅ done · ❌ not done yet · ⏳ owed to the server or the owner.
 | Three-month bars (MN3) | ✅ 5.12.0 | `Timeframe.MN3`, folded from daily bars on the calendar quarter (`bucketStart`, `CALENDAR_TIMEFRAMES`) | — **a picker entry**; `TimeframeTest` walks every entry |
 | YTD range | ✅ 5.12.0 | `ChartRange.YTD`: four-hour bars in the first two months of the year, daily after, so it never draws fewer than the readable floor (`ChartRangeTest` walks all 366 days) | — **a pill in the range row**; the test is the evidence |
 | Layouts 3 stacked, 4 across, 4 stacked | ✅ 5.12.0 | `ChartLayoutPreset.THREE_DOWN`, `FOUR_ACROSS`, `FOUR_DOWN` (`3v`, `4h`, `4v`, the terminal's ids) | — **a tablet layout menu**; `ChartLayoutPresetTest` holds the ids and grids |
-| Harmonic pattern detection (Gartley, Bat, Butterfly, Crab) | ❌ | — | — **not built yet** |
-| RSI divergence detection (regular and hidden) | ❌ | — | — **not built yet** |
-| Price gap detection | ❌ | — | — **not built yet** |
-| Technical rating (15 averages, 13 oscillators) | ❌ | — | — **not built yet** |
+| Harmonic pattern detection (Gartley, Bat, Butterfly, Crab) | ✅ 5.13.0 | The «الگوهای هارمونیک خودکار» study, a port of `harmonic.js`: the same swings, windows and first-match rule (`Detections.harmonics`); `DetectionsTest` builds a textbook Gartley and finds it. Marked as repainting: a later, more extreme swing can replace D | — **no pattern on the frame's walk**; `DetectionsTest` is the evidence, and `gap-detections-rating-fa.png` shows the study switched on beside the others |
+| RSI divergence detection (regular and hidden) | ✅ 5.13.0 | The «واگرایی RSI خودکار» study, a port of `divergence.js`: pivots five bars either side, the two points joined on the price, hidden ones dashed | `docs/runs/RUN_GAP/frames/gap-detections-rating-fa.png` |
+| Price gap detection | ✅ 5.13.0 | The «گپ‌های قیمت» study, a port of `gaps.js` at its 0.1% threshold (`Detections.gaps`, `DetectionsTest`) | — **the frame's walk has no gap**; `DetectionsTest` plants one and finds exactly it |
+| Technical rating (15 averages, 11 oscillators) | ✅ 5.13.0 | The «امتیاز تکنیکال» pane, a port of `techRating.js` computed for every bar: overall, averages and oscillators lines, the verdict in the title (`TechnicalRating`, `DetectionsTest`) | `docs/runs/RUN_GAP/frames/gap-detections-rating-fa.png` |
 | Data window | ❌ | — | — **not built yet** |
 | Keyboard shortcuts past the fifteen, and the «?» list | ❌ | — | — **not built yet** |
 | Screenshot to clipboard and file | ❌ | — | — **not built yet** |

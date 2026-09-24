@@ -189,6 +189,13 @@ class RunGProofTest {
     }
 
     @Test
+    fun theDetectionsAndTheRatingDraw() {
+        proof("gap-detections-rating-fa", dark = true, persian = true) {
+            Chart(studies = listOf("divergence", "harmonics", "gaps", "techrating"))
+        }
+    }
+
+    @Test
     fun theFourthPackDraws() {
         proof("gap-fourth-pack-fa", dark = true, persian = true) {
             Chart(studies = listOf("alma", "chandelier", "stc", "elderray"))

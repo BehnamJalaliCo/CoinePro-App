@@ -1011,7 +1011,13 @@ data class ChartUiState(
         get() {
             if (indicatorsHidden || activeIndicators.isEmpty()) return emptyList()
             val spoken = HashSet<String>(shownOverlayOwners.size + paneOwnersShown.size)
-            spoken += shownOverlayOwners
+            // Only the overlay lines the legend can print. A study whose lines are all unnamed —
+            // the divergence and harmonic legs of 5.13.0, drawn as polylines — has no row among
+            // the overlays and needs its own, or its × does not exist.
+            val shown = overlays
+            shownOverlayOwners.forEachIndexed { index, owner ->
+                if (!shown.getOrNull(index)?.label.isNullOrBlank()) spoken += owner
+            }
             spoken += paneOwnersShown
             spoken += chained
             return ChartCatalog.INDICATORS.mapNotNull { option ->

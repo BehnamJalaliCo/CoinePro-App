@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.13.0
+
+**fa**
+
+> نمودار حالا خودش واگرایی RSI، الگوهای هارمونیک گارتلی، خفاش، پروانه و خرچنگ، و گپ‌های قیمت را پیدا و علامت‌گذاری می‌کند.
+> امتیاز تکنیکال هم اضافه شد: رأی پانزده میانگین و یازده اسیلاتور در یک عدد، با حکم خرید یا فروش.
+
+**en**
+
+> The chart now finds and marks RSI divergences, Gartley, Bat, Butterfly and Crab harmonic patterns, and price gaps by itself.
+> Also new: a technical rating, the vote of fifteen averages and eleven oscillators in one number, with a buy or sell verdict.
+
 ## 5.12.0
 
 **fa**

@@ -120,7 +120,11 @@ class ChartCatalogTest {
                 )
             },
         )
-        for (option in ChartCatalog.INDICATORS.filter { it.pane == IndicatorPane.STRUCTURE }) {
+        // The two pattern detections are the exception: a sine wave holds no harmonic pattern and
+        // no divergence, and finding none is the right answer. `DetectionsTest` builds the shapes
+        // they look for and proves they are found.
+        val detections = setOf("harmonics", "divergence")
+        for (option in ChartCatalog.INDICATORS.filter { it.pane == IndicatorPane.STRUCTURE && it.id !in detections }) {
             assertTrue("${option.id} draws nothing", !ChartCatalog.structureFor(option, series).isEmpty)
         }
     }
@@ -270,10 +274,10 @@ class ChartCatalogTest {
 
     @Test
     fun `the catalogue is the size the help and the picker were written against`() {
-        assertEquals(110, ChartCatalog.INDICATORS.size)
+        assertEquals(114, ChartCatalog.INDICATORS.size)
         assertEquals(38, ChartCatalog.INDICATORS.count { it.pane == IndicatorPane.PRICE })
-        assertEquals(60, ChartCatalog.INDICATORS.count { it.pane == IndicatorPane.SEPARATE })
-        assertEquals(12, ChartCatalog.INDICATORS.count { it.pane == IndicatorPane.STRUCTURE })
+        assertEquals(61, ChartCatalog.INDICATORS.count { it.pane == IndicatorPane.SEPARATE })
+        assertEquals(15, ChartCatalog.INDICATORS.count { it.pane == IndicatorPane.STRUCTURE })
         assertEquals(27, thirdPack.size)
         assertEquals(24, fourthPack.size)
         for (id in thirdPack + fourthPack) {

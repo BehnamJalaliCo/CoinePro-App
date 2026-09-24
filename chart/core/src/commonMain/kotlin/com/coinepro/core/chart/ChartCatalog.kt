@@ -300,7 +300,7 @@ object ChartCatalog {
             "rsi", "macd", "stochastic", "cci", "williams", "mom", "roc", "uo", "fisher", "crsi",
             "smiErgodic", "smi", "bop", "stochrsi", "tsi", "ppo", "cmo", "rvi", "woodiescci",
             "correlation", "choppiness",
-            "mtfrsi", "stc", "elderray", "pmo",
+            "mtfrsi", "stc", "elderray", "pmo", "techrating",
         )
         put(
             IndicatorCategory.VOLATILITY,
@@ -317,7 +317,7 @@ object ChartCatalog {
         put(
             IndicatorCategory.STRUCTURE,
             "pivots", "swings", "zigzag", "autofib", "sr", "supplydemand", "chopzone", "pivothl",
-            "sessions", "separators", "prevlevels",
+            "sessions", "separators", "prevlevels", "harmonics", "divergence", "gaps",
         )
     }
 
@@ -341,10 +341,10 @@ object ChartCatalog {
     )
 
     /**
-     * The hundred and ten indicators the engine computes, grouped the way a trader thinks about
-     * them.
+     * The hundred and fourteen indicators the engine computes, grouped the way a trader thinks
+     * about them.
      *
-     * Thirty-eight draw on the price, sixty in a pane of their own and twelve as structure. That
+     * Thirty-eight draw on the price, sixty-one in a pane of their own and fifteen as structure. That
      * is far past the point where a list can be scanned, which is why the picker grew a search
      * field and a pane filter before this list grew past twenty. The order is the useful one and
      * not an alphabet: within each pane, the ones most readers reach for first.
@@ -497,6 +497,11 @@ object ChartCatalog {
         IndicatorOption("sessions", "سشن‌های معاملاتی", "sessions", IndicatorPane.STRUCTURE, 0xFF3B82F6, ChartIcon("tv_tool_daterange")),
         IndicatorOption("separators", "جداکننده‌ی دوره‌ها", "separators", IndicatorPane.STRUCTURE, 0xFF848E9C, ChartIcon("tv_tool_vline")),
         IndicatorOption("prevlevels", "سقف، کف و بسته شدن دوره‌ی قبل", "prevLevels", IndicatorPane.STRUCTURE, 0xFFE0A85C, ChartIcon("tv_tool_hline")),
+        // ── 5.13.0: the terminal's automatic detections and its technical rating ─────────────
+        IndicatorOption("harmonics", "الگوهای هارمونیک خودکار", "harmonics", IndicatorPane.STRUCTURE, 0xFF22D3EE, ChartIcon("tv_tool_xabcd")),
+        IndicatorOption("divergence", "واگرایی RSI خودکار", "divergence", IndicatorPane.STRUCTURE, 0xFFE879F9, ChartIcon("tv_tool_trend")),
+        IndicatorOption("gaps", "گپ‌های قیمت", "gaps", IndicatorPane.STRUCTURE, 0xFFF59E0B, ChartIcon("tv_tool_pricerange")),
+        IndicatorOption("techrating", "امتیاز تکنیکال", "techRating", IndicatorPane.SEPARATE, 0xFF22C55E, ChartIcon("tv_chart_columns")),
     )
 
     /**
@@ -535,6 +540,66 @@ object ChartCatalog {
                     ),
                 )
             } ?: StructureOverlay()
+            // ── 5.13.0: detections ──────────────────────────────────────────────────────────
+            "harmonics" -> Detections.harmonics(series).let { matches ->
+                StructureOverlay(
+                    // The X-A-B-C-D legs as one polyline per pattern, so the shape is on the chart.
+                    lines = matches.map { match ->
+                        ChartLine(polyline(series.size, match.points.map { it.index to it.price }), if (match.bullish) 0xFF22D3EE else 0xFFF472B6, widthDp = 1.2f)
+                    },
+                    markers = matches.map { match ->
+                        val d = match.points.last()
+                        ChartMarker(
+                            time = series.time[d.index],
+                            price = d.price,
+                            above = !match.bullish,
+                            colour = if (match.bullish) 0xFF00B15C else 0xFFF6465D,
+                            glyph = if (match.bullish) MarkerGlyph.ARROW_UP else MarkerGlyph.ARROW_DOWN,
+                            text = match.pattern.short,
+                            label = match.pattern.short,
+                        )
+                    },
+                )
+            }
+            "divergence" -> Detections.rsiDivergences(series).let { found ->
+                StructureOverlay(
+                    // The two pivots joined on the price, where the divergence is read.
+                    lines = found.map { div ->
+                        val from = if (div.bullish) series.low[div.from] else series.high[div.from]
+                        val to = if (div.bullish) series.low[div.to] else series.high[div.to]
+                        ChartLine(
+                            polyline(series.size, listOf(div.from to from, div.to to to)),
+                            if (div.bullish) 0xFF00B15C else 0xFFF6465D,
+                            widthDp = 1.2f,
+                            dashed = div.hidden,
+                        )
+                    },
+                    markers = found.map { div ->
+                        ChartMarker(
+                            time = series.time[div.to],
+                            price = if (div.bullish) series.low[div.to] else series.high[div.to],
+                            above = !div.bullish,
+                            colour = if (div.bullish) 0xFF00B15C else 0xFFF6465D,
+                            glyph = if (div.bullish) MarkerGlyph.ARROW_UP else MarkerGlyph.ARROW_DOWN,
+                            text = if (div.hidden) "Hidden Div" else "Div",
+                            label = if (div.hidden) "H.Div" else "Div",
+                        )
+                    },
+                )
+            }
+            "gaps" -> StructureOverlay(
+                markers = Detections.gaps(series).map { gap ->
+                    ChartMarker(
+                        time = series.time[gap.index],
+                        price = if (gap.up) series.low[gap.index] else series.high[gap.index],
+                        above = !gap.up,
+                        colour = 0xFFF59E0B,
+                        glyph = MarkerGlyph.CIRCLE,
+                        text = "Gap",
+                        label = "Gap",
+                    )
+                },
+            )
             // Five bars either side, the terminal's default. A pivot is only known five bars after
             // it, so the marks are late and never move — the repaint claim says so.
             "pivothl" -> StructureOverlay(
@@ -936,6 +1001,19 @@ object ChartCatalog {
                 ChartLine(IndicatorsExtD.volumeOscillator(volume, pi("short"), pi("long")).asLine(), colour),
                 levels = listOf(band(0.0, faint = true)),
             )
+            "techrating" -> TechnicalRating.of(series).let { rating ->
+                // The verdict in the title, so the pane says in a word what the line says in a
+                // number: the last bar's rating, the way the terminal's gauge read it.
+                val last = rating.overall.lastOrNull { it.isFinite() }
+                val verdict = last?.let { TechnicalRating.verdictOf(it).short } ?: ""
+                pane(
+                    "Technical Rating $verdict".trim(),
+                    ChartLine(rating.overall.asLine(), colour, widthDp = 1.4f, label = "Rating"),
+                    ChartLine(rating.averages.asLine(), 0xFF60A5FA, widthDp = 0.9f, label = "MA"),
+                    ChartLine(rating.oscillators.asLine(), 0xFFF59E0B, widthDp = 0.9f, label = "Osc"),
+                    levels = listOf(band(0.5), band(0.1, faint = true), band(-0.1, faint = true), band(-0.5)),
+                )
+            }
             "correlation" -> {
                 // The one indicator here that is not a function of this symbol alone.
                 //
@@ -1010,6 +1088,22 @@ object ChartCatalog {
      * bars, and honest: the value really is the same on every bar.
      */
     private fun flat(size: Int, price: Double): Line = Line.constant(size, price)
+
+    /**
+     * Points joined by straight segments, as a value per bar: the shape of a harmonic pattern or a
+     * divergence drawn through the one line type the canvas has. Bars outside the first and last
+     * point are empty.
+     */
+    private fun polyline(size: Int, points: List<Pair<Int, Double>>): Line {
+        val values = arrayOfNulls<Double>(size)
+        for (k in 1 until points.size) {
+            val (i0, p0) = points[k - 1]
+            val (i1, p1) = points[k]
+            if (i1 <= i0) continue
+            for (i in i0..i1) values[i] = p0 + (p1 - p0) * (i - i0) / (i1 - i0)
+        }
+        return Line.of(size) { values[it] }
+    }
 
     /** Bars either side a pivot high or low must beat — the terminal's default for `pivotHL`. */
     private const val PIVOT_SPAN = 5
