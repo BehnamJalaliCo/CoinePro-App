@@ -805,4 +805,16 @@
     <string name="chart_toolbar_replay">بازپخش</string>
     <string name="chart_toolbar_snapshot">عکس از چارت</string>
     <string name="chart_toolbar_trade">معامله</string>
+    <string name="chart_settings_crosshair_magnet">کراس‌هیر روی قیمت بسته‌شدن (آهنربا)</string>
+    <string name="chart_time_menu_zone">منطقه‌ی زمانی…</string>
+    <string name="chart_time_menu_latest">رفتن به آخرین کندل</string>
+    <string name="chart_time_menu_goto">رفتن به تاریخ…</string>
+    <string name="chart_time_menu_sessions">سشن‌ها و جداکننده‌ها…</string>
+    <string name="drawing_visible_on">نمایش روی تایم‌فریم‌ها</string>
+    <string name="drawing_visible_seconds">ثانیه</string>
+    <string name="drawing_visible_minutes">دقیقه</string>
+    <string name="drawing_visible_hours">ساعت</string>
+    <string name="drawing_visible_days">روز</string>
+    <string name="drawing_visible_weeks">هفته</string>
+    <string name="drawing_visible_months">ماه</string>
 </resources>

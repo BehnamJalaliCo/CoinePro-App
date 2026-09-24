@@ -543,6 +543,11 @@ object DrawingActions {
         drawings = state.drawings.map { if (it.id == id) it.copy(locked = locked) else it },
     )
 
+    /** Which interval families [id] is hidden on — TradingView's «Visibility on intervals». */
+    fun setHiddenOn(state: DrawingState, id: Long, families: Set<IntervalFamily>): DrawingState = state.copy(
+        drawings = state.drawings.map { if (it.id == id) it.copy(hiddenOn = families) else it },
+    )
+
     fun clear(state: DrawingState): DrawingState = state.copy(
         drawings = emptyList(),
         pending = emptyList(),

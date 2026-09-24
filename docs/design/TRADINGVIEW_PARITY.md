@@ -139,6 +139,11 @@ colour (`ohlcAnnotated`), the change row under it, every figure grouped, and the
 | Legend | Hide / Settings / Remove on hover | on hover of the plate | `ChartLegendOverlay` |
 | Magnet | Ctrl / ⌘ held = momentary | same | `ChartController.holdMagnet` |
 | Charts per layout | up to 16 | 16 on a desktop window, 8 on a tablet | `CoineProWindowClass.DESKTOP_MAX_PANES` |
+| Baseline fill | strongest at the base, fading outward | same, both halves | `fillHalf` |
+| Crosshair mode | Normal / Magnet | same, Appearance tab | `ChartAppearance.crosshairMagnet` |
+| Time-axis menu | right click on the time scale | same four items | `ChartScreen.timeAxisMenu` |
+| Intervals | typed `90m`, `4h`, 6M, 12M | same | `customTypedOf`, `Timeframe.MN6 / MN12` |
+| Drawing Visibility tab | per interval family | same six families | `Drawing.hiddenOn` |
 
 ## The references, checked in
 

@@ -44,6 +44,8 @@ data class ChartAppearance(
     val gridHorizontal: Boolean = true,
     /** The mark in the corner of the pane. */
     val watermark: Boolean = true,
+    /** TradingView's crosshair «Magnet»: the horizontal line on the bar's close (5.16.1). */
+    val crosshairMagnet: Boolean = false,
     /** Air over the highest price, percent of the plot's height. TradingView's 10. */
     val topMarginPercent: Int = DEFAULT_TOP_MARGIN,
     /** Air under the lowest, percent. TradingView's 8. */
@@ -82,6 +84,7 @@ data class ChartAppearance(
         put("gridv", gridVertical, base.gridVertical)
         put("gridh", gridHorizontal, base.gridHorizontal)
         put("watermark", watermark, base.watermark)
+        put("crossmagnet", crosshairMagnet, base.crosshairMagnet)
         put("top", topMarginPercent, base.topMarginPercent)
         put("bottom", bottomMarginPercent, base.bottomMarginPercent)
         put("quote", quoteChip, base.quoteChip)
@@ -123,6 +126,7 @@ data class ChartAppearance(
                     "gridv" -> flag?.let { a.copy(gridVertical = it) }
                     "gridh" -> flag?.let { a.copy(gridHorizontal = it) }
                     "watermark" -> flag?.let { a.copy(watermark = it) }
+                    "crossmagnet" -> flag?.let { a.copy(crosshairMagnet = it) }
                     "top" -> number?.let { a.copy(topMarginPercent = it.coerceIn(0, MAX_MARGIN)) }
                     "bottom" -> number?.let { a.copy(bottomMarginPercent = it.coerceIn(0, MAX_MARGIN)) }
                     "quote" -> flag?.let { a.copy(quoteChip = it) }

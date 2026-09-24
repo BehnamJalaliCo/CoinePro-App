@@ -65,3 +65,30 @@ class TradingViewSettingsTest {
         assertEquals("EMA 10 +5", moved.first().label)
     }
 }
+
+/** TradingView's «Visibility on intervals» families (5.16.1). */
+class IntervalFamilyTest {
+    @Test
+    fun `a bar length belongs to one family`() {
+        assertEquals(IntervalFamily.SECONDS, IntervalFamily.ofSeconds(30))
+        assertEquals(IntervalFamily.MINUTES, IntervalFamily.ofSeconds(900))
+        assertEquals(IntervalFamily.HOURS, IntervalFamily.ofSeconds(14_400))
+        assertEquals(IntervalFamily.DAYS, IntervalFamily.ofSeconds(86_400))
+        assertEquals(IntervalFamily.WEEKS, IntervalFamily.ofSeconds(604_800))
+        assertEquals(IntervalFamily.MONTHS, IntervalFamily.ofSeconds(2_592_000))
+    }
+
+    @Test
+    fun `the stored set survives and a stranger's id is skipped`() {
+        val set = setOf(IntervalFamily.MINUTES, IntervalFamily.HOURS)
+        assertEquals("m,h", IntervalFamily.encodeSet(set))
+        assertEquals(set, IntervalFamily.parseSet("m,h,zz"))
+        assertEquals(emptySet<IntervalFamily>(), IntervalFamily.parseSet(null))
+    }
+
+    @Test
+    fun `the crosshair magnet is remembered`() {
+        val magnet = ChartAppearance(crosshairMagnet = true)
+        assertEquals(magnet, ChartAppearance.decode(magnet.encode()))
+    }
+}

@@ -21,6 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -214,6 +215,8 @@ private fun EditorForm(draft: AlertDraft, refusal: AlertRefusal?, controller: Al
             compact = true,
         )
 
+        ExpiryRow(draft = draft, onSelect = controller::setExpiresAt)
+
         UntilSeenRow(
             draft = draft,
             onToggle = controller::setUntilAcknowledged,
@@ -392,6 +395,16 @@ private fun ConditionBlock(
                         },
                     ),
                     onValueChange = { controller.setFirst(index, it) },
+                )
+                // «within N bars» — TradingView's move is measured over a window, not one bar.
+                FieldLabel(stringResource(R.string.alerts_move_bars))
+                CoineProChipRow(
+                    options = (MOVE_BAR_CHOICES + condition.moveBars).distinct().sorted().map {
+                        CoineProChip(id = it.toString(), label = it.toString())
+                    },
+                    selectedId = condition.moveBars.toString(),
+                    onSelect = { id -> id?.toIntOrNull()?.let { controller.setMoveBars(index, it) } },
+                    compact = true,
                 )
             }
 
@@ -954,3 +967,39 @@ private val PICKER_HEIGHT = 380.dp
 
 /** The same reason, for the form: it scrolls inside the sheet rather than growing past it. */
 private val FORM_HEIGHT = 520.dp
+
+/** How many bars the move chips offer. The reader's own value is added when it is not one. */
+private val MOVE_BAR_CHOICES = listOf(1, 3, 5, 10, 20, 50)
+
+/**
+ * TradingView's «Expiration» (5.16.1): never, or a day, a week, a month, two months from now. An
+ * alert the reader set to lapse and forgot about is the one that fires into the wrong market.
+ */
+@Composable
+private fun ExpiryRow(draft: AlertDraft, onSelect: (Long?) -> Unit) {
+    FieldLabel(stringResource(R.string.alerts_expiry))
+    val now = remember { System.currentTimeMillis() }
+    val choices = listOf(
+        EXPIRY_NEVER to R.string.alerts_expiry_never,
+        "1" to R.string.alerts_expiry_day,
+        "7" to R.string.alerts_expiry_week,
+        "30" to R.string.alerts_expiry_month,
+        "60" to R.string.alerts_expiry_two_months,
+    )
+    // The chip the stored date is closest to, so reopening an alert shows what was chosen.
+    val selected = draft.expiresAt?.let { at ->
+        val days = ((at - now) / DAY_MILLIS).coerceAtLeast(0)
+        choices.drop(1).minByOrNull { kotlin.math.abs(it.first.toLong() - days) }?.first
+    } ?: EXPIRY_NEVER
+    CoineProChipRow(
+        options = choices.map { (id, label) -> CoineProChip(id = id, label = stringResource(label)) },
+        selectedId = selected,
+        onSelect = { id ->
+            onSelect(id?.takeIf { it != EXPIRY_NEVER }?.toLongOrNull()?.let { now + it * DAY_MILLIS })
+        },
+        compact = true,
+    )
+}
+
+private const val EXPIRY_NEVER = "never"
+private const val DAY_MILLIS = 86_400_000L

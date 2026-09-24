@@ -313,3 +313,23 @@ private class FakeDrawingPreferences : DataStore<Preferences> {
         return next
     }
 }
+
+class ChartDrawingHiddenOnTest {
+    @Test
+    fun `the intervals a mark is hidden on survive the codec, and an older row reads as shown everywhere`() {
+        val drawing = StoredDrawing(
+            id = 7,
+            toolId = "trend",
+            points = listOf(1L to 2.0, 3L to 4.0),
+            colour = 4292388936,
+            widthDp = 1.6f,
+            text = null,
+            direction = "UP",
+            hiddenOn = "m,h",
+        )
+        val row = ChartDrawingCodec.encode(drawing)!!
+        assertEquals("m,h", ChartDrawingCodec.decode(row)!!.hiddenOn)
+        val older = row.substringBeforeLast(ChartDrawingCodec.RECORD)
+        assertEquals("", ChartDrawingCodec.decode(older)!!.hiddenOn)
+    }
+}

@@ -115,4 +115,11 @@
     <string name="webhooks_save">ذخیره‌ی وب‌هوک</string>
     <string name="webhooks_rules">نشانی همین حالا بررسی می‌شود، نه هنگام اجرای هشدار؛ تا اگر ایراد دارد الان بدانید.</string>
     <string name="alerts_audit_webhooks">ارسال به وب‌هوک‌ها (%1$s مورد)</string>
+    <string name="alerts_move_bars">در چند کندل</string>
+    <string name="alerts_expiry">انقضا</string>
+    <string name="alerts_expiry_never">هرگز</string>
+    <string name="alerts_expiry_day">۱ روز</string>
+    <string name="alerts_expiry_week">۱ هفته</string>
+    <string name="alerts_expiry_month">۱ ماه</string>
+    <string name="alerts_expiry_two_months">۲ ماه</string>
 </resources>

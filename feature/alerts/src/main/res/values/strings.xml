@@ -115,4 +115,11 @@
     <string name="webhooks_save">Save webhook</string>
     <string name="webhooks_rules">The address is checked now rather than when an alert fires, so you find out about a problem here.</string>
     <string name="alerts_audit_webhooks">Webhook deliveries (%1$s)</string>
+    <string name="alerts_move_bars">Within bars</string>
+    <string name="alerts_expiry">Expiration</string>
+    <string name="alerts_expiry_never">Never</string>
+    <string name="alerts_expiry_day">1 day</string>
+    <string name="alerts_expiry_week">1 week</string>
+    <string name="alerts_expiry_month">1 month</string>
+    <string name="alerts_expiry_two_months">2 months</string>
 </resources>

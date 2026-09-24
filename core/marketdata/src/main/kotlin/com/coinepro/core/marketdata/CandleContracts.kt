@@ -77,6 +77,14 @@ enum class Timeframe(val wire: String, val seconds: Long, val label: String) {
      * the same way the month is, because a day belongs to exactly one quarter.
      */
     MN3("MN3", 7_776_000, "۳ ماه"),
+
+    /**
+     * Half a year and a year — TradingView's `6M` and `12M` presets (5.16.1). Nominal like [MN1]
+     * (180 and 360 days) and folded from daily bars on calendar boundaries: January and July for
+     * the half, January for the year.
+     */
+    MN6("MN6", 15_552_000, "۶ ماه"),
+    MN12("MN12", 31_104_000, "۱۲ ماه"),
     ;
 
     /**
@@ -103,6 +111,10 @@ enum class Timeframe(val wire: String, val seconds: Long, val label: String) {
         MN3 -> dateIn(epochSeconds, zone).let { date ->
             date.withDayOfMonth(1).withMonth((date.monthValue - 1) / 3 * 3 + 1).atStartOfDay(zone).toEpochSecond()
         }
+        MN6 -> dateIn(epochSeconds, zone).let { date ->
+            date.withDayOfMonth(1).withMonth((date.monthValue - 1) / 6 * 6 + 1).atStartOfDay(zone).toEpochSecond()
+        }
+        MN12 -> dateIn(epochSeconds, zone).withDayOfYear(1).atStartOfDay(zone).toEpochSecond()
         else -> Math.floorDiv(epochSeconds, seconds) * seconds
     }
 
@@ -191,6 +203,30 @@ data class CustomInterval(val minutes: Int) {
  * non-numeric input answers `null` rather than throwing: this parses text a person is still typing,
  * where "not yet a valid interval" is the normal state and not an error worth an exception.
  */
+/**
+ * What a reader *types* into the custom field (5.16.1) — TradingView's custom interval: a bare minute
+ * count as before, or a number with its unit, `15m`, `4h`, `2.5h`, «۴ ساعت». Hours are converted to
+ * minutes, so `2.5h` is 150; anything that does not land on a whole minute from one to 1440 is null.
+ *
+ * Separate from [customOf], which reads a *stored* wire and stays digits-only.
+ */
+fun customTypedOf(text: String?): CustomInterval? {
+    val clean = text?.trim()?.foldDigitsToLatin()?.lowercase()?.replace('٫', '.')?.replace(" ", "") ?: return null
+    customOf(clean)?.let { return it }
+    val unit = HOUR_SUFFIXES.firstOrNull { clean.endsWith(it) }?.let { 60.0 }
+        ?: MINUTE_SUFFIXES.firstOrNull { clean.endsWith(it) }?.let { 1.0 }
+        ?: return null
+    val suffix = (HOUR_SUFFIXES + MINUTE_SUFFIXES).first { clean.endsWith(it) }
+    val amount = clean.removeSuffix(suffix).toDoubleOrNull() ?: return null
+    val minutes = amount * unit
+    val whole = kotlin.math.round(minutes)
+    if (kotlin.math.abs(minutes - whole) > 1e-9) return null
+    return whole.toInt().takeIf { it in 1..1440 }?.let(::CustomInterval)
+}
+
+private val HOUR_SUFFIXES = listOf("hours", "hour", "hr", "h", "ساعت")
+private val MINUTE_SUFFIXES = listOf("minutes", "minute", "min", "m", "دقیقه")
+
 fun customOf(wire: String?): CustomInterval? {
     val clean = wire?.trim()?.foldDigitsToLatin() ?: return null
     if (clean.isEmpty() || clean.any { it !in '0'..'9' }) return null

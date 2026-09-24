@@ -49,6 +49,8 @@ data class StoredDrawing(
      * confident wrong label on somebody's old work.
      */
     val timeframe: String? = null,
+    /** The interval families the mark is hidden on, as `core:chart` spells them — `m,h`. Empty for all shown. */
+    val hiddenOn: String = "",
     /**
      * How far the mark travels between layouts: `NONE`, `LAYOUT` or `GLOBAL`.
      *
@@ -242,6 +244,8 @@ internal object ChartDrawingCodec {
             drawing.textColour?.toString().orEmpty(),
             drawing.fillColour?.toString().orEmpty(),
             usable(drawing.lineStyle).orEmpty(),
+            // 5.16.1, last so every earlier row still reads.
+            usable(drawing.hiddenOn).orEmpty(),
         ).joinToString(record)
     }
 
@@ -257,7 +261,7 @@ internal object ChartDrawingCodec {
         // before the lock, the timeframe, the sync, the layout, the deviations, the two extra
         // colours and the line style existed, and each is read back with its missing fields at
         // their defaults rather than discarded.
-        if (parts.size !in 7..15) return null
+        if (parts.size !in 7..16) return null
         val id = parts[0].toLongOrNull() ?: return null
         val toolId = parts[1].takeIf(String::isNotBlank) ?: return null
         val decoded = parts[2]
@@ -301,6 +305,7 @@ internal object ChartDrawingCodec {
             fillColour = parts.getOrNull(13)?.toLongOrNull(),
             lineStyle = parts.getOrNull(14)?.takeIf(String::isNotBlank)
                 ?: StoredDrawing.DEFAULT_LINE_STYLE,
+            hiddenOn = parts.getOrNull(15).orEmpty(),
         )
     }
 

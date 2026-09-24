@@ -73,6 +73,11 @@ data class AlertConditionDraft(
      * "empty" and "typed", and one representation of absence is easier to reason about than two.
      */
     val drawingId: String = "",
+    /**
+     * How many bars a move is measured over — TradingView's «Moving Up … within N bars» (5.16.1).
+     * The trigger always had it; the editor now asks.
+     */
+    val moveBars: Int = 1,
 ) {
 
     /** [first] as a number, or null while it is empty or half-typed. */
@@ -124,7 +129,7 @@ data class AlertConditionDraft(
 
             // A move of zero is satisfied by standing still, so it would fire on the first tick.
             AlertTriggerKind.MOVE ->
-                if (value > 0.0) AlertTrigger.Move(moveOp, value) else null
+                if (value > 0.0) AlertTrigger.Move(moveOp, value, bars = moveBars.coerceIn(1, MAX_MOVE_BARS)) else null
 
             // An indicator level may be negative — MACD and CCI both cross zero — so the only
             // rejected values here are the ones that are not numbers.
@@ -176,6 +181,7 @@ data class AlertConditionDraft(
                 kind = AlertTriggerKind.MOVE,
                 moveOp = trigger.op,
                 first = plain(trigger.amount),
+                moveBars = trigger.bars,
             )
 
             is AlertTrigger.Indicator -> AlertConditionDraft(
@@ -302,6 +308,8 @@ data class AlertDraft(
      * code for a release.
      */
     val soundLevel: Float = AlertSound.DEFAULT_LEVEL,
+    /** When the alert stops, epoch millis, or null for never — TradingView's «Expiration». */
+    val expiresAt: Long? = null,
     /**
      * «تا وقتی ببینمش» — keep speaking until the reader answers (run Τ2, B9).
      *
@@ -450,7 +458,9 @@ data class AlertDraft(
             // to create from anywhere in the app.
             scope = scope() ?: AlertScope.Symbol(ticker),
             frequency = frequency,
-            expiresAt = existing?.expiresAt,
+            // The editor's own choice now (5.16.1): TradingView's alert expiry. Carried from the
+            // stored alert when the reader did not touch it.
+            expiresAt = expiresAt,
             channels = channels,
             // The reader's own, clamped. It used to be «whatever was already stored, or the
             // default», which no control could change — so every alert this app had ever made sat
@@ -487,6 +497,7 @@ data class AlertDraft(
                 message = alert.message.orEmpty(),
                 scopeListId = (alert.effectiveScope as? AlertScope.Watchlist)?.listId,
                 soundLevel = alert.effectiveSoundLevel,
+                expiresAt = alert.expiresAt,
                 pickingSymbol = false,
             )
         }
@@ -581,3 +592,6 @@ internal fun AlertRepeat.asFrequency(): AlertFrequency = when (this) {
     // about. See `AlertRepeat.UNTIL_ACKNOWLEDGED`.
     AlertRepeat.UNTIL_ACKNOWLEDGED -> AlertFrequency.EVERY_TIME
 }
+
+/** The longest a move may be measured over: a day of one-minute bars is far past any real ask. */
+const val MAX_MOVE_BARS = 500

@@ -225,6 +225,7 @@ import com.coinepro.core.marketdata.ChartInterval
 import com.coinepro.core.marketdata.SECONDS_KEYS
 import com.coinepro.core.marketdata.Timeframe
 import com.coinepro.core.marketdata.customOf
+import com.coinepro.core.marketdata.customTypedOf
 import com.coinepro.core.symbols.MarketHours
 import com.coinepro.core.symbols.SymbolClassifier
 import kotlinx.coroutines.CancellationException
@@ -762,6 +763,8 @@ fun ChartScreen(
     var pendingOrder by remember { mutableStateOf<ChartOrder?>(null) }
     // The desk's right-click menu: the price it landed on and where, or null while closed.
     var contextMenu by remember { mutableStateOf<ChartContextMenu?>(null) }
+    // TradingView's time-scale menu (5.16.1): where a secondary click on the time axis landed.
+    var timeAxisMenu by remember { mutableStateOf<Offset?>(null) }
     // The data window (5.14.0): the crosshair's bar, or the newest, as a table over the plot. Saved,
     // because a reader who keeps it open keeps it open across a rotation.
     var dataWindowOpen by rememberSaveable { mutableStateOf(false) }
@@ -1396,6 +1399,8 @@ fun ChartScreen(
                     scaleSide = state.scaleSide,
                     topMargin = state.appearance.topMargin,
                     bottomMargin = state.appearance.bottomMargin,
+                    crosshairMagnet = state.appearance.crosshairMagnet,
+                    onTimeAxisMenu = { at -> timeAxisMenu = at },
                     onScalePanes = controller::scalePanes,
                     // A long press on a drawn level offers an alert at exactly that price.
                     //
@@ -1580,6 +1585,50 @@ fun ChartScreen(
                 // absolute top-left and offset in left-to-right pixels, because the position came
                 // from the pointer and the time axis reads left to right on every locale; the
                 // items themselves take the screen's direction back.
+                timeAxisMenu?.let { at ->
+                    val density = LocalDensity.current
+                    Box(Modifier.align(AbsoluteAlignment.TopLeft)) {
+                        DropdownMenu(
+                            expanded = true,
+                            onDismissRequest = { timeAxisMenu = null },
+                            offset = with(density) { DpOffset(at.x.toDp(), at.y.toDp()) },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.chart_time_menu_zone)) },
+                                onClick = {
+                                    timeAxisMenu = null
+                                    settingsTab = ChartSettingsTab.SCALES
+                                    sheet = ChartSheet.SETTINGS
+                                },
+                                modifier = Modifier.semantics { contentDescription = "time-menu-zone" },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.chart_time_menu_latest)) },
+                                onClick = {
+                                    timeAxisMenu = null
+                                    controller.focusBar(state.visibleSeries.size - 1)
+                                },
+                                modifier = Modifier.semantics { contentDescription = "time-menu-latest" },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.chart_time_menu_goto)) },
+                                onClick = {
+                                    timeAxisMenu = null
+                                    sheet = ChartSheet.MORE
+                                },
+                                modifier = Modifier.semantics { contentDescription = "time-menu-goto" },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.chart_time_menu_sessions)) },
+                                onClick = {
+                                    timeAxisMenu = null
+                                    sheet = ChartSheet.INDICATORS
+                                },
+                                modifier = Modifier.semantics { contentDescription = "time-menu-sessions" },
+                            )
+                        }
+                    }
+                }
                 contextMenu?.let { menu ->
                     val direction = LocalLayoutDirection.current
                     val density = LocalDensity.current
@@ -3202,6 +3251,7 @@ fun ChartScreen(
                 onMovePoint = { index, to -> controller.moveDrawingPoint(drawing.id, index, to) },
                 onSetLocked = { locked -> controller.setDrawingLocked(drawing.id, locked) },
                 onSaveAsDefault = { controller.setDrawingStyle(drawing.colour, drawing.widthDp) },
+                onSetHiddenOn = { families -> controller.setDrawingHiddenOn(drawing.id, families) },
             )
         }
     }
@@ -4128,7 +4178,7 @@ internal fun IntervalSheetBody(
     onHide: ((String) -> Unit)? = null,
 ) {
     var typed by rememberSaveable { mutableStateOf("") }
-    val custom = customOf(typed)
+    val custom = customTypedOf(typed)
 
     Column(
         modifier = Modifier
@@ -4797,7 +4847,7 @@ private val INTERVAL_GROUPS: List<Pair<Int, List<Timeframe>>> = listOf(
         Timeframe.M45,
     ),
     R.string.chart_interval_group_hours to listOf(Timeframe.H1, Timeframe.H2, Timeframe.H3, Timeframe.H4),
-    R.string.chart_interval_group_days to listOf(Timeframe.D1, Timeframe.W1, Timeframe.MN1, Timeframe.MN3),
+    R.string.chart_interval_group_days to listOf(Timeframe.D1, Timeframe.W1, Timeframe.MN1, Timeframe.MN3, Timeframe.MN6, Timeframe.MN12),
 )
 
 /**

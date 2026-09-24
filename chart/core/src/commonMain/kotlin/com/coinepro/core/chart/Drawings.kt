@@ -162,6 +162,12 @@ data class Drawing(
      * would put a confident wrong label on somebody's old work.
      */
     val timeframe: String? = null,
+    /**
+     * The interval families this mark is **not** drawn on — TradingView's «Visibility on
+     * intervals» (5.16.1). Empty, the default, is every interval: a level drawn on the daily that
+     * clutters the one-minute can be kept for the daily alone without deleting it.
+     */
+    val hiddenOn: Set<IntervalFamily> = emptySet(),
     /** How far this drawing travels between layouts. See [DrawingSync]. */
     val sync: DrawingSync = DrawingSync.LAYOUT,
     /**

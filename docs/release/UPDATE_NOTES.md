@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.16.1
+
+**fa**
+
+> حالت آهنربای کراس‌هیر، منوی محور زمان با کلیک راست، تایم‌فریم‌های ۶ و ۱۲ ماهه و تایپ آزاد مثل ۹۰ دقیقه یا ۲٫۵ ساعت اضافه شد؛ هر ترسیم را می‌شود فقط روی بازه‌های دلخواه نشان داد.
+> هشدار حرکت درصدی در چند کندل، تاریخ انقضای هشدار، بررسی هر دقیقه‌ای وقتی برنامه باز است و افزودن همه‌ی نتایج اسکرینر به دیده‌بان.
+
+**en**
+
+> Crosshair magnet mode, a right-click time-axis menu, 6- and 12-month intervals and typed ones like 90m or 2.5h; each drawing can be shown on chosen intervals only.
+> Alerts for a move within several bars, alert expiry, a check every minute while the app is open, and one tap to add every screener result to the watchlist.
+
 ## 5.16.0
 
 **fa**

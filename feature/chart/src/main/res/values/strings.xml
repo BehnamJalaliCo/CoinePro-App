@@ -785,4 +785,16 @@
     <string name="chart_toolbar_replay">Replay</string>
     <string name="chart_toolbar_snapshot">Take a snapshot</string>
     <string name="chart_toolbar_trade">Trade</string>
+    <string name="chart_settings_crosshair_magnet">Crosshair snaps to the close (Magnet)</string>
+    <string name="chart_time_menu_zone">Time zone…</string>
+    <string name="chart_time_menu_latest">Scroll to the most recent bar</string>
+    <string name="chart_time_menu_goto">Go to date…</string>
+    <string name="chart_time_menu_sessions">Sessions and period separators…</string>
+    <string name="drawing_visible_on">Visible on intervals</string>
+    <string name="drawing_visible_seconds">Seconds</string>
+    <string name="drawing_visible_minutes">Minutes</string>
+    <string name="drawing_visible_hours">Hours</string>
+    <string name="drawing_visible_days">Days</string>
+    <string name="drawing_visible_weeks">Weeks</string>
+    <string name="drawing_visible_months">Months</string>
 </resources>

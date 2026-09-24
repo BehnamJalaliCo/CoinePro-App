@@ -747,6 +747,16 @@ class AlertsController(
         editCondition(index) { it.copy(moveOp = op) }
     }
 
+    /** How many bars a move is measured over (5.16.1). */
+    fun setMoveBars(index: Int, bars: Int) {
+        editCondition(index) { it.copy(moveBars = bars.coerceIn(1, MAX_MOVE_BARS)) }
+    }
+
+    /** When the alert expires, or null for never — TradingView's «Expiration» (5.16.1). */
+    fun setExpiresAt(at: Long?) {
+        editDraft { it.copy(expiresAt = at) }
+    }
+
     /** The row's first number, as typed. Parsed only when something asks for it. */
     fun setFirst(index: Int, text: String) {
         editCondition(index) { it.copy(first = text) }

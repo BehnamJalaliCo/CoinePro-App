@@ -7,8 +7,12 @@ import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import com.coinepro.core.webhook.WebhookDispatcher
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -88,12 +92,18 @@ class LocalAlertWorker @AssistedInject constructor(
         checks = checks,
     )
 
+    // One pass at a time, process-wide: the periodic pass and the open app's minute pass (see
+    // `LocalAlertScheduler.checkNow`) can be due together, and two passes over one alert list could
+    // both see a crossing and both fire it.
     override suspend fun doWork(): Result =
-        when (evaluator.evaluate(System.currentTimeMillis())) {
+        when (PASS_LOCK.withLock { evaluator.evaluate(System.currentTimeMillis()) }) {
             is AlertPassResult.Unavailable -> Result.retry()
             AlertPassResult.Idle, is AlertPassResult.Completed -> Result.success()
         }
 }
+
+/** Serialises every alert pass in the process. See [LocalAlertWorker.doWork]. */
+private val PASS_LOCK = Mutex()
 
 /**
  * Turns the alert schedule on and off with the alert list.
@@ -126,7 +136,31 @@ class LocalAlertScheduler @Inject constructor(
         workManager.enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request)
     }
 
-    private companion object {
-        const val WORK_NAME = "coinepro-local-alerts"
+    /**
+     * One pass now, while the reader has the app in front of them (5.16.1).
+     *
+     * TradingView's alerts are checked continuously on its servers; this app's are checked on the
+     * device, and Android runs the periodic pass no more often than every fifteen minutes. While
+     * the app is open there is no reason to wait that long, so the screen asks for a pass once a
+     * minute through the same worker — the same evaluator, the same audit, the same deliveries —
+     * as unique one-time work, so a pass still running is never doubled.
+     */
+    fun checkNow() {
+        val request = OneTimeWorkRequestBuilder<LocalAlertWorker>()
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build(),
+            )
+            .build()
+        workManager.enqueueUniqueWork(NOW_WORK_NAME, ExistingWorkPolicy.KEEP, request)
+    }
+
+    companion object {
+        private const val WORK_NAME = "coinepro-local-alerts"
+        private const val NOW_WORK_NAME = "coinepro-local-alerts-now"
+
+        /** How often an open app asks for a pass. See [checkNow]. */
+        const val FOREGROUND_PERIOD_MILLIS = 60_000L
     }
 }

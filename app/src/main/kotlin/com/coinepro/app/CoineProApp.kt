@@ -1201,6 +1201,37 @@ fun CoineProApp(
     LaunchedEffect(storedAlerts) {
         localAlertScheduler.sync(hasActiveAlerts = storedAlerts.any { it.active })
     }
+    // **Once a minute while the app is open** (5.16.1). The periodic pass is Android's to schedule
+    // and never tighter than fifteen minutes; a reader looking at the screen should not have to wait
+    // that long for an alert on a price they can see crossing. Started with the screen, stopped
+    // with it — `ON_STOP` cancels the loop, so a backgrounded app costs nothing more than before.
+    val alertLifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val anyActiveAlert = storedAlerts.any { it.active }
+    DisposableEffect(alertLifecycle, anyActiveAlert) {
+        var loop: kotlinx.coroutines.Job? = null
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_START -> if (anyActiveAlert && loop == null) {
+                    loop = scope.launch {
+                        while (true) {
+                            runCatching { localAlertScheduler.checkNow() }
+                            kotlinx.coroutines.delay(LocalAlertScheduler.FOREGROUND_PERIOD_MILLIS)
+                        }
+                    }
+                }
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> {
+                    loop?.cancel()
+                    loop = null
+                }
+                else -> Unit
+            }
+        }
+        alertLifecycle.lifecycle.addObserver(observer)
+        onDispose {
+            alertLifecycle.lifecycle.removeObserver(observer)
+            loop?.cancel()
+        }
+    }
     // And the daily brief, re-armed on every start. The chain is one-time work that books its own
     // successor (see `MorningBriefWorker`), so a run the system dropped — a force-stop, a restore
     // from backup, a reboot on a device that lost its queue — would otherwise end the schedule for
@@ -4835,6 +4866,7 @@ private fun MainShell(
             }
             composable(SCREENER_ROUTE) {
                 var pairedSymbol by rememberSaveable { mutableStateOf<String?>(null) }
+                val screenerScope = rememberCoroutineScope()
                 CoineProListDetail(
                     detail = pairedSymbol?.let { symbol -> { chartPane(symbol, null) } },
                 ) { twoPane ->
@@ -4845,6 +4877,14 @@ private fun MainShell(
                         // three without losing the filter that found them.
                         onOpenSymbol = {
                             if (twoPane) pairedSymbol = it else navController.navigate(chartRoute(it))
+                        },
+                        // TradingView's «results to a watchlist» (5.16.1), into the default list.
+                        onAddToWatchlist = { symbols ->
+                            screenerScope.launch {
+                                symbols.forEach { symbol ->
+                                    runCatching { watchlistStore.add(Watchlist.DEFAULT_LIST_ID, symbol) }
+                                }
+                            }
                         },
                     )
                 }

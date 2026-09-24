@@ -46,3 +46,18 @@ scorecard) and a second pixel-level pass over the old Pro-Chart terminal
 |---|---|---|---|
 | Seconds and tick intervals from the server | ✅ not a gap | Neither backend serves them; the seconds intervals this chart has are built from the live feed (`ChartInterval.Seconds`) | — **a data limit**, stated in the dissection's own §12 |
 | TradingView's font stack | ✅ not a gap | IRANYekanX by the owner's standing rule; every size is matched in sp | — **the rule in CLAUDE.md** |
+
+## 5.16.1 — the scorecard's behind rows (`docs/design/TRADINGVIEW_SCORECARD.md`)
+
+| Item | State | Evidence | Frame |
+|---|---|---|---|
+| Baseline fill strongest at the base line on both sides, as TradingView draws it | ✅ 5.16.1 | `fillHalf` reverses the lower half's alphas (`ChartTypeGoldenTest`, re-recorded) | `app/src/test/goldens/chart-type-baseline-fa-411.png` |
+| Crosshair magnet mode: the horizontal hair sits on the close | ✅ 5.16.1 | `ChartAppearance.crosshairMagnet`, key `crossmagnet` (`TradingViewSettingsTest`) | — **a crosshair exists only under a finger or pointer**, not in a still frame; the switch is on the Appearance tab |
+| Time-axis context menu (zone, latest bar, go to date, sessions) | ✅ 5.16.1 | `CoineProChart(onTimeAxisMenu)` on a secondary press in the bottom 28 dp; `ChartScreen.timeAxisMenu` | — **a right click is a mouse event**, and the menu closes before a frame is taken |
+| Typed intervals in minutes and hours, Persian digits and words accepted | ✅ 5.16.1 | `customTypedOf` (`TradingViewIntervalsTest`) | — **typed text resolves to an interval**; the test pins the parse |
+| 6-month and 12-month intervals | ✅ 5.16.1 | `Timeframe.MN6 / MN12`, folded from D1 with January/July and January buckets (`TradingViewIntervalsTest`) | — **two more chips in the interval sheet**; the bucket arithmetic is what can be wrong and is tested |
+| Drawing visibility per interval family (seconds … months) | ✅ 5.16.1 | `Drawing.hiddenOn`, `IntervalFamily`, stored as field 16 (`IntervalFamilyTest`, `ChartDrawingHiddenOnTest`) | — **a sheet tab**; sheets are outside the decor view the proof rig captures |
+| Alert «moves N % within K bars» | ✅ 5.16.1 | `AlertConditionDraft.moveBars`, capped at 500 (`AlertDraftTest`) | — **a chip row in the alert sheet**, outside the captured decor view |
+| Alert expiry: never, 1, 7, 30, 60 days | ✅ 5.16.1 | `AlertDraft.expiresAt` written and read back (`AlertDraftTest`) | — **a chip row in the alert sheet**, outside the captured decor view |
+| Alerts checked every minute while the app is open | ✅ 5.16.1 | `LocalAlertScheduler.checkNow` on a lifecycle loop, one pass at a time behind `PASS_LOCK` | — **a timer**, not a picture; the fifteen-minute background period is unchanged |
+| Screener: add every result to the watchlist | ✅ 5.16.1 | `ScreenerScreen(onAddToWatchlist)` → `watchlistStore.add` | — **one button under the result count**; the watchlist is where its effect shows |

@@ -196,6 +196,26 @@ class AlertDraftTest {
         assertNull("otherwise a spent one-shot would be edited and then never fire", saved.lastFiredAtEpochMillis)
     }
 
+    @Test
+    fun `a move over several bars keeps its bar count, clamped to the cap, through a round trip`() {
+        val move = AlertConditionDraft(kind = AlertTriggerKind.MOVE, moveOp = MoveOp.UP_PERCENT, first = "2", moveBars = 10)
+        assertEquals(10, (move.build() as AlertTrigger.Move).bars)
+        assertEquals(10, AlertConditionDraft.of(move.build()!!)!!.moveBars)
+
+        val huge = move.copy(moveBars = 100_000)
+        assertEquals(MAX_MOVE_BARS, (huge.build() as AlertTrigger.Move).bars)
+    }
+
+    @Test
+    fun `the expiry the reader chose is written to the alert and read back when it is edited`() {
+        val draft = AlertDraft(symbol = "BTCUSDT", conditions = listOf(level("100")), expiresAt = 5_000L)
+        val alert = draft.toAlert(existing = null, id = "a", nowEpochMillis = 1_000L)!!
+
+        assertEquals(5_000L, alert.expiresAt)
+        assertEquals(5_000L, AlertDraft.of(alert)!!.expiresAt)
+        assertNull(draft.copy(expiresAt = null).toAlert(existing = null, id = "a", nowEpochMillis = 1_000L)!!.expiresAt)
+    }
+
     private fun level(value: String) =
         AlertConditionDraft(kind = AlertTriggerKind.PRICE, priceOp = PriceOp.GREATER_THAN, first = value)
 }

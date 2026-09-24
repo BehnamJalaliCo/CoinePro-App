@@ -1,5 +1,8 @@
 package com.coinepro.feature.chart
 
+import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.layout.FlowRow
+import com.coinepro.core.chart.IntervalFamily
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.height
@@ -115,6 +118,8 @@ internal fun DrawingStyleSheet(
     onSetLocked: (Boolean) -> Unit = {},
     /** «Save as default»: the next drawing of this tool takes this one's colour and width. */
     onSaveAsDefault: () -> Unit = {},
+    /** TradingView's «Visibility on intervals» (5.16.1). */
+    onSetHiddenOn: (Set<IntervalFamily>) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val templates by remember(drawing.toolId, store) {
@@ -168,6 +173,7 @@ internal fun DrawingStyleSheet(
             onMovePoint = onMovePoint,
             onSetLocked = onSetLocked,
             onSaveAsDefault = onSaveAsDefault,
+            onSetHiddenOn = onSetHiddenOn,
         )
     }
 }
@@ -225,6 +231,7 @@ internal fun DrawingStyleSheetBody(
     onMovePoint: (index: Int, to: ChartPoint) -> Unit = { _, _ -> },
     onSetLocked: (Boolean) -> Unit = {},
     onSaveAsDefault: () -> Unit = {},
+    onSetHiddenOn: (Set<IntervalFamily>) -> Unit = {},
     /** Which tab opens first; a preview picks the one it wants pictured. */
     initialTab: DrawingSettingsTab = DrawingSettingsTab.STYLE,
 ) {
@@ -280,6 +287,7 @@ internal fun DrawingStyleSheetBody(
             )
             DrawingSettingsTab.VISIBILITY -> VisibilityTab(
                 drawing = drawing,
+                onSetHiddenOn = onSetHiddenOn,
                 onSetLocked = onSetLocked,
                 onBringToFront = onBringToFront,
                 onSendToBack = onSendToBack,
@@ -553,14 +561,32 @@ private fun CoordinatesTab(
 }
 
 /** The lock, the drawing's own timeframe, and its place in the stack. */
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun VisibilityTab(
     drawing: Drawing,
+    onSetHiddenOn: (Set<IntervalFamily>) -> Unit,
     onSetLocked: (Boolean) -> Unit,
     onBringToFront: () -> Unit,
     onSendToBack: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    // TradingView's «Visibility on intervals» (5.16.1): a lit chip is a family the mark is drawn on.
+    StyleLabel(stringResource(R.string.drawing_visible_on))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+        IntervalFamily.entries.forEach { family ->
+            val shown = family !in drawing.hiddenOn
+            FilterChip(
+                selected = shown,
+                onClick = {
+                    onSetHiddenOn(if (shown) drawing.hiddenOn + family else drawing.hiddenOn - family)
+                },
+                label = { Text(stringResource(family.labelRes())) },
+                modifier = Modifier.semantics { contentDescription = "visible-on-${family.id}" },
+            )
+        }
+    }
+    HorizontalDivider(color = CoineProColors.Border)
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -1034,3 +1060,12 @@ private val SWATCH_DOT = 10.dp
 private val ACTION = 40.dp
 
 private val GLYPH = 16.dp
+
+private fun IntervalFamily.labelRes(): Int = when (this) {
+    IntervalFamily.SECONDS -> R.string.drawing_visible_seconds
+    IntervalFamily.MINUTES -> R.string.drawing_visible_minutes
+    IntervalFamily.HOURS -> R.string.drawing_visible_hours
+    IntervalFamily.DAYS -> R.string.drawing_visible_days
+    IntervalFamily.WEEKS -> R.string.drawing_visible_weeks
+    IntervalFamily.MONTHS -> R.string.drawing_visible_months
+}

@@ -42,4 +42,6 @@
     <string name="screener_indicator_absent">اندیکاتورهایی که در فیلتر نیستند</string>
     <string name="screener_indicator_absent_line">%1$s: %2$s</string>
     <string name="screener_add_indicator">افزودن شرط اندیکاتور</string>
+    <string name="screener_add_to_watchlist">افزودن هر %1$s نماد به دیده‌بان</string>
+    <string name="screener_added_to_watchlist">به دیده‌بان اضافه شد</string>
 </resources>

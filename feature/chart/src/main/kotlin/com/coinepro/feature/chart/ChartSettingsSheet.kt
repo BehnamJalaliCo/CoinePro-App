@@ -120,6 +120,9 @@ fun ChartSettingsBody(
                     onChange(appearance.copy(gridHorizontal = it))
                 }
                 Toggle(R.string.chart_settings_watermark, appearance.watermark) { onChange(appearance.copy(watermark = it)) }
+                Toggle(R.string.chart_settings_crosshair_magnet, appearance.crosshairMagnet) {
+                    onChange(appearance.copy(crosshairMagnet = it))
+                }
                 HorizontalDivider(color = CoineProColors.Border)
                 MarginRow(R.string.chart_settings_margin_top, appearance.topMarginPercent, TOP_MARGINS) {
                     onChange(appearance.copy(topMarginPercent = it))

@@ -566,7 +566,7 @@ fun sourceTimeframeFor(
  * one day serves H4 but not D1 must be told it cannot draw a daily bar rather than quietly drawing
  * one three and a half hours out of step.
  */
-private val CALENDAR_TIMEFRAMES = setOf(Timeframe.D1, Timeframe.W1, Timeframe.MN1, Timeframe.MN3)
+private val CALENDAR_TIMEFRAMES = setOf(Timeframe.D1, Timeframe.W1, Timeframe.MN1, Timeframe.MN3, Timeframe.MN6, Timeframe.MN12)
 
 /**
  * How many [source] bars make one [interval] bar, for sizing a request.
@@ -578,6 +578,8 @@ private val CALENDAR_TIMEFRAMES = setOf(Timeframe.D1, Timeframe.W1, Timeframe.MN
 private fun foldFactorFor(interval: ChartInterval, source: Timeframe): Int = when {
     interval is ChartInterval.Preset && interval.timeframe == Timeframe.MN1 -> LONGEST_MONTH_DAYS
     interval is ChartInterval.Preset && interval.timeframe == Timeframe.MN3 -> LONGEST_QUARTER_DAYS
+    interval is ChartInterval.Preset && interval.timeframe == Timeframe.MN6 -> LONGEST_HALF_DAYS
+    interval is ChartInterval.Preset && interval.timeframe == Timeframe.MN12 -> LONGEST_YEAR_DAYS
     else -> (interval.seconds / source.seconds).toInt().coerceAtLeast(1)
 }
 
@@ -585,6 +587,10 @@ private const val LONGEST_MONTH_DAYS = 31
 
 /** Two thirty-one-day months and a thirty — the longest a quarter runs. Sized high, as the month is. */
 private const val LONGEST_QUARTER_DAYS = 92
+
+/** The longest half-year (184 days) and year (366), sized high for the same reason. */
+private const val LONGEST_HALF_DAYS = 184
+private const val LONGEST_YEAR_DAYS = 366
 
 /**
  * The coarsest of [natives] that is no longer than [ceilingSeconds] and divides [seconds] exactly.

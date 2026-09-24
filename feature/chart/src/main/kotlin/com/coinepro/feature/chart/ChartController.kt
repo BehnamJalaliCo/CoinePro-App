@@ -24,6 +24,7 @@ import com.coinepro.core.chart.ChartPoint
 import com.coinepro.core.chart.ChartStudyRow
 import com.coinepro.core.chart.BuiltInIndicatorTemplate
 import com.coinepro.core.chart.ChartAppearance
+import com.coinepro.core.chart.IntervalFamily
 import com.coinepro.core.chart.ChartType
 import com.coinepro.core.chart.ChartViewport
 import com.coinepro.core.chart.ComparisonBasis
@@ -507,7 +508,11 @@ data class ChartUiState(
             // instrument and shows under every layout, and the other two show under the layout they
             // were made on. `syncedInto` is the one place that rule lives, so the canvas and the
             // object tree cannot disagree about which marks exist.
-            val onThisLayout = DrawingActions.syncedInto(drawing.drawings, drawing.layoutId)
+            val synced = DrawingActions.syncedInto(drawing.drawings, drawing.layoutId)
+            // And the interval filter (5.16.1): a mark hidden on this bar length's family is not
+            // drawn here, and is merged back like any hidden mark.
+            val family = IntervalFamily.ofSeconds(interval.seconds)
+            val onThisLayout = if (synced.none { it.hiddenOn.isNotEmpty() }) synced else synced.filterNot { family in it.hiddenOn }
             val shown = if (hiddenDrawingIds.isEmpty()) {
                 onThisLayout
             } else {
@@ -3339,6 +3344,12 @@ class ChartController(
     fun cancelDrawing() = _state.update { it.copy(drawing = DrawingActions.cancel(it.drawing)) }
 
     /** Lock or unlock one drawing, and remember it. See [com.coinepro.core.chart.Drawing.locked]. */
+    /** TradingView's «Visibility on intervals» for one mark (5.16.1). */
+    fun setDrawingHiddenOn(id: Long, families: Set<IntervalFamily>) {
+        _state.update { it.copy(drawing = DrawingActions.setHiddenOn(it.drawing, id, families)) }
+        persistDrawings()
+    }
+
     fun setDrawingLocked(id: Long, locked: Boolean) {
         _state.update { it.copy(drawing = DrawingActions.setLocked(it.drawing, id, locked)) }
         persistDrawings()
@@ -5169,6 +5180,7 @@ private fun Drawing.toStored(state: DrawingState): StoredDrawing = StoredDrawing
     textColour = textColour,
     fillColour = fillColour,
     lineStyle = lineStyle.name,
+    hiddenOn = IntervalFamily.encodeSet(hiddenOn),
     // Carried, not dropped, precisely so the codec can refuse it: a mark made to fade while
     // talking must not be written, and the one place that decision belongs is the codec both
     // stores pass through. Dropping it here would hide the refusal from the layout blob.
@@ -5197,6 +5209,7 @@ private fun StoredDrawing.toDrawing(): Drawing = Drawing(
     textColour = textColour,
     fillColour = fillColour,
     lineStyle = runCatching { LineStyleKind.valueOf(lineStyle) }.getOrDefault(LineStyleKind.SOLID),
+    hiddenOn = IntervalFamily.parseSet(hiddenOn),
 )
 
 /**

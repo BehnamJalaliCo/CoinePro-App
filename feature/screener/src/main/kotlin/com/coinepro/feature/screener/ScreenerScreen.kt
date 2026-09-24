@@ -1,5 +1,7 @@
 package com.coinepro.feature.screener
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -98,6 +100,11 @@ fun ScreenerScreen(
     controller: ScreenerController,
     onOpenSymbol: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Every market the screen found, into the watchlist — TradingView's first-class «results to a
+     * watchlist» flow (5.16.1). Null where the build has no watchlist to add to.
+     */
+    onAddToWatchlist: ((List<String>) -> Unit)? = null,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
@@ -131,6 +138,23 @@ fun ScreenerScreen(
             onSelect = { category -> controller.setFilters(withCategory(state.filters, category)) },
         )
         ResultCount(state)
+        if (onAddToWatchlist != null && state.rows.isNotEmpty()) {
+            var added by rememberSaveable(state.rows.size, state.filters) { mutableStateOf(false) }
+            CoineProSecondaryButton(
+                text = if (added) {
+                    stringResource(R.string.screener_added_to_watchlist)
+                } else {
+                    stringResource(R.string.screener_add_to_watchlist, state.rows.size.proseDigits())
+                },
+                onClick = {
+                    if (!added) onAddToWatchlist(state.rows.map(ScreenerRow::symbol))
+                    added = true
+                },
+                modifier = Modifier
+                    .padding(horizontal = CoineProSpacing.Two)
+                    .semantics { contentDescription = "screener-add-to-watchlist" },
+            )
+        }
         ColumnHeadings(
             columns = state.columns,
             indicatorColumns = state.indicatorColumns,

@@ -41,4 +41,6 @@
     <string name="screener_indicator_absent">Indicators this screener cannot filter on</string>
     <string name="screener_indicator_absent_line">%1$s: %2$s</string>
     <string name="screener_add_indicator">Add indicator condition</string>
+    <string name="screener_add_to_watchlist">Add all %1$s to the watchlist</string>
+    <string name="screener_added_to_watchlist">Added to the watchlist</string>
 </resources>

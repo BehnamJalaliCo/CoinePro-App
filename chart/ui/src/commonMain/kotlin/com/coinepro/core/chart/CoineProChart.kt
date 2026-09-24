@@ -276,6 +276,13 @@ fun CoineProChart(
     /** TradingView's margins over and under the price, as shares of the plot (5.16.0). */
     topMargin: Double = ChartViewport.TOP_MARGIN,
     bottomMargin: Double = ChartViewport.BOTTOM_MARGIN,
+    /** TradingView's crosshair mode: false is «Normal», true is «Magnet» (on the close). */
+    crosshairMagnet: Boolean = false,
+    /**
+     * A secondary click on the time axis — TradingView's time-scale menu (5.16.1). Null leaves the
+     * click to the plot's own menu, as before.
+     */
+    onTimeAxisMenu: ((at: Offset) -> Unit)? = null,
     /**
      * Which gutter the price axis is drawn in. See [ScaleSide].
      *
@@ -496,6 +503,10 @@ fun CoineProChart(
     // line below — the anchor-preserving `withSeries`, written precisely to stop the view jumping
     // — ran against an already-reset value and had nothing to preserve.
     var viewport by remember { mutableStateOf(ChartViewport(display)) }
+    // Read inside the pointer handlers, which outlive a recomposition, so the setting takes effect
+    // without restarting a gesture.
+    val crosshairMagnetState = rememberUpdatedState(crosshairMagnet)
+    val currentTimeAxisMenu = rememberUpdatedState(onTimeAxisMenu)
     var crosshair by remember { mutableStateOf<Crosshair?>(null) }
 
     /**
@@ -2070,7 +2081,7 @@ fun CoineProChart(
                                                 val inside = plot.x in 0f..frame.width && plot.y >= 0f
                                                 if (inside) {
                                                     hovering = true
-                                                    crosshair = view.crosshairAt(plot)
+                                                    crosshair = view.crosshairAt(plot, crosshairMagnetState.value)
                                                     invalidate(Invalidation.CURSOR)
                                                 } else if (hovering) {
                                                     hovering = false
@@ -2089,12 +2100,16 @@ fun CoineProChart(
                                                 if (!event.buttons.isSecondaryPressed) continue
                                                 val inGutter = frame.inGutter(change.position.x, 0f)
                                                 val axisMenu = currentAxisMenu.value
+                                                val timeMenu = currentTimeAxisMenu.value
+                                                val onTimeAxis = change.position.y > size.height - TIME_AXIS_MENU_BAND_DP.toPx()
                                                 if (inGutter && axisMenu != null) {
                                                     axisMenu()
+                                                } else if (onTimeAxis && timeMenu != null) {
+                                                    timeMenu(change.position)
                                                 } else {
                                                     lastView[0]?.let { view ->
                                                         tracking = true
-                                                        val reading = view.crosshairAt(plot)
+                                                        val reading = view.crosshairAt(plot, crosshairMagnetState.value)
                                                         crosshair = reading
                                                         invalidate(Invalidation.CURSOR)
                                                         reading?.let { currentContextMenu.value?.invoke(it.price, change.position) }
@@ -2503,7 +2518,7 @@ fun CoineProChart(
                                                 alert(level.price)
                                             view != null -> {
                                                 tracking = true
-                                                crosshair = view.crosshairAt(plot)
+                                                crosshair = view.crosshairAt(plot, crosshairMagnetState.value)
                                                 invalidate(Invalidation.CURSOR)
                                             }
                                         }
@@ -2511,7 +2526,7 @@ fun CoineProChart(
                                     onDrag = { change, _ ->
                                         if (!tracking) return@detectDragGesturesAfterLongPress
                                         val plot = frameOf(size.width.toFloat()).toPlot(change.position)
-                                        lastView[0]?.let { crosshair = it.crosshairAt(plot) }
+                                        lastView[0]?.let { crosshair = it.crosshairAt(plot, crosshairMagnetState.value) }
                                         invalidate(Invalidation.CURSOR)
                                     },
                                     // Nothing on release: the crosshair is the reading, and the
@@ -2561,7 +2576,7 @@ fun CoineProChart(
                                             val plot = frameOf(size.width.toFloat()).toPlot(at)
                                             val frame = frameOf(size.width.toFloat())
                                             if (frame.onPlot(at.x) && !frame.inGutter(at.x, 0f)) {
-                                                lastView[0]?.crosshairAt(plot)?.let { reading ->
+                                                lastView[0]?.crosshairAt(plot, crosshairMagnetState.value)?.let { reading ->
                                                     currentContextMenu.value?.invoke(reading.price, at)
                                                 }
                                             }
@@ -6321,9 +6336,16 @@ private fun DrawScope.drawConstraintSpokes(
 
 // ---------------------------------------------------------------------------- helpers
 
-/** Where a touch lands in chart space. */
-private fun ChartViewport.crosshairAt(position: Offset): Crosshair =
-    Crosshair(index = indexAt(position.x), price = priceAt(position.y))
+/**
+ * Where a touch lands in chart space. With [magnet] — TradingView's «Magnet» crosshair mode, 5.16.1 —
+ * the horizontal line sits on the bar's close instead of under the pointer, so the price tag reads a
+ * price the market actually printed.
+ */
+private fun ChartViewport.crosshairAt(position: Offset, magnet: Boolean = false): Crosshair {
+    val index = indexAt(position.x)
+    val price = if (magnet && index in 0 until series.size) series.close[index] else priceAt(position.y)
+    return Crosshair(index = index, price = price)
+}
 
 /**
  * A price as the axis currently prints it — which in two of the four modes is not a price at all.
@@ -7570,3 +7592,6 @@ private fun ChartViewport.clampedToBarSpacing(plotWidth: Float): ChartViewport {
     val bars = barsPerView.coerceIn(fewest, most)
     return if (bars == barsPerView) this else copy(barsPerView = bars).atOffset(offset)
 }
+
+/** How far up from the canvas's foot a secondary click counts as «on the time axis». */
+private val TIME_AXIS_MENU_BAND_DP = 28.dp

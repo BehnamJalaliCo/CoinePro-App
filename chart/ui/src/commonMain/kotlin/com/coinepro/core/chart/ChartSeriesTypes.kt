@@ -273,7 +273,19 @@ private fun DrawScope.fillHalf(
     val top = if (topHalf) 0f else baseY
     val bottom = if (topHalf) baseY else view.plotHeight
     clipRect(0f, max(0f, min(top, view.plotHeight)), view.plotWidth, max(0f, min(bottom, view.plotHeight))) {
-        drawPath(path, brush = areaBrush(colour, top, bottom))
+        // TradingView's baseline (5.16.1): each half is strongest *away* from the base — the green
+        // 0.28 at the top fading to 0.05 at the base, the red 0.05 at the base deepening to 0.28 at
+        // the floor — so the fill says «how far from the base», never «near the base».
+        val brush = if (topHalf) {
+            areaBrush(colour, top, bottom)
+        } else {
+            Brush.verticalGradient(
+                colors = listOf(colour.copy(alpha = AREA_ALPHA_BOTTOM), colour.copy(alpha = AREA_ALPHA_TOP)),
+                startY = top,
+                endY = max(top + 1f, bottom),
+            )
+        }
+        drawPath(path, brush = brush)
     }
 }
 
