@@ -53,6 +53,27 @@ class ChartScriptsTest {
     }
 
     @Test
+    fun `a script's fill, bar colours, candles, background and table reach the chart`() {
+        val engine = ChartScriptEngine()
+        val draw = engine.evaluate(
+            series(),
+            listOf(
+                script(
+                    "1",
+                    "a = plot(ta.ema(close, 5))\nb = plot(ta.ema(close, 20))\nfill(a, b)\n" +
+                        "barcolor(close > b, color.teal)\nbgcolor(close > b)\nplotcandle(open, high, low, close)\n" +
+                        "t = table.new(position.top_right, 1, 1)\ntable.cell(t, 0, 0, \"X\")",
+                ),
+            ),
+        ) { 0L }
+        assertTrue("fill", draw.overlays.any { it.fillTo != null && it.widthDp == 0f })
+        assertTrue("bar colours", draw.barColours.single().isNotEmpty())
+        assertEquals(1, draw.candles.size)
+        assertTrue("bands", draw.bands.isNotEmpty())
+        assertEquals("X", draw.tables.single().cells.single().text)
+    }
+
+    @Test
     fun `two scripts keep their lines apart`() {
         val engine = ChartScriptEngine()
         val draw = engine.evaluate(

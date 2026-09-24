@@ -74,6 +74,7 @@ object PaperFormat {
             PaperOrderType.LIMIT -> R.string.paper_type_limit
             PaperOrderType.STOP -> R.string.paper_type_stop
             PaperOrderType.STOP_LIMIT -> R.string.paper_type_stop_limit
+            PaperOrderType.TRAILING -> R.string.paper_type_trailing
         },
     )
 
@@ -95,6 +96,7 @@ object PaperFormat {
             PaperReject.NO_PRICE -> R.string.paper_reject_price
             PaperReject.INVALID -> R.string.paper_reject_invalid
             PaperReject.NOTHING_TO_REDUCE -> R.string.paper_reject_reduce
+            PaperReject.NOT_IMMEDIATE -> R.string.paper_reject_immediate
         },
     )
 

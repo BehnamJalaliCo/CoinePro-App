@@ -416,6 +416,81 @@ internal object Builtins {
                 interpreter.addBackground(ScriptBackground(bars, colour))
                 Value.Num(bars.size.toDouble())
             }
+            /* ---------------------------------------------------------- since 5.15.0: Pro-Chart's outputs */
+            "fill" -> {
+                val upper = arguments.source(0)
+                val lower = arguments.source(1)
+                val colour = if (arguments.has("color")) arguments.colourOf(arguments.named("color"))
+                else if (arguments.size > 2) arguments.colourOf(arguments.value(2)) else 0x33D8A848
+                val pane = if (arguments.has("pane")) arguments.textOf(arguments.named("pane")) != "price" else !overlaysPrice(interpreter, upper)
+                interpreter.addFill(ScriptFill(upper, lower, colour, pane))
+                Value.Num(0.0)
+            }
+            "barcolor" -> {
+                val flags = interpreter.flagLine(arguments.value(0), node)
+                val colour = if (arguments.has("color")) arguments.colourOf(arguments.named("color"))
+                else if (arguments.size > 1) arguments.colourOf(arguments.value(1)) else 0xFFD8A848
+                val bars = (0 until interpreter.barCount).filter { flags.flagAt(it) }
+                interpreter.addBarColour(ScriptBarColour(bars, colour))
+                Value.Num(bars.size.toDouble())
+            }
+            "plotcandle", "plotbar" -> {
+                val title = if (arguments.has("title")) arguments.textOf(arguments.named("title")) else "کندل‌ها"
+                val colour = if (arguments.has("color")) arguments.colourOf(arguments.named("color")) else null
+                interpreter.addCandles(
+                    ScriptCandles(
+                        title = title,
+                        open = arguments.source(0),
+                        high = arguments.source(1),
+                        low = arguments.source(2),
+                        close = arguments.source(3),
+                        colour = colour,
+                        bars = node.qualified == "plotbar",
+                    ),
+                )
+                Value.Num(0.0)
+            }
+            "plotarrow" -> {
+                // Pine's arrow: up under the bar where the series is above zero, down over it where
+                // below, and nothing at zero or where it is absent.
+                val series = arguments.source(0)
+                val up = if (arguments.has("colorup")) arguments.colourOf(arguments.named("colorup")) else 0xFF00B15C
+                val down = if (arguments.has("colordown")) arguments.colourOf(arguments.named("colordown")) else 0xFFF6465D
+                val title = if (arguments.has("title")) arguments.textOf(arguments.named("title")) else ""
+                val rising = (0 until interpreter.barCount).filter { (series[it] ?: 0.0) > 0.0 }
+                val falling = (0 until interpreter.barCount).filter { (series[it] ?: 0.0) < 0.0 }
+                interpreter.addMarker(ScriptMarker(title, rising, ScriptMarkerStyle.ARROW_UP, up))
+                interpreter.addMarker(ScriptMarker(title, falling, ScriptMarkerStyle.ARROW_DOWN, down))
+                Value.Num((rising.size + falling.size).toDouble())
+            }
+            "table.new" -> {
+                val position = arguments.text(0)
+                val columns = arguments.constant(1, "تعداد ستون", "The column count").toInt().coerceIn(1, MAX_TABLE_SIDE)
+                val rows = arguments.constant(2, "تعداد سطر", "The row count").toInt().coerceIn(1, MAX_TABLE_SIDE)
+                val background = if (arguments.has("bgcolor")) arguments.colourOf(arguments.named("bgcolor")) else null
+                Value.Num(interpreter.addTable(ScriptTable(position, columns, rows, background = background)).toDouble())
+            }
+            "table.cell" -> {
+                val id = arguments.constant(0, "جدول", "The table").toInt()
+                val column = arguments.constant(1, "ستون", "The column").toInt()
+                val row = arguments.constant(2, "سطر", "The row").toInt()
+                val text = when {
+                    arguments.has("text") -> interpreter.asText(arguments.named("text"), node)
+                    arguments.size > 3 -> interpreter.asText(arguments.value(3), node)
+                    else -> ""
+                }
+                interpreter.setTableCell(
+                    id,
+                    ScriptTableCell(
+                        column = column,
+                        row = row,
+                        text = text,
+                        textColour = if (arguments.has("text_color")) arguments.colourOf(arguments.named("text_color")) else null,
+                        background = if (arguments.has("bgcolor")) arguments.colourOf(arguments.named("bgcolor")) else null,
+                    ),
+                )
+                Value.Num(id.toDouble())
+            }
             "alertcondition" -> {
                 val flags = interpreter.flagLine(arguments.value(0), node)
                 val title = if (arguments.size > 1) arguments.text(1) else if (arguments.has("title")) arguments.textOf(arguments.named("title")) else "هشدار"
@@ -548,6 +623,9 @@ internal object Builtins {
 
     /** Ids that mean «sell» in the short `strategy.entry("short", cond)` form. */
     private val SHORT_IDS = setOf("short", "sell", "s")
+
+    /** A table wider or taller than this is not a table a phone can show. */
+    private const val MAX_TABLE_SIDE = 12
 
     /** Gold, like a reader's own drawing: an object a script places is the reader's mark too. */
     private const val DEFAULT_OBJECT_COLOUR = 0xFFD8A848

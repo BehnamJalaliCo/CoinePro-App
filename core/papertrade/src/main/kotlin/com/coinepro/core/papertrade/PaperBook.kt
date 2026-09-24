@@ -34,6 +34,12 @@ enum class PaperOrderType(val id: String) {
     LIMIT("l"),
     STOP("s"),
     STOP_LIMIT("sl"),
+
+    /**
+     * A stop that follows the market (5.15.0, the old ticket's «دنباله‌رو»): [PaperOrder.trailPercent]
+     * behind the best price since it was placed, never loosened, and a market order when it is hit.
+     */
+    TRAILING("t"),
     ;
 
     /** Whether the type rests in the book waiting for a price rather than filling on arrival. */
@@ -57,6 +63,22 @@ enum class PaperOrderState(val id: String) {
 }
 
 /** Why an order never became a position. Each one is a sentence the screen has to be able to say. */
+/**
+ * How long a limit order waits (5.15.0): good till cancelled, the default; immediate or cancel; and
+ * fill or kill. This book fills an order whole, so the last two behave alike — filled on arrival or
+ * cancelled — and both exist because a reader coming from the old terminal knows them by name.
+ */
+enum class PaperTimeInForce(val id: String) {
+    GTC("gtc"),
+    IOC("ioc"),
+    FOK("fok"),
+    ;
+
+    companion object {
+        fun fromId(id: String?): PaperTimeInForce = entries.firstOrNull { it.id == id } ?: GTC
+    }
+}
+
 enum class PaperReject(val id: String) {
     /** Free margin would not cover it. */
     MARGIN("margin"),
@@ -69,6 +91,9 @@ enum class PaperReject(val id: String) {
 
     /** Reduce-only, with nothing on the other side to reduce. */
     NOTHING_TO_REDUCE("reduce"),
+
+    /** An immediate-or-cancel or fill-or-kill limit the market was not at when it arrived. */
+    NOT_IMMEDIATE("immediate"),
     ;
 
     companion object {
@@ -147,6 +172,10 @@ data class PaperOrder(
     val triggered: Boolean = false,
     /** Transient. See the class comment — its absence after a restart is load-bearing. */
     val lastSeenPrice: Double? = null,
+    /** How far a [PaperOrderType.TRAILING] stop stays behind the best price, in percent. */
+    val trailPercent: Double? = null,
+    /** How long a limit waits: until cancelled, or not at all. */
+    val timeInForce: PaperTimeInForce = PaperTimeInForce.GTC,
 ) {
     val working: Boolean get() = state == PaperOrderState.WORKING
 
@@ -157,6 +186,7 @@ data class PaperOrder(
             PaperOrderType.LIMIT -> limitPrice
             PaperOrderType.STOP -> stopPrice
             PaperOrderType.STOP_LIMIT -> if (triggered) limitPrice else stopPrice
+            PaperOrderType.TRAILING -> stopPrice
         }
 }
 

@@ -96,6 +96,7 @@ internal class TypeChecker {
         }
         if (node.name in Interpreter.COLOURS) return ScriptType.COLOUR
         if (node.name in Interpreter.CONSTANTS) return ScriptType.NUM
+        if (node.name in Interpreter.TEXT_CONSTANTS) return ScriptType.TEXT
         throw ScriptError("«${node.name}» تعریف نشده است", "“${node.name}” is not defined", node.line, node.column, code = "E301")
     }
 
@@ -246,13 +247,20 @@ internal class TypeChecker {
             "str.contains" to ScriptType.FLAG, "str.startswith" to ScriptType.FLAG, "str.endswith" to ScriptType.FLAG,
             "label.new" to ScriptType.NUM, "line.new" to ScriptType.NUM, "box.new" to ScriptType.NUM,
             "strategy.entry" to ScriptType.NUM, "strategy.close" to ScriptType.NUM, "strategy.close_all" to ScriptType.NUM,
+            // 5.15.0
+            "fill" to ScriptType.NUM, "barcolor" to ScriptType.NUM, "plotcandle" to ScriptType.NUM, "plotbar" to ScriptType.NUM,
+            "plotarrow" to ScriptType.NUM, "table.new" to ScriptType.NUM, "table.cell" to ScriptType.NUM,
         )
 
         /**
          * Functions whose output is placed by absolute bar or replayed over every bar: an object at
          * bar 10 or a trade list cannot be spliced from a tail, so the script is re-run whole.
          */
-        val WHOLE_RUN = setOf("label.new", "line.new", "box.new", "strategy.entry", "strategy.close", "strategy.close_all")
+        val WHOLE_RUN = setOf(
+            "label.new", "line.new", "box.new", "strategy.entry", "strategy.close", "strategy.close_all",
+            // 5.15.0: whole series and a grid read on the last bar — none of them splice from a tail.
+            "fill", "barcolor", "plotcandle", "plotbar", "table.new", "table.cell",
+        )
 
         /** A length larger than this is not a lookback anybody meant; it is left to the runtime's E206. */
         const val MAX_TRACKED_LOOKBACK = 5_000

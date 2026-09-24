@@ -173,4 +173,7 @@
     <string name="watchlist_compare">Compare</string>
     <string name="search_spread_open">Chart %1$s</string>
     <string name="search_spread_caption">A spread or ratio of symbols, built from the bars they share</string>
+    <string name="watchlist_row_memo">Note</string>
+    <string name="watchlist_row_section">Section</string>
+    <string name="watchlist_row_save_memo">Save note and section</string>
 </resources>

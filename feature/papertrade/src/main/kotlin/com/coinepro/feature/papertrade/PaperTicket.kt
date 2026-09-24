@@ -48,6 +48,7 @@ import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.papertrade.PaperFills
 import com.coinepro.core.papertrade.PaperOrderRequest
 import com.coinepro.core.papertrade.PaperOrderType
+import com.coinepro.core.papertrade.PaperTimeInForce
 import com.coinepro.core.papertrade.PaperQuote
 import com.coinepro.core.papertrade.PaperSide
 import com.coinepro.core.papertrade.PaperTradeController
@@ -81,16 +82,21 @@ fun PaperTicket(
     var stopLoss by rememberSaveable { mutableStateOf("") }
     var takeProfit by rememberSaveable { mutableStateOf("") }
     var reduceOnly by rememberSaveable { mutableStateOf(false) }
+    // 5.15.0: the old ticket's trailing distance and time in force.
+    var trail by rememberSaveable { mutableStateOf("") }
+    var timeInForce by rememberSaveable { mutableStateOf(PaperTimeInForce.GTC) }
 
     val ticker = symbol.trim().uppercase()
     val quote = state.quoteFor(ticker)
     val quantity = size.asNumber()
     val limitPrice = limit.asNumber()
     val stopPrice = stop.asNumber()
+    val trailPercent = trail.asNumber()?.takeIf { it > 0.0 && it < 100.0 }
     val armed = quote != null &&
         quantity != null &&
         (!type.needsLimit || limitPrice != null) &&
-        (!type.needsStop || stopPrice != null)
+        (!type.needsStop || stopPrice != null) &&
+        (type != PaperOrderType.TRAILING || trailPercent != null)
 
     LazyColumn(
         modifier = modifier,
@@ -132,6 +138,24 @@ fun PaperTicket(
                             label = stringResource(R.string.paper_limit_price),
                             modifier = Modifier.fillMaxWidth(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        )
+                    }
+                    if (type == PaperOrderType.TRAILING) {
+                        CoineProTextField(
+                            value = trail,
+                            onValueChange = { trail = it },
+                            label = stringResource(R.string.paper_trail_percent),
+                            modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        )
+                    }
+                    // Only a limit waits, so only a limit asks how long for — the old ticket's rule.
+                    if (type == PaperOrderType.LIMIT) {
+                        CoineProChipRow(
+                            options = PaperTimeInForce.entries.map { CoineProChip(it.name, it.name) },
+                            selectedId = timeInForce.name,
+                            onSelect = { id -> id?.let { timeInForce = PaperTimeInForce.valueOf(it) } },
+                            compact = true,
                         )
                     }
                     if (type.needsStop) {
@@ -196,6 +220,8 @@ fun PaperTicket(
                             stopLoss = stopLoss.asNumber(),
                             takeProfit = takeProfit.asNumber(),
                             reduceOnly = reduceOnly,
+                            trailPercent = trailPercent.takeIf { type == PaperOrderType.TRAILING },
+                            timeInForce = if (type == PaperOrderType.LIMIT) timeInForce else PaperTimeInForce.GTC,
                         ),
                     )
                     // The size clears and the symbol does not. A reader placing a second order on

@@ -3090,13 +3090,14 @@ fun CoineProChart(
                         // line, which is what the reference does at the same zoom.
                         view.barWidth < LINE_FALLBACK_PX ->
                             drawLineSeries(view, palette, filled = false, conflateGap = conflateGap)
-                        drawnType == ChartType.BARS -> drawOhlcBars(view, palette, metrics)
+                        drawnType == ChartType.BARS -> drawOhlcBars(view, palette, metrics, decoration.barColours)
                         else -> drawCandles(
                             view = view,
                             palette = palette,
                             hollow = drawnType == ChartType.HOLLOW,
                             metrics = metrics,
                             liveClose = liveCloseNow,
+                            barColours = decoration.barColours,
                         )
                     }
                 }
@@ -3115,6 +3116,7 @@ fun CoineProChart(
                         }
                     }
                     shown.overlays.forEach { drawOverlay(view, it, density.density, conflateGap) }
+                    decoration.candleOverlays.forEach { drawCandleOverlay(view, it, palette, metrics) }
                     // Over the overlays and under the levels: a comparison is a second instrument's
                     // price and belongs in the same layer as the first's moving averages, while a
                     // level is a line the reader has to be able to see across everything.
@@ -3939,6 +3941,8 @@ private fun DrawScope.drawCandles(
     metrics: CandleMetrics,
     /** The newest bar's close as it is animating between ticks, or null to draw the series' own. */
     liveClose: Double? = null,
+    /** A script's `barcolor`, by bar time (5.15.0). */
+    barColours: Map<Long, Long> = emptyMap(),
 ) {
     val body = metrics.body
     val wick = crispStroke(metrics.wick)
@@ -3960,7 +3964,7 @@ private fun DrawScope.drawCandles(
         // A hollow chart colours by the *previous close*, not by the bar's own open — that is what
         // makes a run of gaps up read as one colour even when individual bars closed down.
         val rising = if (hollow && index > 0) bar.c >= view.series.close[index - 1] else bar.up
-        val colour = if (rising) palette.up else palette.down
+        val colour = barColours[bar.t]?.let { Color(it) } ?: if (rising) palette.up else palette.down
 
         drawLine(
             color = colour,
@@ -4151,7 +4155,12 @@ private const val RATIO_AXIS_INSET = 0.1
 /** How thick a comparison line is drawn. One step above an overlay, because it is a second subject. */
 private val COMPARISON_WIDTH_DP = 1.6.dp
 
-private fun DrawScope.drawOhlcBars(view: ChartViewport, palette: ChartPalette, metrics: CandleMetrics) {
+private fun DrawScope.drawOhlcBars(
+    view: ChartViewport,
+    palette: ChartPalette,
+    metrics: CandleMetrics,
+    barColours: Map<Long, Long> = emptyMap(),
+) {
     val tick = metrics.body / 2
     val stroke = crispStroke(metrics.wick)
     for (index in view.firstVisible..view.lastVisible) {
@@ -4160,7 +4169,7 @@ private fun DrawScope.drawOhlcBars(view: ChartViewport, palette: ChartPalette, m
         // but three strokes, so a bar chart is the type where a half-pixel offset is *all* the
         // reader sees. The two ticks take the mast's own registered x so they meet it exactly.
         val x = strokeCentre(view.xOf(index), stroke)
-        val colour = if (bar.up) palette.up else palette.down
+        val colour = barColours[bar.t]?.let { Color(it) } ?: if (bar.up) palette.up else palette.down
         val high = view.yOf(bar.h)
         val low = view.yOf(bar.l)
         val open = strokeCentre(view.yOf(bar.o), stroke)
@@ -4168,6 +4177,60 @@ private fun DrawScope.drawOhlcBars(view: ChartViewport, palette: ChartPalette, m
         drawLine(colour, Offset(x, high), Offset(x, low), stroke)
         drawLine(colour, Offset(round(x - tick), open), Offset(x, open), stroke)
         drawLine(colour, Offset(x, close), Offset(round(x + tick), close), stroke)
+    }
+}
+
+/**
+ * The area between two series, bar by bar — a script's `fill` (5.15.0).
+ *
+ * One closed shape per run of bars where both have a value: along the first series left to right,
+ * back along the second right to left. A bar where either is absent ends the run, so a fill never
+ * bridges a warm-up or a gap with a straight edge that was never there.
+ */
+private fun DrawScope.drawFillBetween(view: ChartViewport, upper: Line, lower: Line, colour: Color, yOf: (Double) -> Float) {
+    val run = ArrayList<Int>()
+    fun flush() {
+        if (run.size >= 2) {
+            val path = Path()
+            path.moveTo(view.xOf(run[0]), yOf(upper.raw(run[0])))
+            for (k in 1 until run.size) path.lineTo(view.xOf(run[k]), yOf(upper.raw(run[k])))
+            for (k in run.indices.reversed()) path.lineTo(view.xOf(run[k]), yOf(lower.raw(run[k])))
+            path.close()
+            drawPath(path, colour)
+        }
+        run.clear()
+    }
+    for (index in view.firstVisible..view.lastVisible) {
+        if (index < upper.size && index < lower.size && upper.isPresent(index) && lower.isPresent(index)) run += index else flush()
+    }
+    flush()
+}
+
+/**
+ * A script's second set of bars (5.15.0): candles for `plotcandle`, OHLC ticks for `plotbar`, at
+ * the chart's own bar width so they line up with the price bars under them.
+ */
+private fun DrawScope.drawCandleOverlay(view: ChartViewport, candles: ChartCandles, palette: ChartPalette, metrics: CandleMetrics) {
+    val body = metrics.body
+    val wick = crispStroke(metrics.wick)
+    for (index in view.firstVisible..view.lastVisible) {
+        val o = candles.open[index] ?: continue
+        val h = candles.high[index] ?: continue
+        val l = candles.low[index] ?: continue
+        val c = candles.close[index] ?: continue
+        val colour = candles.colour?.let { Color(it) } ?: if (c >= o) palette.up else palette.down
+        val left = barLeft(view.xOf(index), body)
+        val x = strokeCentre(left + body / 2f, wick)
+        drawLine(colour, Offset(x, view.yOf(h)), Offset(x, view.yOf(l)), wick)
+        if (candles.bars) {
+            val tick = body / 2
+            drawLine(colour, Offset(round(x - tick), view.yOf(o)), Offset(x, view.yOf(o)), wick)
+            drawLine(colour, Offset(x, view.yOf(c)), Offset(round(x + tick), view.yOf(c)), wick)
+        } else {
+            val top = round(min(view.yOf(o), view.yOf(c)))
+            val height = max(1f, round(abs(view.yOf(c) - view.yOf(o))))
+            drawRect(color = colour, topLeft = Offset(left, top), size = Size(body, height))
+        }
     }
 }
 
@@ -4271,6 +4334,8 @@ private fun DrawScope.drawOverlay(
     density: Float,
     conflateGap: Float,
 ) {
+    overlay.fillTo?.let { other -> drawFillBetween(view, overlay.values, other, Color(overlay.fillColour ?: overlay.colour)) { view.yOf(it) } }
+    if (overlay.widthDp <= 0f) return
     val path = Path()
     var started = false
     // The last y the pen was at, for a stepped line: the step is «hold, then jump», which is one
@@ -4430,6 +4495,8 @@ private fun DrawScope.drawPane(
             }
         }
         pane.lines.forEach { line ->
+            line.fillTo?.let { other -> drawFillBetween(view, line.values, other, Color(line.fillColour ?: line.colour), ::yOf) }
+            if (line.widthDp <= 0f) return@forEach
             val path = Path()
             var started = false
             var heldY = 0f

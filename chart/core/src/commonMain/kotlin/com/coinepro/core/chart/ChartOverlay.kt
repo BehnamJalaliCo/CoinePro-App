@@ -47,6 +47,13 @@ data class ChartLine(
      */
     val connectNulls: Boolean = false,
     /**
+     * The other edge of a shaded area — a script's `fill(a, b)` (5.15.0). The area between this
+     * line and [fillTo] is painted at [fillColour] on every bar both have a value, and nowhere else.
+     * A line that is only a fill carries a width of zero and draws no stroke of its own.
+     */
+    val fillTo: Line? = null,
+    val fillColour: Long? = null,
+    /**
      * The price-row histogram this line is the summary of — item 54.
      *
      * Only «پروفایل حجم» sets it, and it is the way that study gets drawn at all. A profile is
@@ -65,6 +72,20 @@ data class ChartLine(
      * headline — so hiding that legend row hides the bars with it.
      */
     val profile: VolumeProfile? = null,
+)
+
+/**
+ * A second set of bars drawn over the price: a script's `plotcandle` (candles) or `plotbar` (OHLC
+ * bars), 5.15.0. [colour] null draws each bar up or down by its own open and close.
+ */
+data class ChartCandles(
+    val open: Line,
+    val high: Line,
+    val low: Line,
+    val close: Line,
+    val colour: Long? = null,
+    val bars: Boolean = false,
+    val label: String? = null,
 )
 
 /**
@@ -384,6 +405,14 @@ data class ChartDecoration(
      * chart that has not switched one of the two studies on, and then nothing is drawn.
      */
     val timeBands: List<TimeBand> = emptyList(),
+    /**
+     * A colour for particular bars, by bar time — a script's `barcolor` (5.15.0). By time rather
+     * than by index so it survives the chart types that re-grid the bars; a bar with no entry is
+     * drawn in the palette's up or down colour as always.
+     */
+    val barColours: Map<Long, Long> = emptyMap(),
+    /** A script's `plotcandle` and `plotbar` sets, drawn over the price (5.15.0). */
+    val candleOverlays: List<ChartCandles> = emptyList(),
     /**
      * The bars worth asking «چرا؟» about, in ascending order — run Τ2, C1.
      *

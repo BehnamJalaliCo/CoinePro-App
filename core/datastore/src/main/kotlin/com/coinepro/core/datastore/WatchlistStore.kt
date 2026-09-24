@@ -288,7 +288,15 @@ data class WatchlistSettings(
     val flags: Map<String, WatchlistFlag> = emptyMap(),
     val columns: Set<WatchlistColumn> = WatchlistColumn.DEFAULT,
     val sort: WatchlistSort = WatchlistSort.Manual,
-)
+    /** Symbol to the reader's own note on it — the old terminal's «یادداشت» (5.15.0). */
+    val notes: Map<String, String> = emptyMap(),
+    /** Symbol to the section the reader put it in — the old terminal's sections (5.15.0). */
+    val sections: Map<String, String> = emptyMap(),
+) {
+    /** The section names in use, in the order their first symbol appears in [order]. */
+    fun sectionNames(order: List<String>): List<String> =
+        order.mapNotNull { sections[it] }.distinct() + sections.values.distinct().filter { name -> order.none { sections[it] == name } }
+}
 
 /**
  * The result of reading a pasted or opened watchlist file.
@@ -743,9 +751,46 @@ class WatchlistStore(
             // A flag on a symbol that is no longer in the list is invisible and would come back
             // wearing a colour the reader does not remember choosing if they ever re-add it.
             val settings = readSettings(preferences, listId)
-            if (settings.flags.containsKey(ticker)) {
-                writeSettings(preferences, listId, settings.copy(flags = settings.flags - ticker))
+            if (settings.flags.containsKey(ticker) || settings.notes.containsKey(ticker) || settings.sections.containsKey(ticker)) {
+                writeSettings(
+                    preferences,
+                    listId,
+                    settings.copy(flags = settings.flags - ticker, notes = settings.notes - ticker, sections = settings.sections - ticker),
+                )
             }
+        }
+    }
+
+    /**
+     * The reader's note on a symbol in this list, or none (5.15.0). Per list, like a flag: a note
+     * on gold in «positions I hold» is not a note on gold in «watching for an entry».
+     */
+    suspend fun note(listId: String, symbol: String, note: String?) {
+        val ticker = normalise(symbol) ?: return
+        val text = note?.let(::cleanText)?.take(MAX_NOTE_LENGTH)?.takeIf(String::isNotBlank)
+        dataStore.edit { preferences ->
+            val lists = readLists(preferences)
+            val list = lists.firstOrNull { it.id == listId } ?: return@edit
+            if (ticker !in list.symbols) return@edit
+            writeTouched(preferences, lists, listId)
+            val settings = readSettings(preferences, listId)
+            val notes = if (text == null) settings.notes - ticker else settings.notes + (ticker to text)
+            writeSettings(preferences, listId, settings.copy(notes = notes))
+        }
+    }
+
+    /** Puts a symbol in a named section of this list, or back out of every section (5.15.0). */
+    suspend fun section(listId: String, symbol: String, section: String?) {
+        val ticker = normalise(symbol) ?: return
+        val name = section?.let(::cleanText)?.take(MAX_NAME_LENGTH_SECTION)?.takeIf(String::isNotBlank)
+        dataStore.edit { preferences ->
+            val lists = readLists(preferences)
+            val list = lists.firstOrNull { it.id == listId } ?: return@edit
+            if (ticker !in list.symbols) return@edit
+            writeTouched(preferences, lists, listId)
+            val settings = readSettings(preferences, listId)
+            val sections = if (name == null) settings.sections - ticker else settings.sections + (ticker to name)
+            writeSettings(preferences, listId, settings.copy(sections = sections))
         }
     }
 
@@ -1189,6 +1234,12 @@ class WatchlistStore(
         /** Inside the symbol list, the flag map and the column set. ASCII unit separator. */
         private const val UNIT = "\u001F"
 
+        /** A note is a line or two, not a journal entry; the journal is elsewhere. */
+        const val MAX_NOTE_LENGTH = 200
+
+        /** As long as a list's own name may be. */
+        const val MAX_NAME_LENGTH_SECTION = 40
+
         /** See the class note: a sanity cap, not a product limit. */
         const val MAX_LISTS = 50
 
@@ -1257,7 +1308,24 @@ class WatchlistStore(
             settings.columns.joinToString(UNIT) { it.id },
             settings.sort.column?.id.orEmpty(),
             if (settings.sort.descending) "1" else "0",
+            // 5.15.0, after the fields a book written before has, so it reads as it always did.
+            pairs(settings.notes),
+            pairs(settings.sections),
         ).joinToString(RECORD)
+
+        private fun pairs(values: Map<String, String>): String = values
+            .filterKeys { !hasSeparator(it) }
+            .flatMap { (symbol, text) -> listOf(symbol, cleanText(text)) }
+            .joinToString(UNIT)
+
+        private fun unpairs(field: String?): Map<String, String> =
+            field.orEmpty().split(UNIT).chunked(2).mapNotNull { pair ->
+                if (pair.size != 2 || pair[0].isBlank() || pair[1].isBlank()) null else pair[0] to pair[1]
+            }.toMap()
+
+        /** A note is free text; the three separators are the only characters it may not hold. */
+        internal fun cleanText(text: String): String =
+            text.replace(GROUP, " ").replace(RECORD, " ").replace(UNIT, " ").trim()
 
         internal fun decodeSettings(record: String): WatchlistSettings {
             if (record.isBlank()) return WatchlistSettings()
@@ -1283,6 +1351,8 @@ class WatchlistStore(
                         ?.let { WatchlistColumn.ofId(it) },
                     descending = parts.getOrNull(3) != "0",
                 ),
+                notes = unpairs(parts.getOrNull(4)),
+                sections = unpairs(parts.getOrNull(5)),
             )
         }
 

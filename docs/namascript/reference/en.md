@@ -309,6 +309,18 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 | `strategy.close_all(cond)` | Closes whatever trade is open. | number |
 | `strategy.entry("long", cond)` | An entry order on every bar the condition holds, filled at the next bar's open; an entry the other way closes the open trade. | number |
 
+## More output (5.15)
+
+| Call | What it gives | Returns |
+| --- | --- | --- |
+| `fill(p1, p2, color.new(color.blue, 80))` | Shades the area between two series; p1 and p2 are what plot returns. | number |
+| `barcolor(cond, color.orange)` | Draws the bars the condition holds on in this colour. | number |
+| `plotcandle(open, high, low, close, title = "…")` | A second set of candles over the price, such as your own Heikin Ashi. | number |
+| `plotbar(open, high, low, close)` | The same as plotcandle, drawn as OHLC bars. | number |
+| `plotarrow(x, colorup = color.green, colordown = color.red)` | An up arrow under bars where x is positive, a down arrow over bars where it is negative. | number |
+| `table.new(position.top_right, 2, 3)` | A grid of text in a corner of the chart; returns its number for table.cell. | number |
+| `table.cell(t, 0, 0, "RSI", text_color = color.white)` | One cell's text, column and row counted from zero. | number |
+
 ## Colours
 
 `color.blue`, `color.buy`, `color.gold`, `color.green`, `color.grey`, `color.orange`, `color.purple`, `color.red`, `color.sell`, `color.silver`, `color.teal`, `color.white`

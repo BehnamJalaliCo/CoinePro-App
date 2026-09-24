@@ -394,8 +394,24 @@ object ScriptReference {
         ),
     )
 
+    /** Pro-Chart's outputs this language lacked until 5.15.0. */
+    val ADDED_5_15: List<ScriptReferenceGroup> = listOf(
+        ScriptReferenceGroup(
+            "خروجی‌های بیشتر (۵٫۱۵)",
+            listOf(
+                ScriptFunction("fill(p1, p2, color.new(color.blue, 80))", "ناحیه‌ی بین دو سری را رنگ می‌کند؛ p1 و p2 همان چیزی است که plot برمی‌گرداند.", "عدد"),
+                ScriptFunction("barcolor(cond, color.orange)", "کندل‌هایی که شرط رویشان برقرار است را به این رنگ می‌کشد.", "عدد"),
+                ScriptFunction("plotcandle(open, high, low, close, title = \"…\")", "مجموعه‌ی دومی از کندل‌ها روی قیمت؛ مثلاً هیکن‌آشی ساخته‌ی خودتان.", "عدد"),
+                ScriptFunction("plotbar(open, high, low, close)", "همان plotcandle به شکل میله‌ی OHLC.", "عدد"),
+                ScriptFunction("plotarrow(x, colorup = color.green, colordown = color.red)", "پیکان بالا زیر کندل‌هایی که x مثبت است و پیکان پایین روی کندل‌هایی که منفی است.", "عدد"),
+                ScriptFunction("table.new(position.top_right, 2, 3)", "جدولی از متن در گوشه‌ی چارت؛ شماره‌اش را برای table.cell برمی‌گرداند.", "عدد"),
+                ScriptFunction("table.cell(t, 0, 0, \"RSI\", text_color = color.white)", "متن یک خانه‌ی جدول، با ستون و سطر از صفر.", "عدد"),
+            ),
+        ),
+    )
+
     /** Every group, the original ones first. */
-    val ALL_GROUPS: List<ScriptReferenceGroup> get() = GROUPS + ADDED_4_50 + ADDED_4_56 + ADDED_4_61
+    val ALL_GROUPS: List<ScriptReferenceGroup> get() = GROUPS + ADDED_4_50 + ADDED_4_56 + ADDED_4_61 + ADDED_5_15
 
     val COLOUR_NAMES: List<String> = Interpreter.COLOURS.keys.sorted()
 

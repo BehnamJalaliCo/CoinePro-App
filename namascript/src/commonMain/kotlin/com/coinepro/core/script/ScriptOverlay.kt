@@ -1,6 +1,7 @@
 package com.coinepro.core.script
 
 import com.coinepro.core.chart.CandleSeries
+import com.coinepro.core.chart.ChartCandles
 import com.coinepro.core.chart.ChartLine
 import com.coinepro.core.chart.ChartMarker
 import com.coinepro.core.chart.ChartPane
@@ -9,6 +10,7 @@ import com.coinepro.core.chart.Drawing
 import com.coinepro.core.chart.MarkerGlyph
 import com.coinepro.core.chart.PriceLevel
 import com.coinepro.core.chart.SignalOverlay
+import com.coinepro.core.chart.TimeBand
 import com.coinepro.core.chart.formatFixed
 
 /**
@@ -28,10 +30,19 @@ data class ScriptOverlay(
     val signal: SignalOverlay? = null,
     /** The script's labels, lines and boxes as the reader's own drawing types (4.61.0). */
     val drawings: List<Drawing> = emptyList(),
+    /** `bgcolor`, as the shaded stretches the sessions use (5.15.0) — until then it drew nothing. */
+    val bands: List<TimeBand> = emptyList(),
+    /** `barcolor`, by bar time (5.15.0). */
+    val barColours: Map<Long, Long> = emptyMap(),
+    /** `plotcandle` / `plotbar` (5.15.0). */
+    val candles: List<ChartCandles> = emptyList(),
+    /** `table.new` / `table.cell`, drawn by the screen in the named corner (5.15.0). */
+    val tables: List<ScriptTable> = emptyList(),
 ) {
     val isEmpty: Boolean
         get() = overlays.isEmpty() && levels.isEmpty() && markers.isEmpty() &&
-            pane == null && signal == null && drawings.isEmpty()
+            pane == null && signal == null && drawings.isEmpty() && bands.isEmpty() &&
+            barColours.isEmpty() && candles.isEmpty() && tables.isEmpty()
 }
 
 /**
@@ -75,6 +86,11 @@ fun ScriptResult.toOverlay(series: CandleSeries, title: String): ScriptOverlay {
             stepped = plot.stepped,
         )
     }
+    // `fill`: a line that is only a fill — no stroke of its own, no legend row (5.15.0). In front
+    // of the pane's lines, so the lines are drawn over the shade rather than under it.
+    fun ScriptFill.toLine() = ChartLine(values = upper, colour = colour, widthDp = 0f, fillTo = lower, fillColour = colour)
+    val priceFills = fills.filter { !it.ownPane }.map { it.toLine() }
+    val paneFills = fills.filter { it.ownPane }.map { it.toLine() }
     val priceLevels = levels.filter { !it.ownPane }.map { it.toPriceLevel() }
     val paneLevels = levels.filter { it.ownPane }.map { it.toPriceLevel() }
 
@@ -153,15 +169,47 @@ fun ScriptResult.toOverlay(series: CandleSeries, title: String): ScriptOverlay {
         }
     }
 
+    // `bgcolor`: each run of consecutive bars becomes one band, half a bar either side of its ends
+    // so neighbouring runs meet rather than leave a sliver of chart between them.
+    val step = (1 until minOf(series.size, 64)).minOfOrNull { (series.time[it] - series.time[it - 1]).takeIf { d -> d > 0 } ?: Long.MAX_VALUE }
+        ?.takeIf { it != Long.MAX_VALUE } ?: 60L
+    val bands = backgrounds.flatMap { background ->
+        val out = ArrayList<TimeBand>()
+        var first = -1
+        var last = -1
+        fun close() {
+            if (first >= 0 && last < series.size) {
+                out += TimeBand(series.time[first] - step / 2, series.time[last] + step / 2, background.colour)
+            }
+        }
+        for (bar in background.bars) {
+            if (first < 0) {
+                first = bar
+            } else if (bar != last + 1) {
+                close()
+                first = bar
+            }
+            last = bar
+        }
+        close()
+        out
+    }
+    val colouredBars = LinkedHashMap<Long, Long>()
+    for (set in barColours) for (bar in set.bars) series.bars.getOrNull(bar)?.let { colouredBars[it.t] = set.colour }
+
     return ScriptOverlay(
-        overlays = overlays,
+        bands = bands,
+        barColours = colouredBars,
+        candles = candles.map { ChartCandles(it.open, it.high, it.low, it.close, it.colour, it.bars, it.title) },
+        tables = tables,
+        overlays = overlays + priceFills,
         levels = priceLevels,
         markers = markers + tradeMarkers,
         drawings = marks,
-        pane = if (paneLines.isEmpty() && paneLevels.isEmpty()) {
+        pane = if (paneLines.isEmpty() && paneLevels.isEmpty() && paneFills.isEmpty()) {
             null
         } else {
-            ChartPane(title = title, lines = paneLines, levels = paneLevels)
+            ChartPane(title = title, lines = paneFills + paneLines, levels = paneLevels)
         },
         signal = setup?.let { setup ->
             SignalOverlay(

@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.15.0
+
+**fa**
+
+> نمااسکریپت حالا fill، barcolor، plotcandle، plotbar، plotarrow و جدول (table) دارد و رنگ پس‌زمینه‌ی bgcolor هم روی چارت کشیده می‌شود.
+> معاملات آزمایشی حد ضرر متحرک و اعتبار سفارش (GTC، IOC، FOK) گرفت؛ دیده‌بان یادداشت و بخش‌بندی دارد؛ تقویم اقتصادی فیلتر ارز، جست‌وجو و شمارش معکوس تا رویداد بعدی.
+
+**en**
+
+> NamaScript now has fill, barcolor, plotcandle, plotbar, plotarrow and tables, and bgcolor is drawn on the chart.
+> Paper trading gains a trailing stop and time in force (GTC, IOC, FOK); the watchlist has notes and sections; the economic calendar a currency filter, search and a countdown to the next release.
+
 ## 5.14.0
 
 **fa**

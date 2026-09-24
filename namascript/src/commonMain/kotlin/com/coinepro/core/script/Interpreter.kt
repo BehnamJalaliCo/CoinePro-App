@@ -54,6 +54,10 @@ internal class Interpreter(
     private var setup: ScriptSetup? = null
     private val verdicts = mutableListOf<ScriptVerdict>()
     private val backgrounds = mutableListOf<ScriptBackground>()
+    private val fills = mutableListOf<ScriptFill>()
+    private val barColours = mutableListOf<ScriptBarColour>()
+    private val candleSets = mutableListOf<ScriptCandles>()
+    private val tables = mutableListOf<ScriptTable>()
     private val alerts = mutableListOf<ScriptAlert>()
     private val drawings = mutableListOf<ScriptDrawing>()
     private val orders = mutableListOf<StrategyOrder>()
@@ -105,6 +109,10 @@ internal class Interpreter(
             drawings = drawings.toList(),
             strategy = simulate(),
             verdicts = verdicts.toList(),
+            fills = fills.toList(),
+            barColours = barColours.toList(),
+            candles = candleSets.toList(),
+            tables = tables.toList(),
             elapsedMillis = currentTimeMillis() - startedAt,
         )
     }
@@ -268,6 +276,7 @@ internal class Interpreter(
         builtinSeries(node.name)?.let { return it }
         COLOURS[node.name]?.let { return Value.Colour(it) }
         CONSTANTS[node.name]?.let { return Value.Num(it) }
+        TEXT_CONSTANTS[node.name]?.let { return Value.Text(it) }
         throw ScriptError("«${node.name}» تعریف نشده است", "“${node.name}” is not defined", node.line, node.column, code = "E301")
     }
 
@@ -562,6 +571,32 @@ internal class Interpreter(
         if (backgrounds.size < MAX_PLOTS) backgrounds += background
     }
 
+    fun addFill(fill: ScriptFill) {
+        if (fills.size < MAX_PLOTS) fills += fill
+    }
+
+    fun addBarColour(colour: ScriptBarColour) {
+        if (barColours.size < MAX_PLOTS) barColours += colour
+    }
+
+    fun addCandles(candles: ScriptCandles) {
+        if (candleSets.size < MAX_PLOTS) candleSets += candles
+    }
+
+    /** A new table; its id is its place in the list, which is what `table.cell` names it by. */
+    fun addTable(table: ScriptTable): Int {
+        if (tables.size >= MAX_PLOTS) return -1
+        tables += table
+        return tables.size - 1
+    }
+
+    /** One cell written into table [id]; a second write to the same cell replaces the first. */
+    fun setTableCell(id: Int, cell: ScriptTableCell) {
+        val table = tables.getOrNull(id) ?: return
+        if (cell.column !in 0 until table.columns || cell.row !in 0 until table.rows) return
+        tables[id] = table.copy(cells = table.cells.filterNot { it.column == cell.column && it.row == cell.row } + cell)
+    }
+
     fun addAlert(alert: ScriptAlert) {
         if (alerts.size < MAX_PLOTS) alerts += alert
     }
@@ -616,6 +651,11 @@ internal class Interpreter(
             "strategy.long" to 1.0,
             "strategy.short" to -1.0,
         )
+
+        /** Pine's nine table positions, as the text `table.new` takes (5.15.0). */
+        val TEXT_CONSTANTS: Map<String, String> = listOf("top", "middle", "bottom").flatMap { v ->
+            listOf("left", "center", "right").map { h -> "position.${v}_$h" to "${v}_$h" }
+        }.toMap()
 
         /**
          * The palette a script may name.

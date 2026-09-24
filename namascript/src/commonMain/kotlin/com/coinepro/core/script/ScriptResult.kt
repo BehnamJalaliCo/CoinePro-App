@@ -172,6 +172,14 @@ data class ScriptResult(
      * the only thing a script author can tell the reader that the app cannot work out.
      */
     val verdicts: List<ScriptVerdict> = emptyList(),
+    /** The areas `fill(a, b, color)` shaded between two series (5.15.0). */
+    val fills: List<ScriptFill> = emptyList(),
+    /** The bars `barcolor(cond, color)` recoloured (5.15.0). */
+    val barColours: List<ScriptBarColour> = emptyList(),
+    /** The bars `plotcandle` and `plotbar` drew over the price (5.15.0). */
+    val candles: List<ScriptCandles> = emptyList(),
+    /** The grids `table.new` and `table.cell` pinned to a corner (5.15.0). */
+    val tables: List<ScriptTable> = emptyList(),
     /** How long the run took, in milliseconds, read by the studio's console. */
     val elapsedMillis: Long = 0,
 ) {
@@ -180,7 +188,8 @@ data class ScriptResult(
     /** Whether anything at all would be drawn. A script that runs and draws nothing is worth saying so. */
     val isEmpty: Boolean
         get() = plots.isEmpty() && levels.isEmpty() && markers.isEmpty() && setup == null && backgrounds.isEmpty() &&
-            drawings.isEmpty() && strategy == null && verdicts.isEmpty()
+            drawings.isEmpty() && strategy == null && verdicts.isEmpty() && fills.isEmpty() &&
+            barColours.isEmpty() && candles.isEmpty() && tables.isEmpty()
 }
 
 /**
@@ -231,6 +240,47 @@ data class ScriptFailure(
 
 /** A colour laid behind the bars where a condition held: `bgcolor(cond, color.gold)`. */
 data class ScriptBackground(val bars: List<Int>, val colour: Long)
+
+/** The area between two series: `fill(upper, lower, color)`. In a pane when the series are not prices. */
+data class ScriptFill(val upper: Line, val lower: Line, val colour: Long, val ownPane: Boolean)
+
+/** The bars a condition held on, drawn in their own colour: `barcolor(cond, color.orange)`. */
+data class ScriptBarColour(val bars: List<Int>, val colour: Long)
+
+/**
+ * A second set of bars over the price: `plotcandle(o, h, l, c)` draws candles, `plotbar` draws
+ * OHLC bars. [colour] null draws each bar up or down by its own open and close.
+ */
+data class ScriptCandles(
+    val title: String,
+    val open: Line,
+    val high: Line,
+    val low: Line,
+    val close: Line,
+    val colour: Long?,
+    val bars: Boolean,
+)
+
+/** One cell of a [ScriptTable]. */
+data class ScriptTableCell(
+    val column: Int,
+    val row: Int,
+    val text: String,
+    val textColour: Long? = null,
+    val background: Long? = null,
+)
+
+/**
+ * A grid of text pinned to a corner of the chart: `t = table.new(position.top_right, 2, 3)`, then
+ * `table.cell(t, 0, 0, "RSI")`. [position] is Pine's name without the prefix — `top_right`.
+ */
+data class ScriptTable(
+    val position: String,
+    val columns: Int,
+    val rows: Int,
+    val cells: List<ScriptTableCell> = emptyList(),
+    val background: Long? = null,
+)
 
 /** A named condition a reader can attach an alert to: `alertcondition(cond, "cross")`. */
 data class ScriptAlert(val title: String, val bars: List<Int>) {

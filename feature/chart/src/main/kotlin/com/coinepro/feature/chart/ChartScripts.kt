@@ -1,5 +1,8 @@
 package com.coinepro.feature.chart
 
+import com.coinepro.core.script.ScriptTable
+import com.coinepro.core.chart.TimeBand
+import com.coinepro.core.chart.ChartCandles
 import com.coinepro.core.chart.CandleSeries
 import com.coinepro.core.chart.ChartLine
 import com.coinepro.core.chart.ChartMarker
@@ -133,6 +136,18 @@ data class ChartScriptDraw(
     val drawings: List<Drawing> = emptyList(),
     /** Aligned with [drawings]. */
     val drawingOwners: List<String> = emptyList(),
+    /** `bgcolor` stretches, aligned with [bandOwners] (5.15.0). */
+    val bands: List<TimeBand> = emptyList(),
+    val bandOwners: List<String> = emptyList(),
+    /** `barcolor` sets, one map per instance, aligned with [barColourOwners]. */
+    val barColours: List<Map<Long, Long>> = emptyList(),
+    val barColourOwners: List<String> = emptyList(),
+    /** `plotcandle` / `plotbar`, aligned with [candleOwners]. */
+    val candles: List<ChartCandles> = emptyList(),
+    val candleOwners: List<String> = emptyList(),
+    /** `table.new` grids, aligned with [tableOwners]. */
+    val tables: List<ScriptTable> = emptyList(),
+    val tableOwners: List<String> = emptyList(),
     /** The `alertcondition`s each instance declared, by owner id. */
     val alerts: Map<String, List<ScriptAlert>> = emptyMap(),
     /** The `strategy.*` simulation each instance produced, by owner id. */
@@ -156,7 +171,8 @@ data class ChartScriptDraw(
 ) {
     val isEmpty: Boolean
         get() = overlays.isEmpty() && panes.isEmpty() && levels.isEmpty() &&
-            markers.isEmpty() && drawings.isEmpty()
+            markers.isEmpty() && drawings.isEmpty() && bands.isEmpty() && barColours.isEmpty() &&
+            candles.isEmpty() && tables.isEmpty()
 
     /**
      * [items] less the ones belonging to a script the reader has switched the eye off on.
@@ -233,6 +249,14 @@ internal class ChartScriptEngine {
         val markerOwners = mutableListOf<String>()
         val drawings = mutableListOf<Drawing>()
         val drawingOwners = mutableListOf<String>()
+        val bands = mutableListOf<TimeBand>()
+        val bandOwners = mutableListOf<String>()
+        val barColours = mutableListOf<Map<Long, Long>>()
+        val barColourOwners = mutableListOf<String>()
+        val candles = mutableListOf<ChartCandles>()
+        val candleOwners = mutableListOf<String>()
+        val tables = mutableListOf<ScriptTable>()
+        val tableOwners = mutableListOf<String>()
         val alerts = LinkedHashMap<String, List<ScriptAlert>>()
         val strategies = LinkedHashMap<String, ScriptStrategyReport>()
         val verdicts = LinkedHashMap<String, List<ScriptVerdict>>()
@@ -285,6 +309,10 @@ internal class ChartScriptEngine {
             overlay.levels.forEach { levels += it; levelOwners += script.ownerId }
             overlay.markers.forEach { markers += it; markerOwners += script.ownerId }
             overlay.drawings.forEach { drawings += it; drawingOwners += script.ownerId }
+            overlay.bands.forEach { bands += it; bandOwners += script.ownerId }
+            if (overlay.barColours.isNotEmpty()) { barColours += overlay.barColours; barColourOwners += script.ownerId }
+            overlay.candles.forEach { candles += it; candleOwners += script.ownerId }
+            overlay.tables.forEach { tables += it; tableOwners += script.ownerId }
         }
 
         return ChartScriptDraw(
@@ -298,6 +326,14 @@ internal class ChartScriptEngine {
             markerOwners = markerOwners,
             drawings = drawings,
             drawingOwners = drawingOwners,
+            bands = bands,
+            bandOwners = bandOwners,
+            barColours = barColours,
+            barColourOwners = barColourOwners,
+            candles = candles,
+            candleOwners = candleOwners,
+            tables = tables,
+            tableOwners = tableOwners,
             alerts = alerts,
             strategies = strategies,
             verdicts = verdicts,

@@ -14,6 +14,10 @@ data class PaperOrderRequest(
     val stopLoss: Double? = null,
     val takeProfit: Double? = null,
     val reduceOnly: Boolean = false,
+    /** For [PaperOrderType.TRAILING]: the distance behind the best price, in percent. */
+    val trailPercent: Double? = null,
+    /** For a limit: how long it waits. */
+    val timeInForce: PaperTimeInForce = PaperTimeInForce.GTC,
 )
 
 /**
@@ -80,6 +84,7 @@ object PaperEngine {
         if (request.type.needsStop && !positive(request.stopPrice)) return book
         if (request.stopLoss != null && !positive(request.stopLoss)) return book
         if (request.takeProfit != null && !positive(request.takeProfit)) return book
+        if (request.type == PaperOrderType.TRAILING && !(positive(request.trailPercent) && request.trailPercent!! < 100.0)) return book
 
         val existing = book.positionFor(symbol)
         val size = if (request.reduceOnly) {
@@ -102,9 +107,19 @@ object PaperEngine {
             takeProfit = request.takeProfit,
             reduceOnly = request.reduceOnly,
             placedAtEpochMillis = now,
+            trailPercent = request.trailPercent,
+            timeInForce = request.timeInForce,
         )
-        val placed = book.copy(orders = book.orders + order, nextId = book.nextId + 1)
         val quote = quotes[symbol]
+        // A trailing stop starts its distance behind the price it was placed at, so it needs one.
+        val seeded = if (order.type == PaperOrderType.TRAILING) {
+            val last = quote?.takeIf { it.fillable }?.last
+                ?: return reject(book, request, symbol, PaperReject.NO_PRICE, now)
+            order.copy(stopPrice = trailFrom(order.side, last, order.trailPercent!!))
+        } else {
+            order
+        }
+        val placed = book.copy(orders = book.orders + seeded, nextId = book.nextId + 1)
 
         return when {
             // A market order with nothing to fill against is refused rather than parked. A market
@@ -127,6 +142,10 @@ object PaperEngine {
                     true,
                     now,
                 )
+
+            // Immediate or cancel, fill or kill: a limit the market was not at goes no further.
+            request.type == PaperOrderType.LIMIT && request.timeInForce != PaperTimeInForce.GTC ->
+                settle(placed, order.id, PaperOrderState.CANCELLED, now, PaperReject.NOT_IMMEDIATE)
 
             // Rests. `lastSeenPrice` is seeded here where there is a fresh price, so a crossing
             // that happens while the reader is still on the screen counts as watched.
@@ -356,6 +375,22 @@ object PaperEngine {
         var current = order
         var next = book
         var justTriggered = false
+
+        // A trailing stop: hit first, against the level it had, then moved up behind the price —
+        // never the other way, which is what makes it a stop and not a second limit.
+        if (current.type == PaperOrderType.TRAILING) {
+            val stop = current.stopPrice ?: return settle(next, current.id, PaperOrderState.REJECTED, now, PaperReject.INVALID)
+            val percent = current.trailPercent ?: return settle(next, current.id, PaperOrderState.REJECTED, now, PaperReject.INVALID)
+            val reach = PaperFills.reached(current.lastSeenPrice, quote.last, stop, upward = current.side == PaperSide.BUY)
+            val through = if (current.side == PaperSide.SELL) quote.last <= stop else quote.last >= stop
+            if (reach.filled || through) {
+                return fill(next, current, quote, PaperFills.taking(current.side, quote, next.rules), reach.watched || through, now)
+            }
+            val candidate = trailFrom(current.side, quote.last, percent)
+            val moved = if (current.side == PaperSide.SELL) maxOf(stop, candidate) else minOf(stop, candidate)
+            val updated = current.copy(stopPrice = moved, lastSeenPrice = quote.last)
+            return next.copy(orders = next.orders.map { if (it.id == current.id) updated else it })
+        }
 
         if (current.type.needsStop && !current.triggered) {
             val stop = current.stopPrice ?: return settle(next, current.id, PaperOrderState.REJECTED, now, PaperReject.INVALID)
@@ -710,6 +745,10 @@ object PaperEngine {
         book.positions.associate { it.symbol to it.entry }
 
     private fun positive(value: Double?): Boolean = value != null && value.isFinite() && value > 0.0
+
+    /** A trailing stop's level [percent] behind [price]: below it for a sell, above it for a buy. */
+    internal fun trailFrom(side: PaperSide, price: Double, percent: Double): Double =
+        if (side == PaperSide.SELL) price * (1 - percent / 100) else price * (1 + percent / 100)
 
     /** Below this a remaining position is rounding error rather than a holding. */
     private const val MIN_SIZE = 1e-12

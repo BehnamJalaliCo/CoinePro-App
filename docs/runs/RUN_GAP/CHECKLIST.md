@@ -37,6 +37,24 @@ States: ✅ done · ❌ not done yet · ⏳ owed to the server or the owner.
 | Spread and ratio symbols (`EURUSD/GBPUSD`) | ✅ 5.14.0 | `SymbolExpression`, a port of `symbolExpr.js` (`+ - * /`, parentheses, constants), and `SymbolExpressionGateway`, which loads each leg and joins them on shared times; typed into search it offers its chart (`SymbolExpressionTest`) | `docs/runs/RUN_GAP/frames/gap-spread-search-fa.png` |
 | Replay: ten bars at a time, back to the start, «replay from here» | ✅ 5.14.0 | `Replay.stepBy` / `toStart` beside the scrub, Ctrl+←/→; «بازپخش از اینجا» in the chart's menu enters replay on the bar under the pointer (`ChartController.enterReplayAt`, `ReplayTest`) | `docs/runs/RUN_GAP/frames/gap-replay-steps-fa.png` |
 
+## NamaScript and the other surfaces
+
+| Item | State | Evidence | Frame |
+|---|---|---|---|
+| `fill(p1, p2, color)` | ✅ 5.15.0 | `ScriptFill` → a fill-only `ChartLine` (`fillTo`), shaded run by run by `drawFillBetween`, over the price or in the script's pane (`OutputsTest`) | `docs/runs/RUN_GAP/frames/gap-script-outputs-fa.png` |
+| `barcolor(cond, color)` | ✅ 5.15.0 | `ScriptBarColour` → `ChartDecoration.barColours` by bar time; candles and OHLC bars take it (`OutputsTest`) | `docs/runs/RUN_GAP/frames/gap-script-outputs-fa.png` |
+| `bgcolor` drawn | ✅ 5.15.0 | It was computed and never drawn; now each run of bars is a `TimeBand` behind the candles | `docs/runs/RUN_GAP/frames/gap-script-outputs-fa.png` |
+| `plotcandle` / `plotbar` | ✅ 5.15.0 | `ScriptCandles` → `ChartCandles`, drawn over the price at the chart's bar width by `drawCandleOverlay` (`OutputsTest`) | `docs/runs/RUN_GAP/frames/gap-script-outputs-fa.png` |
+| `plotarrow` | ✅ 5.15.0 | Up arrows under positive bars, down over negative, as two marker sets (`OutputsTest`) | `docs/runs/RUN_GAP/frames/gap-script-outputs-fa.png` |
+| `table.new` / `table.cell` | ✅ 5.15.0 | `ScriptTable`, drawn by `ScriptTables` in Pine's nine corners (`position.top_right`…), a second write to a cell replacing the first (`OutputsTest`) | `docs/runs/RUN_GAP/frames/gap-script-outputs-fa.png` |
+| Paper trading: trailing stop | ✅ 5.15.0 | `PaperOrderType.TRAILING`: a stop the trail percent behind the best price, never loosened, a market order when hit; kept across a restart (`PaperTrailingTest`) | — **a ticket field and an engine rule**; `PaperTrailingTest` walks 100 → 120 → 116 → 113 |
+| Paper trading: time in force (GTC, IOC, FOK) | ✅ 5.15.0 | `PaperTimeInForce` on a limit: an IOC or FOK limit away from the market is cancelled with its own reason (`PaperTrailingTest`) | — **three chips on the limit ticket**; the test is the evidence |
+| Paper trading: bracket (OCO) | ✅ before this run | A position's stop loss and take profit already close it whichever is hit first (`PaperEngine.setProtection`) | — **existing behaviour** |
+| Watchlist: a note on a symbol | ✅ 5.15.0 | `WatchlistSettings.notes`, set from the row's menu, shown under the row, kept per list and merged per symbol across devices | `docs/runs/RUN_GAP/frames/gap-watchlist-sections-fa.png` |
+| Watchlist: named sections | ✅ 5.15.0 | `WatchlistSettings.sections`: rows grouped under their section's name while the list is in the reader's own order | `docs/runs/RUN_GAP/frames/gap-watchlist-sections-fa.png` |
+| Calendar: currency filter, search, countdown to the next release | ✅ 5.15.0 | `CalendarFilter` (currency, words in the title or country, the next release) and a minute-by-minute «بعدی» badge on it (`CalendarFilterTest`) | — **the frame's calendar is empty offline**; `CalendarFilterTest` is the evidence |
+| News: filter by what it moves | ✅ before this run | The relevance chips (gold, forex, crypto, indices) are the old keyword categories, sourced from the server's tags rather than guessed from the title | — **existing behaviour** |
+
 ## Not a gap
 
 | Old feature | Why it is not owed |

@@ -140,4 +140,7 @@
     <string name="paper_confirm">Yes</string>
     <string name="paper_dismiss">Cancel</string>
     <string name="paper_disclaimer">No real money moves, but fees, spread and slippage are charged — a simulation that trades for free teaches a habit that loses money in the real market.</string>
+    <string name="paper_type_trailing">Trailing stop</string>
+    <string name="paper_trail_percent">Trail distance (%)</string>
+    <string name="paper_reject_immediate">Not filled at once, so cancelled</string>
 </resources>

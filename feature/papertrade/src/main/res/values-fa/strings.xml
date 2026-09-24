@@ -140,4 +140,7 @@
     <string name="paper_confirm">بله</string>
     <string name="paper_dismiss">انصراف</string>
     <string name="paper_disclaimer">پول واقعی جابه‌جا نمی‌شود، ولی کارمزد و اسپرد و لغزش حساب می‌شوند — چون شبیه‌سازی‌ای که رایگان معامله کند عادتی یاد می‌دهد که در بازار واقعی پول می‌برد.</string>
+    <string name="paper_type_trailing">حد ضرر متحرک</string>
+    <string name="paper_trail_percent">فاصله‌ی دنباله (درصد)</string>
+    <string name="paper_reject_immediate">بی‌درنگ پر نشد و لغو شد</string>
 </resources>

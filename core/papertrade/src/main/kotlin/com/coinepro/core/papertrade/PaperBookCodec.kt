@@ -82,6 +82,9 @@ object PaperBookCodec {
                 order.settledAtEpochMillis,
                 order.rejectedBecause?.id,
                 flag(order.triggered),
+                // 5.15.0, at the end so a book written before reads as it always did.
+                order.trailPercent,
+                order.timeInForce.id,
             )
         }
         book.positions.forEach { position ->
@@ -230,6 +233,8 @@ object PaperBookCodec {
             settledAtEpochMillis = parts.num(13)?.toLong(),
             rejectedBecause = PaperReject.fromId(parts.getOrNull(14)),
             triggered = parts.flag(15),
+            trailPercent = parts.num(16),
+            timeInForce = PaperTimeInForce.fromId(parts.getOrNull(17)),
         )
     }
 

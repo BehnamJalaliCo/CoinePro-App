@@ -245,6 +245,9 @@ object WatchlistMerge {
             flags = older.flags + newer.flags,
             columns = newer.columns,
             sort = newer.sort,
+            // Per symbol, like the flags, and for the same reason (5.15.0).
+            notes = older.notes + newer.notes,
+            sections = older.sections + newer.sections,
         )
         return settings.takeIf { it != WatchlistSettings() }
     }

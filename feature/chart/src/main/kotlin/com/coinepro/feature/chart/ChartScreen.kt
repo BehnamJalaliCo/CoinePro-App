@@ -1185,6 +1185,10 @@ fun ChartScreen(
             val gutter = with(LocalDensity.current) {
                 gutterWidth(canvasWidthPx, plotWidthPx).toDp()
             }
+            // The same, for the panels laid over the plot (5.14.0 on): nothing until the renderer
+            // has reported the plot's width, because before that [gutterWidth] is the whole canvas
+            // and a panel padded by it would have no room at all.
+            val overlayGutter = if (plotWidthPx > 0f) gutter else 0.dp
             // TradingView's quote chip, top-right of the plot: `USDT ⌄`, 26 pt tall in a hairline.
             // There it changes the quote currency; here the quote is the market's own and the chip
             // opens the price-scale sheet, which is the nearest thing this chart has to a choice
@@ -1222,11 +1226,20 @@ fun ChartScreen(
                             modifier = Modifier
                                 .align(AbsoluteAlignment.TopRight)
                                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                                .absolutePadding(right = gutter + 6.dp, top = 40.dp)
+                                .absolutePadding(right = overlayGutter + 6.dp, top = 40.dp)
                                 .zIndex(1f),
                         )
                     }
                 }
+                // A script's tables (5.15.0), each in the corner it named, inside the plot.
+                ScriptTables(
+                    tables = state.scriptTables,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.safeDrawing)
+                        .absolutePadding(right = overlayGutter + 6.dp, top = 40.dp, left = 6.dp, bottom = TIME_AXIS_CLEARANCE)
+                        .zIndex(1f),
+                )
                 // The watermark, bottom-left of the plot, where TradingView signs its chart.
                 // Absolute for the same reason as the chip: the time axis reads left to right on
                 // every locale and the mark sits at its origin.
@@ -1288,6 +1301,8 @@ fun ChartScreen(
                         levels = state.levels,
                         markers = state.markers,
                         timeBands = state.timeBands,
+                        barColours = state.barColours,
+                        candleOverlays = state.candleOverlays,
                         panes = state.panes,
                         // The studies that draw the levels and the marks above and own no row of
                         // their own on either scale. Without this the legend has no way to name

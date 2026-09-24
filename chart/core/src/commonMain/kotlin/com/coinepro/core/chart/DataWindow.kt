@@ -65,7 +65,7 @@ object DataWindow {
         }
         for (pane in panes) {
             // The histogram last, where MACD's legend puts it.
-            val lines = pane.lines + listOfNotNull(pane.histogram)
+            val lines = pane.lines.filter { it.widthDp > 0f } + listOfNotNull(pane.histogram)
             if (lines.isEmpty()) continue
             rows += Row(pane.title, lines.first().colour, lines.map { it.values.valueAt(i) })
         }

@@ -1,5 +1,7 @@
 package com.coinepro.feature.chart
 
+import com.coinepro.core.script.ScriptTable
+import com.coinepro.core.chart.ChartCandles
 import kotlin.math.roundToInt
 
 import com.coinepro.core.chart.ArrowDirection
@@ -877,7 +879,8 @@ data class ChartUiState(
         if (colour == null && width == null) return line
         return line.copy(
             colour = if (colour != null && line.colour == leads[owner]) colour else line.colour,
-            widthDp = width ?: line.widthDp,
+            // A line that is only a fill keeps no stroke, whatever width the study was given.
+            widthDp = if (line.widthDp <= 0f) 0f else width ?: line.widthDp,
         )
     }
 
@@ -1050,7 +1053,28 @@ data class ChartUiState(
      */
     /** The sessions and period rules behind the candles, less the studies the reader hid. */
     val timeBands: List<TimeBand>
-        get() = if (indicatorsHidden) emptyList() else ownedShown(derived.bands, derived.bandOwners, hiddenIndicators)
+        get() = if (indicatorsHidden) {
+            emptyList()
+        } else {
+            ownedShown(derived.bands, derived.bandOwners, hiddenIndicators) +
+                scriptDraw.shown(scriptDraw.bands, scriptDraw.bandOwners, hiddenIndicators)
+        }
+
+    /** The scripts' `barcolor`, merged in the order they were added — a later one wins a bar (5.15.0). */
+    val barColours: Map<Long, Long>
+        get() {
+            if (indicatorsHidden || scriptDraw.barColours.isEmpty()) return emptyMap()
+            val shown = scriptDraw.shown(scriptDraw.barColours, scriptDraw.barColourOwners, hiddenIndicators)
+            return if (shown.size == 1) shown[0] else shown.fold(LinkedHashMap()) { all, one -> all.apply { putAll(one) } }
+        }
+
+    /** The scripts' `plotcandle` and `plotbar` sets (5.15.0). */
+    val candleOverlays: List<ChartCandles>
+        get() = if (indicatorsHidden) emptyList() else scriptDraw.shown(scriptDraw.candles, scriptDraw.candleOwners, hiddenIndicators)
+
+    /** The scripts' tables, drawn by the screen in their corners (5.15.0). */
+    val scriptTables: List<ScriptTable>
+        get() = if (indicatorsHidden) emptyList() else scriptDraw.shown(scriptDraw.tables, scriptDraw.tableOwners, hiddenIndicators)
 
     val markers: List<ChartMarker>
         get() {

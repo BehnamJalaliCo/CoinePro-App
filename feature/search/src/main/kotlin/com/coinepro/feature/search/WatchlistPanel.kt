@@ -1,5 +1,6 @@
 package com.coinepro.feature.search
 
+import com.coinepro.core.designsystem.pageAccentInk
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -292,14 +293,30 @@ fun WatchlistPanel(
         } else {
             val orderState = rememberUpdatedState(order)
             LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                items(rows, key = { it.meta.symbol }) { row ->
+                // Sections (5.15.0): in the list's own order, the unsectioned rows first, then each
+                // section under its name. Only while the list is in the reader's order — sorted by a
+                // column, the sort is the grouping the reader asked for.
+                val grouped = settings.sort.isManual && settings.sections.isNotEmpty()
+                val names = if (grouped) settings.sectionNames(rows.map { it.meta.symbol.uppercase() }) else emptyList()
+                val groups: List<Pair<String?, List<MarketSearchRow>>> = if (grouped) {
+                    listOf<Pair<String?, List<MarketSearchRow>>>(null to rows.filter { settings.sections[it.meta.symbol.uppercase()] == null }) +
+                        names.map { name -> name to rows.filter { settings.sections[it.meta.symbol.uppercase()] == name } }
+                } else {
+                    listOf<Pair<String?, List<MarketSearchRow>>>(null to rows)
+                }
+                for ((name, members) in groups) {
+                if (name != null && members.isNotEmpty()) {
+                    item(key = "section:$name") { WatchlistSectionHeading(name, members.size) }
+                }
+                items(members, key = { it.meta.symbol }) { row ->
                     val symbol = row.meta.symbol.uppercase()
                     // Asked for as the row appears, not for the whole list up front — and the
                     // day-high and day-low columns read the same series, so a row that has one
                     // has both.
                     LaunchedEffect(symbol) { onRequestLine(symbol) }
-                    MarketListRow(
-                        modifier = rowMotion(fades = false),
+                    Column(modifier = rowMotion(fades = false)) {
+MarketListRow(
+                        modifier = Modifier,
                         row = row,
                         onClick = { onOpenSymbol(row.meta.symbol) },
                         onLongClick = { sheet = WatchlistSheet.RowMenu(symbol) },
@@ -334,11 +351,14 @@ fun WatchlistPanel(
                             }
                         },
                     )
+                    settings.notes[symbol]?.let { note -> WatchlistNoteLine(note) }
+                    }
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = CoineProSpacing.Two),
                         thickness = 1.dp,
                         color = CoineProColors.BorderSubtle,
                     )
+                }
                 }
             }
         }
@@ -886,3 +906,40 @@ private fun headingLead(withRail: Boolean, withHandle: Boolean) =
  * still the largest thing the row can spare and still a comfortable target at forty points tall.
  */
 internal val HandleWidth = 32.dp
+
+/** A section's name over its rows, with how many it holds (5.15.0). */
+@Composable
+private fun WatchlistSectionHeading(name: String, count: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.One),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.labelMedium,
+            color = CoineProColors.pageAccentInk,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = count.proseDigits(),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+        )
+    }
+}
+
+/** The reader's note on a row, under it, one line (5.15.0). */
+@Composable
+private fun WatchlistNoteLine(note: String) {
+    Text(
+        text = note,
+        style = MaterialTheme.typography.labelSmall,
+        color = CoineProColors.TextMuted,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.padding(start = CoineProSpacing.Gutter, end = CoineProSpacing.Gutter, bottom = CoineProSpacing.Half),
+    )
+}

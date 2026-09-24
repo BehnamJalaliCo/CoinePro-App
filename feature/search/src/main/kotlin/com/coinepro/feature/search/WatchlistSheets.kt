@@ -1,5 +1,6 @@
 package com.coinepro.feature.search
 
+import androidx.compose.runtime.saveable.rememberSaveable
 import android.content.ClipData
 import android.content.ClipboardManager
 import androidx.compose.foundation.background
@@ -109,6 +110,8 @@ internal fun WatchlistSheets(
             listId = activeId,
             symbol = sheet.symbol,
             current = settings.flags[sheet.symbol],
+            note = settings.notes[sheet.symbol],
+            section = settings.sections[sheet.symbol],
             onDismiss = onDismiss,
             onOpenSymbol = onOpenSymbol,
             onCreateAlert = onCreateAlert,
@@ -641,8 +644,13 @@ private fun RowSheet(
     onDismiss: () -> Unit,
     onOpenSymbol: ((String) -> Unit)?,
     onCreateAlert: ((String) -> Unit)?,
+    /** The reader's note and section on this row (5.15.0). */
+    note: String? = null,
+    section: String? = null,
 ) {
     val scope = rememberCoroutineScope()
+    var noteText by rememberSaveable(symbol) { mutableStateOf(note.orEmpty()) }
+    var sectionText by rememberSaveable(symbol) { mutableStateOf(section.orEmpty()) }
     CoineProSheet(
         title = symbol,
         subtitle = stringResource(R.string.watchlist_row_subtitle),
@@ -721,6 +729,33 @@ private fun RowSheet(
                     onDismiss()
                     scope.launch { store.flag(listId, symbol, null) }
                 },
+            )
+            // The old terminal's note and section, saved together when the sheet's own button is
+            // pressed rather than on every keystroke into a list that re-sorts under the finger.
+            Spacer(modifier = Modifier.size(CoineProSpacing.One))
+            CoineProTextField(
+                value = noteText,
+                onValueChange = { noteText = it.take(WatchlistStore.MAX_NOTE_LENGTH) },
+                label = stringResource(R.string.watchlist_row_memo),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            CoineProTextField(
+                value = sectionText,
+                onValueChange = { sectionText = it.take(WatchlistStore.MAX_NAME_LENGTH_SECTION) },
+                label = stringResource(R.string.watchlist_row_section),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            SheetAction(
+                label = stringResource(R.string.watchlist_row_save_memo),
+                enabled = noteText.trim() != note.orEmpty() || sectionText.trim() != section.orEmpty(),
+                onClick = {
+                    onDismiss()
+                    scope.launch {
+                        store.note(listId, symbol, noteText)
+                        store.section(listId, symbol, sectionText)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
             )
             Spacer(modifier = Modifier.size(CoineProSpacing.One))
             SheetAction(

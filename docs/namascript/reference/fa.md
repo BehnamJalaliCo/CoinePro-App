@@ -309,6 +309,18 @@
 | `strategy.close_all(cond)` | هر معامله‌ی باز را می‌بندد. | عدد |
 | `strategy.entry("long", cond)` | شکل کوتاه پاین: نام جهت را می‌گوید (long/short) و شرط دومین آرگومان است؛ strategy.close(cond) هم پذیرفته است. | عدد |
 
+## خروجی‌های بیشتر (۵٫۱۵)
+
+| فراخوانی | چه می‌دهد | خروجی |
+| --- | --- | --- |
+| `fill(p1, p2, color.new(color.blue, 80))` | ناحیه‌ی بین دو سری را رنگ می‌کند؛ p1 و p2 همان چیزی است که plot برمی‌گرداند. | عدد |
+| `barcolor(cond, color.orange)` | کندل‌هایی که شرط رویشان برقرار است را به این رنگ می‌کشد. | عدد |
+| `plotcandle(open, high, low, close, title = "…")` | مجموعه‌ی دومی از کندل‌ها روی قیمت؛ مثلاً هیکن‌آشی ساخته‌ی خودتان. | عدد |
+| `plotbar(open, high, low, close)` | همان plotcandle به شکل میله‌ی OHLC. | عدد |
+| `plotarrow(x, colorup = color.green, colordown = color.red)` | پیکان بالا زیر کندل‌هایی که x مثبت است و پیکان پایین روی کندل‌هایی که منفی است. | عدد |
+| `table.new(position.top_right, 2, 3)` | جدولی از متن در گوشه‌ی چارت؛ شماره‌اش را برای table.cell برمی‌گرداند. | عدد |
+| `table.cell(t, 0, 0, "RSI", text_color = color.white)` | متن یک خانه‌ی جدول، با ستون و سطر از صفر. | عدد |
+
 ## رنگ‌ها
 
 `color.blue`, `color.buy`, `color.gold`, `color.green`, `color.grey`, `color.orange`, `color.purple`, `color.red`, `color.sell`, `color.silver`, `color.teal`, `color.white`

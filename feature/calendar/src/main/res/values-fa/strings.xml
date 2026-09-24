@@ -35,4 +35,8 @@
     <string name="calendar_relevance_silver">نقره</string>
     <string name="calendar_relevance_crypto">کریپتو</string>
     <string name="calendar_open_chart">نمایش روی چارت</string>
+    <string name="calendar_currency_all">همه‌ی ارزها</string>
+    <string name="calendar_search">جست‌وجوی رویداد</string>
+    <string name="calendar_next_hours">بعدی · %1$s ساعت و %2$s دقیقه دیگر</string>
+    <string name="calendar_next_minutes">بعدی · %1$s دقیقه دیگر</string>
 </resources>

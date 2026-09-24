@@ -275,6 +275,63 @@ class RunGProofTest {
         assertTrue("the spread row is drawn", texts().any { it.contains("EURUSD/GBPUSD") })
     }
 
+    // ── 5.15.0: NamaScript's outputs and the watchlist's sections ────────────────────────────
+
+    @Test
+    fun aScriptDrawsEveryNewOutput() {
+        proof("gap-script-outputs-fa", dark = true, persian = true) {
+            val controller = remember {
+                chartController("XAUUSD").also {
+                    it.addScript(
+                        "Outputs",
+                        """
+                        x = ta.ema(close, 9)
+                        y = ta.ema(close, 30)
+                        fast = plot(x, color = color.blue)
+                        slow = plot(y, color = color.orange)
+                        fill(fast, slow, color.new(color.blue, 80))
+                        barcolor(close > y, color.teal)
+                        bgcolor(ta.rsi(close, 14) > 60, color.new(color.gold, 85))
+                        plotarrow(iff(ta.crossover(x, y), 1, iff(ta.crossunder(x, y), -1, 0)))
+                        plotcandle(open, high, low, (open + high + low + close) / 4, title = "HA", color = color.purple)
+                        t = table.new(position.top_right, 2, 2)
+                        table.cell(t, 0, 0, "RSI")
+                        table.cell(t, 1, 0, ta.rsi(close, 14))
+                        table.cell(t, 0, 1, "EMA 9")
+                        table.cell(t, 1, 1, ta.ema(close, 9))
+                        """.trimIndent(),
+                    )
+                }
+            }
+            ChartScreen(controller = controller)
+        }
+        val tables = composeRule.onAllNodesWithContentDescription("script-table").fetchSemanticsNodes()
+        assertTrue("the script's table is on the chart: ${texts().take(40)}", tables.isNotEmpty())
+    }
+
+    @Test
+    fun theWatchlistCarriesNotesAndSections() {
+        proof("gap-watchlist-sections-fa", dark = true, persian = true) {
+            val store = remember { WatchlistStore(FakeScreenshotPreferences()) }
+            runBlocking {
+                listOf("BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD").forEach { store.add(Watchlist.DEFAULT_LIST_ID, it) }
+                store.section(Watchlist.DEFAULT_LIST_ID, "BTCUSDT", "کریپتو")
+                store.section(Watchlist.DEFAULT_LIST_ID, "ETHUSDT", "کریپتو")
+                store.section(Watchlist.DEFAULT_LIST_ID, "XAUUSD", "فلزات")
+                store.note(Watchlist.DEFAULT_LIST_ID, "XAUUSD", "منتظر برگشت به ۲۶۰۰")
+            }
+            WatchlistScreen(
+                controller = remember { MarketSearchController(ScreenshotFixtures.searchCatalog(), scope).also { it.start() } },
+                store = store,
+                sparklines = remember { ScreenshotFixtures.sparklineStore(scope) },
+                onOpenSymbol = {},
+                onOpenSearch = {},
+            )
+        }
+        assertTrue("the note is under its row", texts().any { it.contains("منتظر برگشت") })
+        assertTrue("the section is a heading", texts().any { it == "فلزات" })
+    }
+
     // ── D. the legend's format ───────────────────────────────────────────────────────────────
 
     @Test

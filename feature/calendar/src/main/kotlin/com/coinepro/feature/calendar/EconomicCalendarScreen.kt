@@ -1,5 +1,10 @@
 package com.coinepro.feature.calendar
 
+import com.coinepro.core.designsystem.proseDigits
+import com.coinepro.core.designsystem.pageAccentInk
+import com.coinepro.core.designsystem.CoineProTextField
+import com.coinepro.core.designsystem.CoineProChipRow
+import com.coinepro.core.designsystem.CoineProChip
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
@@ -95,17 +100,23 @@ fun EconomicCalendarScreen(
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
     var impact by remember { mutableStateOf<MarketImpact?>(null) }
+    // 5.15.0, the old terminal's calendar: a currency, and a word to find.
+    var currency by remember { mutableStateOf<String?>(null) }
+    var query by remember { mutableStateOf("") }
 
     LaunchedEffect(controller) { controller.refresh() }
 
     // Ordered before it is filtered, and ordered rather than scrolled — see [CalendarOrder]: what
     // is coming is at the top, what has already been released is under it, most recent first.
-    val filtered = remember(state.calendar, impact) {
+    val filtered = remember(state.calendar, impact, currency, query) {
         CalendarOrder.arrange(
-            state.calendar.filter { event -> impact == null || event.impact == impact },
+            CalendarFilter.apply(state.calendar, impact, currency, query),
             Instant.now(),
         )
     }
+    val currencies = remember(state.calendar) { CalendarFilter.currencies(state.calendar) }
+    // The first release still to come, which carries the countdown.
+    val nextId = remember(filtered) { CalendarFilter.next(filtered, Instant.now())?.id }
 
     // The list opens at the top, and the top is the next release.
     //
@@ -155,6 +166,23 @@ fun EconomicCalendarScreen(
             selected = impact,
             onSelect = { impact = it },
         )
+        // The currencies this week's releases are in, as the old terminal listed them. Only
+        // when there is more than one to choose between.
+        if (currencies.size > 1) {
+            CoineProChipRow(
+                options = listOf(CoineProChip(ALL_CURRENCIES, stringResource(R.string.calendar_currency_all))) +
+                    currencies.map { CoineProChip(it, BidiText.isolateLtr(it)) },
+                selectedId = currency ?: ALL_CURRENCIES,
+                onSelect = { id -> currency = id?.takeUnless { it == ALL_CURRENCIES } },
+                compact = true,
+            )
+        }
+        CoineProTextField(
+            value = query,
+            onValueChange = { query = it },
+            label = stringResource(R.string.calendar_search),
+            modifier = Modifier.fillMaxWidth(),
+        )
 
         AnimatedContent(
             targetState = calendarMode(state, filtered),
@@ -198,7 +226,7 @@ fun EconomicCalendarScreen(
                             CalendarFreshnessStrip(state.refreshing)
                         }
                         items(filtered, key = EconomicEvent::id) { event ->
-                            TimelineEventCard(event, onOpenChart, Modifier.animateItem())
+                            TimelineEventCard(event, onOpenChart, Modifier.animateItem(), next = event.id == nextId)
                         }
                         item { androidx.compose.foundation.layout.Spacer(Modifier.padding(8.dp)) }
                     }
@@ -304,6 +332,8 @@ private fun TimelineEventCard(
     event: EconomicEvent,
     onOpenChart: ((symbol: String, atSeconds: Long) -> Unit)?,
     modifier: Modifier = Modifier,
+    /** The next release to come: it carries a live countdown, the old terminal's «بعدی». */
+    next: Boolean = false,
 ) {
     val zone = ZoneId.systemDefault()
     val impactColor = when (event.impact) {
@@ -359,6 +389,7 @@ private fun TimelineEventCard(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         ImpactBadge(event.impact)
                         if (event.isStale) MetaBadge(stringResource(R.string.calendar_stale), CoineProColors.Warning)
+                        if (next) NextCountdown(event.scheduledAt)
                     }
                     Text(
                         listOfNotNull(event.country, event.currency).joinToString(" · ")
@@ -441,6 +472,30 @@ private fun ValueCell(label: String, value: String?, modifier: Modifier = Modifi
     }
 }
 
+/**
+ * «بعدی · ۲ ساعت و ۱۵ دقیقه» — how long until the next release, ticking once a minute (5.15.0). A
+ * count in prose, so Persian digits in Persian; gone once the moment passes, when the order puts
+ * the next release at the top instead.
+ */
+@Composable
+private fun NextCountdown(at: Instant) {
+    var now by remember { mutableStateOf(Instant.now()) }
+    LaunchedEffect(at) {
+        while (true) {
+            now = Instant.now()
+            kotlinx.coroutines.delay(COUNTDOWN_TICK_MS)
+        }
+    }
+    val minutes = java.time.Duration.between(now, at).toMinutes()
+    if (minutes < 0) return
+    val text = if (minutes >= 60) {
+        stringResource(R.string.calendar_next_hours, (minutes / 60).proseCount(), (minutes % 60).proseCount())
+    } else {
+        stringResource(R.string.calendar_next_minutes, minutes.proseCount())
+    }
+    MetaBadge(text, CoineProColors.pageAccentInk)
+}
+
 @Composable
 private fun ImpactBadge(impact: MarketImpact) {
     val color = when (impact) {
@@ -506,3 +561,13 @@ private fun MarketImpact.shortLabelRes(): Int = when (this) {
     MarketImpact.LOW -> R.string.calendar_impact_short_low
     MarketImpact.UNKNOWN -> R.string.calendar_impact_short_unknown
 }
+
+/** The chip id for «every currency». Not a currency code, so it cannot collide with one. */
+private const val ALL_CURRENCIES = "*"
+
+/** A minute: the countdown's resolution, and as often as it needs to redraw. */
+private const val COUNTDOWN_TICK_MS = 60_000L
+
+/** A count in prose: Persian digits when the page is Persian. */
+@Composable
+private fun Long.proseCount(): String = toInt().proseDigits()
