@@ -162,6 +162,46 @@ class RelayTest(AioHTTPTestCase):
         self.assertEqual((await self.client.get("/api/img", params={"url": str(self.upstream.make_url("/img/huge.png"))})).status, 413)
 
 
+class PrivateNetworkTest(AioHTTPTestCase):
+    """RELAY_*_CONNECT: open the private address, keep the public name in Host (and in TLS)."""
+
+    async def get_application(self) -> web.Application:
+        self.upstream = TestServer(fake_backend())
+        await self.upstream.start_server()
+        config = relay.Config(backends={"tradeyar": "https://tradeyar.example/", "coineprofx": "https://fx.example/"},
+                              connect={"tradeyar": str(self.upstream.make_url("/"))}, cookie_secure=False)
+        return relay.build_app(config)
+
+    async def asyncTearDown(self) -> None:
+        await super().asyncTearDown()
+        await self.upstream.close()
+
+    async def test_connects_privately_and_names_the_public_host(self) -> None:
+        seen = await (await self.client.get("/up/tradeyar/api/echo")).json()
+        self.assertEqual(seen["headers"]["Host"], "tradeyar.example")
+
+    def test_route_keeps_the_public_name_for_tls(self) -> None:
+        config = relay.Config(backends={"tradeyar": "https://tradeyar.example/"}, connect={"tradeyar": "https://10.0.0.3/"})
+        url, headers, tls = relay.upstream_route(config, "tradeyar", "api/x?a=1")
+        self.assertEqual(url, "https://10.0.0.3/api/x?a=1")
+        self.assertEqual(headers, {"Host": "tradeyar.example"})
+        self.assertEqual(tls, {"server_hostname": "tradeyar.example"})
+
+
+class LimitTest(AioHTTPTestCase):
+    async def get_application(self) -> web.Application:
+        return relay.build_app(relay.Config(backends={"tradeyar": "http://127.0.0.1:9/"}, auth_requests_per_minute=100,
+                                            auth_address_requests_per_minute=3))
+
+    async def test_rotating_client_ids_does_not_escape_the_address_ceiling(self) -> None:
+        statuses = []
+        for n in range(5):
+            response = await self.client.post("/up/tradeyar/api/mobile/v1/auth/login", json={}, headers={"X-Client-Id": f"c{n}"})
+            statuses.append(response.status)
+        self.assertEqual(statuses[-1], 429)
+        self.assertNotIn(429, statuses[:3])
+
+
 class GuardTest(AioHTTPTestCase):
     async def get_application(self) -> web.Application:
         return relay.build_app(relay.Config())

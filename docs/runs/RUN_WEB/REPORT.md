@@ -126,3 +126,29 @@ publisher, and CI runs them. Locally the page ran behind it: the local server fo
 their photos through it: six of six. The first run gave two `415`s — `cryptoslate.com` serves its WebP
 with no `Content-Type` at all — so a photo with no type, or a generic one, is now judged by its first
 bytes, and a body that is not an image is still refused.
+
+## 8. The server's review, and what changed because of it (5.10.1)
+
+The server agent ran `web/relay` on `pro-chart.com` on 2026-09-24. Its checks: the tests green inside
+the image, `/relay/health` ok, `/up/tradeyar/api/mobile/v1/auth/methods` 200, a public photo through
+`/api/img` 200 and `127.0.0.1` refused with 400. Every existing route was unchanged, and the relay
+used 26 MiB. It left the bundle undeployed because a CI artefact needs a GitHub login, and it asked
+three questions.
+
+* **Rate limits at the edge for `/up/*`?** No, and the relay's own limits were tightened instead.
+  They keyed on address and `X-Client-Id`, and the client id is the reader's to choose. So
+  sign-in routes now also count per address alone (30 a minute, `RELAY_AUTH_ADDRESS_REQUESTS_PER_MINUTE`),
+  and a test rotates the id to prove it does not escape. A second bucket in Caddy would refuse what
+  the relay allowed, where no one can say why.
+* **The backends over the public internet, not the private network?** Now optional:
+  `RELAY_TRADEYAR_CONNECT` / `RELAY_COINEPROFX_CONNECT` name the private address to connect to, while
+  TLS is still verified against the public name (SNI) and `Host` still carries it. That is the
+  `upstream.py` approach without its `verify=False`: nothing is turned off. Two tests.
+* **Cache rules for a bundle with no hashes.** The concern was right. `terminal.wasm` has no hash in
+  its name, and a catch-all `.wasm → immutable` rule would pin readers to the first release forever.
+  `web/relay/README.md` now says so, with the Caddy lines: `/terminal/*` gets `no-cache` and is
+  excluded from the immutable matchers.
+
+**The bundle without a login.** CI now publishes it on every push to main as the pre-release
+`web-latest` (`pro-chart-terminal.zip`, its `.sha256`, and a `BUILD.txt` inside naming the commit).
+It is never marked «latest», so the site's link to the newest APK is unaffected.

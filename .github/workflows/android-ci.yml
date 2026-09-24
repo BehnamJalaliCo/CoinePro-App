@@ -17,6 +17,10 @@ jobs:
   build:
     name: Lint, test, build
     runs-on: ubuntu-latest
+    # Write, for one step only in practice: the web bundle's rolling release (see that step). Pull
+    # requests from forks still get a read-only token, and that step does not run for them.
+    permissions:
+      contents: write
     # Seventy-five, and the thirty-five it replaces was never a measurement.
     #
     # This job runs three lint variants, the unit tests, five assembles and then a `bundleRelease`
@@ -160,6 +164,21 @@ jobs:
           name: pro-chart-terminal
           path: web/build/terminal/
           if-no-files-found: error
+
+      # The same bundle where pro-chart.com can fetch it without a GitHub login: an artefact needs
+      # `actions:read` even on a public repository, a release asset does not. One rolling
+      # pre-release, `web-latest`, replaced on every push to main (web/relay/README.md).
+      - name: Publish the web bundle as the web-latest release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          printf 'commit %s\nversion %s\nbuilt %s\n' "$GITHUB_SHA" "$(python3 scripts/release/version.py --name)" "$(date -u +%FT%TZ)" > web/build/terminal/BUILD.txt
+          (cd web/build/terminal && zip -qr ../pro-chart-terminal.zip .)
+          (cd web/build && sha256sum pro-chart-terminal.zip > pro-chart-terminal.zip.sha256)
+          gh release view web-latest >/dev/null 2>&1 || gh release create web-latest --prerelease --latest=false --title "Web bundle — latest main" --notes "The web app's bundle, rebuilt on every push to main. Deploy: web/relay/README.md."
+          gh release upload web-latest web/build/pro-chart-terminal.zip web/build/pro-chart-terminal.zip.sha256 --clobber
+          gh release edit web-latest --notes "The web app's bundle, built from $GITHUB_SHA. Deploy: web/relay/README.md."
 
       - name: Lint, test, and assemble debug + staging + release + benchmark
         run: gradle --no-daemon :chart-core:jvmTest :namascript:jvmTest :chart-ui:testDebugUnitTest :core:script:testDebugUnitTest :core:auth:testDebugUnitTest :core:network:testDebugUnitTest :core:marketdata:testDebugUnitTest :core:signals:testDebugUnitTest :core:notifications:testDebugUnitTest :core:execution:testDebugUnitTest :core:aisignal:testDebugUnitTest :core:aivision:testDebugUnitTest :core:aiassistant:testDebugUnitTest :core:marketintel:testDebugUnitTest :core:database:testDebugUnitTest :feature:tools:testDebugUnitTest :app:lintDebug :app:lintStaging :app:lintRelease :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleStaging :app:assembleRelease :app:assembleBenchmark :benchmark:assembleBenchmark

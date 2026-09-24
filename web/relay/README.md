@@ -8,7 +8,7 @@ server only has to run it:
 * `/api/img?url=…`: a publisher's photo for the news cards. `https://` only, image types only,
   5 MB, never a private address.
 
-Tests: `python3 -m unittest test_relay` (thirteen cases, against fake backends and a fake publisher).
+Tests: `python3 -m unittest test_relay` (sixteen cases, against fake backends and a fake publisher).
 
 ## Run it next to the existing relay
 
@@ -47,7 +47,51 @@ browsers, and a restart signs every browser out, as clearing an app's data does 
 | `RELAY_SESSION_DAYS` | `30` | how long a browser stays signed in without a visit |
 | `RELAY_REQUESTS_PER_MINUTE` | `240` | per address + `X-Client-Id` |
 | `RELAY_AUTH_REQUESTS_PER_MINUTE` | `12` | sign-in routes, same key |
+| `RELAY_AUTH_ADDRESS_REQUESTS_PER_MINUTE` | `30` | sign-in routes, per address alone — `X-Client-Id` is the reader's to choose |
+| `RELAY_TRADEYAR_CONNECT` | — | e.g. `https://10.0.0.3/`: connect here instead of the public name. TLS is still verified against the public name (SNI) and `Host` still names it |
+| `RELAY_COINEPROFX_CONNECT` | — | same |
 | `RELAY_COOKIE_SECURE` | `1` | `0` only for a local run over plain http |
+
+## Rate limits: the relay's, not a second set at the edge
+
+`/up/*` and `/api/img` need no Caddy bucket. The relay counts every request by address and
+`X-Client-Id` (the §6 key), and sign-in routes twice more: by that key at 12 a minute, and by
+address alone at 30, so rotating client ids does not multiply a guesser's attempts. A second
+ceiling at the edge would refuse what the relay had allowed, where no one can say why. Each backend
+also enforces its own sign-in limits behind this. The edge's `/api/auth/*` and `/api/link/*` bucket
+covers Pro Chart's own account routes, which are a different backend, so the two policies are about
+two different things.
+
+## Caching `/terminal/`
+
+The bundle's file names carry **no hash**: `terminal.wasm`, `skiko.wasm`, `terminal.mjs`, `sw.js`,
+`manifest.webmanifest`, the drawables. None of them may be `immutable`. Serve everything under
+`/terminal/` with `Cache-Control: no-cache`, so the browser revalidates with the ETag and gets a `304`
+when nothing changed. That costs one round trip per file, not a download. A catch-all `@wasm`
+matcher that marks every `.wasm` as `immutable` must not match `/terminal/*`, or a reader keeps the
+old app forever:
+
+```caddy
+@terminal path /terminal/*
+header @terminal Cache-Control "no-cache"
+# … and exclude /terminal/* from any @wasm / @hashed immutable matcher, e.g.:
+# @wasm { path *.wasm; not path /terminal/* }
+```
+
+## Getting the bundle without a GitHub login
+
+Every push to `main` puts the built bundle on the rolling release `web-latest`, which anyone can
+download:
+
+```bash
+curl -fsSL -o /tmp/pro-chart-terminal.zip \
+  https://github.com/BehnamJalaliCo/CoinePro-App/releases/download/web-latest/pro-chart-terminal.zip
+curl -fsSL https://github.com/BehnamJalaliCo/CoinePro-App/releases/download/web-latest/pro-chart-terminal.zip.sha256
+sha256sum /tmp/pro-chart-terminal.zip       # must match the line above
+```
+
+The zip holds the files of `web/build/terminal/` at its top level, plus `BUILD.txt` naming the
+commit it was built from.
 
 ## How to know it works
 

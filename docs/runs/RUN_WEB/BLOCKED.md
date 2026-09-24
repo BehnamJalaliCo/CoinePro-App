@@ -5,12 +5,14 @@ What is left is owed to the server agent or the owner. Nothing here needs a chan
 
 ## B1 — the bundle on pro-chart.com (server agent)
 
-`pro-chart.com/terminal/` serves the W1b chart until the new bundle replaces it. Put
-`web/build/terminal/` (or CI's `pro-chart-terminal` artefact) at `site/terminal` and run
-`bin/precompress.sh site/terminal`. `.wasm` is already `application/wasm` and the SPA fallback on
-`/terminal/*` is already on.
+`pro-chart.com/terminal/` answers 404 until the bundle is there. The relay is running (server
+review, 2026-09-24). The bundle was not deployed then only because a CI artefact needs a GitHub
+login to download. Since 5.10.1 every push to main also publishes it where no login is needed, as the
+release `web-latest` (`web/relay/README.md`, «Getting the bundle»). Unzip into `site/terminal`, run
+`bin/precompress.sh site/terminal`, and serve `/terminal/*` with `Cache-Control: no-cache`, never
+`immutable`: none of its file names carry a hash (`web/relay/README.md`, «Caching»).
 
-## B2 — run the relay (server agent)
+## B2 — run the relay (server agent) — done 2026-09-24
 
 `web/relay/` is the service `SERVER.md` §4.12 and §4.13 describe, written and tested in this
 repository: the `/up/tradeyar/…` and `/up/coineprofx/…` passthrough (every method, WebSocket too,

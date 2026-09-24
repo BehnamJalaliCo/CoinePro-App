@@ -52,6 +52,18 @@ class Config:
     image_allow_http: bool = False
     requests_per_minute: int = int(os.environ.get("RELAY_REQUESTS_PER_MINUTE", "240"))
     auth_requests_per_minute: int = int(os.environ.get("RELAY_AUTH_REQUESTS_PER_MINUTE", "12"))
+    # The client id is the reader's to choose, so a second ceiling on sign-in routes counts the
+    # address alone: rotating X-Client-Id buys a guesser nothing past this.
+    auth_address_requests_per_minute: int = int(os.environ.get("RELAY_AUTH_ADDRESS_REQUESTS_PER_MINUTE", "30"))
+    # Where to *connect* for a backend, when that is not its public name: an address on the private
+    # network. TLS is still verified against the public name (SNI and the certificate), and the Host
+    # header still names it, so the backend cannot tell the difference and nothing is turned off.
+    connect: dict[str, str] = field(default_factory=lambda: {
+        name: value for name, value in (
+            ("tradeyar", os.environ.get("RELAY_TRADEYAR_CONNECT", "")),
+            ("coineprofx", os.environ.get("RELAY_COINEPROFX_CONNECT", "")),
+        ) if value
+    })
 
 
 # The request headers the phone sends (AuthInterceptor, the install-id and version interceptors, the
@@ -263,7 +275,19 @@ def _limited(request: web.Request, auth: bool) -> bool:
     config: Config = request.app[CONFIG]
     address, client = client_key(request)
     per_minute = config.auth_requests_per_minute if auth else config.requests_per_minute
-    return not request.app[BUCKETS].allow((address, client, auth), per_minute)
+    if not request.app[BUCKETS].allow((address, client, auth), per_minute):
+        return True
+    return auth and not request.app[BUCKETS].allow((address, "*", True), config.auth_address_requests_per_minute)
+
+
+def upstream_route(config: Config, backend: str, path_and_query: str) -> tuple[str, dict[str, str], dict]:
+    """The URL to open for a backend, the Host header it needs, and the TLS name to verify."""
+    origin = config.backends[backend]
+    connect = config.connect.get(backend)
+    if not connect:
+        return origin + path_and_query, {}, {}
+    public = urlsplit(origin).hostname or ""
+    return connect + path_and_query, {"Host": public}, {"server_hostname": public}
 
 
 async def passthrough(request: web.Request) -> web.StreamResponse:
@@ -281,9 +305,10 @@ async def passthrough(request: web.Request) -> web.StreamResponse:
 
     sessions: Sessions = request.app[SESSIONS]
     session = sessions.get(request.cookies.get(config.cookie_name))
-    target = origin + path + (("?" + request.query_string) if request.query_string else "")
+    target, route_headers, tls = upstream_route(config, backend, path + (("?" + request.query_string) if request.query_string else ""))
 
     headers = {name: request.headers[name] for name in FORWARDED_REQUEST_HEADERS if name in request.headers}
+    headers.update(route_headers)
     bearer = headers.get("Authorization", "")
     if bearer.startswith("Bearer " + HANDLE_PREFIX):
         real = session.tokens.get(bearer[len("Bearer "):]) if session else None
@@ -297,7 +322,7 @@ async def passthrough(request: web.Request) -> web.StreamResponse:
     if request.headers.get("Upgrade", "").lower() == "websocket":
         if "Authorization" not in headers and session and backend in session.latest_bearer:
             headers["Authorization"] = "Bearer " + session.latest_bearer[backend]
-        return await _socket(request, target, headers)
+        return await _socket(request, target, headers, tls)
 
     body = await request.read() if request.can_read_body else None
     if body and auth_route and "json" in headers.get("Content-Type", ""):
@@ -308,7 +333,7 @@ async def passthrough(request: web.Request) -> web.StreamResponse:
 
     try:
         async with request.app[UPSTREAM].request(request.method, target, headers=headers, data=body,
-                                                   allow_redirects=False) as upstream:
+                                                   allow_redirects=False, **tls) as upstream:
             payload = await upstream.read()
             status = upstream.status
             returned = {name: upstream.headers[name] for name in RETURNED_RESPONSE_HEADERS if name in upstream.headers}
@@ -337,11 +362,11 @@ async def passthrough(request: web.Request) -> web.StreamResponse:
     return response
 
 
-async def _socket(request: web.Request, target: str, headers: dict[str, str]) -> web.StreamResponse:
+async def _socket(request: web.Request, target: str, headers: dict[str, str], tls: dict) -> web.StreamResponse:
     upstream_url = target.replace("https://", "wss://", 1).replace("http://", "ws://", 1)
     headers.pop("Content-Type", None)
     try:
-        upstream = await request.app[UPSTREAM].ws_connect(upstream_url, headers=headers, heartbeat=30)
+        upstream = await request.app[UPSTREAM].ws_connect(upstream_url, headers=headers, heartbeat=30, **tls)
     except (aiohttp.ClientError, asyncio.TimeoutError):
         return web.json_response({"detail": "upstream unreachable"}, status=502)
     page = web.WebSocketResponse(heartbeat=30)
