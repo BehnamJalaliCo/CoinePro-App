@@ -1,5 +1,10 @@
 package com.coinepro.feature.search
 
+import com.coinepro.core.designsystem.CoineProLazyRow
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import com.coinepro.core.designsystem.CONTENT_MAX_WIDTH
 import com.coinepro.core.designsystem.pageAccentInk
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
@@ -20,7 +25,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Icon
@@ -166,6 +170,14 @@ fun SearchScreen(
      * every render test get.
      */
     recentSearches: RecentSearchStore? = null,
+    /**
+     * Drawn as a dialog over the chart rather than as a page (DIALOGS-04): a heading with this
+     * title and a close control, the field focused on open, and no teaching strip to overlap the
+     * chips. Null is the page the phone opens.
+     */
+    dialogTitle: String? = null,
+    /** Closes the dialog. Read only with [dialogTitle]. */
+    onClose: (() -> Unit)? = null,
 ) {
     LaunchedEffect(controller) { controller.start() }
     val state by controller.state.collectAsStateWithLifecycle()
@@ -210,13 +222,48 @@ fun SearchScreen(
         state.query.takeIf { SymbolExpression.isExpression(it) }?.filterNot { it == ' ' }?.uppercase()
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize().background(CoineProColors.Stage),
+    val dialog = dialogTitle != null
+    val field = remember { FocusRequester() }
+    if (dialog) LaunchedEffect(Unit) { runCatching { field.requestFocus() } }
+    // Capped and centred on a wide window, so a row's price is not fourteen hundred points from its
+    // ticker on a desktop page (DIALOGS-04).
+    Box(
+        modifier = Modifier.fillMaxSize().background(if (dialog) CoineProColors.Surface else CoineProColors.Stage),
+        contentAlignment = Alignment.TopCenter,
     ) {
+    Column(
+        modifier = Modifier.widthIn(max = CONTENT_MAX_WIDTH).fillMaxSize(),
+    ) {
+        if (dialog) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = CoineProSpacing.Gutter, end = CoineProSpacing.One, top = CoineProSpacing.One),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = dialogTitle.orEmpty(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = CoineProColors.TextPrimary,
+                    modifier = Modifier.weight(1f),
+                )
+                if (onClose != null) {
+                    androidx.compose.material3.IconButton(onClick = onClose) {
+                        Icon(
+                            painter = painterResource(CoineProIcons.Close),
+                            contentDescription = stringResource(R.string.search_close),
+                            tint = CoineProColors.TextSecondary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
+            }
+        }
         Column(
             modifier = Modifier.padding(
                 horizontal = CoineProSpacing.Gutter,
-                vertical = CoineProSpacing.Two,
+                vertical = if (dialog) CoineProSpacing.One else CoineProSpacing.Two,
             ),
             verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
         ) {
@@ -224,10 +271,10 @@ fun SearchScreen(
                 value = state.query,
                 onValueChange = controller::setQuery,
                 label = stringResource(R.string.search_field_label),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().focusRequester(field),
             )
             CategoryChips(selected = state.category, onSelect = controller::setCategory)
-            CoineProTeachingStrip(TeachingSurface.SEARCH, gutter = false)
+            if (!dialog) CoineProTeachingStrip(TeachingSurface.SEARCH, gutter = false)
             // **A spread or a ratio** (5.14.0). The terminal charted `EURUSD/GBPUSD`,
             // `XAUUSD*2` or `(BTCUSDT+ETHUSDT)/2` typed straight into its search, and so does this:
             // when the field holds arithmetic over symbols, the first row charts it. Straight to
@@ -352,6 +399,7 @@ fun SearchScreen(
             }
         }
     }
+    }
 
     // Rebuilt from the live results on every frame the sheet is up, so the figure in it is the
     // same figure as the row behind it rather than a copy taken when the finger went down.
@@ -406,7 +454,7 @@ private fun CategoryChips(selected: SymbolCategory?, onSelect: (SymbolCategory?)
     )
     // A count in prose, so Android's own formatting writes it in Persian digits under fa-IR —
     // market figures stay Latin, and this is not one.
-    LazyRow(
+    CoineProLazyRow(
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         // The row scrolls, so the last chip has to be able to clear the edge rather than sit
         // against it looking cut off.
@@ -467,7 +515,7 @@ private fun RecentRow(symbols: List<String>, onOpen: (String) -> Unit, onClear: 
                     .padding(horizontal = CoineProSpacing.Half, vertical = CoineProSpacing.Half),
             )
         }
-        LazyRow(
+        CoineProLazyRow(
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
             contentPadding = PaddingValues(
                 start = CoineProSpacing.Gutter,

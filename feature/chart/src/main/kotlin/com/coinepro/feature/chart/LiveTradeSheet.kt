@@ -4,9 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
+import com.coinepro.core.designsystem.CoineProSwitch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -125,7 +126,13 @@ fun LiveTradeSheetBody(
     }
     val problem = request?.let { LiveOrderCheck.check(it, livePrice) }
 
-    Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf)) {
+    // The sheet's gutter on both sides (MOBILE-02): the body had none and ran into the glass.
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = CoineProSpacing.Gutter, end = CoineProSpacing.Gutter, bottom = CoineProSpacing.Two),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+    ) {
         Text(
             text = stringResource(R.string.live_ticket_real),
             style = MaterialTheme.typography.bodySmall,
@@ -171,13 +178,18 @@ fun LiveTradeSheetBody(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
-            Switch(
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        ) {
+            // Label first, switch at the far end, as every other settings row in the app has it.
+            Text(stringResource(R.string.live_reduce_only), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            CoineProSwitch(
                 checked = reduceOnly,
                 onCheckedChange = { reduceOnly = it; review = null },
                 modifier = Modifier.semantics { contentDescription = "live-reduce-only" },
             )
-            Text(stringResource(R.string.live_reduce_only), style = MaterialTheme.typography.bodyMedium)
         }
         if (!reduceOnly) {
             Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {

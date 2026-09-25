@@ -5,6 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import com.coinepro.core.designsystem.CoineProToggleChip
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -32,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.foldDigitsToLatin
 import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.CoineProChip
-import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProIcons
@@ -113,7 +115,7 @@ internal fun ScreenerFilterSheet(
             )
 
             SectionLabel(stringResource(R.string.screener_presets))
-            CoineProChipRow(
+            WrappedChips(
                 options = ScreenerPresets.all.map { CoineProChip(it.id, it.name) },
                 selectedId = state.activeScreenId,
                 onSelect = { id -> ScreenerPresets.all.firstOrNull { it.id == id }?.let(onApplyScreen) },
@@ -211,7 +213,7 @@ private fun ConditionBuilder(onAdd: (ScreenerFilter) -> Unit) {
     var period by remember { mutableStateOf("") }
 
     SectionLabel(stringResource(R.string.screener_field))
-    CoineProChipRow(
+    WrappedChips(
         // The day's own figures only. The indicator-derived fields moved to [IndicatorBuilder],
         // which offers all eighty-three rather than the eight that happen to have a column —
         // see [115]. They are still columns, still sortable and still saved; they are simply no
@@ -224,7 +226,7 @@ private fun ConditionBuilder(onAdd: (ScreenerFilter) -> Unit) {
     )
 
     SectionLabel(stringResource(R.string.screener_operator))
-    CoineProChipRow(
+    WrappedChips(
         options = NumericOp.entries.map { CoineProChip(it.name, it.labelIn(inEnglish())) },
         selectedId = op.name,
         onSelect = { id -> NumericOp.entries.firstOrNull { it.name == id }?.let { op = it } },
@@ -313,15 +315,16 @@ private fun ConditionBuilder(onAdd: (ScreenerFilter) -> Unit) {
 @Composable
 private fun IndicatorBuilder(hasVolume: Boolean, onAdd: (ScreenerFilter) -> Unit) {
     var query by remember { mutableStateOf("") }
-    var indicatorId by remember { mutableStateOf(ScreenerIndicatorId.RSI) }
+    var indicatorId by remember { mutableStateOf<String?>(null) }
     var op by remember { mutableStateOf(NumericOp.LT) }
     var value by remember { mutableStateOf("") }
     var bound by remember { mutableStateOf("") }
     var period by remember { mutableStateOf("") }
 
     val offered = ScreenerIndicatorCatalog.matching(query, hasVolume)
-    val selected = offered.firstOrNull { it.id == indicatorId }
-        ?: ScreenerIndicatorCatalog.optionOf(indicatorId)
+    val selected = indicatorId?.let { id ->
+        offered.firstOrNull { it.id == id } ?: ScreenerIndicatorCatalog.optionOf(id)
+    }
 
     SectionLabel(stringResource(R.string.screener_indicator))
     CoineProSheetSearch(
@@ -336,16 +339,35 @@ private fun IndicatorBuilder(hasVolume: Boolean, onAdd: (ScreenerFilter) -> Unit
             color = CoineProColors.TextMuted,
         )
     } else {
-        CoineProChipRow(
-            options = offered.map { CoineProChip(it.id, ScreenerIndicatorCatalog.labelOf(it.id, inEnglish())) },
-            selectedId = selected?.id,
+        // Wrapped, not a strip cut at the sheet's edge (LISTS-20) — and capped, because eighty
+        // chips wrapped are a wall. The search box above is the way to the rest, and the chosen
+        // one is always kept in view.
+        val english = inEnglish()
+        val shown = (offered.take(INDICATOR_CHIPS) + listOfNotNull(offered.firstOrNull { it.id == indicatorId }))
+            .distinctBy { it.id }
+        WrappedChips(
+            options = shown.map { CoineProChip(it.id, it.labelIn(english)) },
+            selectedId = indicatorId,
             onSelect = { id -> id?.let { indicatorId = it } },
             compact = true,
         )
+        if (offered.size > shown.size) {
+            Text(
+                text = stringResource(R.string.screener_indicator_more),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+            )
+        }
+    }
+    // Nothing to set a condition on until an indicator is picked: the heading and its fields wait
+    // for one rather than sitting under the list with nothing beneath them (LISTS-20).
+    if (selected == null) {
+        WithheldIndicators(hasVolume)
+        return
     }
 
     SectionLabel(stringResource(R.string.screener_operator))
-    CoineProChipRow(
+    WrappedChips(
         options = NumericOp.entries.map { CoineProChip(it.name, it.labelIn(inEnglish())) },
         selectedId = op.name,
         onSelect = { id -> NumericOp.entries.firstOrNull { it.name == id }?.let { op = it } },
@@ -390,8 +412,7 @@ private fun IndicatorBuilder(hasVolume: Boolean, onAdd: (ScreenerFilter) -> Unit
     CoineProSecondaryButton(
         text = stringResource(R.string.screener_add_indicator),
         onClick = {
-            val option = selected ?: return@CoineProSecondaryButton
-            buildIndicatorFilter(option, op, value, bound, period)?.let { filter ->
+            buildIndicatorFilter(selected, op, value, bound, period)?.let { filter ->
                 onAdd(filter)
                 value = ""
                 bound = ""
@@ -416,19 +437,65 @@ private fun IndicatorBuilder(hasVolume: Boolean, onAdd: (ScreenerFilter) -> Unit
 private fun WithheldIndicators(hasVolume: Boolean) {
     val withheld = ScreenerIndicatorCatalog.withheld(hasVolume)
     if (withheld.isEmpty()) return
+    val english = inEnglish()
     SectionLabel(stringResource(R.string.screener_indicator_absent))
     withheld.groupBy { it.why }.forEach { (why, rows) ->
         Text(
             text = stringResource(
                 R.string.screener_indicator_absent_line,
-                why.reason,
-                rows.joinToString("، ") { it.label },
+                why.reasonIn(english),
+                rows.joinToString(if (english) ", " else "، ") {
+                    if (english) ScreenerIndicatorCatalog.englishNameOf(it.id) else it.label
+                },
             ),
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextMuted,
         )
     }
 }
+
+/**
+ * A chip choice that wraps instead of scrolling off the sheet's edge (LISTS-20).
+ *
+ * The same arguments as `CoineProChipRow` and the same chip, laid out in a `FlowRow`: a sheet has the
+ * height, and a row cut at «Day rang|» with no fade is a choice the reader cannot see is there.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun WrappedChips(
+    options: List<CoineProChip>,
+    selectedId: String?,
+    onSelect: (String?) -> Unit,
+    allLabel: String? = null,
+    compact: Boolean = false,
+) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        if (allLabel != null) {
+            CoineProToggleChip(
+                label = allLabel,
+                selected = selectedId == null,
+                onClick = { onSelect(null) },
+                compact = compact,
+            )
+        }
+        options.forEach { option ->
+            CoineProToggleChip(
+                label = option.label,
+                selected = option.id == selectedId,
+                onClick = { onSelect(option.id) },
+                compact = compact,
+                count = option.count?.takeIf { it > 0 },
+            )
+        }
+    }
+}
+
+/** How many indicator chips the sheet shows before the search box has to be used. */
+private const val INDICATOR_CHIPS = 18
 
 /** The reader's own screens, with the row that saves the current one beside them. */
 @Composable

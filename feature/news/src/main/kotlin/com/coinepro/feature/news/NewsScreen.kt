@@ -1,5 +1,10 @@
 package com.coinepro.feature.news
 
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.activity.compose.PredictiveBackHandler
 import kotlinx.coroutines.CancellationException
 import androidx.annotation.StringRes
@@ -350,7 +355,10 @@ fun NewsScreen(
                 } else {
                     stringResource(R.string.news_subtitle)
                 },
-                modifier = Modifier.padding(horizontal = 0.dp),
+                // The column already pads by the gutter and the header pads itself again; bled back
+                // out, so the title lines up with the cards rather than sixteen points inside them
+                // (MOBILE-19).
+                modifier = Modifier.bleedHorizontally(CoineProSpacing.Gutter),
                 actions = {
                     // Only where there is a store to read. A filter that can only ever be empty is a
                     // control that teaches the reader the feature is broken.
@@ -535,9 +543,13 @@ fun NewsScreen(
                                     )
                                 }
                             }
-                            items(filtered, key = NewsStory::id) { story ->
+                            itemsIndexed(filtered, key = { _, story -> story.id }) { index, story ->
                                 NewsCard(
                                     story = story,
+                                    // One lead story with its picture; the rest as compact rows
+                                    // with a thumbnail (MOBILE-19) — 1.3 stories a screen was a
+                                    // gallery, not a news list.
+                                    compact = index > 0,
                                     onOpen = {
                                         openArticle = story
                                         openArticleId = story.id
@@ -818,6 +830,8 @@ internal fun NewsCard(
     story: NewsStory,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
+    /** A row with a trailing thumbnail instead of a hero over the card. See the list's note. */
+    compact: Boolean = false,
 ) {
     // A live high-impact story is the one card that gets an edge. Everything else is separated by
     // the gap, so the edge means "read this one" rather than "this is a card".
@@ -838,6 +852,41 @@ internal fun NewsCard(
         // padding the card would have applied — see the column below.
         contentPadding = PaddingValues(0.dp),
     ) {
+        if (compact) {
+            Row(
+                modifier = Modifier.padding(
+                    horizontal = CoineProSpacing.CardHorizontal,
+                    vertical = CoineProSpacing.CardVertical,
+                ),
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                ) {
+                    Text(
+                        text = paragraphOf(story.title),
+                        style = NewsTextStyles.CardHeadline,
+                        color = CoineProColors.TextPrimary,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = alignmentFor(story.title),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    NewsByline(story)
+                }
+                NewsHero(
+                    url = story.imageUrl,
+                    contentDescription = stringResource(R.string.news_image_of, story.title),
+                    source = story.source,
+                    aspectRatio = 1f,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.width(COMPACT_THUMB),
+                )
+            }
+            return@CoineProCard
+        }
         NewsHero(
             url = story.imageUrl,
             contentDescription = stringResource(R.string.news_image_of, story.title),
@@ -897,6 +946,30 @@ internal fun NewsCard(
 
 /** The card's corner, repeated here so the picture inside it can match. See [NewsCard]. */
 private val CARD_RADIUS = 16.dp
+
+/** A compact story's thumbnail. See [NewsCard]. */
+private val COMPACT_THUMB = 96.dp
+
+/**
+ * Lets a child reach [amount] past each side of a padded parent.
+ *
+ * For a heading that pads itself inside a column that pads too — the two gutters added up to
+ * thirty-two points while every card below sat at sixteen (MOBILE-19).
+ */
+internal fun Modifier.bleedHorizontally(amount: Dp): Modifier = layout { measurable, constraints ->
+    val extra = amount.roundToPx() * 2
+    if (!constraints.hasBoundedWidth) {
+        val placeable = measurable.measure(constraints)
+        return@layout layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+    }
+    val placeable = measurable.measure(
+        constraints.copy(
+            minWidth = (constraints.minWidth + extra).coerceAtMost(constraints.maxWidth + extra),
+            maxWidth = constraints.maxWidth + extra,
+        ),
+    )
+    layout((placeable.width - extra).coerceAtLeast(0), placeable.height) { placeable.place(-extra / 2, 0) }
+}
 
 @Composable
 private fun CenterState(

@@ -254,8 +254,15 @@ class FoldMetricsTest {
          * the line the count was already on. Nothing left the screen: every one of the five list
          * actions is still one tap away, and the control row got *shorter* because a picker says
          * «which list» in one word where a tray had to draw all of them.
+         *
+         * **109 since the TradingView parity pass**, and the four points buy two things the audit
+         * asked for. The toolbar glyphs lost their plates and gained a real forty-point target
+         * (MOBILE-16) — the row's own padding went, so that costs two points, not six — and the
+         * column headings became a heading row with a hit area the height of the cell and a rule
+         * under it (LISTS-16). Against that, the tab's sixty-four point app bar is gone altogether
+         * (MOBILE-09), which this measurement, being the page's own chrome, does not see.
          */
-        val CHROME_TARGET = 105.dp
+        val CHROME_TARGET = 109.dp
         const val CHROME_DRIFT_DP = 1.0f
 
         /** «Watchlist pre-row chrome <= 125dp», from the owner's own list. */

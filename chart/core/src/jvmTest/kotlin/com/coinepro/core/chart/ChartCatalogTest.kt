@@ -670,4 +670,28 @@ class IndicatorParametersTest {
         val sar = ChartCatalog.overlayFor(ChartCatalog.INDICATORS.first { it.id == "sar" }, series)
         assertEquals("SAR 0.02/0.2", sar.first().label)
     }
+
+    @Test
+    fun `every indicator, family and chart type has an English name with no Persian in it`() {
+        val arabicScript = Regex("[\\u0600-\\u06FF]")
+        for (option in ChartCatalog.INDICATORS) {
+            val name = ChartCatalog.INDICATOR_NAMES_EN[option.id]
+            assertNotNull("indicator ${option.id} has no English name", name)
+            assertFalse("indicator ${option.id}'s English name is Persian: $name", arabicScript.containsMatchIn(name!!))
+        }
+        for (option in ChartCatalog.CHART_TYPES) {
+            val name = ChartCatalog.CHART_TYPE_NAMES_EN[option.type]
+            assertNotNull("chart type ${option.type} has no English name", name)
+            assertFalse(arabicScript.containsMatchIn(name!!))
+        }
+        for (category in IndicatorCategory.entries) {
+            assertFalse(arabicScript.containsMatchIn(category.label(english = true)))
+        }
+    }
+
+    @Test
+    fun `search finds an indicator by its English name as well as its Persian one`() {
+        assertTrue(ChartCatalog.matchingIndicators("relative strength").any { it.id == "rsi" })
+        assertTrue(ChartCatalog.matchingIndicators("قدرت نسبی").any { it.id == "rsi" })
+    }
 }

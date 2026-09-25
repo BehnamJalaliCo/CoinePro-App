@@ -1,5 +1,6 @@
 package com.coinepro.feature.news
 
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.activity.compose.PredictiveBackHandler
 import kotlinx.coroutines.CancellationException
 import androidx.compose.foundation.background
@@ -146,7 +147,8 @@ fun PublicNewsScreen(
             // this route sends neither impact nor relevance and may send no source at all — a
             // heading has to be true of the list under it.
             subtitle = stringResource(R.string.news_public_subtitle),
-            modifier = Modifier.padding(horizontal = 0.dp),
+            // See `bleedHorizontally`: the title on the cards' own edge (MOBILE-19).
+            modifier = Modifier.bleedHorizontally(CoineProSpacing.Gutter),
         )
 
         when (val current = news) {
@@ -185,9 +187,10 @@ fun PublicNewsScreen(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
                     ) {
-                        items(stories, key = NewsStory::id) { story ->
+                        itemsIndexed(stories, key = { _, story -> story.id }) { index, story ->
                             NewsCard(
                                 story = story,
+                                compact = index > 0,
                                 onOpen = {
                                     open = story
                                     openId = story.id

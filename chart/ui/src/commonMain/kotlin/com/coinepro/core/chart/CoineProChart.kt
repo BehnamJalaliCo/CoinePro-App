@@ -74,6 +74,7 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -353,6 +354,8 @@ fun CoineProChart(
     onSeriesSettings: ((ChartLegendTarget) -> Unit)? = null,
     /** The legend row's «…» menu (5.17.0). Null draws no button. */
     onSeriesMore: ((ChartLegendTarget) -> Unit)? = null,
+    /** Where that «…» sits in window pixels (its bottom-left), reported just before [onSeriesMore]. */
+    onSeriesMoreAt: ((ChartLegendTarget, Offset) -> Unit)? = null,
     /** The quote currency for the price scale's «Currency and unit» label (5.17.0); null prints none. */
     scaleUnit: String? = null,
     /**
@@ -502,6 +505,13 @@ fun CoineProChart(
      * so the saved zoom and the live-edge margin behave exactly as they do after a pinch.
      */
     zoomNudge: ChartZoomNudge? = null,
+    /**
+     * TradingView's `auto` under the chart: each change of this count puts the price scale back to
+     * fitting the bars on screen, the same answer a double tap on the axis gives. Zero asks nothing.
+     */
+    priceAutoNudge: Int = 0,
+    /** Whether the price scale is fitting the bars by itself right now — what lights `auto`. */
+    onPriceAuto: ((Boolean) -> Unit)? = null,
 ) {
     val display = remember(series, type, typeConfig) { ChartTransforms.apply(series, type, typeConfig) }
     // Unkeyed, and that is the whole point. Keyed on `display`, this reset to the default 120 bars
@@ -643,6 +653,13 @@ fun CoineProChart(
     }
     LaunchedEffect(zoomNudge?.serial) {
         if (zoomNudge != null) viewport = viewport.zoomedBy(zoomNudge.factor)
+    }
+    LaunchedEffect(priceAutoNudge) {
+        if (priceAutoNudge != 0) viewport = viewport.autoPriceScale()
+    }
+    val reportAuto = rememberUpdatedState(onPriceAuto)
+    LaunchedEffect(Unit) {
+        snapshotFlow { viewport.priceZoom == 1f }.collect { reportAuto.value?.invoke(it) }
     }
 
     // Ask for history when the reader gets near the edge of it. Keyed on the first visible bar, so
@@ -2036,6 +2053,12 @@ fun CoineProChart(
                                             alertHeld.value = true
                                         } else {
                                             alertHeld.value = false
+                                            // A mouse that has left the chart takes the chip with it,
+                                            // as TradingView's does on `mouseleave` (CHART-12). The
+                                            // linger is for a finger, which lifts off the thing it
+                                            // wants to press next; a pointer has already moved on.
+                                            val mouse = event.changes.firstOrNull()?.type == PointerType.Mouse
+                                            if (mouse && event.type == PointerEventType.Exit) alertPointer.value = null
                                         }
                                     }
                                 }
@@ -2098,7 +2121,10 @@ fun CoineProChart(
                                                 }
                                             }
                                             PointerEventType.Exit -> {
-                                                if (hovering && !tracking) {
+                                                // Whatever the last move said: a pointer that left
+                                                // through the gutter was already "outside" the plot
+                                                // and must not leave a crosshair painted behind it.
+                                                if ((hovering || crosshair != null) && !tracking) {
                                                     hovering = false
                                                     crosshair = null
                                                     invalidate(Invalidation.CURSOR)
@@ -2680,7 +2706,7 @@ fun CoineProChart(
                                         // plot goes on meaning exactly what it meant.
                                         val axisTop = timeAxisTop[0]
                                         val onEvents = currentEventMark.value
-                                        if (axisTop > 0f && position.y >= axisTop && onEvents != null) {
+                                        if (axisTop > 0f && position.y >= axisTop - eventLaneReach() && onEvents != null) {
                                             val placed = lastView[0]
                                             val hit = placed?.let { seen ->
                                                 ChartEvents.markAt(
@@ -2700,7 +2726,7 @@ fun CoineProChart(
                                         // something that happened and the dot only says the bar was
                                         // large, so where both could take the touch the glyph does.
                                         val onNotable = currentNotableTap.value
-                                        if (axisTop > 0f && position.y >= axisTop && onNotable != null) {
+                                        if (axisTop > 0f && position.y >= axisTop - eventLaneReach() && onNotable != null) {
                                             val placed = lastView[0]
                                             val bar = placed?.let { seen ->
                                                 ChartEvents.notableAt(
@@ -3616,6 +3642,7 @@ fun CoineProChart(
                         // field and nothing else — see [DrawingMode].
                         mode = drawing?.mode ?: DrawingMode.CURSOR,
                         paneBands = paneBands[0],
+                        jalali = jalaliDates,
                     )
                 }
             }
@@ -3644,6 +3671,7 @@ fun CoineProChart(
                 onBack = onBack,
                 onRemove = onRemoveSeries,
                 onMore = onSeriesMore,
+                onMoreAt = onSeriesMoreAt,
                 change = change,
                 marketStatus = marketStatus,
                 // Inset past the gutter it sits beside, so a left-hand axis does not have the
@@ -3814,14 +3842,14 @@ internal fun opaqueArgb(argb: Long): Long =
     if ((argb ushr ALPHA_SHIFT) == 0L) argb or ALPHA_MASK else argb
 
 /**
- * One glyph per event, in the strip the dates live in.
+ * One glyph per event, in a lane along the foot of the plot, just above the dates.
  *
  * ### Where they are, and where they are not
  *
- * In the time-axis band and never on the price. An event is a fact about a *moment*, not about a
+ * At the bottom edge and never up on the price. An event is a fact about a *moment*, not about a
  * price, and a marker floating over the candles at an invented height is a marker a reader tries to
- * read a level off. The strip is also the only place on the chart with nothing else competing for
- * the pixels, which is why every terminal puts them there.
+ * read a level off. Not on the axis either: there the squares covered the date labels they were
+ * meant to be read against.
  *
  * ### A mark outside the window is dropped, never pinned
  *
@@ -3841,21 +3869,35 @@ private fun DrawScope.drawEventMarks(
 ) {
     if (marks.isEmpty()) return
     val side = EventGlyphs.SIZE_DP.dp.toPx()
-    val centreY = axisTop + EventGlyphs.AXIS_GAP_DP.dp.toPx() + side / 2
+    // In a lane at the foot of the plot, just above the dates — never on them (CHART-05). Centred
+    // on the axis they covered, a square hid «21 Sep» and the crosshair's time tag landed on it.
+    val centreY = eventLaneCentre(axisTop)
     val radius = CornerRadius(EVENT_RADIUS_DP.toPx(), EVENT_RADIUS_DP.toPx())
-    for (mark in marks) {
-        if (mark.barIndex < view.firstVisible || mark.barIndex > view.lastVisible) continue
-        val x = view.xOf(mark.barIndex)
-        if (x < 0f || x > view.plotWidth) continue
-        // **News is TradingView's purple lightning** (5.16.0): the latest story on a bar is a bolt on
-        // the time axis in `#9C27B0`, the palette's purple, whatever its importance — a reader who
-        // knows that chart finds the news by its shape. Calendar releases keep their square.
+    // Marks closer than their own width are one mark with a stack behind it, the way TradingView
+    // folds a run of headlines — twelve bolts side by side read as one purple smear (MOBILE-10).
+    val placed = marks
+        .filter { it.barIndex in view.firstVisible..view.lastVisible }
+        .map { it to view.xOf(it.barIndex) }
+        .filter { (_, x) -> x in 0f..view.plotWidth }
+        .sortedBy { it.second }
+    val reach = side + EVENT_CLUSTER_GAP_DP.toPx()
+    val groups = mutableListOf<MutableList<Pair<EventMark, Float>>>()
+    for (entry in placed) {
+        val group = groups.lastOrNull()
+        if (group != null && entry.second - group.first().second < reach) group += entry else groups += mutableListOf(entry)
+    }
+    for (group in groups) {
+        val (mark, x) = group.firstOrNull { it.first.kind != EventKind.NEWS } ?: group.first()
+        val stacked = group.size > 1 || mark.isCluster
+        // **News is TradingView's purple lightning** (5.16.0): the latest story on a bar is a bolt in
+        // `#9C27B0`, the palette's purple, whatever its importance — a reader who knows that chart
+        // finds the news by its shape. Calendar releases keep their square.
         if (mark.kind == EventKind.NEWS) {
             drawLightning(Offset(x, centreY), side)
             continue
         }
         val colour = colours.of(mark.importance)
-        if (mark.isCluster) {
+        if (stacked) {
             drawRoundRect(
                 color = colour,
                 topLeft = Offset(x - side / 2 + EVENT_STACK_PX, centreY - side / 2 - EVENT_STACK_PX),
@@ -3872,6 +3914,17 @@ private fun DrawScope.drawEventMarks(
         )
     }
 }
+
+/** Where the event lane's glyphs are centred: inside the plot, [EventGlyphs.AXIS_GAP_DP] above the dates. */
+private fun Density.eventLaneCentre(axisTop: Float): Float =
+    axisTop - EventGlyphs.AXIS_GAP_DP.dp.toPx() - EventGlyphs.SIZE_DP.dp.toPx() / 2
+
+/** How far above the axis a tap still reaches the lane: the glyph, its gap, and a little over. */
+private fun Density.eventLaneReach(): Float =
+    (EventGlyphs.AXIS_GAP_DP + EventGlyphs.SIZE_DP).dp.toPx() + EVENT_CLUSTER_GAP_DP.toPx() * 2
+
+/** The space two marks need between them to be drawn as two. */
+private val EVENT_CLUSTER_GAP_DP = 2.dp
 
 /**
  * A dot under each unusually large bar, in the strip the event glyphs live in — run Τ2, C1.
@@ -3894,7 +3947,7 @@ private fun DrawScope.drawNotableBars(
     val diameter = EventGlyphs.NOTABLE_DOT_DP.dp.toPx()
     // Centred on the same line the glyphs are centred on, so the strip reads as one row rather
     // than as two things at slightly different heights.
-    val centreY = axisTop + EventGlyphs.AXIS_GAP_DP.dp.toPx() + EventGlyphs.SIZE_DP.dp.toPx() / 2
+    val centreY = eventLaneCentre(axisTop)
     for (index in notable) {
         if (index in taken) continue
         if (index < view.firstVisible || index > view.lastVisible) continue
@@ -4536,19 +4589,8 @@ private fun DrawScope.drawVolume(
     if (peak <= 0.0) return
     val band = plotHeight * VOLUME_INLINE
     val floorY = round(plotHeight)
-    // **The lid** (run Ξ, item 15). The inline volume shares the price plot's ground, so until now
-    // the only thing saying where one ended and the other began was the height of the bars — and on
-    // a quiet stretch, where every bar is a stub, nothing said it at all. One registered hairline at
-    // the top of the band is the whole fix: it is the same mark the indicator panes are lidded with,
-    // which is why it needs no explaining to anybody who has seen one.
-    val lid = crispStroke(HAIRLINE_DP.toPx())
-    val lidY = strokeCentre(floorY - band, lid)
-    drawLine(
-        color = palette.grid.copy(alpha = VOLUME_LID_ALPHA),
-        start = Offset(0f, lidY),
-        end = Offset(plotWidth, lidY),
-        strokeWidth = lid,
-    )
+    // No lid. A hairline across the top of the band ran through every candle above it, and
+    // TradingView's inline volume has none (CHART-22): the bars themselves say where the band is.
     for (index in view.firstVisible..view.lastVisible) {
         val bar = view.series[index]
         // Rounded up, not down: a bar whose volume is a hundredth of the session's peak is still a
@@ -5374,30 +5416,9 @@ private fun DrawScope.drawLastPrice(
         pathEffect = dashEffect(LineStyleKind.SPARSE_DOTTED, HAIRLINE_DP.toPx()),
     )
     if (!withAxis || frame.tagGutterWidth <= 0f) return
-    // **A soft glow in the candle's own colour behind the tag** (run Ξ, item 15).
-    //
-    // The one exception to the surface rule, and it is worth naming rather than sliding in: this
-    // app bans coloured glows, because a tinted shadow under a card is what makes an interface look
-    // sprayed on. This is not that. It is a fall-off painted *inside the chart's own canvas*, in
-    // the colour the bar is already drawn in, behind the single label that says what the price is
-    // right now — the one mark on the screen a reader looks for first and the only one that has to
-    // be findable from the far side of a desk. Nothing in the design system's sense of the word is
-    // shadowed: `ambientColor` and `spotColor` appear nowhere, and the gate that bans them is
-    // untouched.
-    val glowY = y.coerceIn(0f, view.plotHeight)
-    val glowRadius = frame.tagGutterWidth * LAST_PRICE_GLOW_SPREAD
-    if (glowRadius > 0f) {
-        val centre = Offset(frame.tagGutterX + frame.tagGutterWidth / 2f, glowY)
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(colour.copy(alpha = LAST_PRICE_GLOW_ALPHA), Color.Transparent),
-                center = centre,
-                radius = glowRadius,
-            ),
-            radius = glowRadius,
-            center = centre,
-        )
-    }
+    // Flat, with nothing behind it (CHART-13). There was a radial glow in the candle's colour here;
+    // it read as a smudge on the axis, bled past the plot into the side rail, and was the only glow
+    // in the product. TradingView's tag is a plain fill.
     // One tag, two lines: the price over the countdown, in the same fill — TradingView's own
     // arrangement, measured at 30 css px tall for two 12 px lines. It used to be a coloured tag
     // with a second, stage-coloured chip under it, which read as two labels rather than one fact.
@@ -5418,12 +5439,6 @@ private fun DrawScope.drawLastPrice(
  * colour, and TradingView's greens and reds are dark enough that white clears them.
  */
 private val TAG_INK = Color.White
-
-/** How far the last price's glow reaches, as a multiple of the tag gutter's width. */
-private const val LAST_PRICE_GLOW_SPREAD = 1.1f
-
-/** And how strong it is at the centre. Soft enough that nobody can name it as a circle. */
-private const val LAST_PRICE_GLOW_ALPHA = 0.16f
 
 /**
  * TradingView's trade button: a purple ring with a lightning bolt, hanging at the bottom of the
@@ -6242,6 +6257,8 @@ private fun DrawScope.drawCrosshair(
      * Empty on a chart with no panes, which is the common case and costs one `firstOrNull`.
      */
     paneBands: List<PaneBand> = emptyList(),
+    /** Whether the time tag's date is Solar Hijri — the axis' own calendar. */
+    jalali: Boolean = false,
 ) {
     val index = crosshair.index.coerceIn(view.firstVisible, view.lastVisible)
     val bar = view.series[index]
@@ -6313,10 +6330,12 @@ private fun DrawScope.drawCrosshair(
     if (!decoration.showTimeAxis) return
     // The time under the finger, centred on the rule and held inside the canvas. Without the clamp
     // the label at either end of a scrolled chart hangs half off the edge.
-    // The crosshair reads one bar, so it always wants the clock — a reader holding a finger on a
-    // candle is asking which candle, and «12 Mar» does not answer that on an hourly chart.
+    // The crosshair reads one bar, so it wants the whole date as well as the clock — «07:30» alone
+    // is ambiguous on a four-hour chart, and it is TradingView's `07 Sep '26 16:00` (CHART-10).
+    val before = if (index > 0) bar.t - view.series[index - 1].t else Long.MAX_VALUE
+    val after = if (index + 1 < view.series.size) view.series[index + 1].t - bar.t else Long.MAX_VALUE
     val stamp = measurer.measure(
-        formatTime(bar.t, zone = zone),
+        crosshairStamp(bar.t, minOf(before, after), zone, jalali),
         axisStyle(TAG_INK, axisFontSizeSp(isPriceAxis = false)),
     )
     // TradingView's crosshair tags: 24 px tall with 8 px at either side of the text.
@@ -6791,6 +6810,24 @@ internal fun formatTime(
 }
 
 /**
+ * The crosshair's time tag: the date with its year, and the clock unless the bars are a day or
+ * longer — `07 Sep '26 16:00`, or «۱۶ شهریور ۱۴۰۵ 16:00» on a Solar Hijri axis. [barSeconds] is
+ * the gap to the nearest neighbouring bar; unknown reads as intraday.
+ */
+internal fun crosshairStamp(epochSeconds: Long, barSeconds: Long, zone: ChartTimeZone, jalali: Boolean): String {
+    val date = if (jalali) {
+        persianTimeTick(TimeTick(0, epochSeconds, TimeTickUnit.DAY), epochSeconds, 0L, zone) + " " +
+            persianTimeTick(TimeTick(0, epochSeconds, TimeTickUnit.YEAR), epochSeconds, 0L, zone)
+    } else {
+        formatZoned(epochSeconds, zone, "dd MMM") + " '" + formatZoned(epochSeconds, zone, "yy")
+    }
+    if (barSeconds in DAY_BAR_SECONDS until Long.MAX_VALUE) return date
+    return date + "  " + formatZoned(epochSeconds, zone, "HH:mm")
+}
+
+private const val DAY_BAR_SECONDS = 86_400L
+
+/**
  * A time-axis label, in the shape the boundary it stands on calls for.
  *
  * This is the second half of what makes the axis read as a calendar. The ladder decides *where* the
@@ -7186,10 +7223,10 @@ private val TAG_PADDING_DP = 3.dp
 private val CROSSHAIR_TAG_PADDING_DP = 4.dp
 
 /**
- * How soft the crosshair tag's shadow is. Four points — the brief's number, and the design
- * system's own «one very soft shadow», which is what a chip floating over a picture is allowed.
+ * How soft the crosshair tag's shadow is: none. TradingView's crosshair tags are flat fills, and a
+ * shadow under a chip sitting on the axis read as a second, blurred tag (CHART-10).
  */
-private val CROSSHAIR_SHADOW_DP = 4.dp
+private val CROSSHAIR_SHADOW_DP = 0.dp
 private val CROSSHAIR_TAG_INSET_DP = 8.dp
 
 /**
@@ -7340,13 +7377,6 @@ private const val FRAME_ALPHA = 0.9f
 // TradingView's volume histogram: the candle colour at half strength, measured #1A5A54 on #0F0F0F.
 private const val VOLUME_ALPHA = 0.5f
 
-/**
- * The volume band's lid, against the grid's own ink.
- *
- * Stronger than a gridline and weaker than a pane's lid: the band is part of the price plot, not a
- * pane of its own, and a rule as firm as a pane's would claim a division that is not there.
- */
-private const val VOLUME_LID_ALPHA = 0.5f
 
 /**
  * How long a time-axis label takes to dissolve in or out when the zoom changes the ladder.

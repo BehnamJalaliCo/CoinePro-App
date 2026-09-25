@@ -1,5 +1,6 @@
 package com.coinepro.feature.community
 
+import com.coinepro.core.designsystem.CoineProLazyRow
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -25,7 +26,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -588,7 +588,7 @@ private fun CategoryChips(
     onFollowing: () -> Unit = {},
 ) {
     val haptics = rememberCoineProHaptics()
-    LazyRow(
+    CoineProLazyRow(
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         contentPadding = PaddingValues(horizontal = CoineProSpacing.Gutter),
     ) {
@@ -798,7 +798,7 @@ private fun Composer(
                 },
                 onClear = { picture = null },
             )
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
+            CoineProLazyRow(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
                 items(CommunityCategory.entries.toList(), key = CommunityCategory::name) { option ->
                     Chip(
                         label = stringResource(option.chipLabelRes()),

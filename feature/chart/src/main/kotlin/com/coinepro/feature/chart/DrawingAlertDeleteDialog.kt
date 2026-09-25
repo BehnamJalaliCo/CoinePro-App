@@ -2,7 +2,7 @@ package com.coinepro.feature.chart
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
-import com.coinepro.core.common.toPersianDigits
+import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProChoice
 import com.coinepro.core.designsystem.CoineProChoiceDialog
 
@@ -35,11 +35,11 @@ internal fun DrawingAlertDeleteDialog(
     val message = if (many) {
         stringResource(
             R.string.chart_drawing_alerts_many,
-            pending.alertCount.toPersianDigits(),
-            pending.drawingCount.toPersianDigits(),
+            pending.alertCount.proseDigits(),
+            pending.drawingCount.proseDigits(),
         )
     } else {
-        stringResource(R.string.chart_drawing_alerts_one, pending.alertCount.toPersianDigits())
+        stringResource(R.string.chart_drawing_alerts_one, pending.alertCount.proseDigits())
     }
     CoineProChoiceDialog(
         title = stringResource(R.string.chart_drawing_alerts_title),

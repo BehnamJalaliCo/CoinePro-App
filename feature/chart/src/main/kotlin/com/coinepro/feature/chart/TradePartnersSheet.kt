@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
@@ -58,7 +59,13 @@ internal fun TradePartnersSheetBody(
     tradeHereLabel: String,
 ) {
     val context = LocalContext.current
-    Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf)) {
+    // The sheet's gutter on both sides (MOBILE-02, DIALOGS-03): the body had none and ran into the glass.
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = CoineProSpacing.Gutter, end = CoineProSpacing.Gutter, bottom = CoineProSpacing.Two),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+    ) {
         onTradeHere?.let { trade ->
             CoineProPrimaryButton(
                 text = tradeHereLabel,

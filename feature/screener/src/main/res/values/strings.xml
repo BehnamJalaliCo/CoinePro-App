@@ -21,7 +21,7 @@
     <string name="screener_period">Period</string>
     <string name="screener_search_placeholder">Symbol or market name</string>
     <string name="screener_count">%1$s markets</string>
-    <string name="screener_progress">%1$s of %2$s markets read</string>
+    <string name="screener_progress">Reading %1$s of %2$s markets</string>
     <string name="screener_unknown">%1$s markets have no figure for these conditions and are not shown.</string>
     <string name="screener_column_symbol">Symbol</string>
     <string name="screener_category_all">All</string>
@@ -44,7 +44,7 @@
     <string name="screener_add_to_watchlist">Add all %1$s to the watchlist</string>
     <string name="screener_added_to_watchlist">Added to the watchlist</string>
     <string name="screener_export_csv">CSV</string>
-    <string name="screener_export_saved">Saved</string>
+    <string name="screener_export_saved">screener.csv saved</string>
     <string name="screener_export_failed">Could not save the file</string>
     <string name="screener_mode_table">Table</string>
     <string name="screener_mode_signals">Growth signals</string>
@@ -57,4 +57,5 @@
     <string name="screener_scan_tag_ago">%1$s · %2$s bars ago</string>
     <string name="screener_scan_watch">Notify me of new matches</string>
     <string name="screener_scan_watching">Notifying you of new matches</string>
+    <string name="screener_indicator_more">Search to find the rest.</string>
 </resources>

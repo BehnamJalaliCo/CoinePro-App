@@ -85,7 +85,8 @@ class ChartTopBarTest {
         // screens that have nothing else to carry a title or an arrow.
         assertTrue("the profile lost its app bar", showsTopBar(PROFILE_ROUTE, isSubScreen = true))
         assertTrue("market search lost its app bar", showsTopBar(MARKET_SEARCH_ROUTE, isSubScreen = true))
-        assertEquals("only the chart is bar-less", setOf(CHART_PATTERN), BARELESS)
+        assertFalse("the watchlist tab draws its own heading", showsTopBar(WATCHLIST_ROUTE, isSubScreen = false))
+        assertEquals("only the chart and the watchlist tab are bar-less", setOf(CHART_PATTERN, WATCHLIST_ROUTE), BARELESS)
     }
 
     @Test

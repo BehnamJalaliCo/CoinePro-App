@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.coinepro.feature.alerts
 
 import androidx.annotation.StringRes
@@ -5,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +29,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -44,6 +51,8 @@ import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProPrimaryButton
+import com.coinepro.core.designsystem.CoineProSecondaryButton
+import com.coinepro.core.designsystem.CoineProToggleChip
 import com.coinepro.core.designsystem.CoineProSegmentTabs
 import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSheetEmpty
@@ -181,82 +190,101 @@ private fun SymbolPicker(
 /** The form, in the order a reader answers it: what, then when, then how, then what it says. */
 @Composable
 private fun EditorForm(draft: AlertDraft, refusal: AlertRefusal?, controller: AlertsController) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(max = FORM_HEIGHT)
-            .verticalScroll(rememberScrollState())
-            .padding(bottom = CoineProSpacing.Two),
-        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+    // The save is pinned under the scroll, not the last thing in it (DIALOGS-16): a primary action
+    // a reader has to scroll to find reads as missing, and on a desktop dialog it sat below the fold.
+    PinnedFooter(
+        footer = { EditorFooter(draft = draft, refusal = refusal, controller = controller) },
     ) {
-        ChosenSymbol(symbol = draft.symbol, onChange = { controller.setPickingSymbol(true) })
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = FORM_HEIGHT)
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = CoineProSpacing.Two),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+        ) {
+            ChosenSymbol(symbol = draft.symbol, onChange = { controller.setPickingSymbol(true) })
 
-        ScopeRow(draft = draft, onSelect = controller::setScopeList)
+            ScopeRow(draft = draft, onSelect = controller::setScopeList)
 
-        draft.conditions.forEachIndexed { index, condition ->
-            ConditionBlock(
-                index = index,
-                condition = condition,
-                removable = draft.conditions.size > 1,
-                drawings = draft.drawings,
-                controller = controller,
-            )
-        }
-
-        AddConditionRow(draft = draft, onAdd = controller::addCondition)
-
-        FieldLabel(stringResource(R.string.alerts_frequency))
-        CoineProChipRow(
-            options = AlertFrequency.entries.map {
-                CoineProChip(id = it.name, label = AlertVocabulary.frequency(it))
-            },
-            selectedId = draft.frequency.name,
-            onSelect = { id -> AlertFrequency.entries.firstOrNull { it.name == id }?.let(controller::setFrequency) },
-            compact = true,
-        )
-
-        ExpiryRow(draft = draft, onSelect = controller::setExpiresAt)
-
-        UntilSeenRow(
-            draft = draft,
-            onToggle = controller::setUntilAcknowledged,
-            onInterval = controller::setRepeatEveryMinutes,
-        )
-
-        VenueRow(
-            draft = draft,
-            serverOffered = controller.canUseServer(draft),
-            onSelect = controller::setVenue,
-        )
-        if (draft.venue == AlertVenue.SERVER) {
-            // Delivered by the server beyond push (5.17.0): Telegram, to the account's linked chat,
-            // and email, to its verified address.
-            FieldLabel(stringResource(R.string.alerts_server_delivery))
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = CoineProSpacing.Gutter),
-                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
-            ) {
-                TapChip(label = stringResource(R.string.alerts_server_push), selected = true, onClick = {})
-                TapChip(
-                    label = stringResource(R.string.alerts_server_telegram),
-                    selected = "telegram" in draft.serverChannels,
-                    onClick = { controller.toggleServerChannel("telegram") },
-                )
-                TapChip(
-                    label = stringResource(R.string.alerts_server_email),
-                    selected = "email" in draft.serverChannels,
-                    onClick = { controller.toggleServerChannel("email") },
+            draft.conditions.forEachIndexed { index, condition ->
+                ConditionBlock(
+                    index = index,
+                    condition = condition,
+                    removable = draft.conditions.size > 1,
+                    drawings = draft.drawings,
+                    controller = controller,
                 )
             }
+
+            AddConditionRow(draft = draft, onAdd = controller::addCondition)
+
+            FieldLabel(stringResource(R.string.alerts_frequency))
+            CoineProChipRow(
+                options = AlertFrequency.entries.map {
+                    CoineProChip(id = it.name, label = AlertVocabulary.frequency(it))
+                },
+                selectedId = draft.frequency.name,
+                onSelect = { id -> AlertFrequency.entries.firstOrNull { it.name == id }?.let(controller::setFrequency) },
+                compact = true,
+                neutral = true,
+                // Eight of the row's own padding plus eight here is the sheet's sixteen-point gutter.
+                modifier = Modifier.padding(horizontal = CoineProSpacing.One),
+            )
+
+            ExpiryRow(draft = draft, onSelect = controller::setExpiresAt)
+
+            UntilSeenRow(
+                draft = draft,
+                onToggle = controller::setUntilAcknowledged,
+                onInterval = controller::setRepeatEveryMinutes,
+            )
+
+            VenueRow(
+                draft = draft,
+                serverOffered = controller.canUseServer(draft),
+                onSelect = controller::setVenue,
+            )
+            if (draft.venue == AlertVenue.SERVER) {
+                // Delivered by the server beyond push (5.17.0): Telegram, to the account's linked chat,
+                // and email, to its verified address.
+                FieldLabel(stringResource(R.string.alerts_server_delivery))
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = CoineProSpacing.Gutter),
+                    horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                    verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                ) {
+                    TapChip(label = stringResource(R.string.alerts_server_push), selected = true, onClick = {})
+                    TapChip(
+                        label = stringResource(R.string.alerts_server_telegram),
+                        selected = "telegram" in draft.serverChannels,
+                        onClick = { controller.toggleServerChannel("telegram") },
+                    )
+                    TapChip(
+                        label = stringResource(R.string.alerts_server_email),
+                        selected = "email" in draft.serverChannels,
+                        onClick = { controller.toggleServerChannel("email") },
+                    )
+                }
+            }
+
+            FieldLabel(stringResource(R.string.alerts_channels))
+            ChannelRow(selected = draft.channels, onToggle = controller::toggleChannel)
+
+            LoudnessRow(draft = draft, onSelect = controller::setLoudness)
+
+            MessageField(draft = draft, controller = controller)
         }
+    }
+}
 
-        FieldLabel(stringResource(R.string.alerts_channels))
-        ChannelRow(selected = draft.channels, onToggle = controller::toggleChannel)
-
-        LoudnessRow(draft = draft, onSelect = controller::setLoudness)
-
-        MessageField(draft = draft, controller = controller)
-
+/** Cancel and save, with the refusal — when there is one — right above the button it refuses. */
+@Composable
+private fun EditorFooter(draft: AlertDraft, refusal: AlertRefusal?, controller: AlertsController) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        HorizontalDivider(color = CoineProColors.BorderSubtle)
         refusal?.let { reason ->
             Text(
                 text = stringResource(
@@ -270,18 +298,48 @@ private fun EditorForm(draft: AlertDraft, refusal: AlertRefusal?, controller: Al
                 textAlign = TextAlign.Right,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = CoineProSpacing.Gutter),
+                    .padding(start = CoineProSpacing.Gutter, end = CoineProSpacing.Gutter, top = CoineProSpacing.One),
             )
         }
-
-        CoineProPrimaryButton(
-            text = stringResource(R.string.alerts_save),
-            onClick = controller::save,
-            enabled = draft.valid,
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = CoineProSpacing.Gutter, end = CoineProSpacing.Gutter, top = CoineProSpacing.One),
-        )
+                .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.OneHalf),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Spacer(Modifier.weight(1f))
+            CoineProSecondaryButton(text = stringResource(R.string.alerts_editor_cancel), onClick = controller::closeEditor)
+            CoineProPrimaryButton(
+                text = stringResource(R.string.alerts_save),
+                onClick = controller::save,
+                enabled = draft.valid,
+            )
+        }
+    }
+}
+
+/**
+ * [content] over [footer], the footer always drawn: the content gets whatever height the footer
+ * leaves. A `weight` would do the same inside a bounded column and collapse the content to nothing
+ * inside an unbounded one (a preview, a test); this measures the footer first either way.
+ */
+@Composable
+private fun PinnedFooter(footer: @Composable () -> Unit, content: @Composable () -> Unit) {
+    Layout(contents = listOf(content, footer)) { (bodies, feet), constraints ->
+        val loose = constraints.copy(minHeight = 0)
+        val footPlaced = feet.map { it.measure(loose) }
+        val footHeight = footPlaced.sumOf { it.height }
+        val bodyMax = if (constraints.hasBoundedHeight) (constraints.maxHeight - footHeight).coerceAtLeast(0) else Constraints.Infinity
+        val bodyPlaced = bodies.map { it.measure(loose.copy(maxHeight = bodyMax)) }
+        val width = (bodyPlaced + footPlaced).maxOfOrNull { it.width }?.coerceAtLeast(constraints.minWidth) ?: constraints.minWidth
+        layout(width, bodyPlaced.sumOf { it.height } + footHeight) {
+            var y = 0
+            (bodyPlaced + footPlaced).forEach { placeable ->
+                placeable.place(0, y)
+                y += placeable.height
+            }
+        }
     }
 }
 
@@ -374,6 +432,9 @@ private fun ConditionBlock(
                             ?.let { controller.setChannelOp(index, it) }
                     },
                     compact = true,
+                    neutral = true,
+                    // Eight of the row's own padding plus eight here is the sheet's sixteen-point gutter.
+                    modifier = Modifier.padding(horizontal = CoineProSpacing.One),
                 )
                 NumberField(
                     value = condition.first,
@@ -405,6 +466,9 @@ private fun ConditionBlock(
                             ?.let { controller.setMoveOp(index, it) }
                     },
                     compact = true,
+                    neutral = true,
+                    // Eight of the row's own padding plus eight here is the sheet's sixteen-point gutter.
+                    modifier = Modifier.padding(horizontal = CoineProSpacing.One),
                 )
                 NumberField(
                     value = condition.first,
@@ -426,6 +490,9 @@ private fun ConditionBlock(
                     selectedId = condition.moveBars.toString(),
                     onSelect = { id -> id?.toIntOrNull()?.let { controller.setMoveBars(index, it) } },
                     compact = true,
+                    neutral = true,
+                    // Eight of the row's own padding plus eight here is the sheet's sixteen-point gutter.
+                    modifier = Modifier.padding(horizontal = CoineProSpacing.One),
                 )
             }
 
@@ -435,6 +502,9 @@ private fun ConditionBlock(
                     selectedId = condition.indicatorId,
                     onSelect = { id -> id?.let { controller.setIndicator(index, it) } },
                     compact = true,
+                    neutral = true,
+                    // Eight of the row's own padding plus eight here is the sheet's sixteen-point gutter.
+                    modifier = Modifier.padding(horizontal = CoineProSpacing.One),
                 )
                 // Hidden, not disabled, for a study with no single lookback. VWAP has none, and a
                 // stepper stuck at a number nobody chose is worse than no stepper.
@@ -547,6 +617,9 @@ private fun PriceOpChips(selected: PriceOp, onSelect: (PriceOp) -> Unit) {
         selectedId = selected.name,
         onSelect = { id -> PriceOp.entries.firstOrNull { it.name == id }?.let(onSelect) },
         compact = true,
+        neutral = true,
+        // Eight of the row's own padding plus eight here is the sheet's sixteen-point gutter.
+        modifier = Modifier.padding(horizontal = CoineProSpacing.One),
     )
 }
 
@@ -627,6 +700,9 @@ private fun ScopeRow(draft: AlertDraft, onSelect: (String?) -> Unit) {
         selectedId = draft.scopeListId ?: SCOPE_SYMBOL,
         onSelect = { id -> onSelect(id?.takeIf { it != SCOPE_SYMBOL }) },
         compact = true,
+        neutral = true,
+        // Eight of the row's own padding plus eight here is the sheet's sixteen-point gutter.
+        modifier = Modifier.padding(horizontal = CoineProSpacing.One),
     )
     if (draft.scopeListId != null) {
         Note(R.string.alerts_scope_list_note)
@@ -654,11 +730,12 @@ private fun ScopeRow(draft: AlertDraft, onSelect: (String?) -> Unit) {
 @Composable
 private fun VenueRow(draft: AlertDraft, serverOffered: Boolean, onSelect: (AlertVenue) -> Unit) {
     FieldLabel(stringResource(R.string.alerts_venue))
-    Row(
+    FlowRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = CoineProSpacing.Gutter),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
         TapChip(
             label = stringResource(R.string.alerts_venue_device),
@@ -703,11 +780,12 @@ private fun VenueRow(draft: AlertDraft, serverOffered: Boolean, onSelect: (Alert
 private fun LoudnessRow(draft: AlertDraft, onSelect: (AlertLoudness) -> Unit) {
     val current = AlertLoudness.of(draft.soundLevel)
     FieldLabel(stringResource(R.string.alerts_sound))
-    Row(
+    FlowRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = CoineProSpacing.Gutter),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
         AlertLoudness.entries.forEach { step ->
             TapChip(
@@ -741,11 +819,12 @@ private fun UntilSeenRow(
 ) {
     val minutes = draft.repeatEveryMinutes ?: LocalPriceAlert.DEFAULT_REPEAT_MINUTES
     FieldLabel(stringResource(R.string.alerts_until_seen))
-    Row(
+    FlowRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = CoineProSpacing.Gutter),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
         TapChip(
             label = stringResource(R.string.alerts_until_seen_off),
@@ -759,11 +838,12 @@ private fun UntilSeenRow(
         )
     }
     if (draft.untilAcknowledged) {
-        Row(
+        FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = CoineProSpacing.Gutter),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
         ) {
             UNTIL_SEEN_MINUTES.forEach { step ->
                 TapChip(
@@ -830,11 +910,12 @@ private const val SCOPE_SYMBOL = "__symbol"
  */
 @Composable
 private fun ChannelRow(selected: Set<AlertChannel>, onToggle: (AlertChannel) -> Unit) {
-    Row(
+    FlowRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = CoineProSpacing.Gutter),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
         AlertChannel.entries.forEach { channel ->
             TapChip(
@@ -864,11 +945,12 @@ private fun MessageField(draft: AlertDraft, controller: AlertsController) {
             .fillMaxWidth()
             .padding(horizontal = CoineProSpacing.Gutter),
     )
-    Row(
+    FlowRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = CoineProSpacing.Gutter),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
         AlertMessageTemplate.PLACEHOLDERS.forEach { placeholder ->
             TapChip(
@@ -956,16 +1038,8 @@ private fun FieldLabel(text: String) {
  */
 @Composable
 private fun TapChip(label: String, onClick: () -> Unit, selected: Boolean = false) {
-    Text(
-        text = label,
-        style = MaterialTheme.typography.labelSmall,
-        color = if (selected) CoineProColors.TextPrimary else CoineProColors.TextMuted,
-        modifier = Modifier
-            .clip(CoineProPillShape)
-            .background(if (selected) CoineProColors.SurfaceElevated else CoineProColors.Surface)
-            .clickable(onClick = onClick)
-            .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
-    )
+    // The designsystem's chip, neutral — one chip style across the chart's dialogs (DIALOGS-26).
+    CoineProToggleChip(label = label, selected = selected, onClick = onClick, compact = true, neutral = true)
 }
 
 /** The Persian name of a condition type, as the segmented control prints it. */
@@ -1019,6 +1093,9 @@ private fun ExpiryRow(draft: AlertDraft, onSelect: (Long?) -> Unit) {
             onSelect(id?.takeIf { it != EXPIRY_NEVER }?.toLongOrNull()?.let { now + it * DAY_MILLIS })
         },
         compact = true,
+        neutral = true,
+        // Eight of the row's own padding plus eight here is the sheet's sixteen-point gutter.
+        modifier = Modifier.padding(horizontal = CoineProSpacing.One),
     )
 }
 

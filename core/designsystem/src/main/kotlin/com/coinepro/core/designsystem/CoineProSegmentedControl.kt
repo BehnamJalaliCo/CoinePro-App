@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.MaterialTheme
@@ -20,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
@@ -46,9 +48,11 @@ fun <T> CoineProSegmentedControl(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(CoineProColors.Surface, CoineProPillShape)
+            // The chip family's quiet plate: one rung off the card, so the tray reads as a control
+            // even inside a sheet whose own ground is the card colour.
+            .background(CoineProColors.SurfaceElevated, CoineProPillShape)
             // The tray gets an edge too. A control has to look like a container before the block
-            // inside it can look raised out of one.
+            // inside it can look chosen out of one.
             .border(1.dp, CoineProColors.BorderSubtle, CoineProPillShape)
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -72,17 +76,15 @@ fun <T> CoineProSegmentedControl(
 /**
  * One segment.
  *
- * ### The inversion this fixes
+ * ### The inversion this fixed, and the family it joined
  *
- * The selected segment took `SurfaceElevated` and the tray took `Surface`. In the dark theme that
- * is correct — elevated is lighter, so the segment rises. In the light theme the ladder climbs
- * *down* into grey, so elevated is **darker than its own tray**: the selected segment was pressed
- * into the control and the two unselected ones were flush with it. That is why the light theme's
- * one-of-three controls all read as three flat blocks with a smudge on one of them.
+ * The selected segment took `SurfaceElevated` over a `Surface` tray, which in the light theme is
+ * *darker* than its own tray — the selected segment was pressed into the control. It then took
+ * `SurfaceRaised`, which fixed the direction and left the control a grey-on-grey smudge.
  *
- * `SurfaceRaised` is the token that says "lifted out of its container" in both themes, which is a
- * different statement from "one rung further along the ladder", and this is the control that shows
- * why the two cannot be the same token.
+ * It now selects the way every chip does ([chipLook]): a soft wash of the page accent, lettered in
+ * the accent's ink and closed with its hairline. That is a *tint*, not the gold slab the note above
+ * warns about — the one solid gold on the screen is still its primary action.
  */
 @Composable
 private fun RowScope.Segment(
@@ -91,15 +93,21 @@ private fun RowScope.Segment(
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
+    val look = chipLook(selected = true)
     val fill by animateColorAsState(
-        targetValue = if (selected) CoineProColors.SurfaceRaised else Color.Transparent,
+        targetValue = if (selected) look.plate else Color.Transparent,
         animationSpec = CoineProMotionSpecs.standard(),
         label = "segmentFill",
     )
     val ink by animateColorAsState(
-        targetValue = if (selected) CoineProColors.TextPrimary else CoineProColors.TextMuted,
+        targetValue = if (selected) look.ink else CoineProColors.TextSecondary,
         animationSpec = CoineProMotionSpecs.standard(),
         label = "segmentInk",
+    )
+    val edge by animateColorAsState(
+        targetValue = if (selected) look.edge else Color.Transparent,
+        animationSpec = CoineProMotionSpecs.standard(),
+        label = "segmentEdge",
     )
     Box(
         modifier = Modifier
@@ -112,24 +120,21 @@ private fun RowScope.Segment(
                 role = Role.Tab,
                 onClick = onClick,
             )
+            // Thirty-two inside the tray's four: a forty-point control, the chip family's regular
+            // size, rather than the screen's primary action's.
+            .heightIn(min = CoineProChipDefaults.CompactHeight)
             .background(color = fill, shape = CoineProPillShape)
-            .then(
-                if (selected) {
-                    Modifier.border(1.dp, CoineProColors.BorderSubtle, CoineProPillShape)
-                } else {
-                    Modifier
-                },
-            )
-            // A filter above the balance should not weigh the same as the screen's primary
-            // action. Nine points and the medium label put it at 40dp instead of 56.
-            .padding(vertical = 8.dp),
+            .border(1.dp, edge, CoineProPillShape)
+            .padding(horizontal = CoineProSpacing.One),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
             color = ink,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             textAlign = TextAlign.Center,
+            maxLines = 1,
         )
     }
 }

@@ -79,7 +79,7 @@ object CoineProTokens {
         val field: Dp = 8.dp
         val button: Dp = 12.dp
         val card: Dp = 16.dp
-        val sheet: Dp = 28.dp
+        val sheet: Dp = 16.dp
     }
 
     /* ------------------------------------------------------------------ space */

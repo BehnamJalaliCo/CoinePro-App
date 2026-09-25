@@ -1,5 +1,6 @@
 package com.coinepro.feature.notifications
 
+import com.coinepro.core.designsystem.CoineProSwitch
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,8 +18,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.minimumInteractiveComponentSize
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -547,10 +546,9 @@ private fun AlertRow(alert: LocalPriceAlert, onToggle: (Boolean) -> Unit, onDele
             )
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(
+            CoineProSwitch(
                 checked = alert.active,
                 onCheckedChange = onToggle,
-                colors = switchColours(),
             )
             // The bin, not the word. «حذف» in red beside a switch reads as a warning label about
             // the switch rather than as a second control, and it was the only text in the app that
@@ -636,23 +634,13 @@ private fun CategoryRow(
             }
             noteRes?.let { CoineProNote(it, style = MaterialTheme.typography.bodySmall) }
         }
-        Switch(
+        CoineProSwitch(
             checked = checked,
             onCheckedChange = onChange,
             enabled = enabled,
-            colors = switchColours(),
         )
     }
 }
-
-@Composable
-private fun switchColours() = SwitchDefaults.colors(
-    checkedThumbColor = CoineProColors.OnAccent,
-    checkedTrackColor = CoineProColors.AccentFill,
-    uncheckedThumbColor = CoineProColors.TextMuted,
-    uncheckedTrackColor = CoineProColors.Surface,
-    uncheckedBorderColor = CoineProColors.Border,
-)
 
 @Composable
 private fun stringRes(id: Int): String = androidx.compose.ui.res.stringResource(id)

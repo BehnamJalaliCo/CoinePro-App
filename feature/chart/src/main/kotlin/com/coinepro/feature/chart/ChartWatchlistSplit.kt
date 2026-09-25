@@ -1,5 +1,6 @@
 package com.coinepro.feature.chart
 
+import com.coinepro.core.designsystem.CoineProLazyRow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.HorizontalDivider
@@ -88,10 +88,11 @@ internal fun WatchlistTickerRow(
 
     Column(modifier = modifier.fillMaxWidth().background(CoineProColors.Stage)) {
         HorizontalDivider(color = CoineProColors.Border)
-        LazyRow(
+        CoineProLazyRow(
             state = listState,
             modifier = Modifier.fillMaxWidth().height(TICKER_HEIGHT),
-            contentPadding = PaddingValues(horizontal = CoineProSpacing.OneHalf),
+            // The page's gutter, the same inset a sheet's title keeps (MOBILE-02).
+            contentPadding = PaddingValues(horizontal = CoineProSpacing.Gutter),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
             verticalAlignment = Alignment.CenterVertically,
         ) {

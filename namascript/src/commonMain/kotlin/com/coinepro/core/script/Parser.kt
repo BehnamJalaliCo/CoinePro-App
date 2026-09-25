@@ -156,7 +156,7 @@ internal class Parser(private val tokens: List<Token>) {
                 inner
             }
             match(TokenType.IDENT) -> qualified(previous())
-            else -> throw ScriptError("عبارت ناتمام است — «${token.text}» انتظار نمی‌رفت", "The expression is incomplete — did not expect “${token.text}”", token.line, token.column, code = "E104")
+            else -> throw ScriptError("عبارت ناتمام است − «${token.text}» انتظار نمی‌رفت", "The expression is incomplete − did not expect “${token.text}”", token.line, token.column, code = "E104")
         }
     }
 

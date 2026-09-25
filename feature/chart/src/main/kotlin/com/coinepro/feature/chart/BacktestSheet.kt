@@ -1,5 +1,8 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.coinepro.feature.chart
 
+import com.coinepro.core.designsystem.coineProHorizontalScroll
 import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -7,9 +10,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -64,7 +67,6 @@ import com.coinepro.core.chart.Candle
 import com.coinepro.core.chart.CandleSeries
 import com.coinepro.core.chart.Trade as EngineTrade
 import com.coinepro.core.common.BidiText
-import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProCard
 import com.coinepro.core.designsystem.CoineProColors
@@ -127,6 +129,11 @@ internal fun BacktestSheetBody(
      */
     modifier: Modifier = Modifier,
     /**
+     * The side inset. A sheet's gutter by default (MOBILE-02) — the body used to run into the glass
+     * — and 0 from a host that already pads, like the studio's section card.
+     */
+    contentPadding: Dp = CoineProSpacing.Gutter,
+    /**
      * Whether the feed still holds older bars than the chart has paged in.
      *
      * The chart pages history in as the reader pans, so `bars` is usually a window rather than the
@@ -187,20 +194,24 @@ internal fun BacktestSheetBody(
     }
 
     Column(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().padding(horizontal = contentPadding),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {
         CoineProTeachingStrip(TeachingSurface.BACKTEST, gutter = false)
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
+        // Wrapped: inside a sheet every strategy stays in view rather than past the edge.
+        FlowRow(
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
         ) {
             Backtest.Strategy.entries.forEach { option ->
                 Chip(stringResource(option.labelRes()), option == strategy) { strategy = option }
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        ) {
             listOf(0, 2, 5, 10).forEach { points ->
                 Chip(
                     // Latin, like every market figure: a reader compares this against an exchange's
@@ -213,7 +224,7 @@ internal fun BacktestSheetBody(
         }
         // Slippage, then the protective exits — Latin, like every market figure on this sheet.
         Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            modifier = Modifier.coineProHorizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -223,7 +234,7 @@ internal fun BacktestSheetBody(
             }
         }
         Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            modifier = Modifier.coineProHorizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -258,7 +269,7 @@ internal fun BacktestSheetBody(
 
         if (report == null) {
             Text(
-                text = stringResource(R.string.bt_needs_bars, Backtest.MINIMUM_BARS.toPersianDigits()),
+                text = stringResource(R.string.bt_needs_bars, Backtest.MINIMUM_BARS.proseDigits()),
                 style = MaterialTheme.typography.bodyMedium,
                 color = CoineProColors.TextMuted,
             )
@@ -773,7 +784,7 @@ private fun TradeListTab(report: TradeReport) {
             )
             return@Column
         }
-        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+        Row(modifier = Modifier.fillMaxWidth().coineProHorizontalScroll(rememberScrollState())) {
             Column {
                 TradeHeaderRow()
                 shown.forEach { trade -> TradeRow(trade) }
@@ -783,8 +794,8 @@ private fun TradeListTab(report: TradeReport) {
             Text(
                 text = stringResource(
                 R.string.bt_shown_of,
-                shown.size.toPersianDigits(),
-                listed.size.toPersianDigits(),
+                shown.size.proseDigits(),
+                listed.size.proseDigits(),
             ),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextMuted,
@@ -1087,7 +1098,7 @@ private fun SampleWarning(trades: Int, guarded: Boolean = false) {
                 CONFIDENT_TRADES.proseDigits(),
             )
         } else {
-            stringResource(R.string.bt_thin_sample, trades.toPersianDigits(), CONFIDENT_TRADES.toPersianDigits())
+            stringResource(R.string.bt_thin_sample, trades.proseDigits(), CONFIDENT_TRADES.proseDigits())
         },
         style = MaterialTheme.typography.labelSmall,
         color = CoineProColors.Warning,
@@ -1158,7 +1169,8 @@ private fun MetricRow(label: String, value: String, colour: Color = CoineProColo
  */
 @Composable
 private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
-    CoineProToggleChip(label = label, selected = selected, onClick = onClick, compact = true)
+    // Neutral, like every filter inside a chart dialog (DIALOGS-26).
+    CoineProToggleChip(label = label, selected = selected, onClick = onClick, compact = true, neutral = true)
 }
 
 /** Green above zero, red below, and the ordinary ink at exactly zero — a scratch is not a result. */

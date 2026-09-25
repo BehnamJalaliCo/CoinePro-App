@@ -1,11 +1,17 @@
 package com.coinepro.feature.chart
 
+import com.coinepro.core.designsystem.coineProHorizontalScroll
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,12 +22,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,17 +40,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.CompositionLocalProvider
 import com.coinepro.core.chart.BuiltInIndicatorTemplate
 import com.coinepro.core.chart.BuiltInIndicatorTemplates
 import com.coinepro.core.chart.ChartCatalog
@@ -48,6 +65,7 @@ import com.coinepro.core.chart.ChartType
 import com.coinepro.core.chart.drawableRes
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProMenuItem
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.pageAccentInk
@@ -62,11 +80,16 @@ import com.coinepro.core.designsystem.onPageAccent
  * tablet held sideways is TradingView's desktop, and there the toolbar is a row along the top in a
  * fixed order a trader's hand already knows: the symbol, compare, the interval with its favourites
  * inline, the chart type, indicators, templates, alert, replay, undo and redo; then at the far end
- * layouts, settings, fullscreen, the camera and the trade button. This is that row, in that order,
- * 40 dp tall with 32 dp controls and 20 dp glyphs, a hairline under it.
+ * layouts, settings, fullscreen, the camera and the trade button.
  *
- * Left to right in every language, as TradingView's is and as the chart under it is: the toolbar
- * belongs to the chart, and a chart reads left to right.
+ * Measured against TradingView's own (CHART-08, -09, -14): a 38 dp bar; every control a 34 dp plate
+ * with 4 dp corners that lights on hover and darkens while pressed; the vendored `tv_*` glyphs at
+ * their own 28 dp box and the few Phosphor ones at 22 dp, so every glyph's ink is the same 21–22 dp;
+ * words 14 sp regular. Every icon-only control names itself in a tooltip (CHART-11).
+ *
+ * The row follows the reader's direction, as TradingView's Arabic chart does: in Persian the symbol
+ * sits at the right-hand end and the layout cluster at the left. The drawing rail and the price axis
+ * do not move — see [ChartWorkbench] — so the bar mirrors and the chart under it does not (CHART-03).
  */
 @Composable
 internal fun ChartDesktopToolbar(
@@ -90,9 +113,12 @@ internal fun ChartDesktopToolbar(
     onTrade: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        // Below a desktop's width the worded buttons keep their glyph and lose the word — TradingView
+        // does the same — so nothing is cut mid-word at the scroll edge (MOBILE-18).
+        val worded = maxWidth >= DESKTOP_WORDED_MIN
         Row(
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxWidth()
                 .height(DESKTOP_TOOLBAR_HEIGHT)
                 .background(CoineProColors.Stage)
@@ -100,20 +126,28 @@ internal fun ChartDesktopToolbar(
                 .testTag(DESKTOP_TOOLBAR_TAG),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            val scroll = rememberScrollState()
             Row(
-                modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+                modifier = Modifier
+                    .weight(1f)
+                    .scrollEdgeFade(scroll)
+                    .coineProHorizontalScroll(scroll),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(0.dp),
             ) {
-                // Symbol search: the mark and the ticker, bold, the way TradingView's first button reads.
-                ToolbarChip(onClick = onSymbolSearch, description = "toolbar-symbol") {
+                // Symbol search: the mark and the ticker, the way TradingView's first button reads.
+                ToolbarChip(
+                    onClick = onSymbolSearch,
+                    description = "toolbar-symbol",
+                    tooltip = stringResource(R.string.chart_menu_search),
+                ) { ink ->
                     CoineProAssetLogo(symbol = symbol, size = 20.dp)
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = symbol,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = CoineProColors.TextPrimary,
+                        style = ChromeTextStyle(),
+                        fontWeight = FontWeight.SemiBold,
+                        color = ink,
                         maxLines = 1,
                     )
                 }
@@ -122,20 +156,20 @@ internal fun ChartDesktopToolbar(
                 }
                 ToolbarSeparator()
                 // The interval: the favourites inline, the one in force lit, the caret for the rest.
+                // TradingView's spellings on the keys — `1m 1h 4h 1D` — the stored wire is unchanged.
                 val shown = (starred + interval.wire).distinct()
                 shown.forEach { wire ->
                     val active = wire == interval.wire
                     ToolbarChip(
-                        onClick = {
-                            ChartInterval.of(wire)?.let(onSelectInterval)
-                        },
+                        onClick = { ChartInterval.of(wire)?.let(onSelectInterval) },
                         description = "toolbar-interval-$wire",
-                    ) {
+                        active = active,
+                    ) { ink ->
                         Text(
-                            text = wire,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-                            color = if (active) CoineProColors.pageAccentInk else CoineProColors.TextPrimary,
+                            text = tvIntervalCode(wire),
+                            style = ChromeTextStyle(),
+                            fontWeight = if (active) FontWeight.Medium else FontWeight.Normal,
+                            color = if (active) CoineProColors.pageAccentInk else ink,
                         )
                     }
                 }
@@ -145,12 +179,13 @@ internal fun ChartDesktopToolbar(
                 ToolbarSeparator()
                 val typeIcon = ChartCatalog.CHART_TYPES.firstOrNull { it.type == chartType }?.icon?.drawableRes()
                     ?: DesignR.drawable.tv_chart_candles
-                GlyphButton(typeIcon, stringResource(R.string.chart_toolbar_type)) { onOpen(ChartSheet.TYPE) }
+                GlyphButton(typeIcon, stringResource(R.string.chart_toolbar_type), vendored = true) { onOpen(ChartSheet.TYPE) }
                 ToolbarSeparator()
                 LabelledButton(
                     icon = DesignR.drawable.icon_sliders_horizontal,
                     label = stringResource(R.string.chart_band_indicators),
                     active = indicators > 0,
+                    worded = worded,
                     description = "toolbar-indicators",
                 ) { onOpen(ChartSheet.INDICATORS) }
                 TemplatesButton(onTemplate)
@@ -158,8 +193,10 @@ internal fun ChartDesktopToolbar(
                 onAlert?.let {
                     LabelledButton(
                         icon = DesignR.drawable.tv_bell,
+                        vendored = true,
                         label = stringResource(R.string.chart_toolbar_alert),
                         active = false,
+                        worded = worded,
                         description = "toolbar-alert",
                         onClick = it,
                     )
@@ -168,25 +205,42 @@ internal fun ChartDesktopToolbar(
                     icon = DesignR.drawable.icon_rewind,
                     label = stringResource(R.string.chart_toolbar_replay),
                     active = replayOn,
+                    worded = worded,
                     description = "toolbar-replay",
                     onClick = onReplay,
                 )
                 ToolbarSeparator()
-                GlyphButton(DesignR.drawable.icon_arrow_counter_clockwise, stringResource(R.string.chart_more_undo), onClick = onUndo)
-                GlyphButton(DesignR.drawable.icon_arrow_clockwise, stringResource(R.string.chart_more_redo), onClick = onRedo)
+                GlyphButton(
+                    DesignR.drawable.icon_arrow_counter_clockwise,
+                    stringResource(R.string.chart_more_undo),
+                    mirrored = true,
+                    onClick = onUndo,
+                )
+                GlyphButton(
+                    DesignR.drawable.icon_arrow_clockwise,
+                    stringResource(R.string.chart_more_redo),
+                    mirrored = true,
+                    onClick = onRedo,
+                )
             }
             ToolbarSeparator()
-            GlyphButton(DesignR.drawable.tv_layout_grid, stringResource(R.string.chart_sheet_layouts)) { onOpen(ChartSheet.LAYOUTS) }
-            GlyphButton(DesignR.drawable.tv_settings2, stringResource(R.string.chart_sheet_settings)) { onOpen(ChartSheet.SETTINGS) }
-            GlyphButton(DesignR.drawable.tv_maximize2, stringResource(R.string.chart_band_fullscreen), onClick = onFullscreen)
-            GlyphButton(DesignR.drawable.tv_camera, stringResource(R.string.chart_toolbar_snapshot), onClick = onSnapshot)
-            GlyphButton(DesignR.drawable.tv_more_horizontal, stringResource(R.string.chart_band_more)) { onOpen(ChartSheet.MORE) }
+            GlyphButton(DesignR.drawable.tv_layout_grid, stringResource(R.string.chart_sheet_layouts), vendored = true) {
+                onOpen(ChartSheet.LAYOUTS)
+            }
+            GlyphButton(DesignR.drawable.tv_settings2, stringResource(R.string.chart_sheet_settings), vendored = true) {
+                onOpen(ChartSheet.SETTINGS)
+            }
+            GlyphButton(DesignR.drawable.tv_maximize2, stringResource(R.string.chart_band_fullscreen), vendored = true, onClick = onFullscreen)
+            GlyphButton(DesignR.drawable.tv_camera, stringResource(R.string.chart_toolbar_snapshot), vendored = true, onClick = onSnapshot)
+            GlyphButton(DesignR.drawable.tv_more_horizontal, stringResource(R.string.chart_band_more), vendored = true) {
+                onOpen(ChartSheet.MORE)
+            }
             onTrade?.let { trade ->
                 Spacer(Modifier.width(4.dp))
                 Box(
                     modifier = Modifier
                         .height(DESKTOP_CONTROL)
-                        .clip(CoineProShapes.small)
+                        .clip(CoineProShapes.extraSmall)
                         .background(CoineProColors.pageAccentInk)
                         .clickable(onClick = trade)
                         .semantics { contentDescription = "toolbar-trade" }
@@ -195,32 +249,35 @@ internal fun ChartDesktopToolbar(
                 ) {
                     Text(
                         text = stringResource(R.string.chart_toolbar_trade),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
+                        style = ChromeTextStyle(),
+                        fontWeight = FontWeight.SemiBold,
                         color = CoineProColors.onPageAccent,
                     )
                 }
             }
         }
     }
-    HorizontalDivider(color = CoineProColors.BorderSubtle, thickness = 1.dp)
+    // One boundary under the bar, in the strong rule the separators use; the page draws none of its
+    // own above the plot (CHART-15).
+    HorizontalDivider(color = CoineProColors.Border, thickness = 1.dp)
 }
 
-/** TradingView's «Indicator templates» button: the six ready-made sets in a menu. */
+/**
+ * TradingView's «Indicator templates» button: the six ready-made sets in a menu, each a name over
+ * its faint summary rather than one fused string (DIALOGS-22).
+ */
 @Composable
 private fun TemplatesButton(onTemplate: (BuiltInIndicatorTemplate) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
-        GlyphButton(DesignR.drawable.tv_tool_template, stringResource(R.string.chart_templates_heading)) { open = true }
+        GlyphButton(DesignR.drawable.tv_tool_template, stringResource(R.string.chart_templates_heading), vendored = true) {
+            open = true
+        }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             BuiltInIndicatorTemplates.ALL.forEach { template ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = stringResource(templateName(template.id)) + "  ·  " + templateSummary(template),
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                    },
+                CoineProMenuItem(
+                    text = stringResource(templateName(template.id)),
+                    supporting = templateSummary(template),
                     onClick = {
                         open = false
                         onTemplate(template)
@@ -232,49 +289,124 @@ private fun TemplatesButton(onTemplate: (BuiltInIndicatorTemplate) -> Unit) {
     }
 }
 
+/** The chrome's words: TradingView's 14 px regular (CHART-14). */
+@Composable
+private fun ChromeTextStyle(): TextStyle = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Normal)
+
+/**
+ * TradingView's control plate: nothing at rest, a raised plate under the pointer, a deeper one while
+ * pressed or while the thing behind it is on — 4 dp corners, the same on every bar (CHART-09).
+ */
+@Composable
+internal fun Modifier.chromePlate(
+    interaction: MutableInteractionSource,
+    active: Boolean = false,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+): Modifier {
+    val hovered by interaction.collectIsHoveredAsState()
+    val pressed by interaction.collectIsPressedAsState()
+    val ground = when {
+        !enabled -> Color.Transparent
+        pressed || active -> CoineProColors.SurfacePressed
+        hovered -> CoineProColors.SurfaceHover
+        else -> Color.Transparent
+    }
+    return this
+        .clip(CoineProShapes.extraSmall)
+        .background(ground)
+        .hoverable(interaction, enabled = enabled)
+        .clickable(interactionSource = interaction, indication = null, enabled = enabled, onClick = onClick)
+}
+
+/** The ink of a chrome glyph at rest and under the pointer: TradingView's `#DBDBDB`, then white. */
+@Composable
+internal fun chromeInk(hovered: Boolean, enabled: Boolean = true): Color = when {
+    !enabled -> CoineProColors.TextDisabled
+    hovered -> CoineProColors.TextPrimary
+    else -> CoineProColors.TextPrimary.copy(alpha = CHROME_INK_ALPHA)
+}
+
+/**
+ * A control's name, after a pause under the pointer (CHART-11): TradingView's plain tooltip, a
+ * pressed-plate ground with the primary ink. A long press shows it on a touch screen.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun ChromeTooltip(label: String, content: @Composable () -> Unit) {
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
+        tooltip = {
+            PlainTooltip(
+                containerColor = CoineProColors.SurfaceRaised,
+                contentColor = CoineProColors.TextPrimary,
+                shape = CoineProShapes.extraSmall,
+            ) {
+                Text(text = label, style = MaterialTheme.typography.bodySmall)
+            }
+        },
+        state = rememberTooltipState(),
+    ) { content() }
+}
+
 @Composable
 private fun ToolbarChip(
     onClick: (() -> Unit)?,
     description: String,
-    content: @Composable () -> Unit,
+    active: Boolean = false,
+    tooltip: String? = null,
+    content: @Composable (Color) -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .height(DESKTOP_CONTROL)
-            .widthIn(min = DESKTOP_CONTROL)
-            .clip(CoineProShapes.small)
-            .clickable(enabled = onClick != null) { onClick?.invoke() }
-            .semantics { contentDescription = description }
-            .padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-    ) { content() }
+    val interaction = remember { MutableInteractionSource() }
+    val hovered by interaction.collectIsHoveredAsState()
+    val chip: @Composable () -> Unit = {
+        Row(
+            modifier = Modifier
+                .height(DESKTOP_CONTROL)
+                .widthIn(min = DESKTOP_CONTROL)
+                .chromePlate(interaction, active = active, enabled = onClick != null) { onClick?.invoke() }
+                .semantics { contentDescription = description }
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) { content(chromeInk(hovered, onClick != null)) }
+    }
+    if (tooltip != null) ChromeTooltip(tooltip, chip) else chip()
 }
 
+/**
+ * One glyph button. [vendored] says the glyph is one of the `tv_*` set, drawn inside its own 28-unit
+ * box, and so takes the full 28 dp; a Phosphor glyph reaches its box's edges and takes 22 so the two
+ * families' ink comes out the same size (CHART-08). [mirrored] turns an arrow for a right-to-left bar.
+ */
 @Composable
 private fun GlyphButton(
     @DrawableRes icon: Int,
     label: String,
     active: Boolean = false,
+    vendored: Boolean = false,
+    mirrored: Boolean = false,
     onClick: (() -> Unit)?,
 ) {
-    Box(
-        modifier = Modifier
-            .size(DESKTOP_CONTROL)
-            .clip(CoineProShapes.small)
-            .clickable(enabled = onClick != null) { onClick?.invoke() },
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = label,
-            tint = when {
-                onClick == null -> CoineProColors.TextDisabled
-                active -> CoineProColors.pageAccentInk
-                else -> CoineProColors.TextPrimary
-            },
-            modifier = Modifier.size(DESKTOP_GLYPH),
-        )
+    val interaction = remember { MutableInteractionSource() }
+    val hovered by interaction.collectIsHoveredAsState()
+    val flip = mirrored && LocalLayoutDirection.current == LayoutDirection.Rtl
+    ChromeTooltip(label) {
+        Box(
+            modifier = Modifier
+                .size(DESKTOP_CONTROL)
+                .chromePlate(interaction, active = active, enabled = onClick != null) { onClick?.invoke() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = label,
+                tint = if (active) CoineProColors.pageAccentInk else chromeInk(hovered, onClick != null),
+                modifier = Modifier
+                    .size(chromeGlyphSize(icon, vendored))
+                    .then(if (flip) Modifier.mirrorX() else Modifier),
+            )
+        }
     }
 }
 
@@ -283,36 +415,135 @@ private fun LabelledButton(
     @DrawableRes icon: Int,
     label: String,
     active: Boolean,
+    worded: Boolean,
     description: String,
+    vendored: Boolean = false,
     onClick: () -> Unit,
 ) {
-    val ink = if (active) CoineProColors.pageAccentInk else CoineProColors.TextPrimary
-    ToolbarChip(onClick = onClick, description = description) {
-        Icon(painter = painterResource(icon), contentDescription = null, tint = ink, modifier = Modifier.size(DESKTOP_GLYPH))
-        Spacer(Modifier.width(4.dp))
-        Text(text = label, style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp), color = ink, maxLines = 1)
+    ToolbarChip(
+        onClick = onClick,
+        description = description,
+        tooltip = label.takeUnless { worded },
+    ) { rest ->
+        val ink = if (active) CoineProColors.pageAccentInk else rest
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = ink,
+            modifier = Modifier.size(chromeGlyphSize(icon, vendored)),
+        )
+        if (worded) {
+            Spacer(Modifier.width(4.dp))
+            Text(text = label, style = ChromeTextStyle(), color = ink, maxLines = 1)
+        }
     }
 }
 
+/** TradingView's separator: 1 × 22, the strong rule, a hair off each neighbour (CHART-15). */
 @Composable
 private fun ToolbarSeparator() {
     VerticalDivider(
-        modifier = Modifier.height(20.dp).padding(horizontal = 4.dp),
-        color = CoineProColors.Border,
+        modifier = Modifier.height(22.dp).padding(horizontal = 4.dp),
+        color = CoineProColors.BorderStrong,
     )
 }
 
-/** TradingView's desktop toolbar: 38–40 px, 32 px controls, 20 px glyphs. */
-private val DESKTOP_TOOLBAR_HEIGHT = 40.dp
-private val DESKTOP_CONTROL = 32.dp
-private val DESKTOP_GLYPH = 20.dp
+/**
+ * A fade at whichever end of a sideways row still has more in it, so a control that runs past the
+ * edge reads as «more this way» rather than as cut (MOBILE-18). A mask on the row's own pixels in
+ * eight steps rather than a gradient brush, the same way the sheet's chip rows fade: the design
+ * system keeps gradients to the brand mark and the chart.
+ */
+private fun Modifier.scrollEdgeFade(scroll: ScrollState): Modifier = this
+    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        val fade = EDGE_FADE.toPx().coerceAtMost(size.width / 2f)
+        val rtl = layoutDirection == LayoutDirection.Rtl
+        // «Forward» is the reading end: the left edge in Persian.
+        val fadeLeft = if (rtl) scroll.canScrollForward else scroll.canScrollBackward
+        val fadeRight = if (rtl) scroll.canScrollBackward else scroll.canScrollForward
+        val band = fade / EDGE_FADE_STEPS
+        for (step in 0 until EDGE_FADE_STEPS) {
+            // Band 0 is at the very edge and keeps the least of the row.
+            val keep = Color.Black.copy(alpha = (step + 0.5f) / EDGE_FADE_STEPS)
+            if (fadeLeft) {
+                drawRect(keep, topLeft = Offset(step * band, 0f), size = Size(band, size.height), blendMode = BlendMode.DstIn)
+            }
+            if (fadeRight) {
+                drawRect(
+                    keep,
+                    topLeft = Offset(size.width - (step + 1) * band, 0f),
+                    size = Size(band, size.height),
+                    blendMode = BlendMode.DstIn,
+                )
+            }
+        }
+    }
+
+/** Flips a glyph left to right. */
+private fun Modifier.mirrorX(): Modifier = graphicsLayer { scaleX = -1f }
+
+/** TradingView's desktop toolbar: 38 px, 34 px plates, 28 px glyph boxes. */
+private val DESKTOP_TOOLBAR_HEIGHT = 38.dp
+private val DESKTOP_CONTROL = 34.dp
+
+/**
+ * The box a chrome glyph is drawn in so that every glyph's *ink* is TradingView's 21–22 dp
+ * (CHART-08). The vendored `tv_*` set draws inside a 28-unit box with a margin, so it takes 28; the
+ * Phosphor set reaches its box's edges, so it takes 22; and the few vendored glyphs cut on another
+ * grid — the 44-unit help ring and calendar, the 21-unit layout grid, the 18-unit code mark — take
+ * the size that brings their ink to the same measure.
+ */
+internal fun chromeGlyphSize(@DrawableRes icon: Int, vendored: Boolean = false): Dp = when (icon) {
+    DesignR.drawable.tv_help_circle, DesignR.drawable.tv_calendar_days -> WIDE_GRID_GLYPH
+    DesignR.drawable.tv_layout_grid -> LAYOUT_GRID_GLYPH
+    DesignR.drawable.tv_code2 -> CODE_GLYPH
+    in VENDORED_ON_28 -> VENDORED_GLYPH
+    else -> if (vendored) VENDORED_GLYPH else PHOSPHOR_GLYPH
+}
+
+private val VENDORED_GLYPH = 28.dp
+private val PHOSPHOR_GLYPH = 22.dp
+private val WIDE_GRID_GLYPH = 33.dp
+private val LAYOUT_GRID_GLYPH = 20.dp
+private val CODE_GLYPH = 24.dp
+
+/** The vendored glyphs a caller may hand the chrome without saying so — the side rail's panels. */
+private val VENDORED_ON_28 = setOf(
+    DesignR.drawable.tv_chart_columns,
+    DesignR.drawable.tv_bell,
+    DesignR.drawable.tv_bell_ring,
+    DesignR.drawable.tv_star,
+    DesignR.drawable.tv_settings2,
+    DesignR.drawable.tv_camera,
+    DesignR.drawable.tv_search,
+    DesignR.drawable.tv_pencil,
+    DesignR.drawable.tv_magnet,
+    DesignR.drawable.tv_trash2,
+    DesignR.drawable.tv_more_horizontal,
+    DesignR.drawable.tv_maximize2,
+    DesignR.drawable.tv_minimize2,
+    DesignR.drawable.tv_play,
+)
+
+/** `#DBDBDB` on TradingView's dark is its white at about 86 %; the same step off our primary ink. */
+private const val CHROME_INK_ALPHA = 0.86f
+
+/** Below this the worded buttons drop their words. */
+private val DESKTOP_WORDED_MIN: Dp = 1200.dp
+
+/** The fade at a scrolling row's open end. */
+private val EDGE_FADE = 24.dp
+private const val EDGE_FADE_STEPS = 8
 
 internal const val DESKTOP_TOOLBAR_TAG = "chart-desktop-toolbar"
 
 /**
- * TradingView's desktop bar *under* the chart (5.16.0): the date ranges on the left — `1D 5D 1M 3M
- * 6M YTD 1Y 5Y All` — and on the right the clock in the chart's zone, then `%` and `log`. The
- * phone keeps its ranges in the sheet; a desktop has them one click away, where TradingView does.
+ * TradingView's desktop bar *under* the chart (5.16.0): the date ranges and «Go to» at the reading
+ * start, and at the other end the clock in the chart's zone, then `%`, `log` and `auto`. The phone
+ * keeps its ranges in the sheet; a desktop has them one click away, where TradingView does.
+ * 38 dp and 14 sp regular like the bar over the plot (CHART-16).
  */
 @Composable
 internal fun ChartDesktopBottomBar(
@@ -325,6 +556,11 @@ internal fun ChartDesktopBottomBar(
     onPercent: () -> Unit,
     onLog: () -> Unit,
     modifier: Modifier = Modifier,
+    /** TradingView's calendar button after the ranges; null where there are no bars to go to. */
+    onGoToDate: (() -> Unit)? = null,
+    /** Whether the price scale fits the bars on screen by itself, and the way back to that. */
+    auto: Boolean = true,
+    onAuto: (() -> Unit)? = null,
 ) {
     var now by remember { mutableStateOf(ChartClock.now()) }
     androidx.compose.runtime.LaunchedEffect(Unit) {
@@ -333,56 +569,63 @@ internal fun ChartDesktopBottomBar(
             now = ChartClock.now()
         }
     }
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(DESKTOP_BOTTOM_HEIGHT)
+            .background(CoineProColors.Stage)
+            .padding(horizontal = 4.dp)
+            .testTag(DESKTOP_BOTTOM_TAG),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val scroll = rememberScrollState()
         Row(
-            modifier = modifier
-                .fillMaxWidth()
-                .height(DESKTOP_BOTTOM_HEIGHT)
-                .background(CoineProColors.Stage)
-                .padding(horizontal = 4.dp)
-                .testTag(DESKTOP_BOTTOM_TAG),
+            modifier = Modifier
+                .weight(1f)
+                .scrollEdgeFade(scroll)
+                .coineProHorizontalScroll(scroll),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(0.dp),
         ) {
-            Row(
-                modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // TradingView reads shortest first, left to right.
-                ChartRange.OFFERED.reversed().forEach { option ->
-                    val active = option == range
-                    ToolbarChip(onClick = { onRange(option) }, description = "range-${option.name}") {
-                        Text(
-                            text = rangeCode(option) ?: stringResource(option.labelRes),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-                            color = if (active) CoineProColors.pageAccentInk else CoineProColors.TextMuted,
-                        )
-                    }
+            // TradingView reads shortest first from the reading start.
+            ChartRange.OFFERED.reversed().forEach { option ->
+                val active = option == range
+                ToolbarChip(onClick = { onRange(option) }, description = "range-${option.name}", active = active) { ink ->
+                    Text(
+                        text = rangeCode(option),
+                        style = ChromeTextStyle(),
+                        color = if (active) CoineProColors.pageAccentInk else ink,
+                    )
                 }
             }
-            ToolbarChip(onClick = onZone, description = "toolbar-clock") {
-                Text(
-                    text = desktopClock(now, zone),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = CoineProColors.TextMuted,
-                    maxLines = 1,
-                )
+            onGoToDate?.let { go ->
+                ToolbarSeparator()
+                GlyphButton(DesignR.drawable.tv_calendar_days, stringResource(R.string.chart_more_goto), vendored = true, onClick = go)
             }
-            ToolbarSeparator()
-            ToggleText("%", percent, "toolbar-percent", onPercent)
-            ToggleText("log", logarithmic, "toolbar-log", onLog)
         }
+        ToolbarChip(onClick = onZone, description = "toolbar-clock", tooltip = stringResource(R.string.chart_time_menu_zone)) { ink ->
+            Text(
+                text = desktopClock(now, zone),
+                style = ChromeTextStyle(),
+                color = ink,
+                maxLines = 1,
+            )
+        }
+        ToolbarSeparator()
+        ToggleText("%", percent, "toolbar-percent", stringResource(R.string.chart_scale_mode_percent), onPercent)
+        ToggleText("log", logarithmic, "toolbar-log", stringResource(R.string.chart_scale_mode_log), onLog)
+        onAuto?.let { ToggleText("auto", auto, "toolbar-auto", stringResource(R.string.chart_toolbar_auto), it) }
     }
 }
 
 @Composable
-private fun ToggleText(text: String, on: Boolean, description: String, onClick: () -> Unit) {
-    ToolbarChip(onClick = onClick, description = description) {
+private fun ToggleText(text: String, on: Boolean, description: String, tooltip: String, onClick: () -> Unit) {
+    ToolbarChip(onClick = onClick, description = description, tooltip = tooltip) { ink ->
         Text(
             text = text,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
-            color = if (on) CoineProColors.pageAccentInk else CoineProColors.TextMuted,
+            style = ChromeTextStyle(),
+            fontWeight = if (on) FontWeight.Medium else FontWeight.Normal,
+            color = if (on) CoineProColors.pageAccentInk else ink,
         )
     }
 }
@@ -402,15 +645,16 @@ internal fun desktopClock(epochMillis: Long, zone: java.time.ZoneId): String = r
     "$time ($offset)"
 }.getOrDefault("")
 
-private val DESKTOP_BOTTOM_HEIGHT = 32.dp
+private val DESKTOP_BOTTOM_HEIGHT = 38.dp
 
 internal const val DESKTOP_BOTTOM_TAG = "chart-desktop-bottom"
 
 /**
- * TradingView's own spellings under its chart — `1D 5D 1M 3M 6M YTD 1Y 5Y` — Latin in both languages,
- * as a chart's controls are here. «All» is a word, so it keeps its translation.
+ * TradingView's own spellings under its chart — `1D 5D 1M 3M 6M YTD 1Y 5Y All` — Latin in both
+ * languages, as a chart's controls are here. «All» joined the set in 5.18.2: a Persian word at the
+ * end of a row of Latin codes read as two controls glued together (MOBILE-33).
  */
-internal fun rangeCode(range: ChartRange): String? = when (range) {
+internal fun rangeCode(range: ChartRange): String = when (range) {
     ChartRange.D1 -> "1D"
     ChartRange.D5 -> "5D"
     ChartRange.M1 -> "1M"
@@ -419,7 +663,7 @@ internal fun rangeCode(range: ChartRange): String? = when (range) {
     ChartRange.YTD -> "YTD"
     ChartRange.Y1 -> "1Y"
     ChartRange.Y5 -> "5Y"
-    ChartRange.ALL -> null
+    ChartRange.ALL -> "All"
 }
 
 /**

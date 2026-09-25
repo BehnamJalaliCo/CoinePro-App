@@ -124,3 +124,44 @@ enum class ChartRange(
 private const val YEAR_SECONDS = 365L * 86_400L
 
 private const val DAY_SECONDS = 86_400L
+
+/**
+ * TradingView's spelling of a bar length — `1m 15m 1h 4h 1D 1W 1M` — for what a reader sees
+ * (CHART-23). The wire spelling (`M1`, `H4`, `D1`) is what is stored and sent, and stays so: a
+ * saved layout and a server request never see this. Seconds read `10s`, ticks keep TradingView's
+ * `100T`, and a length the reader typed reads as minutes.
+ */
+internal fun tvIntervalCode(wire: String): String {
+    Timeframe.of(wire)?.let { frame ->
+        return when (frame) {
+            Timeframe.M1 -> "1m"
+            Timeframe.M2 -> "2m"
+            Timeframe.M3 -> "3m"
+            Timeframe.M5 -> "5m"
+            Timeframe.M10 -> "10m"
+            Timeframe.M15 -> "15m"
+            Timeframe.M30 -> "30m"
+            Timeframe.M45 -> "45m"
+            Timeframe.H1 -> "1h"
+            Timeframe.H2 -> "2h"
+            Timeframe.H3 -> "3h"
+            Timeframe.H4 -> "4h"
+            Timeframe.D1 -> "1D"
+            Timeframe.W1 -> "1W"
+            Timeframe.MN1 -> "1M"
+            Timeframe.MN3 -> "3M"
+            Timeframe.MN6 -> "6M"
+            Timeframe.MN12 -> "12M"
+        }
+    }
+    val clean = wire.trim()
+    return when {
+        clean.endsWith("S") && clean.dropLast(1).all(Char::isDigit) -> clean.dropLast(1) + "s"
+        clean.endsWith("T") && clean.dropLast(1).all(Char::isDigit) -> clean
+        clean.isNotEmpty() && clean.all(Char::isDigit) -> clean + "m"
+        else -> clean
+    }
+}
+
+/** [tvIntervalCode] of this interval's wire spelling. */
+internal val ChartInterval.tvCode: String get() = tvIntervalCode(wire)

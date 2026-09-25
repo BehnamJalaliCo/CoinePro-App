@@ -73,12 +73,12 @@ object PineTranslator {
 
     /** Constructs with no equivalent in the vectorised language, each named for the report. */
     private val BLOCKED: List<Pair<Regex, String>> = listOf(
-        Regex("""^(if|else|for|while|switch)\b""") to "control flow is not in NamaScript v1.1 — rewrite as a condition or iff(...)",
+        Regex("""^(if|else|for|while|switch)\b""") to "control flow is not in NamaScript v1.1 − rewrite as a condition or iff(...)",
         Regex("""^\w+\s*\([^)]*\)\s*=>""") to "user functions are not in NamaScript v1.1",
         Regex("""\b(array|matrix|map)\.\w+""") to "collections are not in NamaScript v1.1",
         Regex("""\brequest\.\w+""") to "request.* (other symbols and timeframes) is not in NamaScript v1.1",
         Regex("""\b(label|line|box|table|polyline|linefill)\.\w+""") to "drawing objects are not in NamaScript v1.1",
-        Regex("""\bstrategy\.(entry|exit|close|order|close_all)\b""") to "strategy orders — use signal(buy, entry, stop, target) for one setup",
+        Regex("""\bstrategy\.(entry|exit|close|order|close_all)\b""") to "strategy orders − use signal(buy, entry, stop, target) for one setup",
         Regex("""\b(fill|plotcandle|plotbar|barcolor|plotarrow)\s*\(""") to "this plot type is not in NamaScript v1.1",
         Regex("""\bvarip\b""") to "varip (per-tick state) has no meaning in a vectorised model",
         Regex("""\b(str|syminfo|timeframe|barstate|session)\.\w+""") to "this namespace is not in NamaScript v1.1",

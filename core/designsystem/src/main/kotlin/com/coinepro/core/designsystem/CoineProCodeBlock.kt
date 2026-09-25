@@ -2,7 +2,6 @@ package com.coinepro.core.designsystem
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -77,7 +76,7 @@ fun CoineProCodeBlock(
                     },
                 )
                 // Outside the padding, so the plate stays put and the code slides inside it.
-                .horizontalScroll(rememberScrollState()),
+                .coineProHorizontalScroll(rememberScrollState()),
         )
     }
 }

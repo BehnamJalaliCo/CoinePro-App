@@ -126,4 +126,5 @@
     <string name="alerts_server_push">اعلان گوشی</string>
     <string name="alerts_server_telegram">تلگرام</string>
     <string name="alerts_server_email">ایمیل</string>
+    <string name="alerts_editor_cancel">انصراف</string>
 </resources>

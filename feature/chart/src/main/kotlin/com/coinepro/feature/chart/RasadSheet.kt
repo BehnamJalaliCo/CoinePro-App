@@ -74,6 +74,8 @@ internal fun RasadLine(
     series: CandleSeries,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
+    /** One line, cut with an ellipsis — the desktop's shared footer row (CHART-04). */
+    oneLine: Boolean = false,
 ) {
     val english = inEnglish()
     val first = RasadCoach.readChart(series, english = english)
@@ -102,8 +104,8 @@ internal fun RasadLine(
             text = first,
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextSecondary,
-            maxLines = RASAD_LINES,
-            overflow = TextOverflow.Clip,
+            maxLines = if (oneLine) 1 else RASAD_LINES,
+            overflow = if (oneLine) TextOverflow.Ellipsis else TextOverflow.Clip,
             modifier = Modifier.weight(1f),
         )
     }

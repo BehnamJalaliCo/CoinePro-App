@@ -529,6 +529,8 @@ val replacedFiles = listOf(
     "com/coinepro/core/designsystem/ShareImage.kt",
     // No title on a phone → the tab's title: web/src/wasmJsMain/.../designsystem/WindowTitle.web.kt
     "com/coinepro/core/designsystem/WindowTitle.kt",
+    // Dialog dimming is a window flag on Android, a scrim colour here: .../designsystem/SheetDialog.web.kt
+    "com/coinepro/core/designsystem/SheetDialog.kt",
 )
 
 /**

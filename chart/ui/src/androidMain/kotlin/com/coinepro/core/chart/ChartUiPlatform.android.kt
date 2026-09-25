@@ -2,7 +2,6 @@ package com.coinepro.core.chart
 
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.magnifier
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -26,7 +25,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
-import androidx.compose.ui.unit.TextUnit
 import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.common.JalaliDate
 import com.coinepro.core.common.PersianDateTime
@@ -196,11 +194,6 @@ internal actual fun chartText(text: ChartText): String = stringResource(
         ChartText.LEGEND_BACK -> DesignR.string.legend_back
     },
 )
-
-@Composable
-internal actual fun ChartBackMark(glyph: String, pointsRight: Boolean, colour: Color, fontSize: TextUnit) {
-    Text(text = glyph, color = colour, fontSize = fontSize)
-}
 
 /** The characters these marks always were. The system's fallback fonts draw the ones IRANYekanX lacks. */
 internal actual object ChartMarks {

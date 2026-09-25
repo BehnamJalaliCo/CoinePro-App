@@ -204,9 +204,9 @@ object RasadCoach {
         // happening. The strength word is deliberately absent — this branch is what «بدون روند»
         // means, spelled out, and printing it again beside a range would be the same word twice.
         !trending -> if (english) {
-            "There is no trend here — the market is turning inside a range, with $swing swing."
+            "There is no trend here − the market is turning inside a range, with $swing swing."
         } else {
-            "اینجا روندی نیست — بازار داخل یک محدوده می‌چرخد، با نوسان $swing."
+            "اینجا روندی نیست − بازار داخل یک محدوده می‌چرخد، با نوسان $swing."
         }
         // Travelling hard, but the averages have not separated: there is a move and it has no side
         // yet. Naming the strength here is honest; naming a direction would not be.
@@ -277,9 +277,9 @@ object RasadCoach {
         val side = setup.side.label(english)
         return when {
             speaking.any { it.state == MarketState.BULL } && speaking.any { it.state == MarketState.BEAR } -> if (english) {
-                "Of $total studies on the chart, $bulls read up and $bears read down — they disagree."
+                "Of $total studies on the chart, $bulls read up and $bears read down − they disagree."
             } else {
-                "از $total ابزار روی چارت، $bulls صعودی و $bears نزولی می‌خوانند — با هم موافق نیستند."
+                "از $total ابزار روی چارت، $bulls صعودی و $bears نزولی می‌خوانند − با هم موافق نیستند."
             }
             else -> if (english) {
                 "Of $total studies on the chart, $agreeing agree and all of them read $side."
@@ -333,9 +333,9 @@ object RasadCoach {
             "تصمیم‌گرفتن درباره‌ی جای اشتباه‌بودن، پیش از ورود، تنها عادتی است که بقیه را قابل اندازه‌گیری می‌کند."
         }
         trade.closedByStop -> if (english) {
-            "The stop did its job and closed it — that is the plan working, not the plan failing."
+            "The stop did its job and closed it − that is the plan working, not the plan failing."
         } else {
-            "حد ضرر کارش را کرد و معامله را بست — این یعنی نقشه کار کرد، نه اینکه شکست خورد."
+            "حد ضرر کارش را کرد و معامله را بست − این یعنی نقشه کار کرد، نه اینکه شکست خورد."
         }
         trade.closedEarly -> if (english) {
             "You closed it by hand before either line was reached."

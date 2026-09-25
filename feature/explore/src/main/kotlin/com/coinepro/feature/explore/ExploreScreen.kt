@@ -1,5 +1,6 @@
 package com.coinepro.feature.explore
 
+import com.coinepro.core.designsystem.CoineProLazyRow
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.HorizontalDivider
@@ -453,7 +453,7 @@ private fun CategoryChips(
     onSelect: (SymbolCategory?) -> Unit,
 ) {
     val haptics = rememberCoineProHaptics()
-    LazyRow(
+    CoineProLazyRow(
         modifier = Modifier.height(CHIP_ROW_HEIGHT).testTag(ExploreTestTags.CATEGORY_ROW),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         contentPadding = PaddingValues(horizontal = CoineProSpacing.Gutter),
@@ -511,7 +511,7 @@ private fun MarketStrip(
     lines: Map<String, List<Double>>,
     onOpenSymbol: (String) -> Unit,
 ) {
-    LazyRow(
+    CoineProLazyRow(
         modifier = Modifier.testTag(ExploreTestTags.MARKET_STRIP),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         contentPadding = PaddingValues(horizontal = CoineProSpacing.Gutter),

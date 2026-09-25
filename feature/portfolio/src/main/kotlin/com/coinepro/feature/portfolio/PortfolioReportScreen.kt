@@ -1,12 +1,12 @@
 package com.coinepro.feature.portfolio
 
+import com.coinepro.core.designsystem.coineProHorizontalScroll
 import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -419,7 +419,7 @@ private fun MonthlyGridCard(months: List<MonthlyPerformance>) {
     CoineProCard(modifier = Modifier.fillMaxWidth()) {
         CardLabel(stringResource(R.string.portfolio_by_month))
         Spacer(Modifier.height(CoineProSpacing.One))
-        Column(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+        Column(modifier = Modifier.fillMaxWidth().coineProHorizontalScroll(rememberScrollState())) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 GridCell(text = "", width = YEAR_COLUMN, muted = true)
                 for (month in 1..12) {

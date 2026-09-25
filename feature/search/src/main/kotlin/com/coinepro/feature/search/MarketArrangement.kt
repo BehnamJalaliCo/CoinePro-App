@@ -136,7 +136,10 @@ internal fun arrangeMarkets(
     watched: Set<String> = emptySet(),
 ): List<MarketSearchRow> {
     val lensed = when (lens) {
-        MarketLens.NONE -> rows
+        // Quoted rows first (LISTS-08). The list's own order is kept inside each half, but a
+        // «Top» that opens on seven markets with nothing but dashes leads with what the feed has
+        // not told us rather than with the markets.
+        MarketLens.NONE -> rows.quotedFirst()
         // No sort of its own: the reader's list has *their* order until they ask for another, and
         // rearranging what somebody curated is the one list in this app that must not be touched.
         MarketLens.FAVOURITES -> rows.filter { it.meta.symbol.uppercase() in watched }
@@ -235,3 +238,9 @@ private fun List<MarketSearchRow>.withFigure(
 /** The day's figures for one row, or null where the table does not carry the symbol. */
 internal fun MarketTickerStore.MarketTickerState.tickerFor(row: MarketSearchRow): MarketTicker? =
     this[row.meta.symbol]
+
+/** [this] with the rows that have a price ahead of the ones that do not, each half in its order. */
+internal fun List<MarketSearchRow>.quotedFirst(): List<MarketSearchRow> {
+    val (quoted, waiting) = partition { it.quote != null }
+    return if (waiting.isEmpty() || quoted.isEmpty()) this else quoted + waiting
+}

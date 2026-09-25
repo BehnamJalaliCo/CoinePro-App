@@ -1,5 +1,6 @@
 package com.coinepro.core.help
 
+import com.coinepro.core.designsystem.CoineProLazyRow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -180,7 +180,7 @@ fun HelpBody(entry: HelpEntry, persian: Boolean = true, modifier: Modifier = Mod
 @Composable
 private fun HelpGallery(entry: HelpEntry, persian: Boolean) {
     var expanded by remember(entry.id) { mutableStateOf<HelpImage?>(null) }
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
+    CoineProLazyRow(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
         items(entry.images, key = { it.file }) { image ->
             HelpPicture(
                 image = image,

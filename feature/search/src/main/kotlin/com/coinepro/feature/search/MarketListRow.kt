@@ -10,6 +10,23 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.AbsoluteAlignment
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.sp
+import com.coinepro.core.designsystem.CoineProWindowSize
+import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.coineProWindowClass
+import com.coinepro.core.symbols.SymbolMeta
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -139,6 +156,7 @@ internal fun MarketListRow(
     trailing: @Composable RowScope.() -> Unit,
 ) {
     val haptics = rememberCoineProHaptics()
+    val density = listDensity()
     // How far the finger has travelled on this row, reset the moment it lifts. Held rather than
     // animated: the row does not slide. A row that translates under the finger promises a reveal
     // behind it — a delete, an archive — and there is nothing behind this one; the whole gesture is
@@ -164,6 +182,7 @@ internal fun MarketListRow(
     } else {
         Modifier
     }
+    val hover = remember { MutableInteractionSource() }
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -172,10 +191,15 @@ internal fun MarketListRow(
             // list of forty markets where six are still waiting breathes as the prices land, and
             // the reader's thumb lands on the row below the one they aimed at. The watchlist's
             // drag arithmetic also counts on it — see `WatchlistPanel`.
-            .defaultMinSize(minHeight = MarketRowHeight)
+            .defaultMinSize(minHeight = density.rowHeight)
+            // The pointer's row, painted in the palette's own hover plate (LISTS-17). Material's
+            // eight per cent layer is ΔL* 5 on the dark stage — a hover nobody can see.
+            .rowHover(hover)
             // The tint a trader reads: which rows are moving, found before any figure is read.
             .coineProPriceFlash(row.quote?.price)
             .combinedClickable(
+                interactionSource = hover,
+                indication = null,
                 onClick = {
                     haptics.select()
                     onClick()
@@ -187,7 +211,7 @@ internal fun MarketListRow(
                     }
                 },
             )
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = density.verticalPadding),
         verticalAlignment = Alignment.CenterVertically,
         // **Eight between the parts, not twelve.**
         //
@@ -204,7 +228,7 @@ internal fun MarketListRow(
             Box(
                 modifier = Modifier
                     .width(3.dp)
-                    .height(28.dp)
+                    .height(density.logo)
                     .clip(CoineProPillShape)
                     // Transparent rather than absent when unflagged: the rail holds the column
                     // open so every ticker below it starts at the same place.
@@ -222,12 +246,15 @@ internal fun MarketListRow(
                     if (starred) R.string.watchlist_unstar else R.string.watchlist_star,
                 ),
                 modifier = Modifier
-                    .minimumInteractiveComponentSize()
+                    // A pointer does not need a thumb's forty-eight points, and on a dense
+                    // desktop row they would be the tallest thing in it.
+                    .then(if (density.singleLine) Modifier.size(28.dp) else Modifier.minimumInteractiveComponentSize())
                     .clip(CoineProShapes.small)
                     .clickable {
                         starHaptics.commit()
                         onToggleStar()
                     }
+                    .padding(if (density.singleLine) CoineProSpacing.Half else 0.dp)
                     .size(18.dp),
                 tint = if (starred) CoineProColors.Accent else CoineProColors.TextDisabled,
             )
@@ -248,28 +275,56 @@ internal fun MarketListRow(
         // a render test. See `CoineProSharedElement`.
         CoineProAssetLogo(
             symbol = row.meta.symbol,
-            size = LogoSize,
+            size = density.logo,
             modifier = Modifier.sharedElement(SharedKeys.logo(row.meta.symbol)),
         )
-        // Wider than it was. Eighty-four points fitted the ticker and cut every Persian name
-        // under it; the sparkline beside it was floating in a weighted box with room to spare.
-        Column(modifier = Modifier.width(SymbolColumn)) {
+        val name = rowNameOf(row.meta, row.meta.localRowName())
+        val ticker: @Composable () -> Unit = {
             Text(
                 text = row.meta.symbol,
-                style = MaterialTheme.typography.labelMedium.copy(textDirection = TextDirection.Ltr),
+                style = density.ticker.copy(textDirection = TextDirection.Ltr),
                 color = CoineProColors.TextPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.sharedElement(SharedKeys.ticker(row.meta.symbol)),
             )
-            Text(
-                text = row.meta.localRowName(),
-                style = MaterialTheme.typography.labelSmall,
-                color = CoineProColors.TextMuted,
-                fontWeight = FontWeight.Normal,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        }
+        if (density.singleLine) {
+            // **One line on a desktop** (LISTS-05): the ticker, then the name in the muted ink on
+            // the same baseline, elided before it can reach the figures. Two lines at forty rows a
+            // screen is how the terminal ended up at half the reference's density.
+            Row(
+                modifier = Modifier.width(SymbolColumn),
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ticker()
+                if (name != null) {
+                    Text(
+                        text = name,
+                        style = density.name,
+                        color = CoineProColors.TextMuted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        } else {
+            // Wider than it was. Eighty-four points fitted the ticker and cut every Persian name
+            // under it; the sparkline beside it was floating in a weighted box with room to spare.
+            Column(modifier = Modifier.width(SymbolColumn)) {
+                ticker()
+                if (name != null) {
+                    Text(
+                        text = name,
+                        style = density.name,
+                        color = CoineProColors.TextMuted,
+                        fontWeight = FontWeight.Normal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
         trailing()
     }
@@ -292,6 +347,8 @@ internal data class WatchlistFigures(
     val quoteVolume: Double? = null,
     /** The day's closes, oldest first, for the sparkline column. */
     val line: List<Double> = emptyList(),
+    /** True while [line] has been asked for and has not arrived — drawn dashed, not flat. */
+    val linePending: Boolean = false,
 )
 
 /**
@@ -359,14 +416,19 @@ internal fun WatchlistFigureCell(
         WatchlistColumn.QUOTE_VOLUME -> figures.quoteVolume
         WatchlistColumn.FLAG, WatchlistColumn.SPARKLINE -> null
     }
+    val density = listDensity()
     if (column == WatchlistColumn.SPARKLINE) {
         // The day's line in the move's colour, with the wash under it. 52×24, as the reference.
         val rising = (figures.changePercent ?: 0.0) >= 0.0
+        val size = modifier.width(widthOf(column)).height(if (density.singleLine) 18.dp else SPARKLINE_HEIGHT)
+        // Still on its way (LISTS-22): the design system's pending rule, so a line that is loading
+        // does not look exactly like a market that will never have one.
         CoineProSparkline(
             values = figures.line,
             colour = if (rising) CoineProColors.MarketUp else CoineProColors.MarketDown,
             fill = true,
-            modifier = modifier.width(widthOf(column)).height(SPARKLINE_HEIGHT),
+            pending = figures.line.size < 2 && figures.linePending,
+            modifier = size,
         )
         return
     }
@@ -378,14 +440,14 @@ internal fun WatchlistFigureCell(
     if (column == WatchlistColumn.CHANGE_PERCENT && value != null) {
         CoineProPercentText(
             percent = value,
-            style = MaterialTheme.typography.labelMedium,
+            style = density.figure,
             modifier = modifier.width(widthOf(column)),
         )
         return
     }
     Text(
         text = value?.let { formatFigure(column.unit, it) } ?: EmDash,
-        style = MaterialTheme.typography.labelMedium.numeric(),
+        style = density.figure.numeric(),
         color = when {
             value == null -> CoineProColors.TextDisabled
             // Movement, not execution — the same distinction the percent column makes.
@@ -426,21 +488,157 @@ internal fun WatchlistColumnHeading(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Text(
-        text = column.label(inEnglish()) + when {
-            !sorted -> ""
-            descending -> " ↓"
-            else -> " ↑"
-        },
-        style = MaterialTheme.typography.labelSmall,
-        color = if (sorted) CoineProColors.TextSecondary else CoineProColors.TextDisabled,
-        textAlign = TextAlign.Right,
-        maxLines = 1,
+    // The whole cell is the target, not the fifteen-point line of text (LISTS-16), and the
+    // heading is set in the label ink TradingView uses for its own: readable, and still quieter
+    // than the figures under it. The arrow leads the word, as the reference writes it.
+    Box(
         modifier = modifier
             .width(widthOf(column))
+            .heightIn(min = listDensity().headingHeight)
+            .clip(CoineProShapes.extraSmall)
             .clickable(onClick = onClick),
+        contentAlignment = AbsoluteAlignment.CenterRight,
+    ) {
+        SortableLabel(label = column.label(inEnglish()), sorted = sorted, descending = descending)
+    }
+}
+
+/**
+ * A column heading with its sort arrow in front — the one sort vocabulary all three lists use
+ * (LISTS-15): an arrow pointing down while largest-first, up while smallest-first, nothing
+ * otherwise, in the label's own ink.
+ *
+ * Laid out on the absolute axis, arrow then word from the left, so the word keeps the right edge
+ * the figures under it are aligned to in both directions.
+ */
+@Composable
+internal fun SortableLabel(
+    label: String,
+    sorted: Boolean,
+    descending: Boolean,
+    modifier: Modifier = Modifier,
+    /** Muted until sorted; a heading that cannot sort passes its own. */
+    color: Color = if (sorted) CoineProColors.TextPrimary else CoineProColors.TextMuted,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.Absolute.spacedBy(CoineProSpacing.Half, Alignment.End),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (sorted) SortArrow(descending = descending, tint = color)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Normal,
+            color = color,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/**
+ * The sort direction as a drawn arrow, not a character.
+ *
+ * IRANYekanX has no U+2191/U+2193, so the text arrows this used to be were empty boxes on the web
+ * (MOBILE-01). The app's own left arrow, turned, laid out left-to-right so it is not mirrored first.
+ */
+@Composable
+internal fun SortArrow(descending: Boolean, tint: Color, modifier: Modifier = Modifier) {
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Icon(
+            painter = painterResource(DesignR.drawable.icon_arrow_left),
+            contentDescription = null,
+            tint = tint,
+            modifier = modifier.size(12.dp).rotate(if (descending) -90f else 90f),
+        )
+    }
+}
+
+/**
+ * The name a row carries beside its ticker, or null where it would only repeat it (LISTS-24).
+ *
+ * A market the classifier has no name for comes back as its own base — «BREW» under «BREWUSDT» —
+ * which is the ticker again in a quieter ink. Nothing is better than that.
+ */
+internal fun rowNameOf(meta: SymbolMeta, name: String): String? {
+    val trimmed = name.trim()
+    if (trimmed.isEmpty()) return null
+    val same = trimmed.equals(meta.base, ignoreCase = true) ||
+        trimmed.equals(meta.symbol, ignoreCase = true) ||
+        trimmed.equals(meta.pretty, ignoreCase = true)
+    return if (same) null else trimmed
+}
+
+/**
+ * How tightly this module's lists are set (LISTS-05, LISTS-18).
+ *
+ * Two densities and no more. A phone keeps the comfortable two-line row — the ticker over its
+ * Persian name, fifty-eight points — because a thumb needs the height and a phone reads one market
+ * at a time. An expanded window is a terminal: a mouse, forty rows wanted on screen, and the
+ * reference's forty-one-pixel table. There the row is one line, forty points, with the type a step
+ * larger because a desktop reads at arm's length.
+ */
+@Immutable
+internal data class ListDensity(
+    val rowHeight: Dp,
+    val verticalPadding: Dp,
+    val logo: Dp,
+    val singleLine: Boolean,
+    val headingHeight: Dp,
+    val ticker: TextStyle,
+    val name: TextStyle,
+    val figure: TextStyle,
+)
+
+@Composable
+@ReadOnlyComposable
+internal fun listDensity(): ListDensity {
+    val type = MaterialTheme.typography
+    return if (coineProWindowClass().width == CoineProWindowSize.EXPANDED) {
+        ListDensity(
+            rowHeight = DenseRowHeight,
+            verticalPadding = 4.dp,
+            logo = 20.dp,
+            singleLine = true,
+            headingHeight = 32.dp,
+            ticker = type.labelMedium.copy(fontSize = 13.sp, lineHeight = 18.sp),
+            name = type.labelMedium.copy(fontSize = 12.sp, fontWeight = FontWeight.Normal),
+            figure = type.labelMedium.copy(fontSize = 13.sp, lineHeight = 18.sp),
+        )
+    } else {
+        ListDensity(
+            rowHeight = MarketRowHeight,
+            verticalPadding = 8.dp,
+            logo = LogoSize,
+            singleLine = false,
+            headingHeight = 28.dp,
+            ticker = type.labelMedium,
+            name = type.labelSmall,
+            figure = type.labelMedium,
+        )
+    }
+}
+
+/**
+ * The pointer's row in the palette's hover plate. See [MarketListRow].
+ *
+ * Reads [source] only: the row's own `clickable` is what reports the hover into it, so the source
+ * must be the one handed to that clickable.
+ */
+@Composable
+internal fun Modifier.rowHover(source: MutableInteractionSource): Modifier {
+    val hovered by source.collectIsHoveredAsState()
+    val pressed by source.collectIsPressedAsState()
+    return background(
+        when {
+            pressed -> CoineProColors.SurfacePressed
+            hovered -> CoineProColors.SurfaceHover
+            else -> Color.Transparent
+        },
     )
 }
+
 
 /**
  * How wide each column is drawn.
@@ -553,6 +751,9 @@ internal val RowGap = 8.dp
  */
 internal val MarketRowHeight = 58.dp
 
+/** The single-line row on an expanded window. See [ListDensity]. */
+internal val DenseRowHeight = 40.dp
+
 /** What a cell with no figure says. Not a zero, which would be a claim. */
 private const val EmDash = "—"
 
@@ -562,7 +763,7 @@ private const val EmDash = "—"
  * Fixed rather than wrapped so the logo and every ticker under it line up down the list. A column
  * that grows at row 1 000 is a list that shifts sideways while the reader is scrolling it.
  */
-private val RankColumn = 24.dp
+internal val RankColumn = 24.dp
 
 /** The sparkline cell's height — the reference draws its lines 24 dp tall. */
 private val SPARKLINE_HEIGHT = 24.dp

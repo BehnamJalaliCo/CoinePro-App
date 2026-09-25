@@ -1,10 +1,11 @@
 package com.coinepro.feature.activity
 
+import com.coinepro.core.designsystem.CoineProSwitch
+import com.coinepro.core.designsystem.coineProHorizontalScroll
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,7 +25,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -568,7 +568,7 @@ private fun HistoryFilters(
             modifier = Modifier.fillMaxWidth(),
         )
         Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxWidth().coineProHorizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             PerformanceResultFilter.entries.forEach { item ->
@@ -769,7 +769,7 @@ private fun PreferenceCard(value: PushPreferences, onChange: (PushPreferences) -
 private fun PreferenceRow(label: String, checked: Boolean, onChecked: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text(label)
-        Switch(checked = checked, onCheckedChange = onChecked)
+        CoineProSwitch(checked = checked, onCheckedChange = onChecked)
     }
 }
 

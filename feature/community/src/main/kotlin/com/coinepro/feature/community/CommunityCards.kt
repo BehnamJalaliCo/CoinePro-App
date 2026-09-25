@@ -1,5 +1,6 @@
 package com.coinepro.feature.community
 
+import com.coinepro.core.designsystem.CoineProLazyRow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,7 +15,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -440,7 +440,7 @@ private fun ReactionRow(post: CommunityPost, onReact: ((String) -> Unit)?) {
     val haptics = rememberCoineProHaptics()
     val emojis = if (onReact == null) post.reactions.keys.toList() else CommunityReactions.ALLOWED
     if (emojis.isEmpty()) return
-    LazyRow(
+    CoineProLazyRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
         contentPadding = PaddingValues(0.dp),

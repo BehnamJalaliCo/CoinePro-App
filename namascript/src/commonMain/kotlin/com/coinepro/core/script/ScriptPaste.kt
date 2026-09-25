@@ -306,8 +306,8 @@ object ScriptPaste {
         lineRule(
             id = "rma-to-smma",
             code = "E304",
-            what = "ta.rma به ta.smma تغییر کرد — همان میانگین است با نام این زبان.",
-            whatEn = "ta.rma became ta.smma — the same average under this language's name.",
+            what = "ta.rma به ta.smma تغییر کرد − همان میانگین است با نام این زبان.",
+            whatEn = "ta.rma became ta.smma − the same average under this language's name.",
             pattern = Regex("""\bta\.rma\b"""),
             replacement = { "ta.smma" },
         ),

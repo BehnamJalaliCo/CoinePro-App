@@ -1,12 +1,12 @@
 package com.coinepro.feature.search
 
+import com.coinepro.core.designsystem.coineProHorizontalScroll
 import com.coinepro.core.designsystem.pageAccentInk
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -149,6 +149,7 @@ fun WatchlistPanel(
     val settings by settingsFlow.collectAsStateWithLifecycle(initialValue = WatchlistSettings())
 
     var sheet by remember { mutableStateOf<WatchlistSheet?>(null) }
+    var pendingLines by remember { mutableStateOf(emptySet<String>()) }
     var flagFilter by remember(activeId) { mutableStateOf<WatchlistFlag?>(null) }
     // **Reordering is a mode, and it is off.**
     //
@@ -268,7 +269,11 @@ fun WatchlistPanel(
                 // The grip only exists while the list is in the reader's own order, and it takes
                 // forty-six points with its spacing. A heading strip that ignored that would sit
                 // that far off its own column the moment a sort was turned on.
-                lead = headingLead(withRail = rail, withHandle = editing && settings.sort.isManual),
+                lead = headingLead(
+                    withRail = rail,
+                    withHandle = editing && settings.sort.isManual,
+                    logo = listDensity().logo,
+                ),
                 onSort = { column ->
                     scope.launch { store.setSort(activeId, nextSort(settings.sort, column)) }
                 },
@@ -313,7 +318,17 @@ fun WatchlistPanel(
                     // Asked for as the row appears, not for the whole list up front — and the
                     // day-high and day-low columns read the same series, so a row that has one
                     // has both.
-                    LaunchedEffect(symbol) { onRequestLine(symbol) }
+                    LaunchedEffect(symbol) {
+                        onRequestLine(symbol)
+                        // Pending for as long as a line could reasonably still be coming. The store
+                        // does not say when it gave up, so after this the rule is drawn as absent.
+                        pendingLines = pendingLines + symbol
+                        try {
+                            kotlinx.coroutines.delay(LINE_PENDING_MS)
+                        } finally {
+                            pendingLines = pendingLines - symbol
+                        }
+                    }
                     Column(modifier = rowMotion(fades = false)) {
 MarketListRow(
                         modifier = Modifier,
@@ -340,11 +355,12 @@ MarketListRow(
                             Row(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .horizontalScroll(figureScroll),
+                                    .coineProHorizontalScroll(figureScroll),
                                 horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 val figures = figuresFor(row, lines[symbol].orEmpty())
+                                    .copy(linePending = symbol !in lines && symbol in pendingLines)
                                 columns.forEach { column ->
                                     WatchlistFigureCell(column = column, figures = figures)
                                 }
@@ -353,11 +369,9 @@ MarketListRow(
                     )
                     settings.notes[symbol]?.let { note -> WatchlistNoteLine(note) }
                     }
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = CoineProSpacing.Two),
-                        thickness = 1.dp,
-                        color = CoineProColors.BorderSubtle,
-                    )
+                    // Full-bleed, the same box the row's hover and flash fill (MOBILE-30): an inset rule
+                    // under an edge-to-edge highlight reads as two different rows.
+                    HorizontalDivider(thickness = 1.dp, color = CoineProColors.BorderSubtle)
                 }
                 }
             }
@@ -371,9 +385,13 @@ MarketListRow(
     // way to want. It is a button rather than a background job on purpose — the watchlist is the
     // only thing a reader builds inside this app, and a sync they did not ask for, on a connection
     // that comes and goes, is the wrong moment to touch it.
+    val syncOffered = watchlistSync?.state?.collectAsStateWithLifecycle()?.value?.available == true
     if (watchlistSync != null) {
         val syncState by watchlistSync.state.collectAsStateWithLifecycle()
-        if (syncState.available) {
+        // Only when it has something to say (LISTS-21): a failure, or a list that has not been
+        // synced for a day. «هنوز همگام نشده است» under every visit was a permanent row of chrome;
+        // the action itself lives in the «•••» sheet.
+        if (syncState.available && showsSyncFooter(syncState, System.currentTimeMillis())) {
             // Read from the configuration rather than a store: the app already re-bases its
             // context on the reader's chosen language, so this is the same answer, and it is one a
             // feature module can reach without depending on `:app`.
@@ -413,8 +431,34 @@ MarketListRow(
         activeId = activeId,
         settings = settings,
         onDismiss = { sheet = null },
+        onSync = watchlistSync?.takeIf { syncOffered }?.let { sync -> { sync.sync() } },
     )
 }
+
+/**
+ * Whether the sync footer is drawn under the list (LISTS-21).
+ *
+ * A notice that needs the reader — the sync failed, was refused, would not fit — or a last sync
+ * more than a day old. Never a list that simply has not been synced yet: the way to sync is in the
+ * overflow, and a footer saying «not synced» on every visit is a row of chrome about nothing.
+ */
+internal fun showsSyncFooter(state: WatchlistSyncState, nowMs: Long): Boolean {
+    if (state.syncing) return true
+    if (state.notice in SYNC_PROBLEMS) return true
+    return state.lastSyncedAtMs > 0L && nowMs - state.lastSyncedAtMs > SYNC_STALE_MS
+}
+
+private val SYNC_PROBLEMS = setOf(
+    com.coinepro.core.watchlistsync.WatchlistSyncNotice.OFFLINE,
+    com.coinepro.core.watchlistsync.WatchlistSyncNotice.REFUSED,
+    com.coinepro.core.watchlistsync.WatchlistSyncNotice.TOO_LARGE,
+)
+
+/** A day. See [showsSyncFooter]. */
+private const val SYNC_STALE_MS = 24L * 60L * 60L * 1_000L
+
+/** How long a requested sparkline is drawn as still coming. See [WatchlistFigureCell]. */
+private const val LINE_PENDING_MS = 10_000L
 
 /**
  * Which panel is open over the list.
@@ -505,7 +549,8 @@ private fun Controls(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = CoineProSpacing.Two, vertical = 4.dp),
+            // No vertical padding: the forty-point glyph targets are the row's height on their own.
+            .padding(horizontal = CoineProSpacing.Two),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
@@ -518,43 +563,52 @@ private fun Controls(
         // It opens a sheet rather than a dropdown, for the reason every other choice in this app
         // does: a menu anchored to a control at the top of the screen puts its rows under the
         // thumb that is already covering them.
+        // **The name and its count take the slack; the glyphs sit on the end edge** (LISTS-07,
+        // MOBILE-08). The picker used to be a `weight(fill = false)` beside a `Spacer(weight)`, and
+        // the two split the spare width in half: the toolbar floated mid-page on a desktop and
+        // «Watchlist» was cut to «Watc…» on a phone with a third of the line empty.
         Row(
-            modifier = Modifier
-                .weight(1f, fill = false)
-                .clip(CoineProShapes.small)
-                .clickable {
-                    haptics.select()
-                    onOpenPicker()
-                }
-                .padding(horizontal = CoineProSpacing.Half, vertical = CoineProSpacing.Half),
+            modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         ) {
+            Row(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .clip(CoineProShapes.small)
+                    .clickable {
+                        haptics.select()
+                        onOpenPicker()
+                    }
+                    .padding(horizontal = CoineProSpacing.Half, vertical = CoineProSpacing.Half),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            ) {
+                Text(
+                    text = lists.firstOrNull { it.id == activeId }?.localName()
+                        ?: stringResource(R.string.markets_watchlist),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = CoineProColors.TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                Icon(
+                    painter = painterResource(CoineProIcons.ChevronDown),
+                    contentDescription = stringResource(R.string.watchlist_pick_list),
+                    tint = CoineProColors.TextMuted,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
             Text(
-                text = lists.firstOrNull { it.id == activeId }?.localName()
-                    ?: stringResource(R.string.markets_watchlist),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = CoineProColors.TextPrimary,
+                // A prose count, so Persian digits — unlike every figure in the table below it.
+                text = stringResource(R.string.watchlist_symbol_count, count.proseDigits()),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-            Icon(
-                painter = painterResource(CoineProIcons.ChevronDown),
-                contentDescription = stringResource(R.string.watchlist_pick_list),
-                tint = CoineProColors.TextMuted,
-                modifier = Modifier.size(14.dp),
             )
         }
-        Text(
-            // A prose count, so Persian digits — unlike every figure in the table below it.
-            text = stringResource(R.string.watchlist_symbol_count, count.proseDigits()),
-            style = MaterialTheme.typography.labelSmall,
-            color = CoineProColors.TextMuted,
-            maxLines = 1,
-        )
-        Spacer(modifier = Modifier.weight(1f))
         // A new list, one tap from the list it will sit beside. It was three levels down — «•••»,
         // «مدیریت فهرست‌ها», a text field — which is the right depth for renaming and the wrong one
         // for the action a reader takes on their second visit.
@@ -615,11 +669,9 @@ private fun Controls(
 @Composable
 private fun SortDot(sorted: Boolean, descending: Boolean, onClick: () -> Unit) {
     val haptics = rememberCoineProHaptics()
-    Text(
-        text = if (!sorted) "\u25CB" else if (descending) "\u25CF \u2193" else "\u25CF \u2191",
-        style = MaterialTheme.typography.labelSmall,
-        color = if (sorted) CoineProColors.TextSecondary else CoineProColors.TextMuted,
-        maxLines = 1,
+    val ink = if (sorted) CoineProColors.TextSecondary else CoineProColors.TextMuted
+    // Drawn, not typed: the font has no ○ ● ↑ ↓, and the web drew them as empty boxes (MOBILE-01).
+    Row(
         modifier = Modifier
             .clip(CoineProShapes.small)
             .clickable {
@@ -627,7 +679,19 @@ private fun SortDot(sorted: Boolean, descending: Boolean, onClick: () -> Unit) {
                 onClick()
             }
             .padding(horizontal = CoineProSpacing.Half, vertical = 4.dp),
-    )
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(9.dp)
+                .clip(CoineProPillShape)
+                .then(
+                    if (sorted) Modifier.background(ink) else Modifier.border(1.dp, ink, CoineProPillShape),
+                ),
+        )
+        if (sorted) SortArrow(descending = descending, tint = ink)
+    }
 }
 
 /** One colour, as a filter. Selected, it gains a ring rather than changing its own colour. */
@@ -671,7 +735,7 @@ private fun Headings(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = CoineProSpacing.Two, vertical = 4.dp),
+            .padding(horizontal = CoineProSpacing.Two),
         verticalAlignment = Alignment.CenterVertically,
         // The last of the row's own steps — [headingLead] carries the ones before it. The two have
         // to add up to the same number or every heading sits beside its column instead of over it.
@@ -679,8 +743,9 @@ private fun Headings(
     ) {
         Spacer(modifier = Modifier.width(lead))
         Row(
-            modifier = Modifier.weight(1f).horizontalScroll(scroll),
+            modifier = Modifier.weight(1f).coineProHorizontalScroll(scroll),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             columns.forEach { column ->
                 WatchlistColumnHeading(
@@ -692,6 +757,8 @@ private fun Headings(
             }
         }
     }
+    // The rule under the header row (LISTS-16): where the table starts, as the reference draws it.
+    HorizontalDivider(thickness = 1.dp, color = CoineProColors.BorderSubtle)
 }
 
 /**
@@ -724,7 +791,9 @@ private fun ReorderHandle(
     onCommit: (Int, Int) -> Unit,
 ) {
     val haptics = rememberCoineProHaptics()
-    val rowHeightPx = with(LocalDensity.current) { MarketRowHeight.toPx() }
+    // The row's own height at this density — every row in the list settles at it, dense or not.
+    val rows = listDensity()
+    val rowHeightPx = with(LocalDensity.current) { rows.rowHeight.toPx() }
     Box(
         modifier = Modifier
             // Thirty-two wide — see [HandleWidth] — and forty
@@ -735,7 +804,7 @@ private fun ReorderHandle(
             // would make this the tallest thing in the row and stretch it to 66dp, which the drag
             // arithmetic below divides by 58.
             .width(HandleWidth)
-            .height(40.dp)
+            .height(rows.rowHeight - rows.verticalPadding * 2)
             .clip(CoineProShapes.small)
             .pointerInput(symbol) {
                 var working = emptyList<String>()
@@ -797,7 +866,12 @@ private fun ReorderHandle(
     }
 }
 
-/** A square icon button in the app's flat style: a fill, a hairline, and no shadow. */
+/**
+ * A toolbar glyph: bare at rest, a plate only while its mode is on (MOBILE-16).
+ *
+ * Four filled, hairlined squares were the heaviest thing on the page and outweighed the list they
+ * serve. The reference's header glyphs have no plates; the forty-point target is still all there.
+ */
 @Composable
 internal fun IconAction(
     icon: Int,
@@ -808,17 +882,21 @@ internal fun IconAction(
     active: Boolean = false,
 ) {
     val haptics = rememberCoineProHaptics()
+    val hover = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     Box(
         modifier = modifier
-            .size(34.dp)
+            .size(40.dp)
             .clip(CoineProShapes.small)
-            .background(if (active) CoineProColors.SurfaceRaised else CoineProColors.SurfaceElevated)
-            .border(
-                1.dp,
-                if (active) CoineProColors.BorderStrong else CoineProColors.BorderSubtle,
-                CoineProShapes.small,
+            .then(
+                if (active) {
+                    Modifier
+                        .background(CoineProColors.SurfaceRaised)
+                        .border(1.dp, CoineProColors.BorderStrong, CoineProShapes.small)
+                } else {
+                    Modifier.rowHover(hover)
+                },
             )
-            .clickable {
+            .clickable(interactionSource = hover, indication = null) {
                 haptics.select()
                 onClick()
             },
@@ -828,7 +906,7 @@ internal fun IconAction(
             painter = painterResource(icon),
             contentDescription = label,
             tint = if (active) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
-            modifier = Modifier.size(16.dp),
+            modifier = Modifier.size(20.dp),
         )
     }
 }
@@ -893,10 +971,10 @@ internal fun sortRows(
  * from the cells they label and the two have to agree to the point — a heading strip that is
  * nearly right is worse than none, since it labels the wrong column rather than no column.
  */
-private fun headingLead(withRail: Boolean, withHandle: Boolean) =
+internal fun headingLead(withRail: Boolean, withHandle: Boolean, logo: Dp = LogoSize) =
     (if (withRail) 3.dp + RowGap else 0.dp) +
         (if (withHandle) HandleWidth + RowGap else 0.dp) +
-        LogoSize + RowGap + SymbolColumn
+        logo + RowGap + SymbolColumn
 
 /**
  * How wide the reorder grip is.

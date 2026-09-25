@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
+import com.coinepro.core.designsystem.coineProPriceFlash
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -223,8 +225,14 @@ fun MarketsScreen(
     onOpenNews: (() -> Unit)? = null,
     onOpenCalendar: (() -> Unit)? = null,
     onOpenHeatmap: (() -> Unit)? = null,
+    /**
+     * The other platform's catalogue, which prices the rows this one lists and does not quote
+     * (LISTS-08). See `WatchlistScreen.companion`: only a price is borrowed, never a row.
+     */
+    companion: MarketSearchController? = null,
 ) {
     LaunchedEffect(controller) { controller.start() }
+    LaunchedEffect(companion) { companion?.start() }
     // Reference counted in the store, so leaving this screen does not stop the poll for whatever
     // else is reading the same table — and coming back does not start a second one.
     DisposableEffect(tickers) {
@@ -232,6 +240,10 @@ fun MarketsScreen(
         onDispose { tickers?.stop() }
     }
     val state by controller.state.collectAsStateWithLifecycle()
+    val companionQuotes = companion?.state?.collectAsStateWithLifecycle()?.value?.catalogueQuotes.orEmpty()
+    val results = remember(state.results, companionQuotes) {
+        withCompanionQuotes(state.results, emptyList(), companionQuotes)
+    }
     val lines by sparklines.lines.collectAsStateWithLifecycle()
     // A flow either way, so the collection below is unconditional. A `tickers?.state?.collect…`
     // would add and remove a subscription as the store appears, which is a composition that
@@ -281,14 +293,14 @@ fun MarketsScreen(
     // *search* screen uses, and a tab that quietly rewrote it would change the other screen too.
     // Hoisted out of the filter block: the rows need it too, to draw each star's state.
     val watched = remember(watchlist) { watchlist.map { it.uppercase() }.toSet() }
-    val rows = remember(state.results, page, watched, tickerState, lens, sort, filter) {
+    val rows = remember(results, page, watched, tickerState, lens, sort, filter) {
         // The category first, then the day's figures. The order matters for one reason that is not
         // about arithmetic: `state.results` is the catalogue, which `MarketCatalogGateway` has
         // already filtered through `SymbolArtwork.covers`, so arranging *these* rows can never
         // introduce a symbol with no artwork. Building the gainers list out of the ticker table
         // instead — eight hundred rows, filtered by nothing — would put lettered discs in a list
         // this app does not allow them in.
-        val visible = state.results.filter { row ->
+        val visible = results.filter { row ->
             when {
                 page.panel -> row.meta.symbol.uppercase() in watched
                 else -> page.category == null || row.meta.category == page.category
@@ -356,7 +368,9 @@ fun MarketsScreen(
         // is elsewhere. On CoinePro-FX the pulse is simply not there.
         if (arranged) {
             val pulse = remember(tickerState.table) { MarketPulse.of(tickerState.table) }
-            MarketPulseRow(pulse = pulse, onOpen = { pulseCell = it })
+            // Not four dashes (LISTS-08): a pulse with no figure in it yet is a row of nothing, so
+            // it waits for the first one rather than drawing an empty instrument panel.
+            if (pulse.hasFigure()) MarketPulseRow(pulse = pulse, onOpen = { pulseCell = it })
         }
         if (onOpenHeadline != null) {
             MarketNewsTicker(headlines = headlines, onOpen = onOpenHeadline)
@@ -385,6 +399,8 @@ fun MarketsScreen(
         if (!panel) {
             ColumnHeadings(
                 starRail = onToggleWatch != null,
+                // The rows are numbered, so the headings reserve the rank column too (LISTS-13).
+                ranked = true,
                 sort = sort,
                 // Null where there is nothing to sort by, which leaves the headings exactly the
                 // three inert words they have always been on a platform without the route.
@@ -403,7 +419,7 @@ fun MarketsScreen(
         when {
             panel -> WatchlistPanel(
                 store = requireNotNull(watchlistStore),
-                catalogue = state.results,
+                catalogue = results,
                 lines = lines,
                 onRequestLine = sparklines::request,
                 onOpenSymbol = onOpenSymbol,
@@ -521,11 +537,8 @@ fun MarketsScreen(
                                 )
                             },
                         )
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = CoineProSpacing.Two),
-                            thickness = 1.dp,
-                            color = CoineProColors.BorderSubtle,
-                        )
+                        // Full-bleed, under a full-bleed hover (MOBILE-30).
+                        HorizontalDivider(thickness = 1.dp, color = CoineProColors.BorderSubtle)
                     }
                     if (loaded < rows.size) {
                         // The next page is asked for by the *last row appearing*, not by a button
@@ -765,6 +778,8 @@ private fun Header(
 @Composable
 private fun ColumnHeadings(
     starRail: Boolean,
+    /** Whether the rows carry a rank column, which the headings must reserve too (LISTS-13). */
+    ranked: Boolean = false,
     sort: MarketSort? = null,
     /** Null where this platform serves no day's table, which leaves all three headings inert. */
     onSort: ((MarketSortKey) -> Unit)? = null,
@@ -781,16 +796,20 @@ private fun ColumnHeadings(
     // read from the row rather than written again, because the two fell out of step once already —
     // see the row's own note on the gap. The star is optional in the row, so it is optional here
     // too, and it reserves 48 because that is what `minimumInteractiveComponentSize` gives it.
+    val density = listDensity()
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = CoineProSpacing.Two)
-            .padding(top = CoineProSpacing.OneHalf, bottom = CoineProSpacing.Half),
+            .heightIn(min = density.headingHeight)
+            .padding(horizontal = CoineProSpacing.Two),
         horizontalArrangement = Arrangement.spacedBy(RowGap),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        val style = MaterialTheme.typography.labelSmall
-        if (starRail) Spacer(modifier = Modifier.width(48.dp))
-        Spacer(modifier = Modifier.width(LogoSize))
+        // The reference's header ink and size (LISTS-16): a label a reader can find, not a caption.
+        val style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Normal)
+        if (starRail) Spacer(modifier = Modifier.width(if (density.singleLine) 28.dp else 48.dp))
+        if (ranked) Spacer(modifier = Modifier.width(RankColumn))
+        Spacer(modifier = Modifier.width(density.logo))
         Text(
             text = stringResource(R.string.markets_column_symbol),
             style = style,
@@ -799,25 +818,38 @@ private fun ColumnHeadings(
             modifier = Modifier.width(SymbolColumn),
         )
         val turnoverColumn = sort?.key == MarketSortKey.TURNOVER
-        Text(
-            text = stringResource(
-                if (turnoverColumn) R.string.markets_column_turnover else R.string.markets_column_trend,
-            ) + sortMark(sort, MarketSortKey.TURNOVER),
-            style = style,
-            color = headingInk(sort, MarketSortKey.TURNOVER, onSort),
-            maxLines = 1,
+        // Centred over the sparkline, which is centred in the same weighted box (LISTS-13).
+        Box(
             modifier = Modifier
                 .weight(1f)
                 .then(onSort?.let { Modifier.clickable { it(MarketSortKey.TURNOVER) } } ?: Modifier),
-        )
-        Text(
-            text = stringResource(R.string.markets_column_price) + sortMark(sort, MarketSortKey.CHANGE),
-            style = style,
-            color = headingInk(sort, MarketSortKey.CHANGE, onSort),
-            maxLines = 1,
-            modifier = onSort?.let { Modifier.clickable { it(MarketSortKey.CHANGE) } } ?: Modifier,
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            SortableLabel(
+                label = stringResource(
+                    if (turnoverColumn) R.string.markets_column_turnover else R.string.markets_column_trend,
+                ),
+                sorted = sort?.key == MarketSortKey.TURNOVER,
+                descending = sort?.descending == true,
+                color = headingInk(sort, MarketSortKey.TURNOVER, onSort),
+            )
+        }
+        // Over the whole figure block, right-aligned as the figures are.
+        Box(
+            modifier = Modifier
+                .width(if (density.singleLine) FIGURE_COLUMN + RowGap + CHANGE_COLUMN else FIGURE_COLUMN)
+                .then(onSort?.let { Modifier.clickable { it(MarketSortKey.CHANGE) } } ?: Modifier),
+            contentAlignment = androidx.compose.ui.AbsoluteAlignment.CenterRight,
+        ) {
+            SortableLabel(
+                label = stringResource(R.string.markets_column_price),
+                sorted = sort?.key == MarketSortKey.CHANGE,
+                descending = sort?.descending == true,
+                color = headingInk(sort, MarketSortKey.CHANGE, onSort),
+            )
+        }
     }
+    HorizontalDivider(thickness = 1.dp, color = CoineProColors.BorderSubtle)
 }
 
 /**
@@ -827,11 +859,6 @@ private fun ColumnHeadings(
  * app that have been seen rendered in IRANYekanX, and a heading whose sort marker came out as a
  * missing-glyph box would be worse than a heading with no marker at all.
  */
-private fun sortMark(sort: MarketSort?, key: MarketSortKey): String = when {
-    sort?.key != key -> ""
-    sort.descending -> " ↓"
-    else -> " ↑"
-}
 
 /** Muted where a tap does nothing, secondary where it sorts, primary where it already has. */
 @Composable
@@ -840,9 +867,8 @@ private fun headingInk(
     key: MarketSortKey,
     onSort: ((MarketSortKey) -> Unit)?,
 ) = when {
-    onSort == null -> CoineProColors.TextMuted
     sort?.key == key -> CoineProColors.TextPrimary
-    else -> CoineProColors.TextSecondary
+    else -> CoineProColors.TextMuted
 }
 
 /**
@@ -902,6 +928,26 @@ private fun RowScope.MarketFigures(
                 colour = tone,
             )
         }
+    }
+    val density = listDensity()
+    if (density.singleLine) {
+        // One line on a desktop (LISTS-05): the price and the move side by side, each in its own
+        // fixed, right-aligned column, as the reference's table sets them.
+        Text(
+            text = row.quote?.let { MarketNumberFormatter.priceAuto(it.price) }
+                ?: stringResource(R.string.search_no_price),
+            style = density.figure.copy(textDirection = TextDirection.Ltr),
+            color = if (row.quote == null) CoineProColors.TextDisabled else CoineProColors.TextPrimary,
+            modifier = Modifier.width(FIGURE_COLUMN).coineProPriceFlash(row.quote?.price),
+            textAlign = TextAlign.Right,
+            maxLines = 1,
+        )
+        Box(modifier = Modifier.width(CHANGE_COLUMN), contentAlignment = Alignment.CenterEnd) {
+            change?.let {
+                CoineProPercentText(percent = it, style = density.figure, modifier = Modifier.fillMaxWidth())
+            }
+        }
+        return
     }
     Column(
         // Fixed and end-aligned, so the decimal points line up down the column. Free-width,
@@ -984,3 +1030,10 @@ private fun ColumnScope.Centred(content: @Composable () -> Unit) {
 
 /** The price column's width, matching `CoineProMarketRow` so the two lists align the same way. */
 private val FIGURE_COLUMN = 92.dp
+
+/** The move's own column on a single-line desktop row. `+12.34%` at thirteen points, and air. */
+private val CHANGE_COLUMN = 68.dp
+
+/** Whether any of the pulse's four cells has a figure. See the pulse row in [MarketsScreen]. */
+internal fun MarketPulse.hasFigure(): Boolean =
+    marketCap != null || turnover24h != null || bitcoinDominance != null || fearGreed != null || breadth != null

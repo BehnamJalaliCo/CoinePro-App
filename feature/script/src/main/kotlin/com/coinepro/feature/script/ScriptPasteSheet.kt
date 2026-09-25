@@ -1,7 +1,7 @@
 package com.coinepro.feature.script
 
+import com.coinepro.core.designsystem.coineProHorizontalScroll
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -191,7 +191,7 @@ private fun UnsupportedRows(paste: ScriptPaste.Paste) {
                 .fillMaxWidth()
                 .background(CoineProColors.Stage, CoineProShapes.small)
                 .padding(CoineProSpacing.One)
-                .horizontalScroll(rememberScrollState()),
+                .coineProHorizontalScroll(rememberScrollState()),
             maxLines = 1,
         )
     }

@@ -1,5 +1,8 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.coinepro.feature.chart
 
+import com.coinepro.core.designsystem.CoineProLazyRow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,7 +13,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -20,8 +22,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
+import com.coinepro.core.designsystem.CoineProSwitch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -41,6 +42,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProToggleChip
+import androidx.compose.foundation.layout.FlowRow
+import com.coinepro.core.designsystem.CoineProNotedLabel
 import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProSecondaryButton
@@ -140,7 +144,7 @@ internal fun ScriptSettingsSheet(
                 }
             }
 
-            CoineProSegmentedControl(
+            ChartDialogTabs(
                 options = listOf(
                     IndicatorSettingsTab.INPUTS to stringResource(R.string.indicator_settings_inputs),
                     IndicatorSettingsTab.STYLE to stringResource(R.string.drawing_settings_style),
@@ -179,24 +183,17 @@ internal fun ScriptSettingsSheet(
                     // No «the catalogue's own» swatch to lead with, because a script has no
                     // catalogue row: its own first plot's colour is the default and clearing the
                     // override is what returns to it.
-                    Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
-                        DRAWING_COLOURS.take(SWATCHES_ACROSS * 2).chunked(SWATCHES_ACROSS).forEach { row ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
-                                row.forEach { value ->
-                                    Box(
-                                        modifier = Modifier
-                                            .size(SWATCH)
-                                            .clip(CircleShape)
-                                            .background(Color(value.toULong() shl COLOUR_SHIFT))
-                                            .border(
-                                                width = if (value == colour) 2.dp else 1.dp,
-                                                color = if (value == colour) CoineProColors.Gold else CoineProColors.Border,
-                                                shape = CircleShape,
-                                            )
-                                            .clickable { onSetColour(if (value == colour) null else value) },
-                                    )
-                                }
-                            }
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                    ) {
+                        DRAWING_COLOURS.take(SWATCHES_ACROSS * 2).forEach { value ->
+                            // Ringed in the text ink outside a gap, with a check (DIALOGS-11).
+                            ChartColourSwatch(
+                                colour = Color(value.toULong() shl COLOUR_SHIFT),
+                                selected = value == colour,
+                                onClick = { onSetColour(if (value == colour) null else value) },
+                            )
                         }
                     }
                     Text(
@@ -204,23 +201,19 @@ internal fun ScriptSettingsSheet(
                         style = MaterialTheme.typography.labelSmall,
                         color = CoineProColors.TextMuted,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+                        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+                    ) {
                         INDICATOR_WIDTHS.forEach { width ->
-                            val active = (widthDp ?: DEFAULT_LINE_WIDTH) == width
-                            Box(
-                                modifier = Modifier
-                                    .clip(CoineProPillShape)
-                                    .background(if (active) CoineProTint.fill(accent, CoineProColors.Surface) else Color.Transparent)
-                                    .border(1.dp, if (active) CoineProTint.edge(accent) else CoineProColors.Border, CoineProPillShape)
-                                    .clickable { onSetWidth(if (width == DEFAULT_LINE_WIDTH) null else width) }
-                                    .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
-                            ) {
-                                Text(
-                                    text = if (width == width.toInt().toFloat()) width.toInt().toString() else width.toString(),
-                                    style = MaterialTheme.typography.labelSmall.numeric(),
-                                    color = if (active) accent else CoineProColors.TextMuted,
-                                )
-                            }
+                            CoineProToggleChip(
+                                // A stroke in dp is a figure on a control, so Latin.
+                                label = if (width == width.toInt().toFloat()) width.toInt().toString() else width.toString(),
+                                selected = (widthDp ?: DEFAULT_LINE_WIDTH) == width,
+                                onClick = { onSetWidth(if (width == DEFAULT_LINE_WIDTH) null else width) },
+                                compact = true,
+                                neutral = true,
+                            )
                         }
                     }
                 }
@@ -231,18 +224,14 @@ internal fun ScriptSettingsSheet(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.indicator_settings_show),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = CoineProColors.TextPrimary,
-                            )
-                            CoineProNote(R.string.indicator_settings_show_note, style = MaterialTheme.typography.bodySmall)
-                        }
-                        Switch(
+                        CoineProNotedLabel(
+                            label = stringResource(R.string.indicator_settings_show),
+                            note = R.string.indicator_settings_show_note,
+                            modifier = Modifier.weight(1f),
+                        )
+                        CoineProSwitch(
                             checked = !hidden,
                             onCheckedChange = { onToggleHidden() },
-                            colors = scriptSwitchColours(),
                         )
                     }
                     arrangement?.let { where ->
@@ -264,7 +253,7 @@ internal fun ScriptSettingsSheet(
                                     color = CoineProColors.TextPrimary,
                                     modifier = Modifier.weight(1f),
                                 )
-                                Switch(
+                                CoineProSwitch(
                                     checked = where.separated,
                                     onCheckedChange = { on ->
                                         onArrange(
@@ -273,7 +262,6 @@ internal fun ScriptSettingsSheet(
                                         )
                                     },
                                     modifier = Modifier.semantics { contentDescription = "script-separate" },
-                                    colors = scriptSwitchColours(),
                                 )
                             }
                         }
@@ -356,10 +344,9 @@ private fun ScriptInputRow(input: ScriptInput, value: Double, accent: Color, onC
         ) {
             Text(input.name, style = MaterialTheme.typography.labelMedium, color = CoineProColors.TextPrimary)
             when (input.kind) {
-                ScriptInputKind.BOOL -> Switch(
+                ScriptInputKind.BOOL -> CoineProSwitch(
                     checked = value != 0.0,
                     onCheckedChange = { onChange(if (it) 1.0 else 0.0) },
-                    colors = scriptSwitchColours(),
                 )
                 ScriptInputKind.NUMBER, ScriptInputKind.INTEGER -> Text(
                     text = MarketNumberFormatter.priceAuto(value),
@@ -396,22 +383,14 @@ private fun ScriptInputRow(input: ScriptInput, value: Double, accent: Color, onC
 
 @Composable
 private fun ScriptChoiceChips(options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half), modifier = Modifier.fillMaxWidth()) {
-        itemsIndexed(options) { index, option ->
-            val chosen = index == selected
-            Box(
-                modifier = Modifier
-                    .background(if (chosen) CoineProColors.SurfaceElevated else CoineProColors.Surface, CoineProShapes.small)
-                    .border(1.dp, if (chosen) CoineProColors.Gold else CoineProColors.Border, CoineProShapes.small)
-                    .clickable { onSelect(index) }
-                    .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half),
-            ) {
-                Text(
-                    option,
-                    style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
-                    color = if (chosen) CoineProColors.Gold else CoineProColors.TextSecondary,
-                )
-            }
+    // Wrapped, and the dialogs' one chip (DIALOGS-26).
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+    ) {
+        options.forEachIndexed { index, option ->
+            CoineProToggleChip(label = option, selected = index == selected, onClick = { onSelect(index) }, compact = true, neutral = true)
         }
     }
 }
@@ -430,14 +409,6 @@ private fun ScriptNotice(text: String, tone: Color, tag: String) {
         Text(text, style = MaterialTheme.typography.bodySmall, color = tone)
     }
 }
-
-@Composable
-private fun scriptSwitchColours() = SwitchDefaults.colors(
-    checkedThumbColor = CoineProColors.OnAccent,
-    checkedTrackColor = CoineProColors.AccentFill,
-    uncheckedThumbColor = CoineProColors.TextMuted,
-    uncheckedTrackColor = CoineProColors.SurfaceElevated,
-)
 
 /** This sheet's own swatch geometry. See `IndicatorSettingsSheet`'s note on why it is not shared. */
 private const val SWATCHES_ACROSS = 6
@@ -559,10 +530,9 @@ internal fun ScriptPickerSection(
                         )
                     }
                 }
-                Switch(
+                CoineProSwitch(
                     checked = instance != null,
                     onCheckedChange = { if (instance != null) onRemove(instance) else onAdd(entry) },
-                    colors = scriptSwitchColours(),
                 )
             }
         }

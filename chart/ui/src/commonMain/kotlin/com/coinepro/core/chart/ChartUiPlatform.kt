@@ -123,17 +123,6 @@ enum class ChartGlyph { BELL, LONG_SHORT }
 @Composable
 internal expect fun chartGlyph(glyph: ChartGlyph): Painter
 
-/**
- * The legend's way back, drawn inside its button. [glyph] is [ChartMarks.backLtr] or
- * [ChartMarks.backRtl]; [pointsRight] says which.
- *
- * The phone prints the arrow character, as it always has. A browser page has only IRANYekanX,
- * whose nearest mark is a thin «›» that readers did not take for a way out, so the page draws
- * the arrow itself, on a disc.
- */
-@Composable
-internal expect fun ChartBackMark(glyph: String, pointsRight: Boolean, colour: Color, fontSize: TextUnit)
-
 /** The legend's own words — the only prose on the canvas. */
 enum class ChartText {
     LEGEND_HIDE,

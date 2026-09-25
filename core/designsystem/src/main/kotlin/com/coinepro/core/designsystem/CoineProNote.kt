@@ -2,7 +2,10 @@ package com.coinepro.core.designsystem
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -149,7 +152,40 @@ fun CoineProNote(
 }
 
 /**
- * The ⓘ. A 24 dp target with a 16 dp glyph, which is the smallest thing on any row and meant to
+ * A label with its note *beside* it rather than under it (MOBILE-14).
+ *
+ * A collapsed [CoineProNote] under a label is an ⓘ alone on a row of its own, a line away from the
+ * words it explains — which is how a settings sheet grew a column of orphan circles. Here the ⓘ
+ * trails the label on the same line, as TradingView's help icons do; where [NotePolicy] shows the
+ * note as text, it sits under the label as before.
+ */
+@Composable
+fun CoineProNotedLabel(
+    label: String,
+    @StringRes note: Int,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.bodyMedium,
+    color: Color = CoineProColors.TextPrimary,
+) {
+    if (noteVisible(note)) {
+        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(text = label, style = style, color = color)
+            CoineProNote(note)
+        }
+    } else {
+        Row(
+            modifier = modifier,
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        ) {
+            Text(text = label, style = style, color = color, modifier = Modifier.weight(1f, fill = false))
+            CoineProInfoTip(text = stringResource(note))
+        }
+    }
+}
+
+/**
+ * The ⓘ. A 32 dp target with a 16 dp glyph, which is the smallest thing on any row and meant to
  * be: it is the answer to a question the reader may not have. Tapping it opens a plain tooltip
  * with the full note; the tooltip is persistent (it waits for a tap outside) because a note the
  * reader chose to open should not vanish while they read it.
@@ -190,5 +226,6 @@ fun CoineProInfoTip(
     }
 }
 
-private val INFO_TIP_TARGET = 24.dp
+// Thirty-two, up from twenty-four: a third of a thumb was a target a reader had to aim at.
+private val INFO_TIP_TARGET = 32.dp
 private val INFO_TIP_GLYPH = 16.dp

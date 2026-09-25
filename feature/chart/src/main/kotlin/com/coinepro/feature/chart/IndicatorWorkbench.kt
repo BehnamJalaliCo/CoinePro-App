@@ -1,9 +1,9 @@
 package com.coinepro.feature.chart
 
+import com.coinepro.core.designsystem.coineProHorizontalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,7 +34,6 @@ import com.coinepro.core.chart.CandlePatterns
 import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.chart.IndicatorChain
 import com.coinepro.core.chart.IndicatorSource
-import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.coineProControl
 import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.datastore.IndicatorTemplate
@@ -105,7 +104,7 @@ internal fun IndicatorChainSection(
         Text(
             text = stringResource(
                 R.string.workbench_chain_note,
-                IndicatorChain.MAX_DEPTH.toPersianDigits(),
+                IndicatorChain.MAX_DEPTH.proseDigits(),
             ),
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
@@ -134,7 +133,7 @@ internal fun IndicatorChainSection(
                 } else {
                     val chosen = sources[id]
                     Row(
-                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        modifier = Modifier.fillMaxWidth().coineProHorizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
                     ) {
                         BarField.entries.forEach { field ->
@@ -194,7 +193,7 @@ internal fun CandlePatternSection(chosen: Set<String>, onToggle: (String) -> Uni
     ) {
         CoineProNote(R.string.workbench_patterns_note, style = MaterialTheme.typography.bodySmall)
         Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxWidth().coineProHorizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
         ) {
             CandlePatterns.OPTIONS.forEach { option ->
@@ -227,7 +226,7 @@ internal fun CandlePatternSection(chosen: Set<String>, onToggle: (String) -> Uni
         }
         if (chosen.isNotEmpty()) {
             Text(
-                text = stringResource(R.string.workbench_patterns_count, chosen.size.toPersianDigits()),
+                text = stringResource(R.string.workbench_patterns_count, chosen.size.proseDigits()),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextDisabled,
                 fontWeight = FontWeight.Normal,
@@ -299,7 +298,7 @@ internal fun IndicatorTemplateSection(
                             // A prose count, so Persian digits.
                             text = stringResource(
                             R.string.workbench_template_count,
-                            template.indicators.size.toPersianDigits(),
+                            template.indicators.size.proseDigits(),
                         ),
                             style = MaterialTheme.typography.labelSmall,
                             color = CoineProColors.TextMuted,
@@ -327,7 +326,7 @@ internal fun IndicatorTemplateSection(
             modifier = Modifier.fillMaxWidth(),
         )
         CoineProPrimaryButton(
-            text = stringResource(R.string.workbench_template_save, activeCount.toPersianDigits()),
+            text = stringResource(R.string.workbench_template_save, activeCount.proseDigits()),
             onClick = {
                 onSave(name)
                 name = ""

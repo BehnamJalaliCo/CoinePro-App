@@ -1,6 +1,6 @@
 package com.coinepro.feature.chart
 
-import androidx.compose.material3.FilterChip
+import com.coinepro.core.designsystem.coineProHorizontalScroll
 import androidx.compose.foundation.layout.FlowRow
 import com.coinepro.core.chart.IntervalFamily
 import androidx.compose.foundation.background
@@ -8,8 +8,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.stringResource
@@ -24,13 +22,10 @@ import com.coinepro.core.common.PersianDateTime
 import com.coinepro.core.common.foldDigitsToLatin
 import com.coinepro.core.designsystem.coineProControl
 import com.coinepro.core.designsystem.proseDigits
-import com.coinepro.core.designsystem.CoineProSecondaryButton
-import com.coinepro.core.designsystem.CoineProSegmentedControl
 import com.coinepro.core.designsystem.SHEET_PREVIEW_SCRIM_ALPHA
 import com.coinepro.core.designsystem.numeric
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,7 +51,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.DropdownMenu
+import com.coinepro.core.designsystem.CoineProChipDefaults
+import com.coinepro.core.designsystem.CoineProMenuItem
+import com.coinepro.core.designsystem.CoineProNotedLabel
+import com.coinepro.core.designsystem.CoineProSwitch
+import com.coinepro.core.designsystem.CoineProToggleChip
+import com.coinepro.core.designsystem.inEnglish
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -69,13 +73,10 @@ import com.coinepro.core.chart.ObjectTree
 import com.coinepro.core.datastore.DrawingTemplate
 import com.coinepro.core.datastore.DrawingTemplateStore
 import com.coinepro.core.designsystem.CoineProColors
-import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProPillShape
-import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSpacing
-import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.R as DesignR
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -129,9 +130,13 @@ internal fun DrawingStyleSheet(
         store?.defaultFor(drawing.toolId) ?: flowOf<DrawingTemplate?>(null)
     }.collectAsStateWithLifecycle(null)
 
+    val english = inEnglish()
+    // The drawing as the sheet found it, for Cancel: every change here previews live on the chart.
+    val opened = remember(drawing.id) { drawing }
     CoineProSheet(
-        title = DrawingTools[drawing.toolId]?.label ?: drawing.toolId,
-        subtitle = ObjectTree.labelOf(drawing),
+        title = DrawingTools[drawing.toolId]?.label(english) ?: drawing.toolId,
+        // Where it sits, not its name again: the title already says «خط روند» (DIALOGS-24).
+        subtitle = ObjectTree.detailOf(drawing),
         onDismiss = onDismiss,
         // Twenty per cent, so the drawing being restyled stays visible while it is restyled.
         scrimAlpha = SHEET_PREVIEW_SCRIM_ALPHA,
@@ -174,6 +179,21 @@ internal fun DrawingStyleSheet(
             onSetLocked = onSetLocked,
             onSaveAsDefault = onSaveAsDefault,
             onSetHiddenOn = onSetHiddenOn,
+            onCancel = {
+                onSetColour(opened.colour)
+                onSetWidth(opened.widthDp)
+                onSetTextColour(opened.textColour)
+                onSetFillColour(opened.fillColour)
+                onSetLineStyle(opened.lineStyle)
+                if (opened.deviations != drawing.deviations) onSetDeviations(opened.deviations)
+                opened.points.forEachIndexed { index, point ->
+                    if (drawing.points.getOrNull(index) != point) onMovePoint(index, point)
+                }
+                if (opened.hiddenOn != drawing.hiddenOn) onSetHiddenOn(opened.hiddenOn)
+                if (opened.locked != drawing.locked) onSetLocked(opened.locked)
+                onDismiss()
+            },
+            onOk = onDismiss,
         )
     }
 }
@@ -234,19 +254,15 @@ internal fun DrawingStyleSheetBody(
     onSetHiddenOn: (Set<IntervalFamily>) -> Unit = {},
     /** Which tab opens first; a preview picks the one it wants pictured. */
     initialTab: DrawingSettingsTab = DrawingSettingsTab.STYLE,
+    /** The footer's two; with no [onOk] there is no footer (a preview). */
+    onCancel: (() -> Unit)? = null,
+    onOk: (() -> Unit)? = null,
 ) {
     var tab by rememberSaveable(drawing.id) { mutableStateOf(initialTab) }
     val editable = !drawing.locked
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = CoineProSpacing.Gutter)
-            .padding(bottom = CoineProSpacing.Two),
-        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
-    ) {
-        CoineProSegmentedControl(
+    Column(modifier = Modifier.fillMaxWidth()) {
+        ChartDialogTabs(
             options = listOf(
                 DrawingSettingsTab.STYLE to stringResource(R.string.drawing_settings_style),
                 DrawingSettingsTab.COORDINATES to stringResource(R.string.drawing_settings_coordinates),
@@ -254,45 +270,132 @@ internal fun DrawingStyleSheetBody(
             ),
             selected = tab,
             onSelect = { tab = it },
+            modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
         )
-        if (!editable && tab != DrawingSettingsTab.VISIBILITY) {
+        ChartPinnedFooter(
+            footer = onOk?.let { ok ->
+                {
+                    // Template ▾ at the reading start, as the reference's footer has it: the quick way
+                    // to put a saved look on this drawing, or make this one the tool's default.
+                    ChartDialogFooter(
+                        onCancel = onCancel ?: ok,
+                        onOk = ok,
+                        leading = {
+                            DrawingTemplateMenu(
+                                templates = templates,
+                                enabled = editable,
+                                onApply = onApplyTemplate,
+                                onSaveAsDefault = onSaveAsDefault,
+                            )
+                        },
+                    )
+                }
+            },
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = CoineProSpacing.Gutter)
+                    .padding(top = CoineProSpacing.OneHalf, bottom = CoineProSpacing.Two),
+                verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+            ) {
+                if (!editable && tab != DrawingSettingsTab.VISIBILITY) {
+                    Text(
+                        text = stringResource(R.string.style_locked),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CoineProColors.Warning,
+                    )
+                }
+                when (tab) {
+                    DrawingSettingsTab.STYLE -> StyleTab(
+                        drawing = drawing,
+                        editable = editable,
+                        templates = templates,
+                        defaultTemplateId = defaultTemplateId,
+                        onSetColour = onSetColour,
+                        onSetWidth = onSetWidth,
+                        onSetDeviations = onSetDeviations,
+                        onSetTextColour = onSetTextColour,
+                        onSetFillColour = onSetFillColour,
+                        onSetLineStyle = onSetLineStyle,
+                        onApplyTemplate = onApplyTemplate,
+                        onSaveTemplate = onSaveTemplate,
+                        onDeleteTemplate = onDeleteTemplate,
+                        onSetDefaultTemplate = onSetDefaultTemplate,
+                        onSaveAsDefault = onSaveAsDefault,
+                    )
+                    DrawingSettingsTab.COORDINATES -> CoordinatesTab(
+                        drawing = drawing,
+                        editable = editable,
+                        onMovePoint = onMovePoint,
+                    )
+                    DrawingSettingsTab.VISIBILITY -> VisibilityTab(
+                        drawing = drawing,
+                        onSetHiddenOn = onSetHiddenOn,
+                        onSetLocked = onSetLocked,
+                        onBringToFront = onBringToFront,
+                        onSendToBack = onSendToBack,
+                        onDelete = onDelete,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** The footer's «Template ▾»: save this look as the tool's default, or apply a saved one. */
+@Composable
+private fun DrawingTemplateMenu(
+    templates: List<DrawingTemplate>,
+    enabled: Boolean,
+    onApply: (DrawingTemplate) -> Unit,
+    onSaveAsDefault: () -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            modifier = Modifier
+                .clip(CoineProShapes.small)
+                .coineProControl(onClick = { open = true })
+                .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.One),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             Text(
-                text = stringResource(R.string.style_locked),
-                style = MaterialTheme.typography.bodySmall,
-                color = CoineProColors.Warning,
+                text = stringResource(R.string.chart_dialog_template),
+                style = MaterialTheme.typography.labelLarge,
+                color = CoineProColors.TextSecondary,
+            )
+            Icon(
+                painter = painterResource(DesignR.drawable.icon_caret_down),
+                contentDescription = null,
+                modifier = Modifier.size(12.dp),
+                tint = CoineProColors.TextSecondary,
             )
         }
-        when (tab) {
-            DrawingSettingsTab.STYLE -> StyleTab(
-                drawing = drawing,
-                editable = editable,
-                templates = templates,
-                defaultTemplateId = defaultTemplateId,
-                onSetColour = onSetColour,
-                onSetWidth = onSetWidth,
-                onSetDeviations = onSetDeviations,
-                onSetTextColour = onSetTextColour,
-                onSetFillColour = onSetFillColour,
-                onSetLineStyle = onSetLineStyle,
-                onApplyTemplate = onApplyTemplate,
-                onSaveTemplate = onSaveTemplate,
-                onDeleteTemplate = onDeleteTemplate,
-                onSetDefaultTemplate = onSetDefaultTemplate,
-                onSaveAsDefault = onSaveAsDefault,
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            CoineProMenuItem(
+                text = stringResource(R.string.drawing_settings_save_default),
+                enabled = enabled,
+                onClick = {
+                    open = false
+                    onSaveAsDefault()
+                },
             )
-            DrawingSettingsTab.COORDINATES -> CoordinatesTab(
-                drawing = drawing,
-                editable = editable,
-                onMovePoint = onMovePoint,
-            )
-            DrawingSettingsTab.VISIBILITY -> VisibilityTab(
-                drawing = drawing,
-                onSetHiddenOn = onSetHiddenOn,
-                onSetLocked = onSetLocked,
-                onBringToFront = onBringToFront,
-                onSendToBack = onSendToBack,
-                onDelete = onDelete,
-            )
+            if (templates.isNotEmpty()) {
+                HorizontalDivider(color = CoineProColors.BorderSubtle)
+                templates.forEach { template ->
+                    CoineProMenuItem(
+                        text = template.name,
+                        enabled = enabled,
+                        onClick = {
+                            open = false
+                            onApply(template)
+                        },
+                    )
+                }
+            }
         }
     }
 }
@@ -331,11 +434,13 @@ private fun StyleTab(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
-        CoineProTextField(
+        ChartTextField(
             value = custom,
             onValueChange = { custom = it.take(HEX_LENGTH + 1) },
-            label = stringResource(R.string.drawing_settings_custom_colour),
+            placeholder = stringResource(R.string.drawing_settings_custom_colour),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            enabled = editable,
+            numeric = true,
             modifier = Modifier.weight(1f),
         )
         val parsed = parseHexColour(custom)
@@ -370,7 +475,7 @@ private fun StyleTab(
 
     StyleLabel(stringResource(R.string.style_line))
     Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        modifier = Modifier.fillMaxWidth().coineProHorizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
         LINE_STYLES.forEach { (labelRes, style) ->
@@ -449,7 +554,7 @@ private fun StyleTab(
         HorizontalDivider(color = CoineProColors.Border)
         StyleLabel(stringResource(R.string.style_deviations))
         Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxWidth().coineProHorizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
         ) {
             DEVIATION_CHOICES.forEach { value ->
@@ -466,13 +571,8 @@ private fun StyleTab(
 
     HorizontalDivider(color = CoineProColors.Border)
 
-    // «Save as default»: the next one of this tool looks like this one. One tap, no name.
-    CoineProSecondaryButton(
-        text = stringResource(R.string.drawing_settings_save_default),
-        onClick = onSaveAsDefault,
-        modifier = Modifier.fillMaxWidth(),
-    )
-
+    // «Save as default» lives in the footer's Template ▾ now, beside the templates it is the
+    // unnamed one of — a full-width pill here was the heaviest thing in the sheet (DIALOGS-24).
     StyleLabel(stringResource(R.string.style_templates_for, tool?.label ?: drawing.toolId))
     if (templates.isEmpty()) {
         Text(
@@ -495,22 +595,29 @@ private fun StyleTab(
         }
     }
 
-    CoineProTextField(
-        value = name,
-        onValueChange = { name = it },
-        label = stringResource(R.string.style_template_name),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+    // One line, a field and its verb, rather than a 58 dp field over a 44 dp full-width pill.
+    Row(
         modifier = Modifier.fillMaxWidth(),
-    )
-    CoineProPrimaryButton(
-        text = stringResource(R.string.style_template_save),
-        onClick = {
-            onSaveTemplate(name)
-            name = ""
-        },
-        enabled = name.isNotBlank(),
-        modifier = Modifier.fillMaxWidth(),
-    )
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+    ) {
+        ChartTextField(
+            value = name,
+            onValueChange = { name = it },
+            placeholder = stringResource(R.string.style_template_name),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            modifier = Modifier.weight(1f),
+        )
+        StylePill(
+            text = stringResource(R.string.style_template_save),
+            active = false,
+            enabled = name.isNotBlank(),
+            onClick = {
+                onSaveTemplate(name)
+                name = ""
+            },
+        )
+    }
 }
 
 /**
@@ -538,7 +645,7 @@ private fun CoordinatesTab(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
             ) {
-                CoineProTextField(
+                ChartTextField(
                     value = typed,
                     onValueChange = { next ->
                         typed = next
@@ -546,8 +653,10 @@ private fun CoordinatesTab(
                             if (editable) onMovePoint(index, point.copy(price = price))
                         }
                     },
-                    label = stringResource(R.string.drawing_settings_price),
+                    placeholder = stringResource(R.string.drawing_settings_price),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                    enabled = editable,
+                    numeric = true,
                     modifier = Modifier.weight(1f),
                 )
                 Text(
@@ -573,15 +682,21 @@ private fun VisibilityTab(
 ) {
     // TradingView's «Visibility on intervals» (5.16.1): a lit chip is a family the mark is drawn on.
     StyleLabel(stringResource(R.string.drawing_visible_on))
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+    ) {
         IntervalFamily.entries.forEach { family ->
             val shown = family !in drawing.hiddenOn
-            FilterChip(
+            // The dialog's one chip (DIALOGS-26), not Material's FilterChip beside our pills.
+            CoineProToggleChip(
+                label = stringResource(family.labelRes()),
                 selected = shown,
                 onClick = {
                     onSetHiddenOn(if (shown) drawing.hiddenOn + family else drawing.hiddenOn - family)
                 },
-                label = { Text(stringResource(family.labelRes())) },
+                compact = true,
+                neutral = true,
                 modifier = Modifier.semantics { contentDescription = "visible-on-${family.id}" },
             )
         }
@@ -592,42 +707,35 @@ private fun VisibilityTab(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.drawing_settings_lock),
-                style = MaterialTheme.typography.labelMedium,
-                color = CoineProColors.TextPrimary,
-            )
-            CoineProNote(R.string.drawing_settings_lock_note, style = MaterialTheme.typography.bodySmall)
-        }
-        Switch(
-            checked = drawing.locked,
-            onCheckedChange = onSetLocked,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = CoineProColors.OnAccent,
-                checkedTrackColor = CoineProColors.AccentFill,
-                uncheckedThumbColor = CoineProColors.TextMuted,
-                uncheckedTrackColor = CoineProColors.SurfaceElevated,
-            ),
+        CoineProNotedLabel(
+            label = stringResource(R.string.drawing_settings_lock),
+            note = R.string.drawing_settings_lock_note,
+            modifier = Modifier.weight(1f),
         )
+        CoineProSwitch(checked = drawing.locked, onCheckedChange = onSetLocked)
     }
     drawing.timeframe?.let { frame ->
         HorizontalDivider(color = CoineProColors.Border)
-        StyleLabel(stringResource(R.string.drawing_settings_timeframe))
+        CoineProNotedLabel(
+            label = stringResource(R.string.drawing_settings_timeframe),
+            note = R.string.drawing_settings_timeframe_note,
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+        )
         Text(
             text = frame,
             style = MaterialTheme.typography.labelMedium.numeric(),
             color = CoineProColors.TextSecondary,
         )
-        CoineProNote(R.string.drawing_settings_timeframe_note, style = MaterialTheme.typography.bodySmall)
     }
 
     HorizontalDivider(color = CoineProColors.Border)
 
     StyleLabel(stringResource(R.string.style_order))
-    Row(
+    FlowRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
         StylePill(
             text = stringResource(R.string.style_bring_front),
@@ -666,25 +774,26 @@ private fun SwatchGrid(
     onFollowLine: (() -> Unit)? = null,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
-        DRAWING_COLOURS.chunked(SWATCHES_ACROSS).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
-                row.forEach { value ->
-                    ColourSwatch(
-                        colour = Color(value.toULong() shl COLOUR_SHIFT),
-                        selected = chosen != null && (chosen and RGB_MASK) == (value and RGB_MASK),
-                        enabled = enabled,
-                        onClick = { onPick(value) },
-                    )
-                }
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        ) {
+            DRAWING_COLOURS.forEach { value ->
+                ChartColourSwatch(
+                    colour = Color(value.toULong() shl COLOUR_SHIFT),
+                    selected = chosen != null && (chosen and RGB_MASK) == (value and RGB_MASK),
+                    enabled = enabled,
+                    onClick = { onPick(value) },
+                )
             }
         }
         onFollowLine?.let { follow ->
             StylePill(
-            text = stringResource(R.string.selection_follow_line),
-            active = followLine,
-            enabled = enabled,
-            onClick = follow,
-        )
+                text = stringResource(R.string.selection_follow_line),
+                active = followLine,
+                enabled = enabled,
+                onClick = follow,
+            )
         }
     }
 }
@@ -774,7 +883,7 @@ internal fun ToolTemplateRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
+                .coineProHorizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
         ) {
             templates.forEach { template ->
@@ -887,28 +996,6 @@ private fun TemplateRow(
     }
 }
 
-/** One colour to choose from, drawn as the colour rather than named. */
-@Composable
-private fun ColourSwatch(
-    colour: Color,
-    selected: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .size(SWATCH)
-            .clip(CircleShape)
-            .background(colour)
-            .border(
-                width = if (selected) 2.dp else 1.dp,
-                color = if (selected) CoineProColors.Gold else CoineProColors.Border,
-                shape = CircleShape,
-            )
-            .coineProControl(enabled = enabled, onClick = onClick),
-    )
-}
-
 /** An outlined pill, the same shape the interval strip uses, for a choice inside a sheet. */
 @Composable
 private fun StylePill(
@@ -918,20 +1005,30 @@ private fun StylePill(
     onClick: () -> Unit,
     tone: Color = CoineProColors.Gold,
 ) {
-    val ink = when {
-        !enabled -> CoineProColors.TextDisabled
-        active -> tone
-        else -> CoineProColors.TextMuted
+    // The designsystem's chip, neutral, like every filter in a chart dialog (DIALOGS-26); only a
+    // warning tone (Delete) keeps its own ink, on the same 32 dp pill.
+    if (tone == CoineProColors.Gold) {
+        CoineProToggleChip(
+            label = text,
+            selected = active,
+            onClick = { if (enabled) onClick() },
+            compact = true,
+            neutral = true,
+            modifier = Modifier.alpha(if (enabled) 1f else DISABLED_PILL_ALPHA),
+        )
+        return
     }
     Box(
         modifier = Modifier
+            .heightIn(min = CoineProChipDefaults.CompactHeight)
             .clip(CoineProPillShape)
-            .background(if (active) CoineProTint.fill(tone, CoineProColors.Surface) else Color.Transparent)
-            .border(1.dp, if (active) CoineProTint.edge(tone) else CoineProColors.Border, CoineProPillShape)
+            .background(CoineProColors.SurfaceElevated)
+            .border(1.dp, if (enabled) CoineProTint.edge(tone) else CoineProColors.BorderSubtle, CoineProPillShape)
             .coineProControl(enabled = enabled, onClick = onClick)
-            .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
+            .padding(horizontal = CoineProSpacing.OneHalf),
+        contentAlignment = Alignment.Center,
     ) {
-        Text(text = text, style = MaterialTheme.typography.labelSmall, color = ink)
+        Text(text = text, style = MaterialTheme.typography.labelMedium, color = if (enabled) tone else CoineProColors.TextDisabled)
     }
 }
 
@@ -1033,9 +1130,9 @@ private const val DEVIATION_EPSILON = 0.01
 /** See the same constant in `ChartScreen`: a packed ARGB long sits in the high half of a word. */
 private const val COLOUR_SHIFT = 32
 
-/** Large enough to tap; six across on a phone with the row's gaps. */
+/** Large enough to tap. */
 private val SWATCH = 32.dp
-private const val SWATCHES_ACROSS = 6
+private const val DISABLED_PILL_ALPHA = 0.38f
 
 /** The width segments: a row of four, each showing its stroke on a short rule. */
 private val WIDTH_SEGMENT_HEIGHT = 40.dp

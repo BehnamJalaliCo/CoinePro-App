@@ -66,6 +66,23 @@ fun interface ScreenerBarSource {
 }
 
 /**
+ * The server asked us to slow down (HTTP 429) — the one failure that is *not* an answer.
+ *
+ * Every other failure is folded into an empty series, per [ScreenerBarSource.bars]. A refusal to
+ * serve yet is different: the market has not been read, and recording it as read-with-no-figure is
+ * how a whole scan on the web came back as «۸۶۲ بازار داده‌ای ندارد» (LISTS-10). The controller
+ * puts the market back in the queue and backs off instead.
+ */
+class ScreenerBarsThrottled : RuntimeException("throttled")
+
+/** Whether [error], or anything that caused it, is an HTTP 429. */
+internal fun isThrottle(error: Throwable): Boolean =
+    generateSequence(error) { it.cause }.take(8).any { cause ->
+        val message = cause.message.orEmpty()
+        message.contains("429") || message.contains("Too Many Requests", ignoreCase = true)
+    }
+
+/**
  * [ScreenerBarSource] over the app's own candle gateway.
  *
  * Daily bars, because every figure the screener derives is a *day's* figure — the day's high, the
@@ -82,7 +99,11 @@ class CandleScreenerBarSource(
     override suspend fun bars(symbol: String): List<OhlcBar> = bars(symbol, timeframe)
 
     override suspend fun bars(symbol: String, timeframe: Timeframe): List<OhlcBar> =
-        runCatching { gateway.load(symbol, timeframe, limit = limit).candles }.getOrDefault(emptyList())
+        runCatching { gateway.load(symbol, timeframe, limit = limit).candles }.getOrElse { error ->
+            if (error is kotlinx.coroutines.CancellationException) throw error
+            if (isThrottle(error)) throw ScreenerBarsThrottled()
+            emptyList()
+        }
 
     private companion object {
         /**
@@ -123,6 +144,14 @@ data class ScreenerState(
     val resolvedCount: Int = 0,
     /** True while figures are still being fetched, so the count on screen can say it is not final. */
     val resolving: Boolean = false,
+    /**
+     * How many markets have been read since the screen opened, answered or not (LISTS-10).
+     *
+     * The progress line's numerator. Not [resolvedCount], which counts rows whose *bars* arrived —
+     * on a platform whose table answers for most markets that stays near zero while every price is
+     * already on screen, and «۰ از ۸۶۲ بررسی شد» over a full table reads as a contradiction.
+     */
+    val readCount: Int = 0,
     /**
      * How many markets were left out because a condition could not be decided about them.
      *
@@ -310,6 +339,9 @@ class ScreenerController(
     /** Symbols whose bars have been asked for, whether or not an answer came. See the class note. */
     private val asked = mutableSetOf<String>()
 
+    /** How many times each symbol has been refused with a 429. See [ScreenerBarsThrottled]. */
+    private val throttled = mutableMapOf<String, Int>()
+
     /**
      * Indicator readings, by symbol and then by normalised key — so, per (symbol, indicator, period).
      *
@@ -475,7 +507,8 @@ class ScreenerController(
         barsBySymbol.clear()
         readings.clear()
         asked.clear()
-        _state.update { it.copy(timeframe = timeframe, resolving = false) }
+        throttled.clear()
+        _state.update { it.copy(timeframe = timeframe, resolving = false, readCount = 0) }
         rebuild(rowBySymbol.keys.toList())
         recompute()
         scheduleResolution()
@@ -856,13 +889,29 @@ class ScreenerController(
         asked.addAll(wanted)
         val timeframe = _state.value.timeframe
         _state.update { it.copy(resolving = true) }
+        var refused = false
         resolveJob = scope.launch {
             coroutineScope {
                 wanted.forEach { symbol ->
                     launch {
                         resolveGate.withPermit {
-                            val bars = source.bars(symbol, timeframe)
-                            if (bars.isNotEmpty()) barsBySymbol[symbol] = bars
+                            val bars = try {
+                                source.bars(symbol, timeframe)
+                            } catch (_: ScreenerBarsThrottled) {
+                                null
+                            }
+                            if (bars == null) {
+                                // Not read: back in the queue, a few times, and the gate held a
+                                // moment longer so the next request is not the one after the 429.
+                                val strikes = (throttled[symbol] ?: 0) + 1
+                                throttled[symbol] = strikes
+                                if (strikes < THROTTLE_STRIKES) asked.remove(symbol)
+                                refused = true
+                                delay(THROTTLE_BACKOFF_MS * strikes)
+                            } else {
+                                if (bars.isNotEmpty()) barsBySymbol[symbol] = bars
+                                _state.update { it.copy(readCount = it.readCount + 1) }
+                            }
                         }
                     }
                 }
@@ -871,10 +920,14 @@ class ScreenerController(
             rebuild(wanted)
             _state.update { it.copy(resolving = false) }
             recompute()
+            // This pass is over. Without letting go of the handle, the re-schedules below met
+            // their own still-active job and returned at once — so a window scrolled in mid-pass,
+            // and now a throttled market, waited for the next unrelated event to be read.
+            resolveJob = null
             // Only for a window that scrolled in while this pass was running. Deliberately not an
             // unconditional re-schedule: that would walk the whole catalogue a budget at a time and
             // undo the bound the budget exists to impose.
-            if (visible.any { it !in asked }) {
+            if (refused || visible.any { it !in asked }) {
                 scheduleResolution()
             } else if (_state.value.mode == ScreenerMode.SIGNALS && asked.size < SIGNAL_UNIVERSE) {
                 // A scan lists only the markets that matched, so nothing below the fold pulls the
@@ -936,6 +989,12 @@ class ScreenerController(
 
         /** How many bar requests may be in flight. The number `SparklineStore` settled on. */
         const val RESOLUTION_CONCURRENCY = 4
+
+        /** How long a 429 holds the gate, times the market's strikes. See [ScreenerBarsThrottled]. */
+        const val THROTTLE_BACKOFF_MS = 1_500L
+
+        /** How many 429s a market gets before it is left for the next scan. */
+        const val THROTTLE_STRIKES = 4
 
         /** How far down the liquidity order the growth scan goes on its own. */
         const val SIGNAL_UNIVERSE = 360

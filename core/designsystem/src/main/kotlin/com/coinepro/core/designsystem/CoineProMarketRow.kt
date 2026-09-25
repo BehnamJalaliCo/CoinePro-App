@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -253,9 +255,13 @@ fun CoineProMarketRow(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val haptics = rememberCoineProHaptics()
+    // The pointer's row in the palette's hover plate (LISTS-17). Only where the row does something:
+    // a plate under an inert row would promise a click that is not there.
+    val hovered by interaction.collectIsHoveredAsState()
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .background(if (hovered && onClick != null) CoineProColors.SurfaceHover else Color.Transparent)
             // Every row is the same height whether or not the feed sent a move for it, because a
             // list whose rows breathe according to how complete the data is reads as a list that
             // is still loading. The minimum is the tall case — logo, two lines of text, price and

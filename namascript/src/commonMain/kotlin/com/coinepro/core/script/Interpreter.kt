@@ -78,8 +78,8 @@ internal class Interpreter(
                 is Assignment -> {
                     if (!statement.declare && statement.name !in variables) {
                         throw ScriptError(
-                            "«${statement.name}» هنوز تعریف نشده — برای تعریف از «=» استفاده کنید",
-                            "“${statement.name}” is not defined yet — define it with “=”",
+                            "«${statement.name}» هنوز تعریف نشده − برای تعریف از «=» استفاده کنید",
+                            "“${statement.name}” is not defined yet − define it with “=”",
                             statement.line,
                             statement.column, code = "E303")
                     }

@@ -3,7 +3,21 @@ package com.coinepro.core.chart
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.addPathNodes
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -331,7 +345,7 @@ internal fun legendChangeRow(
     decimals: Int,
     change: ChartLegendChange?,
 ): ChartLegendRow {
-    val figure = groupThousands(signedFigure(change?.absolute ?: (bar.c - bar.o), decimals))
+    val figure = signedFigure(change?.absolute ?: (bar.c - bar.o), decimals)
     val share = signedPercent(change?.percent ?: percentOf(bar))
     return ChartLegendRow(
         target = ChartLegendTarget.Series,
@@ -435,7 +449,10 @@ private fun reading(value: Double?, places: Int?): String = when {
  * «O», «H» and a percent sign, a hyphen is the character that reads as a dash between two numbers.
  */
 private fun signedFigure(value: Double, decimals: Int): String =
-    if (!value.isFinite()) NO_VALUE else isolateLtr(signOf(value) + formatPrice(abs(value), decimals))
+    // Grouped inside the isolate, not outside it: the isolate's opening mark is the first
+    // character of the result, and a grouping pass handed that string saw no digits to group —
+    // «+19869.2» beside «84,133.3» (CHART-19).
+    if (!value.isFinite()) NO_VALUE else isolateLtr(signOf(value) + groupThousands(formatPrice(abs(value), decimals)))
 
 /** The same move as a percentage. Always signed, because a percentage here is a *change*. */
 private fun signedPercent(value: Double): String =
@@ -569,10 +586,17 @@ internal fun ChartLegendOverlay(
     onExplain: ((ChartLegendTarget) -> Unit)? = null,
     /** The way out of the chart, drawn first on the head row. See `CoineProChart`'s `onBack`. */
     onBack: (() -> Unit)? = null,
+    /**
+     * Where the «⋯» that was pressed sits, in window pixels (its bottom-left corner), so the caller
+     * can drop its menu from the button rather than from a corner of the plot. Called just before
+     * [onMore].
+     */
+    onMoreAt: ((ChartLegendTarget, Offset) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     if (viewport.visibleCount == 0) return
-    val index = (crosshair()?.index ?: viewport.lastVisible)
+    val pointed = crosshair()
+    val index = (pointed?.index ?: viewport.lastVisible)
         .coerceIn(viewport.firstVisible, viewport.lastVisible)
     val bar = series.bars.getOrNull(index) ?: return
     val rows = legendRows(
@@ -595,7 +619,11 @@ internal fun ChartLegendOverlay(
         .takeIf { tracking && decoration.legendChange }
     // The Status line tab (5.16.0): with OHLC switched off the head stays the resting price line
     // under a crosshair too, and with the change switched off that line is the price alone.
-    val restingHead = if (tracking && decoration.legendOhlc) {
+    //
+    // Any crosshair, not only a held one: a mouse crosshair is a reader asking what this bar read,
+    // and TradingView's legend answers it with O H L C under the pointer (CHART-07).
+    val reading = tracking || pointed != null
+    val restingHead = if (reading && decoration.legendOhlc) {
         rows.first()
     } else {
         val decimals = decimalsFor(bar.c)
@@ -613,14 +641,13 @@ internal fun ChartLegendOverlay(
     val lines = if (tracking) TRACKING_LEGEND_LINES else LEGEND_LINES
     val body = if (decoration.legendStudies) rows.drop(1) else emptyList()
 
-    // Read **before** the plate forces itself left-to-right, because the back mark is the one thing
-    // on this plate that belongs to the page rather than to the chart: a chart reads left to right
-    // in every locale, but «back» points the way the reader's own language came from.
-    val backGlyph = if (LocalLayoutDirection.current == LayoutDirection.Rtl) GLYPH_BACK_RTL else GLYPH_BACK_LTR
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         var hover by remember { mutableStateOf(false) }
         BoxWithConstraints(modifier = modifier) {
             val density = LocalDensity.current
+            // A desktop-wide plot: TradingView's desktop legend — the title and the values on one
+            // line, 16 over 13, the title in regular weight (CHART-07). The phone keeps its own.
+            val wide = maxWidth >= LEGEND_WIDE_DP
             /**
              * Whether the per-row controls are on screen.
              *
@@ -664,7 +691,7 @@ internal fun ChartLegendOverlay(
             } else {
                 0
             }
-            val size = legendFontSizeSp().sp
+            val size = (if (wide) LEGEND_WIDE_FONT_SP else legendFontSizeSp()).sp
             val headStyle = axisStyle(if (rising) palette.up else palette.down)
             // Measured rather than assumed, because it follows the system font setting: a reader
             // at the largest text size has rows half again as tall and a plate that holds one
@@ -682,7 +709,7 @@ internal fun ChartLegendOverlay(
             // sliced off at the plate's edge.
             val heights = buildList {
                 add(headDp)
-                add(textDp)
+                if (!wide) add(textDp)
                 if (move != null) add(textDp)
                 body.forEach { add(if (it.primary) rowDp else textDp) }
             }
@@ -707,7 +734,7 @@ internal fun ChartLegendOverlay(
                 room
             }
             if (fit == 0) return@BoxWithConstraints
-            val cap = minOf(lines, (fit - 2).coerceAtLeast(0))
+            val cap = minOf(lines, (fit - (if (wide) 1 else 2)).coerceAtLeast(0))
             val shown = body.take(cap)
             val overflow = body.size - shown.size
             val plate = with(density) {
@@ -747,6 +774,26 @@ internal fun ChartLegendOverlay(
             ) {
                 // The name carries the market's state, so a chart sitting on a Saturday price says
                 // so where the reader is already looking. See [legendSeriesName].
+                // The values line hands its alternatives over whole. `LegendRow` picks against
+                // the width it is actually given, which is the only measurement that cannot be
+                // wrong — see the note there. At rest the colour is the move's, not the bar's: a
+                // session up on the day can end on a red candle.
+                val values: @Composable () -> Unit = {
+                    LegendRow(
+                        row = restingHead.copy(label = ""),
+                        colour = if (if (reading) rising else movedUp) palette.up else palette.down,
+                        palette = palette,
+                        measurer = measurer,
+                        fontSize = size,
+                        dimmed = ChartLegendTarget.Series in hidden,
+                        slots = slots,
+                        onToggleVisibility = onToggleVisibility,
+                        onOpenSettings = onOpenSettings,
+                        // The price is not removable. A chart with no series on it is not a chart,
+                        // and an affordance that has to refuse is worse than one that is not offered.
+                        onRemove = null,
+                    )
+                }
                 LegendHead(
                     title = restingHead.label,
                     logoSymbol = logoSymbol,
@@ -756,27 +803,16 @@ internal fun ChartLegendOverlay(
                     dimmed = ChartLegendTarget.Series in hidden,
                     disclosure = { toggled = !expanded },
                     disclosed = expanded,
+                    // A mouse gets the controls by hovering, so on a desktop-wide plate the
+                    // disclosure is drawn only while the plate is under the pointer — TradingView
+                    // draws nothing at rest (CHART-01). A tap on the title still opens them on a
+                    // wide touch screen.
+                    showDisclosure = !wide || expanded,
+                    wide = wide,
                     onBack = onBack,
-                    backGlyph = backGlyph,
+                    values = if (wide) values else null,
                 )
-                // The values line hands its alternatives over whole. `LegendRow` picks against
-                // the width it is actually given, which is the only measurement that cannot be
-                // wrong — see the note there. At rest the colour is the move's, not the bar's: a
-                // session up on the day can end on a red candle.
-                LegendRow(
-                    row = restingHead.copy(label = ""),
-                    colour = if (if (tracking) rising else movedUp) palette.up else palette.down,
-                    palette = palette,
-                    measurer = measurer,
-                    fontSize = size,
-                    dimmed = ChartLegendTarget.Series in hidden,
-                    slots = slots,
-                    onToggleVisibility = onToggleVisibility,
-                    onOpenSettings = onOpenSettings,
-                    // The price is not removable. A chart with no series on it is not a chart, and
-                    // an affordance that has to refuse is worse than one that is not offered.
-                    onRemove = null,
-                )
+                if (!wide) values()
                 if (move != null && fit > 1) {
                     LegendRow(
                         row = move,
@@ -823,6 +859,7 @@ internal fun ChartLegendOverlay(
                         onOpenSettings = onOpenSettings,
                         onRemove = onRemove,
                         onMore = onMore,
+                        onMoreAt = onMoreAt,
                     )
                 }
                 // Open and still truncated by the height budget: the «+N» keeps its own line, as
@@ -876,6 +913,8 @@ private fun LegendRow(
     onRemove: ((ChartLegendTarget) -> Unit)?,
     /** TradingView's «⋯»: move to a pane, pin to a scale, visual order (5.17.0). Null draws no button. */
     onMore: ((ChartLegendTarget) -> Unit)? = null,
+    /** Where that «⋯» sits, in window pixels, reported as it is pressed. See [ChartLegendOverlay]. */
+    onMoreAt: ((ChartLegendTarget, Offset) -> Unit)? = null,
     /**
      * Opens and closes the per-row controls. Non-null on the head row only.
      *
@@ -1053,34 +1092,37 @@ private fun LegendRow(
         if (row.primary && slots > 0) {
             Spacer(modifier = Modifier.width(LEGEND_ACTIONS_GAP_DP))
             LegendButton(
-                glyph = if (dimmed) GLYPH_HIDDEN else GLYPH_VISIBLE,
+                mark = if (dimmed) LegendMark.EYE_OFF else LegendMark.EYE,
                 description = chartText(if (dimmed) ChartText.LEGEND_SHOW else ChartText.LEGEND_HIDE),
-                colour = palette.text,
-                fontSize = fontSize,
+                colour = palette.title,
             ) { onToggleVisibility(row.target) }
             onOpenSettings?.let { settings ->
                 LegendButton(
-                    glyph = GLYPH_SETTINGS,
+                    mark = LegendMark.SETTINGS,
                     description = chartText(ChartText.LEGEND_SETTINGS),
-                    colour = palette.text,
-                    fontSize = fontSize,
+                    colour = palette.title,
                 ) { settings(row.target) }
             }
             onRemove?.let { remove ->
                 LegendButton(
-                    glyph = GLYPH_REMOVE,
+                    mark = LegendMark.REMOVE,
                     description = chartText(ChartText.LEGEND_REMOVE),
-                    colour = palette.text,
-                    fontSize = fontSize,
+                    colour = palette.title,
                 ) { remove(row.target) }
             }
             onMore?.let { more ->
+                var corner by remember { mutableStateOf(Offset.Zero) }
                 LegendButton(
-                    glyph = GLYPH_MORE,
+                    mark = LegendMark.MORE,
                     description = chartText(ChartText.LEGEND_MORE),
-                    colour = palette.text,
-                    fontSize = fontSize,
-                ) { more(row.target) }
+                    colour = palette.title,
+                    modifier = Modifier.onGloballyPositioned { at ->
+                        corner = at.positionInWindow() + Offset(0f, at.size.height.toFloat())
+                    },
+                ) {
+                    onMoreAt?.invoke(row.target, corner)
+                    more(row.target)
+                }
             }
             val carried = 1 + (if (onOpenSettings != null) 1 else 0) + (if (onRemove != null) 1 else 0) +
                 (if (onMore != null) 1 else 0)
@@ -1093,10 +1135,9 @@ private fun LegendRow(
             // closed legend puts exactly one control at the end of one row and nothing else.
             if (!row.primary || slots == 0) Spacer(modifier = Modifier.width(LEGEND_ACTIONS_GAP_DP))
             LegendButton(
-                glyph = if (disclosed) GLYPH_COLLAPSE else GLYPH_EXPAND,
+                mark = if (disclosed) LegendMark.CLOSE else LegendMark.OPEN,
                 description = chartText(if (disclosed) ChartText.LEGEND_CONTROLS_CLOSE else ChartText.LEGEND_CONTROLS_OPEN),
-                colour = palette.text,
-                fontSize = fontSize,
+                colour = palette.title,
                 onClick = toggle,
             )
         }
@@ -1104,34 +1145,120 @@ private fun LegendRow(
 }
 
 /**
- * One of the three buttons on a legend row.
+ * One of the buttons on a legend row: an 18 dp mark in its 24 dp footprint, a 4 dp plate under it
+ * while a pointer rests on it — TradingView's legend buttons, measured (CHART-01).
  *
- * A glyph rather than a vector asset, because `core:chart` ships no drawables and a legend button is
- * a small mark on a plate — at that size an icon and a glyph are the same picture.
+ * A drawn mark rather than a character. `core:chart` ships no drawables, and the characters it used
+ * to print — «◉ ⋮ ✕ ⋯» on the phone, «• ¦ × …» in the browser, whose one typeface has none of the
+ * first set — read as stray punctuation after a price. See [LegendMark].
  *
  * The mark and its footprint are [LEGEND_BUTTON_DP]; what a thumb has to hit is [LEGEND_TOUCH_DP],
  * which is larger than the row it sits in and costs the row nothing. See [touchTarget].
  */
 @Composable
 private fun LegendButton(
-    glyph: String,
+    mark: LegendMark,
     description: String,
     colour: Color,
-    fontSize: TextUnit,
-    mark: @Composable () -> Unit = { Text(text = glyph, color = colour, fontSize = fontSize) },
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
+    val hovered by interaction.collectIsHoveredAsState()
     Box(
-        modifier = Modifier
+        modifier = modifier
             .touchTarget(footprint = LEGEND_BUTTON_DP, target = LEGEND_TOUCH_DP)
-            .clip(CircleShape)
+            .hoverable(interaction)
             .chartControl(onClick = onClick)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        mark()
+        Box(
+            modifier = Modifier
+                .size(LEGEND_BUTTON_DP)
+                .background(
+                    color = if (hovered) colour.copy(alpha = LEGEND_HOVER_ALPHA) else Color.Transparent,
+                    shape = RoundedCornerShape(LEGEND_HOVER_RADIUS_DP),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            LegendMarkImage(mark = mark, colour = colour)
+        }
     }
 }
+
+/**
+ * The legend's own small pictures, drawn as strokes on an 18-unit grid — TradingView's legend
+ * glyph box — so they are the same picture on the phone and in the browser, in the one ink.
+ */
+internal enum class LegendMark { EYE, EYE_OFF, SETTINGS, REMOVE, MORE, OPEN, CLOSE, BACK }
+
+@Composable
+private fun LegendMarkImage(mark: LegendMark, colour: Color) {
+    val vector = remember(mark) { legendMarkVector(mark) }
+    Image(
+        painter = rememberVectorPainter(vector),
+        contentDescription = null,
+        colorFilter = ColorFilter.tint(colour),
+        modifier = Modifier.size(LEGEND_MARK_DP),
+    )
+}
+
+private fun legendMarkVector(mark: LegendMark): ImageVector {
+    val builder = ImageVector.Builder(
+        name = "legend-" + mark.name,
+        defaultWidth = LEGEND_MARK_DP,
+        defaultHeight = LEGEND_MARK_DP,
+        viewportWidth = MARK_GRID,
+        viewportHeight = MARK_GRID,
+    )
+    fun stroke(data: String) = builder.addPath(
+        pathData = addPathNodes(data),
+        stroke = SolidColor(Color.Black),
+        strokeLineWidth = MARK_STROKE,
+        strokeLineCap = StrokeCap.Round,
+        strokeLineJoin = StrokeJoin.Round,
+    )
+    fun fill(data: String) = builder.addPath(pathData = addPathNodes(data), fill = SolidColor(Color.Black))
+    when (mark) {
+        LegendMark.EYE -> {
+            stroke(EYE_OUTLINE)
+            stroke(EYE_PUPIL)
+        }
+        LegendMark.EYE_OFF -> {
+            stroke(EYE_OUTLINE)
+            stroke(EYE_PUPIL)
+            stroke("M3.5,14.5 L14.5,3.5")
+        }
+        // TradingView's settings mark: a hexagon round a ring.
+        LegendMark.SETTINGS -> {
+            stroke("M5.5,2.75 L12.5,2.75 L16,9 L12.5,15.25 L5.5,15.25 L2,9 Z")
+            stroke("M11.4,9 A2.4,2.4 0 1,1 6.6,9 A2.4,2.4 0 1,1 11.4,9 Z")
+        }
+        LegendMark.REMOVE -> stroke("M4.5,4.5 L13.5,13.5 M13.5,4.5 L4.5,13.5")
+        LegendMark.MORE -> fill(
+            "M4.9,9 A1.15,1.15 0 1,1 2.6,9 A1.15,1.15 0 1,1 4.9,9 Z" +
+                "M10.15,9 A1.15,1.15 0 1,1 7.85,9 A1.15,1.15 0 1,1 10.15,9 Z" +
+                "M15.4,9 A1.15,1.15 0 1,1 13.1,9 A1.15,1.15 0 1,1 15.4,9 Z",
+        )
+        LegendMark.OPEN -> stroke("M5,7 L9,11 L13,7")
+        LegendMark.CLOSE -> stroke("M5,11 L9,7 L13,11")
+        LegendMark.BACK -> stroke("M15,9 L3.5,9 M8,4.5 L3.5,9 L8,13.5")
+    }
+    return builder.build()
+}
+
+private const val EYE_OUTLINE = "M1.75,9 C4.25,4.5 13.75,4.5 16.25,9 C13.75,13.5 4.25,13.5 1.75,9 Z"
+private const val EYE_PUPIL = "M11.3,9 A2.3,2.3 0 1,1 6.7,9 A2.3,2.3 0 1,1 11.3,9 Z"
+
+/** The mark's grid and its line: 18 units drawn at 18 dp, a one-point stroke. */
+private const val MARK_GRID = 18f
+private const val MARK_STROKE = 1.1f
+private val LEGEND_MARK_DP = 18.dp
+
+/** The hover plate under a legend button: TradingView's 4 px corner, the mark's ink at 14 %. */
+private val LEGEND_HOVER_RADIUS_DP = 4.dp
+private const val LEGEND_HOVER_ALPHA = 0.14f
 
 /**
  * A touch target larger than the space the control occupies in its row.
@@ -1178,6 +1305,13 @@ private val LEGEND_BUTTON_DP = 24.dp
 /** The series title against the values: 17 pt over 14 pt on TradingView's phone. */
 private const val TITLE_SCALE = 1.21f
 
+/** And on its desktop: 16 px over 13 px (CHART-07). */
+private const val WIDE_TITLE_SCALE = 16f / 13f
+private const val LEGEND_WIDE_FONT_SP = 13f
+
+/** From this plate width on, the legend is TradingView's desktop one — see [ChartLegendOverlay]. */
+private val LEGEND_WIDE_DP = 600.dp
+
 /** The mark before the title: 17 pt on TradingView's phone, measured. */
 private val LEGEND_LOGO_DP = 20.dp
 
@@ -1204,14 +1338,20 @@ private fun LegendHead(
     dimmed: Boolean,
     disclosure: () -> Unit,
     disclosed: Boolean,
+    /** Whether the disclosure is drawn. Off at rest on a desktop-wide plate — see the caller. */
+    showDisclosure: Boolean = true,
+    /** TradingView's desktop head: 16 over 13 in regular weight, the values on the same line. */
+    wide: Boolean = false,
     onBack: (() -> Unit)? = null,
-    backGlyph: String = GLYPH_BACK_LTR,
+    /** The price line, drawn after the name on a wide plate rather than on a line of its own. */
+    values: (@Composable () -> Unit)? = null,
 ) {
     val ink = if (dimmed) palette.title.copy(alpha = HIDDEN_ROW_ALPHA) else palette.title
     val lineHeightStyle = LineHeightStyle(
         alignment = LineHeightStyle.Alignment.Center,
         trim = LineHeightStyle.Trim.Both,
     )
+    val scale = if (wide) WIDE_TITLE_SCALE else TITLE_SCALE
     Row(
         // The full plate width, so the title is measured against everything the plate has rather
         // than against whatever the row happened to wrap to.
@@ -1220,22 +1360,16 @@ private fun LegendHead(
         horizontalArrangement = Arrangement.spacedBy(LEGEND_GAP_DP * 2),
     ) {
         // The way back, first on the row and before the instrument's own mark — the position a
-        // reader's thumb already goes to, now that the band that used to hold it is gone.
+        // reader's thumb already goes to, now that the band that used to hold it is gone. It
+        // points at the edge the plate is anchored to — left, in both languages, because the
+        // plate is laid out left to right everywhere; a right-pointing arrow at the far left of a
+        // Persian chart read as «forward» (MOBILE-24).
         onBack?.let { back ->
             LegendButton(
-                glyph = backGlyph,
+                mark = LegendMark.BACK,
                 description = chartText(ChartText.LEGEND_BACK),
                 colour = palette.title,
-                fontSize = fontSize * TITLE_SCALE,
                 onClick = back,
-                mark = {
-                    ChartBackMark(
-                        glyph = backGlyph,
-                        pointsRight = backGlyph == GLYPH_BACK_RTL,
-                        colour = palette.title,
-                        fontSize = fontSize * TITLE_SCALE,
-                    )
-                },
             )
         }
         logoSymbol?.let { ChartAssetLogo(symbol = it, size = LEGEND_LOGO_DP) }
@@ -1243,13 +1377,16 @@ private fun LegendHead(
             Text(
                 text = title,
                 color = ink,
-                fontSize = fontSize * TITLE_SCALE,
-                fontWeight = FontWeight.Bold,
-                lineHeight = fontSize * TITLE_SCALE * LEGEND_LINE_HEIGHT,
+                fontSize = fontSize * scale,
+                fontWeight = if (wide) FontWeight.Normal else FontWeight.Bold,
+                lineHeight = fontSize * scale * LEGEND_LINE_HEIGHT,
                 style = LocalTextStyle.current.copy(lineHeightStyle = lineHeightStyle),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false),
+                // A tap on the name opens the controls too: a wide touch screen has no hover.
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .clickable(interactionSource = null, indication = null, onClick = disclosure),
             )
         }
         status?.let { state ->
@@ -1268,14 +1405,17 @@ private fun LegendHead(
                 Box(modifier = Modifier.size(STATUS_DOT_DP).clip(CircleShape).background(tone))
             }
         }
-        Spacer(modifier = Modifier.width(LEGEND_ACTIONS_GAP_DP))
-        LegendButton(
-            glyph = if (disclosed) GLYPH_COLLAPSE else GLYPH_EXPAND,
-            description = chartText(if (disclosed) ChartText.LEGEND_CONTROLS_CLOSE else ChartText.LEGEND_CONTROLS_OPEN),
-            colour = palette.text,
-            fontSize = fontSize,
-            onClick = disclosure,
-        )
+        values?.let { line -> Box(modifier = Modifier.weight(1f, fill = false)) { line() } }
+        if (showDisclosure) {
+            LegendButton(
+                mark = if (disclosed) LegendMark.CLOSE else LegendMark.OPEN,
+                description = chartText(
+                    if (disclosed) ChartText.LEGEND_CONTROLS_CLOSE else ChartText.LEGEND_CONTROLS_OPEN,
+                ),
+                colour = palette.text,
+                onClick = disclosure,
+            )
+        }
     }
 }
 
@@ -1294,7 +1434,7 @@ internal fun ohlcAnnotated(text: String, labels: Color, values: Color): Annotate
         var end = index
         while (end < text.length && text[end].isWhitespace() == blank) end++
         val token = text.substring(index, end)
-        val label = token.length == 1 && (token[0].isLetter() || token[0] == 'Δ')
+        val label = token.length == 1 && (token[0].isLetter() || token == ChartMarks.change)
         withStyle(SpanStyle(color = if (label) labels else values)) { append(token) }
         index = end
     }
@@ -1352,35 +1492,6 @@ private val CHANGE_LABEL: String get() = ChartMarks.change
  */
 private const val CHANGE_PERCENT_DECIMALS = 2
 
-private val GLYPH_VISIBLE: String get() = ChartMarks.visible
-private val GLYPH_HIDDEN: String get() = ChartMarks.hidden
-private val GLYPH_SETTINGS: String get() = ChartMarks.settings
-private val GLYPH_REMOVE: String get() = ChartMarks.remove
-
-/** «…», which every face this app ships carries. */
-private const val GLYPH_MORE: String = "\u2026"
-
-/**
- * The disclosure, closed and open.
- *
- * A horizontal ellipsis for "there is more here" and a chevron for "put it away", which is the pair
- * every dense interface uses and the pair that needs no label at four millimetres across. Neither
- * collides with the three above: the eye is a disc, settings is a *vertical* ellipsis, and remove is
- * a cross.
- */
-/**
- * The way back, as an arrow rather than a chevron: it replaces an app bar's arrow and a reader who
- * used that bar for four versions should find the same picture where it went.
- *
- * Two of them, because the plate is laid out left to right in every locale — see
- * [ChartLegendOverlay] — so nothing here mirrors on its own, and an arrow pointing the wrong way is
- * worse than no arrow. Which one is chosen against the *page's* direction, not the plate's.
- */
-private val GLYPH_BACK_LTR: String get() = ChartMarks.backLtr
-private val GLYPH_BACK_RTL: String get() = ChartMarks.backRtl
-
-private val GLYPH_EXPAND: String get() = ChartMarks.expand
-private val GLYPH_COLLAPSE: String get() = ChartMarks.collapse
 
 /**
  * Between an indicator's name and its reading — «EMA 20 · 2,699.6».

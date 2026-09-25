@@ -36,6 +36,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.Shape
@@ -47,10 +48,13 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import kotlin.math.abs
 import kotlin.math.pow
 
@@ -352,21 +356,21 @@ fun CoineProPrimaryButton(
         // trying to work out why they cannot press it. A neutral fill says unavailable more
         // plainly than a faded gold does, and it keeps the sentence legible while it says it.
         color = fill,
-        // A rim one step darker than the fill, which is what a gold object has and a gold
-        // rectangle does not. `GoldDeep` is the mark's own shadow stop, and the palette names
-        // exactly this use for it: "borders on gold surfaces". On the blue and green accents the
-        // same darkening is taken from the fill itself, so every accent gets the same edge.
-        border = if (enabled) {
-            BorderStroke(1.dp, CoineProColors.pageAccent.rim())
-        } else {
-            BorderStroke(1.dp, CoineProColors.BorderSubtle)
-        },
+        // No rim on the live button (MOBILE-22). The darker edge it used to carry — the fill pulled
+        // a quarter of the way to black — measured `#8B6B2B` around the gold and read as a drawn
+        // outline, dated on the light page; a filled pill already defines its own edge, as
+        // TradingView's filled CTAs do. The neutral disabled fill keeps a hairline, because a grey
+        // pill on a grey card is a shape only if something draws one.
+        border = if (enabled) null else BorderStroke(1.dp, CoineProColors.BorderSubtle),
         interactionSource = interaction,
     ) {
         ButtonContent(
             text = text,
             icon = icon,
             ink = if (enabled) CoineProColors.onPageAccent else CoineProColors.TextMuted,
+            // Dark ink on a mid-tone gold reads optically thinner than the same weight on a grey
+            // pill (MOBILE-21), so the primary's label is set a step heavier to look the same.
+            weight = FontWeight.SemiBold,
         )
     }
 }
@@ -416,7 +420,12 @@ fun CoineProSecondaryButton(
  * as though its text has been pushed off-centre.
  */
 @Composable
-private fun ButtonContent(text: String, @DrawableRes icon: Int?, ink: Color) {
+private fun ButtonContent(
+    text: String,
+    @DrawableRes icon: Int?,
+    ink: Color,
+    weight: FontWeight? = null,
+) {
     Row(
         // Twelve, not sixteen. With the label at 15sp that is a 46dp button — a comfortable
         // target and the height every reference app puts a primary action at. At sixteen it was
@@ -441,6 +450,7 @@ private fun ButtonContent(text: String, @DrawableRes icon: Int?, ink: Color) {
             text = text,
             style = MaterialTheme.typography.labelLarge,
             color = ink,
+            fontWeight = weight,
             textAlign = TextAlign.Center,
             maxLines = 1,
         )
@@ -448,20 +458,8 @@ private fun ButtonContent(text: String, @DrawableRes icon: Int?, ink: Color) {
 }
 
 /**
- * The fill pulled a quarter of the way toward black — the edge a solid object has.
- *
- * A function of the fill rather than a fixed colour, so a blue analysis button and a green social
- * button get the same edge the gold one does, and the gold one's edge resolves to the mark's own
- * `GoldDeep` within a few values.
- */
-private fun Color.rim(): Color = lerp(this, Color.Black, RIM_SHIFT)
-
-private const val RIM_SHIFT = 0.28f
-
-/**
- * How far the primary action's fill darkens under a thumb. Eight per cent — the brief's number, and
- * about a third of the rim's shift, so a pressed button is darker than its own fill and still
- * lighter than its own edge.
+ * How far the primary action's fill darkens under a thumb. Eight per cent — the brief's number:
+ * enough that a pressed button is visibly darker than its own fill, not so much that it flashes.
  */
 private const val PRESS_DARKEN = 0.08f
 
@@ -487,15 +485,20 @@ fun CoineProAssetToken(
             .border(1.dp, CoineProColors.assetRing, CoineProPillShape),
         contentAlignment = Alignment.Center,
     ) {
+        // A three-letter monogram at the one-letter size overflows a 42 dp disc, and a disc with
+        // a clipped ticker in it is worse than one with a small one. The step down is by the
+        // label's own length rather than by a measurement, because there are exactly two cases —
+        // and the size then follows the *disc* (LISTS-14): a list's 26 dp token set «MAR» at 11 sp
+        // straight through its own ring.
+        val wide = label.length >= WIDE_MONOGRAM
+        val base = if (wide) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium
+        val fits = (size.value * if (wide) WIDE_MONOGRAM_SCALE else MONOGRAM_SCALE).sp
         Text(
             text = label,
-            // A three-letter monogram at the one-letter size overflows a 42 dp disc, and a disc with
-            // a clipped ticker in it is worse than one with a small one. The step down is by the
-            // label's own length rather than by a measurement, because there are exactly two cases.
-            style = if (label.length >= WIDE_MONOGRAM) {
-                MaterialTheme.typography.labelSmall
+            style = if (fits < base.fontSize) {
+                base.copy(fontSize = fits, lineHeight = fits * MONOGRAM_LINE, letterSpacing = MONOGRAM_TRACKING.em)
             } else {
-                MaterialTheme.typography.labelMedium
+                base
             },
             color = tint,
             textAlign = TextAlign.Center,
@@ -506,6 +509,12 @@ fun CoineProAssetToken(
 
 /** From this many characters a monogram takes the smaller size. See [CoineProAssetToken]. */
 private const val WIDE_MONOGRAM = 3
+
+/** The largest a monogram's letters get, as a share of the disc: three letters, then one or two. */
+private const val WIDE_MONOGRAM_SCALE = 0.34f
+private const val MONOGRAM_SCALE = 0.44f
+private const val MONOGRAM_LINE = 1.2f
+private const val MONOGRAM_TRACKING = -0.02f
 
 /**
  * The assistant's mark: the brand metal turned once around a circle.
@@ -609,6 +618,13 @@ fun CoineProSparkline(
      * on the home card and the preview sheet draw their own ground.
      */
     fill: Boolean = false,
+    /**
+     * Whether a line is still on its way (LISTS-22). A row waiting for its fetch drew exactly the
+     * flat grey rule a row that will never have one draws, so a watchlist loading its crypto lines
+     * looked like a list of dead markets. While pending, the rule is a faint dashed one instead;
+     * the solid rule is kept for an answer that came back empty.
+     */
+    pending: Boolean = false,
 ) {
     val density = LocalDensity.current.density
     // **Nothing to draw is drawn as nothing happening, not as an empty cell** (run G).
@@ -628,11 +644,16 @@ fun CoineProSparkline(
         Canvas(modifier = modifier) {
             val middle = size.height / 2f
             drawLine(
-                color = absent,
+                color = if (pending) absent.copy(alpha = SPARKLINE_PENDING_ALPHA) else absent,
                 start = Offset(0f, middle),
                 end = Offset(size.width, middle),
                 strokeWidth = widthDp * density,
                 cap = StrokeCap.Round,
+                pathEffect = if (pending) {
+                    PathEffect.dashPathEffect(floatArrayOf(3f * density, 3f * density))
+                } else {
+                    null
+                },
             )
         }
         return
@@ -678,3 +699,6 @@ fun CoineProSparkline(
 
 /** The top of the sparkline's wash. See [CoineProSparkline]. */
 private const val SPARKLINE_FILL_ALPHA = 0.24f
+
+/** A line still on its way: the absent rule at a third of its ink, dashed. See [CoineProSparkline]. */
+private const val SPARKLINE_PENDING_ALPHA = 0.3f

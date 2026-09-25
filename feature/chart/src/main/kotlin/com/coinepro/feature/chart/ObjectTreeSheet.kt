@@ -44,7 +44,6 @@ import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.chart.ObjectGroup
 import com.coinepro.core.chart.ObjectNode
 import com.coinepro.core.common.countedLabel
-import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProColors
@@ -115,11 +114,13 @@ internal fun ObjectTreeSheetBody(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(max = TREE_MAX_HEIGHT)
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(rememberScrollState())
+            // The sheet's gutter (MOBILE-02): headings and rows sat on the glass's edge.
+            .padding(start = CoineProSpacing.Gutter, end = CoineProSpacing.Gutter, bottom = CoineProSpacing.Two),
     ) {
         CoineProNote(
             R.string.objects_hint,
-            total.toPersianDigits(),
+            total.proseDigits(),
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(bottom = CoineProSpacing.One),
         )

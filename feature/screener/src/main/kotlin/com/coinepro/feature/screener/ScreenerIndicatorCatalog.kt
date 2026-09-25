@@ -106,15 +106,25 @@ object ScreenerIndicatorCatalog {
     }
 
     /** Why an indicator the chart offers is not on the screener's list. */
-    enum class Absence(val reason: String) {
+    enum class Absence(val reason: String, val reasonEn: String) {
         /** A study that draws levels or marks. There is no single number per market to compare. */
-        NO_SINGLE_VALUE("این ابزار سطح و نشانه می‌کشد و برای هر بازار یک عدد یکتا نمی‌دهد"),
+        NO_SINGLE_VALUE(
+            "این ابزار سطح و نشانه می‌کشد و برای هر بازار یک عدد یکتا نمی‌دهد",
+            "Draws levels and marks, not one number per market",
+        ),
 
         /** Correlation. It measures two markets against each other; a screener has only one. */
-        NEEDS_COMPARISON("برای محاسبه به نماد دوم نیاز دارد"),
+        NEEDS_COMPARISON("برای محاسبه به نماد دوم نیاز دارد", "Needs a second symbol"),
 
         /** A volume study on a feed with no volume column. See the object's note. */
-        NEEDS_VOLUME("به ستون حجم نیاز دارد و این خوراک حجمی گزارش نمی‌کند"),
+        NEEDS_VOLUME(
+            "به ستون حجم نیاز دارد و این خوراک حجمی گزارش نمی‌کند",
+            "Needs volume, which this feed does not report",
+        ),
+        ;
+
+        /** The reason in the reader's language (LISTS-11). */
+        fun reasonIn(english: Boolean): String = if (english) reasonEn else reason
     }
 
     /**
@@ -133,7 +143,12 @@ object ScreenerIndicatorCatalog {
         val defaultPeriod: Int?,
         val minPeriod: Int,
         val maxPeriod: Int,
+        /** The same name in English (LISTS-11). See [englishNameOf]. */
+        val labelEn: String = label,
     ) {
+        /** [label] or [labelEn], in the reader's language. */
+        fun labelIn(english: Boolean): String = if (english) labelEn else label
+
         /** What the cell under this indicator is written as. Follows [Reading]. */
         val unit: ScreenerUnit get() = reading.unit
 
@@ -173,7 +188,9 @@ object ScreenerIndicatorCatalog {
         val all = offered(hasVolume)
         if (needle.isEmpty()) return all
         return all.filter {
-            needle in it.label.lowercase(Locale.ROOT) || needle in it.id.lowercase(Locale.ROOT)
+            needle in it.label.lowercase(Locale.ROOT) ||
+                needle in it.labelEn.lowercase(Locale.ROOT) ||
+                needle in it.id.lowercase(Locale.ROOT)
         }
     }
 
@@ -201,9 +218,20 @@ object ScreenerIndicatorCatalog {
      */
     fun labelOf(id: String, english: Boolean = false): String =
         GrowthScan.labelOf(id, english)
-            ?: ChartCatalog.INDICATORS.firstOrNull { it.id == id }?.label
-            ?: ScreenerField.entries.firstOrNull { it.indicatorId == id }?.label
+            ?: (if (english) ENGLISH_NAMES[id] else null)
+            ?: ChartCatalog.INDICATORS.firstOrNull { it.id == id }?.label?.takeUnless { english }
+            ?: ScreenerField.entries.firstOrNull { it.indicatorId == id }?.labelIn(english)
             ?: id
+
+    /**
+     * An indicator's English name (LISTS-11).
+     *
+     * The chart's catalogue carries only the Persian one, so an English screener printed
+     * «میانگین متحرک ساده» on its chips. These are the names TradingView lists them under, which is
+     * what a reader typing into the search box is going to type. An id with no entry falls back to
+     * itself in capitals — `TSI`, `KST` — which for this catalogue is nearly always the right word.
+     */
+    fun englishNameOf(id: String): String = ENGLISH_NAMES[id] ?: id.uppercase(Locale.ROOT)
 
     private fun optionOf(option: IndicatorOption): Option {
         val period = ChartCatalog.periodOf(option.id)
@@ -214,6 +242,7 @@ object ScreenerIndicatorCatalog {
             defaultPeriod = period?.default,
             minPeriod = period?.min ?: DEFAULT_MIN_PERIOD,
             maxPeriod = period?.max ?: DEFAULT_MAX_PERIOD,
+            labelEn = englishNameOf(option.id),
         )
     }
 
@@ -248,6 +277,130 @@ object ScreenerIndicatorCatalog {
     /** The own-pane readings measured in traded volume. See [Reading.TURNOVER]. */
     private val VOLUME_UNIT_OSCILLATORS: Set<String> =
         setOf("obv", "adline", "pvt", "klinger", "forceIndex", "netvolume")
+
+    /** See [englishNameOf]. Keyed by the chart catalogue's id; `ScreenerIndicatorCatalogTest` checks coverage. */
+    private val ENGLISH_NAMES: Map<String, String> = mapOf(
+        "sma" to "Simple Moving Average",
+        "ema" to "Exponential Moving Average",
+        "wma" to "Weighted Moving Average",
+        "hma" to "Hull Moving Average",
+        "bollinger" to "Bollinger Bands",
+        "keltner" to "Keltner Channels",
+        "donchian" to "Donchian Channels",
+        "ichimoku" to "Ichimoku Cloud",
+        "supertrend" to "Supertrend",
+        "vwap" to "VWAP",
+        "rsi" to "Relative Strength Index",
+        "macd" to "MACD",
+        "stochastic" to "Stochastic",
+        "cci" to "Commodity Channel Index",
+        "williams" to "Williams %R",
+        "atr" to "Average True Range",
+        "adx" to "Average Directional Index",
+        "choppiness" to "Choppiness Index",
+        "vortex" to "Vortex Indicator",
+        "obv" to "On Balance Volume",
+        "smma" to "Smoothed Moving Average",
+        "zlema" to "Zero Lag EMA",
+        "kama" to "Kaufman Adaptive Moving Average",
+        "t3" to "Tillson T3",
+        "mcginley" to "McGinley Dynamic",
+        "linreg" to "Linear Regression Curve",
+        "lsma" to "Least Squares Moving Average",
+        "envelopes" to "Envelopes",
+        "stddev" to "Standard Deviation",
+        "hv" to "Historical Volatility",
+        "chaikinVol" to "Chaikin Volatility",
+        "bbpercent" to "Bollinger Bands %B",
+        "bbw" to "Bollinger BandWidth",
+        "mom" to "Momentum",
+        "roc" to "Rate Of Change",
+        "trix" to "TRIX",
+        "ac" to "Accelerator Oscillator",
+        "uo" to "Ultimate Oscillator",
+        "fisher" to "Fisher Transform",
+        "crsi" to "Connors RSI",
+        "smiErgodic" to "SMI Ergodic Indicator",
+        "smi" to "Stochastic Momentum Index",
+        "bop" to "Balance of Power",
+        "adline" to "Accumulation/Distribution",
+        "chaikinOsc" to "Chaikin Oscillator",
+        "eom" to "Ease of Movement",
+        "forceIndex" to "Elder Force Index",
+        "klinger" to "Klinger Oscillator",
+        "pvt" to "Price Volume Trend",
+        "sar" to "Parabolic SAR",
+        "alligator" to "Williams Alligator",
+        "vwma" to "Volume Weighted Moving Average",
+        "tema" to "Triple EMA",
+        "dema" to "Double EMA",
+        "chandekroll" to "Chande Kroll Stop",
+        "volstop" to "Volatility Stop",
+        "volumeprofile_ind" to "Volume Profile",
+        "stochrsi" to "Stochastic RSI",
+        "tsi" to "True Strength Index",
+        "aroon" to "Aroon",
+        "dmi" to "Directional Movement Index",
+        "ppo" to "Price Oscillator (PPO)",
+        "dpo" to "Detrended Price Oscillator",
+        "kst" to "Know Sure Thing",
+        "cmo" to "Chande Momentum Oscillator",
+        "coppock" to "Coppock Curve",
+        "rvi" to "Relative Vigor Index",
+        "woodiescci" to "Woodies CCI",
+        "massindex" to "Mass Index",
+        "ao" to "Awesome Oscillator",
+        "correlation" to "Correlation Coefficient",
+        "mfi" to "Money Flow Index",
+        "cmf" to "Chaikin Money Flow",
+        "pvo" to "Percentage Volume Oscillator",
+        "netvolume" to "Net Volume",
+        "pivots" to "Pivot Points Standard",
+        "swings" to "Swing Points",
+        "fractals" to "Williams Fractals",
+        "zigzag" to "Zig Zag",
+        "autofib" to "Auto Fib Retracement",
+        "sr" to "Support and Resistance",
+        "supplydemand" to "Supply and Demand Zones",
+        "chopzone" to "Chop Zone",
+        "alma" to "Arnaud Legoux Moving Average",
+        "maribbon" to "Moving Average Ribbon",
+        "gmma" to "Guppy Multiple Moving Average",
+        "macross" to "MA Cross",
+        "mtfema" to "Higher Timeframe EMA",
+        "avwap" to "Anchored VWAP",
+        "stderrbands" to "Standard Error Bands",
+        "median" to "Moving Median",
+        "typicalprice" to "Typical Price",
+        "weightedclose" to "Weighted Close",
+        "chandelier" to "Chandelier Exit",
+        "linregchannel" to "Linear Regression Channel",
+        "mtfrsi" to "Higher Timeframe RSI",
+        "stc" to "Schaff Trend Cycle",
+        "elderray" to "Elder Ray",
+        "aroonosc" to "Aroon Oscillator",
+        "adr" to "Average Daily Range",
+        "pmo" to "Price Momentum Oscillator",
+        "rvivol" to "Relative Volatility Index",
+        "ulcer" to "Ulcer Index",
+        "pvi" to "Positive Volume Index",
+        "nvi" to "Negative Volume Index",
+        "volumeosc" to "Volume Oscillator",
+        "pivothl" to "Pivot Points High Low",
+        "sessions" to "Trading Sessions",
+        "separators" to "Period Separators",
+        "prevlevels" to "Previous Period Levels",
+        "harmonics" to "Auto Harmonic Patterns",
+        "divergence" to "RSI Divergence",
+        "gaps" to "Price Gaps",
+        "techrating" to "Technical Rating",
+        "stoch_k" to "Stochastic %K",
+        "macd_hist" to "MACD Histogram",
+        "atr_percent" to "ATR %",
+        "sma_distance" to "From SMA %",
+        "ema_distance" to "From EMA %",
+        "bb_percent" to "Bollinger %B",
+    )
 
     /** Used only for an indicator with no entry in `ChartCatalog.PERIODS`. The chart's own bounds. */
     private const val DEFAULT_MIN_PERIOD = 2

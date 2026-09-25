@@ -1,5 +1,6 @@
 package com.coinepro.feature.chart
 
+import com.coinepro.core.designsystem.coineProHorizontalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,7 +19,6 @@ import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -181,7 +181,7 @@ internal fun ReplayBar(
         // Nine steps, and the row scrolls rather than shrinking the chips: a speed control whose
         // targets are smaller than a fingertip is a speed control that gets the wrong speed.
         Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxWidth().coineProHorizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
         ) {
             ReplaySpeed.entries.forEach { step ->

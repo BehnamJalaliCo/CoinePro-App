@@ -58,7 +58,7 @@ object ScriptReference {
                 ScriptFunction("ta.zlema(close, 20)", "میانگین نمایی بی‌تأخیر.", "سری عددی"),
                 ScriptFunction("ta.kama(close, 10, 2, 30)", "میانگین تطبیقی کافمن؛ در روند تند و در رنج کند می‌شود.", "سری عددی"),
                 ScriptFunction("ta.mcginley(close, 14)", "پویای مک‌گینلی؛ میانگینی که با سرعت بازار تنظیم می‌شود.", "سری عددی"),
-                ScriptFunction("ta.linreg(close, 20)", "خط رگرسیون خطی روی پنجره — مقدارِ انتهای خط در هر کندل.", "سری عددی"),
+                ScriptFunction("ta.linreg(close, 20)", "خط رگرسیون خطی روی پنجره − مقدارِ انتهای خط در هر کندل.", "سری عددی"),
             ),
         ),
         ScriptReferenceGroup(
@@ -66,7 +66,7 @@ object ScriptReference {
             listOf(
                 ScriptFunction("ta.rsi(close, 14)", "شاخص قدرت نسبی، بین صفر و صد.", "سری عددی"),
                 ScriptFunction("ta.cci(20)", "شاخص کانال کالا. از high و low و close خودِ نمودار می‌خواند.", "سری عددی"),
-                ScriptFunction("ta.atr(14)", "میانگین دامنه‌ی واقعی — اندازه‌ی نوسان، نه جهت آن.", "سری عددی"),
+                ScriptFunction("ta.atr(14)", "میانگین دامنه‌ی واقعی − اندازه‌ی نوسان، نه جهت آن.", "سری عددی"),
                 ScriptFunction("ta.macd(close, 12, 26, 9)", "خط مکدی: تفاضل دو میانگین نمایی.", "سری عددی"),
                 ScriptFunction("ta.macd_signal(close, 12, 26, 9)", "خط سیگنال مکدی.", "سری عددی"),
                 ScriptFunction("ta.macd_hist(close, 12, 26, 9)", "هیستوگرام مکدی: خط منهای سیگنال.", "سری عددی"),
@@ -222,7 +222,7 @@ object ScriptReference {
             listOf(
                 ScriptFunction(
                     "plot(series, title = \"نام\", color = color.gold, width = 1.5, dashed = false, stepped = false, pane = \"auto\")",
-                    "یک خط روی نمودار. جای خط — روی قیمت یا در پنل جدا — خودکار تعیین می‌شود مگر pane را بدهید.",
+                    "یک خط روی نمودار. جای خط − روی قیمت یا در پنل جدا − خودکار تعیین می‌شود مگر pane را بدهید.",
                     "همان سری",
                 ),
                 ScriptFunction(
@@ -351,7 +351,7 @@ object ScriptReference {
                 ScriptFunction("input.source(\"close\", title = \"منبع\")", "انتخاب سری قیمت: close، open، high، low، hl2، hlc3، ohlc4 یا volume.", "سری عددی"),
                 ScriptFunction("input.color(color.gold, title = \"رنگ خط\")", "ورودی رنگ از میان رنگ‌های نام‌دار.", "رنگ"),
                 ScriptFunction("input.timeframe(\"240\", title = \"تایم‌فریم\")", "انتخاب تایم‌فریم؛ برای request.security.", "رشته"),
-                ScriptFunction("request.security(\"240\", close)", "عبارت را روی تایم‌فریم درشت‌تر (مضربی از تایم‌فریم چارت) حساب می‌کند و مقدار کندلِ بسته‌شده‌ی آن را روی هر کندل چارت می‌گذارد — بدون بازترسیم.", "عدد یا سری"),
+                ScriptFunction("request.security(\"240\", close)", "عبارت را روی تایم‌فریم درشت‌تر (مضربی از تایم‌فریم چارت) حساب می‌کند و مقدار کندلِ بسته‌شده‌ی آن را روی هر کندل چارت می‌گذارد − بدون بازترسیم.", "عدد یا سری"),
             ),
         ),
     )

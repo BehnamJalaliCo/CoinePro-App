@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -79,7 +80,13 @@ internal fun SetupSheetBody(
     val riskDistance = kotlin.math.abs(order.entry - order.stopLoss)
     val rewardDistance = kotlin.math.abs(order.takeProfit - order.entry)
 
-    Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf)) {
+    // The sheet's gutter on both sides (MOBILE-02, DIALOGS-03): the body had none and ran into the glass.
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = CoineProSpacing.Gutter, end = CoineProSpacing.Gutter, bottom = CoineProSpacing.Two),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+    ) {
         Text(
             text = stringResource(
                 if (order.side == TradeSide.BUY) R.string.setup_side_buy else R.string.setup_side_sell,

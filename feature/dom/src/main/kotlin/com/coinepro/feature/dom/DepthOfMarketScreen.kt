@@ -1,10 +1,10 @@
 package com.coinepro.feature.dom
 
+import com.coinepro.core.designsystem.coineProHorizontalScroll
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -624,7 +624,7 @@ private fun DepthLadderControls(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
+                    .coineProHorizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
             ) {
                 // The raw book first and always. It is the ladder's opening state and the one a

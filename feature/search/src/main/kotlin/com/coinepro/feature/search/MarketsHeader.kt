@@ -1,5 +1,6 @@
 package com.coinepro.feature.search
 
+import com.coinepro.core.designsystem.CoineProLazyRow
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -112,7 +112,7 @@ fun MarketsTabRow(
     modifier: Modifier = Modifier,
 ) {
     val haptics = rememberCoineProHaptics()
-    LazyRow(
+    CoineProLazyRow(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = CoineProSpacing.Two),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
@@ -346,7 +346,7 @@ fun MarketNewsTicker(
 ) {
     if (headlines.isEmpty()) return
     val haptics = rememberCoineProHaptics()
-    LazyRow(
+    CoineProLazyRow(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = CoineProSpacing.Two),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),

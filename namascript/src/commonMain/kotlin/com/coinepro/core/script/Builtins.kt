@@ -1164,7 +1164,7 @@ internal class Arguments(private val interpreter: Interpreter, private val node:
 
     fun colourOf(value: Value): Long = when (value) {
         is Value.Colour -> value.argb
-        else -> throw ScriptError("اینجا رنگ لازم است — مثلاً color.gold", "A colour is needed here — color.gold, say", node.line, node.column, code = "E209")
+        else -> throw ScriptError("اینجا رنگ لازم است − مثلاً color.gold", "A colour is needed here − color.gold, say", node.line, node.column, code = "E209")
     }
 
     fun flagOf(value: Value): Boolean = when (value) {

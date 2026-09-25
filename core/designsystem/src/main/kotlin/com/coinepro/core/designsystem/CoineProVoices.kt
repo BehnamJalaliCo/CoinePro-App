@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -329,49 +330,48 @@ fun <T> CoineProSegmentTabs(
     modifier: Modifier = Modifier,
 ) {
     val haptics = rememberCoineProHaptics()
+    val look = chipLook(selected = true)
     Row(
         modifier = modifier
             .padding(horizontal = CoineProSpacing.Two)
             .fillMaxWidth()
-            .clip(CoineProShapes.small)
-            .background(CoineProColors.Surface)
-            .border(1.dp, CoineProColors.BorderSubtle, CoineProShapes.small)
+            // The segmented control's tray and the chip family's pill: one shape for every
+            // «one of these» in the app, rather than a rectangle here and a pill beside it.
+            .clip(CoineProPillShape)
+            .background(CoineProColors.SurfaceElevated)
+            .border(1.dp, CoineProColors.BorderSubtle, CoineProPillShape)
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         options.forEach { (value, label) ->
             val active = value == selected
             val interaction = remember { MutableInteractionSource() }
-            // The same inversion [CoineProSegmentedControl] had: `SurfaceElevated` is *darker* than
-            // its own tray in the light theme, so the selected tab was a dent rather than a raised
-            // block. `SurfaceRaised` means lifted in both themes.
+            // Selected as every chip is ([chipLook]): a soft wash of the page accent, its ink and
+            // its hairline — never `SurfaceElevated`, which is *darker* than its tray in the light
+            // theme and made the selected tab a dent.
             val fill by animateColorAsState(
-                targetValue = if (active) CoineProColors.SurfaceRaised else Color.Transparent,
+                targetValue = if (active) look.plate else Color.Transparent,
                 animationSpec = CoineProMotionSpecs.standard(),
                 label = "tabFill",
             )
             val ink by animateColorAsState(
-                targetValue = if (active) CoineProColors.TextPrimary else CoineProColors.TextMuted,
+                targetValue = if (active) look.ink else CoineProColors.TextSecondary,
                 animationSpec = CoineProMotionSpecs.standard(),
                 label = "tabInk",
+            )
+            val edge by animateColorAsState(
+                targetValue = if (active) look.edge else Color.Transparent,
+                animationSpec = CoineProMotionSpecs.standard(),
+                label = "tabEdge",
             )
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .pressScale(interaction, CoineProPress.CHIP)
-                    .clip(CoineProShapes.extraSmall)
+                    .heightIn(min = CoineProChipDefaults.CompactHeight)
+                    .clip(CoineProPillShape)
                     .background(fill)
-                    .then(
-                        if (active) {
-                            Modifier.border(
-                                1.dp,
-                                CoineProColors.BorderSubtle,
-                                CoineProShapes.extraSmall,
-                            )
-                        } else {
-                            Modifier
-                        },
-                    )
+                    .border(1.dp, edge, CoineProPillShape)
                     // Only a change is worth a tick. Pressing the tab you are already on has
                     // changed nothing, and a buzz that says otherwise teaches the reader to
                     // distrust the ones that do mean something.
@@ -379,14 +379,16 @@ fun <T> CoineProSegmentTabs(
                         if (!active) haptics.select()
                         onSelect(value)
                     }
-                    .padding(vertical = 8.dp),
+                    .padding(horizontal = 4.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = label,
+                    // The small label, unlike a chip's: these tabs split a fixed width by weight,
+                    // and six of them in a sheet have no room to grow into.
                     style = MaterialTheme.typography.labelSmall,
                     color = ink,
-                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                    fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
                     maxLines = 1,
                     softWrap = false,
                     overflow = TextOverflow.Visible,

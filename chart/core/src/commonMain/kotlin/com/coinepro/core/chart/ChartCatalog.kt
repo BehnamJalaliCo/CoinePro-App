@@ -31,7 +31,13 @@ data class ChartTypeOption(
      * offering it.
      */
     val icon: ChartIcon,
-)
+) {
+    /** TradingView's English name, for the English screen (MOBILE-07). */
+    val labelEn: String get() = ChartCatalog.CHART_TYPE_NAMES_EN[type] ?: label
+
+    /** The name in the screen's language. */
+    fun label(english: Boolean): String = if (english) labelEn else label
+}
 
 /**
  * One indicator a reader can switch on.
@@ -64,7 +70,16 @@ data class IndicatorOption(
      * That is the distinction a reader scanning the list is actually making.
      */
     val icon: ChartIcon,
-)
+) {
+    /**
+     * The English name, TradingView's own spelling (DIALOGS-09). A lookup rather than a sixth
+     * constructor argument on a hundred and fourteen rows; `ChartCatalogTest` holds every id to it.
+     */
+    val labelEn: String get() = ChartCatalog.INDICATOR_NAMES_EN[id] ?: label
+
+    /** The name in the screen's language. */
+    fun label(english: Boolean): String = if (english) labelEn else label
+}
 
 /**
  * The one number a reader is allowed to change on an indicator, and the range it may take.
@@ -120,13 +135,17 @@ data class IndicatorParameter(
  * is this app's sixth, for the studies that mark levels and swings rather than draw a line —
  * the reference files those under its scripts, which this catalogue has no equivalent of.
  */
-enum class IndicatorCategory(val label: String) {
-    TREND("روند"),
-    MOMENTUM("مومنتوم"),
-    VOLATILITY("نوسان"),
-    VOLUME("حجم"),
-    BILL_WILLIAMS("بیل ویلیامز"),
-    STRUCTURE("ساختار بازار"),
+enum class IndicatorCategory(val label: String, val labelEn: String) {
+    TREND("روند", "Trend"),
+    MOMENTUM("مومنتوم", "Momentum"),
+    VOLATILITY("نوسان", "Volatility"),
+    VOLUME("حجم", "Volume"),
+    BILL_WILLIAMS("بیل ویلیامز", "Bill Williams"),
+    STRUCTURE("ساختار بازار", "Market structure"),
+    ;
+
+    /** The name in the screen's language. */
+    fun label(english: Boolean): String = if (english) labelEn else label
 }
 
 enum class IndicatorPane {
@@ -503,6 +522,152 @@ object ChartCatalog {
         IndicatorOption("divergence", "واگرایی RSI خودکار", "divergence", IndicatorPane.STRUCTURE, 0xFFE879F9, ChartIcon("tv_tool_trend")),
         IndicatorOption("gaps", "گپ‌های قیمت", "gaps", IndicatorPane.STRUCTURE, 0xFFF59E0B, ChartIcon("tv_tool_pricerange")),
         IndicatorOption("techrating", "امتیاز تکنیکال", "techRating", IndicatorPane.SEPARATE, 0xFF22C55E, ChartIcon("tv_chart_columns")),
+    )
+
+    /**
+     * Every indicator's English name, keyed by id — TradingView's own spelling, so an English reader
+     * finds «Relative Strength Index» where they would look for it (DIALOGS-09, CHART-02).
+     */
+    val INDICATOR_NAMES_EN: Map<String, String> = mapOf(
+        "sma" to "Simple Moving Average",
+        "ema" to "Exponential Moving Average",
+        "wma" to "Weighted Moving Average",
+        "hma" to "Hull Moving Average",
+        "bollinger" to "Bollinger Bands",
+        "keltner" to "Keltner Channels",
+        "donchian" to "Donchian Channels",
+        "ichimoku" to "Ichimoku Cloud",
+        "supertrend" to "Supertrend",
+        "vwap" to "VWAP",
+        "rsi" to "Relative Strength Index",
+        "macd" to "MACD",
+        "stochastic" to "Stochastic",
+        "cci" to "Commodity Channel Index",
+        "williams" to "Williams %R",
+        "atr" to "Average True Range",
+        "adx" to "Average Directional Index",
+        "choppiness" to "Choppiness Index",
+        "vortex" to "Vortex Indicator",
+        "obv" to "On Balance Volume",
+        "smma" to "Smoothed Moving Average",
+        "zlema" to "Zero Lag EMA",
+        "kama" to "Kaufman Adaptive Moving Average",
+        "t3" to "Tillson T3",
+        "mcginley" to "McGinley Dynamic",
+        "linreg" to "Linear Regression Curve",
+        "lsma" to "Least Squares Moving Average",
+        "envelopes" to "Envelopes",
+        "stddev" to "Standard Deviation",
+        "hv" to "Historical Volatility",
+        "chaikinVol" to "Chaikin Volatility",
+        "bbpercent" to "Bollinger Bands %B",
+        "bbw" to "Bollinger BandWidth",
+        "mom" to "Momentum",
+        "roc" to "Rate Of Change",
+        "trix" to "TRIX",
+        "ac" to "Accelerator Oscillator",
+        "uo" to "Ultimate Oscillator",
+        "fisher" to "Fisher Transform",
+        "crsi" to "Connors RSI",
+        "smiErgodic" to "SMI Ergodic Indicator",
+        "smi" to "Stochastic Momentum Index",
+        "bop" to "Balance of Power",
+        "adline" to "Accumulation/Distribution",
+        "chaikinOsc" to "Chaikin Oscillator",
+        "eom" to "Ease of Movement",
+        "forceIndex" to "Elder Force Index",
+        "klinger" to "Klinger Oscillator",
+        "pvt" to "Price Volume Trend",
+        "sar" to "Parabolic SAR",
+        "alligator" to "Williams Alligator",
+        "vwma" to "Volume Weighted Moving Average",
+        "tema" to "Triple EMA",
+        "dema" to "Double EMA",
+        "chandekroll" to "Chande Kroll Stop",
+        "volstop" to "Volatility Stop",
+        "volumeprofile_ind" to "Volume Profile",
+        "stochrsi" to "Stochastic RSI",
+        "tsi" to "True Strength Index",
+        "aroon" to "Aroon",
+        "dmi" to "Directional Movement Index",
+        "ppo" to "Price Oscillator (PPO)",
+        "dpo" to "Detrended Price Oscillator",
+        "kst" to "Know Sure Thing",
+        "cmo" to "Chande Momentum Oscillator",
+        "coppock" to "Coppock Curve",
+        "rvi" to "Relative Vigor Index",
+        "woodiescci" to "Woodies CCI",
+        "massindex" to "Mass Index",
+        "ao" to "Awesome Oscillator",
+        "correlation" to "Correlation Coefficient",
+        "mfi" to "Money Flow Index",
+        "cmf" to "Chaikin Money Flow",
+        "pvo" to "Percentage Volume Oscillator",
+        "netvolume" to "Net Volume",
+        "pivots" to "Pivot Points Standard",
+        "swings" to "Swing Points",
+        "fractals" to "Williams Fractals",
+        "zigzag" to "Zig Zag",
+        "autofib" to "Auto Fib Retracement",
+        "sr" to "Support and Resistance",
+        "supplydemand" to "Supply and Demand Zones",
+        "chopzone" to "Chop Zone",
+        "alma" to "Arnaud Legoux Moving Average",
+        "maribbon" to "Moving Average Ribbon",
+        "gmma" to "Guppy Multiple Moving Average",
+        "macross" to "MA Cross",
+        "mtfema" to "Higher Timeframe EMA",
+        "avwap" to "Anchored VWAP",
+        "stderrbands" to "Standard Error Bands",
+        "median" to "Moving Median",
+        "typicalprice" to "Typical Price",
+        "weightedclose" to "Weighted Close",
+        "chandelier" to "Chandelier Exit",
+        "linregchannel" to "Linear Regression Channel",
+        "mtfrsi" to "Higher Timeframe RSI",
+        "stc" to "Schaff Trend Cycle",
+        "elderray" to "Elder Ray",
+        "aroonosc" to "Aroon Oscillator",
+        "adr" to "Average Daily Range",
+        "pmo" to "Price Momentum Oscillator",
+        "rvivol" to "Relative Volatility Index",
+        "ulcer" to "Ulcer Index",
+        "pvi" to "Positive Volume Index",
+        "nvi" to "Negative Volume Index",
+        "volumeosc" to "Volume Oscillator",
+        "pivothl" to "Pivot Points High Low",
+        "sessions" to "Trading Sessions",
+        "separators" to "Period Separators",
+        "prevlevels" to "Previous Period Levels",
+        "harmonics" to "Auto Harmonic Patterns",
+        "divergence" to "RSI Divergence",
+        "gaps" to "Price Gaps",
+        "techrating" to "Technical Rating",
+    )
+
+    /** Every chart type's English name — the reference's chart-type menu, word for word. */
+    val CHART_TYPE_NAMES_EN: Map<ChartType, String> = mapOf(
+        ChartType.CANDLES to "Candles",
+        ChartType.HOLLOW to "Hollow candles",
+        ChartType.HEIKIN_ASHI to "Heikin Ashi",
+        ChartType.BARS to "Bars",
+        ChartType.LINE to "Line",
+        ChartType.AREA to "Area",
+        ChartType.RENKO to "Renko",
+        ChartType.RANGE to "Range",
+        ChartType.LINE_BREAK to "Line break",
+        ChartType.KAGI to "Kagi",
+        ChartType.POINT_AND_FIGURE to "Point & figure",
+        ChartType.BASELINE to "Baseline",
+        ChartType.HLC_AREA to "HLC area",
+        ChartType.STEP_LINE to "Step line",
+        ChartType.LINE_MARKERS to "Line with markers",
+        ChartType.VOLUME_CANDLES to "Volume candles",
+        ChartType.FOOTPRINT to "Footprint",
+        ChartType.TPO to "Time price opportunity",
+        ChartType.COLUMNS to "Columns",
+        ChartType.HIGH_LOW to "High-low",
+        ChartType.SESSION_VOLUME_PROFILE to "Session volume profile",
     )
 
     /**
@@ -1029,7 +1194,7 @@ object ChartCatalog {
                     ChartPane(title = "Correlation $n", heightRatio = 0f)
                 } else {
                     pane(
-                        "Correlation $n · ${comparison.label}",
+                        "Correlation $n • ${comparison.label}",
                         ChartLine(
                             IndicatorsExtC.correlationCoefficient(close, other, n).asLine(),
                             comparison.colour,
@@ -1461,8 +1626,9 @@ object ChartCatalog {
     fun matchingIndicators(query: String): List<IndicatorOption> {
         val needle = query.trim().lowercase()
         if (needle.isEmpty()) return INDICATORS
+        // Both languages, whichever the screen is in: a Persian reader types «RSI» as often as «آر اس آی».
         return INDICATORS.filter {
-            needle in it.label.lowercase() || needle in it.id.lowercase()
+            needle in it.label.lowercase() || needle in it.labelEn.lowercase() || needle in it.id.lowercase()
         }
     }
 
@@ -1756,7 +1922,7 @@ object ChartCatalog {
                     // and a reader looking at one flat line has no other way to tell which they
                     // have. Left as a bare "POC" for the whole series, which is what the study was
                     // before it learned about the viewport.
-                    val label = if (window == BarWindow.WHOLE_SERIES) "POC" else "POC · محدوده‌ی دید"
+                    val label = if (window == BarWindow.WHOLE_SERIES) "POC" else "POC • محدوده‌ی دید"
                     listOf(
                         ChartLine(
                             flat(series.size, control),

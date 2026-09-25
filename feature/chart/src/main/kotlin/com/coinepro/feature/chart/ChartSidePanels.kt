@@ -22,7 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
@@ -35,7 +35,12 @@ import androidx.compose.material3.adaptive.layout.SupportingPaneScaffoldDefaults
 import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldDestinationItem
 import androidx.compose.material3.adaptive.layout.calculateThreePaneScaffoldValue
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -49,6 +54,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.core.designsystem.pageAccentInk
 
 /**
  * A panel the chart can dock beside itself on a wide window.
@@ -68,6 +74,11 @@ data class ChartSidePanel(
     val id: String,
     @StringRes val labelRes: Int,
     @DrawableRes val icon: Int,
+    /**
+     * Whether the glyph sits in the rail's second group, at its foot — TradingView keeps the lists a
+     * reader works from at the top and help and the like at the bottom (CHART-17).
+     */
+    val trailing: Boolean = false,
     val content: @Composable () -> Unit,
 )
 
@@ -98,13 +109,13 @@ internal val CHART_SIDE_PANEL_MAX = 480.dp
 internal const val CHART_PLOT_SHARE = 0.65f
 
 /**
- * The rail of panel glyphs at the end edge — **56 dp** since 4.72.0.
+ * The rail of panel glyphs at the right-hand edge — **48 dp** since 5.18.2.
  *
- * Eight points wider than the tool rail, and deliberately: this one carries the *screens* (the
- * watchlist, the ladder, the editor), it is pressed less often, and a rail that is the same width
- * as the tool rail at the other edge reads as a mirror of it rather than as a different thing.
+ * TradingView's widget bar is 45 px with 44 px buttons; 56 spent a column of glass on air around
+ * eight glyphs (CHART-17). Forty-eight is the tool rail's own width, and the glyph groups and the
+ * plates are what tell the two rails apart.
  */
-internal val CHART_SIDE_RAIL_WIDTH = 56.dp
+internal val CHART_SIDE_RAIL_WIDTH = 48.dp
 
 /** Whether a window this wide has room for the tools, the plot, a docked panel and the rail. */
 internal fun sidePanelsFit(widthDp: Float): Boolean =
@@ -151,11 +162,11 @@ internal fun ChartSidePanelHost(
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     val panelWidth = panelWidthFor(windowDp = maxWidth.value, draggedDp = dragged)
     val density = LocalDensity.current
-    // Which way widens the panel. In Persian the whole workbench is mirrored: the panel sits at the
-    // *left* of the glass with its grip on the right, so a drag to the right makes it wider — the
-    // opposite of what the same gesture means in English. The edge moves with the finger either
-    // way, which is the only rule a reader has for a grip.
-    val widen = if (LocalLayoutDirection.current == LayoutDirection.Rtl) 1f else -1f
+    // The panel and its rail keep TradingView's side in every language — the right, beside the price
+    // axis (CHART-03) — so a drag to the left always widens it: the edge moves with the finger.
+    val widen = -1f
+    val reader = LocalLayoutDirection.current
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
     Row(modifier = Modifier.fillMaxSize()) {
         val partitions = if (open != null) 2 else 1
         val directive = PaneScaffoldDirective(
@@ -175,7 +186,11 @@ internal fun ChartSidePanelHost(
             directive = directive,
             value = value,
             modifier = Modifier.weight(1f).fillMaxHeight(),
-            mainPane = { AnimatedPane { main(Modifier.fillMaxSize()) } },
+            mainPane = {
+                AnimatedPane {
+                    CompositionLocalProvider(LocalLayoutDirection provides reader) { main(Modifier.fillMaxSize()) }
+                }
+            },
             supportingPane = {
                 AnimatedPane(modifier = Modifier.preferredWidth(panelWidth)) {
                     if (open != null) {
@@ -196,17 +211,19 @@ internal fun ChartSidePanelHost(
                                     )
                                     .semantics { contentDescription = "side-panel-grip" },
                             )
-                            Column(modifier = Modifier.fillMaxSize().background(CoineProColors.Stage)) {
-                                Text(
-                                    text = stringResource(open.labelRes),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = CoineProColors.TextPrimary,
-                                    modifier = Modifier.padding(
-                                        horizontal = CoineProSpacing.Gutter,
-                                        vertical = CoineProSpacing.One,
-                                    ),
-                                )
-                                Box(modifier = Modifier.fillMaxWidth().weight(1f)) { open.content() }
+                            CompositionLocalProvider(LocalLayoutDirection provides reader) {
+                                Column(modifier = Modifier.fillMaxSize().background(CoineProColors.Stage)) {
+                                    Text(
+                                        text = stringResource(open.labelRes),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = CoineProColors.TextPrimary,
+                                        modifier = Modifier.padding(
+                                            horizontal = CoineProSpacing.Gutter,
+                                            vertical = CoineProSpacing.One,
+                                        ),
+                                    )
+                                    Box(modifier = Modifier.fillMaxWidth().weight(1f)) { open.content() }
+                                }
                             }
                         }
                     }
@@ -221,12 +238,17 @@ internal fun ChartSidePanelHost(
         )
     }
     }
+    }
 }
 
 /** The grip's own width. Wider than a hairline so a thumb can find it; still reads as a divider. */
 private val PANEL_GRIP = 6.dp
 
-/** One glyph per panel, the open one in gold; tapping the open one closes it. */
+/**
+ * One glyph per panel; tapping the open one closes it. TradingView's widget bar (CHART-17): 44 dp
+ * cells with the chrome's 34 dp plate, the lists at the top, the [ChartSidePanel.trailing] ones at
+ * the foot after a rule, and each glyph named in a tooltip (CHART-11).
+ */
 @Composable
 private fun ChartSideRail(
     panels: List<ChartSidePanel>,
@@ -243,21 +265,49 @@ private fun ChartSideRail(
             .padding(vertical = CoineProSpacing.Half),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        for (panel in panels) {
-            val selected = panel.id == openId
-            IconButton(
-                onClick = { onToggle(panel.id) },
-                modifier = Modifier.semantics { contentDescription = "side-panel-${panel.id}" },
+        val (tail, head) = panels.partition { it.trailing }
+        head.forEach { panel -> SideRailCell(panel, panel.id == openId, onToggle) }
+        if (tail.isNotEmpty()) {
+            Spacer(modifier = Modifier.weight(1f))
+            HorizontalDivider(
+                color = CoineProColors.BorderStrong,
+                modifier = Modifier.width(SIDE_RAIL_RULE).padding(vertical = CoineProSpacing.One),
+            )
+            tail.forEach { panel -> SideRailCell(panel, panel.id == openId, onToggle) }
+        }
+    }
+}
+
+@Composable
+private fun SideRailCell(panel: ChartSidePanel, selected: Boolean, onToggle: (String) -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val hovered by interaction.collectIsHoveredAsState()
+    val label = stringResource(panel.labelRes)
+    ChromeTooltip(label) {
+        Box(
+            modifier = Modifier
+                .size(SIDE_RAIL_CELL)
+                .semantics { contentDescription = "side-panel-${panel.id}" },
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(SIDE_RAIL_PLATE)
+                    .chromePlate(interaction, active = selected) { onToggle(panel.id) },
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     painter = painterResource(panel.icon),
-                    contentDescription = stringResource(panel.labelRes),
-                    tint = if (selected) CoineProColors.Gold else CoineProColors.TextMuted,
-                    modifier = Modifier.size(SIDE_RAIL_GLYPH),
+                    contentDescription = label,
+                    tint = if (selected) CoineProColors.pageAccentInk else chromeInk(hovered),
+                    modifier = Modifier.size(chromeGlyphSize(panel.icon)),
                 )
             }
         }
     }
 }
 
-private val SIDE_RAIL_GLYPH = 22.dp
+/** TradingView's widget-bar cell and the plate inside it; the rule between the two groups. */
+private val SIDE_RAIL_CELL = 44.dp
+private val SIDE_RAIL_PLATE = 34.dp
+private val SIDE_RAIL_RULE = 28.dp

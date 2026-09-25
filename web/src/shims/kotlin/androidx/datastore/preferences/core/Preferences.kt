@@ -52,8 +52,21 @@ class MutablePreferences internal constructor(
     operator fun plusAssign(prefs: Preferences) { map.putAll(prefs.asMap()) }
     operator fun plusAssign(pair: Pair<*>) { putAll(pair) }
     operator fun minusAssign(key: Key<*>) { remove(key) }
-    fun putAll(vararg pairs: Pair<*>) { pairs.forEach { map[it.key] = it.value as Any } }
-    fun <T> remove(key: Key<T>): T = map.remove(key) as T
+    // A null value removes the key, as `set` does, rather than casting null to `Any`.
+    fun putAll(vararg pairs: Pair<*>) {
+        pairs.forEach { pair ->
+            val value = pair.value
+            if (value == null) map.remove(pair.key) else map[pair.key] = value
+        }
+    }
+
+    /**
+     * Nullable, unlike the phone's signature (LISTS-01). On the JVM `null as T` is unchecked and a
+     * removed-but-absent key returns null quietly; on Wasm the caller's `T` is checked, so removing
+     * an absent `String` key threw «Cannot cast null to kotlin.String» and froze the page on every
+     * watchlist write. Every call site ignores the result, so they compile unchanged.
+     */
+    fun <T> remove(key: Key<T>): T? = map.remove(key) as T?
     fun clear() = map.clear()
     override fun equals(other: Any?): Boolean = other is MutablePreferences && other.map == map
     override fun hashCode(): Int = map.hashCode()

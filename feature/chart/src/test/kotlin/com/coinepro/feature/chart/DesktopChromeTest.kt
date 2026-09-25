@@ -2,7 +2,6 @@ package com.coinepro.feature.chart
 
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 /** The desktop chrome's own formatting (5.16.0): the tab title, the clock and the range codes. */
@@ -25,8 +24,23 @@ class DesktopChromeTest {
     }
 
     @Test
-    fun `the ranges are TradingView's spellings and All keeps its word`() {
-        assertEquals(listOf("1D", "5D", "1M", "3M", "6M", "YTD", "1Y", "5Y"), ChartRange.OFFERED.reversed().mapNotNull(::rangeCode))
-        assertNull(rangeCode(ChartRange.ALL))
+    fun `the ranges are TradingView's spellings, All included`() {
+        // «All» joined the Latin set in 5.18.2: a Persian word at the end of a row of codes read as
+        // two controls glued together (MOBILE-33).
+        assertEquals(
+            listOf("1D", "5D", "1M", "3M", "6M", "YTD", "1Y", "5Y", "All"),
+            ChartRange.OFFERED.reversed().map(::rangeCode),
+        )
+    }
+
+    @Test
+    fun `intervals read the way TradingView spells them while the wire stays`() {
+        assertEquals(
+            listOf("1m", "5m", "15m", "1h", "4h", "1D", "1W", "1M", "12M"),
+            listOf("M1", "M5", "M15", "H1", "H4", "D1", "W1", "MN1", "MN12").map(::tvIntervalCode),
+        )
+        assertEquals("10s", tvIntervalCode("10S"))
+        assertEquals("100T", tvIntervalCode("100T"))
+        assertEquals("205m", tvIntervalCode("205"))
     }
 }

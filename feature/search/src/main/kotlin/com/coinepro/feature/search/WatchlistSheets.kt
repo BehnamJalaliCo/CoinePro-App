@@ -80,6 +80,8 @@ internal fun WatchlistSheets(
     onCreateAlert: ((String) -> Unit)? = null,
     /** Swaps one sheet for another, which is how the overflow reaches the three behind it. */
     onOpen: (WatchlistSheet) -> Unit = {},
+    /** Syncs the lists, from the overflow. Null where the platform serves no sync. */
+    onSync: (() -> Unit)? = null,
 ) {
     when (sheet) {
         null -> Unit
@@ -102,6 +104,12 @@ internal fun WatchlistSheets(
             onLists = { onOpen(WatchlistSheet.Lists) },
             onColumns = { onOpen(WatchlistSheet.Columns) },
             onTransfer = { onOpen(WatchlistSheet.Transfer) },
+            onSync = onSync?.let { sync ->
+                {
+                    sync()
+                    onDismiss()
+                }
+            },
             onDismiss = onDismiss,
         )
         is WatchlistSheet.RowMenu -> RowSheet(
@@ -877,6 +885,8 @@ private fun MoreSheet(
     onLists: () -> Unit,
     onColumns: () -> Unit,
     onTransfer: () -> Unit,
+    /** Syncs the lists now. Null where the platform serves no sync. */
+    onSync: (() -> Unit)?,
     onDismiss: () -> Unit,
 ) {
     CoineProSheet(
@@ -898,6 +908,14 @@ private fun MoreSheet(
             label = stringResource(R.string.watchlist_transfer),
             onClick = onTransfer,
         )
+        // Sync, which used to be a permanent footer under the list (LISTS-21).
+        if (onSync != null) {
+            MoreRow(
+                icon = DesignR.drawable.icon_arrows_clockwise,
+                label = stringResource(com.coinepro.core.watchlistsync.R.string.watchlist_sync_action),
+                onClick = onSync,
+            )
+        }
     }
 }
 
@@ -913,7 +931,8 @@ private fun MoreRow(icon: Int, label: String, onClick: () -> Unit) {
                 haptics.select()
                 onClick()
             }
-            .padding(horizontal = CoineProSpacing.Half, vertical = CoineProSpacing.OneHalf),
+            // The sheet's own gutter, so the glyphs line up under its title (MOBILE-02).
+            .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.OneHalf),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {

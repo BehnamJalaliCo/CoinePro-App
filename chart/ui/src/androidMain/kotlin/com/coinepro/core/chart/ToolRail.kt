@@ -1,5 +1,7 @@
 package com.coinepro.core.chart
 
+import com.coinepro.core.designsystem.CoineProLazyRow
+import com.coinepro.core.designsystem.CoineProMenuItem
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,7 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -28,7 +29,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -190,7 +190,7 @@ fun ToolRail(
         CoineProSheetSearch(
             value = query,
             onValueChange = { query = it },
-            placeholder = "جست‌وجوی ابزار",
+            placeholder = tr("جست‌وجوی ابزار", "Search tools"),
             modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
         )
         Spacer(Modifier.height(CoineProSpacing.OneHalf))
@@ -212,7 +212,7 @@ fun ToolRail(
         }
 
         if (tools.isEmpty()) {
-            CoineProSheetEmpty("ابزاری با این نام پیدا نشد.")
+            CoineProSheetEmpty(tr("ابزاری با این نام پیدا نشد.", "No tool by that name."))
             return@Column
         }
 
@@ -365,13 +365,13 @@ private fun modeTiles(
     // The ruler and the eraser are tools in the catalogue and modes on the phone app's sheet;
     // here they are both, so a reader finds them where either app would put them.
     catalogue.firstOrNull { it.id == MEASURE_TOOL }?.let { tool ->
-        tiles += ModeTile(tool.icon.drawableRes(), "اندازه‌گیری", on = selected == tool.id) { onSelect(tool) }
+        tiles += ModeTile(tool.icon.drawableRes(), tr("اندازه‌گیری", "Measure"), on = selected == tool.id) { onSelect(tool) }
     }
     catalogue.firstOrNull { it.id == ERASER_TOOL }?.let { tool ->
-        tiles += ModeTile(tool.icon.drawableRes(), "پاک‌کن", on = selected == tool.id) { onSelect(tool) }
+        tiles += ModeTile(tool.icon.drawableRes(), tr("پاک‌کن", "Eraser"), on = selected == tool.id) { onSelect(tool) }
     }
     onKeepDrawing?.let { set ->
-        tiles += ModeTile(DesignR.drawable.tv_tool_keepdrawing, "ماندن روی ابزار", on = keepDrawing) {
+        tiles += ModeTile(DesignR.drawable.tv_tool_keepdrawing, tr("ماندن روی ابزار", "Stay in drawing mode"), on = keepDrawing) {
             set(!keepDrawing)
         }
     }
@@ -379,14 +379,30 @@ private fun modeTiles(
         val drawingsHidden = DrawingLayer.DRAWINGS in hidden
         tiles += ModeTile(
             icon = if (drawingsHidden) DesignR.drawable.icon_eye_slash else DesignR.drawable.icon_eye,
-            label = if (drawingsHidden) "نمایش رسم‌ها" else "پنهان‌کردن رسم‌ها",
+            label = if (drawingsHidden) tr("نمایش رسم‌ها", "Show drawings") else tr("پنهان‌کردن رسم‌ها", "Hide drawings"),
             on = drawingsHidden,
             menu = buildList {
-                add(layerEntry("اندیکاتورها", DrawingLayer.INDICATORS, hidden, set))
-                add(layerEntry("موقعیت‌ها", DrawingLayer.POSITIONS, hidden, set))
+                add(
+                    layerEntry(
+                        tr("نمایش اندیکاتورها", "Show indicators"),
+                        tr("پنهان‌کردن اندیکاتورها", "Hide indicators"),
+                        DrawingLayer.INDICATORS,
+                        hidden,
+                        set,
+                    ),
+                )
+                add(
+                    layerEntry(
+                        tr("نمایش موقعیت‌ها", "Show positions"),
+                        tr("پنهان‌کردن موقعیت‌ها", "Hide positions"),
+                        DrawingLayer.POSITIONS,
+                        hidden,
+                        set,
+                    ),
+                )
                 onHideAll?.let { all ->
                     val allHidden = hidden.size == DrawingLayer.entries.size
-                    add(ModeMenuEntry(if (allHidden) "نمایش همه" else "پنهان‌کردن همه") { all(!allHidden) })
+                    add(ModeMenuEntry(if (allHidden) tr("نمایش همه", "Show all") else tr("پنهان‌کردن همه", "Hide all")) { all(!allHidden) })
                 }
             },
         ) { set(DrawingLayer.DRAWINGS, !drawingsHidden) }
@@ -394,7 +410,7 @@ private fun modeTiles(
     onLockAll?.let { set ->
         tiles += ModeTile(
             icon = if (lockedAll) DesignR.drawable.tv_lock else DesignR.drawable.tv_unlock,
-            label = if (lockedAll) "باز کردن قفل همه" else "قفل همه‌ی رسم‌ها",
+            label = if (lockedAll) tr("باز کردن قفل همه", "Unlock all drawings") else tr("قفل همه‌ی رسم‌ها", "Lock all drawings"),
             on = lockedAll,
         ) { set(!lockedAll) }
     }
@@ -402,43 +418,54 @@ private fun modeTiles(
         tiles += ModeTile(
             icon = DesignR.drawable.tv_magnet,
             label = when (magnet) {
-                MagnetMode.OFF -> "آهنربا خاموش"
-                MagnetMode.WEAK -> "آهنربای ضعیف"
-                MagnetMode.STRONG -> "آهنربای قوی"
+                MagnetMode.OFF -> tr("آهنربا خاموش", "Magnet off")
+                MagnetMode.WEAK -> tr("آهنربای ضعیف", "Weak magnet")
+                MagnetMode.STRONG -> tr("آهنربای قوی", "Strong magnet")
             },
             on = magnet != MagnetMode.OFF,
             menu = onSetMagnet?.let { set ->
                 listOf(
-                    ModeMenuEntry("خاموش") { set(MagnetMode.OFF) },
-                    ModeMenuEntry("آهنربای ضعیف") { set(MagnetMode.WEAK) },
-                    ModeMenuEntry("آهنربای قوی") { set(MagnetMode.STRONG) },
+                    ModeMenuEntry(tr("خاموش", "Off")) { set(MagnetMode.OFF) },
+                    ModeMenuEntry(tr("آهنربای ضعیف", "Weak magnet")) { set(MagnetMode.WEAK) },
+                    ModeMenuEntry(tr("آهنربای قوی", "Strong magnet")) { set(MagnetMode.STRONG) },
                 )
             }.orEmpty(),
             onClick = cycle,
         )
     }
     onRemoveAll?.let { clear ->
-        tiles += ModeTile(DesignR.drawable.tv_trash2, "حذف همه‌ی ترسیم‌ها", on = false, onClick = clear)
+        tiles += ModeTile(DesignR.drawable.tv_trash2, tr("حذف همه‌ی ترسیم‌ها", "Remove all drawings"), on = false, onClick = clear)
     }
     onZoomIn?.let { zoom ->
-        tiles += ModeTile(DesignR.drawable.tv_zoom_in, "بزرگ‌نمایی", on = false, onClick = zoom)
+        tiles += ModeTile(DesignR.drawable.tv_zoom_in, tr("بزرگ‌نمایی", "Zoom in"), on = false, onClick = zoom)
     }
     onZoomOut?.let { zoom ->
-        tiles += ModeTile(DesignR.drawable.tv_zoom_out, "کوچک‌نمایی", on = false, onClick = zoom)
+        tiles += ModeTile(DesignR.drawable.tv_zoom_out, tr("کوچک‌نمایی", "Zoom out"), on = false, onClick = zoom)
     }
     return tiles
 }
 
 /** One layer's row in the «⋮» menu. */
 private fun layerEntry(
-    name: String,
+    show: String,
+    hide: String,
     layer: DrawingLayer,
     hidden: Set<DrawingLayer>,
     onHide: (DrawingLayer, Boolean) -> Unit,
 ): ModeMenuEntry {
     val isHidden = layer in hidden
-    return ModeMenuEntry(if (isHidden) "نمایش $name" else "پنهان‌کردن $name") { onHide(layer, !isHidden) }
+    return ModeMenuEntry(if (isHidden) show else hide) { onHide(layer, !isHidden) }
 }
+
+/**
+ * The rail's own words, in the reader's language (MOBILE-07).
+ *
+ * Pairs rather than resource ids because `:chart-ui` has no resource table — its sources also build
+ * into the browser, which reads only the feature modules' `res/` — and a Persian literal an English
+ * reader saw on every tile is the defect this closes.
+ */
+@Composable
+private fun tr(fa: String, en: String): String = if (inEnglish()) en else fa
 
 /** One mode tile: a glyph, a label, whether it is in force, what a tap does, and its side menu. */
 private class ModeTile(
@@ -538,14 +565,14 @@ private fun ModeTileCell(tile: ModeTile, plate: Boolean) {
             ) {
                 Icon(
                     painter = painterResource(DesignR.drawable.tv_more_horizontal),
-                    contentDescription = "گزینه‌های بیشتر",
+                    contentDescription = tr("گزینه‌های بیشتر", "More options"),
                     modifier = Modifier.size(18.dp).rotate(MENU_GLYPH_TURN),
                     tint = ink,
                 )
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     tile.menu.forEach { entry ->
-                        DropdownMenuItem(
-                            text = { Text(entry.label) },
+                        CoineProMenuItem(
+                            text = entry.label,
                             onClick = {
                                 menuOpen = false
                                 entry.act()
@@ -564,13 +591,13 @@ private fun ModeTileCell(tile: ModeTile, plate: Boolean) {
  */
 @Composable
 private fun RailTabs(groups: List<ToolGroup>, selected: ToolGroup?, onSelect: (ToolGroup?) -> Unit) {
-    LazyRow(
+    CoineProLazyRow(
         modifier = Modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = CoineProSpacing.Gutter),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
         item(key = "__all") {
-            RailTab(label = "همه", selected = selected == null) { onSelect(null) }
+            RailTab(label = tr("همه", "All"), selected = selected == null) { onSelect(null) }
         }
         items(groups.size, key = { groups[it].name }) { index ->
             val candidate = groups[index]
@@ -592,9 +619,11 @@ private fun RailTab(label: String, selected: Boolean, onClick: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Text(
+            // A tab, not a heading (MOBILE-13): the label size of every other tab in the app, and
+            // the chosen one a step heavier rather than a headline.
             text = label,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
             color = if (selected) CoineProColors.TextPrimary else CoineProColors.TextMuted,
             maxLines = 1,
         )
@@ -638,13 +667,13 @@ private fun FavouritesRow(
     ) {
         if (favourites.isEmpty()) {
             Text(
-                text = "ابزار انتخاب‌شده را با ستاره اینجا سنجاق کن.",
+                text = tr("ابزار انتخاب‌شده را با ستاره اینجا سنجاق کنید.", "Star the selected tool to pin it here."),
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextMuted,
                 modifier = Modifier.weight(1f).padding(horizontal = CoineProSpacing.One),
             )
         } else {
-            LazyRow(modifier = Modifier.weight(1f)) {
+            CoineProLazyRow(modifier = Modifier.weight(1f)) {
                 items(favourites.size, key = { "fav-" + favourites[it].id }) { index ->
                     val tool = favourites[index]
                     Box(
@@ -671,7 +700,7 @@ private fun FavouritesRow(
             val pinned = armed != null && favourites.any { it.id == armed.id }
             RailAction(
                 icon = if (pinned) DesignR.drawable.icon_filled_star else DesignR.drawable.icon_star,
-                label = if (pinned) "برداشتن از برگزیده‌ها" else "افزودن به برگزیده‌ها",
+                label = if (pinned) tr("برداشتن از برگزیده‌ها", "Remove from favourites") else tr("افزودن به برگزیده‌ها", "Add to favourites"),
                 tint = if (pinned) CoineProColors.Gold else null,
                 enabled = armed != null,
             ) { armed?.let(toggle) }
@@ -810,7 +839,10 @@ fun ActiveToolBar(
             if (tool.points > 0) {
                 Text(
                     // A prose count, so Persian digits — unlike a price, which stays Latin.
-                    text = "نقطه‌ی ${(placed + 1).toPersianDigits()} از ${(tool.points).toPersianDigits()}",
+                    text = tr(
+                        "نقطه‌ی ${(placed + 1).toPersianDigits()} از ${(tool.points).toPersianDigits()}",
+                        "Point ${placed + 1} of ${tool.points}",
+                    ),
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextMuted,
                 )
@@ -830,12 +862,12 @@ fun ActiveToolBar(
             }
         }
         if (onUndo != null && placed > 0) {
-            RailAction(DesignR.drawable.icon_arrows_clockwise, "واگرد", onClick = onUndo)
+            RailAction(DesignR.drawable.icon_arrows_clockwise, tr("واگرد", "Undo"), onClick = onUndo)
         }
         tool.helpId?.let { id ->
-            onHelp?.let { RailAction(DesignR.drawable.tv_help_circle, "راهنما") { it(id) } }
+            onHelp?.let { RailAction(DesignR.drawable.tv_help_circle, tr("راهنما", "Help")) { it(id) } }
         }
-        RailAction(DesignR.drawable.icon_x, "بستن", onClick = onCancel)
+        RailAction(DesignR.drawable.icon_x, tr("بستن", "Close"), onClick = onCancel)
     }
 }
 
@@ -856,7 +888,7 @@ fun DrawingIconPicker(
     onPick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyRow(
+    CoineProLazyRow(
         modifier = modifier.fillMaxWidth().padding(horizontal = CoineProSpacing.Half),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
@@ -940,7 +972,7 @@ fun DrawingList(
     onSetLocked: ((Drawing, Boolean) -> Unit)? = null,
 ) {
     if (drawings.isEmpty()) {
-        CoineProSheetEmpty("هنوز چیزی روی چارت نکشیده‌ای.", modifier)
+        CoineProSheetEmpty(tr("هنوز چیزی روی چارت رسم نشده است.", "Nothing is drawn on this chart yet."), modifier)
         return
     }
     LazyColumn(
@@ -981,7 +1013,7 @@ fun DrawingList(
                     onSetLocked?.let { setLocked ->
                         RailAction(
                             if (drawing.locked) DesignR.drawable.tv_lock else DesignR.drawable.tv_unlock,
-                            if (drawing.locked) "باز کردن قفل" else "قفل کردن",
+                            if (drawing.locked) tr("باز کردن قفل", "Unlock") else tr("قفل کردن", "Lock"),
                             tint = if (drawing.locked) CoineProColors.Gold else null,
                         ) { setLocked(drawing, !drawing.locked) }
                     }
@@ -989,7 +1021,7 @@ fun DrawingList(
                     // dimmed here so the reader is told why rather than finding out by tapping.
                     RailAction(
                         DesignR.drawable.tv_trash2,
-                        "حذف",
+                        tr("حذف", "Remove"),
                         enabled = !drawing.locked,
                     ) { onDelete(drawing) }
                 }

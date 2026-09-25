@@ -1,8 +1,8 @@
 package com.coinepro.feature.tools
 
+import com.coinepro.core.designsystem.coineProHorizontalScroll
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -217,7 +217,7 @@ private fun ToolkitHeader(expanded: ToolId?, onQuickOpen: (ToolId) -> Unit) {
         }
         Text(stringResource(R.string.tools_quick_open), color = CoineProColors.TextMuted, style = MaterialTheme.typography.labelSmall)
         Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxWidth().coineProHorizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             QuickChip(stringResource(R.string.tools_f_risk), expanded == ToolId.RISK) { onQuickOpen(ToolId.RISK) }

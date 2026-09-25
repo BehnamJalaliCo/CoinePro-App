@@ -1,9 +1,9 @@
 package com.coinepro.feature.chart
 
+import com.coinepro.core.designsystem.coineProHorizontalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -65,7 +65,7 @@ internal fun ChartNowStrip(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
+            .coineProHorizontalScroll(rememberScrollState())
             .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.Half)
             .semantics { contentDescription = "now-strip" },
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),

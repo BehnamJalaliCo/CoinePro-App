@@ -28,11 +28,11 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 | `ta.ema(close, 20)` | Exponential moving average; weights recent bars more. | number series |
 | `ta.wma(close, 20)` | Linearly weighted moving average. | number series |
 | `ta.hma(close, 21)` | Hull moving average; less lag than EMA, longer warm-up. | number series |
-| `ta.smma(close, 14)` | Smoothed moving average (RMA) — the one inside RSI and ATR. | number series |
+| `ta.smma(close, 14)` | Smoothed moving average (RMA) − the one inside RSI and ATR. | number series |
 | `ta.zlema(close, 20)` | Zero-lag exponential moving average. | number series |
 | `ta.kama(close, 10, 2, 30)` | Kaufman's adaptive average: fast in a trend, slow in a range. | number series |
 | `ta.mcginley(close, 14)` | McGinley Dynamic; an average that adjusts to the market's speed. | number series |
-| `ta.linreg(close, 20)` | Linear regression over the window — the value at the line's end on each bar. | number series |
+| `ta.linreg(close, 20)` | Linear regression over the window − the value at the line's end on each bar. | number series |
 
 ## Oscillators
 
@@ -40,7 +40,7 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 | --- | --- | --- |
 | `ta.rsi(close, 14)` | Relative strength index, 0 to 100. | number series |
 | `ta.cci(20)` | Commodity channel index. Reads the chart's own high, low and close. | number series |
-| `ta.atr(14)` | Average true range — the size of the moves, not their direction. | number series |
+| `ta.atr(14)` | Average true range − the size of the moves, not their direction. | number series |
 | `ta.macd(close, 12, 26, 9)` | The MACD line: the difference of two exponential averages. | number series |
 | `ta.macd_signal(close, 12, 26, 9)` | The MACD signal line. | number series |
 | `ta.macd_hist(close, 12, 26, 9)` | The MACD histogram: line minus signal. | number series |
@@ -273,7 +273,7 @@ Generated from `ScriptReference` and `ScriptReferenceEn` by `ReferenceDocsTest`;
 | `input.source("close", title = "منبع")` | A choice of price series: close, open, high, low, hl2, hlc3, ohlc4 or volume. | number series |
 | `input.color(color.gold, title = "رنگ خط")` | A colour input, from the named colours. | colour |
 | `input.timeframe("240", title = "تایم‌فریم")` | A timeframe choice, for request.security. | text |
-| `request.security("240", close)` | The expression computed on a coarser timeframe (a multiple of the chart's), each chart bar taking the last completed higher bar's value — no repainting. | number or series |
+| `request.security("240", close)` | The expression computed on a coarser timeframe (a multiple of the chart's), each chart bar taking the last completed higher bar's value − no repainting. | number or series |
 
 ## Text and absence (4.61)
 

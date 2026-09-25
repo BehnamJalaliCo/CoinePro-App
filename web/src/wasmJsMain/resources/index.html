@@ -10,20 +10,39 @@
   <title>Pro Chart</title>
   <!-- Installable as an app, with the phone's launcher icon (scripts/design/build-web-icons.py). -->
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#0E1118">
+  <meta name="theme-color" content="#0B0E11">
+  <script>
+    // The browser's own bar follows the theme the reader chose in the app (kept by the web
+    // DataStore shim under datastore:coinepro_preferences → theme_mode), else the system's.
+    (function () {
+      var mode = 'system';
+      try {
+        var prefs = JSON.parse(localStorage.getItem('datastore:coinepro_preferences') || '{}');
+        if (prefs.theme_mode && prefs.theme_mode.v) mode = prefs.theme_mode.v;
+      } catch (e) {}
+      if (mode === 'system') {
+        mode = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      }
+      var bar = { light: '#F7F8FA', midnight: '#000000' }[mode] || '#0B0E11';
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', bar);
+    })();
+  </script>
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <style>
-    html, body { margin: 0; height: 100%; background: #0b0e11; overflow: hidden; }
+    /* White in every theme, like the app's own launch sheet (LaunchSplash.kt: «white and black,
+       in both themes»), which Compose draws next. A dark page here was the first of three swaps a
+       reader saw on every load — dark, then that white sheet, then the app (MOBILE-32). The mark
+       is drawn in by the launch sheet itself, so this frame carries nothing but the sheet. */
+    html, body { margin: 0; height: 100%; background: #FFFFFF; overflow: hidden; }
     #terminal { position: fixed; inset: 0; }
-    #splash { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-              color: #8a93a6; font: 14px system-ui, sans-serif; }
+    #splash { position: fixed; inset: 0; background: #FFFFFF; }
   </style>
 </head>
 <body>
   <div id="terminal"></div>
-  <div id="splash">Pro Chart</div>
+  <div id="splash" aria-hidden="true"></div>
   <noscript>Pro Chart needs JavaScript and WebAssembly.</noscript>
   <!-- The one package the compiled code imports by name; see terminalBundle in web/build.gradle.kts. -->
   <script type="importmap">{ "imports": { "@js-joda/core": "./js-joda.esm.js" } }</script>

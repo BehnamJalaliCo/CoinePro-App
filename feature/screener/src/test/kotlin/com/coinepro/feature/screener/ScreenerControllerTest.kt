@@ -168,6 +168,36 @@ class ScreenerControllerTest {
     }
 
     @Test
+    fun `a throttled read is retried rather than recorded as no figure`() = runTest {
+        // LISTS-10. The web scan came back «۸۶۲ بازار داده‌ای ندارد» because every 429 was folded into
+        // an empty series. Refused once, a market goes back in the queue and is read on the retry.
+        val refusals = mutableMapOf<String, Int>()
+        val controller = ScreenerController(
+            gateway = catalogueWithoutPrices,
+            scope = TestScope(UnconfinedTestDispatcher(testScheduler)),
+            barSource = { symbol ->
+                val seen = refusals.getOrPut(symbol) { 0 }
+                refusals[symbol] = seen + 1
+                if (seen == 0) throw ScreenerBarsThrottled() else bars(100.0, 110.0)
+            },
+        )
+        controller.refresh()
+        advanceUntilIdle()
+
+        val state = controller.state.value
+        assertTrue("every market was read in the end", state.rows.all { it.high != null })
+        assertEquals(universe.size, state.readCount)
+        assertEquals(false, state.resolving)
+    }
+
+    @Test
+    fun `a 429 from the gateway is told apart from any other failure`() {
+        assertTrue(isThrottle(IllegalStateException("HTTP 429 Too Many Requests")))
+        assertTrue(isThrottle(RuntimeException("wrapped", IllegalStateException("Too Many Requests"))))
+        assertEquals(false, isThrottle(IllegalStateException("HTTP 404 Not Found")))
+    }
+
+    @Test
     fun `an indicator condition is resolved and applied without any membership check`() = runTest {
         // [109]. A rising series of forty bars puts RSI near the top of its range; the screen keeps
         // the market that is stretched and drops the one that is not.

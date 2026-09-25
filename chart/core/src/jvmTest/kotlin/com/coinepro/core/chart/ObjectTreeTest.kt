@@ -78,7 +78,7 @@ class ObjectTreeTest {
         )
 
         // Eleven days apart, so both ends are dated rather than clocked.
-        assertEquals("خط روند 14 Nov – 26 Nov", ObjectTree.labelOf(line))
+        assertEquals("خط روند 14 Nov − 26 Nov", ObjectTree.labelOf(line))
     }
 
     @Test

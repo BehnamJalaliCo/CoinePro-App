@@ -179,8 +179,8 @@ class RunHProofTest {
         for (symbol in listOf("XAUUSD", "BTCUSDT", "ETHUSDT", "XAGUSD")) {
             assertTrue("$symbol is one of the four panes", shown.any { it.contains(symbol) })
         }
-        // And the timeframe in each header is the code, not «۱ ساعت».
-        assertTrue("the pane headers carry the timeframe code", shown.any { it == "H1" })
+        // And the timeframe in each header is the code, TradingView's spelling (CHART-23), not «۱ ساعت».
+        assertTrue("the pane headers carry the timeframe code", shown.any { it == "1h" })
         assertTrue("and not the prose name", shown.none { it.contains("۱ ساعت") })
     }
 

@@ -1,9 +1,11 @@
 package com.coinepro.feature.script
 
+import com.coinepro.core.designsystem.CoineProSwitch
+import com.coinepro.core.designsystem.CoineProLazyRow
+import com.coinepro.core.designsystem.coineProHorizontalScroll
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.geometry.Offset
@@ -24,7 +26,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.BasicTextField
@@ -95,7 +96,6 @@ import com.coinepro.core.script.ScriptFailure
 import com.coinepro.core.script.ScriptEditorState
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.material3.Switch
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.coinepro.core.script.ScriptInputKind
@@ -842,7 +842,7 @@ private fun CodeField(source: String, onChange: (String) -> Unit, failure: Scrip
                         // its child an unbounded width, so the field lays every line out at its
                         // full length and there is no wrap point to break at. `softWrap` is not a
                         // parameter of this overload; the constraint is, and it is the same answer.
-                        Box(modifier = Modifier.weight(1f).horizontalScroll(codeScroll)) { field() }
+                        Box(modifier = Modifier.weight(1f).coineProHorizontalScroll(codeScroll)) { field() }
                         // The minimap: one bar per line, as long as the line is. It is not a
                         // thumbnail of the text — at this size a thumbnail is grey noise — it is
                         // the *shape* of the file, which is what a reader actually navigates by:
@@ -874,7 +874,7 @@ private fun CodeField(source: String, onChange: (String) -> Unit, failure: Scrip
         // word and, for a function, opens its parenthesis.
         if (completions.isNotEmpty()) {
             LtrDirection {
-                LazyRow(
+                CoineProLazyRow(
                     horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
                     modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.Half),
                 ) {
@@ -1009,7 +1009,7 @@ internal fun consoleTiming(elapsedMillis: Long, incremental: Boolean, bars: Int)
 
 @Composable
 private fun SnippetRow(onInsert: (String) -> Unit) {
-    LazyRow(
+    CoineProLazyRow(
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -1167,7 +1167,7 @@ private fun InputRow(input: ScriptInput, onChange: (Double) -> Unit) {
         ) {
             Text(input.name, style = MaterialTheme.typography.bodyMedium)
             when (input.kind) {
-                ScriptInputKind.BOOL -> Switch(checked = input.value != 0.0, onCheckedChange = { onChange(if (it) 1.0 else 0.0) })
+                ScriptInputKind.BOOL -> CoineProSwitch(checked = input.value != 0.0, onCheckedChange = { onChange(if (it) 1.0 else 0.0) })
                 ScriptInputKind.TEXT, ScriptInputKind.SOURCE, ScriptInputKind.TIMEFRAME, ScriptInputKind.COLOUR -> Unit
                 else -> Text(
                     MarketNumberFormatter.priceAuto(input.value),
@@ -1214,7 +1214,7 @@ private fun InputRow(input: ScriptInput, onChange: (Double) -> Unit) {
 @Composable
 private fun ChoiceChips(options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
     LtrDirection {
-        LazyRow(
+        CoineProLazyRow(
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
             modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.Half),
         ) {
@@ -1242,7 +1242,7 @@ private fun ChoiceChips(options: List<String>, selected: Int, onSelect: (Int) ->
 /** The named colours as swatches; the chosen one ringed in gold. */
 @Composable
 private fun ColourChips(selected: Long, onSelect: (Long) -> Unit) {
-    LazyRow(
+    CoineProLazyRow(
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
         modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.Half),
     ) {
@@ -1562,7 +1562,7 @@ private fun ReferenceTab(onInsert: (String) -> Unit) {
     ) {
         item { SectionTitle(stringResource(R.string.script_series), stringResource(R.string.script_series_caption)) }
         item {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
+            CoineProLazyRow(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
                 items(ScriptReference.SERIES) { function ->
                     Box(
                         modifier = Modifier
@@ -1616,7 +1616,7 @@ private fun ReferenceTab(onInsert: (String) -> Unit) {
             )
         }
         item {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
+            CoineProLazyRow(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
                 items(ScriptReference.COLOUR_NAMES) { name ->
                     Box(
                         modifier = Modifier
@@ -1788,7 +1788,7 @@ private fun MinePanel(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(stringResource(R.string.script_pane_label), style = MaterialTheme.typography.bodyMedium)
-                Switch(checked = state.ownPane, onCheckedChange = onOwnPane)
+                CoineProSwitch(checked = state.ownPane, onCheckedChange = onOwnPane)
             }
 
             SectionTitle(

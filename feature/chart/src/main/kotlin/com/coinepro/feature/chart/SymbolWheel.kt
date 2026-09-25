@@ -34,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -420,8 +421,14 @@ internal fun SymbolScrollWheel(
      */
     onDragging: (Boolean) -> Unit = {},
     onTravel: (Float) -> Unit = {},
+    /**
+     * A plain tap on the cell: TradingView opens symbol search from its ticker, and the drag is the
+     * extra, not a replacement (MOBILE-05). Null leaves a tap doing nothing, as it did.
+     */
+    onClick: (() -> Unit)? = null,
 ) {
     val ring = remember(symbols, current) { symbolNeighbours(symbols, current) }
+    val tap = rememberUpdatedState(onClick)
     // **The name first, the turning second** (run Τ2, the owner's empty box).
     //
     // This used to return on a ring with no neighbours, and the two ways that showed up on a phone
@@ -567,14 +574,18 @@ internal fun SymbolScrollWheel(
                     // Non-null means the finger lifted, or something else claimed the pointer,
                     // inside the threshold — a tap or the beginning of a drag, neither of which is
                     // a hold. Null is the timeout, which is the hold.
+                    var lifted = false
                     val settled = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
-                        waitForUpOrCancellation()
+                        // Null when the drag consumed the pointer: that was a turn, not a tap.
+                        lifted = waitForUpOrCancellation() != null
                         true
                     }
                     if (settled == null) {
                         held = true
                         waitForUpOrCancellation()
                         held = false
+                    } else if (lifted && !dragging) {
+                        tap.value?.invoke()
                     }
                 }
             }
@@ -734,13 +745,17 @@ private fun WheelCurrent(symbol: String) {
     }
 }
 
-/** One ticker in the toolbar's wheel: 16 sp bold, Latin, one line, cut at the cell's edge. */
+/**
+ * One ticker in the toolbar's wheel: 16 sp bold, Latin, one line, cut at the cell's edge. Said
+ * outright rather than taken from `titleMedium`, which is 18 and made the ticker the loudest thing
+ * on the phone (MOBILE-12).
+ */
 @Composable
 private fun WheelTicker(symbol: String, colour: androidx.compose.ui.graphics.Color) {
     LtrDirection {
         Text(
             text = BidiText.isolateLtr(symbol),
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleMedium.copy(fontSize = TICKER_TEXT, lineHeight = TICKER_LINE),
             fontWeight = FontWeight.Bold,
             color = colour,
             maxLines = 1,
@@ -934,6 +949,13 @@ private val WHEEL_CARET_GAP = 1.dp
 /** Eighty points, which is where the phone app cuts `IMXUSDT` to `IMXUSD` before the interval. */
 private val WHEEL_SCROLL_WIDTH = 80.dp
 
-/** As wide as the cell may grow for a long ticker. Eight characters of 16 sp bold Latin. */
-private val WHEEL_SCROLL_WIDTH_MAX = 104.dp
+/**
+ * As wide as the cell may grow for a long ticker: eight characters of 16 sp bold Latin, and the
+ * most the phone bar can give it and still fit 412 points (MOBILE-04).
+ */
+private val WHEEL_SCROLL_WIDTH_MAX = 88.dp
+
+/** The toolbar ticker's type: TradingView's phone chip is 14–15, its app bar 16. */
+private val TICKER_TEXT = 16.sp
+private val TICKER_LINE = 22.sp
 

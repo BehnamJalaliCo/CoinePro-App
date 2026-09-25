@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.19.0
+
+**fa**
+
+> ظاهر تازه در سطح تریدینگ‌ویو: دکمه‌ها و تراشه‌های پاستیلی، پنجره‌های بی‌لبه‌بری، ردیف‌های افقی که با ماوس کشیده می‌شوند، چارت بلندتر، نوار ابزار و لبه‌های دقیق‌تر، فیلتر بازار تمام‌عرض، جست‌وجوی نماد در پنجره، و نام‌های انگلیسی کامل در حالت انگلیسی.
+
+**en**
+
+> A TradingView-level refresh: pastel chips and keys, sheets with proper margins, rows a mouse can drag, a taller chart, cleaner toolbars and rails, a full-width screener, symbol search in a dialog, and fully English names in English.
+
+---
+
 ## 5.18.1
 
 **fa**

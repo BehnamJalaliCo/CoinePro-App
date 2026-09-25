@@ -533,7 +533,7 @@
     <string name="chart_hub_tools">Tools</string>
     <string name="chart_hub_terminal">Terminal</string>
     <string name="chart_quote_scale">Price scale</string>
-    <string name="chart_interval_heading">Timeframe</string>
+    <string name="chart_interval_range_heading">Date range</string>
     <string name="chart_interval_seconds">Seconds</string>
     <string name="chart_interval_seconds_note">Bars under a minute come from the venue\'s own recent trades and keep building from the live stream while the chart is open.</string>
     <string name="chart_hub_more">More</string>
@@ -872,4 +872,10 @@
     <string name="live_amend_text">From %1$s to %2$s. LBank has no amend, so the order is cancelled and placed again at the new price.</string>
     <string name="live_amend_confirm">Move</string>
     <string name="live_amend_keep">Keep</string>
+    <string name="chart_dialog_defaults">Defaults</string>
+    <string name="chart_dialog_cancel">Cancel</string>
+    <string name="chart_dialog_ok">OK</string>
+    <string name="chart_dialog_template">Template</string>
+    <string name="chart_toolbar_auto">Auto (fits data to screen)</string>
+    <string name="chart_rail_lock_all">Lock all drawings</string>
 </resources>

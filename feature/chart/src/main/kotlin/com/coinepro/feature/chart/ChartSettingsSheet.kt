@@ -8,13 +8,24 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import com.coinepro.core.designsystem.CoineProPillShape
+import com.coinepro.core.designsystem.CoineProShapes
+import com.coinepro.core.designsystem.CoineProSwitch
+import com.coinepro.core.designsystem.coineProHorizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -63,94 +74,94 @@ fun ChartSettingsBody(
     onTab: (ChartSettingsTab) -> Unit,
     appearance: ChartAppearance,
     onChange: (ChartAppearance) -> Unit,
-    /** The scale settings this chart already had. */
+    /** The scale settings this chart already had — drawn *without* a scroll of their own. */
     scales: @Composable () -> Unit,
     /** The colour templates, where there is a store to keep them in. */
     colours: (@Composable () -> Unit)? = null,
     /** The event kinds, where the build draws events. */
     events: (@Composable () -> Unit)? = null,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .testTag(CHART_SETTINGS_TAG),
-        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
-    ) {
-        CoineProChipRow(
-            options = ChartSettingsTab.entries.map { CoineProChip(id = it.name, label = stringResource(it.labelRes)) },
-            selectedId = tab.name,
-            onSelect = { id -> ChartSettingsTab.entries.firstOrNull { it.name == id }?.let(onTab) },
-            compact = true,
-        )
-        HorizontalDivider(color = CoineProColors.Border)
-        when (tab) {
-            ChartSettingsTab.SYMBOL -> {
-                Toggle(R.string.chart_settings_prev_close, appearance.colourOnPreviousClose) {
-                    onChange(appearance.copy(colourOnPreviousClose = it))
+    // The tabs stay put and the tab's body scrolls under them, TradingView's arrangement. The body is
+    // the only scroll here: a section handed in that scrolled itself inside it is what took the
+    // whole dialog down on «Scales» (DIALOGS-02) — see `PriceScaleSheetBody`'s `scrolls`.
+    Column(modifier = Modifier.fillMaxWidth().testTag(CHART_SETTINGS_TAG)) {
+        SettingsTabs(selected = tab, onTab = onTab)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState())
+                .padding(top = CoineProSpacing.OneHalf),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        ) {
+            when (tab) {
+                ChartSettingsTab.SYMBOL -> {
+                    Toggle(R.string.chart_settings_prev_close, appearance.colourOnPreviousClose) {
+                        onChange(appearance.copy(colourOnPreviousClose = it))
+                    }
+                    Toggle(R.string.chart_settings_bodies, appearance.bodies) { onChange(appearance.copy(bodies = it)) }
+                    Toggle(R.string.chart_settings_wicks, appearance.wicks) { onChange(appearance.copy(wicks = it)) }
+                    Toggle(R.string.chart_settings_volume, appearance.volume) { onChange(appearance.copy(volume = it)) }
                 }
-                Toggle(R.string.chart_settings_bodies, appearance.bodies) { onChange(appearance.copy(bodies = it)) }
-                Toggle(R.string.chart_settings_wicks, appearance.wicks) { onChange(appearance.copy(wicks = it)) }
-                Toggle(R.string.chart_settings_volume, appearance.volume) { onChange(appearance.copy(volume = it)) }
+                ChartSettingsTab.STATUS_LINE -> {
+                    Toggle(R.string.chart_settings_logo, appearance.legendLogo) { onChange(appearance.copy(legendLogo = it)) }
+                    Toggle(R.string.chart_settings_ohlc, appearance.legendOhlc) { onChange(appearance.copy(legendOhlc = it)) }
+                    Toggle(R.string.chart_settings_change, appearance.legendChange) { onChange(appearance.copy(legendChange = it)) }
+                    Toggle(R.string.chart_settings_indicators, appearance.legendIndicators) {
+                        onChange(appearance.copy(legendIndicators = it))
+                    }
+                }
+                ChartSettingsTab.SCALES -> {
+                    Toggle(R.string.chart_settings_last_price, appearance.lastPriceLine) {
+                        onChange(appearance.copy(lastPriceLine = it))
+                    }
+                    Toggle(R.string.chart_settings_countdown, appearance.countdown) { onChange(appearance.copy(countdown = it)) }
+                    Toggle(R.string.chart_settings_prev_line, appearance.previousCloseLine) {
+                        onChange(appearance.copy(previousCloseLine = it))
+                    }
+                    Toggle(R.string.chart_settings_scale_unit, appearance.scaleUnit) {
+                        onChange(appearance.copy(scaleUnit = it))
+                    }
+                    HorizontalDivider(color = CoineProColors.BorderSubtle)
+                    scales()
+                }
+                ChartSettingsTab.CANVAS -> {
+                    Toggle(R.string.chart_settings_grid_vertical, appearance.gridVertical) {
+                        onChange(appearance.copy(gridVertical = it))
+                    }
+                    Toggle(R.string.chart_settings_grid_horizontal, appearance.gridHorizontal) {
+                        onChange(appearance.copy(gridHorizontal = it))
+                    }
+                    Toggle(R.string.chart_settings_watermark, appearance.watermark) { onChange(appearance.copy(watermark = it)) }
+                    Toggle(R.string.chart_settings_crosshair_magnet, appearance.crosshairMagnet) {
+                        onChange(appearance.copy(crosshairMagnet = it))
+                    }
+                    HorizontalDivider(color = CoineProColors.BorderSubtle)
+                    MarginRow(R.string.chart_settings_margin_top, appearance.topMarginPercent, TOP_MARGINS) {
+                        onChange(appearance.copy(topMarginPercent = it))
+                    }
+                    MarginRow(R.string.chart_settings_margin_bottom, appearance.bottomMarginPercent, BOTTOM_MARGINS) {
+                        onChange(appearance.copy(bottomMarginPercent = it))
+                    }
+                    colours?.let {
+                        HorizontalDivider(color = CoineProColors.BorderSubtle)
+                        it()
+                    }
+                }
+                ChartSettingsTab.TRADING -> {
+                    Toggle(R.string.chart_settings_trade_ring, appearance.tradeRing) { onChange(appearance.copy(tradeRing = it)) }
+                    Toggle(R.string.chart_settings_quote_chip, appearance.quoteChip) { onChange(appearance.copy(quoteChip = it)) }
+                }
+                ChartSettingsTab.EVENTS -> events?.invoke() ?: Text(
+                    text = stringResource(R.string.chart_settings_no_events),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = CoineProColors.TextMuted,
+                )
             }
-            ChartSettingsTab.STATUS_LINE -> {
-                Toggle(R.string.chart_settings_logo, appearance.legendLogo) { onChange(appearance.copy(legendLogo = it)) }
-                Toggle(R.string.chart_settings_ohlc, appearance.legendOhlc) { onChange(appearance.copy(legendOhlc = it)) }
-                Toggle(R.string.chart_settings_change, appearance.legendChange) { onChange(appearance.copy(legendChange = it)) }
-                Toggle(R.string.chart_settings_indicators, appearance.legendIndicators) {
-                    onChange(appearance.copy(legendIndicators = it))
-                }
-            }
-            ChartSettingsTab.SCALES -> {
-                Toggle(R.string.chart_settings_last_price, appearance.lastPriceLine) {
-                    onChange(appearance.copy(lastPriceLine = it))
-                }
-                Toggle(R.string.chart_settings_countdown, appearance.countdown) { onChange(appearance.copy(countdown = it)) }
-                Toggle(R.string.chart_settings_prev_line, appearance.previousCloseLine) {
-                    onChange(appearance.copy(previousCloseLine = it))
-                }
-                Toggle(R.string.chart_settings_scale_unit, appearance.scaleUnit) {
-                    onChange(appearance.copy(scaleUnit = it))
-                }
-                HorizontalDivider(color = CoineProColors.Border)
-                scales()
-            }
-            ChartSettingsTab.CANVAS -> {
-                Toggle(R.string.chart_settings_grid_vertical, appearance.gridVertical) {
-                    onChange(appearance.copy(gridVertical = it))
-                }
-                Toggle(R.string.chart_settings_grid_horizontal, appearance.gridHorizontal) {
-                    onChange(appearance.copy(gridHorizontal = it))
-                }
-                Toggle(R.string.chart_settings_watermark, appearance.watermark) { onChange(appearance.copy(watermark = it)) }
-                Toggle(R.string.chart_settings_crosshair_magnet, appearance.crosshairMagnet) {
-                    onChange(appearance.copy(crosshairMagnet = it))
-                }
-                HorizontalDivider(color = CoineProColors.Border)
-                MarginRow(R.string.chart_settings_margin_top, appearance.topMarginPercent, TOP_MARGINS) {
-                    onChange(appearance.copy(topMarginPercent = it))
-                }
-                MarginRow(R.string.chart_settings_margin_bottom, appearance.bottomMarginPercent, BOTTOM_MARGINS) {
-                    onChange(appearance.copy(bottomMarginPercent = it))
-                }
-                colours?.let {
-                    HorizontalDivider(color = CoineProColors.Border)
-                    it()
-                }
-            }
-            ChartSettingsTab.TRADING -> {
-                Toggle(R.string.chart_settings_trade_ring, appearance.tradeRing) { onChange(appearance.copy(tradeRing = it)) }
-                Toggle(R.string.chart_settings_quote_chip, appearance.quoteChip) { onChange(appearance.copy(quoteChip = it)) }
-            }
-            ChartSettingsTab.EVENTS -> events?.invoke() ?: Text(
-                text = stringResource(R.string.chart_settings_no_events),
-                style = MaterialTheme.typography.bodySmall,
-                color = CoineProColors.TextMuted,
-            )
         }
-        HorizontalDivider(color = CoineProColors.Border)
-        // TradingView's footer «Reset settings», for this dialog's own switches. The scale and
-        // colour sections keep their own state and are not touched by it.
+        HorizontalDivider(color = CoineProColors.BorderSubtle, modifier = Modifier.padding(top = CoineProSpacing.One))
+        // TradingView's footer «Reset settings», for this dialog's own switches, pinned under the
+        // scroll. The scale and colour sections keep their own state and are not touched by it.
         Text(
             text = stringResource(R.string.chart_settings_reset),
             style = MaterialTheme.typography.labelLarge,
@@ -158,8 +169,56 @@ fun ChartSettingsBody(
             modifier = Modifier
                 .heightIn(min = 44.dp)
                 .clickable(enabled = appearance != ChartAppearance()) { onChange(ChartAppearance()) }
-                .padding(vertical = CoineProSpacing.One),
+                .padding(vertical = CoineProSpacing.OneHalf),
         )
+    }
+}
+
+/**
+ * The six tabs as TradingView draws its dialog tabs: words at 14 sp, the chosen one in the primary
+ * ink with a 2 dp bar under it, a hairline under the row (DIALOGS-15). The row slides sideways on a
+ * phone, where six Persian names do not fit, and by mouse drag as well as by finger.
+ */
+@Composable
+private fun SettingsTabs(selected: ChartSettingsTab, onTab: (ChartSettingsTab) -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .coineProHorizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        ) {
+            ChartSettingsTab.entries.forEach { entry ->
+                val on = entry == selected
+                val label = stringResource(entry.labelRes)
+                Column(
+                    modifier = Modifier
+                        // As wide as the word, so the bar under it is too.
+                        .width(IntrinsicSize.Max)
+                        .clip(CoineProShapes.extraSmall)
+                        .clickable { onTab(entry) }
+                        .semantics { contentDescription = "settings-tab-${entry.name}" }
+                        .padding(horizontal = CoineProSpacing.One),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (on) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
+                        maxLines = 1,
+                        modifier = Modifier.padding(vertical = CoineProSpacing.OneHalf),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .height(TAB_BAR)
+                            .fillMaxWidth()
+                            .background(if (on) CoineProColors.pageAccentInk else Color.Transparent, CoineProPillShape),
+                    )
+                }
+            }
+        }
+        HorizontalDivider(color = CoineProColors.BorderSubtle)
     }
 }
 
@@ -173,23 +232,16 @@ private fun Toggle(@StringRes labelRes: Int, checked: Boolean, onChange: (Boolea
     ) {
         Text(
             text = stringResource(labelRes),
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.bodyMedium,
             color = CoineProColors.TextPrimary,
             modifier = Modifier.weight(1f),
         )
-        Switch(
-            checked = checked,
-            onCheckedChange = onChange,
-            modifier = Modifier.widthIn(min = 52.dp),
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = CoineProColors.OnAccent,
-                checkedTrackColor = CoineProColors.AccentFill,
-                uncheckedThumbColor = CoineProColors.TextMuted,
-                uncheckedTrackColor = CoineProColors.SurfaceElevated,
-            ),
-        )
+        CoineProSwitch(checked = checked, onCheckedChange = onChange)
     }
 }
+
+/** The chosen tab's bar. */
+private val TAB_BAR = 2.dp
 
 /**
  * A margin as TradingView's Canvas tab sets it, in percent of the plot. Latin figures: a percentage

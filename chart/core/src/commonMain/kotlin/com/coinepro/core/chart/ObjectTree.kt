@@ -154,7 +154,7 @@ object ObjectTree {
      * Text wins over geometry when a drawing has text, because a note the reader typed is a better
      * name than the note's coordinates — that is the whole reason they typed it.
      */
-    private fun detailOf(drawing: Drawing): String? {
+    fun detailOf(drawing: Drawing): String? {
         val text = drawing.text?.trim().orEmpty()
         if (text.isNotEmpty()) return truncate(text)
         val points = drawing.points
@@ -233,10 +233,10 @@ object ObjectTree {
     private const val ELLIPSIS = "…"
 
     /** Between the two ends of a two-ended tool. An en dash, not a hyphen. */
-    private const val RANGE_DASH = "–"
+    private const val RANGE_DASH = "−"
 
     /** What a non-finite price prints as, rather than «NaN» in the middle of a Persian list. */
-    private const val NO_PRICE = "—"
+    private const val NO_PRICE = "−"
 
     /** Past this much between two anchors, a label is a date rather than a clock. */
     private const val MULTI_DAY_SECONDS = 60L * 60 * 24 * 3

@@ -14,6 +14,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,6 +33,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import com.coinepro.core.designsystem.CoineProShapes
+import com.coinepro.core.designsystem.CoineProSpacing
+import com.coinepro.feature.search.R as SearchR
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -623,7 +638,7 @@ private val MENU_ROUTE = AppDestination.MENU.route
  * is one watchlist rather than two kept alike by hand.
  */
 /** The reader's own list, which is also the bar's first position. See [MENU_ROUTE]. */
-private val WATCHLIST_ROUTE = AppDestination.WATCHLIST.route
+internal val WATCHLIST_ROUTE = AppDestination.WATCHLIST.route
 private const val SCRIPT_PATTERN = "script/{symbol}"
 private const val STUDIO_PATTERN = "chart/{symbol}/studio"
 
@@ -868,8 +883,14 @@ private fun orderBookPlatformFor(
 internal fun showsTopBar(route: String?, isSubScreen: Boolean): Boolean =
     (isSubScreen || route != HOME_ROUTE) && route !in BARELESS
 
-/** The routes that draw no app bar at all. See [showsTopBar]. */
-internal val BARELESS: Set<String> = setOf(CHART_PATTERN)
+/**
+ * The routes that draw no app bar at all. See [showsTopBar].
+ *
+ * **The watchlist tab** (MOBILE-09): a root, so the bar had no arrow; self-titled, so it had no
+ * title — sixty-four points of stage holding one avatar, above a page that then said «دیده‌بان»
+ * again. The avatar moves into the page's own heading instead.
+ */
+internal val BARELESS: Set<String> = setOf(CHART_PATTERN, WATCHLIST_ROUTE)
 
 /**
  * Routes whose screen carries its own heading.
@@ -1603,6 +1624,8 @@ fun CoineProApp(
                 membershipController = membershipController,
                 marketState = marketState,
                 marketSearchController = marketSearchController,
+                companionSearchController = MarketPlatform.entries.firstOrNull { it != activePlatform }
+                    ?.let(marketSearchControllers::get),
                 screenerController = screenerController,
                 candleGateway = candleGateways.getValue(activePlatform),
                 orderBookGateways = orderBookGateways,
@@ -1841,6 +1864,9 @@ fun CoineProApp(
                         // their markets list reads the catalogue below.
                         marketState = MarketDataState(),
                         marketSearchController = guestSearch,
+                        // The public crypto feed prices only crypto. The forex backend's snapshot
+                        // answers without a session, so a guest's gold and majors get a price too.
+                        companionSearchController = marketSearchControllers[MarketPlatform.COINEPRO_FX],
                         screenerController = guestScreener,
                         candleGateway = guestCandles,
                         // The signed-in gateway, because there is no guest depth route to build one
@@ -2106,6 +2132,12 @@ private fun MainShell(
     membershipController: MembershipController,
     marketState: MarketDataState,
     marketSearchController: MarketSearchController,
+    /**
+     * The other platform's catalogue, which prices the watchlist rows this one does not quote
+     * (LISTS-08) — gold and EUR/USD on the crypto feed, Bitcoin on the forex one. Null draws the
+     * lists from [marketSearchController] alone, as before.
+     */
+    companionSearchController: MarketSearchController? = null,
     /** The screener for the platform on screen. Its saved screens are shared across both. */
     screenerController: ScreenerController,
     /** The candle source for the platform on screen. See the chart route below. */
@@ -2765,6 +2797,81 @@ private fun MainShell(
      */
     val canGoBack = currentRoute != null && AppDestination.entries.none { it.route == currentRoute }
 
+    // The reader's face, which opens their page. In the app bar on most roots, and in the page's
+    // own heading where the shell draws no bar (MOBILE-09).
+    //
+    // The letter falls back to the menu card's own name — «مهمان» / "Guest" — so the two faces of
+    // one reader agree (MOBILE-23): the bar said «?» while the menu said «م».
+    val avatarInitial = (profile.displayName ?: accountName)?.trim()?.takeIf(String::isNotEmpty)?.take(1)
+        ?: stringResource(if (guest) MenuR.string.menu_guest_name else MenuR.string.menu_member_name).take(1)
+    // The symbol search, as a page on a phone and as a dialog over the chart on a desktop
+    // (DIALOGS-04). One body, so the two cannot drift.
+    val symbolSearchBody: @Composable (onOpen: (String) -> Unit, dialogTitle: String?, onClose: (() -> Unit)?) -> Unit =
+        { onOpen, dialogTitle, onClose ->
+                SearchScreen(
+                    watchlist = watchlist,
+                    onToggleWatch = onToggleWatchAnnounced,
+                    controller = marketSearchController,
+                    onOpenSymbol = onOpen,
+                    dialogTitle = dialogTitle,
+                    onClose = onClose,
+                    // What this reader can actually reach, so a section is never an invitation to
+                    // a wall. `absent` is the deployment's own answer rather than a guess: a
+                    // server that reports no chart vision has no vision screen to name, and a
+                    // terminal with no configured URL is a WebView pointed at nothing.
+                    access = SurfaceAccess(
+                        platform = activePlatform,
+                        signedIn = !guest,
+                        absent = buildSet {
+                            if (!chartVisionAvailable) add("ai-vision")
+                            if (!assistantAvailable) add("ai-assistant")
+                            if (!aiSignalsAvailable) add("ai")
+                            if (!terminalController.isConfigured) add("terminal")
+                            // The connections screen is a broker or an exchange login, and on a
+                            // platform this build offers no way to trade on there is neither (F5).
+                            //
+                            // Copy trading goes with it (run Τ2, B3). It mirrors verified signals
+                            // onto a MetaTrader account, so a build with no way to open one has
+                            // nothing to mirror onto — and the row was surviving the flag because
+                            // it is already keyed to the forex platform, which is a *different*
+                            // question from whether this build trades there at all.
+                            if (!tradingOffered(activePlatform)) {
+                                add("connections")
+                                add("copy-trade")
+                            }
+                        },
+                    ),
+                    onOpenSurface = { id ->
+                        navController.navigate(surfaceRoute(id, activePlatform, watchlist))
+                    },
+                    onSignIn = onSignIn,
+                    // Read, never requested: the preview draws whatever line the markets tab has
+                    // already fetched for a symbol and asks for nothing of its own.
+                    sparklines = sparklineStore,
+                    previewCandles = previewCandles,
+                    onMilestoneAlert = onMilestoneAlertArmed,
+                    onCreateAlert = { symbol, price -> alertFromChart = symbol to price },
+                    recentSearches = recentSearchStore,
+                )
+        }
+    // On a desktop the search opens over the chart, not instead of it (DIALOGS-04): the reference's
+    // «Symbol search» is a centred dialog that Esc closes, and the page it replaced put a row's price
+    // fourteen hundred points from its ticker. The phone keeps its page.
+    var symbolSearchOpen by rememberSaveable { mutableStateOf(false) }
+    val openSymbolSearch: () -> Unit = {
+        if (window.showsTwoPanes) symbolSearchOpen = true else navController.navigate(MARKET_SEARCH_ROUTE)
+    }
+    val accountAvatar: @Composable () -> Unit = {
+        IconButton(onClick = { navController.navigate(PROFILE_ROUTE) }) {
+            CoineProAvatar(
+                spec = profile.avatar,
+                initial = avatarInitial,
+                size = 30.dp,
+                contentDescription = stringResource(R.string.screen_profile),
+            )
+        }
+    }
+
     LaunchedEffect(launchSignalId) {
         launchSignalId?.let { signalId ->
             navController.navigate(signalDetailRoute(signalId)) { launchSingleTop = true }
@@ -2959,6 +3066,43 @@ private fun MainShell(
         }
     }
 
+    if (symbolSearchOpen) {
+        Dialog(
+            onDismissRequest = { symbolSearchOpen = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Surface(
+                modifier = Modifier
+                    .padding(CoineProSpacing.Two)
+                    .widthIn(max = SYMBOL_SEARCH_WIDTH)
+                    .heightIn(max = SYMBOL_SEARCH_HEIGHT)
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    // Esc closes it, wherever the focus is inside (the field has it on open).
+                    .onPreviewKeyEvent { event ->
+                        if (event.type == KeyEventType.KeyDown && event.key == Key.Escape) {
+                            symbolSearchOpen = false
+                            true
+                        } else {
+                            false
+                        }
+                    },
+                shape = CoineProShapes.large,
+                color = CoineProColors.Surface,
+                border = BorderStroke(1.dp, CoineProColors.Border),
+            ) {
+                symbolSearchBody(
+                    { symbol ->
+                        symbolSearchOpen = false
+                        navController.navigate(chartRoute(symbol))
+                    },
+                    stringResource(SearchR.string.search_symbol_dialog),
+                    { symbolSearchOpen = false },
+                )
+            }
+        }
+    }
+
     Scaffold(
         containerColor = CoineProColors.Stage,
         topBar = {
@@ -3025,16 +3169,7 @@ private fun MainShell(
                         // obvious thing instead: a picture of the reader opens the reader's own
                         // page. Not drawn on the menu itself, where the same face is the first
                         // thing on the page under it.
-                        if (!isSubScreen && currentRoute != MENU_ROUTE) {
-                            IconButton(onClick = { navController.navigate(PROFILE_ROUTE) }) {
-                                CoineProAvatar(
-                                    spec = profile.avatar,
-                                    initial = (profile.displayName ?: accountName)?.take(1) ?: "",
-                                    size = 30.dp,
-                                    contentDescription = stringResource(R.string.screen_profile),
-                                )
-                            }
-                        }
+                        if (!isSubScreen && currentRoute != MENU_ROUTE) accountAvatar()
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = CoineProColors.Stage,
@@ -3388,6 +3523,10 @@ private fun MainShell(
                         store = watchlistStore,
                         sparklines = sparklineStore,
                         onOpenSymbol = { symbol -> navController.navigate(chartRoute(symbol)) },
+                        // The panel's list picker names the list; a page title above it was the
+                        // second of three «دیده‌بان» in a row (LISTS-06).
+                        showTitle = false,
+                        companion = companionSearchController,
                         watchlistSync = watchlistSyncController,
                         onCompare = { symbols -> navController.navigate(compareRoute(symbols)) },
                         // The prices on these rows are the market feed's, so the age is the feed's
@@ -3430,7 +3569,7 @@ private fun MainShell(
                     )
                 },
                 ChartSidePanel("alerts", ChartR.string.chart_panel_alerts, DesignR.drawable.icon_bell) {
-                    AlertCenterScreen(controller = alertsController, initialSymbol = activeChartSymbol)
+                    AlertCenterScreen(controller = alertsController, initialSymbol = activeChartSymbol, showTitle = false)
                 },
                 ChartSidePanel("script", ChartR.string.chart_panel_script, DesignR.drawable.tv_code2) {
                     ScriptScreen(
@@ -3620,7 +3759,7 @@ private fun MainShell(
                     scriptController.openText(name = name, source = source)
                     navController.navigate(scriptRoute(activeChartSymbol))
                 },
-                onOpenSymbolSearch = { navController.navigate(MARKET_SEARCH_ROUTE) },
+                onOpenSymbolSearch = openSymbolSearch,
                 position = openPosition,
                 // Trading on the chart (5.17.0): working orders drawn, and a drag edits the book.
                 workingOrders = paperBook.book.working.filter { it.symbol.equals(activeChartSymbol, ignoreCase = true) },
@@ -3966,7 +4105,7 @@ private fun MainShell(
                     // The market card's own destination is the market list, not the signals
                     // feed. They were the same route while the app knew eight markets and there
                     // was no list worth opening.
-                    onOpenMarket = { navController.navigate(MARKET_SEARCH_ROUTE) },
+                    onOpenMarket = openSymbolSearch,
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
                     // Home carries no top bar, so the avatar is the way into the account — and it
                     // now opens the profile page rather than a four-item dropdown.
@@ -4578,7 +4717,7 @@ private fun MainShell(
                     onOpenSymbol = { symbol ->
                         if (twoPane) pairedSymbol = symbol else navController.navigate(chartRoute(symbol))
                     },
-                    onOpenSearch = { navController.navigate(MARKET_SEARCH_ROUTE) },
+                    onOpenSearch = openSymbolSearch,
                     // **The day's headlines, above the list** (run ΤΦΥ, U4). Mapped to the plain
                     // four fields the ticker takes rather than handed the newsroom's own model, so
                     // the markets surface still owes nothing to `feature:news` — see
@@ -4600,6 +4739,7 @@ private fun MainShell(
                     onOpenNews = { navController.navigate(NEWS_ROUTE) },
                     onOpenCalendar = { navController.navigate(CALENDAR_ROUTE) },
                     onOpenHeatmap = { navController.navigate(HEATMAP_ROUTE) },
+                    companion = companionSearchController,
                     // «تحلیل» on the watchlist tab: the reader's list, side by side (run ΤΦΥ, U6).
                     onCompare = { symbols -> navController.navigate(compareRoute(symbols)) },
                     // The same hoisted composer the chart uses, at the price the preview showed —
@@ -4633,49 +4773,7 @@ private fun MainShell(
                 }
             }
             composable(MARKET_SEARCH_ROUTE) {
-                SearchScreen(
-                    watchlist = watchlist,
-                    onToggleWatch = onToggleWatchAnnounced,
-                    controller = marketSearchController,
-                    onOpenSymbol = { navController.navigate(chartRoute(it)) },
-                    // What this reader can actually reach, so a section is never an invitation to
-                    // a wall. `absent` is the deployment's own answer rather than a guess: a
-                    // server that reports no chart vision has no vision screen to name, and a
-                    // terminal with no configured URL is a WebView pointed at nothing.
-                    access = SurfaceAccess(
-                        platform = activePlatform,
-                        signedIn = !guest,
-                        absent = buildSet {
-                            if (!chartVisionAvailable) add("ai-vision")
-                            if (!assistantAvailable) add("ai-assistant")
-                            if (!aiSignalsAvailable) add("ai")
-                            if (!terminalController.isConfigured) add("terminal")
-                            // The connections screen is a broker or an exchange login, and on a
-                            // platform this build offers no way to trade on there is neither (F5).
-                            //
-                            // Copy trading goes with it (run Τ2, B3). It mirrors verified signals
-                            // onto a MetaTrader account, so a build with no way to open one has
-                            // nothing to mirror onto — and the row was surviving the flag because
-                            // it is already keyed to the forex platform, which is a *different*
-                            // question from whether this build trades there at all.
-                            if (!tradingOffered(activePlatform)) {
-                                add("connections")
-                                add("copy-trade")
-                            }
-                        },
-                    ),
-                    onOpenSurface = { id ->
-                        navController.navigate(surfaceRoute(id, activePlatform, watchlist))
-                    },
-                    onSignIn = onSignIn,
-                    // Read, never requested: the preview draws whatever line the markets tab has
-                    // already fetched for a symbol and asks for nothing of its own.
-                    sparklines = sparklineStore,
-                    previewCandles = previewCandles,
-                    onMilestoneAlert = onMilestoneAlertArmed,
-                    onCreateAlert = { symbol, price -> alertFromChart = symbol to price },
-                    recentSearches = recentSearchStore,
-                )
+                symbolSearchBody({ navController.navigate(chartRoute(it)) }, null, null)
             }
             sharedComposable(
                 route = CHART_PATTERN,
@@ -4899,7 +4997,7 @@ private fun MainShell(
                     onOpenNews = { navController.navigate(NEWS_ROUTE) },
                     onOpenCalendar = { navController.navigate(CALENDAR_ROUTE) },
                     onOpenHeatmap = { navController.navigate(HEATMAP_ROUTE) },
-                    onOpenSearch = { navController.navigate(MARKET_SEARCH_ROUTE) },
+                    onOpenSearch = openSymbolSearch,
                     onOpenMarkets = { navController.navigate(MARKETS_ROUTE) },
                 )
             }
@@ -4945,28 +5043,19 @@ private fun MainShell(
                 )
             }
             composable(SCREENER_ROUTE) {
-                var pairedSymbol by rememberSaveable { mutableStateOf<String?>(null) }
-                var pairedTimeframe by rememberSaveable { mutableStateOf<String?>(null) }
                 val screenerScope = rememberCoroutineScope()
-                CoineProListDetail(
-                    detail = pairedSymbol?.let { symbol -> { chartPane(symbol, pairedTimeframe) } },
-                ) { twoPane ->
+                // **The whole width, and no detail pane** (LISTS-02). In a list-detail split the
+                // table was a 360-point strip beside nine hundred points of «یک مورد را انتخاب
+                // کنید» — the reference's screener is a table across the page, and so is this one.
+                // A row opens the chart as a page; the back arrow returns to the same scroll and
+                // the same filters.
+                run {
                     ScreenerScreen(
                         controller = screenerController,
-                        // A screener is a list of instruments to look at, so the reader who has
-                        // just filtered forty of them down to three should be able to look at all
-                        // three without losing the filter that found them.
-                        onOpenSymbol = {
-                            if (twoPane) pairedSymbol = it else navController.navigate(chartRoute(it))
-                        },
+                        onOpenSymbol = { navController.navigate(chartRoute(it)) },
                         onOpenSetup = { symbol, studies, timeframe ->
                             pendingSetups[symbol] = studies
-                            if (twoPane) {
-                                pairedSymbol = symbol
-                                pairedTimeframe = timeframe.wire
-                            } else {
-                                navController.navigate(chartRoute(symbol, timeframe.wire))
-                            }
+                            navController.navigate(chartRoute(symbol, timeframe.wire))
                         },
                         // TradingView's «results to a watchlist» (5.16.1), into the default list.
                         onAddToWatchlist = { symbols ->
@@ -5056,6 +5145,14 @@ private fun MainShell(
                 PortfolioReportScreen(controller = portfolioController)
             }
             composable(MENU_ROUTE) {
+                // The count the watchlist's own header prints (LISTS-27): the list on screen there,
+                // not the starred set the socket follows. «دیده‌بان ۷» beside «۱۴ نماد» was two
+                // answers to one question.
+                val menuLists by remember(watchlistStore) { watchlistStore.lists() }
+                    .collectAsStateWithLifecycle(initialValue = emptyList())
+                val menuActiveList by remember(watchlistStore) { watchlistStore.activeListId() }
+                    .collectAsStateWithLifecycle(initialValue = Watchlist.DEFAULT_LIST_ID)
+                val activeListSize = menuLists.firstOrNull { it.id == menuActiveList }?.symbols?.size
                 MenuScreen(
                     // What this deployment actually offers. `absent` drops a row rather than
                     // locking it: a reader cannot sign their way into a chart-vision route the
@@ -5083,7 +5180,7 @@ private fun MainShell(
                     email = accountEmail,
                     planLabel = subscription?.planLabel,
                     platformLabel = stringResource(activePlatform.labelRes()),
-                    watchlistCount = watchlist.size,
+                    watchlistCount = activeListSize ?: watchlist.size,
                     onSignIn = onSignIn.takeIf { guest },
                     // The theme and the language at the top of the menu, one tap from anywhere.
                     // The sheet behind «ظاهر» on the profile page still exists and still carries
@@ -5118,7 +5215,10 @@ private fun MainShell(
                     store = watchlistStore,
                     sparklines = sparklineStore,
                     onOpenSymbol = { navController.navigate(chartRoute(it)) },
-                    onOpenSearch = { navController.navigate(MARKET_SEARCH_ROUTE) },
+                    onOpenSearch = openSymbolSearch,
+                    // The shell draws no bar over this tab (MOBILE-09); its avatar is here.
+                    headerAction = accountAvatar,
+                    companion = companionSearchController,
                     watchlistSync = watchlistSyncController,
                     // A price alert straight off a row, which is the second thing anybody wants
                     // from a market they are watching. The last quoted price is the seed: the
@@ -5583,3 +5683,7 @@ private fun placeLadderOrder(
         ),
     )
 }
+
+/** The desktop symbol search's box (DIALOGS-04): the reference's dialog is about 720 by 680. */
+private val SYMBOL_SEARCH_WIDTH = 720.dp
+private val SYMBOL_SEARCH_HEIGHT = 680.dp

@@ -22,8 +22,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
@@ -67,6 +65,7 @@ import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProSwitch
 import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProGoldRule
 import com.coinepro.core.designsystem.CoineProShapes
@@ -505,7 +504,7 @@ private fun ChartPane(
                 // `H1`, not «۱ ساعت» — run F's rule, which the multi-chart header had missed:
                 // the timeframe is a code everywhere the app names one, and prose only inside a
                 // sentence. Four charts side by side are four codes to compare at a glance.
-                text = state.interval.code,
+                text = state.interval.tvCode,
                 style = MaterialTheme.typography.labelSmall,
                 color = if (dense) CoineProColors.TextSecondary else CoineProColors.TextMuted,
                 fontWeight = FontWeight.Normal,
@@ -760,15 +759,9 @@ private fun PaneSyncRow(
                                 modifier = Modifier.padding(top = 4.dp),
                             )
                         }
-                        Switch(
+                        CoineProSwitch(
                             checked = sync.isOn(field),
                             onCheckedChange = { on -> onChange(field, on) },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = CoineProColors.OnAccent,
-                                checkedTrackColor = CoineProColors.AccentFill,
-                                uncheckedThumbColor = CoineProColors.TextMuted,
-                                uncheckedTrackColor = CoineProColors.SurfaceElevated,
-                            ),
                         )
                     }
                 }

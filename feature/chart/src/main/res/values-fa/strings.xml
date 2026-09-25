@@ -553,7 +553,7 @@
     <string name="chart_hub_tools">ابزارها</string>
     <string name="chart_hub_terminal">ترمینال</string>
     <string name="chart_quote_scale">مقیاس قیمت</string>
-    <string name="chart_interval_heading">تایم‌فریم</string>
+    <string name="chart_interval_range_heading">بازه‌ی نمایش</string>
     <string name="chart_interval_seconds">ثانیه</string>
     <string name="chart_interval_seconds_note">کندل زیر یک دقیقه از معامله‌های اخیر خود بازار ساخته می‌شود و تا وقتی چارت باز است با جریان زنده ادامه پیدا می‌کند.</string>
     <string name="chart_hub_more">بیشتر</string>
@@ -892,4 +892,10 @@
     <string name="live_amend_text">از %1$s به %2$s. LBank ویرایش ندارد؛ سفارش لغو و با قیمت تازه دوباره ثبت می‌شود.</string>
     <string name="live_amend_confirm">جابه‌جایی</string>
     <string name="live_amend_keep">نگه داشتن</string>
+    <string name="chart_dialog_defaults">پیش‌فرض‌ها</string>
+    <string name="chart_dialog_cancel">انصراف</string>
+    <string name="chart_dialog_ok">تأیید</string>
+    <string name="chart_dialog_template">قالب</string>
+    <string name="chart_toolbar_auto">خودکار (بازه‌ی قیمت به اندازه‌ی چارت)</string>
+    <string name="chart_rail_lock_all">قفل همه‌ی ترسیم‌ها</string>
 </resources>

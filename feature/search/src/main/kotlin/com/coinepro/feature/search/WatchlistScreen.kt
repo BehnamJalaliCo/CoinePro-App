@@ -11,6 +11,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.runtime.remember
+import com.coinepro.core.designsystem.CONTENT_MAX_WIDTH
+import com.coinepro.core.marketdata.MarketSearchRow
+import com.coinepro.core.model.MarketQuote
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -107,13 +114,59 @@ fun WatchlistScreen(
      * shell hands in, and only while the origin is the cache: a live list must not be labelled.
      */
     savedAtMillis: Long? = null,
+    /**
+     * Whether the page draws its own «دیده‌بان» heading (LISTS-06).
+     *
+     * False inside the chart's side panel, where the list picker under it already names the list —
+     * three «دیده‌بان» in a row was the panel's first hundred and forty points.
+     */
+    showTitle: Boolean = true,
+    /**
+     * The trailing element of the heading — the reader's avatar on the watchlist tab (MOBILE-09),
+     * where the shell draws no app bar of its own over the page.
+     */
+    headerAction: (@Composable () -> Unit)? = null,
+    /**
+     * The other platform's catalogue, for the rows the active one does not quote (LISTS-08).
+     *
+     * A reader's list mixes gold and Bitcoin, and each backend quotes only its own half: a guest on
+     * the crypto feed saw XAUUSD, EURUSD and five more with nothing but dashes. The prices here fill
+     * only the rows the active catalogue left empty — they never replace one it quoted.
+     */
+    companion: MarketSearchController? = null,
 ) {
     LaunchedEffect(controller) { controller.start() }
+    LaunchedEffect(companion) {
+        val other = companion ?: return@LaunchedEffect
+        other.start()
+        // The companion has no socket behind it for this reader, so its snapshot is re-read on a
+        // slow clock while the list is on screen rather than frozen at the moment it opened.
+        while (true) {
+            kotlinx.coroutines.delay(COMPANION_REFRESH_MS)
+            other.refresh()
+        }
+    }
     val state by controller.state.collectAsStateWithLifecycle()
+    val companionState = companion?.state?.collectAsStateWithLifecycle()?.value
     val lines by sparklines.lines.collectAsStateWithLifecycle()
+    val catalogue = remember(state.results, companionState?.results, companionState?.catalogueQuotes) {
+        withCompanionQuotes(
+            state.results,
+            companionState?.results.orEmpty(),
+            companionState?.catalogueQuotes.orEmpty(),
+        )
+    }
 
-    Column(modifier = modifier.fillMaxSize().background(CoineProColors.Stage)) {
-        WatchlistHeader(onOpenSearch = onOpenSearch)
+    // Capped and centred on a wide window (MOBILE-17): four columns of figures across a thousand
+    // points of tablet left a five-hundred-point hole between the tickers and their prices.
+    Box(
+        modifier = modifier.fillMaxSize().background(CoineProColors.Stage),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+    Column(modifier = Modifier.widthIn(max = CONTENT_MAX_WIDTH).fillMaxSize()) {
+        if (showTitle) {
+            WatchlistHeader(onOpenSearch = onOpenSearch, action = headerAction)
+        }
         // How old the figures on these rows are. Under the header rather than over it, so the
         // page's own name is still the first thing read.
         CoineProSavedBar(age = rememberSavedAge(savedAtMillis))
@@ -143,7 +196,7 @@ fun WatchlistScreen(
             }
             else -> WatchlistPanel(
                 store = store,
-                catalogue = state.results,
+                catalogue = catalogue,
                 lines = lines,
                 onRequestLine = sparklines::request,
                 onOpenSymbol = onOpenSymbol,
@@ -154,7 +207,38 @@ fun WatchlistScreen(
             )
         }
     }
+    }
 }
+
+/**
+ * [primary]'s rows, with [companion]'s prices on the rows it left unquoted, and [companion]'s rows
+ * for the symbols it does not list at all (LISTS-08).
+ *
+ * The active catalogue always wins where it has a quote: the companion is only ever the answer to a
+ * dash. Pure, so the rule is a unit test and not a screenshot.
+ */
+internal fun withCompanionQuotes(
+    primary: List<MarketSearchRow>,
+    companion: List<MarketSearchRow>,
+    companionQuotes: Map<String, MarketQuote>,
+): List<MarketSearchRow> {
+    if (companion.isEmpty() && companionQuotes.isEmpty()) return primary
+    val filled = primary.map { row ->
+        if (row.quote != null) row else companionQuotes[row.meta.symbol.uppercase()]?.let { row.copy(quote = it) } ?: row
+    }
+    val listed = primary.mapTo(HashSet(primary.size)) { it.meta.symbol.uppercase() }
+    // Only rows the companion can actually price. A row it merely lists would bring a market onto
+    // this platform's list with nothing but dashes — the thing this exists to end.
+    return filled + companion.mapNotNull { row ->
+        val symbol = row.meta.symbol.uppercase()
+        if (symbol in listed) return@mapNotNull null
+        val quote = row.quote ?: companionQuotes[symbol] ?: return@mapNotNull null
+        row.copy(quote = quote)
+    }
+}
+
+/** How often the companion catalogue is re-read while the list is open. See [WatchlistScreen]. */
+private const val COMPANION_REFRESH_MS = 60_000L
 
 /**
  * The heading: the title on the reading edge, the search in the corner, and nothing between them.
@@ -175,7 +259,7 @@ fun WatchlistScreen(
  * one moment on a watchlist when a signature costs nothing — there is no list for it to be above.
  */
 @Composable
-private fun WatchlistHeader(onOpenSearch: (() -> Unit)?) {
+private fun WatchlistHeader(onOpenSearch: (() -> Unit)?, action: (@Composable () -> Unit)?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -217,6 +301,10 @@ private fun WatchlistHeader(onOpenSearch: (() -> Unit)?) {
                     modifier = Modifier.size(HEADER_GLYPH),
                 )
             }
+        }
+        action?.let {
+            Spacer(modifier = Modifier.width(CoineProSpacing.Two))
+            it()
         }
     }
 }

@@ -401,7 +401,7 @@ object IndicatorChain {
                 return refused(
                     ChainRefusal.CYCLE,
                     loop.distinct(),
-                    "زنجیره حلقه دارد: ${loop.joinToString(" ← ")}",
+                    "زنجیره حلقه دارد: ${loop.joinToString(" \u2066‹\u2069 ")}",
                 )
             }
             open += id

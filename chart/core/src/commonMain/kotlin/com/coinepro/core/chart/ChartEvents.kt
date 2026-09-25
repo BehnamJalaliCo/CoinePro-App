@@ -142,11 +142,15 @@ data class EventVisibility(val kinds: Set<EventKind>) {
  * needs the same radius, and two copies of one number is one copy that will be changed alone.
  */
 object EventGlyphs {
-    /** The glyph's full width and height. Small: it sits in the axis strip, not on the price. */
+    /** The glyph's full width and height. Small: it sits in a lane at the plot's foot, not on the price. */
     const val SIZE_DP: Float = 12f
 
-    /** The gap between the top of the time-axis strip and the glyph, so it does not touch a date. */
-    const val AXIS_GAP_DP: Float = 3f
+    /**
+     * The gap between the glyph and the top of the time axis. The lane is *above* the dates, inside
+     * the plot's bottom edge, where TradingView hangs its bolts — centred on the axis, the glyphs
+     * printed over the date labels and the crosshair's time tag.
+     */
+    const val AXIS_GAP_DP: Float = 4f
 
     /**
      * How far from a glyph's centre a touch still counts as hitting it.

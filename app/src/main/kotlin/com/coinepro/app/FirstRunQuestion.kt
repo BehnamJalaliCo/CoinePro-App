@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
+import com.coinepro.core.designsystem.CONTENT_MAX_WIDTH
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
@@ -72,12 +74,20 @@ fun FirstRunQuestion(
     onSkip: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    // Capped and centred on a tablet (MOBILE-11): three 990-point cards with the chevron 950 points
+    // from its words read as a form stretched to fit, not as three answers.
+    androidx.compose.foundation.layout.Box(
         modifier = modifier
             .fillMaxSize()
             .background(CoineProColors.Stage)
-            .padding(horizontal = CoineProSpacing.Gutter)
             .semantics { contentDescription = SEMANTIC_TAG },
+        contentAlignment = Alignment.Center,
+    ) {
+    Column(
+        modifier = Modifier
+            .widthIn(max = CONTENT_MAX_WIDTH)
+            .fillMaxWidth()
+            .padding(horizontal = CoineProSpacing.Gutter),
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
@@ -109,6 +119,7 @@ fun FirstRunQuestion(
                 .padding(vertical = CoineProSpacing.One, horizontal = CoineProSpacing.One)
                 .semantics { contentDescription = SKIP_TAG },
         )
+    }
     }
 }
 

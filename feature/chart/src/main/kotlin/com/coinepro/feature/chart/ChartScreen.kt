@@ -1,5 +1,12 @@
 package com.coinepro.feature.chart
 
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import com.coinepro.core.designsystem.pressScale
+import com.coinepro.core.designsystem.CoineProPress
+import com.coinepro.core.designsystem.CoineProLazyRow
+import com.coinepro.core.designsystem.coineProHorizontalScroll
 import androidx.compose.runtime.DisposableEffect
 import com.coinepro.core.designsystem.WindowTitle
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -20,7 +27,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -47,7 +53,6 @@ import androidx.compose.foundation.layout.absolutePadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.safeDrawing
@@ -65,8 +70,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -74,6 +77,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -81,6 +85,8 @@ import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.clip
@@ -99,7 +105,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -112,6 +117,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.geometry.Rect
 import com.coinepro.core.chart.IndicatorPane
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Dp
@@ -180,7 +186,6 @@ import com.coinepro.core.chartevents.ChartEventState
 import com.coinepro.core.chartevents.SERVED_EVENT_KINDS
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.designsystem.numeric
-import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.datastore.ChartColourTemplate
 import com.coinepro.core.datastore.ChartLayout
@@ -214,6 +219,10 @@ import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSheet
+import com.coinepro.core.designsystem.CoineProMenuItem
+import com.coinepro.core.designsystem.CoineProSheetDefaults
+import com.coinepro.core.designsystem.CoineProSwitch
+import com.coinepro.core.designsystem.CoineProNotedLabel
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.CoineProWindowSize
@@ -803,6 +812,10 @@ fun ChartScreen(
     var timeAxisMenu by remember { mutableStateOf<Offset?>(null) }
     // The legend row's «…» (5.17.0): which study's menu is open.
     var seriesMenu by remember { mutableStateOf<String?>(null) }
+    // Where that «…» sits, in window pixels, and where the canvas box starts — so the menu drops
+    // from the button rather than from a corner of the plot (DIALOGS-05).
+    var seriesMenuAt by remember { mutableStateOf<Offset?>(null) }
+    var canvasOrigin by remember { mutableStateOf(Offset.Zero) }
     // The data window (5.14.0): the crosshair's bar, or the newest, as a table over the plot. Saved,
     // because a reader who keeps it open keeps it open across a rotation.
     var dataWindowOpen by rememberSaveable { mutableStateOf(false) }
@@ -1129,7 +1142,7 @@ fun ChartScreen(
     val shareTitle = BidiText.isolateLtr(state.symbol)
     // The trader's own name for the bar length — `H1`, never «۱ ساعت»: this is a caption on a
     // control-like line, and the app reserves Persian numerals for prose.
-    val shareSubtitle = state.interval.code
+    val shareSubtitle = state.interval.tvCode
     val shareLast = state.lastPrice
     // The move across the loaded window, which is what the picture on the card shows — see
     // `ChartState.changePercent` for why it is named after the window rather than the session.
@@ -1226,6 +1239,13 @@ fun ChartScreen(
     // A lambda rather than two copies of the `when`: the loading, failure and drawing branches are
     // the part most likely to drift, and a fullscreen chart that had quietly stopped calling
     // `onLoadMore` would be a bug nobody found for months.
+    // A desktop-sized window: TradingView's desktop chrome, legend and bars. Decided from the window
+    // here because the canvas and the readings panel both need it before the page measures itself.
+    val deskWindow = coineProWindowClass().let { it.showsTwoPanes && it.heightDp >= DESKTOP_CHROME_MIN_HEIGHT_DP }
+    // `auto` on the desktop bar: whether the price scale is fitting the bars by itself, and a count
+    // that the bar bumps to put it back (CHART-16).
+    var priceAuto by remember { mutableStateOf(true) }
+    var priceAutoNudge by remember { mutableIntStateOf(0) }
     val canvas: @Composable (Modifier) -> Unit = { canvasModifier ->
         Box(
             modifier = canvasModifier
@@ -1235,7 +1255,8 @@ fun ChartScreen(
                 .onSizeChanged {
                     canvasWidthPx = it.width.toFloat()
                     canvasHeightPx = it.height
-                },
+                }
+                .onGloballyPositioned { canvasOrigin = it.positionInWindow() },
         ) {
             val gutter = with(LocalDensity.current) {
                 gutterWidth(canvasWidthPx, plotWidthPx).toDp()
@@ -1346,7 +1367,18 @@ fun ChartScreen(
                     type = state.chartType,
                     // The legend's first line, as TradingView's phone sets it: the mark and the
                     // instrument's name — «Bitcoin / TetherUS» — not the ticker.
-                    seriesLabel = SymbolClassifier.classify(state.symbol).description(inEnglish()),
+                    // On a desktop, TradingView's desktop title — `Bitcoin / TetherUS · 4h · LBank`.
+                    seriesLabel = SymbolClassifier.classify(state.symbol).description(inEnglish()).let { name ->
+                        if (deskWindow && name.isNotBlank()) {
+                            listOf(name, state.interval.tvCode, controller.sourceName)
+                                .filter(String::isNotBlank)
+                                .joinToString(LEGEND_TITLE_JOIN)
+                        } else {
+                            name
+                        }
+                    },
+                    priceAutoNudge = priceAutoNudge,
+                    onPriceAuto = { priceAuto = it },
                     // No mark for a spread: `EURUSD/GBPUSD` has no artwork, and a lettered disc
                     // is what the rule on symbol artwork forbids.
                     legendLogo = state.symbol.takeUnless(SymbolExpression::isExpression)
@@ -1441,6 +1473,7 @@ fun ChartScreen(
                     crosshairMagnet = state.appearance.crosshairMagnet,
                     onTimeAxisMenu = { at -> timeAxisMenu = at },
                     onSeriesMore = { target -> state.indicatorFor(target)?.let { seriesMenu = it } },
+                    onSeriesMoreAt = { _, at -> seriesMenuAt = at },
                     scaleUnit = if (state.appearance.scaleUnit) {
                         remember(state.symbol) { SymbolClassifier.classify(state.symbol).quote?.uppercase() }
                     } else {
@@ -1635,7 +1668,9 @@ fun ChartScreen(
                     // instrument. Null in the fullscreen window and in a docked pane, where the
                     // page's own control is elsewhere and a second one would be two ways out of a
                     // chart that has one.
-                    onBack = onBack?.takeIf { !fullscreen },
+                    // Not on a desktop either: the app's own rail is the way out there, and an arrow
+                    // before the title pushed TradingView's one-line legend off its baseline.
+                    onBack = onBack?.takeIf { !fullscreen && !deskWindow },
                     // One hidden set for the legend's eye and the settings sheet's switch: the
                     // chart reports the row, the controller keeps the id.
                     hiddenSeries = state.hiddenTargets,
@@ -1666,8 +1701,8 @@ fun ChartScreen(
                             onDismissRequest = { timeAxisMenu = null },
                             offset = with(density) { DpOffset(at.x.toDp(), at.y.toDp()) },
                         ) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.chart_time_menu_zone)) },
+                            CoineProMenuItem(
+                                text = stringResource(R.string.chart_time_menu_zone),
                                 onClick = {
                                     timeAxisMenu = null
                                     settingsTab = ChartSettingsTab.SCALES
@@ -1675,24 +1710,24 @@ fun ChartScreen(
                                 },
                                 modifier = Modifier.semantics { contentDescription = "time-menu-zone" },
                             )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.chart_time_menu_latest)) },
+                            CoineProMenuItem(
+                                text = stringResource(R.string.chart_time_menu_latest),
                                 onClick = {
                                     timeAxisMenu = null
                                     controller.focusBar(state.visibleSeries.size - 1)
                                 },
                                 modifier = Modifier.semantics { contentDescription = "time-menu-latest" },
                             )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.chart_time_menu_goto)) },
+                            CoineProMenuItem(
+                                text = stringResource(R.string.chart_time_menu_goto),
                                 onClick = {
                                     timeAxisMenu = null
                                     sheet = ChartSheet.MORE
                                 },
                                 modifier = Modifier.semantics { contentDescription = "time-menu-goto" },
                             )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.chart_time_menu_sessions)) },
+                            CoineProMenuItem(
+                                text = stringResource(R.string.chart_time_menu_sessions),
                                 onClick = {
                                     timeAxisMenu = null
                                     sheet = ChartSheet.INDICATORS
@@ -1707,42 +1742,57 @@ fun ChartScreen(
                     val overlay = id in state.shownOverlayOwners
                     val owners = state.paneOwnersShown
                     val at = owners.indexOf(id)
-                    Box(Modifier.align(Alignment.TopStart).padding(top = 48.dp)) {
-                        DropdownMenu(expanded = true, onDismissRequest = { seriesMenu = null }) {
-                            @Composable
-                            fun item(label: Int, tag: String, action: () -> Unit) = DropdownMenuItem(
-                                text = { Text(stringResource(label)) },
-                                onClick = {
-                                    seriesMenu = null
-                                    action()
-                                },
-                                modifier = Modifier.semantics { contentDescription = "series-menu-$tag" },
-                            )
-                            if (overlay) {
-                                item(R.string.chart_series_new_pane, "separate") { controller.separateOverlay(id, true) }
-                                if (id in state.ownScale) {
-                                    item(R.string.chart_series_price_scale, "price-scale") { controller.setOwnScale(id, false) }
-                                } else {
-                                    item(R.string.chart_series_own_scale, "own-scale") { controller.setOwnScale(id, true) }
-                                }
-                                item(R.string.chart_series_front, "front") { controller.bringToFront(id) }
-                                item(R.string.chart_series_back, "back") { controller.sendToBack(id) }
-                            } else {
-                                if (id in state.separated) {
-                                    item(R.string.chart_series_price_pane, "join") { controller.separateOverlay(id, false) }
-                                }
-                                if (at > 0) item(R.string.chart_series_up, "up") { controller.movePane(id, up = true) }
-                                if (at in 0 until owners.lastIndex) item(R.string.chart_series_down, "down") { controller.movePane(id, up = false) }
-                                val hostAbove = if (at > 0) owners[at - 1] else null
-                                if (hostAbove != null && state.paneMerges[id] == null && state.paneMerges[hostAbove] == null) {
-                                    item(R.string.chart_series_merge, "merge") { controller.mergePane(id, hostAbove) }
-                                }
-                                if (state.paneMerges[id] != null) {
-                                    item(R.string.chart_series_unmerge, "unmerge") { controller.mergePane(id, null) }
+                    val direction = LocalLayoutDirection.current
+                    val density = LocalDensity.current
+                    // Dropped from the «…» itself, laid out in left-to-right pixels like the context
+                    // menu below: the legend plate is left to right in every language, so an
+                    // alignment to the reading start put the Persian menu at the far side of the
+                    // chart (DIALOGS-05).
+                    val anchor = seriesMenuAt?.let { it - canvasOrigin } ?: Offset.Zero
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        Box(Modifier.align(AbsoluteAlignment.TopLeft)) {
+                            DropdownMenu(
+                                expanded = true,
+                                onDismissRequest = { seriesMenu = null },
+                                offset = with(density) { DpOffset(anchor.x.toDp(), anchor.y.toDp()) },
+                            ) {
+                                CompositionLocalProvider(LocalLayoutDirection provides direction) {
+                                    @Composable
+                                    fun item(label: Int, tag: String, action: () -> Unit) = CoineProMenuItem(
+                                        text = stringResource(label),
+                                        onClick = {
+                                            seriesMenu = null
+                                            action()
+                                        },
+                                        modifier = Modifier.semantics { contentDescription = "series-menu-$tag" },
+                                    )
+                                    if (overlay) {
+                                        item(R.string.chart_series_new_pane, "separate") { controller.separateOverlay(id, true) }
+                                        if (id in state.ownScale) {
+                                            item(R.string.chart_series_price_scale, "price-scale") { controller.setOwnScale(id, false) }
+                                        } else {
+                                            item(R.string.chart_series_own_scale, "own-scale") { controller.setOwnScale(id, true) }
+                                        }
+                                        item(R.string.chart_series_front, "front") { controller.bringToFront(id) }
+                                        item(R.string.chart_series_back, "back") { controller.sendToBack(id) }
+                                    } else {
+                                        if (id in state.separated) {
+                                            item(R.string.chart_series_price_pane, "join") { controller.separateOverlay(id, false) }
+                                        }
+                                        if (at > 0) item(R.string.chart_series_up, "up") { controller.movePane(id, up = true) }
+                                        if (at in 0 until owners.lastIndex) item(R.string.chart_series_down, "down") { controller.movePane(id, up = false) }
+                                        val hostAbove = if (at > 0) owners[at - 1] else null
+                                        if (hostAbove != null && state.paneMerges[id] == null && state.paneMerges[hostAbove] == null) {
+                                            item(R.string.chart_series_merge, "merge") { controller.mergePane(id, hostAbove) }
+                                        }
+                                        if (state.paneMerges[id] != null) {
+                                            item(R.string.chart_series_unmerge, "unmerge") { controller.mergePane(id, null) }
+                                        }
+                                    }
+                                    item(R.string.chart_series_settings, "settings") { indicatorSettings = id }
+                                    item(R.string.chart_series_remove, "remove") { controller.toggleIndicator(id) }
                                 }
                             }
-                            item(R.string.chart_series_settings, "settings") { indicatorSettings = id }
-                            item(R.string.chart_series_remove, "remove") { controller.toggleIndicator(id) }
                         }
                     }
                 }
@@ -1759,61 +1809,66 @@ fun ChartScreen(
                             ) {
                                 CompositionLocalProvider(LocalLayoutDirection provides direction) {
                                     if (onCreateAlert != null) {
-                                        DropdownMenuItem(
-                                            text = { Text(stringResource(R.string.chart_menu_alert_here, MarketNumberFormatter.priceAuto(menu.price))) },
+                                        CoineProMenuItem(
+                                            text = stringResource(R.string.chart_menu_alert_here, MarketNumberFormatter.priceAuto(menu.price)),
                                             onClick = { onCreateAlert(state.symbol, menu.price); contextMenu = null },
                                             modifier = Modifier.semantics { contentDescription = "chart-menu-alert" },
                                         )
                                     }
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.chart_menu_copy_price)) },
+                                    CoineProMenuItem(
+                                        text = stringResource(R.string.chart_menu_copy_price),
                                         onClick = { clipboard.setText(AnnotatedString(MarketNumberFormatter.priceAuto(menu.price))); contextMenu = null },
                                         modifier = Modifier.semantics { contentDescription = "chart-menu-copy" },
                                     )
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.chart_menu_scale)) },
+                                    // TradingView's groups: price, then the chart's own apparatus,
+                                    // then pictures, then help (DIALOGS-21).
+                                    HorizontalDivider(color = CoineProColors.BorderSubtle)
+                                    CoineProMenuItem(
+                                        text = stringResource(R.string.chart_menu_scale),
                                         onClick = { sheet = ChartSheet.SCALE; contextMenu = null },
                                         modifier = Modifier.semantics { contentDescription = "chart-menu-scale" },
                                     )
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.chart_sheet_settings)) },
+                                    CoineProMenuItem(
+                                        text = stringResource(R.string.chart_sheet_settings),
                                         onClick = { sheet = ChartSheet.SETTINGS; contextMenu = null },
                                         modifier = Modifier.semantics { contentDescription = "chart-menu-settings" },
                                     )
                                     // 5.14.0 — the terminal's menu, item for item: the data window,
                                     // replay from the bar under the pointer, and the chart's picture.
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.chart_data_window)) },
+                                    CoineProMenuItem(
+                                        text = stringResource(R.string.chart_data_window),
                                         onClick = { dataWindowOpen = !dataWindowOpen; contextMenu = null },
                                         modifier = Modifier.semantics { contentDescription = "chart-menu-data-window" },
                                     )
+                                    HorizontalDivider(color = CoineProColors.BorderSubtle)
                                     // By the bar's time, read when the item is chosen: the crosshair
                                     // is still on the bar the menu opened over.
                                     crosshairIndex?.let { state.visibleSeries.time.getOrNull(it) }?.let { time ->
-                                        DropdownMenuItem(
-                                            text = { Text(stringResource(R.string.chart_menu_replay_here)) },
+                                        CoineProMenuItem(
+                                            text = stringResource(R.string.chart_menu_replay_here),
                                             onClick = { controller.enterReplayAt(time); contextMenu = null },
                                             modifier = Modifier.semantics { contentDescription = "chart-menu-replay-here" },
                                         )
                                     }
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.chart_menu_picture_save)) },
+                                    CoineProMenuItem(
+                                        text = stringResource(R.string.chart_menu_picture_save),
                                         onClick = { contextMenu = null; savePicture() },
                                         modifier = Modifier.semantics { contentDescription = "chart-menu-picture-save" },
                                     )
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.chart_menu_picture_copy)) },
+                                    CoineProMenuItem(
+                                        text = stringResource(R.string.chart_menu_picture_copy),
                                         onClick = { contextMenu = null; copyPicture() },
                                         modifier = Modifier.semantics { contentDescription = "chart-menu-picture-copy" },
                                     )
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.chart_menu_shortcuts)) },
+                                    HorizontalDivider(color = CoineProColors.BorderSubtle)
+                                    CoineProMenuItem(
+                                        text = stringResource(R.string.chart_menu_shortcuts),
                                         onClick = { contextMenu = null; shortcutsOpen = true },
                                         modifier = Modifier.semantics { contentDescription = "chart-menu-shortcuts" },
                                     )
                                     if (onOpenSymbolSearch != null) {
-                                        DropdownMenuItem(
-                                            text = { Text(stringResource(R.string.chart_menu_search)) },
+                                        CoineProMenuItem(
+                                            text = stringResource(R.string.chart_menu_search),
                                             onClick = { onOpenSymbolSearch(); contextMenu = null },
                                             modifier = Modifier.semantics { contentDescription = "chart-menu-search" },
                                         )
@@ -1999,6 +2054,25 @@ fun ChartScreen(
         plotHeightAboveHinge(wanted, fold)
     }
 
+    // The phone's plot, measured rather than guessed (MOBILE-03): the page's height less everything
+    // else on it, never under [PLOT_MIN]. Null until the page has laid out once.
+    var phonePlot by remember { mutableStateOf<Dp?>(null) }
+    var phoneViewportPx by remember { mutableIntStateOf(0) }
+    var phonePagePx by remember { mutableIntStateOf(0) }
+    // Recomputed whenever either measure moves, not inside one of the two size callbacks: the page
+    // is measured before the glass on the first pass, and a callback that waited for the glass
+    // never ran again, so the plot kept its first-frame guess and left a band of black under the
+    // toolbar (MOBILE-03, seen on 5.19.0's own web build).
+    LaunchedEffect(phoneViewportPx, phonePagePx) {
+        if (phoneViewportPx <= 0 || phonePagePx <= 0) return@LaunchedEffect
+        with(density) {
+            val plotNow = (phonePlot ?: plotHeight).toPx()
+            val rest = phonePagePx - plotNow
+            val wanted = plotHeightAboveHinge((phoneViewportPx - rest).toDp().coerceAtLeast(PLOT_MIN), fold)
+            if (abs((wanted - (phonePlot ?: plotHeight)).value) > 1f) phonePlot = wanted
+        }
+    }
+
     /** Whether the price axis is off its defaults — inverted, locked, or a pinned precision. */
     val axisAdjusted = state.inverted || state.priceBarLock || state.decimals != null
 
@@ -2033,6 +2107,17 @@ fun ChartScreen(
         state.setup?.let { order -> SetupCard(order, onOpen = { sheet = ChartSheet.SETUP }) }
         // The same gate as the hub's tile, and it has to be the same one: a mode that hides the
         // workbench from the «…» sheet and leaves a row for it under the chart reads as a bug.
+        // Where the plot's caption band went on a desktop (CHART-04): the venue, the bar count, the
+        // clock and the repaint claim, read once — the bars and the extremes are on the axis.
+        if (deskWindow) {
+            ChartUnderline(
+                state = state,
+                source = controller.sourceName,
+                signalOnChart = drawnSetup != null,
+                detail = true,
+                head = false,
+            )
+        }
         onOpenStudio?.takeIf { readerMode.showsWorkbench }?.let { open ->
             StudioRow(
                 summary = studioSummary(state.activeIndicators.size, state.drawing.drawings.size),
@@ -2111,6 +2196,7 @@ fun ChartScreen(
         id = "explain",
         labelRes = R.string.chart_explain_title,
         icon = DesignR.drawable.tv_help_circle,
+        trailing = true,
     ) {
         ExplainSheetBody(
             // The pill the reader last opened, or the chart's own score when they have opened none.
@@ -2136,6 +2222,7 @@ fun ChartScreen(
         id = "rasad",
         labelRes = R.string.rasad_name,
         icon = DesignR.drawable.icon_sparkle,
+        trailing = true,
     ) {
         RasadSheetBody(
             series = state.visibleSeries,
@@ -2207,7 +2294,23 @@ fun ChartScreen(
     Column(
         modifier = workbenchModifier
             .background(CoineProColors.Stage)
-            .then(if (fills) Modifier else Modifier.verticalScroll(rememberScrollState()))
+            .then(
+                if (fills) {
+                    Modifier
+                } else {
+                    Modifier
+                        // Before the scroll: the glass the page is shown in.
+                        .onSizeChanged { phoneViewportPx = it.height }
+                        .verticalScroll(rememberScrollState())
+                        // After it: the whole page. What is not plot is the rest, and the plot gets
+                        // the viewport less the rest.
+                        // A scroll keeps the glass's minimum height for its content, so without
+                        // this the page always measured exactly the glass and the gap under the
+                        // toolbar was never seen. Relaxed, the content reports its natural height.
+                        .wrapContentHeight(Alignment.Top)
+                        .onSizeChanged { page -> phonePagePx = page.height }
+                },
+            )
             .focusRequester(focusRequester)
             .focusable()
             .chartShortcuts(
@@ -2302,8 +2405,9 @@ fun ChartScreen(
         // the toolbar under the plot. The header row this screen used to draw — mark, ticker,
         // price, change — said the same things a second time a centimetre above them.
         // TradingView closes its header with a one-point rule (`#2E2E2E` on `#0F0F0F`); this
-        // system's strong border is the same step above the page.
-        HorizontalDivider(color = CoineProColors.BorderStrong, thickness = 1.dp)
+        // system's strong border is the same step above the page. Not over the desktop toolbar,
+        // which is the header there and draws its own one boundary (CHART-15).
+        if (!desktopChrome || fullscreenRequested) HorizontalDivider(color = CoineProColors.BorderStrong, thickness = 1.dp)
 
         // **TradingView's desktop toolbar** (5.16.0), on a window wide enough to be a desktop —
         // the browser, a tablet held sideways. It takes the band's place: the phone keeps
@@ -2353,12 +2457,21 @@ fun ChartScreen(
         // instrument.
         //
         // The two hairlines are what is left of the card. They say where the plot stops without
-        // costing it any width, and they are what the band below attaches to.
-        HorizontalDivider(color = CoineProColors.Border)
+        // costing it any width, and they are what the band below attaches to. Under the desktop
+        // toolbar the toolbar's own rule is the one; a second made a double hairline (CHART-15).
+        if (!desktopChrome || fullscreenRequested) HorizontalDivider(color = CoineProColors.Border)
         canvas(
             Modifier
                 .fillMaxWidth()
-                .then(if (fills) Modifier.weight(1f) else Modifier.height(plotHeight))
+                .then(
+                    when {
+                        fills -> Modifier.weight(1f)
+                        // The phone: the plot takes whatever the page's other rows leave, so the
+                        // band sits on the bottom edge like TradingView's (MOBILE-03). Measured
+                        // once the page has laid out; the fraction is the first frame's guess.
+                        else -> Modifier.height(phonePlot ?: plotHeight)
+                    },
+                )
                 .background(CoineProColors.Terminal)
                 // The chart alone, recorded into a layer. Sharing the whole screen would hand
                 // over the header and the toolbar; sharing this hands over the chart.
@@ -2390,8 +2503,11 @@ fun ChartScreen(
                         if (state.scaleMode == PriceScaleMode.LOGARITHMIC) PriceScaleMode.REGULAR else PriceScaleMode.LOGARITHMIC,
                     )
                 },
+                // TradingView's calendar after «All»: the go-to-date field, which lives in the hub.
+                onGoToDate = { sheet = ChartSheet.MORE }.takeIf { !state.series.isEmpty },
+                auto = priceAuto,
+                onAuto = { priceAutoNudge++ },
             )
-            HorizontalDivider(color = CoineProColors.Border)
         }
 
         // **What the chart is saying** (4.75.0, run Ω1): the Setup score and one pill per study.
@@ -2404,21 +2520,33 @@ fun ChartScreen(
         //
         // It is the one row this page has gained since the bands were collapsed, and it is the
         // product: a line is a measurement, this is the judgement. See `ChartNowStrip`.
-        ChartNowStrip(
-            layer = state.signals,
-            onOpenExplain = { id ->
-                explaining = id
-                sheet = ChartSheet.EXPLAIN
-            },
-        )
-
         // **رصد, one line under the strip** (run Ω4).
         //
         // The strip says what each study is saying; this says what the *chart* is saying, which is a
         // different question and the one a reader actually arrives with. One line — the trend
         // sentence — and the other two are behind it: three permanent lines of prose under the plot
         // is exactly the explanatory text run Ω2 spent a version removing.
-        RasadLine(series = state.visibleSeries, onOpen = { sheet = ChartSheet.RASAD })
+        //
+        // On a desktop the two share one row, the sentence truncating beside the pills — three rows
+        // of footer under the bottom bar cost the plot a hundred points TradingView's has (CHART-04).
+        val openExplain: (String?) -> Unit = { id ->
+            explaining = id
+            sheet = ChartSheet.EXPLAIN
+        }
+        if (desktopChrome && !fullscreenRequested) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                ChartNowStrip(layer = state.signals, onOpenExplain = openExplain, modifier = Modifier.weight(1f))
+                RasadLine(
+                    series = state.visibleSeries,
+                    onOpen = { sheet = ChartSheet.RASAD },
+                    oneLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        } else {
+            ChartNowStrip(layer = state.signals, onOpenExplain = openExplain)
+            RasadLine(series = state.visibleSeries, onOpen = { sheet = ChartSheet.RASAD })
+        }
 
         // No teaching banner on this screen, and it is the only screen in the app without one.
         //
@@ -2439,12 +2567,16 @@ fun ChartScreen(
         // the four facts that change every time the reader pans. The provenance half — the venue,
         // the bar count, the clock, the repaint claim, the exclusions — is drawn once, inside the
         // disclosure below, because it is answered once and then never looked at again.
-        ChartUnderline(
-            state = state,
-            source = controller.sourceName,
-            signalOnChart = drawnSetup != null,
-            detail = columns.hasReadings,
-        )
+        // Not on a desktop (CHART-04): the bar length is on the toolbar, the extremes on the axis,
+        // and the provenance is in the readings panel — see [analysisBlocks].
+        if (!desktopChrome) {
+            ChartUnderline(
+                state = state,
+                source = controller.sourceName,
+                signalOnChart = drawnSetup != null,
+                detail = columns.hasReadings,
+            )
+        }
 
         // Only when something is being compared, so a chart with one instrument on it pays
         // nothing for the feature at all.
@@ -2593,6 +2725,8 @@ fun ChartScreen(
             quotes = watchlistQuotes,
             onSymbolDrag = { wheelDragging = it },
             onSymbolTravel = { wheelTravel.floatValue = it },
+            // A tap on the ticker opens symbol search, the desktop toolbar's own route (MOBILE-05).
+            onSymbolSearch = onOpenSymbolSearch,
         )
         }
 
@@ -2616,7 +2750,9 @@ fun ChartScreen(
             // Nothing here. `ChartWorkbench` draws them in its own column — see [analysisBlocks].
             Unit
         }
-        Spacer(Modifier.height(CoineProSpacing.Three))
+        // Air under the band only where the page scrolls past it; on a phone the band is the foot
+        // of the screen (MOBILE-03) and on a desktop the bottom bar is (CHART-04).
+        if (fills && !desktopChrome) Spacer(Modifier.height(CoineProSpacing.Three))
     }
     }
     }
@@ -2702,7 +2838,7 @@ fun ChartScreen(
             // list of sixteen is a small lie the reader catches immediately.
             subtitle = stringResource(
                 R.string.chart_sheet_type_subtitle,
-                ChartCatalog.chartTypeCount(state.series.hasVolume).toPersianDigits(),
+                ChartCatalog.chartTypeCount(state.series.hasVolume).proseDigits(),
             ),
             onDismiss = { sheet = null },
         ) {
@@ -2719,12 +2855,15 @@ fun ChartScreen(
 
         ChartSheet.INDICATORS -> CoineProSheet(
             title = stringResource(R.string.chart_sheet_indicators),
+            // TradingView's indicators dialog is 840 wide; at the list's 560 the category chips ran
+            // off the edge (DIALOGS-10).
+            dialogMaxWidth = INDICATORS_DIALOG_WIDTH,
             // Counted after the volume gate, like the chart-type subtitle above: fourteen studies
             // are arithmetic on a volume column, and a subtitle promising eighty-three over a list
             // of sixty-nine is a small lie the reader catches immediately.
             subtitle = stringResource(
                 R.string.chart_sheet_indicators_subtitle,
-                ChartCatalog.indicatorCount(state.series.hasVolume).toPersianDigits(),
+                ChartCatalog.indicatorCount(state.series.hasVolume).proseDigits(),
             ),
             onDismiss = { sheet = null },
         ) {
@@ -2817,6 +2956,8 @@ fun ChartScreen(
         ChartSheet.LAYOUTS -> CoineProSheet(
             title = stringResource(R.string.chart_sheet_layouts),
             onDismiss = { sheet = null },
+            // The body pads nothing of its own; at the sheet's edge its field touched the glass (MOBILE-02).
+            contentPadding = CoineProSheetDefaults.ContentPadding,
         ) {
             LayoutSheetBody(
                 layouts = layouts.orEmpty(),
@@ -2842,6 +2983,7 @@ fun ChartScreen(
                         if (state.colourTemplate?.id == id) controller.setColourTemplate(null)
                         storeScope.launch { runCatching { store.deleteTemplate(id) } }
                     },
+                    inset = false,
                 )
             }
         }
@@ -2850,7 +2992,7 @@ fun ChartScreen(
             title = stringResource(R.string.chart_sheet_interval),
             subtitle = stringResource(
                 R.string.chart_sheet_interval_subtitle,
-                Timeframe.entries.size.toPersianDigits(),
+                Timeframe.entries.size.proseDigits(),
             ),
             onDismiss = { sheet = null },
         ) {
@@ -2878,6 +3020,7 @@ fun ChartScreen(
             title = stringResource(R.string.chart_sheet_scale),
             subtitle = stringResource(state.scaleMode.labelRes),
             onDismiss = { sheet = null },
+            contentPadding = CoineProSheetDefaults.ContentPadding,
         ) {
             PriceScaleSheetBody(
                 state = state,
@@ -2889,10 +3032,11 @@ fun ChartScreen(
 
         // TradingView's «Chart settings», its six tabs (5.16.0). The scale, colour and event
         // sections are the same composables their own sheets draw.
+        // No subtitle: it repeated the tab that is lit right under it (DIALOGS-15).
         ChartSheet.SETTINGS -> CoineProSheet(
             title = stringResource(R.string.chart_sheet_settings),
-            subtitle = stringResource(settingsTab.labelRes),
             onDismiss = { sheet = null },
+            contentPadding = CoineProSheetDefaults.ContentPadding,
         ) {
             ChartSettingsBody(
                 tab = settingsTab,
@@ -2900,11 +3044,14 @@ fun ChartScreen(
                 appearance = state.appearance,
                 onChange = controller::setAppearance,
                 scales = {
+                    // Inside the tab's own scroll, so it must not scroll too: a scroll measured
+                    // inside another is the crash that blanked every tab after «Scales» (DIALOGS-02).
                     PriceScaleSheetBody(
                         state = state,
                         controller = controller,
                         zoneId = timeZones?.let { storedZone },
                         onSelectZone = { id -> timeZones?.let { store -> zoneScope.launch { store.setZone(id) } } },
+                        scrolls = false,
                     )
                 },
                 colours = chartLayoutStore?.let { store ->
@@ -2918,6 +3065,7 @@ fun ChartScreen(
                                 if (state.colourTemplate?.id == id) controller.setColourTemplate(null)
                                 storeScope.launch { runCatching { store.deleteTemplate(id) } }
                             },
+                            inset = false,
                         )
                     }
                 },
@@ -2945,9 +3093,10 @@ fun ChartScreen(
             title = stringResource(R.string.chart_sheet_compare),
             subtitle = stringResource(
                 R.string.chart_sheet_compare_subtitle,
-                MAX_COMPARISONS.toPersianDigits(),
+                MAX_COMPARISONS.proseDigits(),
             ),
             onDismiss = { sheet = null },
+            contentPadding = CoineProSheetDefaults.ContentPadding,
         ) {
             ComparisonSheetBody(
                 base = state.symbol,
@@ -3327,7 +3476,7 @@ fun ChartScreen(
             title = stringResource(R.string.chart_sheet_objects),
             subtitle = stringResource(
                 R.string.chart_sheet_objects_subtitle,
-                state.drawing.drawings.size.toPersianDigits(),
+                state.drawing.drawings.size.proseDigits(),
             ),
             onDismiss = { sheet = null },
         ) {
@@ -3343,6 +3492,7 @@ fun ChartScreen(
                     sheet = null
                 },
                 onClear = { confirmClear = true },
+                modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
             )
             ObjectTreeSheetBody(
                 groups = objectTree,
@@ -3554,7 +3704,7 @@ fun ChartScreen(
             title = stringResource(R.string.chart_clear_title),
             message = stringResource(
                 R.string.chart_clear_message,
-                state.drawing.drawings.size.toPersianDigits(),
+                state.drawing.drawings.size.proseDigits(),
             ),
             confirmLabel = stringResource(R.string.chart_clear_confirm),
             dismissLabel = stringResource(R.string.chart_clear_dismiss),
@@ -3989,7 +4139,7 @@ internal fun IntervalRow(
     // Rebuilt only when the starred list or the selection changes, which are the two things that
     // change the row's contents.
     val shown = remember(selected, starred) { TimeframeFavourites.resolve(starred, selected) }
-    LazyRow(
+    CoineProLazyRow(
         modifier = modifier
             .fillMaxWidth()
             // Top as well as bottom. The row had only the bottom gap, so the first key's edge sat
@@ -4003,7 +4153,7 @@ internal fun IntervalRow(
     ) {
         items(shown, key = { it.wire }) { interval ->
             IntervalPill(
-                text = interval.wire,
+                text = interval.tvCode,
                 active = interval == selected,
                 onClick = { onSelect(interval) },
             )
@@ -4185,8 +4335,9 @@ private fun ChartWatermark(
         ProChartSignature(
             expanded = expanded,
             markSize = WATERMARK_MARK,
-            // Six per cent at rest — the reference's watermark is a ghost on the bars, not a
-            // badge — and full ink once tapped open, where it is a name being read.
+            // A third of the ink at rest, over the bars rather than lost among them — at six per
+            // cent only «ro C» showed between the volume columns (CHART-21) — and full ink once
+            // tapped open, where it is a name being read.
             tint = CoineProColors.TextPrimary.copy(alpha = if (expanded) 1f else WATERMARK_ALPHA),
             contentDescription = stringResource(
                 if (expanded) R.string.chart_watermark_collapse else R.string.chart_watermark_expand,
@@ -4198,8 +4349,8 @@ private fun ChartWatermark(
 /** Twelve points from the time axis, as the phone app sets it, and the floor for the lead. */
 private val WATERMARK_INSET = 12.dp
 
-/** The mark's ink at rest: six per cent, the design brief's measure of the reference. */
-private const val WATERMARK_ALPHA = 0.06f
+/** The mark's ink at rest: TradingView's signature reads at about 40 %; a touch under it here. */
+private const val WATERMARK_ALPHA = 0.32f
 
 /**
  * How far in from the plot's leading edge the signature sits.
@@ -4263,43 +4414,46 @@ private fun IntervalPill(
     /** Wire spellings are market figures and stay Latin; «بیشتر» is prose and must not be. */
     latin: Boolean = true,
 ) {
-    // TradingView's interval chip, measured off the phone app's date-range sheet: a grey plate
-    // with 12 pt corners, 44 pt tall, the length in bold 16 pt; the chosen one inverted to the
-    // primary ink with the page's ground for its text.
+    // A soft key (5.18.2): a pastel plate of the page's accent with its own ink and edge for the
+    // chosen one, a quiet raised plate with a hairline for the rest. The owner's review of the
+    // timeframe sheet asked for «پاستیلی، شیک و مینیمال»; the inverted black key it replaced was the
+    // loudest object on the sheet and made eighteen keys read as a keyboard rather than a menu.
     val haptics = rememberCoineProHaptics()
+    val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = Modifier
+            .pressScale(interaction, CoineProPress.CHIP)
             .clip(CoineProShapes.medium)
             .background(
-                if (active) CoineProColors.TextPrimary else CoineProColors.SurfaceElevated,
+                if (active) {
+                    CoineProTint.fill(CoineProColors.pageAccentInk, CoineProColors.Surface)
+                } else {
+                    CoineProColors.SurfaceElevated
+                },
             )
-            .clickable {
+            .border(
+                width = 1.dp,
+                color = if (active) CoineProTint.edge(CoineProColors.pageAccentInk) else CoineProColors.BorderSubtle,
+                shape = CoineProShapes.medium,
+            )
+            .clickable(interaction, null) {
                 // A tick on the change, not on a re-press of the key already down.
                 if (!active) haptics.select()
                 onClick()
             }
             .heightIn(min = INTERVAL_KEY_HEIGHT)
             .widthIn(min = INTERVAL_KEY_WIDTH)
-            .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
+            .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.Half),
         contentAlignment = Alignment.Center,
     ) {
-        val ink = if (active) CoineProColors.Stage else CoineProColors.TextPrimary
+        val ink = if (active) CoineProColors.pageAccentInk else CoineProColors.TextSecondary
+        val weight = if (active) FontWeight.Bold else FontWeight.Medium
         if (latin) {
             LtrDirection {
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = ink,
-                    fontWeight = FontWeight.Bold,
-                )
+                Text(text = text, style = MaterialTheme.typography.labelLarge, color = ink, fontWeight = weight)
             }
         } else {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.titleMedium,
-                color = ink,
-                fontWeight = FontWeight.Bold,
-            )
+            Text(text = text, style = MaterialTheme.typography.labelLarge, color = ink, fontWeight = weight)
         }
     }
 }
@@ -4317,6 +4471,7 @@ private fun IntervalPill(
  * «۲۰۵» while accepting `205` looks broken — and it stays disabled until what is typed is actually
  * an interval, so the reader is never sent to a server with a number it will refuse.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun IntervalSheetBody(
     selected: ChartInterval,
@@ -4335,42 +4490,30 @@ internal fun IntervalSheetBody(
     var typed by rememberSaveable { mutableStateOf("") }
     val custom = customTypedOf(typed)
 
+    // The sheet's chrome pads its title and nothing else; every body brings its own gutter. This
+    // one did not, so on pro-chart.com its group names and first keys were cut by the dialog's
+    // rounded edge (5.18.2). And every group *wraps* now rather than scrolling sideways: a mouse
+    // wheel cannot move a horizontal row, and a menu of eighteen keys fits in three lines.
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+            .verticalScroll(rememberScrollState())
+            .padding(start = CoineProSpacing.Gutter, end = CoineProSpacing.Gutter, bottom = CoineProSpacing.Two),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
         onSelectRange?.let { select ->
-            RangeChipRow(selected = range, onSelect = select, contentPadding = PaddingValues(0.dp))
-            HorizontalDivider(color = CoineProColors.Border)
-            Text(
-                text = stringResource(R.string.chart_interval_heading),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = CoineProColors.TextPrimary,
-            )
+            IntervalGroupLabel(stringResource(R.string.chart_interval_range_heading))
+            RangeChipFlow(selected = range, onSelect = select)
+            HorizontalDivider(color = CoineProColors.BorderSubtle)
         }
         if (starred != null && onStar != null) {
             StarredIntervalSection(starred = starred, hidden = hidden, onStar = onStar, onHide = onHide)
-            HorizontalDivider(color = CoineProColors.Border)
+            HorizontalDivider(color = CoineProColors.BorderSubtle)
         }
         SecondsIntervalSection(selected = selected, onSelect = onSelect)
         INTERVAL_GROUPS.forEach { (titleRes, frames) ->
-            // The reference sets its group names — TICKS, SECONDS, MINUTES — in 12 sp capitals.
-            // Persian has no capitals; the size and the weight are what carry over.
-            Text(
-                text = stringResource(titleRes),
-                style = MaterialTheme.typography.labelMedium,
-                color = CoineProColors.TextMuted,
-                fontWeight = FontWeight.Normal,
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
-            ) {
+            IntervalGroupLabel(stringResource(titleRes))
+            IntervalKeyFlow {
                 // Struck-out presets are absent rather than dimmed. A row that cannot be tapped is
                 // a row that costs a tap to discover, and the reader is the one who struck it out.
                 TimeframeFavourites.offered(
@@ -4379,7 +4522,7 @@ internal fun IntervalSheetBody(
                     selected,
                 ).forEach { interval ->
                     IntervalPill(
-                        text = interval.wire,
+                        text = interval.tvCode,
                         active = interval == selected,
                         onClick = { onSelect(interval) },
                     )
@@ -4387,7 +4530,7 @@ internal fun IntervalSheetBody(
             }
         }
 
-        HorizontalDivider(color = CoineProColors.Border)
+        HorizontalDivider(color = CoineProColors.BorderSubtle)
 
         Text(
             text = stringResource(R.string.chart_custom_interval),
@@ -4449,13 +4592,13 @@ private fun StarredIntervalSection(
     onStar: (String) -> Unit,
     onHide: ((String) -> Unit)?,
 ) {
-    SheetLabel(stringResource(R.string.chart_favourites_label))
+    IntervalGroupLabel(stringResource(R.string.chart_favourites_label))
     Text(
         // A prose count of a shortlist, so Persian digits — unlike the wire spellings on the pills.
         text = stringResource(
             R.string.chart_favourites_count,
-            starred.size.toPersianDigits(),
-            TimeframeFavourites.MAX.toPersianDigits(),
+            starred.size.proseDigits(),
+            TimeframeFavourites.MAX.proseDigits(),
         ) + stringResource(R.string.chart_favourites_full_stop),
         style = MaterialTheme.typography.bodySmall,
         color = CoineProColors.TextMuted,
@@ -4464,12 +4607,7 @@ private fun StarredIntervalSection(
     // a tip is drawn inline or folded into an ⓘ: holding a timeframe here removes it from the page
     // as well as from the strip, which is not recoverable by tapping the same place again.
     if (onHide != null) CoineProNote(R.string.chart_favourites_hide_note)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
-    ) {
+    IntervalKeyFlow {
         Timeframe.entries.forEach { frame ->
             val wire = frame.wire
             val pinned = wire in starred
@@ -4481,12 +4619,12 @@ private fun StarredIntervalSection(
                         if (pinned) {
                             CoineProTint.fill(CoineProColors.Gold, CoineProColors.Surface)
                         } else {
-                            Color.Transparent
+                            CoineProColors.SurfaceElevated
                         },
                     )
                     .border(
                         width = 1.dp,
-                        color = if (pinned) CoineProTint.edge(CoineProColors.Gold) else CoineProColors.Border,
+                        color = if (pinned) CoineProTint.edge(CoineProColors.Gold) else CoineProColors.BorderSubtle,
                         shape = CoineProPillShape,
                     )
                     .combinedClickable(
@@ -4497,7 +4635,8 @@ private fun StarredIntervalSection(
                         // press needs to be a feature rather than a secret.
                         onLongClick = onHide?.let { hide -> { hide(wire) } },
                     )
-                    .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half),
+                    .heightIn(min = STAR_KEY_HEIGHT)
+                    .padding(horizontal = CoineProSpacing.One),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
@@ -4523,7 +4662,7 @@ private fun StarredIntervalSection(
                 )
                 LtrDirection {
                     Text(
-                        text = wire,
+                        text = tvIntervalCode(wire),
                         style = MaterialTheme.typography.labelSmall,
                         color = when {
                             struck -> CoineProColors.TextDisabled
@@ -4552,11 +4691,16 @@ private fun PriceScaleSheetBody(
     /** The stored zone id, and the way to change it. Null in a preview leaves the chips absent. */
     zoneId: String?,
     onSelectZone: (String) -> Unit,
+    /**
+     * Whether the body scrolls itself — true as its own sheet, false inside the settings tab, which
+     * scrolls already. Both at once threw «measured with an infinity maximum height» (DIALOGS-02).
+     */
+    scrolls: Boolean = true,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .verticalScroll(rememberScrollState()),
+            .then(if (scrolls) Modifier.verticalScroll(rememberScrollState()) else Modifier),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
         SheetLabel(stringResource(R.string.chart_scale_measures))
@@ -4649,7 +4793,7 @@ private fun PriceScaleSheetBody(
             options = DECIMAL_CHOICES.map { count ->
                 CoineProChip(
                     id = count?.toString() ?: AUTOMATIC_DECIMALS,
-                    label = count?.toPersianDigits() ?: stringResource(R.string.scale_decimals_auto),
+                    label = count?.proseDigits() ?: stringResource(R.string.scale_decimals_auto),
                 )
             },
             selectedId = state.decimals?.toString() ?: AUTOMATIC_DECIMALS,
@@ -4782,7 +4926,7 @@ private fun ComparisonRow(symbol: String, colour: Color, index: Int, onRemove: (
         Text(
             // A prose count of where this line sits in the four slots, so the legend and the chip
             // row can be matched up without relying on colour alone.
-            text = stringResource(R.string.chart_compare_line, (index + 1).toPersianDigits()),
+            text = stringResource(R.string.chart_compare_line, (index + 1).proseDigits()),
             style = MaterialTheme.typography.labelSmall,
             color = CoineProColors.TextMuted,
         )
@@ -4833,7 +4977,7 @@ private fun ComparisonBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
+                .coineProHorizontalScroll(rememberScrollState())
                 .padding(horizontal = CoineProSpacing.Gutter),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
             verticalAlignment = Alignment.CenterVertically,
@@ -4913,26 +5057,14 @@ private fun SettingSwitch(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = label, style = MaterialTheme.typography.labelMedium, color = CoineProColors.TextPrimary)
-            CoineProNote(
-                noteRes,
-                style = MaterialTheme.typography.bodySmall,
-                color = CoineProColors.TextMuted,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = onChange,
-            modifier = Modifier.widthIn(min = SWITCH_MIN),
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = CoineProColors.OnAccent,
-                checkedTrackColor = CoineProColors.AccentFill,
-                uncheckedThumbColor = CoineProColors.TextMuted,
-                uncheckedTrackColor = CoineProColors.SurfaceElevated,
-            ),
+        // The ⓘ on the label's own line rather than alone under it (MOBILE-14).
+        CoineProNotedLabel(
+            label = label,
+            note = noteRes,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
         )
+        CoineProSwitch(checked = checked, onCheckedChange = onChange)
     }
 }
 
@@ -4964,52 +5096,58 @@ private fun newLayout(state: ChartUiState, name: String): ChartLayout {
  */
 @Composable
 private fun SecondsIntervalSection(selected: ChartInterval, onSelect: (ChartInterval) -> Unit) {
-    Text(
-        text = stringResource(R.string.chart_interval_seconds),
-        style = MaterialTheme.typography.labelSmall,
-        color = CoineProColors.TextMuted,
-        fontWeight = FontWeight.Normal,
-    )
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
-    ) {
+    IntervalGroupLabel(stringResource(R.string.chart_interval_seconds))
+    IntervalKeyFlow {
         SECONDS_KEYS.forEach { count ->
             val interval = ChartInterval.Seconds(count)
             IntervalPill(
-                text = interval.wire,
+                text = interval.tvCode,
                 active = interval == selected,
                 onClick = { onSelect(interval) },
             )
         }
     }
     CoineProNote(R.string.chart_interval_seconds_note, style = MaterialTheme.typography.bodySmall)
-    HorizontalDivider(color = CoineProColors.Border)
+    HorizontalDivider(color = CoineProColors.BorderSubtle)
     // TradingView's «TICKS» group (5.17.0): a bar every 1, 10, 100 or 1000 trades.
-    Text(
-        text = stringResource(R.string.chart_interval_ticks),
-        style = MaterialTheme.typography.labelSmall,
-        color = CoineProColors.TextMuted,
-        fontWeight = FontWeight.Normal,
-    )
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
-    ) {
+    IntervalGroupLabel(stringResource(R.string.chart_interval_ticks))
+    IntervalKeyFlow {
         TICK_KEYS.forEach { count ->
             val interval = ChartInterval.Ticks(count)
             IntervalPill(
-                text = interval.wire,
+                text = interval.tvCode,
                 active = interval == selected,
                 onClick = { onSelect(interval) },
             )
         }
     }
-    HorizontalDivider(color = CoineProColors.Border)
+    HorizontalDivider(color = CoineProColors.BorderSubtle)
+}
+
+/**
+ * A group's name on the timeframe sheet. The reference sets TICKS, SECONDS, MINUTES in 12 sp
+ * capitals; Persian has no capitals, so the size, the weight and a little air above carry over.
+ */
+@Composable
+private fun IntervalGroupLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = CoineProColors.TextMuted,
+        fontWeight = FontWeight.Medium,
+        modifier = Modifier.padding(top = CoineProSpacing.Half),
+    )
+}
+
+/** One group of keys, wrapped onto as many lines as it needs — never scrolled sideways. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun IntervalKeyFlow(content: @Composable () -> Unit) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) { content() }
 }
 
 /** The fifteen presets as a reader groups them, for the sheet behind «بیشتر». */
@@ -5129,8 +5267,11 @@ private const val RADIX_36 = 36
 /** How large the dot standing for a comparison line is. */
 private val COMPARISON_DOT = 10.dp
 
-/** Keeps a switch from being squeezed to nothing beside a long Persian label. */
-private val SWITCH_MIN = 48.dp
+/** Between the parts of the desktop legend's title — `Bitcoin / TetherUS · 4h · LBank`. */
+private const val LEGEND_TITLE_JOIN = " · "
+
+/** TradingView's indicators dialog width, which leaves the category chips room. */
+private val INDICATORS_DIALOG_WIDTH = 840.dp
 
 /** What the axis is measuring, in a word. The store keeps ids; the screen keeps the words. */
 internal val PriceScaleMode.labelRes: Int
@@ -5172,7 +5313,7 @@ private fun ComparisonRefusal.message(): String = when (this) {
     ComparisonRefusal.SAME_SYMBOL -> stringResource(R.string.chart_refusal_same)
     ComparisonRefusal.ALREADY_COMPARED -> stringResource(R.string.chart_refusal_already)
     ComparisonRefusal.LIMIT_REACHED ->
-        stringResource(R.string.chart_refusal_limit, MAX_COMPARISONS.toPersianDigits())
+        stringResource(R.string.chart_refusal_limit, MAX_COMPARISONS.proseDigits())
 }
 
 /** What the card above the chart says: the window, and its high and low. */
@@ -5377,9 +5518,9 @@ private fun ChartUnderline(
             ) {
                 Text(
                     text = state.range?.let { span ->
-                        state.interval.code + "  ·  " + stringResource(span.labelRes)
+                        state.interval.tvCode + "  ·  " + stringResource(span.labelRes)
                     }
-                        ?: state.interval.code,
+                        ?: state.interval.tvCode,
                     style = MaterialTheme.typography.labelSmall,
                     color = CoineProColors.TextSecondary,
                     fontWeight = FontWeight.Normal,
@@ -5387,8 +5528,9 @@ private fun ChartUnderline(
                 extent?.let { (low, high) ->
                     LtrDirection {
                         Text(
-                            text = "H " + formatPrice(high, decimalsFor(high)) +
-                                "  ·  L " + formatPrice(low, decimalsFor(low)),
+                            // Grouped like every other figure on the chart (CHART-19).
+                            text = "H " + MarketNumberFormatter.price(high, decimalsFor(high)) +
+                                "  ·  L " + MarketNumberFormatter.price(low, decimalsFor(low)),
                             style = MaterialTheme.typography.labelSmall,
                             color = CoineProColors.TextDisabled,
                             fontWeight = FontWeight.Normal,
@@ -5602,8 +5744,8 @@ internal fun ChartReading.biasColour(): Color = when {
 internal fun studioSummary(indicators: Int, drawings: Int): String {
     // Both resolved before the branches, for the reason `selectionSummary` gives: a `stringResource`
     // inside a conditional is a composable call that happens on some compositions and not others.
-    val indicatorLabel = stringResource(R.string.chart_hub_indicator_count, indicators.toPersianDigits())
-    val drawingLabel = stringResource(R.string.chart_hub_drawing_count, drawings.toPersianDigits())
+    val indicatorLabel = stringResource(R.string.chart_hub_indicator_count, indicators.proseDigits())
+    val drawingLabel = stringResource(R.string.chart_hub_drawing_count, drawings.proseDigits())
     val empty = stringResource(R.string.chart_hub_empty)
     val parts = buildList {
         if (indicators > 0) add(indicatorLabel)
@@ -5930,7 +6072,10 @@ internal const val STALE_ALPHA = 0.4f
  */
 private val TIME_AXIS_CLEARANCE = 28.dp
 
-private val INTERVAL_KEY_HEIGHT = 44.dp
+private val INTERVAL_KEY_HEIGHT = 40.dp
+
+/** The starring pills' height, one step under a key so the two rows are not mistaken for each other. */
+private val STAR_KEY_HEIGHT = 34.dp
 private val INTERVAL_KEY_WIDTH = 56.dp
 
 /** The «+ Add interval» button at the foot of the timeframe sheet, as the reference sizes it. */

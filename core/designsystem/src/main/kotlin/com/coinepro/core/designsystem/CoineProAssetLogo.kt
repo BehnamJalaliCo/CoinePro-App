@@ -117,11 +117,18 @@ fun CoineProAssetLogo(
 fun initialFor(symbol: String): String = when (val base = baseOf(symbol)) {
     "XAU" -> "Au"
     "XAG" -> "Ag"
-    else -> base.take(MONOGRAM_LETTERS).uppercase(Locale.US)
+    // A dominance index: `BTCDOM`'s first three letters read as Bitcoin itself (LISTS-14).
+    else -> if (base.length > DOMINANCE.length && base.uppercase(Locale.US).endsWith(DOMINANCE)) {
+        DOMINANCE
+    } else {
+        base.take(MONOGRAM_LETTERS).uppercase(Locale.US)
+    }
 }
 
 /** How much of a ticker a monogram carries. See [initialFor]. */
 private const val MONOGRAM_LETTERS = 3
+
+private const val DOMINANCE = "DOM"
 
 /**
  * The instrument behind a market symbol — `BTCUSDT` and `BTCUSD` both give `BTC`.

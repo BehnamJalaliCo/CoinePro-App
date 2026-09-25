@@ -192,8 +192,9 @@ val CoineProDarkPalette = CoineProPalette(
     buy = Color(0xFF089981),
     // **One green, and a red three points off the candle's.**
     //
-    // The green is TradingView's own `#089981` and it reads 4.85:1 as ink on the elevated card,
-    // so the candle colour and the figure colour are one value with nothing given up.
+    // The *buy* green is TradingView's own `#089981`, which reads 4.85:1 as ink on the elevated
+    // card; the rising-figure green below is the reference's lighter text green, for the reason
+    // its own note gives.
     //
     // The red cannot be. TradingView's `#F23645` measures **4.44:1** on that same card, and a
     // change pill sets 13sp — not large text, so 4.5 is the bar this file has held itself to
@@ -201,7 +202,14 @@ val CoineProDarkPalette = CoineProPalette(
     // So the *candles* keep the reference's red — it is a fill, drawn from `TradingViewPalette`,
     // and no figure is set on it — and every red **figure** in the app is this one.
     sell = Color(0xFFF6465D), // 4.89:1 on the elevated card
-    marketUp = Color(0xFF089981), // 4.85:1
+    // **The figure green is TradingView's dark-theme *text* green, not its candle (LISTS-23).**
+    //
+    // `#089981` is the candle's fill, and as ink on the navy it read a shade darker than the
+    // reference's own figures beside it — TradingView sets its dark-theme percentages in `#22AB94`,
+    // sampled from its screener. The candles keep `#089981` (they come from `TradingViewPalette`,
+    // not this token) and so does [buy], a fill; only a *figure* that rose takes the lighter one,
+    // which is also the same step the red already takes off its candle.
+    marketUp = Color(0xFF22AB94), // 6.0:1 on the elevated card
     marketDown = Color(0xFFF6465D),
     warning = Color(0xFFF0B90B),
     assetInkShift = 0f,

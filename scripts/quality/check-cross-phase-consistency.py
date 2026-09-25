@@ -693,14 +693,26 @@ def check_web_glyph_map() -> None:
                                  "chart/ui/src/commonMain/**/*.kt", "chart/core/src/commonMain/**/*.kt",
                                  "namascript/src/commonMain/**/*.kt")
                for p in ROOT.glob(pattern)]
+    # The three Kotlin Multiplatform modules are compiled for the browser as they are, not through
+    # share_sources.py, so the map never reaches their literals: a mapped character there is still a
+    # blank box on the page (MOBILE-01, 5.18.2 — the Rasad line under the chart). They must write
+    # the typeface's own glyph. The drawing-icon palette and the structure markers are the two
+    # deliberate exceptions: they are pictures, drawn as shapes where the font has no glyph.
+    unmapped_modules = ("chart/ui/", "chart/core/", "namascript/")
+    picture_files = {"DrawingController.kt", "Structure.kt"}
     for path in sources:
         text = path.read_text(encoding="utf-8")
+        rel = path.relative_to(ROOT).as_posix()
+        strict = rel.startswith(unmapped_modules) and path.name not in picture_files
         j = 0
         while j < len(text):
             if text[j] in "\"'":
                 k = lexer.skip_string(text, j)
                 literal = re.sub(r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), text[j:k])
                 for ch in set(literal):
+                    if strict and ch in glyphs:
+                        require(False, f"{rel}: {ch!r} U+{ord(ch):04X} is not in IRANYekanX and this module is not glyph-mapped for the browser; write {glyphs[ch]!r}")
+                        continue
                     if drawn(ch) and ord(ch) not in cmap and ch not in glyphs and not emoji(ch):
                         require(False, f"{path.relative_to(ROOT)}: {ch!r} U+{ord(ch):04X} has no glyph in IRANYekanX and no entry in web/tools/glyphs.json")
                 j = k

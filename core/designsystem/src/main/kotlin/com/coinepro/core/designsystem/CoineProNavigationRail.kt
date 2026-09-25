@@ -206,7 +206,13 @@ private fun RailItem(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val ink = if (selected) CoineProColors.TextPrimary else CoineProColors.TextMuted
-    val plate = if (selected) CoineProColors.SurfaceElevated else Color.Transparent
+    // The elevated rung on the navy; the raised one on the light stage, where elevated `#F0F3FA`
+    // over `#F7F8FA` was a ΔL* of 1.5 and the label's weight was the only cue left (LISTS-25).
+    val plate = when {
+        !selected -> Color.Transparent
+        LocalCoineProPalette.current.isDark -> CoineProColors.SurfaceElevated
+        else -> CoineProColors.SurfaceRaised
+    }
     val glyph = @Composable {
         Icon(
             painter = painterResource(if (selected) item.selectedIcon else item.icon),

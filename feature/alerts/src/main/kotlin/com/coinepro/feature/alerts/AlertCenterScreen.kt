@@ -93,7 +93,15 @@ import java.time.Instant
  * [AlertVenue] for why that was a bug rather than two features.
  */
 @Composable
-fun AlertCenterScreen(controller: AlertsController, initialSymbol: String? = null) {
+fun AlertCenterScreen(
+    controller: AlertsController,
+    initialSymbol: String? = null,
+    /**
+     * False inside the chart's side panel, which writes «هشدارها» above the content itself; the
+     * screen's own heading was the same word one line below it (DIALOGS-29). The actions stay.
+     */
+    showTitle: Boolean = true,
+) {
     val state by controller.state.collectAsStateWithLifecycle()
     val toaster = LocalToaster.current
     val undoLabel = stringResource(R.string.alerts_undo)
@@ -110,7 +118,7 @@ fun AlertCenterScreen(controller: AlertsController, initialSymbol: String? = nul
 
     Column(modifier = Modifier.fillMaxSize().background(CoineProColors.Stage)) {
         CoineProListHeader(
-            title = stringResource(R.string.alerts_centre_title),
+            title = if (showTitle) stringResource(R.string.alerts_centre_title) else null,
             subtitle = if (state.total == 0) null else state.subtitleText(),
             actions = {
                 // Two, in `AlertCenterActions.PRIMARY`'s order and no other. See that file.

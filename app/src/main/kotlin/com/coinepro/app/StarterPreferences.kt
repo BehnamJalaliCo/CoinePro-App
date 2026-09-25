@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import com.coinepro.core.designsystem.CONTENT_MAX_WIDTH
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -72,19 +75,23 @@ fun StarterPreferences(
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    // Capped and centred on a tablet (MOBILE-11), as the welcome page before it already is: four
+    // rows of 330-point pills and a 990-point button changed the flow's width in mid-stride.
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(CoineProColors.Stage)
             .systemBarsPadding()
             .testTag(STARTER_TAG),
+        contentAlignment = Alignment.TopCenter,
     ) {
         Column(
             modifier = Modifier
-                .weight(1f)
+                .widthIn(max = CONTENT_MAX_WIDTH)
+                .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = CoineProSpacing.Gutter)
-                .padding(top = CoineProSpacing.Four, bottom = CoineProSpacing.Two),
+                .padding(top = CoineProSpacing.Four, bottom = CoineProSpacing.Three),
             verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Three),
         ) {
             Text(
@@ -118,21 +125,27 @@ fun StarterPreferences(
                 onSelect = onQuote,
                 numeric = true,
             )
+            // The colour itself, beside its name: «رشد یعنی سبز» is a sentence about a colour.
+            // The palette's up ink is whichever colour the chosen scheme rises in, so the option
+            // that is on shows it and the other shows the opposite (MOBILE-31).
+            val upInk = CoineProColors.MarketUp
+            val downInk = CoineProColors.MarketDown
             Choice(
                 title = stringResource(R.string.starter_colours),
                 options = MarketColorScheme.entries.map { it to stringResource(it.labelRes()) },
                 selected = colours,
                 onSelect = onColours,
+                swatch = { scheme -> if (scheme == colours) upInk else downInk },
+            )
+            // **Under the last question, not at the foot of the glass** (MOBILE-31). Pinned to the
+            // bottom it sat four hundred points below the choices on a tall phone, in a gap that
+            // read as a page still loading.
+            CoineProPrimaryButton(
+                text = stringResource(R.string.starter_done),
+                onClick = onDone,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
-        CoineProPrimaryButton(
-            text = stringResource(R.string.starter_done),
-            onClick = onDone,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = CoineProSpacing.Gutter)
-                .padding(bottom = CoineProSpacing.Three),
-        )
     }
 }
 
@@ -149,6 +162,8 @@ private fun <T> Choice(
     selected: T,
     onSelect: (T) -> Unit,
     numeric: Boolean = false,
+    /** A small disc of colour before the label, for a choice that *is* a colour. */
+    swatch: ((T) -> Color)? = null,
 ) {
     val haptics = rememberCoineProHaptics()
     Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
@@ -178,16 +193,28 @@ private fun <T> Choice(
                         .padding(vertical = CoineProSpacing.OneHalf),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = label,
-                        style = if (numeric) {
-                            MaterialTheme.typography.labelMedium.numeric()
-                        } else {
-                            MaterialTheme.typography.labelMedium
-                        },
-                        color = if (on) CoineProColors.OnAccent else CoineProColors.TextPrimary,
-                        maxLines = 1,
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                    ) {
+                        swatch?.let { ink ->
+                            Box(modifier = Modifier.size(8.dp).clip(CoineProPillShape).background(ink(value)))
+                        }
+                        Text(
+                            text = label,
+                            style = if (numeric) {
+                                MaterialTheme.typography.labelMedium.numeric()
+                            } else {
+                                MaterialTheme.typography.labelMedium
+                            },
+                            // Dark ink on the gold reads a weight lighter than the same ink on the
+                            // stage, so the chosen pill is set a step heavier to look the same
+                            // (MOBILE-21).
+                            fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium,
+                            color = if (on) CoineProColors.OnAccent else CoineProColors.TextPrimary,
+                            maxLines = 1,
+                        )
+                    }
                 }
             }
         }

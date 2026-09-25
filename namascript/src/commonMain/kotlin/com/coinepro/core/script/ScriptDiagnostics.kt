@@ -26,8 +26,8 @@ object ScriptDiagnostics {
             "Write one statement per line; remove what follows the statement or move it to the next line."),
         "E102" to ("برای هر «(» یا «[» باز یک بسته لازم است." to "Every “(” or “[” needs its closing half."),
         "E103" to ("شرط سه‌بخشی به این شکل است: شرط ? اگر‌درست : اگر‌نادرست" to "A conditional reads: condition ? whenTrue : whenFalse"),
-        "E104" to ("عبارت با چیزی ناتمام مانده — یک عدد، نام یا پرانتز بعد از عملگر لازم است." to
-            "The expression stops short — an operator needs a number, a name or a parenthesis after it."),
+        "E104" to ("عبارت با چیزی ناتمام مانده − یک عدد، نام یا پرانتز بعد از عملگر لازم است." to
+            "The expression stops short − an operator needs a number, a name or a parenthesis after it."),
         "E105" to ("عدد را با رقم‌های لاتین و یک نقطه‌ی اعشار بنویسید: 1.5" to "Write numbers with Latin digits and one decimal point: 1.5"),
         "E106" to ("رشته را با همان علامت نقل‌قولی که باز کردید ببندید." to "Close the string with the same quote it opened with."),
         "E107" to ("این نویسه در نمااسکریپت معنایی ندارد؛ عملگرها + - * / % == != < > <= >= and or not هستند." to
@@ -39,8 +39,8 @@ object ScriptDiagnostics {
         "E203" to ("اینجا عدد یا سری عددی لازم است؛ شرط را با iff به عدد تبدیل کنید." to
             "A number or number series is needed here; turn a condition into a number with iff."),
         "E204" to ("اینجا شرط لازم است؛ یک مقایسه بنویسید: close > open" to "A condition is needed here; write a comparison: close > open"),
-        "E205" to ("این مقدار باید ثابت باشد، نه سری — یک عدد بنویسید یا از input بگیرید." to
-            "This must be a constant, not a series — write a number or take it from input."),
+        "E205" to ("این مقدار باید ثابت باشد، نه سری − یک عدد بنویسید یا از input بگیرید." to
+            "This must be a constant, not a series − write a number or take it from input."),
         "E206" to ("طول دوره باید عددی بین ۱ و چند برابر طول چارت باشد." to "A length must be between 1 and a few times the chart's length."),
         "E207" to ("plot سری عددی می‌کشد؛ برای شرط از marker یا plotshape استفاده کنید." to
             "plot draws a number series; use marker or plotshape for a condition."),
@@ -59,7 +59,7 @@ object ScriptDiagnostics {
         "E401" to ("اسکریپت را کوتاه‌تر کنید یا نتایج میانی را در یک متغیر نگه دارید." to
             "Shorten the script or keep intermediate results in a variable."),
         "E402" to ("بیش از دوازده خط قابل رسم نیست؛ خط‌های کمتری بکشید." to "No more than twelve lines can be plotted; plot fewer."),
-        "E403" to ("اسکریپت را کوتاه‌تر کنید — سقف بیست هزار نویسه است." to "Shorten the script — the cap is twenty thousand characters."),
+        "E403" to ("اسکریپت را کوتاه‌تر کنید − سقف بیست هزار نویسه است." to "Shorten the script − the cap is twenty thousand characters."),
         "E404" to ("چارت هنوز کندلی ندارد؛ منتظر بارگذاری بمانید." to "The chart has no bars yet; wait for it to load."),
         "E405" to ("پرانتزهای تودرتو را کمتر کنید یا عبارت را در چند متغیر بشکنید." to
             "Nest fewer parentheses, or split the expression across variables."),

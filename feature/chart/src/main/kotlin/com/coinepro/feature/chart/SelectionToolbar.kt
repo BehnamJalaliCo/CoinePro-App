@@ -1,10 +1,10 @@
 package com.coinepro.feature.chart
 
+import com.coinepro.core.designsystem.coineProHorizontalScroll
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -131,7 +131,7 @@ internal fun DrawingSelectionToolbar(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            modifier = Modifier.coineProHorizontalScroll(rememberScrollState()),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // What is being acted on, in one glance. A prose count, so Persian digits — and only
@@ -248,9 +248,11 @@ internal fun DrawingClipboardRow(
     onCopy: () -> Unit,
     onPaste: () -> Unit,
     onClear: () -> Unit,
+    /** The host's inset. The objects sheet pads nothing of its own and passes the gutter (MOBILE-02). */
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(bottom = CoineProSpacing.One),
+        modifier = modifier.fillMaxWidth().padding(bottom = CoineProSpacing.One),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
         Text(
@@ -260,7 +262,7 @@ internal fun DrawingClipboardRow(
             fontWeight = FontWeight.Normal,
         )
         Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxWidth().coineProHorizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -362,7 +364,7 @@ private fun StylePanel(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
+                .coineProHorizontalScroll(rememberScrollState())
                 .padding(top = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
             verticalAlignment = Alignment.CenterVertically,
@@ -396,7 +398,7 @@ private fun StylePanel(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
+            .coineProHorizontalScroll(rememberScrollState())
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
         verticalAlignment = Alignment.CenterVertically,
@@ -455,7 +457,7 @@ private fun StylePanel(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
+            .coineProHorizontalScroll(rememberScrollState())
             .padding(bottom = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
         verticalAlignment = Alignment.CenterVertically,
@@ -513,7 +515,7 @@ private fun TemplatePanel(templates: List<DrawingTemplate>, onApply: (DrawingTem
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
+            .coineProHorizontalScroll(rememberScrollState())
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
         verticalAlignment = Alignment.CenterVertically,

@@ -8,6 +8,16 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.text.style.TextOverflow
+import com.coinepro.core.designsystem.CoineProToggleChip
+import com.coinepro.core.designsystem.coineProWindowClass
+import com.coinepro.core.designsystem.proseDigits
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -86,6 +96,7 @@ fun ChartTypePicker(
     onHelp: ((String) -> Unit)? = null,
     hasVolume: Boolean = true,
 ) {
+    val english = inEnglish()
     val derivedTypes = setOf(ChartType.VOLUME_CANDLES, ChartType.FOOTPRINT, ChartType.TPO)
     val offered = ChartCatalog.chartTypesFor(hasVolume)
     val timed = offered.filter { it.type.isTimeBased && it.type !in derivedTypes }
@@ -95,10 +106,10 @@ fun ChartTypePicker(
         modifier = modifier.fillMaxWidth().background(CoineProColors.Surface),
         contentPadding = PaddingValues(bottom = CoineProSpacing.Two),
     ) {
-        item { GroupHeader("زمان‌محور") }
+        item(key = "h-timed") { GroupHeader(if (english) "Time-based" else "زمان‌محور") }
         items(timed, key = { it.type }) { option ->
             PickerRow(
-                label = option.label,
+                label = option.label(english),
                 icon = option.icon.drawableRes(),
                 selected = option.type == selected,
                 accent = null,
@@ -106,10 +117,18 @@ fun ChartTypePicker(
                 onHelp = onHelp?.let { { it(option.helpId) } },
             )
         }
-        item { GroupHeader("قیمت‌محور — هر میله با حرکت قیمت ساخته می‌شود، نه با گذر زمان") }
+        item(key = "h-untimed") {
+            GroupHeader(
+                if (english) {
+                    "Price-driven — each bar is built by price moving, not by time passing"
+                } else {
+                    "قیمت‌محور — هر میله با حرکت قیمت ساخته می‌شود، نه با گذر زمان"
+                },
+            )
+        }
         items(untimed, key = { it.type }) { option ->
             PickerRow(
-                label = option.label,
+                label = option.label(english),
                 icon = option.icon.drawableRes(),
                 selected = option.type == selected,
                 accent = null,
@@ -118,10 +137,18 @@ fun ChartTypePicker(
             )
         }
         if (derived.isNotEmpty()) {
-            item { GroupHeader("مشتق از داده — همان میله‌ها، با هندسه‌ای که چیز دیگری را می‌گوید") }
+            item(key = "h-derived") {
+                GroupHeader(
+                    if (english) {
+                        "Derived — the same bars, drawn to say something else"
+                    } else {
+                        "مشتق از داده — همان میله‌ها، با هندسه‌ای که چیز دیگری را می‌گوید"
+                    },
+                )
+            }
             items(derived, key = { it.type }) { option ->
                 PickerRow(
-                    label = option.label,
+                    label = option.label(english),
                     icon = option.icon.drawableRes(),
                     selected = option.type == selected,
                     accent = null,
@@ -144,7 +171,12 @@ fun ChartTypePicker(
  * The filter is by pane, which is the useful distinction rather than an alphabet: a reader adding a
  * third overlay to the price is making a different decision from one opening a fourth pane below
  * it, and the list should say which they are about to do.
+ *
+ * Given room — TradingView's 840 px dialog — the families become a column beside the list rather
+ * than a row over it (DIALOGS-14): nine chips in a 528 px dialog put two families past the edge,
+ * and a column never runs out of glass. A desktop dialog too narrow for the column wraps its chips.
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun IndicatorPicker(
     active: Set<String>,
@@ -194,6 +226,8 @@ fun IndicatorPicker(
 ) {
     var chip by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
+    val english = inEnglish()
+    val dense = coineProWindowClass().showsTwoPanes
 
     // Typing overrides the chips rather than intersecting with them, exactly as in the tool rail.
     // Somebody who types «مکدی» wants MACD, not "MACD if it happens to be in the pane I last
@@ -209,73 +243,246 @@ fun IndicatorPicker(
         chip != null -> offered.filter { ChartCatalog.categoryOf(it.id).name == chip }
         else -> offered
     }
+    // The reference's filters: Favourites and Recent first, then the families. The two personal
+    // ones exist only where something feeds them — a preview has no store.
+    val personal = if (onToggleFavourite != null) {
+        listOf(
+            CoineProChip(id = CHIP_FAVOURITES, label = if (english) "Favorites" else "برگزیده‌ها", count = favourites.size),
+            CoineProChip(id = CHIP_RECENT, label = if (english) "Recent" else "اخیر", count = recent.size),
+        )
+    } else {
+        emptyList()
+    }
+    val families = IndicatorCategory.entries.map { candidate ->
+        CoineProChip(
+            id = candidate.name,
+            label = candidate.label(english),
+            count = offered.count { ChartCatalog.categoryOf(it.id) == candidate },
+        )
+    }
+    val allLabel = if (english) "All" else "همه"
 
     Column(modifier = modifier.fillMaxWidth().background(CoineProColors.Surface)) {
         CoineProSheetSearch(
             value = query,
             onValueChange = { query = it },
-            placeholder = "جست‌وجوی اندیکاتور",
+            placeholder = if (english) "Search indicators" else "جست‌وجوی اندیکاتور",
             modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
             autoFocus = autoFocusSearch,
         )
         Spacer(Modifier.height(CoineProSpacing.OneHalf))
-        if (!searching) {
-            // The reference's chips: Favourites and Recent first, then the families. The two
-            // personal chips exist only where something feeds them — a preview has no store.
-            val personal = if (onToggleFavourite != null) {
-                listOf(
-                    CoineProChip(id = CHIP_FAVOURITES, label = FAVOURITES_LABEL, count = favourites.size),
-                    CoineProChip(id = CHIP_RECENT, label = RECENT_LABEL, count = recent.size),
-                )
-            } else {
-                emptyList()
-            }
-            CoineProChipRow(
-                options = personal + IndicatorCategory.entries.map { candidate ->
-                    CoineProChip(
-                        id = candidate.name,
-                        label = candidate.label,
-                        count = offered.count { ChartCatalog.categoryOf(it.id) == candidate },
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val column = maxWidth >= CATEGORY_COLUMN_MIN_DIALOG
+            if (column) {
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    CategoryColumn(
+                        personal = personal,
+                        families = families,
+                        allLabel = allLabel,
+                        allCount = offered.size,
+                        selectedId = chip,
+                        // A family chosen while searching clears the search, so the choice is
+                        // what the list then shows.
+                        onSelect = { id ->
+                            chip = id
+                            query = ""
+                        },
                     )
-                },
-                selectedId = chip,
-                onSelect = { id -> chip = id },
-                allLabel = "همه",
-            )
-            Spacer(Modifier.height(CoineProSpacing.One))
+                    Box(modifier = Modifier.weight(1f)) {
+                        IndicatorList(
+                            shown = shown,
+                            grouped = !searching && chip == null,
+                            chip = chip,
+                            english = english,
+                            dense = dense,
+                            active = active,
+                            onToggle = onToggle,
+                            onHelp = onHelp,
+                            periods = periods,
+                            onSetPeriod = onSetPeriod,
+                            favourites = favourites,
+                            onToggleFavourite = onToggleFavourite,
+                            trailing = trailing,
+                        )
+                    }
+                }
+            } else {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    if (!searching) {
+                        if (dense) {
+                            // A pointer cannot swipe a row sideways, so on a dialog too narrow for the
+                            // column every family wraps onto a second line rather than hiding.
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = CoineProSpacing.Gutter),
+                                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+                                verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+                            ) {
+                                CoineProToggleChip(label = allLabel, selected = chip == null, onClick = { chip = null }, compact = true, neutral = true)
+                                (personal + families).forEach { option ->
+                                    CoineProToggleChip(
+                                        label = option.label,
+                                        selected = option.id == chip,
+                                        onClick = { chip = option.id },
+                                        count = option.count,
+                                        compact = true,
+                                        neutral = true,
+                                    )
+                                }
+                            }
+                        } else {
+                            // Neutral, like every filter inside a chart dialog (DIALOGS-26): the
+                            // page's gold stays for the one action worth pressing.
+                            CoineProChipRow(
+                                options = personal + families,
+                                selectedId = chip,
+                                onSelect = { id -> chip = id },
+                                allLabel = allLabel,
+                                neutral = true,
+                            )
+                        }
+                        Spacer(Modifier.height(CoineProSpacing.One))
+                    }
+                    IndicatorList(
+                        shown = shown,
+                        grouped = !searching && chip == null,
+                        chip = chip,
+                        english = english,
+                        dense = dense,
+                        active = active,
+                        onToggle = onToggle,
+                        onHelp = onHelp,
+                        periods = periods,
+                        onSetPeriod = onSetPeriod,
+                        favourites = favourites,
+                        onToggleFavourite = onToggleFavourite,
+                        trailing = trailing,
+                    )
+                }
+            }
         }
+    }
+}
 
-        if (shown.isEmpty()) {
+/**
+ * The families as TradingView's left column: one 36 dp row each, the count at the far end, a raised
+ * plate under the one in force. The personal pair sits above a hairline, as the reference's
+ * «Personal» group sits above «Built-in».
+ */
+@Composable
+private fun CategoryColumn(
+    personal: List<CoineProChip>,
+    families: List<CoineProChip>,
+    allLabel: String,
+    allCount: Int,
+    selectedId: String?,
+    onSelect: (String?) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .width(CATEGORY_COLUMN_WIDTH)
+            .verticalScroll(rememberScrollState())
+            .padding(start = CoineProSpacing.OneHalf, end = CoineProSpacing.One, bottom = CoineProSpacing.Two),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        CategoryRow(allLabel, allCount, selectedId == null) { onSelect(null) }
+        personal.forEach { option ->
+            CategoryRow(option.label, option.count, option.id == selectedId) { onSelect(option.id) }
+        }
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = CoineProSpacing.Half, horizontal = CoineProSpacing.One),
+            color = CoineProColors.BorderSubtle,
+        )
+        families.forEach { option ->
+            CategoryRow(option.label, option.count, option.id == selectedId) { onSelect(option.id) }
+        }
+    }
+}
+
+@Composable
+private fun CategoryRow(label: String, count: Int?, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(CATEGORY_ROW_HEIGHT)
+            .clip(CoineProShapes.small)
+            .background(if (selected) CoineProColors.SurfaceRaised else Color.Transparent)
+            .coineProControl(onClick = onClick)
+            .padding(horizontal = CoineProSpacing.OneHalf),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (selected) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        if (count != null) {
+            Text(
+                text = count.proseDigits(),
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+            )
+        }
+    }
+}
+
+/** The list itself, under the chips or beside the column. */
+@Composable
+private fun IndicatorList(
+    shown: List<IndicatorOption>,
+    grouped: Boolean,
+    chip: String?,
+    english: Boolean,
+    dense: Boolean,
+    active: Set<String>,
+    onToggle: (IndicatorOption) -> Unit,
+    onHelp: ((String) -> Unit)?,
+    periods: Map<String, Int>,
+    onSetPeriod: ((String, Int) -> Unit)?,
+    favourites: List<String>,
+    onToggleFavourite: ((String) -> Unit)?,
+    trailing: (@Composable () -> Unit)?,
+) {
+    if (shown.isEmpty()) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             CoineProSheetEmpty(
                 when (chip) {
-                    CHIP_FAVOURITES -> "هنوز اندیکاتوری ستاره نزده‌اید. ستاره‌ی کنار هر ردیف آن را اینجا می‌آورد."
-                    CHIP_RECENT -> "هنوز اندیکاتوری روشن نکرده‌اید."
-                    else -> "اندیکاتوری با این نام پیدا نشد."
+                    CHIP_FAVOURITES -> if (english) {
+                        "No favorites yet. The star beside any row brings it here."
+                    } else {
+                        "هنوز اندیکاتوری ستاره نزده‌اید. ستاره‌ی کنار هر ردیف آن را اینجا می‌آورد."
+                    }
+                    CHIP_RECENT -> if (english) "You have not switched an indicator on yet." else "هنوز اندیکاتوری روشن نکرده‌اید."
+                    else -> if (english) "No indicator by that name." else "اندیکاتوری با این نام پیدا نشد."
                 },
             )
             // The reader's own studies are still offered. A filter that matched nothing in the
             // catalogue is exactly the moment somebody is looking for the script they wrote.
-            trailing?.invoke()
-            return@Column
+            trailing?.let { section ->
+                Column(modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter)) { section() }
+            }
         }
+        return
+    }
 
-        // A heading only when the list actually spans both panes. Printing «روی قیمت» over a list
-        // the reader just filtered *to* «روی قیمت» is a line of noise.
-        val grouped = !searching && chip == null
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(bottom = CoineProSpacing.Two),
-        ) {
-            var last: IndicatorPane? = null
-            for (option in shown) {
-                if (grouped && option.pane != last) {
-                    last = option.pane
-                    val heading = option.pane
-                    item(key = "h-${heading.name}") { GroupHeader(heading.label) }
-                }
-                item(key = option.id) {
+    // A heading only when the list actually spans both panes. Printing «روی قیمت» over a list
+    // the reader just filtered *to* «روی قیمت» is a line of noise.
+    val entries = remember(shown, grouped) { indicatorListEntries(shown, grouped) }
+    LazyColumn(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(bottom = CoineProSpacing.Two),
+    ) {
+        items(entries, key = { it.key }) { entry ->
+            when (entry) {
+                is IndicatorListEntry.Heading -> GroupHeader(entry.pane.label(english))
+                is IndicatorListEntry.Study -> {
+                    val option = entry.option
                     PickerRow(
-                        label = option.label,
+                        label = option.label(english),
                         icon = option.icon.drawableRes(),
                         selected = option.id in active,
                         accent = Color(option.colour),
@@ -298,25 +505,56 @@ fun IndicatorPicker(
                                     onChange = { next -> onSetPeriod?.invoke(option.id, next) },
                                 )
                             },
+                        dense = dense,
                     )
                 }
             }
-            trailing?.let { section ->
-                item(key = "trailing") {
-                    Column(modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter)) { section() }
-                }
+        }
+        trailing?.let { section ->
+            item(key = "trailing") {
+                Column(modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter)) { section() }
             }
         }
     }
 }
 
-/** What the chip and the heading call each pane. */
-private val IndicatorPane.label: String
-    get() = when (this) {
-        IndicatorPane.PRICE -> "روی قیمت"
-        IndicatorPane.SEPARATE -> "در پنل جدا"
-        IndicatorPane.STRUCTURE -> "ساختار بازار"
+/** One line of the indicator list: a pane's heading or a study. */
+internal sealed interface IndicatorListEntry {
+    val key: String
+
+    data class Heading(val pane: IndicatorPane) : IndicatorListEntry {
+        override val key: String get() = "h-${pane.name}"
     }
+
+    data class Study(val option: IndicatorOption) : IndicatorListEntry {
+        override val key: String get() = option.id
+    }
+}
+
+/**
+ * The list's lines, with each pane's heading once (DIALOGS-01).
+ *
+ * The catalogue interleaves the panes — the second pack's price studies follow the first pack's
+ * oscillators — and a heading emitted on every change of pane put «در پنل جدا» into the list twice
+ * under one key, which a `LazyColumn` answers by throwing mid-scroll. Grouped, the studies are
+ * gathered by pane first (catalogue order kept inside each); either way an id appears once, so a
+ * favourites store holding a duplicate cannot crash the list either.
+ */
+internal fun indicatorListEntries(shown: List<IndicatorOption>, grouped: Boolean): List<IndicatorListEntry> {
+    val unique = shown.distinctBy { it.id }
+    if (!grouped) return unique.map { IndicatorListEntry.Study(it) }
+    return IndicatorPane.entries.flatMap { pane ->
+        val inPane = unique.filter { it.pane == pane }
+        if (inPane.isEmpty()) emptyList() else listOf(IndicatorListEntry.Heading(pane)) + inPane.map { IndicatorListEntry.Study(it) }
+    }
+}
+
+/** What the heading calls each pane. */
+private fun IndicatorPane.label(english: Boolean): String = when (this) {
+    IndicatorPane.PRICE -> if (english) "On price" else "روی قیمت"
+    IndicatorPane.SEPARATE -> if (english) "Separate pane" else "در پنل جدا"
+    IndicatorPane.STRUCTURE -> if (english) "Market structure" else "ساختار بازار"
+}
 
 @Composable
 private fun GroupHeader(text: String) {
@@ -345,16 +583,26 @@ private fun PickerRow(
     period: PeriodControl? = null,
     starred: Boolean = false,
     onToggleStar: (() -> Unit)? = null,
+    /**
+     * A pointer's list (DIALOGS-13): TradingView's 32–40 px pitch rather than the thumb's 48, so a
+     * dialog shows fourteen studies instead of nine. Defaults to the window's answer.
+     */
+    dense: Boolean = coineProWindowClass().showsTwoPanes,
 ) {
+    val english = inEnglish()
+    // On a phone the stepper takes a second line under the name rather than squeezing it: beside
+    // the check, the star and the «؟» it left «میانگین متحرک ساده» two lines tall (DIALOGS-17).
+    val stepperBelow = period != null && !dense
     // A selected row is a filled, hairlined card rather than a tick alone at the far end. On a
     // fifty-row list the reader scans down the left of the labels, and a mark parked on the other
     // side of the screen is the last thing they see. The whole row changing state is the first.
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
+            // The plate's edge on the sheet's gutter, the search field's edge above it (MOBILE-02).
             .padding(
-                horizontal = CoineProSpacing.OneHalf,
-                vertical = ROW_GAP,
+                horizontal = CoineProSpacing.Gutter,
+                vertical = if (dense) 0.dp else ROW_GAP,
             )
             .clip(CoineProShapes.small)
             .background(if (selected) CoineProColors.SurfaceElevated else Color.Transparent)
@@ -372,57 +620,80 @@ private fun PickerRow(
             // A long press is the reference's way to the indicator's own page; the «؟» stays
             // for the reader who does not know that.
             .combinedClickable(onClick = onClick, onLongClick = onHelp)
-            .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.OneHalf),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+            .padding(
+                horizontal = CoineProSpacing.OneHalf,
+                vertical = if (dense) DENSE_ROW_PAD else CoineProSpacing.OneHalf,
+            ),
     ) {
-        // TradingView's own glyph. On an indicator it is tinted with that indicator's line colour,
-        // so the icon and the swatch are one thing rather than two: the row says "this draws a
-        // channel, in this colour" in a single mark.
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = null,
-            modifier = Modifier.size(20.dp),
-            tint = when {
-                accent != null && selected -> accent
-                accent != null -> accent.copy(alpha = INACTIVE_ICON_ALPHA)
-                selected -> CoineProColors.Accent
-                else -> CoineProColors.TextMuted
-            },
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (selected) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            modifier = Modifier.weight(1f),
-        )
-        period?.let { PeriodStepper(it, accent ?: CoineProColors.Accent) }
-        if (selected) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(if (dense) CoineProSpacing.One else CoineProSpacing.OneHalf),
+        ) {
+            // TradingView's own glyph. On an indicator it is tinted with that indicator's line colour,
+            // so the icon and the swatch are one thing rather than two: the row says "this draws a
+            // channel, in this colour" in a single mark.
             Icon(
-                painter = painterResource(DesignR.drawable.icon_check_circle),
-                contentDescription = SELECTED_LABEL,
-                modifier = Modifier.size(18.dp),
-                tint = accent ?: CoineProColors.Accent,
+                painter = painterResource(icon),
+                contentDescription = null,
+                modifier = Modifier.size(if (dense) 18.dp else 20.dp),
+                tint = when {
+                    accent != null && selected -> accent
+                    accent != null -> accent.copy(alpha = INACTIVE_ICON_ALPHA)
+                    selected -> CoineProColors.Accent
+                    else -> CoineProColors.TextMuted
+                },
             )
-        }
-        onToggleStar?.let { toggle ->
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .coineProControl(onClick = toggle),
-                contentAlignment = Alignment.Center,
-            ) {
+            Text(
+                text = label,
+                style = if (dense) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
+                color = if (selected) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            if (!stepperBelow) period?.let { PeriodStepper(it, accent ?: CoineProColors.Accent) }
+            if (selected) {
                 Icon(
-                    painter = painterResource(if (starred) DesignR.drawable.icon_filled_star else DesignR.drawable.icon_star),
-                    contentDescription = if (starred) UNSTAR_LABEL else STAR_LABEL,
-                    modifier = Modifier.size(18.dp),
-                    tint = if (starred) CoineProColors.Gold else CoineProColors.TextMuted,
+                    painter = painterResource(DesignR.drawable.icon_check_circle),
+                    contentDescription = if (english) "Selected" else "انتخاب‌شده",
+                    modifier = Modifier.size(if (dense) 16.dp else 18.dp),
+                    tint = accent ?: CoineProColors.Accent,
                 )
             }
+            onToggleStar?.let { toggle ->
+                Box(
+                    modifier = Modifier
+                        .size(if (dense) DENSE_CONTROL else 28.dp)
+                        .clip(CircleShape)
+                        .coineProControl(onClick = toggle),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(if (starred) DesignR.drawable.icon_filled_star else DesignR.drawable.icon_star),
+                        contentDescription = when {
+                            english && starred -> "Remove from favorites"
+                            english -> "Add to favorites"
+                            starred -> "برداشتن از برگزیده‌ها"
+                            else -> "افزودن به برگزیده‌ها"
+                        },
+                        modifier = Modifier.size(if (dense) 16.dp else 18.dp),
+                        tint = if (starred) CoineProColors.Gold else CoineProColors.TextMuted,
+                    )
+                }
+            }
+            if (onHelp != null) {
+                if (dense) HelpDot(onClick = onHelp, size = DENSE_CONTROL, glyph = 16.dp) else HelpDot(onClick = onHelp)
+            }
         }
-        if (onHelp != null) HelpDot(onClick = onHelp)
+        if (stepperBelow) {
+            Row(
+                modifier = Modifier.padding(start = 20.dp + CoineProSpacing.OneHalf, top = CoineProSpacing.Half),
+            ) {
+                PeriodStepper(period!!, accent ?: CoineProColors.Accent)
+            }
+        }
     }
 }
 
@@ -610,7 +881,7 @@ internal fun HelpDot(
     ) {
         Icon(
             painter = painterResource(DesignR.drawable.tv_help_circle),
-            contentDescription = HELP_LABEL,
+            contentDescription = if (inEnglish()) "Help" else "راهنما",
             modifier = Modifier.size(glyph),
             tint = tint,
         )
@@ -620,16 +891,19 @@ internal fun HelpDot(
 /** The two personal chips' ids, kept apart from the family names they sit beside. */
 private const val CHIP_FAVOURITES = "__favourites"
 private const val CHIP_RECENT = "__recent"
-private const val FAVOURITES_LABEL = "برگزیده‌ها"
-private const val RECENT_LABEL = "اخیر"
-private const val STAR_LABEL = "افزودن به برگزیده‌ها"
-private const val UNSTAR_LABEL = "برداشتن از برگزیده‌ها"
 
-/** Read aloud in place of the icon, which has no text of its own. */
-private const val HELP_LABEL = "راهنما"
+/** TradingView's category column: 200 px wide, one 36 px row per family. */
+private val CATEGORY_COLUMN_WIDTH = 200.dp
+private val CATEGORY_ROW_HEIGHT = 36.dp
 
-/** Read aloud on the tick, which otherwise announces nothing. */
-private const val SELECTED_LABEL = "انتخاب‌شده"
+/** The narrowest picker that takes the column: 200 for it and a list still wider than a phone's. */
+private val CATEGORY_COLUMN_MIN_DIALOG = 640.dp
+
+/** A dense row's vertical padding: 6 + a 22 sp line + 6 = TradingView's 34 px row. */
+private val DENSE_ROW_PAD = 6.dp
+
+/** The star and «؟» boxes on a dense row: 24, with a 16 dp glyph. */
+private val DENSE_CONTROL = 24.dp
 
 /** An unselected indicator keeps its colour, faintly, so the list still colour-codes itself. */
 private const val INACTIVE_ICON_ALPHA = 0.45f

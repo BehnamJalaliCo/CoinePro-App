@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -17,10 +15,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.coinepro.app.R
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProSwitch
 import com.coinepro.core.designsystem.CoineProSecondaryButton
 import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSpacing
-import com.coinepro.core.designsystem.rememberCoineProHaptics
 import com.coinepro.core.security.LockCapability
 
 /**
@@ -51,7 +49,6 @@ fun AppLockSheet(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val haptics = rememberCoineProHaptics()
 
     CoineProSheet(
         title = stringResource(R.string.lock_sheet_title),
@@ -75,22 +72,14 @@ fun AppLockSheet(
                     color = CoineProColors.TextPrimary,
                     modifier = Modifier.weight(1f),
                 )
-                Switch(
+                // The app's own switch, which carries its own tick.
+                CoineProSwitch(
                     checked = enabled,
                     // Off is always allowed, on only when the phone can actually challenge. A
                     // switch that turns on and then never asks for anything is worse than one that
                     // refuses: the reader believes the app is locked and it is not.
                     enabled = capability.usable || enabled,
-                    onCheckedChange = { on ->
-                        haptics.select()
-                        onSetEnabled(on)
-                    },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = CoineProColors.OnAccent,
-                        checkedTrackColor = CoineProColors.AccentFill,
-                        uncheckedTrackColor = CoineProColors.Surface,
-                        uncheckedBorderColor = CoineProColors.Border,
-                    ),
+                    onCheckedChange = { on -> onSetEnabled(on) },
                 )
             }
 

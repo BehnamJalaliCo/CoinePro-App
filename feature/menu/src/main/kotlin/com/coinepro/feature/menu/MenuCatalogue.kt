@@ -201,7 +201,9 @@ object MenuCatalogue {
         MenuEntry(
             id = "journal",
             titleRes = R.string.menu_journal_title,
-            icon = DesignR.drawable.tv_tool_note,
+            // A pencil, for writing a trade down (MOBILE-34). The note tool's glyph is TradingView's
+            // pin, and on a menu row it read as a map marker.
+            icon = DesignR.drawable.tv_pencil,
             group = MenuGroup.TRADE,
         ),
         MenuEntry(

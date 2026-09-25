@@ -1,27 +1,24 @@
 package com.coinepro.feature.chart
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -34,21 +31,19 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.chart.ChartCatalog
 import com.coinepro.core.chart.IndicatorOption
-import com.coinepro.core.chart.IndicatorParameterStepper
-import com.coinepro.core.common.AppLanguage
-import androidx.compose.ui.platform.LocalConfiguration
-import com.coinepro.core.chart.IndicatorPeriodStepper
+import com.coinepro.core.designsystem.CoineProChipDefaults
 import com.coinepro.core.designsystem.CoineProColors
-import com.coinepro.core.designsystem.CoineProNote
+import com.coinepro.core.designsystem.CoineProNotedLabel
+import com.coinepro.core.designsystem.CoineProSwitch
+import com.coinepro.core.designsystem.CoineProToggleChip
+import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.CoineProPillShape
 import com.coinepro.core.designsystem.CoineProSecondaryButton
-import com.coinepro.core.designsystem.CoineProSegmentedControl
 import com.coinepro.core.designsystem.CoineProSheet
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.SHEET_PREVIEW_SCRIM_ALPHA
 import com.coinepro.core.designsystem.coineProControl
-import com.coinepro.core.designsystem.numeric
 
 /** The three pages of an indicator's settings, as the reference names them. */
 enum class IndicatorSettingsTab { INPUTS, STYLE, VISIBILITY }
@@ -89,9 +84,19 @@ internal fun IndicatorSettingsSheet(
     onToggleHidden: () -> Unit,
     onRemove: () -> Unit,
 ) {
+    val english = inEnglish()
+    // What the study looked like when the sheet opened, so Cancel can put it back: every change
+    // previews live on the chart behind the scrim, and «Cancel» has to mean «as it was».
+    val opened = remember(option.id) { IndicatorSnapshot(period, colour, widthDp, params, hidden) }
+    val defaults = {
+        onSetPeriod(null)
+        ChartCatalog.parametersOf(option.id).filter { it.key != ChartCatalog.LENGTH }.forEach { onSetParam(it.key, null) }
+        onSetColour(null)
+        onSetWidth(null)
+    }
     CoineProSheet(
-        title = option.label,
-        subtitle = ChartCatalog.categoryOf(option.id).label,
+        title = option.label(english),
+        subtitle = ChartCatalog.categoryOf(option.id).label(english),
         onDismiss = onDismiss,
         scrimAlpha = SHEET_PREVIEW_SCRIM_ALPHA,
     ) {
@@ -110,10 +115,31 @@ internal fun IndicatorSettingsSheet(
             onSetWidth = onSetWidth,
             onToggleHidden = onToggleHidden,
             onRemove = onRemove,
+            onDefaults = defaults,
+            onCancel = {
+                onSetPeriod(opened.period)
+                ChartCatalog.parametersOf(option.id).filter { it.key != ChartCatalog.LENGTH }
+                    .forEach { onSetParam(it.key, opened.params[it.key]) }
+                onSetColour(opened.colour)
+                onSetWidth(opened.widthDp)
+                if (hidden != opened.hidden) onToggleHidden()
+                onDismiss()
+            },
+            onOk = onDismiss,
         )
     }
 }
 
+/** A study's settings as the sheet found them. */
+private data class IndicatorSnapshot(
+    val period: Int?,
+    val colour: Long?,
+    val widthDp: Float?,
+    val params: Map<String, Double>,
+    val hidden: Boolean,
+)
+
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun IndicatorSettingsBody(
     option: IndicatorOption,
@@ -131,18 +157,16 @@ fun IndicatorSettingsBody(
     onSetParam: (String, Double?) -> Unit = { _, _ -> },
     arrangement: IndicatorArrangement? = null,
     onArrange: (IndicatorArrangement.Action) -> Unit = {},
+    /** The footer's three; with no [onOk] there is no footer (a preview, an inline panel). */
+    onDefaults: (() -> Unit)? = null,
+    onCancel: (() -> Unit)? = null,
+    onOk: (() -> Unit)? = null,
 ) {
     var tab by rememberSaveable(option.id) { mutableStateOf(initialTab) }
     val accent = Color(option.colour.toULong() shl COLOUR_SHIFT)
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = CoineProSpacing.Gutter)
-            .padding(bottom = CoineProSpacing.Two),
-        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
-    ) {
-        CoineProSegmentedControl(
+    val english = inEnglish()
+    Column(modifier = Modifier.fillMaxWidth()) {
+        ChartDialogTabs(
             options = listOf(
                 IndicatorSettingsTab.INPUTS to stringResource(R.string.indicator_settings_inputs),
                 IndicatorSettingsTab.STYLE to stringResource(R.string.drawing_settings_style),
@@ -150,209 +174,222 @@ fun IndicatorSettingsBody(
             ),
             selected = tab,
             onSelect = { tab = it },
+            modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
         )
-        when (tab) {
-            IndicatorSettingsTab.INPUTS -> {
-                // Every knob the catalogue names for this study — the length first, then MACD's
-                // fast/slow/signal, a band's deviation, Ichimoku's three spans (run E). The chart
-                // behind the twenty-per-cent scrim redraws on each step.
-                val bounds = ChartCatalog.periodOf(option.id)
-                val parameters = ChartCatalog.parametersOf(option.id)
-                val english = AppLanguage.fromTag(LocalConfiguration.current.locales[0].language) == AppLanguage.ENGLISH
-                if (parameters.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.indicator_settings_no_inputs),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = CoineProColors.TextMuted,
-                    )
-                } else {
-                    for (spec in parameters) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
+        ChartPinnedFooter(
+            footer = onOk?.let { ok ->
+                { ChartDialogFooter(onCancel = onCancel ?: ok, onOk = ok, onDefaults = onDefaults) }
+            },
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = CoineProSpacing.Gutter)
+                    .padding(top = CoineProSpacing.OneHalf, bottom = CoineProSpacing.Two),
+                verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
+            ) {
+                when (tab) {
+                    IndicatorSettingsTab.INPUTS -> {
+                        // Every knob the catalogue names for this study — the length first, then MACD's
+                        // fast/slow/signal, a band's deviation, Ichimoku's three spans (run E). The chart
+                        // behind the twenty-per-cent scrim redraws on each change.
+                        val bounds = ChartCatalog.periodOf(option.id)
+                        val parameters = ChartCatalog.parametersOf(option.id)
+                        if (parameters.isEmpty()) {
                             Text(
-                                text = if (spec.key == ChartCatalog.LENGTH) stringResource(R.string.indicator_settings_length) else if (english) spec.labelEn else spec.label,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = CoineProColors.TextPrimary,
+                                text = stringResource(R.string.indicator_settings_no_inputs),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = CoineProColors.TextMuted,
                             )
-                            if (spec.key == ChartCatalog.LENGTH && bounds != null) {
-                                IndicatorPeriodStepper(
-                                    value = period ?: bounds.default,
-                                    bounds = bounds,
-                                    accent = accent,
-                                    onChange = { next -> onSetPeriod(next) },
-                                )
-                            } else {
-                                IndicatorParameterStepper(
-                                    value = params[spec.key] ?: spec.default,
-                                    spec = spec,
-                                    accent = accent,
-                                    onChange = { next -> onSetParam(spec.key, next) },
-                                )
-                            }
-                        }
-                    }
-                    CoineProNote(R.string.indicator_settings_length_note, style = MaterialTheme.typography.bodySmall)
-                }
-            }
-            IndicatorSettingsTab.STYLE -> {
-                Text(
-                    text = stringResource(R.string.indicator_settings_colour),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = CoineProColors.TextMuted,
-                )
-                val chosen = colour ?: option.colour
-                Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
-                    (listOf(option.colour) + DRAWING_COLOURS.filter { it != option.colour }.take(SWATCHES_ACROSS * 2 - 1))
-                        .chunked(SWATCHES_ACROSS)
-                        .forEach { row ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
-                                row.forEach { value ->
-                                    Box(
-                                        modifier = Modifier
-                                            .size(SWATCH)
-                                            .clip(CircleShape)
-                                            .background(Color(value.toULong() shl COLOUR_SHIFT))
-                                            .border(
-                                                width = if (value == chosen) 2.dp else 1.dp,
-                                                color = if (value == chosen) CoineProColors.Gold else CoineProColors.Border,
-                                                shape = CircleShape,
-                                            )
-                                            .clickable { onSetColour(if (value == option.colour) null else value) },
-                                    )
+                        } else {
+                            for (spec in parameters) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+                                ) {
+                                    if (spec.key == ChartCatalog.LENGTH) {
+                                        // The note explains the length, so its ⓘ sits on the length's own
+                                        // line rather than alone under the last field (MOBILE-14).
+                                        CoineProNotedLabel(
+                                            label = stringResource(R.string.indicator_settings_length),
+                                            note = R.string.indicator_settings_length_note,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    } else {
+                                        Text(
+                                            text = if (english) spec.labelEn else spec.label,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = CoineProColors.TextPrimary,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    }
+                                    if (spec.key == ChartCatalog.LENGTH && bounds != null) {
+                                        ChartNumberField(
+                                            value = (period ?: bounds.default).toDouble(),
+                                            min = bounds.min.toDouble(),
+                                            max = bounds.max.toDouble(),
+                                            step = 1.0,
+                                            decimals = 0,
+                                            onChange = { next -> onSetPeriod(next.toInt()) },
+                                            tag = "indicator-param-${spec.key}",
+                                        )
+                                    } else {
+                                        ChartNumberField(
+                                            value = params[spec.key] ?: spec.default,
+                                            min = spec.min,
+                                            max = spec.max,
+                                            step = spec.step,
+                                            decimals = if (spec.integer) 0 else decimalsOf(spec.step),
+                                            onChange = { next -> onSetParam(spec.key, next) },
+                                            tag = "indicator-param-${spec.key}",
+                                        )
+                                    }
                                 }
                             }
                         }
-                }
-                Text(
-                    text = stringResource(R.string.indicator_settings_width),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = CoineProColors.TextMuted,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
-                    INDICATOR_WIDTHS.forEach { width ->
-                        val active = (widthDp ?: DEFAULT_LINE_WIDTH) == width
-                        Box(
-                            modifier = Modifier
-                                .clip(CoineProPillShape)
-                                .background(if (active) CoineProTint.fill(accent, CoineProColors.Surface) else Color.Transparent)
-                                .border(1.dp, if (active) CoineProTint.edge(accent) else CoineProColors.Border, CoineProPillShape)
-                                .clickable { onSetWidth(if (width == DEFAULT_LINE_WIDTH) null else width) }
-                                .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
+                    }
+                    IndicatorSettingsTab.STYLE -> {
+                        Text(
+                            text = stringResource(R.string.indicator_settings_colour),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = CoineProColors.TextMuted,
+                        )
+                        val chosen = colour ?: option.colour
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
                         ) {
-                            Text(
-                                // A stroke in dp is a figure on a control, so Latin.
-                                text = if (width == width.toInt().toFloat()) width.toInt().toString() else width.toString(),
-                                style = MaterialTheme.typography.labelSmall.numeric(),
-                                color = if (active) accent else CoineProColors.TextMuted,
-                            )
+                            (listOf(option.colour) + DRAWING_COLOURS.filter { it != option.colour }.take(SWATCHES_ACROSS * 2 - 1))
+                                .forEach { value ->
+                                    ChartColourSwatch(
+                                        colour = Color(value.toULong() shl COLOUR_SHIFT),
+                                        selected = value == chosen,
+                                        onClick = { onSetColour(if (value == option.colour) null else value) },
+                                    )
+                                }
+                        }
+                        Text(
+                            text = stringResource(R.string.indicator_settings_width),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = CoineProColors.TextMuted,
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+                            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+                        ) {
+                            INDICATOR_WIDTHS.forEach { width ->
+                                CoineProToggleChip(
+                                    // A stroke in dp is a figure on a control, so Latin.
+                                    label = if (width == width.toInt().toFloat()) width.toInt().toString() else width.toString(),
+                                    selected = (widthDp ?: DEFAULT_LINE_WIDTH) == width,
+                                    onClick = { onSetWidth(if (width == DEFAULT_LINE_WIDTH) null else width) },
+                                    compact = true,
+                                    neutral = true,
+                                )
+                            }
                         }
                     }
-                }
-            }
-            IndicatorSettingsTab.VISIBILITY -> {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.indicator_settings_show),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = CoineProColors.TextPrimary,
-                        )
-                        CoineProNote(R.string.indicator_settings_show_note, style = MaterialTheme.typography.bodySmall)
-                    }
-                    Switch(
-                        checked = !hidden,
-                        onCheckedChange = { onToggleHidden() },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = CoineProColors.OnAccent,
-                            checkedTrackColor = CoineProColors.AccentFill,
-                            uncheckedThumbColor = CoineProColors.TextMuted,
-                            uncheckedTrackColor = CoineProColors.SurfaceElevated,
-                        ),
-                    )
-                }
-                arrangement?.let { where ->
-                    HorizontalDivider(color = CoineProColors.Border)
-                    Text(
-                        text = stringResource(R.string.indicator_settings_arrangement),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = CoineProColors.TextPrimary,
-                    )
-                    CoineProNote(R.string.indicator_settings_arrangement_note, style = MaterialTheme.typography.bodySmall)
-                    if (where.overlayByDefault) {
+                    IndicatorSettingsTab.VISIBILITY -> {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
                         ) {
-                            Text(
-                                text = stringResource(R.string.indicator_settings_separate),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = CoineProColors.TextPrimary,
+                            CoineProNotedLabel(
+                                label = stringResource(R.string.indicator_settings_show),
+                                note = R.string.indicator_settings_show_note,
                                 modifier = Modifier.weight(1f),
                             )
-                            Switch(
-                                checked = where.separated,
-                                onCheckedChange = { on ->
-                                    onArrange(if (on) IndicatorArrangement.Action.SEPARATE else IndicatorArrangement.Action.JOIN_PRICE)
-                                },
-                                modifier = Modifier.semantics { contentDescription = "indicator-separate" },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = CoineProColors.OnAccent,
-                                    checkedTrackColor = CoineProColors.AccentFill,
-                                    uncheckedThumbColor = CoineProColors.TextMuted,
-                                    uncheckedTrackColor = CoineProColors.SurfaceElevated,
-                                ),
-                            )
+                            CoineProSwitch(checked = !hidden, onCheckedChange = { onToggleHidden() })
                         }
-                    }
-                    if (where.hasPane) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
-                            ArrangementPill(
-                                text = stringResource(R.string.indicator_settings_move_up),
-                                enabled = where.canMoveUp,
-                                tag = "indicator-move-up",
-                                accent = accent,
-                            ) { onArrange(IndicatorArrangement.Action.MOVE_UP) }
-                            ArrangementPill(
-                                text = stringResource(R.string.indicator_settings_move_down),
-                                enabled = where.canMoveDown,
-                                tag = "indicator-move-down",
-                                accent = accent,
-                            ) { onArrange(IndicatorArrangement.Action.MOVE_DOWN) }
-                            if (where.merged) {
-                                ArrangementPill(
-                                    text = stringResource(R.string.indicator_settings_unmerge),
-                                    enabled = true,
-                                    tag = "indicator-unmerge",
-                                    accent = accent,
-                                ) { onArrange(IndicatorArrangement.Action.UNMERGE) }
-                            } else {
-                                ArrangementPill(
-                                    text = stringResource(R.string.indicator_settings_merge_up),
-                                    enabled = where.canMergeUp,
-                                    tag = "indicator-merge-up",
-                                    accent = accent,
-                                ) { onArrange(IndicatorArrangement.Action.MERGE_UP) }
+                        arrangement?.let { where ->
+                            HorizontalDivider(color = CoineProColors.Border)
+                            // One line for the heading and its ⓘ, not three (DIALOGS-23).
+                            CoineProNotedLabel(
+                                label = stringResource(R.string.indicator_settings_arrangement),
+                                note = R.string.indicator_settings_arrangement_note,
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                            if (where.overlayByDefault) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.indicator_settings_separate),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = CoineProColors.TextPrimary,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    CoineProSwitch(
+                                        checked = where.separated,
+                                        onCheckedChange = { on ->
+                                            onArrange(if (on) IndicatorArrangement.Action.SEPARATE else IndicatorArrangement.Action.JOIN_PRICE)
+                                        },
+                                        modifier = Modifier.semantics { contentDescription = "indicator-separate" },
+                                    )
+                                }
+                            }
+                            if (where.hasPane) {
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                                    verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+                                ) {
+                                    ArrangementPill(
+                                        text = stringResource(R.string.indicator_settings_move_up),
+                                        enabled = where.canMoveUp,
+                                        tag = "indicator-move-up",
+                                        accent = accent,
+                                    ) { onArrange(IndicatorArrangement.Action.MOVE_UP) }
+                                    ArrangementPill(
+                                        text = stringResource(R.string.indicator_settings_move_down),
+                                        enabled = where.canMoveDown,
+                                        tag = "indicator-move-down",
+                                        accent = accent,
+                                    ) { onArrange(IndicatorArrangement.Action.MOVE_DOWN) }
+                                    if (where.merged) {
+                                        ArrangementPill(
+                                            text = stringResource(R.string.indicator_settings_unmerge),
+                                            enabled = true,
+                                            tag = "indicator-unmerge",
+                                            accent = accent,
+                                        ) { onArrange(IndicatorArrangement.Action.UNMERGE) }
+                                    } else {
+                                        ArrangementPill(
+                                            text = stringResource(R.string.indicator_settings_merge_up),
+                                            enabled = where.canMergeUp,
+                                            tag = "indicator-merge-up",
+                                            accent = accent,
+                                        ) { onArrange(IndicatorArrangement.Action.MERGE_UP) }
+                                    }
+                                }
                             }
                         }
+                        HorizontalDivider(color = CoineProColors.Border)
+                        CoineProSecondaryButton(
+                            text = stringResource(R.string.indicator_settings_remove),
+                            onClick = onRemove,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
                 }
-                HorizontalDivider(color = CoineProColors.Border)
-                CoineProSecondaryButton(
-                    text = stringResource(R.string.indicator_settings_remove),
-                    onClick = onRemove,
-                    modifier = Modifier.fillMaxWidth(),
-                )
             }
         }
     }
+}
+
+/** How many decimals a step needs: 0.1 → one, 0.01 → two, 0.5 → one. */
+private fun decimalsOf(step: Double): Int {
+    var decimals = 0
+    var scaled = step
+    while (decimals < 4 && kotlin.math.abs(scaled - kotlin.math.round(scaled)) > 1e-9) {
+        scaled *= 10.0
+        decimals++
+    }
+    return decimals
 }
 
 /**
@@ -388,11 +425,13 @@ private fun ArrangementPill(text: String, enabled: Boolean, tag: String, accent:
             .border(1.dp, if (enabled) CoineProTint.edge(accent) else CoineProColors.Border, CoineProPillShape)
             .coineProControl(enabled = enabled, onClick = onClick)
             .semantics { contentDescription = tag }
-            .padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
+            .heightIn(min = CoineProChipDefaults.CompactHeight)
+            .padding(horizontal = CoineProSpacing.OneHalf),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelMedium,
             color = if (enabled) accent else CoineProColors.TextMuted,
         )
     }
@@ -409,5 +448,4 @@ private fun ArrangementPill(text: String, enabled: Boolean, tag: String, accent:
 internal val INDICATOR_WIDTHS: List<Float> = listOf(1f, DEFAULT_LINE_WIDTH, 2f, 3f)
 internal const val DEFAULT_LINE_WIDTH = 1.2f
 private const val SWATCHES_ACROSS = 6
-private val SWATCH = 32.dp
 private const val COLOUR_SHIFT = 32

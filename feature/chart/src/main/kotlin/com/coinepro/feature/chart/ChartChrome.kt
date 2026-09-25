@@ -1,5 +1,6 @@
 package com.coinepro.feature.chart
 
+import com.coinepro.core.designsystem.CoineProLazyRow
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
@@ -13,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
 import com.coinepro.core.designsystem.coineProControl
 import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.LtrDirection
@@ -31,7 +33,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -76,7 +77,6 @@ import com.coinepro.core.designsystem.pageAccent
 import com.coinepro.core.designsystem.pageAccentInk
 import com.coinepro.core.designsystem.pressScale
 import com.coinepro.core.designsystem.rememberCoineProHaptics
-import com.coinepro.core.designsystem.spectrumRim
 import com.coinepro.core.marketdata.ChartInterval
 import kotlin.math.abs
 
@@ -173,6 +173,8 @@ internal fun ChartCommandBand(
     onSymbolDrag: (Boolean) -> Unit = {},
     /** How far the wheel has moved since its last step, so the picker over the plot slides with it. */
     onSymbolTravel: (Float) -> Unit = {},
+    /** A tap on the ticker: symbol search, as TradingView's phone opens it (MOBILE-05). */
+    onSymbolSearch: (() -> Unit)? = null,
 ) {
     // Unused here since the intervals moved into the date-range sheet and the wheel stopped
     // printing a move beside the ticker, kept on the signature so the two-pane and fullscreen
@@ -185,7 +187,9 @@ internal fun ChartCommandBand(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(TOOLBAR_HEIGHT)
-                .padding(horizontal = CoineProSpacing.Half),
+                // TradingView's phone bar keeps an outer gutter; at four points the fullscreen
+                // glyph sat on the glass's edge (MOBILE-04).
+                .padding(horizontal = CoineProSpacing.OneHalf),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // The symbol, bold, on the reading edge — a drag on it turns the wheel. Then the
@@ -198,10 +202,12 @@ internal fun ChartCommandBand(
                     onSelect = select,
                     onDragging = onSymbolDrag,
                     onTravel = onSymbolTravel,
+                    onClick = onSymbolSearch,
                 )
             }
             ToolbarText(
-                text = interval.wire,
+                // TradingView's spelling on the key — `4h`, not `H4`; the stored wire is unchanged.
+                text = interval.tvCode,
                 onClick = onMoreIntervals,
                 // Named so a test can say where the pencil sits rather than only that it exists:
                 // run Τ item 6 is about the order of this band, and the button that went missing
@@ -234,6 +240,10 @@ internal fun ChartCommandBand(
                 count = drawings,
                 onClick = onMore,
             )
+            // The row fits a 412-point phone with the undo still on it (MOBILE-04): 12-point
+            // gutters, 40-point targets and a wheel capped at 88 sum to 412 at the longest ticker,
+            // where 4-point gutters and 46-point targets came to 444 and squeezed the fullscreen
+            // glyph to half its size.
             ToolbarDivider()
             ToolbarButton(
                 icon = DesignR.drawable.icon_arrow_counter_clockwise,
@@ -260,8 +270,8 @@ internal fun ChartCommandBand(
 }
 
 /**
- * One glyph on the toolbar: 22 dp of ink in a 46 dp target — 24 between neighbouring glyphs, the
- * reference's pitch — the primary ink at rest and the page accent when the thing behind it is
+ * One glyph on the toolbar: 22 dp of ink in a 40 dp target — 18 between neighbouring glyphs, so
+ * the whole bar fits a 412-point phone with a gutter at both ends (MOBILE-04) — the primary ink at rest and the page accent when the thing behind it is
  * armed or carrying something. No label — TradingView's bar has none, and every glyph here is one
  * the reader has met on its own sheet. A [count] above zero draws the reference's badge: how many
  * indicators are on, how many objects are drawn, in a small disc at the glyph's shoulder.
@@ -359,7 +369,8 @@ private fun ToolbarText(text: String, onClick: () -> Unit, modifier: Modifier = 
         ) {
             Text(
                 text = text,
-                style = MaterialTheme.typography.titleMedium.numeric(),
+                // 16, not `titleMedium`'s 18 — the ticker beside it is 16 too (MOBILE-12).
+                style = MaterialTheme.typography.titleMedium.numeric().copy(fontSize = 16.sp, lineHeight = 22.sp),
                 fontWeight = FontWeight.Bold,
                 color = CoineProColors.TextPrimary,
                 maxLines = 1,
@@ -400,49 +411,68 @@ internal fun RangeChipRow(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = CoineProSpacing.Two),
 ) {
-    LazyRow(
+    CoineProLazyRow(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
         contentPadding = contentPadding,
     ) {
         items(ChartRange.OFFERED, key = { it.name }) { range ->
-            val active = range == selected
-            val ink = if (active) CoineProColors.pageAccentInk else CoineProColors.TextMuted
-            Box(
-                modifier = Modifier
-                    .clip(CoineProShapes.medium)
-                    .background(
-                        if (active) {
-                            CoineProTint.fill(CoineProColors.pageAccentInk, CoineProColors.Surface)
-                        } else {
-                            Color.Transparent
-                        },
-                    )
-                    .border(
-                        width = 1.dp,
-                        color = if (active) {
-                            CoineProTint.edge(CoineProColors.pageAccentInk)
-                        } else {
-                            CoineProColors.Border
-                        },
-                        shape = CoineProShapes.medium,
-                    )
-                    .clickable { onSelect(range) }
-                    .heightIn(min = RANGE_CHIP_HEIGHT)
-                    .widthIn(min = RANGE_CHIP_WIDTH)
-                    .padding(horizontal = CoineProSpacing.One),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    // Persian prose durations, so they are never forced Latin the way a wire
-                    // spelling is.
-                    text = stringResource(range.labelRes),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = ink,
-                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-                )
-            }
+            RangeChip(range = range, active = range == selected, onSelect = onSelect)
         }
+    }
+}
+
+/** The same spans wrapped onto as many lines as they need — for a sheet, where nothing scrolls sideways. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+internal fun RangeChipFlow(selected: ChartRange?, onSelect: (ChartRange) -> Unit, modifier: Modifier = Modifier) {
+    androidx.compose.foundation.layout.FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        ChartRange.OFFERED.forEach { range ->
+            RangeChip(range = range, active = range == selected, onSelect = onSelect)
+        }
+    }
+}
+
+@Composable
+private fun RangeChip(range: ChartRange, active: Boolean, onSelect: (ChartRange) -> Unit) {
+    val ink = if (active) CoineProColors.pageAccentInk else CoineProColors.TextSecondary
+    Box(
+        modifier = Modifier
+            .clip(CoineProShapes.medium)
+            .background(
+                if (active) {
+                    CoineProTint.fill(CoineProColors.pageAccentInk, CoineProColors.Surface)
+                } else {
+                    Color.Transparent
+                },
+            )
+            .border(
+                width = 1.dp,
+                color = if (active) {
+                    CoineProTint.edge(CoineProColors.pageAccentInk)
+                } else {
+                    CoineProColors.BorderSubtle
+                },
+                shape = CoineProShapes.medium,
+            )
+            .clickable { onSelect(range) }
+            .heightIn(min = RANGE_CHIP_HEIGHT)
+            .widthIn(min = RANGE_CHIP_WIDTH)
+            .padding(horizontal = CoineProSpacing.One),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            // Persian prose durations, so they are never forced Latin the way a wire
+            // spelling is.
+            text = stringResource(range.labelRes),
+            style = MaterialTheme.typography.labelMedium,
+            color = ink,
+            fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+        )
     }
 }
 
@@ -506,7 +536,7 @@ internal fun ChartReadingsPanel(
             // values on a timeframe change; a label that snapped while they travelled would be the
             // one part of the panel not taking part in the same movement.
             AnimatedContent(
-                targetState = interval.code,
+                targetState = interval.tvCode,
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
                 label = "reading-interval",
             ) { name ->
@@ -808,7 +838,7 @@ internal fun ChartMoreSheetBody(
             .padding(bottom = CoineProSpacing.Two),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {
-        HubGrid(columns = 3, outlined = true) {
+        HubGrid(columns = HUB_COLUMNS) {
             HubTile(
                 icon = DesignR.drawable.icon_bookmark_simple,
                 label = stringResource(R.string.chart_more_layouts),
@@ -857,7 +887,8 @@ internal fun ChartMoreSheetBody(
 
         Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
             SheetLabel(stringResource(R.string.chart_more_span))
-            RangeChipRow(selected = range, onSelect = onSelectRange, contentPadding = PaddingValues(0.dp))
+            // Wrapped rather than scrolled: in a sheet a sideways row ran off the edge (DIALOGS-25).
+            RangeChipFlow(selected = range, onSelect = onSelectRange)
         }
         if (bars.isNotEmpty()) {
             Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
@@ -869,9 +900,9 @@ internal fun ChartMoreSheetBody(
         HorizontalDivider(color = CoineProColors.BorderSubtle)
 
         SheetLabel(stringResource(R.string.chart_hub_tools))
-        // The reference's TOOLS: the four a session reaches for, two across at 88; then the
-        // three about the chart's own apparatus, three across. Same tiles, same handlers.
-        HubGrid(columns = HUB_TOOLS_COLUMNS, outlined = false) {
+        // The reference's TOOLS: the ones a session reaches for, then the three about the chart's
+        // own apparatus — one grid, one plate, three across (MOBILE-20).
+        HubGrid(columns = HUB_COLUMNS) {
             HubTile(
                 icon = DesignR.drawable.icon_sliders_horizontal,
                 label = stringResource(R.string.chart_band_indicators),
@@ -919,8 +950,6 @@ internal fun ChartMoreSheetBody(
                     onClick = it,
                 )
             }
-        }
-        HubGrid(columns = HUB_APPARATUS_COLUMNS, outlined = false) {
             HubTile(
                 icon = DesignR.drawable.tv_play,
                 label = stringResource(R.string.chart_more_backtest),
@@ -945,7 +974,7 @@ internal fun ChartMoreSheetBody(
             onRasad != null
         ) {
             SheetLabel(stringResource(R.string.chart_hub_more))
-            HubGrid(columns = 2, outlined = false) {
+            HubGrid(columns = HUB_COLUMNS) {
                 // First in the section, and first deliberately: it is the only tile here that
                 // answers a question about the chart underneath rather than opening another
                 // screen beside it.
@@ -1032,9 +1061,9 @@ internal fun ChartMoreSheetBody(
 /**
  * «Trade with your broker»: the one card on the hub with a rim in colour.
  *
- * Measured off the phone app: a 72 pt plate across the sheet, 12 pt corners, a grey fill and a
- * 1.5 pt rose-to-blue rim — see `spectrumRim` for why the rim lives in the design system. The
- * glyph over the label is the same arrangement the tiles use. Here it leads to the trade sheet on
+ * A 72 pt plate across the sheet, 12 pt corners, the tiles' fill, and a hairline in the product's
+ * own gold — not the rose-to-blue spectrum it wore, which was the only rainbow on a gold and
+ * neutral product (MOBILE-20). The glyph over the label is the same arrangement the tiles use. Here it leads to the trade sheet on
  * a chart with a setup, and to the terminal otherwise; with neither it is drawn dimmed, like any
  * tile with nothing behind it.
  */
@@ -1051,7 +1080,7 @@ private fun TradeCard(onClick: (() -> Unit)?) {
             .pressScale(interaction, CoineProPress.CHIP)
             .clip(CoineProShapes.medium)
             .background(CoineProColors.SurfaceElevated)
-            .spectrumRim(CoineProShapes.medium)
+            .border(1.dp, CoineProTint.edge(CoineProColors.Gold), CoineProShapes.medium)
             .clickable(interaction, null, enabled = enabled) {
                 haptics.select()
                 onClick?.invoke()
@@ -1111,23 +1140,25 @@ private fun HelpCenterRow(onClick: () -> Unit) {
 /**
  * The hub's grid: [columns] tiles across, laid out by hand so a trailing row of one or two tiles
  * keeps the same tile width as a full row rather than stretching to fill it — which is what
- * TradingView's does and what a `LazyVerticalGrid` inside a scrolling column cannot.
+ * TradingView's does and what a `LazyVerticalGrid` inside a scrolling column cannot. Each row is as
+ * tall as its tallest tile, so a tile with a note under its label grows its row rather than
+ * cutting the note in half (MOBILE-06).
  */
 @Composable
-private fun HubGrid(columns: Int, outlined: Boolean, content: @Composable HubScope.() -> Unit) {
-    val scope = remember(outlined) { HubScope(outlined) }
+private fun HubGrid(columns: Int, content: @Composable HubScope.() -> Unit) {
+    val scope = remember { HubScope() }
     // Collected on every composition rather than remembered: the tiles close over handlers that
     // change with the chart's state, and a cached list would keep calling last frame's.
     scope.tiles.clear()
     scope.content()
     val tiles = scope.tiles.toList()
-    // Two geometries, both measured: the outlined tiles are 56 pt with 12 pt between them, the
-    // plates 72 pt with 8 pt.
-    val gap = if (outlined) HUB_OUTLINED_GAP else HUB_GAP
-    Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+    Column(verticalArrangement = Arrangement.spacedBy(HUB_GAP)) {
         tiles.chunked(columns).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                row.forEach { tile -> Box(modifier = Modifier.weight(1f)) { tile() } }
+            Row(
+                modifier = Modifier.height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(HUB_GAP),
+            ) {
+                row.forEach { tile -> Box(modifier = Modifier.weight(1f).fillMaxHeight()) { tile() } }
                 repeat(columns - row.size) { Spacer(modifier = Modifier.weight(1f)) }
             }
         }
@@ -1135,14 +1166,15 @@ private fun HubGrid(columns: Int, outlined: Boolean, content: @Composable HubSco
 }
 
 /** Collects the tiles a [HubGrid] lays out. */
-internal class HubScope(val outlined: Boolean) {
+internal class HubScope {
     val tiles = mutableListOf<@Composable () -> Unit>()
 }
 
 /**
- * One tile: a glyph over a label, 100 dp tall — TradingView's measure. Outlined tiles carry a
- * hairline on the sheet's own ground; plate tiles take the elevated rung with no edge. A tile
- * with nothing behind it is drawn dimmed rather than dropped, so the sheet keeps its shape.
+ * One tile: a glyph over a label, and a note under it where there is one. One plate everywhere —
+ * the elevated fill, 12 dp corners, no edge — where the hub used to mix outlined tiles, plates two
+ * across and plates three across (MOBILE-20, DIALOGS-25). A tile with nothing behind it is drawn
+ * dimmed rather than dropped, so the sheet keeps its shape.
  */
 @Composable
 private fun HubScope.HubTile(
@@ -1153,7 +1185,6 @@ private fun HubScope.HubTile(
     count: Int = 0,
     marked: Boolean = false,
 ) {
-    val outlined = this.outlined
     tiles += {
         val interaction = remember { MutableInteractionSource() }
         val haptics = rememberCoineProHaptics()
@@ -1167,22 +1198,16 @@ private fun HubScope.HubTile(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(if (outlined) HUB_OUTLINED_TILE else HUB_TILE)
+                .fillMaxHeight()
+                .heightIn(min = HUB_TILE)
                 .pressScale(interaction, CoineProPress.CHIP)
                 .clip(CoineProShapes.medium)
-                .background(if (outlined) CoineProColors.Surface else CoineProColors.SurfaceElevated)
-                .then(
-                    if (outlined) {
-                        Modifier.border(1.dp, CoineProColors.BorderSubtle, CoineProShapes.medium)
-                    } else {
-                        Modifier
-                    },
-                )
+                .background(CoineProColors.SurfaceElevated)
                 .clickable(interaction, null, enabled = enabled) {
                     haptics.select()
                     onClick?.invoke()
                 }
-                .padding(horizontal = CoineProSpacing.Half),
+                .padding(horizontal = CoineProSpacing.Half, vertical = CoineProSpacing.One),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -1299,32 +1324,27 @@ private const val BIAS_FULL_SCALE = 0.005
 
 private const val PERCENT = 100.0
 
-// TradingView's chart toolbar, as the design brief measures it: a 48 dp bar, 22 dp glyphs 24 dp
-// apart (a 46 dp pitch), 1 px hairlines between the groups, and a badge on the sheets that hold
-// something. The 44 the first measurement gave is the phone app at an older build.
+// TradingView's chart toolbar, as the design brief measures it: a 48 dp bar, 22 dp glyphs on a
+// 40 dp pitch, 1 px hairlines between the groups, and a badge on the sheets that hold something.
 /** The timeframe chip on the chart band, by name. See run Τ item 6 and `ChartToolbarTest`. */
 const val BAND_INTERVAL_TAG = "chart-band-interval"
 
 private val TOOLBAR_HEIGHT = 48.dp
-private val TOOLBAR_TARGET = 46.dp
+private val TOOLBAR_TARGET = 40.dp
 private val TOOLBAR_GLYPH = 22.dp
 private val TOOLBAR_CARET = 12.dp
 private val TOOLBAR_BADGE = 16.dp
 private val TOOLBAR_BADGE_TEXT = 10.sp
 private const val TOOLBAR_BADGE_MAX = 99
 
-// The analysis hub's tiles: the plates 88 dp tall with an 8 dp gutter (the design brief's
-// measure; the phone app at 3× gave 72), the outlined ones 56 with 12, a 26 pt glyph over a
-// one-line label in both. TOOLS is two across for the four a session uses and three across for
-// the apparatus under them. The top row stays three across rather than the reference's six:
-// six columns on a 411 dp phone are 55 dp each, and no Persian label here survives that.
-private val HUB_TILE = 88.dp
-private const val HUB_TOOLS_COLUMNS = 2
-private const val HUB_APPARATUS_COLUMNS = 3
+// The analysis hub's tiles (5.18.2): one plate, at least 72 dp tall and growing for a note, three
+// across in every section, 8 dp between, a 24 pt glyph over a one-line label. Three rather than
+// the reference's six: six columns on a 411 dp phone are 55 dp each, and no Persian label here
+// survives that.
+private val HUB_TILE = 72.dp
+private const val HUB_COLUMNS = 3
 private val HUB_GAP = 8.dp
-private val HUB_OUTLINED_TILE = 56.dp
-private val HUB_OUTLINED_GAP = 12.dp
-private val HUB_GLYPH = 26.dp
+private val HUB_GLYPH = 24.dp
 
 /** The broker card, 72 pt across the sheet; and the ringed «?» before «Help Center», 24 pt. */
 private val TRADE_CARD_HEIGHT = 72.dp

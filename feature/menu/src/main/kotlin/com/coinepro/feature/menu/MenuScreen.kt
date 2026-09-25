@@ -199,7 +199,9 @@ fun MenuScreen(
                             HorizontalDivider(
                                 // Inset past the glyph, so the rule starts where the words do and
                                 // the column of marks reads as a column rather than as cells.
-                                modifier = Modifier.padding(start = ROW_DIVIDER_INSET),
+                                // And off the far edge by the gutter, so the rule ends where the
+                                // row's own content does rather than at the glass (MOBILE-30).
+                                modifier = Modifier.padding(start = ROW_DIVIDER_INSET, end = CoineProSpacing.Gutter),
                                 thickness = 1.dp,
                                 color = CoineProColors.BorderSubtle,
                             )

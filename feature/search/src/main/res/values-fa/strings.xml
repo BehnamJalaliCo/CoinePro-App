@@ -177,4 +177,6 @@
     <string name="watchlist_row_memo">یادداشت</string>
     <string name="watchlist_row_section">بخش</string>
     <string name="watchlist_row_save_memo">ذخیره‌ی یادداشت و بخش</string>
+    <string name="search_close">بستن</string>
+    <string name="search_symbol_dialog">جست‌وجوی نماد</string>
 </resources>

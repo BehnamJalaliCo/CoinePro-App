@@ -22,7 +22,7 @@
     <string name="screener_period">دوره</string>
     <string name="screener_search_placeholder">نماد یا نام بازار</string>
     <string name="screener_count">%1$s بازار</string>
-    <string name="screener_progress">%1$s بازار از %2$s بررسی شد</string>
+    <string name="screener_progress">در حال بررسی %1$s از %2$s بازار</string>
     <string name="screener_unknown">%1$s بازار داده‌ای برای این شرط‌ها ندارد و نمایش داده نشده است.</string>
     <string name="screener_column_symbol">نماد</string>
     <string name="screener_category_all">همه</string>
@@ -45,7 +45,7 @@
     <string name="screener_add_to_watchlist">افزودن هر %1$s نماد به دیده‌بان</string>
     <string name="screener_added_to_watchlist">به دیده‌بان اضافه شد</string>
     <string name="screener_export_csv">CSV</string>
-    <string name="screener_export_saved">ذخیره شد</string>
+    <string name="screener_export_saved">فایل screener.csv ذخیره شد</string>
     <string name="screener_export_failed">فایل ذخیره نشد</string>
     <string name="screener_mode_table">جدول</string>
     <string name="screener_mode_signals">سیگنال‌های رشد</string>
@@ -58,4 +58,5 @@
     <string name="screener_scan_tag_ago">%1$s · %2$s کندل پیش</string>
     <string name="screener_scan_watch">اعلان نمادهای تازه‌ی این اسکن</string>
     <string name="screener_scan_watching">ورود نمادهای تازه را خبر می‌دهیم</string>
+    <string name="screener_indicator_more">بقیه را با جست‌وجو پیدا کنید.</string>
 </resources>

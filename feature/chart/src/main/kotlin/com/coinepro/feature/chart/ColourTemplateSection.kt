@@ -3,15 +3,15 @@ package com.coinepro.feature.chart
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.HorizontalDivider
@@ -32,15 +32,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.datastore.ChartColourTemplate
+import com.coinepro.core.designsystem.CoineProChipDefaults
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProPillShape
+import com.coinepro.core.designsystem.CoineProToggleChip
 import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProShapes
 import com.coinepro.core.designsystem.CoineProSpacing
-import com.coinepro.core.designsystem.CoineProTextField
-import com.coinepro.core.designsystem.CoineProTint
 import com.coinepro.core.designsystem.R as DesignR
 import androidx.compose.ui.res.stringResource
-import com.coinepro.core.designsystem.CoineProNote
+import com.coinepro.core.designsystem.CoineProNotedLabel
 import com.coinepro.core.designsystem.coineProControl
 
 /**
@@ -67,6 +68,7 @@ import com.coinepro.core.designsystem.coineProControl
  * A free colour wheel is deliberately not offered: it produces charts whose text is the colour of
  * their own background, and there is no way back from that except deleting the template.
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 internal fun ColourTemplateSection(
     templates: List<ChartColourTemplate>,
@@ -75,19 +77,32 @@ internal fun ColourTemplateSection(
     onSelect: (ChartColourTemplate?) -> Unit,
     onSave: (ChartColourTemplate) -> Unit,
     onDelete: (String) -> Unit,
+    /**
+     * Whether the section keeps the sheet's gutter itself (MOBILE-02). The layouts sheet hands it the
+     * full width and it sat on the glass's edge; a host that already pads passes false.
+     */
+    inset: Boolean = true,
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
 
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = if (inset) CoineProSpacing.Gutter else 0.dp),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
     ) {
-        SectionLabel(stringResource(R.string.colours_section))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        // The note's ⓘ on the heading's own line, not alone under the chips (MOBILE-14).
+        CoineProNotedLabel(
+            label = stringResource(R.string.colours_section),
+            note = R.string.colours_note,
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+        )
+        // Wrapped rather than scrolled sideways: inside a sheet every template stays in view.
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         ) {
             // «تم برنامه» first, because it is the state a reader who has never been here is in,
             // and because it is the way back from a template that turned out to be unreadable.
@@ -105,8 +120,6 @@ internal fun ColourTemplateSection(
                 )
             }
         }
-
-        CoineProNote(R.string.colours_note, style = MaterialTheme.typography.bodySmall)
 
         Text(
             text = stringResource(
@@ -170,37 +183,44 @@ private fun ColourTemplateEditor(
         // that matters and the one a list of six answers badly.
         ColourPreview(up = up, down = down, grid = grid, background = background, text = text)
 
-        CoineProTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = stringResource(R.string.colours_name),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        // A field and its verb on one line, the dialogs' 34 dp input rather than a form's 56 (DIALOGS-24).
+        Row(
             modifier = Modifier.fillMaxWidth(),
-        )
-        CoineProPrimaryButton(
-            text = stringResource(R.string.colours_save),
-            onClick = {
-                onSave(
-                    newColourTemplate(
-                        name = name,
-                        up = up,
-                        down = down,
-                        grid = grid,
-                        background = background,
-                        text = text,
-                        crosshair = crosshair,
-                        now = System.currentTimeMillis(),
-                    ),
-                )
-                name = ""
-            },
-            enabled = name.isNotBlank(),
-            modifier = Modifier.fillMaxWidth(),
-        )
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        ) {
+            ChartTextField(
+                value = name,
+                onValueChange = { name = it },
+                placeholder = stringResource(R.string.colours_name),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                modifier = Modifier.weight(1f),
+            )
+            CoineProPrimaryButton(
+                text = stringResource(R.string.colours_save),
+                onClick = {
+                    onSave(
+                        newColourTemplate(
+                            name = name,
+                            up = up,
+                            down = down,
+                            grid = grid,
+                            background = background,
+                            text = text,
+                            crosshair = crosshair,
+                            now = System.currentTimeMillis(),
+                        ),
+                    )
+                    name = ""
+                },
+                enabled = name.isNotBlank(),
+            )
+        }
     }
 }
 
 /** One of the six, named for what it paints, with the colours it may be. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun ColourSlot(
     label: String,
@@ -210,24 +230,17 @@ private fun ColourSlot(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
         SectionLabel(label)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
         ) {
             palette.forEach { candidate ->
-                Box(
-                    modifier = Modifier
-                        .size(SWATCH)
-                        .clip(CircleShape)
-                        .background(Color(candidate.toULong() shl COLOUR_SHIFT))
-                        .border(
-                            width = if (candidate == value) 2.dp else 1.dp,
-                            color = if (candidate == value) CoineProColors.Gold else CoineProColors.Border,
-                            shape = CircleShape,
-                        )
-                        .clickable { onPick(candidate) },
+                // Ringed in the text ink outside a gap, with a check (DIALOGS-11).
+                ChartColourSwatch(
+                    colour = Color(candidate.toULong() shl COLOUR_SHIFT),
+                    selected = candidate == value,
+                    onClick = { onPick(candidate) },
                 )
             }
         }
@@ -284,17 +297,16 @@ private fun ColourTemplateChip(
     onClick: () -> Unit,
     onDelete: (() -> Unit)?,
 ) {
+    // The dialogs' one pill (DIALOGS-26): the neutral chip's plate and edge, 32 dp, with the
+    // palette's own dots in front of its name.
     Row(
         modifier = Modifier
-            .clip(CoineProShapes.small)
-            .background(if (active) CoineProTint.fill(CoineProColors.Gold, CoineProColors.Surface) else CoineProColors.Surface)
-            .border(
-                1.dp,
-                if (active) CoineProTint.edge(CoineProColors.Gold) else CoineProColors.Border,
-                CoineProShapes.small,
-            )
+            .heightIn(min = CoineProChipDefaults.CompactHeight)
+            .clip(CoineProPillShape)
+            .background(if (active) CoineProColors.SurfaceRaised else CoineProColors.SurfaceElevated)
+            .border(1.dp, if (active) CoineProColors.BorderStrong else CoineProColors.BorderSubtle, CoineProPillShape)
             .coineProControl(onClick = onClick)
-            .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.Half),
+            .padding(horizontal = CoineProSpacing.OneHalf),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
@@ -310,8 +322,9 @@ private fun ColourTemplateChip(
         }
         Text(
             text = template.displayName(),
-            style = MaterialTheme.typography.labelSmall,
-            color = if (active) CoineProColors.Gold else CoineProColors.TextSecondary,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (active) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
         )
         onDelete?.let { delete ->
             Icon(
@@ -329,24 +342,7 @@ private fun ColourTemplateChip(
 /** The chip standing for "no template at all", which is not the same as the dark built-in. */
 @Composable
 private fun ThemeChip(label: String, active: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .clip(CoineProShapes.small)
-            .background(if (active) CoineProTint.fill(CoineProColors.Gold, CoineProColors.Surface) else CoineProColors.Surface)
-            .border(
-                1.dp,
-                if (active) CoineProTint.edge(CoineProColors.Gold) else CoineProColors.Border,
-                CoineProShapes.small,
-            )
-            .coineProControl(onClick = onClick)
-            .padding(horizontal = CoineProSpacing.One, vertical = CoineProSpacing.OneHalf),
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = if (active) CoineProColors.Gold else CoineProColors.TextSecondary,
-        )
-    }
+    CoineProToggleChip(label = label, selected = active, onClick = onClick, compact = true, neutral = true)
 }
 
 @Composable

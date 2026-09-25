@@ -4,9 +4,11 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.coinepro.core.chart.BuiltInIndicatorTemplate
 import com.coinepro.core.chart.BuiltInIndicatorTemplates
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.CoineProMenuItem
 import com.coinepro.core.designsystem.CoineProSpacing
 
 /**
@@ -55,6 +58,30 @@ internal fun IndicatorTemplateSection(
                 )
             }
         }
+    }
+}
+
+/**
+ * The same six as a dropdown's rows (DIALOGS-22): a quiet header, a hairline, then each template as
+ * its name over a faint summary — not the name and its studies fused into one bold string with a
+ * «·» between them. For the toolbar's templates button; call inside a `DropdownMenu`.
+ */
+@Composable
+internal fun ColumnScope.IndicatorTemplateMenuItems(onApply: (BuiltInIndicatorTemplate) -> Unit) {
+    Text(
+        text = stringResource(R.string.chart_templates_heading),
+        style = MaterialTheme.typography.labelSmall,
+        color = CoineProColors.TextMuted,
+        modifier = Modifier.padding(horizontal = CoineProSpacing.OneHalf, vertical = CoineProSpacing.One),
+    )
+    HorizontalDivider(color = CoineProColors.BorderSubtle)
+    BuiltInIndicatorTemplates.ALL.forEach { template ->
+        CoineProMenuItem(
+            text = stringResource(templateName(template.id)),
+            supporting = templateSummary(template),
+            onClick = { onApply(template) },
+            modifier = Modifier.semantics { contentDescription = "toolbar-template-${template.id}" },
+        )
     }
 }
 

@@ -16,7 +16,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -93,9 +96,11 @@ enum class ChartWorkbenchColumns {
  *
  * ### Right-to-left
  *
- * The tools are drawn first in the `Row` and the readings last, so the palette takes the start edge
- * — the right in Persian — and the readings the end. Nothing here names left or right, and the two
- * dividers are siblings between the columns, so they land correctly in both directions.
+ * The rails do not mirror. TradingView's Arabic chart keeps its drawing rail on the left, its panel
+ * rail on the right and the price axis beside it, and mirrors only what is *inside* its top and
+ * bottom bars; the chart itself reads left to right in every language, and the rails belong to the
+ * chart (CHART-03). So the columns are laid out left to right here and the reader's direction is
+ * handed back to what is inside them — the page's bars, the panels, the flyouts.
  */
 @Composable
 internal fun ChartWorkbench(
@@ -173,16 +178,21 @@ private fun ChartWorkbenchColumns(
             page(Modifier.fillMaxSize(), columns)
             return@BoxWithConstraints
         }
-        Row(modifier = Modifier.fillMaxSize()) {
-            if (columns.hasTools && tools != null) {
-                // The slot sizes itself: the rail is `CHART_TOOL_RAIL` wide and grows by the
-                // flyout's width while a group is open. Pinning the width here would clip the
-                // flyout to 48 points, which is a list nobody can read.
-                tools(Modifier.fillMaxHeight())
-                VerticalDivider(color = CoineProColors.Border)
-            }
-            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                page(Modifier.fillMaxSize(), columns)
+        val reader = LocalLayoutDirection.current
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                if (columns.hasTools && tools != null) {
+                    // The rail is `CHART_TOOL_RAIL` wide and stays so: its flyouts float over the
+                    // plot rather than widening the slot (CHART-06). It is laid out left to right
+                    // like the plot beside it; a flyout hands the reader's direction back.
+                    tools(Modifier.fillMaxHeight())
+                    VerticalDivider(color = CoineProColors.Border)
+                }
+                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    CompositionLocalProvider(LocalLayoutDirection provides reader) {
+                        page(Modifier.fillMaxSize(), columns)
+                    }
+                }
             }
         }
     }

@@ -80,7 +80,7 @@ internal object ScriptPresetsEn {
             teaches = "Bands, ta.lowest, and comparing a series against its own past",
             source = """
                 // The band's width against its middle; when it reaches the narrowest of the last
-                // hundred bars the market has coiled. This is not a direction — it is readiness.
+                // hundred bars the market has coiled. This is not a direction − it is readiness.
                 length = input(20, title = "Band length", min = 5, max = 200)
                 lookback = input(100, title = "Comparison window", min = 20, max = 500)
 
@@ -231,7 +231,7 @@ internal object ScriptPresetsEn {
             teaches = "ta.highest and ta.lowest to build a zone",
             source = """
                 // On the hourly bar, twenty-four bars is a day. Change the timeframe and change
-                // this number too — the language does not know what timeframe it is on.
+                // this number too − the language does not know what timeframe it is on.
                 bars = input(24, title = "Bar count", min = 2, max = 500)
 
                 roof = ta.highest(high, bars)

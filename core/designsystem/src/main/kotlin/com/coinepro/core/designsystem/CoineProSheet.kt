@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,10 +42,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Surface
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import kotlin.math.roundToInt
 
 /**
  * The app's bottom sheet.
@@ -56,8 +73,8 @@ import androidx.compose.ui.window.Dialog
  * way of being dismissed. A reader learns a sheet once.
  *
  * The grab handle is drawn here rather than taken from Material's default, which is a thin grey bar
- * that all but disappears on this near-black stage. Four density-independent pixels of the border
- * colour is the smallest thing that still reads as "drag me".
+ * that all but disappears on this near-black stage. Four density-independent pixels of the strong
+ * border colour is the smallest thing that still reads as "drag me".
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,37 +88,54 @@ fun CoineProSheet(
      * How dark the page behind the sheet goes. Forty per cent by default; a sheet whose controls
      * change the picture behind it live — a drawing's style, an indicator's inputs — asks for
      * [SHEET_PREVIEW_SCRIM_ALPHA] so the reader can see what they are changing.
+     *
+     * As a dialog the same request is read one step lighter — see [dialogScrimAlpha].
      */
     scrimAlpha: Float = SHEET_SCRIM_ALPHA,
+    /**
+     * The widest the sheet gets when it opens as a dialog. [SHEET_DIALOG_MAX_WIDTH] suits a list of
+     * options; a picker with a category column beside its list (indicators, symbol search) asks for
+     * more, the way TradingView's own 840 px indicators dialog does.
+     */
+    dialogMaxWidth: Dp = SHEET_DIALOG_MAX_WIDTH,
+    /** See [CoineProSheetBody]'s. Null keeps the body's own layout. */
+    contentPadding: PaddingValues? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     // On an expanded window a bottom sheet is a strip across a twelve-inch glass — the wrong
     // shape and, at full width, a wall of controls the reader has to walk. The same body opens as
-    // a dialog capped at [SHEET_DIALOG_MAX_WIDTH] instead: the reader's eye, not the glass, decides
-    // how wide a list of options is. Nothing about the content changes; the phone keeps its sheet.
+    // a dialog capped at [dialogMaxWidth] instead: the reader's eye, not the glass, decides how
+    // wide a list of options is. Nothing about the content changes; the phone keeps its sheet.
     if (coineProWindowClass().showsTwoPanes) {
-        Dialog(
-            onDismissRequest = onDismiss,
-            properties = DialogProperties(usePlatformDefaultWidth = false),
-        ) {
+        SheetDialog(onDismiss = onDismiss, scrimAlpha = dialogScrimAlpha(scrimAlpha)) {
             Surface(
                 modifier = modifier
-                    .widthIn(max = SHEET_DIALOG_MAX_WIDTH)
-                    .fillMaxHeight(SHEET_DIALOG_MAX_HEIGHT_FRACTION)
+                    .widthIn(max = dialogMaxWidth)
+                    // Wraps its content up to nine tenths of the window, rather than always being
+                    // nine tenths: a one-row settings panel in a 778 px box was mostly box.
+                    .sheetDialogHeight()
                     .padding(CoineProSpacing.Two),
                 shape = CoineProShapes.large,
                 color = CoineProColors.Surface,
                 border = BorderStroke(1.dp, CoineProColors.Border),
+                // With the page barely dimmed, the shadow is what lifts the dialog off the chart.
+                shadowElevation = SHEET_DIALOG_SHADOW,
             ) {
                 // Deliberately **not** scrolling here (run Σ, S8). A container that scrolls measures
                 // its child with an unbounded height, and a body that scrolls itself — the paste
                 // panel, the alert editor, the screener's filters, half a dozen others — then throws
                 // rather than drawing: «Vertically scrollable component was measured with an
-                // infinity maximum height». On the phone the `ModalBottomSheet` below does not
-                // scroll either, so a body either scrolls itself or is short enough to fit; the
-                // tablet now holds to the same contract, in a narrower window.
+                // infinity maximum height». The height cap above is a *bounded* maximum, so a body
+                // that scrolls itself still has a floor to scroll against.
                 Column {
-                    CoineProSheetBody(title = title, subtitle = subtitle, onClose = onDismiss, content = content)
+                    SheetBody(
+                        title = title,
+                        subtitle = subtitle,
+                        onClose = onDismiss,
+                        form = SheetForm.Dialog,
+                        contentPadding = contentPadding,
+                        content = content,
+                    )
                 }
             }
         }
@@ -110,6 +144,9 @@ fun CoineProSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        // Sixteen, not Material's twenty-eight: the reference's phone sheets, and a full-height
+        // sheet over a chart should not leave a rounded sliver of candles at each corner.
+        shape = CoineProSheetDefaults.Shape,
         containerColor = CoineProColors.Surface,
         // Forty per cent, not Material's thirty-two: the chart stays legible behind a sheet, and
         // the reference app's sheets are measured at this depth.
@@ -117,13 +154,72 @@ fun CoineProSheet(
         dragHandle = null,
         modifier = modifier,
     ) {
-        CoineProSheetBody(title = title, subtitle = subtitle, onClose = onDismiss, content = content)
+        SheetBody(
+            title = title,
+            subtitle = subtitle,
+            onClose = onDismiss,
+            form = SheetForm.Sheet,
+            contentPadding = contentPadding,
+            content = content,
+        )
     }
 }
 
 /** The widest a sheet-as-dialog gets on a tablet: the plan's number, and about sixty characters of Persian. */
 val SHEET_DIALOG_MAX_WIDTH = 560.dp
 private const val SHEET_DIALOG_MAX_HEIGHT_FRACTION = 0.9f
+private val SHEET_DIALOG_SHADOW = 12.dp
+
+/**
+ * The page's dimming behind a sheet opened as a dialog.
+ *
+ * One step lighter than the phone's: TradingView dims nothing behind its desktop dialogs, and a
+ * dialog does not cover the page from an edge the way a sheet does, so it needs less help to read
+ * as in front. The default forty per cent becomes twenty; a live-preview sheet's twenty becomes
+ * none at all, so a drawing's style is edited over the drawing itself.
+ */
+internal fun dialogScrimAlpha(sheetAlpha: Float): Float =
+    (sheetAlpha - SHEET_PREVIEW_SCRIM_ALPHA).coerceIn(0f, 1f)
+
+/**
+ * Wrap the content's height, up to [SHEET_DIALOG_MAX_HEIGHT_FRACTION] of the window.
+ *
+ * Not `heightIn(max = …)` with a number: the cap is a fraction of whatever window the dialog is in,
+ * and the window is only known at measure time. The child is always handed a bounded maximum, which
+ * is what keeps a body that scrolls itself from being measured against infinity.
+ */
+private fun Modifier.sheetDialogHeight(): Modifier = layout { measurable, constraints ->
+    val cap = if (constraints.hasBoundedHeight) {
+        (constraints.maxHeight * SHEET_DIALOG_MAX_HEIGHT_FRACTION).roundToInt()
+    } else {
+        constraints.maxHeight
+    }
+    val placeable = measurable.measure(constraints.copy(minHeight = 0, maxHeight = cap))
+    layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+}
+
+/** The shapes and paddings every sheet shares, for a body that wants to match them. */
+object CoineProSheetDefaults {
+    /**
+     * The inset a sheet body's content takes: the title's own gutter on both sides and a step of
+     * room under the last row. Pass it as `contentPadding` to a sheet whose body does not pad
+     * itself; a list that pads its own rows keeps null and stays full-bleed.
+     */
+    val ContentPadding: PaddingValues = PaddingValues(
+        start = CoineProSpacing.Gutter,
+        end = CoineProSpacing.Gutter,
+        bottom = CoineProSpacing.Two,
+    )
+
+    /** A phone sheet's top corners — see `CoineProShapes.extraLarge`. */
+    val Shape: Shape = RoundedCornerShape(
+        topStart = CoineProTokens.Radius.sheet,
+        topEnd = CoineProTokens.Radius.sheet,
+    )
+}
+
+/** Which chrome a sheet body draws: a phone sheet's, a desktop dialog's, or neither's handle. */
+private enum class SheetForm { Sheet, Dialog, Inline }
 
 /**
  * The sheet's chrome without the sheet.
@@ -144,16 +240,57 @@ fun CoineProSheetBody(
      * dragging is a sheet a reader has to know something about. Null draws none (an inline panel).
      */
     onClose: (() -> Unit)? = null,
+    /**
+     * Whether the grab handle is drawn. Only a sheet that can be dragged should promise it can: a
+     * panel laid inline in a page, or a body shown in a dialog, passes false.
+     */
+    showHandle: Boolean = true,
+    /**
+     * An inset around [content], opt-in. Null (the default) hands the body the sheet's full width,
+     * as it always has — a list that pads its own rows wants that. A body of loose controls passes
+     * [CoineProSheetDefaults.ContentPadding], which is what keeps its first letter off the glass's
+     * edge.
+     */
+    contentPadding: PaddingValues? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    SheetBody(
+        title = title,
+        modifier = modifier,
+        subtitle = subtitle,
+        onClose = onClose,
+        form = if (showHandle) SheetForm.Sheet else SheetForm.Inline,
+        contentPadding = contentPadding,
+        content = content,
+    )
+}
+
+@Composable
+private fun SheetBody(
+    title: String,
+    form: SheetForm,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    onClose: (() -> Unit)? = null,
+    contentPadding: PaddingValues? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val dialog = form == SheetForm.Dialog
     Column(modifier = modifier.fillMaxWidth().background(CoineProColors.Surface)) {
-        SheetHandle()
+        if (form == SheetForm.Sheet) SheetHandle()
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(
                     start = CoineProSpacing.Gutter,
-                    end = CoineProSpacing.Gutter,
+                    end = if (dialog) CoineProSpacing.OneHalf else CoineProSpacing.Gutter,
+                    // A dialog has no handle above its title, so the title takes TradingView's
+                    // twenty points of top room itself: a 60 px header instead of 88.
+                    top = when (form) {
+                        SheetForm.Dialog -> SHEET_DIALOG_TOP
+                        SheetForm.Inline -> CoineProSpacing.OneHalf
+                        SheetForm.Sheet -> 0.dp
+                    },
                     bottom = CoineProSpacing.OneHalf,
                 ),
             verticalAlignment = Alignment.CenterVertically,
@@ -161,9 +298,10 @@ fun CoineProSheetBody(
         ) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    // TradingView's sheet title is its largest text — 24 px bold on a phone. It
-                    // was `titleMedium` here, one step above the rows under it, and the sheet
-                    // read as a list with a caption rather than as a page with a name.
+                    // TradingView's sheet title is its largest text — 24 px bold on a phone, 20 px
+                    // in a desktop dialog. It was `titleMedium` here, one step above the rows
+                    // under it, and the sheet read as a list with a caption rather than as a page
+                    // with a name.
                     text = title,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
@@ -178,43 +316,94 @@ fun CoineProSheetBody(
                 }
             }
             onClose?.let { close ->
-                Box(
-                    modifier = Modifier
-                        .minimumInteractiveComponentSize()
-                        .size(SHEET_CLOSE)
-                        .clip(CircleShape)
-                        .background(CoineProColors.SurfaceElevated)
-                        .clickable(onClick = close),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.icon_x),
-                        contentDescription = stringResource(R.string.sheet_close),
-                        tint = CoineProColors.TextPrimary,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
+                if (dialog) DialogClose(close) else SheetClose(close)
             }
         }
-        content()
+        if (contentPadding == null) {
+            content()
+        } else {
+            Column(modifier = Modifier.fillMaxWidth().padding(contentPadding), content = content)
+        }
+    }
+}
+
+/** A phone sheet's close: a filled disc, which a thumb finds without aiming. */
+@Composable
+private fun SheetClose(close: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .minimumInteractiveComponentSize()
+            .size(SHEET_CLOSE)
+            .clip(CircleShape)
+            .background(CoineProColors.SurfaceElevated)
+            .clickable(onClick = close),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.icon_x),
+            contentDescription = stringResource(R.string.sheet_close),
+            tint = CoineProColors.TextPrimary,
+            modifier = Modifier.size(16.dp),
+        )
+    }
+}
+
+/**
+ * A dialog's close: a bare cross whose plate appears only under the pointer — TradingView's. A
+ * filled disc on a desktop dialog is the heaviest thing in its header and says nothing a cross
+ * does not.
+ */
+@Composable
+private fun DialogClose(close: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val hovered by interaction.collectIsHoveredAsState()
+    val plate by animateColorAsState(
+        targetValue = if (hovered) CoineProColors.SurfaceHover else Color.Transparent,
+        animationSpec = CoineProMotionSpecs.standard(),
+        label = "dialogClosePlate",
+    )
+    Box(
+        modifier = Modifier
+            .minimumInteractiveComponentSize()
+            .size(SHEET_CLOSE)
+            .clip(CoineProShapes.small)
+            .background(plate)
+            .hoverable(interaction)
+            .clickable(interaction, null, onClick = close),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.icon_x),
+            contentDescription = stringResource(R.string.sheet_close),
+            tint = if (hovered) CoineProColors.TextPrimary else CoineProColors.TextSecondary,
+            modifier = Modifier.size(18.dp),
+        )
     }
 }
 
 /** Thirty-two, the design brief's measure of the reference's disc; the tap target stays 48. */
 private val SHEET_CLOSE = 32.dp
 
+private const val SHEET_HANDLE_ALPHA = 0.6f
+
+/** A dialog title's top room: TradingView's 20 px inset. */
+private val SHEET_DIALOG_TOP = 20.dp
+
 @Composable
 private fun SheetHandle() {
+    // Eight above and below, not twelve: the handle is a hint, and at twelve it spent 28 dp of every
+    // phone sheet before the title. A mid-grey rather than the border colour, which on the dark
+    // sheet measured 1.3:1 and was not there at all; this is about 2.2:1 in both themes.
     Box(
-        modifier = Modifier.fillMaxWidth().padding(vertical = CoineProSpacing.OneHalf),
+        modifier = Modifier.fillMaxWidth().padding(vertical = CoineProSpacing.One),
         contentAlignment = Alignment.Center,
     ) {
         Box(
             modifier = Modifier
-                .width(36.dp)
+                .width(32.dp)
                 .height(4.dp)
                 .clip(CircleShape)
-                .background(CoineProColors.Border),
+                .background(CoineProColors.TextDisabled.copy(alpha = SHEET_HANDLE_ALPHA)),
         )
     }
 }
@@ -246,11 +435,14 @@ fun CoineProChipRow(
     /** Neutral selection instead of the page accent — see [CoineProToggleChip]. */
     neutral: Boolean = false,
 ) {
-    LazyRow(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(
-            if (compact) CoineProSpacing.Half else CoineProSpacing.One,
-        ),
+    val state = rememberLazyListState()
+    CoineProLazyRow(
+        modifier = modifier.fillMaxWidth().scrollEdgeFade(state),
+        state = state,
+        verticalAlignment = Alignment.CenterVertically,
+        // Eight at both sizes: pills with an edge of their own need air between them, or a row of
+        // them reads as one segmented bar.
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(
             horizontal = if (compact) CoineProSpacing.One else CoineProSpacing.Gutter,
         ),
@@ -279,6 +471,46 @@ fun CoineProChipRow(
     }
 }
 
+/**
+ * Fade whichever end of a chip row still has chips beyond it (DIALOGS-14).
+ *
+ * A row that ran out of the sheet ended in a chip cut in half against the edge, which reads as a
+ * mistake rather than as «there is more». Twenty-four points of fade at the end that scrolls says
+ * the second thing, and costs nothing when the whole row fits.
+ */
+private fun Modifier.scrollEdgeFade(state: LazyListState): Modifier = this
+    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        val fade = CHIP_ROW_FADE.toPx().coerceAtMost(size.width / 2f)
+        val rtl = layoutDirection == LayoutDirection.Rtl
+        // «Forward» is the reading end: the left edge in Persian.
+        val fadeLeft = if (rtl) state.canScrollForward else state.canScrollBackward
+        val fadeRight = if (rtl) state.canScrollBackward else state.canScrollForward
+        // A mask on the row's own pixels, stepped rather than a gradient brush: the design system
+        // keeps gradients to the brand mark and the chart (check-motion-policy.sh), and eight
+        // bands over twenty-four points are indistinguishable from a ramp at this size.
+        val band = fade / CHIP_ROW_FADE_STEPS
+        for (step in 0 until CHIP_ROW_FADE_STEPS) {
+            // Band 0 is at the very edge and keeps the least of the row.
+            val keep = Color.Black.copy(alpha = (step + 0.5f) / CHIP_ROW_FADE_STEPS)
+            if (fadeLeft) {
+                drawRect(keep, topLeft = Offset(step * band, 0f), size = Size(band, size.height), blendMode = BlendMode.DstIn)
+            }
+            if (fadeRight) {
+                drawRect(
+                    keep,
+                    topLeft = Offset(size.width - (step + 1) * band, 0f),
+                    size = Size(band, size.height),
+                    blendMode = BlendMode.DstIn,
+                )
+            }
+        }
+    }
+
+private val CHIP_ROW_FADE = 24.dp
+private const val CHIP_ROW_FADE_STEPS = 8
+
 /** One chip: an id, what it says, and optionally how many things are behind it. */
 data class CoineProChip(val id: String, val label: String, val count: Int? = null)
 
@@ -299,6 +531,10 @@ data class CoineProChip(val id: String, val label: String, val count: Int? = nul
  * And it did not move. A chip is the most-pressed control in this app — every timeframe, every
  * filter, every symbol — and it was the one with no press state, no haptic and no transition
  * between selected and not. That is most of what "nothing responds" means.
+ *
+ * Since the pastel pass the solid fill is gone too: a selected chip is a wash of the accent with
+ * the accent's ink and hairline ([chipLook]), 32 dp compact and 36 dp regular
+ * ([CoineProChipDefaults]), so no chip competes with the screen's one filled action.
  */
 @Composable
 fun CoineProToggleChip(
@@ -309,7 +545,9 @@ fun CoineProToggleChip(
     count: Int? = null,
     compact: Boolean = false,
     /**
-     * A fill for a chip that means something other than "selected" — a side, an outcome.
+     * A hue for a chip that means something other than "selected" — a side, an outcome. Drawn as
+     * the chip family draws the accent: a soft wash of it, its edge, and its own hue as the label
+     * (pulled toward black in the light theme) — see [chipLook].
      *
      * Null takes the page accent, which is what a filter should do. The journal's buy/sell pair is
      * the case for passing one: green and red there are the *content* of the choice, not a
@@ -336,32 +574,13 @@ fun CoineProToggleChip(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val haptics = rememberCoineProHaptics()
-    // Animated rather than swapped. A chip row is a set of exclusive states, and a fill that
+    val look = chipLook(selected = selected, neutral = neutral, fill = fill)
+    // Animated rather than swapped. A chip row is a set of exclusive states, and a tint that
     // crosses over its neighbour's in 160ms is what tells the reader the selection *moved* instead
     // of two unrelated chips independently changing colour.
-    val fill by animateColorAsState(
-        targetValue = when {
-            !selected -> CoineProColors.SurfaceElevated
-            neutral -> CoineProColors.SurfaceRaised
-            else -> fill ?: CoineProColors.pageAccent
-        },
-        animationSpec = CoineProMotionSpecs.standard(),
-        label = "chipFill",
-    )
-    val ink by animateColorAsState(
-        targetValue = when {
-            !selected -> CoineProColors.TextSecondary
-            // A raised neutral is a *surface*, so the label on it is the page's own primary ink.
-            neutral -> CoineProColors.TextPrimary
-            // Every fill this chip accepts is a mid-tone or darker in both themes — the page
-            // accents, the brand gold, buy and sell — so the label that reads on all of them is
-            // the one the gold already needs. White would fail on gold in either theme.
-            fill != null -> CoineProColors.OnAccent
-            else -> CoineProColors.onPageAccent
-        },
-        animationSpec = CoineProMotionSpecs.standard(),
-        label = "chipInk",
-    )
+    val plate by animateColorAsState(look.plate, CoineProMotionSpecs.standard(), label = "chipFill")
+    val ink by animateColorAsState(look.ink, CoineProMotionSpecs.standard(), label = "chipInk")
+    val edge by animateColorAsState(look.edge, CoineProMotionSpecs.standard(), label = "chipEdge")
     Row(
         modifier = modifier
             // A chip is a control and a control is reachable with a thumb. Five screens had
@@ -369,37 +588,30 @@ fun CoineProToggleChip(
             // twenty-three — half a target — and this is the row a reader taps most in the app.
             .minimumInteractiveComponentSize()
             .pressScale(interaction, CoineProPress.CHIP)
+            .heightIn(min = if (compact) CoineProChipDefaults.CompactHeight else CoineProChipDefaults.Height)
             .clip(CoineProPillShape)
-            .background(fill)
-            // The hairline is only on the unselected chip: a filled chip already has an edge, and
-            // an outline over a fill reads as a chip that is both selected and not.
-            .then(
-                if (selected) {
-                    Modifier
-                } else {
-                    Modifier.border(1.dp, CoineProColors.BorderSubtle, CoineProPillShape)
-                },
-            )
+            .background(plate)
+            .border(1.dp, edge, CoineProPillShape)
             .clickable(interaction, null) {
                 if (!selected) haptics.select()
                 onClick()
             }
-            .padding(
-                horizontal = if (compact) CoineProSpacing.One else CoineProSpacing.OneHalf,
-                vertical = if (compact) CoineProSpacing.Half else CoineProSpacing.One,
-            ),
+            .padding(horizontal = if (compact) CoineProSpacing.OneHalf else CoineProSpacing.Two),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
         Text(
             text = label,
             style = if (compact) {
-                MaterialTheme.typography.labelSmall
-            } else {
                 MaterialTheme.typography.labelMedium
+            } else {
+                MaterialTheme.typography.labelLarge
             },
             color = ink,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            // SemiBold, not Bold: on a pastel tint the ink already says «chosen», and Bold in
+            // IRANYekanX set the chosen chip a size larger than its neighbours.
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            maxLines = 1,
         )
         if (count != null) {
             Text(
@@ -412,6 +624,81 @@ fun CoineProToggleChip(
         }
     }
 }
+
+/**
+ * The sizes every chip, pill and toggle in the app shares.
+ *
+ * TradingView's filter pills measure 34 px; its dialog type pills 28. Thirty-two for a row that is
+ * chrome and thirty-six for one that is content sit either side of that and keep one rhythm.
+ */
+object CoineProChipDefaults {
+    val CompactHeight: Dp = 32.dp
+    val Height: Dp = 36.dp
+}
+
+/** What a chip, a segment or a tab looks like in one state: its plate, its label and its edge. */
+@Immutable
+internal data class ChipLook(val plate: Color, val ink: Color, val edge: Color)
+
+/**
+ * The one pastel family every selectable pill in the app draws from (run «پاستیلی»).
+ *
+ * ### Selected is a tint, not a fill
+ *
+ * A selected chip used to be a solid slab of the page accent with near-black letters — the loudest
+ * object in any row it sat in, and indistinguishable at a glance from the primary button two
+ * inches away. It is now a soft wash of the accent (sixteen per cent), lettered in the accent's own
+ * *ink* and closed with a hairline of it: the choice reads as chosen, and the only solid gold on a
+ * screen is still the one action worth pressing. The ink is the accent's ink tone, not its fill
+ * tone, because in the light theme the fill gold measures 2.1:1 on white — the wash keeps the ink at
+ * 4.6:1 there and 6:1 on the dark card.
+ *
+ * ### Unselected is a quiet plate
+ *
+ * One rung up from the ground with the faintest hairline, so a row of options is a row of shapes
+ * without any of them asking for the eye.
+ *
+ * ### Neutral
+ *
+ * A terminal filter selects with a raised neutral and a visible edge instead of the accent — see
+ * [CoineProToggleChip]'s `neutral` — the same shape, the same edge, no colour.
+ */
+@Composable
+@ReadOnlyComposable
+internal fun chipLook(selected: Boolean, neutral: Boolean = false, fill: Color? = null): ChipLook {
+    val palette = LocalCoineProPalette.current
+    return when {
+        !selected -> ChipLook(
+            plate = palette.surfaceElevated,
+            ink = palette.textSecondary,
+            edge = palette.borderSubtle,
+        )
+        neutral -> ChipLook(
+            plate = palette.surfaceRaised,
+            ink = palette.textPrimary,
+            edge = palette.borderStrong,
+        )
+        else -> {
+            val tone = fill ?: CoineProColors.pageAccent
+            // A caller's own fill (buy, sell, a brand gold) is a fill tone; as ink on white it is
+            // pulled toward black the way the palette's own ink gold is.
+            val ink = when {
+                fill == null -> CoineProColors.pageAccentInk
+                palette.isDark -> fill
+                else -> lerp(fill, Color.Black, CHIP_LIGHT_INK_SHIFT)
+            }
+            ChipLook(
+                plate = tone.copy(alpha = CHIP_TINT_ALPHA),
+                ink = ink,
+                edge = tone.copy(alpha = CHIP_EDGE_ALPHA),
+            )
+        }
+    }
+}
+
+private const val CHIP_TINT_ALPHA = 0.16f
+private const val CHIP_EDGE_ALPHA = 0.45f
+private const val CHIP_LIGHT_INK_SHIFT = 0.35f
 
 /**
  * A compact search field for inside a sheet.
@@ -440,12 +727,33 @@ fun CoineProSheetSearch(
     // TradingView's phone sheets, measured: a 40 pt field on a grey plate with 10 pt corners and
     // no edge — the plate is the field. The hairline it used to carry read as a second, different
     // control beside the tiles under it.
+    //
+    // Its desktop dialogs are the other way round (DIALOGS-20): a transparent 40 px field with a
+    // one-pixel edge that takes the accent while it has focus. A pointer finds an outline; a thumb
+    // finds a plate.
+    val fieldInteraction = remember { MutableInteractionSource() }
+    val focused by fieldInteraction.collectIsFocusedAsState()
+    val outlined = coineProWindowClass().showsTwoPanes
+    val edge by animateColorAsState(
+        targetValue = if (focused) CoineProColors.pageAccent else CoineProColors.Border,
+        animationSpec = CoineProMotionSpecs.standard(),
+        label = "sheetSearchEdge",
+    )
     Row(
         modifier = modifier
             .fillMaxWidth()
             .height(SHEET_SEARCH_HEIGHT)
-            .clip(CoineProShapes.medium)
-            .background(CoineProColors.SurfaceElevated)
+            .then(
+                if (outlined) {
+                    Modifier
+                        .clip(CoineProShapes.small)
+                        .border(1.dp, edge, CoineProShapes.small)
+                } else {
+                    Modifier
+                        .clip(CoineProShapes.medium)
+                        .background(CoineProColors.SurfaceElevated)
+                },
+            )
             .padding(horizontal = CoineProSpacing.OneHalf),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
@@ -460,6 +768,7 @@ fun CoineProSheetSearch(
             value = value,
             onValueChange = onValueChange,
             modifier = Modifier.weight(1f).focusRequester(focus),
+            interactionSource = fieldInteraction,
             singleLine = true,
             textStyle = MaterialTheme.typography.bodyLarge.copy(color = CoineProColors.TextPrimary),
             cursorBrush = androidx.compose.ui.graphics.SolidColor(CoineProColors.Gold),
@@ -495,8 +804,8 @@ fun CoineProSheetSearch(
     }
 }
 
-/** The sheet search field's height: 44, the design brief's measure; 12 dp corners below. */
-private val SHEET_SEARCH_HEIGHT = 44.dp
+/** The sheet search field's height: 40, the reference's on both its phone sheets and its dialogs. */
+private val SHEET_SEARCH_HEIGHT = 40.dp
 
 /** Shown where a filter matched nothing, in place of a blank sheet. */
 @Composable
