@@ -99,4 +99,17 @@ class DeepLinkValidationTest {
             if (it is CoineProDeepLink.PasswordReset) it else null
         })
     }
+
+    @Test
+    fun `the web terminal's own chart address opens that chart`() {
+        // `/terminal/BTCUSDT/4h`, the form index.html documents (5.18.1).
+        assertEquals(CoineProDeepLink.Market("BTCUSDT", "4H"), webChartLinkOrNull(listOf("BTCUSDT", "4h")))
+        assertEquals(CoineProDeepLink.Market("XAUUSD", "H1"), webChartLinkOrNull(listOf("XAUUSD"), "H1"))
+        assertEquals(CoineProDeepLink.Market("ETHUSDT", null), webChartLinkOrNull(listOf("ETHUSDT")))
+        // A screen's name is lower-case and is never read as a ticker.
+        assertNull(webChartLinkOrNull(listOf("screener")))
+        assertNull(webChartLinkOrNull(listOf("market", "BTCUSDT")))
+        assertNull(webChartLinkOrNull(listOf("BTCUSDT", "4h", "extra")))
+        assertNull(webChartLinkOrNull(listOf("BTC USDT")))
+    }
 }

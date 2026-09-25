@@ -38,7 +38,7 @@ Code: branch `claude/coinepro-app-clone-8u63ui` of CoinePro-FX.
 
 1. Merge it into the active branch (`claude/wizardly-edison-zyWyW`).
 2. `docker compose build api worker beat && docker compose up -d`.
-3. `docker compose exec api alembic upgrade head` (migration **079_mobile_alert_specs**).
+3. `docker compose exec api alembic upgrade head` (migration **080_mobile_alert_specs** on the server — renumbered there because `079_tp_ladder_records` already existed).
 4. Restart the Finnhub WebSocket service so ticks start recording, then check that
    `/public/market/ticks?symbol=EURUSD` returns rows.
 

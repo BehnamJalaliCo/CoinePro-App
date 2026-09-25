@@ -47,6 +47,16 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.18.1
+
+**fa**
+
+> نشانی چارت در نسخه‌ی وب، مثل pro-chart.com/terminal/BTCUSDT/4h، حالا مستقیم همان چارت را باز می‌کند.
+
+**en**
+
+> A chart address on the web, such as pro-chart.com/terminal/BTCUSDT/4h, now opens that chart directly.
+
 ## 5.18.0
 
 **fa**

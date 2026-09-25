@@ -77,6 +77,12 @@ object WebLaunch {
         }
         val query = searchJs().removePrefix("?").split('&').filter { '=' in it }
             .associate { it.substringBefore('=') to java.net.URLDecoder.decode(it.substringAfter('='), "UTF-8") }
+        // `/terminal/BTCUSDT/4h`, the form the page documents (5.18.1).
+        webChartLinkOrNull(segments, query[com.coinepro.app.alerts.AlertDeepLink.TIMEFRAME_QUERY])?.let { market ->
+            timeframe = market.timeframe
+            symbol = market.symbol
+            return
+        }
         val custom = segments.first() in setOf("signal", "activity", "market")
         val uri = if (custom) {
             Uri.parse("coinepro://" + segments.joinToString("/") + searchJs())

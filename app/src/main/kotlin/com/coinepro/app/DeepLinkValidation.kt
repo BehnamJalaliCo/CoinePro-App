@@ -112,6 +112,22 @@ internal fun timeframeOrNull(raw: String?): String? {
 // here is to keep an unbounded string from an unverified scheme out of a navigation argument.
 private val TIMEFRAME = Regex("^[A-Z]{0,2}[0-9]{1,4}[A-Z]{0,2}$")
 
+/**
+ * The web terminal's own chart address — `/terminal/BTCUSDT/4h` — as a market link (5.18.1).
+ *
+ * The page's `index.html` and `docs/web/SERVER.md` §3.1 have always promised this form; only
+ * `/terminal/market/BTCUSDT` was being read, so the documented one opened the watchlist. The
+ * symbol must be written in capitals, which is what separates a ticker from a screen's name
+ * (`/terminal/screener`) without a list of reserved words to keep in step.
+ */
+internal fun webChartLinkOrNull(segments: List<String>, queryTimeframe: String? = null): CoineProDeepLink.Market? {
+    if (segments.size !in 1..2) return null
+    val raw = segments.first()
+    if (raw != raw.uppercase()) return null
+    val symbol = tickerOrNull(raw) ?: return null
+    return CoineProDeepLink.Market(symbol, timeframeOrNull(segments.getOrNull(1) ?: queryTimeframe))
+}
+
 internal fun parseCoineProDeepLink(
     scheme: String?,
     host: String?,
