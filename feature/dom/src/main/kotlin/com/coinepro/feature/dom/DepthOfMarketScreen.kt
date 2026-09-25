@@ -132,6 +132,11 @@ fun DepthOfMarketScreen(
      * buys, an ask rung sells, sized at a notional the reader picks. Null keeps the ladder read-only.
      */
     onPlaceOrder: ((buy: Boolean, price: Double, notional: Double) -> Unit)? = null,
+    /**
+     * The exchange a tap sends to, when it is a real one (5.18.0: «LBank» on a crypto ladder with a
+     * futures key linked). Null is the paper book. A real venue asks before every order.
+     */
+    liveVenue: String? = null,
 ) {
     LaunchedEffect(controller, symbol) { controller.start(symbol) }
     // Stopped when the screen leaves, so a ladder nobody is looking at is not polling a venue once
@@ -149,6 +154,7 @@ fun DepthOfMarketScreen(
         preferences = preferences,
         showTitle = showTitle,
         onPlaceOrder = onPlaceOrder,
+        liveVenue = liveVenue,
     )
 }
 
@@ -178,15 +184,50 @@ fun DepthOfMarketBody(
      */
     showTitle: Boolean = true,
     onPlaceOrder: ((buy: Boolean, price: Double, notional: Double) -> Unit)? = null,
+    liveVenue: String? = null,
 ) {
     // **Armed, never by default.** The note at the top of this file is why: a rung is twenty-eight
     // points tall and a mis-tap on an armed ladder is an order. The reader arms it on purpose, sees
     // that it is armed, and a tap then places a paper limit at that rung.
     var armed by rememberSaveable { mutableStateOf(false) }
     var notional by rememberSaveable { mutableStateOf(DOM_NOTIONALS[1]) }
+    // A real order waits for a yes (5.18.0); a paper one does not need to.
+    var pendingLive by remember { mutableStateOf<Pair<Boolean, Double>?>(null) }
     val onPick: (LadderRow) -> Unit = { row ->
         val place = onPlaceOrder
-        if (armed && place != null) place(row.side == BookSide.BID, row.price, notional) else onPickPrice(row.price)
+        when {
+            !armed || place == null -> onPickPrice(row.price)
+            liveVenue != null -> pendingLive = (row.side == BookSide.BID) to row.price
+            else -> place(row.side == BookSide.BID, row.price, notional)
+        }
+    }
+    pendingLive?.let { (buy, price) ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { pendingLive = null },
+            title = { Text(stringResource(R.string.dom_live_title, liveVenue.orEmpty())) },
+            text = {
+                Text(
+                    stringResource(
+                        if (buy) R.string.dom_live_buy else R.string.dom_live_sell,
+                        BidiText.isolateLtr("$" + notional.toLong()),
+                        state.symbol,
+                        BidiText.isolateLtr(price.toString()),
+                        liveVenue.orEmpty(),
+                    ),
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    onPlaceOrder?.invoke(buy, price, notional)
+                    pendingLive = null
+                }) { Text(stringResource(R.string.dom_live_confirm)) }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { pendingLive = null }) {
+                    Text(stringResource(R.string.dom_live_cancel))
+                }
+            },
+        )
     }
     val book = state.book
     val unavailable = state.unavailable
@@ -273,7 +314,7 @@ fun DepthOfMarketBody(
                     onFigure = { choose(step, it) },
                 )
                 if (onPlaceOrder != null) {
-                    DomTradeControls(armed = armed, onArm = { armed = it }, notional = notional, onNotional = { notional = it })
+                    DomTradeControls(armed = armed, onArm = { armed = it }, notional = notional, onNotional = { notional = it }, venue = liveVenue)
                 }
                 DepthLadderTable(ladder = ladder, figure = figure, onPick = onPick)
                 curve?.let { DepthCurvePanel(curve = it, ladder = ladder) }
@@ -1187,14 +1228,21 @@ private const val NoFigure = "—"
  * the same decision, where «0.1 units» would be two very different ones.
  */
 @Composable
-private fun DomTradeControls(armed: Boolean, onArm: (Boolean) -> Unit, notional: Double, onNotional: (Double) -> Unit) {
+private fun DomTradeControls(
+    armed: Boolean,
+    onArm: (Boolean) -> Unit,
+    notional: Double,
+    onNotional: (Double) -> Unit,
+    venue: String? = null,
+) {
     androidx.compose.foundation.layout.Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = CoineProSpacing.Gutter),
         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(CoineProSpacing.Half),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         com.coinepro.core.designsystem.CoineProToggleChip(
-            label = stringResource(if (armed) R.string.dom_trade_armed else R.string.dom_trade_arm),
+            label = stringResource(if (armed) R.string.dom_trade_armed else R.string.dom_trade_arm) +
+                (venue?.let { " · $it" } ?: ""),
             selected = armed,
             onClick = { onArm(!armed) },
             compact = true,

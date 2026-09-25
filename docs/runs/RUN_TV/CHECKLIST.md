@@ -81,3 +81,15 @@ scorecard) and a second pixel-level pass over the old Pro-Chart terminal
 | News filters | ✅ 5.17.0 | `NewsFilter` (`NewsFilterTest`) | — **the fixture feed is empty in the proof rig**; the filter is tested |
 | Community «Following» | ✅ 5.17.0 | `CommunityController.toggleFollow / visiblePosts` (`CommunityControllerTest`) | — **the board is served live**; the narrowing is tested |
 
+## 5.18.0 — real crypto orders on LBank
+
+| Item | State | Evidence | Frame |
+|---|---|---|---|
+| Live ticket: market or limit, stop, target, reduce-only, reviewed as a sentence before anything is sent | ✅ 5.18.0 | `LiveTradeSheetBody`, `LiveOrderCheck` (`LiveTradeTest`); `LiveTradeProofTest` asserts the review sends nothing and the confirm sends one | `docs/runs/RUN_TV/frames/live-ticket-review-fa-dark.png` |
+| The order on the book after confirm; the position with SL/TP, close half and close; cancel on a resting order | ✅ 5.18.0 | `LiveTradeController`, TradeYar `trade.py` (`test_positions_close_and_protection`, `test_a_resting_limit_can_be_moved_and_cancelled`) | `docs/runs/RUN_TV/frames/live-ticket-sent-fa-dark.png` |
+| Live orders and the entry drawn on the chart; a drag asks, then cancels and re-places at the new price | ✅ 5.18.0 | `LiveTradeLines` (`LiveTradeLinesTest`), the amend route's cancel-then-place order (`test_a_resting_limit_can_be_moved_and_cancelled`) | — **a drag and a dialog**, not a still; the tests pin what the drag names and what is sent |
+| «Order here» on a crypto chart opens the live ticket at that price | ✅ 5.18.0 | `ChartScreen(onRequestOrderAt)` → `LiveTicketSeed` | — **a long-press gesture**; the seeded ticket is the frame above |
+| Depth ladder: an armed tap on a crypto ladder asks, then sends a real limit | ✅ 5.18.0 | `DepthOfMarketBody(liveVenue)`, `placeLadderOrder` | — **a tap and a dialog**, not a still |
+| Idempotent, never optimistic, the exchange's own words, a kill switch | ✅ 5.18.0 | `mobile_orders` migration 083, `test_the_same_request_twice_places_one_order`, `test_an_unconfirmed_submit_is_unknown_never_filled`, `test_the_exchange_s_refusal_is_recorded_in_its_own_words`, `test_a_spot_key_and_the_kill_switch_each_stop_a_write` | — **server behaviour**, pinned by the TradeYar suite |
+| Proven against LBank itself | ✅ 5.18.0 | TradeYar `scripts/lbank_live_trade_smoke.py`: read-only checks, and `--round-trip` places one limit 20 % under the market and cancels it | — **LBank answers only the server's whitelisted IP**; the script is run there |
+

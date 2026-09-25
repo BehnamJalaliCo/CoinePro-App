@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.18.0
+
+**fa**
+
+> معامله‌ی واقعی رمزارز روی LBank از داخل چارت، تیکت سفارش و دفتر عمق: سفارش بازار و محدود با حد ضرر و سود، جابه‌جا کردن سفارش روی چارت، لغو، بستن کامل یا نیمی از پوزیشن.
+> هر سفارش واقعی پیش از ارسال بازبینی و تأیید می‌شود. کافی است کلید فیوچرز LBank را در بخش اتصال‌ها ثبت کنید.
+
+**en**
+
+> Real crypto trading on LBank from the chart, the order ticket and the depth ladder: market and limit orders with stop and target, drag an order on the chart to move it, cancel, close all or half of a position.
+> Every real order is reviewed and confirmed before it is sent. Link an LBank futures key under Connections.
+
 ## 5.17.0
 
 **fa**

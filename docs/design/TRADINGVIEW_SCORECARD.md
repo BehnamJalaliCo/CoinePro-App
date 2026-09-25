@@ -2,7 +2,7 @@
 
 Measured against the owner's «کالبدشکافی تریدینگ‌ویو» artifact (§04 chart, §05 alerts, §06
 screeners, §07 social, §08 trading, §09 pixel specs, §12 scorecard), row for row, on the tree as of
-5.17.0 (first written at 5.16.1). Where the artifact gives a pixel value, `TRADINGVIEW_PARITY.md` holds the measurement; this
+5.18.0 (first written at 5.16.1). Where the artifact gives a pixel value, `TRADINGVIEW_PARITY.md` holds the measurement; this
 file is the verdict.
 
 Columns: **Phone** is Android portrait, **Tablet** is Android at ≥600 dp, **Web** is the browser
@@ -58,6 +58,7 @@ build (`:web`, the same Kotlin sources). ✅ at or past TradingView · ◐ partl
 | Session volume profile as a chart type | ✅ | ✅ | ✅ | `ChartType.SESSION_VOLUME_PROFILE`, `chart-type-svp-*` goldens (5.17.0) |
 | Tick and seconds bars with history | ✅ | ✅ | ✅ | `ChartInterval.Ticks(1/10/100/1000)`, seconds 1–50 from CoinePro-FX's `public/market/ticks` and `seconds` (`TickChartTest`) (5.17.0) |
 | Currency label on the price scale | ✅ | ✅ | ✅ | `ChartAppearance.scaleUnit` (5.17.0) |
+| Real orders from the chart, the ticket and the depth ladder — crypto on LBank futures: market and limit, stop and target, drag to move a resting order, cancel, close all or half, stop/target on an open position | ✅ | ✅ | ✅ | TradeYar `/api/mobile/v1/trade` (`tests/test_mobile_live_orders.py`, 25 tests against Postgres), `LiveTradeController` (`LiveTradeTest`), `LiveTradeProofTest`; every real order is reviewed and confirmed first (5.18.0) |
 
 ## Where we are still behind
 
@@ -67,8 +68,8 @@ build (`:web`, the same Kotlin sources). ✅ at or past TradingView · ◐ partl
 | Alert delivery by SMS | yes | push, Telegram, email, webhook | An SMS provider on the backend |
 | Advanced server alerts on crypto | yes | the five price conditions on TradeYar; channel, move and RSI on CoinePro-FX only | The spec evaluator ported to TradeYar |
 | Screeners per asset (stock, ETF, bond, DEX …) | seven | one, split by platform and asset class | Per-asset field sets; the markets this product carries are crypto, forex, metals, indices and energy |
+| Real trading on forex, metals and indices | through linked brokers | crypto on LBank only; forex stays on paper | CoinePro-FX has no order route; its model is copy trading |
 | Tick history on crypto | yes | seconds and ticks built from the live feed on TradeYar | A tick store in TradeYar like CoinePro-FX's `tick_store.py` |
-| Trading on a live broker from the chart | yes | paper only | A broker bridge |
 | Published ideas with a chart | yes | text and picture posts | A chart snapshot attached to a post |
 
 ## Not copied, on purpose

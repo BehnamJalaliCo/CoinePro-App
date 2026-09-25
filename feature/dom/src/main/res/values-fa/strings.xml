@@ -75,4 +75,9 @@
     <string name="dom_pick_price_orders">ساختن هشدار روی قیمت %1$s، %2$s سفارش در این سطح</string>
     <string name="dom_trade_arm">معامله از روی دفتر سفارش (کاغذی)</string>
     <string name="dom_trade_armed">فعال: هر لمس یک سفارش محدود کاغذی می‌گذارد</string>
+    <string name="dom_live_title">ارسال به %1$s؟</string>
+    <string name="dom_live_buy">خرید %1$s از %2$s با قیمت %3$s روی %4$s، با دارایی خودتان.</string>
+    <string name="dom_live_sell">فروش %1$s از %2$s با قیمت %3$s روی %4$s، با دارایی خودتان.</string>
+    <string name="dom_live_confirm">ارسال سفارش</string>
+    <string name="dom_live_cancel">انصراف</string>
 </resources>

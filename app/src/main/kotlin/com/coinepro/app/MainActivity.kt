@@ -20,6 +20,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.platform.LocalDensity
 import androidx.window.layout.FoldingFeature
 import androidx.window.layout.WindowInfoTracker
+import com.coinepro.core.execution.LiveTradeController
 import com.coinepro.core.designsystem.CoineProFold
 import com.coinepro.core.designsystem.LocalCoineProFold
 import androidx.activity.enableEdgeToEdge
@@ -155,6 +156,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var candleCache: CandleCache
     @Inject lateinit var candleArchive: CandleArchive
     @Inject lateinit var tickHistory: TickHistory
+    @Inject lateinit var liveTradeController: LiveTradeController
     @Inject lateinit var notificationSettingsStore: NotificationSettingsStore
     @Inject lateinit var localAlertStore: LocalAlertStore
     @Inject lateinit var localAlertScheduler: LocalAlertScheduler
@@ -397,6 +399,7 @@ class MainActivity : FragmentActivity() {
                 candleCache = candleCache,
                 candleArchive = candleArchive,
                 tickHistory = tickHistory,
+                liveTradeController = liveTradeController,
                 notificationSettingsStore = notificationSettingsStore,
                 localAlertStore = localAlertStore,
                 localAlertScheduler = localAlertScheduler,

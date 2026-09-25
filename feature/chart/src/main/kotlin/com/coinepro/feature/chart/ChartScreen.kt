@@ -58,6 +58,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -67,6 +68,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -144,6 +146,10 @@ import com.coinepro.core.chart.ObjectTree
 import com.coinepro.core.chart.Replay
 import com.coinepro.core.chart.ScaleSide
 import com.coinepro.core.chart.SignalOverlay
+import com.coinepro.core.execution.LiveOrderType
+import com.coinepro.core.execution.LiveSide
+import com.coinepro.core.execution.LiveTradeController
+import com.coinepro.core.execution.LiveTradeState
 import com.coinepro.core.papertrade.PaperOrder
 import com.coinepro.core.papertrade.PaperPosition
 import com.coinepro.core.chart.ToolRail
@@ -539,6 +545,11 @@ fun ChartScreen(
     workingOrders: List<PaperOrder> = emptyList(),
     /** A dragged stop, target or working order. Null draws the lines and lets nothing move. */
     onEditTrade: ((ChartTradeEdit) -> Unit)? = null,
+    /**
+     * The reader's live LBank book (5.18.0), on a crypto chart. Null where there is none: the
+     * trade ring and «order here» then keep to the paper book.
+     */
+    liveTrade: LiveTradeController? = null,
     /** The symbol search, for the `/` key and the desk's menu; null on a screen without one. */
     onOpenSymbolSearch: (() -> Unit)? = null,
     /**
@@ -747,6 +758,16 @@ fun ChartScreen(
         }
     }
     var sheet by remember { mutableStateOf<ChartSheet?>(null) }
+    // The live LBank book (5.18.0). A flow that never emits stands in where there is none, so the
+    // collection below is unconditional and the composition's shape does not depend on it.
+    val liveFlow = remember(liveTrade) { liveTrade?.state ?: MutableStateFlow(LiveTradeState()) }
+    val liveState by liveFlow.collectAsStateWithLifecycle()
+    val liveAvailable = liveTrade != null && liveState.available
+    LaunchedEffect(liveTrade) { liveTrade?.refreshAvailability() }
+    var liveSeed by remember { mutableStateOf<LiveTicketSeed?>(null) }
+    // A dragged live order waits here for the reader's yes: moving it is a cancel and a new
+    // order on the exchange, and a stray drag must not do that on its own.
+    var pendingLiveMove by remember { mutableStateOf<Pair<Long, Double>?>(null) }
     // The chart settings dialog's open tab (5.16.0), kept while the screen lives so it reopens where it was left.
     var settingsTab by remember { mutableStateOf(ChartSettingsTab.SYMBOL) }
 
@@ -1196,6 +1217,7 @@ fun ChartScreen(
     // both, so the two can never disagree about what «trade» means on this page.
     val onTrade: (() -> Unit)? = when {
         state.setup != null -> ({ sheet = ChartSheet.SETUP })
+        liveAvailable -> ({ liveSeed = null; sheet = ChartSheet.LIVE })
         else -> onOpenTerminal
     }
 
@@ -1440,21 +1462,45 @@ fun ChartScreen(
                     // where they want to get short, which is true of every limit order anybody has
                     // ever placed — and the stop and target arrive as a draggable default, not as a
                     // recommendation. Offered only where the build can take a paper trade.
-                    onRequestOrderAt = onPaperTrade?.let {
+                    onRequestOrderAt = if (liveAvailable) {
                         { price ->
-                            val live = state.lastPrice ?: state.series.bars.lastOrNull()?.c
-                            val side = if (live != null && price > live) TradeSide.SELL else TradeSide.BUY
-                            TradeFromChart.defaultOrder(side, price)?.let { order ->
-                                pendingOrder = order
-                                sheet = ChartSheet.SETUP
+                            // On a live book, «order here» is a real limit at that price: the ticket
+                            // opens filled in, and nothing is sent until the reader confirms it.
+                            val last = state.lastPrice ?: state.series.bars.lastOrNull()?.c
+                            val side = if (last != null && price > last) LiveSide.SELL else LiveSide.BUY
+                            liveSeed = LiveTicketSeed(side, LiveOrderType.LIMIT, price)
+                            sheet = ChartSheet.LIVE
+                        }
+                    } else {
+                        onPaperTrade?.let {
+                            { price ->
+                                val live = state.lastPrice ?: state.series.bars.lastOrNull()?.c
+                                val side = if (live != null && price > live) TradeSide.SELL else TradeSide.BUY
+                                TradeFromChart.defaultOrder(side, price)?.let { order ->
+                                    pendingOrder = order
+                                    sheet = ChartSheet.SETUP
+                                }
                             }
                         }
                     },
                     alerts = alerts,
                     onMoveAlert = onMoveAlert,
-                    orderLines = tradeLines,
-                    onMoveOrderLine = onEditTrade?.let { edit ->
-                        { id, price -> ChartTradeLines.edit(id, price, position, workingOrders)?.let(edit) }
+                    orderLines = if (liveAvailable) {
+                        tradeLines + LiveTradeLines.of(liveState, state.symbol, tradeWords, stringResource(R.string.live_venue))
+                    } else {
+                        tradeLines
+                    },
+                    onMoveOrderLine = if (onEditTrade != null || liveAvailable) {
+                        { id, price ->
+                            val liveOrder = LiveTradeLines.orderIdOf(id)
+                            when {
+                                liveOrder != null -> pendingLiveMove = liveOrder to price
+                                LiveTradeLines.isLive(id) -> Unit
+                                else -> onEditTrade?.let { edit -> ChartTradeLines.edit(id, price, position, workingOrders)?.let(edit) }
+                            }
+                        }
+                    } else {
+                        null
                     },
                     // The gutter's `L`. It writes the same field the scale sheet writes, so the two
                     // cannot disagree and a layout saved after a tap here carries the log axis.
@@ -2622,6 +2668,33 @@ fun ChartScreen(
         }
     }
 
+    pendingLiveMove?.let { (orderId, price) ->
+        val from = liveState.orders.firstOrNull { it.id == orderId }?.price
+        val decimals = decimalsFor(from ?: price)
+        AlertDialog(
+            onDismissRequest = { pendingLiveMove = null },
+            title = { Text(stringResource(R.string.live_amend_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.live_amend_text,
+                        BidiText.isolateLtr(from?.let { formatPrice(it, decimals) } ?: "—"),
+                        BidiText.isolateLtr(formatPrice(price, decimals)),
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    liveTrade?.amend(orderId, price)
+                    pendingLiveMove = null
+                }) { Text(stringResource(R.string.live_amend_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingLiveMove = null }) { Text(stringResource(R.string.live_amend_keep)) }
+            },
+        )
+    }
+
     when (sheet) {
         ChartSheet.TYPE -> CoineProSheet(
             title = stringResource(R.string.chart_sheet_type),
@@ -2904,6 +2977,16 @@ fun ChartScreen(
                 onLoadMoreHistory = controller::loadMore,
                 loadMagnifier = controller::magnifierBars,
             )
+        }
+
+        ChartSheet.LIVE -> liveTrade?.let { live ->
+            CoineProSheet(
+                title = stringResource(R.string.live_ticket_title),
+                subtitle = state.symbol,
+                onDismiss = { sheet = null; liveSeed = null; live.dismissOutcome() },
+            ) {
+                LiveTradeSheetBody(controller = live, symbol = state.symbol, livePrice = state.lastPrice, seed = liveSeed)
+            }
         }
 
         // The gutter's order wins over the drawn one while it is open — see [pendingOrder].
@@ -3832,7 +3915,7 @@ internal fun rememberHelpCatalog(wanted: Boolean): HelpCatalog? {
  * used to own a permanent band under the plot, and it is all behind that one word now. Internal
  * rather than private because `ChartChrome.kt` names these in the callbacks it hands back.
  */
-internal enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP, BACKTEST, LAYOUTS, INTERVAL, SCALE, COMPARE, EVENTS, MORE, PARTNERS, EXPLAIN, READINGS, RASAD, ARENA, SETTINGS }
+internal enum class ChartSheet { TYPE, INDICATORS, TOOLS, DRAWINGS, SETUP, BACKTEST, LAYOUTS, INTERVAL, SCALE, COMPARE, EVENTS, MORE, PARTNERS, EXPLAIN, READINGS, RASAD, ARENA, SETTINGS, LIVE }
 
 /**
  * Binds the stores and starts the controller, in that order and in one effect.

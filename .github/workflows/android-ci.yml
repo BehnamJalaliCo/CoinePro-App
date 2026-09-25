@@ -33,7 +33,7 @@ jobs:
     # Raising the wall rather than cutting the work: every task in that step is checking something
     # the release depends on, and a green build that stopped checking half of them is worse than a
     # slow one. The other job in this workflow finishes in twenty-five and keeps its own budget.
-    timeout-minutes: 75
+    timeout-minutes: 90
 
     steps:
       - name: Checkout
@@ -181,7 +181,13 @@ jobs:
           gh release edit web-latest --notes "The web app's bundle, built from $GITHUB_SHA. Deploy: web/relay/README.md."
 
       - name: Lint, test, and assemble debug + staging + release + benchmark
-        run: gradle --no-daemon :chart-core:jvmTest :namascript:jvmTest :chart-ui:testDebugUnitTest :core:script:testDebugUnitTest :core:auth:testDebugUnitTest :core:network:testDebugUnitTest :core:marketdata:testDebugUnitTest :core:signals:testDebugUnitTest :core:notifications:testDebugUnitTest :core:execution:testDebugUnitTest :core:aisignal:testDebugUnitTest :core:aivision:testDebugUnitTest :core:aiassistant:testDebugUnitTest :core:marketintel:testDebugUnitTest :core:database:testDebugUnitTest :feature:tools:testDebugUnitTest :app:lintDebug :app:lintStaging :app:lintRelease :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleStaging :app:assembleRelease :app:assembleBenchmark :benchmark:assembleBenchmark
+        # The web step above leaves a Kotlin compile daemon holding up to 6 GB, and this step adds a
+        # 4 GB Gradle JVM, lint and the test forks on a 16 GB runner. From 5.17.0 that sum ended with
+        # the runner losing its agent mid-build ("received a shutdown signal") on two attempts in a
+        # row, so the daemon is stopped first and the workers are capped.
+        run: |
+          pkill -f KotlinCompileDaemon || true
+          gradle --no-daemon --max-workers=2 :chart-core:jvmTest :namascript:jvmTest :chart-ui:testDebugUnitTest :core:script:testDebugUnitTest :core:auth:testDebugUnitTest :core:network:testDebugUnitTest :core:marketdata:testDebugUnitTest :core:signals:testDebugUnitTest :core:notifications:testDebugUnitTest :core:execution:testDebugUnitTest :core:aisignal:testDebugUnitTest :core:aivision:testDebugUnitTest :core:aiassistant:testDebugUnitTest :core:marketintel:testDebugUnitTest :core:database:testDebugUnitTest :feature:tools:testDebugUnitTest :app:lintDebug :app:lintStaging :app:lintRelease :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleStaging :app:assembleRelease :app:assembleBenchmark :benchmark:assembleBenchmark
 
       - name: Verify protected release signing path
         shell: bash

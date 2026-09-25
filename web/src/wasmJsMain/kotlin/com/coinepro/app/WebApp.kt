@@ -207,6 +207,7 @@ fun WebApp() {
                         candleCache = WebGraph.candleCache,
                         candleArchive = WebGraph.candleArchive,
                         tickHistory = WebGraph.tickHistory,
+                        liveTradeController = WebGraph.liveTradeController,
                         notificationSettingsStore = WebGraph.notificationSettingsStore,
                         localAlertStore = WebGraph.localAlertStore,
                         localAlertScheduler = WebGraph.localAlertScheduler,

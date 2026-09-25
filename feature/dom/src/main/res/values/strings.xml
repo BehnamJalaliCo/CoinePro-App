@@ -55,4 +55,9 @@
     <string name="dom_pick_price_orders">Create an alert at %1$s, %2$s orders at this level</string>
     <string name="dom_trade_arm">Trade from the ladder (paper)</string>
     <string name="dom_trade_armed">Armed: a tap places a paper limit</string>
+    <string name="dom_live_title">Send to %1$s?</string>
+    <string name="dom_live_buy">Buy %1$s of %2$s at %3$s on %4$s, with your own funds.</string>
+    <string name="dom_live_sell">Sell %1$s of %2$s at %3$s on %4$s, with your own funds.</string>
+    <string name="dom_live_confirm">Send order</string>
+    <string name="dom_live_cancel">Cancel</string>
 </resources>

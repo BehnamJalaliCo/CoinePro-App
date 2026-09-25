@@ -209,6 +209,9 @@ def check_learned_surfaces() -> None:
         # Events. Opened by Ctrl+, the gear on the desktop toolbar, the hub and the chart's menu.
         # See `ChartSettingsBody`.
         "SETTINGS",
+        # The live LBank ticket (5.18.0): real crypto orders, reached from the trade ring and
+        # «order here» on a crypto chart with a futures key linked.
+        "LIVE",
     ]
     require(
         entries == expected_sheets,

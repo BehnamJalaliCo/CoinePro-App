@@ -211,6 +211,9 @@ import com.coinepro.core.diagnostics.RelayStatus
 import com.coinepro.core.diagnostics.ServerCapabilities
 import com.coinepro.core.diagnostics.SessionRow
 import com.coinepro.core.diagnostics.VenueStatus
+import com.coinepro.core.execution.LiveOrderType
+import com.coinepro.core.execution.LiveSide
+import com.coinepro.core.execution.LiveTradeController
 import com.coinepro.core.execution.ConnectionsState
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.guest.GuestCandleGateway
@@ -973,6 +976,8 @@ fun CoineProApp(
     candleArchive: CandleArchive,
     /** Trades and seconds bars from the server (5.17.0). */
     tickHistory: TickHistory? = null,
+    /** The reader's live LBank book (5.18.0): crypto charts and the depth ladder trade through it. */
+    liveTradeController: LiveTradeController? = null,
     notificationSettingsStore: NotificationSettingsStore,
     localAlertStore: LocalAlertStore,
     localAlertScheduler: LocalAlertScheduler,
@@ -1604,6 +1609,7 @@ fun CoineProApp(
                 candleCache = candleCache,
                 candleArchive = candleArchive,
                 tickHistory = tickHistory,
+                liveTradeController = liveTradeController,
                 chartDrawingStore = chartDrawingStore,
                 drawingImageStore = drawingImageStore,
                 chartLayoutStore = chartLayoutStore,
@@ -1848,6 +1854,7 @@ fun CoineProApp(
                         candleCache = candleCache,
                         candleArchive = candleArchive,
                         tickHistory = tickHistory,
+                        liveTradeController = liveTradeController,
                         chartDrawingStore = chartDrawingStore,
                         drawingImageStore = drawingImageStore,
                         chartLayoutStore = chartLayoutStore,
@@ -2111,6 +2118,8 @@ private fun MainShell(
     candleArchive: CandleArchive,
     /** Trades and seconds bars from the server (5.17.0). */
     tickHistory: TickHistory? = null,
+    /** The reader's live LBank book (5.18.0): crypto charts and the depth ladder trade through it. */
+    liveTradeController: LiveTradeController? = null,
     chartDrawingStore: ChartDrawingStore,
     /** Where the image drawing tool's pictures live. See `DrawingImageStore`. */
     drawingImageStore: DrawingImageStore,
@@ -3401,6 +3410,9 @@ private fun MainShell(
                     val depthPreferences = remember(symbolChartStateStore) {
                         SymbolChartDepthPreferences(symbolChartStateStore)
                     }
+                    val liveLadder = liveTradeController?.takeIf { belongsTo(activeChartSymbol, MarketPlatform.TRADEYAR) }
+                    LaunchedEffect(liveLadder) { liveLadder?.refreshAvailability() }
+                    val liveLadderReady = liveLadder?.state?.collectAsStateWithLifecycle()?.value?.available == true
                     DepthOfMarketScreen(
                         controller = depthController,
                         symbol = activeChartSymbol,
@@ -3408,16 +3420,10 @@ private fun MainShell(
                         onPickPrice = { price -> alertFromChart = activeChartSymbol to price },
                         // Paper trading from the ladder (5.17.0), armed by the reader on the ladder itself.
                         onPlaceOrder = { buy, price, notional ->
-                            paperTradeController.place(
-                                PaperOrderRequest(
-                                    symbol = activeChartSymbol,
-                                    side = if (buy) PaperSide.BUY else PaperSide.SELL,
-                                    type = PaperOrderType.LIMIT,
-                                    size = notional / price,
-                                    limitPrice = price,
-                                ),
-                            )
+                            placeLadderOrder(activeChartSymbol, buy, price, notional, liveLadder.takeIf { liveLadderReady }, paperTradeController)
                         },
+                        // A real venue on a crypto ladder with a futures key linked (5.18.0).
+                        liveVenue = stringResource(ChartR.string.live_venue).takeIf { liveLadderReady },
                         // The panel writes the name above the content; the ladder would write it
                         // again one line below.
                         showTitle = false,
@@ -3626,6 +3632,9 @@ private fun MainShell(
                             paperTradeController.amend(edit.orderId, limitPrice = edit.limitPrice, stopPrice = edit.stopPrice)
                     }
                 },
+                // Real orders on LBank (5.18.0) — crypto only, and only once a futures key is linked;
+                // the chart asks the controller, which asks the server.
+                liveTrade = liveTradeController.takeIf { belongsTo(activeChartSymbol, MarketPlatform.TRADEYAR) },
                 layouts = chartLayouts,
                 onSaveLayout = onSaveLayoutAnnounced,
                 onDeleteLayout = onDeleteLayoutAnnounced,
@@ -4814,6 +4823,9 @@ private fun MainShell(
                 val depthPreferences = remember(symbolChartStateStore) {
                     SymbolChartDepthPreferences(symbolChartStateStore)
                 }
+                val liveLadder = liveTradeController?.takeIf { belongsTo(activeChartSymbol, MarketPlatform.TRADEYAR) }
+                LaunchedEffect(liveLadder) { liveLadder?.refreshAvailability() }
+                val liveLadderReady = liveLadder?.state?.collectAsStateWithLifecycle()?.value?.available == true
                 DepthOfMarketScreen(
                     controller = depthController,
                     symbol = activeChartSymbol,
@@ -4825,16 +4837,10 @@ private fun MainShell(
                     onPickPrice = { price -> alertFromChart = activeChartSymbol to price },
                         // Paper trading from the ladder (5.17.0), armed by the reader on the ladder itself.
                         onPlaceOrder = { buy, price, notional ->
-                            paperTradeController.place(
-                                PaperOrderRequest(
-                                    symbol = activeChartSymbol,
-                                    side = if (buy) PaperSide.BUY else PaperSide.SELL,
-                                    type = PaperOrderType.LIMIT,
-                                    size = notional / price,
-                                    limitPrice = price,
-                                ),
-                            )
+                            placeLadderOrder(activeChartSymbol, buy, price, notional, liveLadder.takeIf { liveLadderReady }, paperTradeController)
                         },
+                        // A real venue on a crypto ladder with a futures key linked (5.18.0).
+                        liveVenue = stringResource(ChartR.string.live_venue).takeIf { liveLadderReady },
                 )
             }
             composable(
@@ -5548,3 +5554,32 @@ private fun archiveCount(value: Int, english: Boolean): String =
     if (english) value.toString() else value.toString().map { PERSIAN_DIGITS.getOrNull(it - '0') ?: it }.joinToString("")
 
 private const val PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹"
+
+/**
+ * A tap on an armed depth ladder, sent to the book it belongs to (5.18.0): the reader's LBank
+ * account when one is live for this crypto symbol — the ladder has already asked them to confirm —
+ * and the paper book otherwise. Sized in the quote currency, so the quantity is the notional over
+ * the rung's price; the server rounds it down to the contract's step.
+ */
+private fun placeLadderOrder(
+    symbol: String,
+    buy: Boolean,
+    price: Double,
+    notional: Double,
+    live: LiveTradeController?,
+    paper: PaperTradeController,
+) {
+    if (live != null) {
+        live.place(live.draft(symbol, if (buy) LiveSide.BUY else LiveSide.SELL, LiveOrderType.LIMIT, notional / price, price))
+        return
+    }
+    paper.place(
+        PaperOrderRequest(
+            symbol = symbol,
+            side = if (buy) PaperSide.BUY else PaperSide.SELL,
+            type = PaperOrderType.LIMIT,
+            size = notional / price,
+            limitPrice = price,
+        ),
+    )
+}

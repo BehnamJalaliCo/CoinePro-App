@@ -99,6 +99,9 @@ import com.coinepro.core.diagnostics.RequestLog
 import com.coinepro.core.diagnostics.RequestLogInterceptor
 import com.coinepro.core.execution.ExecutionController
 import com.coinepro.core.execution.ExecutionGateway
+import com.coinepro.core.execution.LiveTradeController
+import com.coinepro.core.execution.LiveTradeGateway
+import com.coinepro.core.execution.NetworkLiveTradeGateway
 import com.coinepro.core.execution.NetworkExecutionGateway
 import com.coinepro.core.guest.GuestController
 import com.coinepro.core.guest.GuestGateway
@@ -2055,6 +2058,20 @@ object AppModule {
         @CryptoPlatform gateway: ExecutionGateway,
         scope: CoroutineScope,
     ): ExecutionController = ExecutionController(gateway, scope)
+
+    /** The reader's own LBank orders (5.18.0), through TradeYar's `/trade` routes. Crypto only. */
+    @Provides
+    @Singleton
+    fun liveTradeGateway(@CryptoPlatform retrofit: Retrofit): LiveTradeGateway =
+        NetworkLiveTradeGateway.create(retrofit, MarketPlatform.TRADEYAR)
+
+    @Provides
+    @Singleton
+    fun liveTradeController(
+        gateway: LiveTradeGateway,
+        @CryptoPlatform execution: ExecutionGateway,
+        scope: CoroutineScope,
+    ): LiveTradeController = LiveTradeController(gateway, execution, scope)
 
     @Provides
     @Singleton
