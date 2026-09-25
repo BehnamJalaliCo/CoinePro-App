@@ -79,6 +79,9 @@ import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.diagnostics.AppLog
 import com.coinepro.core.diagnostics.LogTag
 import com.coinepro.core.marketdata.CandleArchive
+import com.coinepro.core.marketdata.Tick
+import com.coinepro.core.marketdata.TickBars
+import com.coinepro.core.marketdata.TickHistory
 import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.CandlePage
@@ -263,6 +266,13 @@ data class ChartUiState(
      * Visibility tab. Hidden, not off: the period and the style are kept for the way back.
      */
     val hiddenIndicators: Set<String> = emptySet(),
+    /**
+     * The legend's «Visual order» (5.17.0): a rank per overlay owner, drawn low to high, so a line
+     * brought to front is drawn last. Absent is rank zero, which keeps the catalogue's order.
+     */
+    val overlayRank: Map<String, Int> = emptyMap(),
+    /** The legend's «Pin to scale → own scale» (5.17.0): overlays drawn on a scale of their own. */
+    val ownScale: Set<String> = emptySet(),
     /**
      * What the reader has asked for on each study's marks — labels, triangles, or nothing (run Σ).
      *
@@ -752,14 +762,29 @@ data class ChartUiState(
     /** [baseOverlays] less the studies the reader moved to a pane of their own — the list itself when none were. */
     private val shownOverlays: List<ChartLine>
         get() {
-            if (separated.isEmpty()) return baseOverlays
-            val owners = baseOverlayOwners
-            return baseOverlays.filterIndexed { index, _ -> owners.getOrNull(index) !in separated }
+            if (separated.isEmpty() && overlayRank.isEmpty() && ownScale.isEmpty()) return baseOverlays
+            return arrangedOverlays().map { (owner, line) -> if (owner in ownScale) line.copy(ownScale = true) else line }
         }
 
     /** [ChartDerived.overlayOwners] plus the scripts', aligned with [overlays]. */
     val shownOverlayOwners: List<String>
-        get() = if (separated.isEmpty()) baseOverlayOwners else baseOverlayOwners.filter { it !in separated }
+        get() = if (separated.isEmpty() && overlayRank.isEmpty()) {
+            baseOverlayOwners
+        } else {
+            arrangedOverlays().map { it.first.orEmpty() }
+        }
+
+    /**
+     * The overlays paired with their owners, less the separated, in visual order (5.17.0). One
+     * function for both lists, so the legend's rows and the lines they name cannot part company.
+     * A stable sort: owners of equal rank keep the order they had.
+     */
+    private fun arrangedOverlays(): List<Pair<String?, ChartLine>> {
+        val owners = baseOverlayOwners
+        return baseOverlays.mapIndexed { index, line -> owners.getOrNull(index) to line }
+            .filter { (owner, _) -> owner !in separated }
+            .sortedBy { (owner, _) -> overlayRank[owner] ?: 0 }
+    }
 
     /**
      * The panes as the reader arranged them: separated overlays become panes, the order is
@@ -1441,6 +1466,11 @@ class ChartController(
      */
     private val ticks: ChartTickSource = NoChartTicks,
     /**
+     * Trades and sub-minute bars from the server (5.17.0). Null keeps the old behaviour: a seconds
+     * chart builds only from the price feed, and a tick chart has nothing to draw.
+     */
+    private val tickHistory: TickHistory? = null,
+    /**
      * The alerts drawn on this chart's lines, or null on a build that has none.
      *
      * Null is the default and the fallback: without one, deleting a drawing behaves exactly as it
@@ -1534,6 +1564,9 @@ class ChartController(
 
     /** The interval a deep link asked for, until the restore is done with it. See [openAt]. */
     private var requestedInterval: ChartInterval? = null
+
+    /** Studies a caller asked to see on this chart, applied once the symbol's own state is back. */
+    private var requestedStudies: List<String> = emptyList()
 
     /**
      * Hands the controller the two stores it persists through, where the caller could not.
@@ -1668,7 +1701,24 @@ class ChartController(
         if (symbolStateRestored && loadJob == null) consumeRequestedInterval()
     }
 
+    /**
+     * Switches on the studies that draw a setup the screener found (5.17.0) — added to what the
+     * reader already has on this symbol, never replacing it. Deferred like [openAt], because the
+     * symbol's stored studies are restored asynchronously and whichever landed last would win.
+     */
+    fun showSetup(studies: List<String>) {
+        requestedStudies = studies.filter { id -> ChartCatalog.INDICATORS.any { it.id == id } }
+        if (symbolStateRestored && loadJob == null) consumeRequestedStudies()
+    }
+
+    private fun consumeRequestedStudies() {
+        val wanted = requestedStudies
+        requestedStudies = emptyList()
+        wanted.filterNot { it in _state.value.activeIndicators }.forEach(::toggleIndicator)
+    }
+
     private fun consumeRequestedInterval() {
+        consumeRequestedStudies()
         val wanted = requestedInterval ?: return
         requestedInterval = null
         if (wanted == _state.value.interval) return
@@ -2499,6 +2549,21 @@ class ChartController(
         // the labels off once; a setting that came back every cold start is one they turn off
         // forever, which is the difference between a preference and a nag.
         persistSymbolState()
+    }
+
+    /** The legend's «Visual order → Bring to front» (5.17.0). */
+    fun bringToFront(id: String) = _state.update { old ->
+        old.copy(overlayRank = old.overlayRank + (id to ((old.overlayRank.values.maxOrNull() ?: 0) + 1)))
+    }
+
+    /** The legend's «Visual order → Send to back» (5.17.0). */
+    fun sendToBack(id: String) = _state.update { old ->
+        old.copy(overlayRank = old.overlayRank + (id to ((old.overlayRank.values.minOrNull() ?: 0) - 1)))
+    }
+
+    /** The legend's «Pin to scale»: its own scale, or back on the price scale (5.17.0). */
+    fun setOwnScale(id: String, own: Boolean) = _state.update { old ->
+        old.copy(ownScale = if (own) old.ownScale + id else old.ownScale - id)
     }
 
     fun toggleIndicatorHidden(id: String) = _state.update { old ->
@@ -3922,7 +3987,29 @@ class ChartController(
             // different series in front of this one. The archive came back empty, so there is
             // genuinely no more.
             if (current.interval is ChartInterval.Seconds) {
+                // The server's seconds bars before the oldest held (5.17.0), where it has them.
+                val older = tickHistory?.seconds(current.symbol, current.interval.count, HISTORY_PAGE_BARS, before = oldest)
+                    .orEmpty()
+                    .filter { it.t < oldest }
+                if (older.isNotEmpty()) {
+                    runCatching { archive.write(current.symbol, current.interval, older) }
+                    prependOlder(current, older, hasMore = true)
+                    return@launch
+                }
                 _state.update { it.copy(loadingMore = false, hasMore = false) }
+                return@launch
+            }
+            // A tick chart pages back through trades: the ones before its first bar, folded the same way.
+            if (current.interval is ChartInterval.Ticks) {
+                val trades = tickHistory?.ticks(current.symbol, TICK_PAGE, beforeMs = oldest * 1_000L).orEmpty()
+                val older = TickBars.fold(trades, current.interval.count).first
+                    .map { it.copy(closed = true) }
+                    .filter { it.t <= oldest }
+                if (older.isNotEmpty()) {
+                    prependOlder(current, older, hasMore = true)
+                } else {
+                    _state.update { it.copy(loadingMore = false, hasMore = false) }
+                }
                 return@launch
             }
             val result = runCatching {
@@ -4041,8 +4128,15 @@ class ChartController(
             // archive — every seconds bar this app has built before — and the price feed, which
             // starts adding to it on the next tick. So the load *is* the archive read, and the
             // chart is not left saying «در حال بارگیری» over a series that will never arrive.
+            if (current.interval is ChartInterval.Ticks) {
+                loadTicks(current.symbol, current.interval)
+                if (loadJob === coroutineContext[Job]) loadJob = null
+                return@launch
+            }
             if (current.interval is ChartInterval.Seconds) {
-                paintFromArchive(current.symbol, current.interval)
+                val archived = paintFromArchive(current.symbol, current.interval)
+                // The venue's own recent seconds bars (5.17.0), merged with what the archive holds.
+                mergeServerSeconds(current.symbol, current.interval, archived)
                 _state.update {
                     if (it.symbol != current.symbol || it.interval != current.interval) {
                         it
@@ -4236,7 +4330,7 @@ class ChartController(
         if (archive === NoOpCandleArchive) return
         // Nothing to walk back through: no venue serves a bar this short, so the only bars this
         // series will ever have are the ones the price feed builds. See [ChartInterval.Seconds].
-        if (interval is ChartInterval.Seconds) return
+        if (interval is ChartInterval.Seconds || interval is ChartInterval.Ticks) return
         fillJob?.cancel()
         fillJob = scope.launch {
             // **Let the reader have the chart first.**
@@ -4373,6 +4467,12 @@ class ChartController(
     private fun startLive(symbol: String, interval: ChartInterval) {
         liveJob?.cancel()
         if (!live) return
+        // A tick chart's live edge is the venue's trades, not the price feed's snapshots: a snapshot
+        // is a price once a second, and a hundred-tick bar is a hundred trades. See [pollTicks].
+        if (interval is ChartInterval.Ticks) {
+            liveJob = scope.launch { pollTicks(symbol, interval) }
+            return
+        }
         liveJob = scope.launch {
             // The price feed, folded bar by bar. This is the one that makes a candle *move*: it
             // reports as often as the market trades, so between two reconciliations the forming bar
@@ -4619,15 +4719,123 @@ class ChartController(
      * seconds chart is in a second after it opened. This paints unconditionally, because on this
      * path there is no network answer coming behind it that could disagree.
      */
-    private suspend fun paintFromArchive(symbol: String, interval: ChartInterval) {
+    /**
+     * The bars one step finer than this chart's, covering the bars it holds — the backtest's bar
+     * magnifier (5.17.0). The finer length is the largest the venue serves natively that is under
+     * this one, paged back from the live edge to the chart's first bar or [MAGNIFIER_PAGES] pages.
+     */
+    suspend fun magnifierBars(): List<Candle> {
+        val current = _state.value
+        if (current.series.isEmpty) return emptyList()
+        val length = current.interval.seconds
+        val finer = gateway.nativeTimeframes
+            .filter { it.seconds < length && length % it.seconds == 0L }
+            .maxByOrNull { it.seconds } ?: return emptyList()
+        val first = current.series.time.first()
+        val out = ArrayList<OhlcBar>()
+        var before: Long? = null
+        repeat(MAGNIFIER_PAGES) {
+            val page = runCatching { gateway.load(current.symbol, finer, before = before) }.getOrNull()
+                ?: return@repeat
+            val bars = page.candles.filter { bar -> before == null || bar.t < before!! }
+            if (bars.isEmpty()) return@repeat
+            out.addAll(0, bars)
+            before = bars.first().t
+            if (bars.first().t <= first) return@repeat
+        }
+        return out.filter { it.t >= first }.map(OhlcBar::toCandle)
+    }
+
+    /** The newest trade a tick chart has folded, and how many the forming bar holds. */
+    private var lastTickMs: Long = 0L
+    private var tickFill: Int = 0
+
+    /**
+     * A tick chart's load (5.17.0): the venue's recent trades, folded [ChartInterval.Ticks.count] at
+     * a time. Enough trades for [TICK_BARS_LOADED] bars, in pages of [TICK_PAGE], at most
+     * [TICK_PAGES] of them — a thousand-tick chart of a quiet market is still a short one.
+     */
+    private suspend fun loadTicks(symbol: String, interval: ChartInterval.Ticks) {
+        val history = tickHistory
+        val trades = ArrayList<Tick>()
+        if (history != null) {
+            val wanted = interval.count.toLong() * TICK_BARS_LOADED
+            var before: Long? = null
+            repeat(TICK_PAGES) {
+                if (trades.size >= wanted) return@repeat
+                val page = history.ticks(symbol, TICK_PAGE, before)
+                if (page.isEmpty()) return@repeat
+                trades.addAll(0, page.filter { tick -> before == null || tick.tMs < before!! })
+                before = page.first().tMs
+            }
+        }
+        val (bars, filled) = TickBars.fold(trades, interval.count)
+        lastTickMs = trades.lastOrNull()?.tMs ?: 0L
+        tickFill = filled
+        val series = buildSeries { CandleSeries(bars.map(OhlcBar::toCandle)).resident() }
+        _state.update {
+            if (it.symbol != symbol || it.interval != interval) {
+                it
+            } else {
+                it.copy(
+                    series = series,
+                    loading = false,
+                    error = null,
+                    stale = false,
+                    savedAtEpochMillis = null,
+                    hasMore = trades.isNotEmpty(),
+                )
+            }
+        }
+        publishDepth(symbol, interval)
+        startLive(symbol, interval)
+    }
+
+    /** New trades, every [TICK_POLL_MS], appended to the forming bar or opening the next. */
+    private suspend fun pollTicks(symbol: String, interval: ChartInterval.Ticks) {
+        val history = tickHistory ?: return
+        while (true) {
+            delay(TICK_POLL_MS)
+            val base = _state.value
+            if (base.symbol != symbol || base.interval != interval) return
+            if (base.replay.isOn || base.loading) continue
+            val fresh = history.ticks(symbol, TICK_POLL_LIMIT).filter { it.tMs > lastTickMs }
+            if (fresh.isEmpty()) continue
+            lastTickMs = fresh.last().tMs
+            val (bars, filled) = TickBars.append(base.series.bars.map { it.toBar() }, tickFill, fresh, interval.count)
+            tickFill = filled
+            if (!publishTail(base, bars.takeLast(TICK_BARS_HELD).map(OhlcBar::toCandle))) return
+        }
+    }
+
+    /**
+     * The server's recent seconds bars, merged with what the chart already holds (5.17.0): the
+     * server's bars where they overlap, the archive's older ones before them, and whatever the
+     * feed has built since after them. The closed ones are archived so the next visit has them.
+     */
+    private suspend fun mergeServerSeconds(symbol: String, interval: ChartInterval.Seconds, held: List<OhlcBar>) {
+        val server = tickHistory?.seconds(symbol, interval.count, HISTORY_PAGE_BARS).orEmpty()
+        if (server.isEmpty()) return
+        runCatching { archive.write(symbol, interval, server.filter(OhlcBar::closed)) }
+        // The archive's bars, not the state's: until this load settles, the state may still hold
+        // the previous interval's series, and merging that would put hours under seconds.
+        val first = server.first().t
+        val last = server.last().t
+        val merged = held.filter { it.t < first } + server + held.filter { it.t > last }
+        val series = buildSeries { CandleSeries(merged.map(OhlcBar::toCandle)).resident() }
+        _state.update { if (it.symbol != symbol || it.interval != interval) it else it.copy(series = series) }
+    }
+
+    private suspend fun paintFromArchive(symbol: String, interval: ChartInterval): List<OhlcBar> {
         val stored = runCatching {
             archive.read(symbol, interval, RESIDENT_TARGET_BARS)
         }.getOrDefault(emptyList())
-        if (stored.isEmpty()) return
+        if (stored.isEmpty()) return stored
         val series = buildSeries { CandleSeries(stored.map(OhlcBar::toCandle)).resident() }
         _state.update { latest ->
             if (latest.symbol != symbol || latest.interval != interval) latest else latest.copy(series = series)
         }
+        return stored
     }
 
     private suspend fun paintFromCache(symbol: String, interval: ChartInterval) {
@@ -4769,6 +4977,17 @@ class ChartController(
          * written to the archive the moment it closes, and paging back reads it from there.
          */
         const val SECONDS_BARS_HELD = 2_000
+
+        /** Tick charts (5.17.0): the page size the server allows, and how much a chart opens with. */
+        const val TICK_PAGE = 5_000
+        const val TICK_PAGES = 4
+        const val TICK_BARS_LOADED = 300
+        const val TICK_BARS_HELD = 2_000
+        const val TICK_POLL_MS = 2_000L
+        const val TICK_POLL_LIMIT = 500
+
+        /** How many pages of finer bars the backtest's magnifier may fetch. */
+        const val MAGNIFIER_PAGES = 12
 
         /**
          * How often the live edge is re-read, from the bar's own length.

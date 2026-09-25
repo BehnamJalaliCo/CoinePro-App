@@ -41,6 +41,17 @@ class ScreenerCodecTest {
     }
 
     @Test
+    fun `a growth-scan condition survives the codec`() {
+        val screen = ScreenerScreen(
+            id = "scan",
+            name = "Breakouts",
+            filters = listOf(ScreenerFilter.AnySignal(setOf("scan_breakout", "scan_trend"), withinBars = 3)),
+        )
+        val restored = ScreenerCodec.decode(ScreenerCodec.encode(screen)!!)!!
+        assertEquals(screen.filters, restored.filters)
+    }
+
+    @Test
     fun `a range keeps both of its bounds`() {
         // The bound is the field most easily lost, because every other operator ignores it.
         val restored = ScreenerCodec.decode(ScreenerCodec.encode(screen)!!)!!

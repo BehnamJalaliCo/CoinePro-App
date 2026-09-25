@@ -68,7 +68,9 @@ class NotificationMapperTest {
         assertNull("Gold must not be alertable on the crypto platform",
             normalizeProductAlertSymbol("XAUUSD", crypto))
 
-        assertNull(normalizeProductAlertSymbol("EURUSD", fx))
+        // Every market CoinePro-FX quotes is alertable there since 5.17.0, not only the metals.
+        assertEquals("EURUSD", normalizeProductAlertSymbol("eur/usd", fx))
+        assertNull(normalizeProductAlertSymbol("DOGEUSD", fx))
         assertNull(normalizeProductAlertSymbol("BTCUSD", crypto))
     }
 
@@ -93,7 +95,7 @@ class NotificationMapperTest {
             PriceAlertDto(
                 id = "a1",
                 market = "forex",
-                symbol = "EURUSD",
+                symbol = "DOGEUSD",
                 condition = "cross_up",
                 value = 1.1,
                 trigger = "once",

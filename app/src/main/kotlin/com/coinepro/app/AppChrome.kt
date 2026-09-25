@@ -1,5 +1,6 @@
 package com.coinepro.app
 
+import com.coinepro.feature.screener.R as ScreenerR
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.animation.core.tween
@@ -368,4 +369,19 @@ fun coineProRailItems(): List<CoineProRailItem> = AppDestination.entries.map { d
         icon = destination.icon(selected = false),
         selectedIcon = destination.icon(selected = true),
     )
+}.let { tabs ->
+    // **The screener, one seat under the chart (5.17.0).** On a rail — a tablet, and every desktop
+    // browser — there is height for a sixth destination, and the screener is the desktop terminal's
+    // second screen: TradingView puts it in the bottom panel beside the chart, not in a menu. On a
+    // phone's five-slot bar there is no sixth seat, and it stays in the menu and the toolkit.
+    val at = tabs.indexOfFirst { it.key == AppDestination.CHART.route } + 1
+    tabs.take(at) + CoineProRailItem(
+        key = SCREENER_RAIL_KEY,
+        label = stringResource(ScreenerR.string.screener_title),
+        icon = CoineProIcons.Filter,
+        selectedIcon = CoineProIcons.Filter,
+    ) + tabs.drop(at)
 }
+
+/** The screener's route, as the rail keys it. Must match the route the screener is registered on. */
+internal const val SCREENER_RAIL_KEY = "screener"

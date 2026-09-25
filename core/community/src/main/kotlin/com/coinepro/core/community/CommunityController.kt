@@ -50,6 +50,9 @@ enum class CommunityError {
  */
 data class CommunityUiState(
     val posts: List<CommunityPost> = emptyList(),
+    /** The authors this reader follows, and whether the feed is narrowed to them (5.17.0). */
+    val follows: Set<String> = emptySet(),
+    val followingOnly: Boolean = false,
     val category: CommunityCategory? = null,
     val page: Int = 1,
     val loading: Boolean = false,
@@ -80,6 +83,10 @@ data class CommunityUiState(
 ) {
     /** Whether the list on screen is a search result rather than the board itself. */
     val isSearch: Boolean get() = query.isNotBlank()
+
+    /** The posts on screen: all of them, or only the followed authors' under «Following». */
+    val visiblePosts: List<CommunityPost>
+        get() = if (followingOnly) posts.filter { it.author in follows } else posts
 
     /** Nothing to show and nothing loading — the case that needs an empty state rather than a spinner. */
     val empty: Boolean get() = posts.isEmpty() && !loading && error == null
@@ -157,6 +164,22 @@ class CommunityController(
         scope.launch {
             identity.displayName.collect { name -> _state.update { it.copy(displayName = name) } }
         }
+        scope.launch {
+            identity.follows.collect { names -> _state.update { it.copy(follows = names) } }
+        }
+    }
+
+    /** Follows [author], or stops following them. Kept on this phone; see [CommunityIdentityStore.follows]. */
+    fun toggleFollow(author: String) {
+        val name = author.trim().takeIf(String::isNotEmpty) ?: return
+        val now = _state.value.follows
+        val next = if (name in now) now - name else now + name
+        _state.update { it.copy(follows = next) }
+        scope.launch { identity.setFollows(next) }
+    }
+
+    fun setFollowingOnly(on: Boolean) {
+        _state.update { it.copy(followingOnly = on) }
     }
 
     /** Loads the first page once. Called when the screen appears; safe to call on every entry. */
@@ -544,7 +567,11 @@ class CommunityController(
     fun clear() {
         feedJob?.cancel()
         threadJob?.cancel()
-        _state.value = CommunityUiState(displayName = _state.value.displayName)
+        _state.value = CommunityUiState(
+            displayName = _state.value.displayName,
+            follows = _state.value.follows,
+            followingOnly = _state.value.followingOnly,
+        )
         _thread.value = CommunityThreadUiState()
     }
 

@@ -1,5 +1,6 @@
 package com.coinepro.feature.screener.model
 
+import com.coinepro.core.chart.GrowthScan
 import com.coinepro.core.symbols.SymbolSearch
 import kotlin.math.abs
 import kotlin.math.max
@@ -22,6 +23,16 @@ enum class NumericOp(val symbol: String, val label: String) {
     BETWEEN("↔", "بین"),
     EQ("=", "برابر با"),
     ;
+
+    /** The operator's words in the reader's language (5.17.0). */
+    fun labelIn(english: Boolean): String = if (!english) label else when (this) {
+        GT -> "greater than"
+        GTE -> "at least"
+        LT -> "less than"
+        LTE -> "at most"
+        BETWEEN -> "between"
+        EQ -> "equal to"
+    }
 
     /**
      * Apply this operator, with [bound] as the second end of a [BETWEEN].
@@ -268,6 +279,24 @@ sealed interface ScreenerFilter {
         override fun undecided(row: ScreenerRow): Boolean = row.indicators[key] == null
     }
 
+    /**
+     * Any of the growth scan's setups fired within [withinBars] bars (5.17.0).
+     *
+     * «Any of», not «all of»: a reader who ticks «breakout» and «trend start» wants markets doing
+     * either, and a market doing both is simply ranked higher by its growth score. An empty set
+     * matches everything, like an empty [Category].
+     */
+    data class AnySignal(val ids: Set<String>, val withinBars: Int) : ScreenerFilter {
+        override fun matches(row: ScreenerRow): Boolean {
+            if (ids.isEmpty()) return true
+            return ids.any { id -> row.indicators[id]?.let { it <= withinBars } == true }
+        }
+
+        /** Undecided until the scan has run on this market at all, which the growth score marks. */
+        override fun undecided(row: ScreenerRow): Boolean =
+            ids.isNotEmpty() && GrowthScan.GROWTH_ID !in row.indicators
+    }
+
     companion object {
         /**
          * Whether every filter in [filters] accepts [row].
@@ -294,6 +323,10 @@ sealed interface ScreenerFilter {
             filters.forEach { filter ->
                 when (filter) {
                     is IndicatorFilter -> add(filter.key)
+                    is AnySignal -> {
+                        addAll(filter.ids)
+                        add(GrowthScan.GROWTH_ID)
+                    }
                     is Numeric -> filter.field.indicatorKey?.let(::add)
                     else -> Unit
                 }

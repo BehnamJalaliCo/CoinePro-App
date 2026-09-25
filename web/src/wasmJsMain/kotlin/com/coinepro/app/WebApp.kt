@@ -58,6 +58,7 @@ object WebLaunch {
     var scriptId by mutableStateOf<String?>(null)
     var symbol by mutableStateOf<String?>(null)
     var timeframe by mutableStateOf<String?>(null)
+    var route by mutableStateOf<String?>(null)
     var notificationPermission by mutableStateOf(NotificationPermissionUiState.AVAILABLE_TO_REQUEST)
 
     /**
@@ -68,6 +69,12 @@ object WebLaunch {
     fun fromAddress() {
         val segments = pathJs().split('/').filter { it.isNotEmpty() }.let { if (it.firstOrNull() == "terminal") it.drop(1) else it }
         if (segments.isEmpty()) return
+        // A top-level screen by name — `/terminal/screener` — rather than a deep link: it carries
+        // nothing to validate beyond being one of the named screens.
+        if (segments.size == 1 && segments.first() in LAUNCHABLE_ROUTES) {
+            route = segments.first()
+            return
+        }
         val query = searchJs().removePrefix("?").split('&').filter { '=' in it }
             .associate { it.substringBefore('=') to java.net.URLDecoder.decode(it.substringAfter('='), "UTF-8") }
         val custom = segments.first() in setOf("signal", "activity", "market")
@@ -199,6 +206,7 @@ fun WebApp() {
                         networkStatus = WebGraph.networkStatus,
                         candleCache = WebGraph.candleCache,
                         candleArchive = WebGraph.candleArchive,
+                        tickHistory = WebGraph.tickHistory,
                         notificationSettingsStore = WebGraph.notificationSettingsStore,
                         localAlertStore = WebGraph.localAlertStore,
                         localAlertScheduler = WebGraph.localAlertScheduler,
@@ -271,6 +279,8 @@ fun WebApp() {
                         notificationPermissionState = WebLaunch.notificationPermission,
                         onSignalLaunchConsumed = { WebLaunch.signalId = null },
                         onActivityLaunchConsumed = { WebLaunch.activity = false },
+                        launchRoute = WebLaunch.route,
+                        onRouteLaunchConsumed = { WebLaunch.route = null },
                         onResetTokenConsumed = { WebLaunch.resetToken = null },
                         onScriptLaunchConsumed = { WebLaunch.scriptId = null },
                         onSymbolLaunchConsumed = {

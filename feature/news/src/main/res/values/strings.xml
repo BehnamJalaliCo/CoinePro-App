@@ -79,4 +79,10 @@
     <string name="news_platform_crypto">Crypto</string>
     <string name="news_platform_forex">Forex</string>
     <string name="news_image_retry">Picture didn\'t load. Tap to try again.</string>
+    <string name="news_filter_search">Symbol or word</string>
+    <string name="news_filter_high_impact">High impact</string>
+    <string name="news_filter_bullish">Bullish</string>
+    <string name="news_filter_bearish">Bearish</string>
+    <string name="news_filter_none">No story matches these filters.</string>
+    <string name="news_filter_clear">Clear filters</string>
 </resources>

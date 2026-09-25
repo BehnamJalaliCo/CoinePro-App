@@ -189,6 +189,7 @@ internal actual fun chartText(text: ChartText): String = stringResource(
         ChartText.LEGEND_HIDE -> DesignR.string.legend_hide
         ChartText.LEGEND_SHOW -> DesignR.string.legend_show
         ChartText.LEGEND_SETTINGS -> DesignR.string.legend_settings
+        ChartText.LEGEND_MORE -> DesignR.string.legend_more
         ChartText.LEGEND_REMOVE -> DesignR.string.legend_remove
         ChartText.LEGEND_CONTROLS_CLOSE -> DesignR.string.legend_controls_close
         ChartText.LEGEND_CONTROLS_OPEN -> DesignR.string.legend_controls_open

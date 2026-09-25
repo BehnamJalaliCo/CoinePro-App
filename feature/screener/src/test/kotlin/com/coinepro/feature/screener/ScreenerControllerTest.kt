@@ -198,6 +198,65 @@ class ScreenerControllerTest {
     }
 
     @Test
+    fun `the growth scan lists only markets it has read, ranks by score and narrows by setup`() = runTest {
+        // 5.17.0. A long decline turning into a rise for Bitcoin, a flat line for everything else.
+        val down = List(150) { 200.0 - it * 0.6 + kotlin.math.sin(it / 3.0) }
+        val up = List(25) { down.last() + it * 1.2 + kotlin.math.sin(it / 3.0) * 0.5 }
+        val closes = down + up
+        val rising = closes.mapIndexed { index, close ->
+            val open = (closes.getOrElse(index - 1) { close } + close) / 2
+            OhlcBar(
+                t = index * 86_400L,
+                o = open,
+                h = maxOf(open, close) * 1.002,
+                l = minOf(open, close) * 0.998,
+                c = close,
+                v = 1.0,
+            )
+        }
+        val flat = List(175) { index ->
+            OhlcBar(t = index * 86_400L, o = 100.0, h = 100.2, l = 99.8, c = 100.0, v = 1.0)
+        }
+        val controller = ScreenerController(
+            gateway = catalogueWithoutPrices,
+            scope = TestScope(UnconfinedTestDispatcher(testScheduler)),
+            barSource = { symbol -> if (symbol == "BTCUSDT") rising else flat },
+            computeDispatcher = UnconfinedTestDispatcher(testScheduler),
+        )
+        controller.refresh()
+        advanceUntilIdle()
+        controller.setMode(ScreenerMode.SIGNALS)
+        advanceUntilIdle()
+
+        val state = controller.state.value
+        assertEquals("every market read is listed, ranked", universe.size, state.rows.size)
+        assertEquals("BTCUSDT", state.rows.first().symbol)
+
+        controller.setScanIds(setOf(com.coinepro.core.chart.GrowthScan.Kind.TREND_START.id))
+        controller.setScanWithin(30)
+        advanceUntilIdle()
+        assertEquals(listOf("BTCUSDT"), controller.state.value.rows.map(ScreenerRow::symbol))
+        assertTrue(controller.csv(english = true).contains("BTCUSDT"))
+
+        controller.setMode(ScreenerMode.TABLE)
+        advanceUntilIdle()
+        assertEquals("the table keeps its own, empty, conditions", universe.size, controller.state.value.rows.size)
+    }
+
+    @Test
+    fun `hourly bars fold into days for the day's figures and a week's bars give none`() {
+        val hourly = List(48) { index ->
+            OhlcBar(t = 86_400L * 10 + index * 3_600L, o = 1.0 + index, h = 2.0 + index, l = 0.5 + index, c = 1.5 + index, v = 1.0)
+        }
+        val days = dayBarsOf(hourly, com.coinepro.core.marketdata.Timeframe.H1)
+        assertEquals(2, days.size)
+        assertEquals(1.0, days.first().o, 0.0)
+        assertEquals(25.0, days.first().h, 0.0)
+        assertEquals(24.0, days.first().v, 0.0)
+        assertTrue(dayBarsOf(hourly, com.coinepro.core.marketdata.Timeframe.W1).isEmpty())
+    }
+
+    @Test
     fun `a failed catalogue is an error rather than an empty result`() = runTest {
         val failing = object : MarketCatalogGateway {
             override suspend fun load(): MarketCatalog = throw IllegalStateException("boom")

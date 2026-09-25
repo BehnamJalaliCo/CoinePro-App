@@ -44,4 +44,18 @@
     <string name="screener_add_indicator">افزودن شرط اندیکاتور</string>
     <string name="screener_add_to_watchlist">افزودن هر %1$s نماد به دیده‌بان</string>
     <string name="screener_added_to_watchlist">به دیده‌بان اضافه شد</string>
+    <string name="screener_export_csv">CSV</string>
+    <string name="screener_export_saved">ذخیره شد</string>
+    <string name="screener_export_failed">فایل ذخیره نشد</string>
+    <string name="screener_mode_table">جدول</string>
+    <string name="screener_mode_signals">سیگنال‌های رشد</string>
+    <string name="screener_scan_setups">الگوها</string>
+    <string name="screener_scan_within">رخ داده در</string>
+    <string name="screener_scan_within_bars">%1$s کندل اخیر</string>
+    <string name="screener_scan_min_growth">امتیاز رشد</string>
+    <string name="screener_scan_min_any">همه</string>
+    <string name="screener_scan_tag_now">%1$s · همین کندل</string>
+    <string name="screener_scan_tag_ago">%1$s · %2$s کندل پیش</string>
+    <string name="screener_scan_watch">اعلان نمادهای تازه‌ی این اسکن</string>
+    <string name="screener_scan_watching">ورود نمادهای تازه را خبر می‌دهیم</string>
 </resources>

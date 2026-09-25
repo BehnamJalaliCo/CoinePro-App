@@ -21,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -141,17 +142,38 @@ internal fun BacktestSheetBody(
      * window plainly instead of offering to widen it.
      */
     onLoadMoreHistory: (() -> Unit)? = null,
+    /**
+     * The lower-timeframe bars under this chart's bars, for TradingView's «Bar magnifier» (5.17.0);
+     * null where the host cannot fetch them.
+     */
+    loadMagnifier: (suspend () -> List<Candle>)? = null,
 ) {
     var strategy by rememberSaveable { mutableStateOf(Backtest.Strategy.MA_CROSS) }
     var costBasisPoints by rememberSaveable { mutableStateOf(5) }
     var allowShorts by rememberSaveable { mutableStateOf(false) }
     var tab by rememberSaveable { mutableStateOf(ReportTab.OVERVIEW) }
+    // TradingView's «Properties» (5.17.0): slippage, a stop and a target, and the bar magnifier.
+    var slippageHundredths by rememberSaveable { mutableStateOf(0) }
+    var stopPercent by rememberSaveable { mutableStateOf(0) }
+    var targetPercent by rememberSaveable { mutableStateOf(0) }
+    var magnify by rememberSaveable { mutableStateOf(false) }
+    var lower by remember { mutableStateOf<List<Candle>?>(null) }
+    LaunchedEffect(magnify, loadMagnifier) {
+        val load = loadMagnifier
+        if (magnify && load != null && lower == null) lower = runCatching { load() }.getOrNull().orEmpty()
+    }
 
     val settings = Backtest.Settings(
         strategy = strategy,
         costFraction = costBasisPoints / 10_000.0,
+        slippagePercent = slippageHundredths / 100.0,
+        stopPercent = stopPercent.takeIf { it > 0 }?.toDouble(),
+        targetPercent = targetPercent.takeIf { it > 0 }?.toDouble(),
     )
-    val report = remember(bars, settings, allowShorts, hasMoreHistory) {
+    val magnifier = remember(bars, lower, magnify) {
+        lower?.takeIf { magnify && it.isNotEmpty() }?.let { finer -> BarMagnifier.of(bars, finer) }
+    }
+    val report = remember(bars, settings, allowShorts, hasMoreHistory, magnifier) {
         // One pass over the bars and a handful of indicator arrays. It is cheap enough to sit in a
         // `remember` rather than a coroutine, and keeping it here means the report can never be one
         // recomposition behind the chips that produced it.
@@ -160,6 +182,7 @@ internal fun BacktestSheetBody(
             settings = settings,
             allowShorts = allowShorts,
             moreHistoryAvailable = hasMoreHistory,
+            magnifier = magnifier,
         )
     }
 
@@ -168,7 +191,10 @@ internal fun BacktestSheetBody(
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf),
     ) {
         CoineProTeachingStrip(TeachingSurface.BACKTEST, gutter = false)
-        Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+        ) {
             Backtest.Strategy.entries.forEach { option ->
                 Chip(stringResource(option.labelRes()), option == strategy) { strategy = option }
             }
@@ -184,6 +210,34 @@ internal fun BacktestSheetBody(
                 ) { costBasisPoints = points }
             }
             Chip(stringResource(R.string.bt_with_shorts), allowShorts) { allowShorts = !allowShorts }
+        }
+        // Slippage, then the protective exits — Latin, like every market figure on this sheet.
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(stringResource(R.string.bt_slippage), style = MaterialTheme.typography.labelSmall, color = CoineProColors.TextMuted)
+            listOf(0, 5, 10, 25).forEach { hundredths ->
+                Chip(BidiText.isolateLtr("${hundredths / 100.0}%"), hundredths == slippageHundredths) { slippageHundredths = hundredths }
+            }
+        }
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(stringResource(R.string.bt_stop), style = MaterialTheme.typography.labelSmall, color = CoineProColors.TextMuted)
+            listOf(0, 1, 2, 5).forEach { percent ->
+                Chip(if (percent == 0) "—" else BidiText.isolateLtr("$percent%"), percent == stopPercent) { stopPercent = percent }
+            }
+            Text(stringResource(R.string.bt_target), style = MaterialTheme.typography.labelSmall, color = CoineProColors.TextMuted)
+            listOf(0, 2, 4, 10).forEach { percent ->
+                Chip(if (percent == 0) "—" else BidiText.isolateLtr("$percent%"), percent == targetPercent) { targetPercent = percent }
+            }
+        }
+        if (loadMagnifier != null) {
+            Chip(stringResource(R.string.bt_magnifier), magnify) { magnify = !magnify }
         }
 
         if (allowShorts) {
@@ -1120,6 +1174,10 @@ private fun Backtest.Strategy.labelRes(): Int = when (this) {
     Backtest.Strategy.MA_CROSS -> R.string.bt_strategy_ma_cross
     Backtest.Strategy.RSI_REVERSION -> R.string.bt_strategy_rsi
     Backtest.Strategy.BREAKOUT -> R.string.bt_strategy_breakout
+    Backtest.Strategy.MACD_CROSS -> R.string.bt_strategy_macd
+    Backtest.Strategy.SUPERTREND -> R.string.bt_strategy_supertrend
+    Backtest.Strategy.BOLLINGER_REVERSION -> R.string.bt_strategy_bollinger
+    Backtest.Strategy.GROWTH_SCAN -> R.string.bt_strategy_growth
 }
 
 /** The three ways the Performance tab can be sliced. */
@@ -1158,3 +1216,25 @@ private val PRICE_WIDTH = 84.dp
 private val PNL_WIDTH = 80.dp
 private val PERCENT_WIDTH = 68.dp
 private val BARS_WIDTH = 44.dp
+
+/**
+ * The lower bars inside each of [bars], as the engine's magnifier asks for them (5.17.0).
+ *
+ * By time: bar `i` owns every finer bar from its own open up to the next bar's. Two cursors over two
+ * sorted lists, so building it is one pass however long either is.
+ */
+internal object BarMagnifier {
+    fun of(bars: List<Candle>, finer: List<Candle>): (Int) -> List<Candle> {
+        val buckets = ArrayList<List<Candle>>(bars.size)
+        var cursor = 0
+        for (index in bars.indices) {
+            val from = bars[index].t
+            val until = bars.getOrNull(index + 1)?.t ?: Long.MAX_VALUE
+            while (cursor < finer.size && finer[cursor].t < from) cursor += 1
+            val start = cursor
+            while (cursor < finer.size && finer[cursor].t < until) cursor += 1
+            buckets += finer.subList(start, cursor)
+        }
+        return { index -> buckets.getOrElse(index) { emptyList() } }
+    }
+}

@@ -92,6 +92,13 @@ enum class ChartType {
      * the reach of every bar with the open and close left out. From Pro-Chart's terminal (5.11.0).
      */
     HIGH_LOW,
+
+    /**
+     * TradingView's «Session volume profile» (5.17.0): the candles, with each session's volume by
+     * price drawn from the session's first bar — its point of control marked and its value area
+     * shaded. A session is a calendar day in UTC, the boundary both venues roll their day on.
+     */
+    SESSION_VOLUME_PROFILE,
     ;
 
     /**

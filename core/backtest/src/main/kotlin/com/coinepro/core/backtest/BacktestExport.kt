@@ -219,6 +219,10 @@ object BacktestExport {
         Backtest.Strategy.MA_CROSS -> "تقاطع میانگین"
         Backtest.Strategy.RSI_REVERSION -> "بازگشت RSI"
         Backtest.Strategy.BREAKOUT -> "شکست کانال"
+        Backtest.Strategy.MACD_CROSS -> "تقاطع مکدی"
+        Backtest.Strategy.SUPERTREND -> "سوپرترند"
+        Backtest.Strategy.BOLLINGER_REVERSION -> "بازگشت بولینگر"
+        Backtest.Strategy.GROWTH_SCAN -> "الگوهای رشد"
     }
 
     /**

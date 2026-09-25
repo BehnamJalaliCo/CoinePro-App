@@ -198,6 +198,14 @@ class ChartTypeGoldenTest {
     @Config(sdk = [34], qualifiers = FA_840)
     fun highLowTablet() = golden("chart-type-high-low-fa-840", ChartType.HIGH_LOW)
 
+    @Test
+    @Config(sdk = [34], qualifiers = FA_411)
+    fun sessionVolumeProfilePhone() = golden("chart-type-svp-fa-411", ChartType.SESSION_VOLUME_PROFILE)
+
+    @Test
+    @Config(sdk = [34], qualifiers = FA_840)
+    fun sessionVolumeProfileTablet() = golden("chart-type-svp-fa-840", ChartType.SESSION_VOLUME_PROFILE)
+
     private companion object {
         const val FA_411 = "fa-rIR-ldrtl-w411dp-h914dp-xxhdpi"
         const val FA_840 = "fa-rIR-ldrtl-w840dp-h1280dp-xhdpi"

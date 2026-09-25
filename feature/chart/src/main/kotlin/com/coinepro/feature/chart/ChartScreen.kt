@@ -144,6 +144,7 @@ import com.coinepro.core.chart.ObjectTree
 import com.coinepro.core.chart.Replay
 import com.coinepro.core.chart.ScaleSide
 import com.coinepro.core.chart.SignalOverlay
+import com.coinepro.core.papertrade.PaperOrder
 import com.coinepro.core.papertrade.PaperPosition
 import com.coinepro.core.chart.ToolRail
 import com.coinepro.core.chart.axisFontSizeSp
@@ -223,6 +224,7 @@ import com.coinepro.core.help.HelpCatalog
 import com.coinepro.core.marketdata.CHART_TIME_ZONE
 import com.coinepro.core.marketdata.ChartInterval
 import com.coinepro.core.marketdata.SECONDS_KEYS
+import com.coinepro.core.marketdata.TICK_KEYS
 import com.coinepro.core.marketdata.Timeframe
 import com.coinepro.core.marketdata.customOf
 import com.coinepro.core.marketdata.customTypedOf
@@ -533,6 +535,10 @@ fun ChartScreen(
      * read-only route to the store.
      */
     onMoveAlert: ((id: String, price: Double) -> Unit)? = null,
+    /** The paper book's working orders on this symbol, drawn as draggable lines (5.17.0). */
+    workingOrders: List<PaperOrder> = emptyList(),
+    /** A dragged stop, target or working order. Null draws the lines and lets nothing move. */
+    onEditTrade: ((ChartTradeEdit) -> Unit)? = null,
     /** The symbol search, for the `/` key and the desk's menu; null on a screen without one. */
     onOpenSymbolSearch: (() -> Unit)? = null,
     /**
@@ -637,6 +643,15 @@ fun ChartScreen(
      */
     chartEventPrefs: ChartEventPrefsStore? = null,
 ) {
+    // Trading on the chart (5.17.0): the position's entry, stop and target and the working orders.
+    val tradeWords = TradeLineWords(
+        entry = stringResource(R.string.chart_trade_entry),
+        stop = stringResource(R.string.chart_trade_stop),
+        target = stringResource(R.string.chart_trade_target),
+        buy = stringResource(R.string.chart_trade_buy),
+        sell = stringResource(R.string.chart_trade_sell),
+    )
+    val tradeLines = remember(position, workingOrders, tradeWords) { ChartTradeLines.of(position, workingOrders, tradeWords) }
     /**
      * The instrument the reader switched to from the strip, or null while they are on the one this
      * screen was opened with.
@@ -765,6 +780,8 @@ fun ChartScreen(
     var contextMenu by remember { mutableStateOf<ChartContextMenu?>(null) }
     // TradingView's time-scale menu (5.16.1): where a secondary click on the time axis landed.
     var timeAxisMenu by remember { mutableStateOf<Offset?>(null) }
+    // The legend row's «…» (5.17.0): which study's menu is open.
+    var seriesMenu by remember { mutableStateOf<String?>(null) }
     // The data window (5.14.0): the crosshair's bar, or the newest, as a table over the plot. Saved,
     // because a reader who keeps it open keeps it open across a rotation.
     var dataWindowOpen by rememberSaveable { mutableStateOf(false) }
@@ -1401,6 +1418,12 @@ fun ChartScreen(
                     bottomMargin = state.appearance.bottomMargin,
                     crosshairMagnet = state.appearance.crosshairMagnet,
                     onTimeAxisMenu = { at -> timeAxisMenu = at },
+                    onSeriesMore = { target -> state.indicatorFor(target)?.let { seriesMenu = it } },
+                    scaleUnit = if (state.appearance.scaleUnit) {
+                        remember(state.symbol) { SymbolClassifier.classify(state.symbol).quote?.uppercase() }
+                    } else {
+                        null
+                    },
                     onScalePanes = controller::scalePanes,
                     // A long press on a drawn level offers an alert at exactly that price.
                     //
@@ -1429,6 +1452,10 @@ fun ChartScreen(
                     },
                     alerts = alerts,
                     onMoveAlert = onMoveAlert,
+                    orderLines = tradeLines,
+                    onMoveOrderLine = onEditTrade?.let { edit ->
+                        { id, price -> ChartTradeLines.edit(id, price, position, workingOrders)?.let(edit) }
+                    },
                     // The gutter's `L`. It writes the same field the scale sheet writes, so the two
                     // cannot disagree and a layout saved after a tap here carries the log axis.
                     onToggleLogScale = {
@@ -1626,6 +1653,50 @@ fun ChartScreen(
                                 },
                                 modifier = Modifier.semantics { contentDescription = "time-menu-sessions" },
                             )
+                        }
+                    }
+                }
+                // TradingView's legend «…» (5.17.0): the pane, the scale and the visual order of one study.
+                seriesMenu?.let { id ->
+                    val overlay = id in state.shownOverlayOwners
+                    val owners = state.paneOwnersShown
+                    val at = owners.indexOf(id)
+                    Box(Modifier.align(Alignment.TopStart).padding(top = 48.dp)) {
+                        DropdownMenu(expanded = true, onDismissRequest = { seriesMenu = null }) {
+                            @Composable
+                            fun item(label: Int, tag: String, action: () -> Unit) = DropdownMenuItem(
+                                text = { Text(stringResource(label)) },
+                                onClick = {
+                                    seriesMenu = null
+                                    action()
+                                },
+                                modifier = Modifier.semantics { contentDescription = "series-menu-$tag" },
+                            )
+                            if (overlay) {
+                                item(R.string.chart_series_new_pane, "separate") { controller.separateOverlay(id, true) }
+                                if (id in state.ownScale) {
+                                    item(R.string.chart_series_price_scale, "price-scale") { controller.setOwnScale(id, false) }
+                                } else {
+                                    item(R.string.chart_series_own_scale, "own-scale") { controller.setOwnScale(id, true) }
+                                }
+                                item(R.string.chart_series_front, "front") { controller.bringToFront(id) }
+                                item(R.string.chart_series_back, "back") { controller.sendToBack(id) }
+                            } else {
+                                if (id in state.separated) {
+                                    item(R.string.chart_series_price_pane, "join") { controller.separateOverlay(id, false) }
+                                }
+                                if (at > 0) item(R.string.chart_series_up, "up") { controller.movePane(id, up = true) }
+                                if (at in 0 until owners.lastIndex) item(R.string.chart_series_down, "down") { controller.movePane(id, up = false) }
+                                val hostAbove = if (at > 0) owners[at - 1] else null
+                                if (hostAbove != null && state.paneMerges[id] == null && state.paneMerges[hostAbove] == null) {
+                                    item(R.string.chart_series_merge, "merge") { controller.mergePane(id, hostAbove) }
+                                }
+                                if (state.paneMerges[id] != null) {
+                                    item(R.string.chart_series_unmerge, "unmerge") { controller.mergePane(id, null) }
+                                }
+                            }
+                            item(R.string.chart_series_settings, "settings") { indicatorSettings = id }
+                            item(R.string.chart_series_remove, "remove") { controller.toggleIndicator(id) }
                         }
                     }
                 }
@@ -2831,6 +2902,7 @@ fun ChartScreen(
                 hasMoreHistory = state.hasMore,
                 loadingHistory = state.loadingMore,
                 onLoadMoreHistory = controller::loadMore,
+                loadMagnifier = controller::magnifierBars,
             )
         }
 
@@ -4831,6 +4903,29 @@ private fun SecondsIntervalSection(selected: ChartInterval, onSelect: (ChartInte
         }
     }
     CoineProNote(R.string.chart_interval_seconds_note, style = MaterialTheme.typography.bodySmall)
+    HorizontalDivider(color = CoineProColors.Border)
+    // TradingView's «TICKS» group (5.17.0): a bar every 1, 10, 100 or 1000 trades.
+    Text(
+        text = stringResource(R.string.chart_interval_ticks),
+        style = MaterialTheme.typography.labelSmall,
+        color = CoineProColors.TextMuted,
+        fontWeight = FontWeight.Normal,
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+    ) {
+        TICK_KEYS.forEach { count ->
+            val interval = ChartInterval.Ticks(count)
+            IntervalPill(
+                text = interval.wire,
+                active = interval == selected,
+                onClick = { onSelect(interval) },
+            )
+        }
+    }
     HorizontalDivider(color = CoineProColors.Border)
 }
 

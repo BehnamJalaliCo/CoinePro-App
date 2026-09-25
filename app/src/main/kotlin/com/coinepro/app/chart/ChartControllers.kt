@@ -14,6 +14,7 @@ import com.coinepro.core.marketdata.ChartTickSource
 import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.SymbolExpressionGateway
+import com.coinepro.core.marketdata.TickHistory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -91,6 +92,8 @@ class ChartControllers(
      * it can count and two verbs it can call.
      */
     private val drawingAlerts: DrawingAlerts? = null,
+    /** Trades and seconds bars from the server, for seconds and tick charts (5.17.0). */
+    private val tickHistory: TickHistory? = null,
 ) {
     private val controllers = LinkedHashMap<String, ChartController>()
 
@@ -118,6 +121,7 @@ class ChartControllers(
             live = true,
             ticks = ticks,
             drawingAlerts = drawingAlerts,
+            tickHistory = tickHistory,
         )
         controllers[key] = created
         while (controllers.size > MAX_CONTROLLERS) {
@@ -156,10 +160,11 @@ fun rememberChartControllers(
     archive: CandleArchive,
     ticks: ChartTickSource,
     drawingAlerts: DrawingAlerts? = null,
-): ChartControllers = remember(gateway, scope, drawings, images, log, cache, archive, ticks, drawingAlerts) {
+    tickHistory: TickHistory? = null,
+): ChartControllers = remember(gateway, scope, drawings, images, log, cache, archive, ticks, drawingAlerts, tickHistory) {
     // Wrapped so a spread or ratio typed as a symbol — `EURUSD/GBPUSD` — charts (5.14.0). A plain
     // symbol goes straight through to the platform's own gateway.
-    ChartControllers(SymbolExpressionGateway(gateway), scope, drawings, images, log, cache, archive, ticks, drawingAlerts)
+    ChartControllers(SymbolExpressionGateway(gateway), scope, drawings, images, log, cache, archive, ticks, drawingAlerts, tickHistory)
 }
 
 /**

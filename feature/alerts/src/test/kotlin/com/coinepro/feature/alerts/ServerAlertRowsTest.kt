@@ -137,4 +137,48 @@ class ServerAlertRowsTest {
 
         assertNull(ServerAlertRows.requestOf(zero))
     }
+
+    private fun channelDraft(symbol: String) = AlertDraft(
+        symbol = symbol,
+        conditions = listOf(
+            AlertConditionDraft(
+                kind = AlertTriggerKind.CHANNEL,
+                channelOp = com.coinepro.core.notifications.ChannelOp.ENTERING,
+                first = "1.08",
+                second = "1.09",
+            ),
+        ),
+        serverChannels = setOf("push", "telegram", "email"),
+        expiresAt = 5_000L,
+    )
+
+    @Test
+    fun `a channel on a CoinePro-FX pair goes to the server as a spec with its delivery and expiry`() {
+        val request = ServerAlertRows.requestOf(channelDraft("EURUSD"))!!
+
+        assertEquals(PriceAlertCondition.SPEC, request.condition)
+        assertEquals("channel", request.spec?.get("kind"))
+        assertEquals("enter", request.spec?.get("op"))
+        assertEquals(listOf("email", "push", "telegram"), request.channels)
+        assertEquals(5_000L, request.expiresAtMs)
+    }
+
+    @Test
+    fun `an advanced condition on a crypto symbol stays on the device`() {
+        // TradeYar evaluates the plain five; offering a channel there would be a promise nobody keeps.
+        assertNull(ServerAlertRows.requestOf(channelDraft("BTCUSDT")))
+    }
+
+    @Test
+    fun `the three server conditions round trip through the spec`() {
+        listOf(
+            AlertTrigger.Channel(com.coinepro.core.notifications.ChannelOp.OUTSIDE, 1.08, 1.09),
+            AlertTrigger.Move(com.coinepro.core.notifications.MoveOp.UP_PERCENT, 2.5, 5),
+            AlertTrigger.Indicator("rsi", 14, PriceOp.CROSSING_DOWN, 70.0),
+        ).forEach { trigger ->
+            assertEquals(trigger, ServerAlertSpec.triggerOf(ServerAlertSpec.specOf(trigger)))
+        }
+        assertNull(ServerAlertSpec.specOf(AlertTrigger.Indicator("ema", 20, PriceOp.GREATER_THAN, 1.0)))
+        assertNull(ServerAlertSpec.triggerOf(mapOf("kind" to "channel", "op" to "sideways")))
+    }
 }

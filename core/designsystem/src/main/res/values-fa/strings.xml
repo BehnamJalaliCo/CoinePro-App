@@ -182,4 +182,5 @@
     <string name="free_banner_dismiss">بستن</string>
     <string name="message_no_connection">اتصالی نیست. شبکه را بررسی کنید و دوباره تلاش کنید.</string>
     <string name="state_refresh">تازه‌سازی</string>
+    <string name="legend_more">بیشتر</string>
 </resources>

@@ -386,6 +386,22 @@ object Backtest {
         startingEquity: Double = DEFAULT_STARTING_EQUITY,
         feePercent: Double = DEFAULT_FEE_PERCENT,
         barSeconds: Long = inferBarSeconds(series),
+        /**
+         * Adverse fill, as a percentage of price, on every entry and exit (5.17.0) — TradingView's
+         * «Slippage». A buy fills this much higher, a sell this much lower.
+         */
+        slippagePercent: Double = 0.0,
+        /** A protective stop this far from the entry, in percent; null for none (5.17.0). */
+        stopPercent: Double? = null,
+        /** A profit target this far from the entry, in percent; null for none (5.17.0). */
+        targetPercent: Double? = null,
+        /**
+         * TradingView's «Bar magnifier» (5.17.0): the lower-timeframe bars inside bar `index`, oldest
+         * first, so a stop and a target touched in the same bar are resolved in the order they were
+         * really touched. Null, or an empty answer, falls back to the bar's own path — open, then the
+         * nearer extreme, then the other, then the close.
+         */
+        magnifier: ((index: Int) -> List<Candle>)? = null,
     ): BacktestResult {
         val count = series.size
         if (count == 0) {
@@ -410,20 +426,25 @@ object Backtest {
         var pendingExit = false
 
         fun feeOn(price: Double, size: Double) = abs(price * size) * feePercent / 100.0
+        val slip = slippagePercent.coerceAtLeast(0.0) / 100.0
+
+        /** The price a market order in [buy]'s direction actually gets at [price]. */
+        fun filled(price: Double, buy: Boolean) = if (buy) price * (1 + slip) else price * (1 - slip)
 
         for (index in 0 until count) {
             val bar = series[index]
 
             // Fills first, at this bar's open, from the signal the previous bar's close produced.
             if (pendingExit && open) {
-                val exitFee = feeOn(bar.o, openSize)
+                val exitPrice = filled(bar.o, buy = !openIsLong)
+                val exitFee = feeOn(exitPrice, openSize)
                 trades += Trade(
                     entryIndex = openIndex,
                     entryTime = openTime,
                     entryPrice = openPrice,
                     exitIndex = index,
                     exitTime = bar.t,
-                    exitPrice = bar.o,
+                    exitPrice = exitPrice,
                     isLong = openIsLong,
                     size = openSize,
                     fee = openFee + exitFee,
@@ -445,11 +466,40 @@ object Backtest {
                 openIsLong = wanted.isLong
                 openIndex = index
                 openTime = bar.t
-                openPrice = bar.o
+                openPrice = filled(bar.o, buy = wanted.isLong)
                 openSize = wanted.size
-                openFee = feeOn(bar.o, wanted.size)
+                openFee = feeOn(openPrice, wanted.size)
                 openHigh = bar.o
                 openLow = bar.o
+            }
+
+            // **The protective exits, inside the bar** (5.17.0). Walked along the bar's path — or
+            // the lower bars' paths, with the magnifier — so the first level really touched wins.
+            if (open && (stopPercent != null || targetPercent != null)) {
+                val sign = if (openIsLong) 1.0 else -1.0
+                val stop = stopPercent?.let { openPrice * (1 - sign * it / 100.0) }
+                val target = targetPercent?.let { openPrice * (1 + sign * it / 100.0) }
+                val path = magnifier?.invoke(index)?.takeIf { it.isNotEmpty() } ?: listOf(bar)
+                val hit = firstTouch(path, openIsLong, stop, target)
+                if (hit != null) {
+                    val exitPrice = filled(hit.second, buy = !openIsLong)
+                    val exitFee = feeOn(exitPrice, openSize)
+                    trades += Trade(
+                        entryIndex = openIndex,
+                        entryTime = openTime,
+                        entryPrice = openPrice,
+                        exitIndex = index,
+                        exitTime = hit.first,
+                        exitPrice = exitPrice,
+                        isLong = openIsLong,
+                        size = openSize,
+                        fee = openFee + exitFee,
+                        highestHigh = max(openHigh, hit.second),
+                        lowestLow = min(openLow, hit.second),
+                    )
+                    realised += trades.last().pnl
+                    open = false
+                }
             }
 
             // The excursion of every bar held, entry bar included. Highs and lows, never closes:
@@ -496,14 +546,15 @@ object Backtest {
         // the final bar never fills, because there is no next open to fill it at.
         if (open) {
             val last = series[count - 1]
-            val exitFee = feeOn(last.c, openSize)
+            val exitPrice = filled(last.c, buy = !openIsLong)
+            val exitFee = feeOn(exitPrice, openSize)
             trades += Trade(
                 entryIndex = openIndex,
                 entryTime = openTime,
                 entryPrice = openPrice,
                 exitIndex = count - 1,
                 exitTime = last.t,
-                exitPrice = last.c,
+                exitPrice = exitPrice,
                 isLong = openIsLong,
                 size = openSize,
                 fee = openFee + exitFee,
@@ -528,6 +579,35 @@ object Backtest {
      * halt or a feed outage has a handful of enormous gaps, and either of the other two choices
      * would report a timeframe the chart has never drawn.
      */
+    /**
+     * Where a stop or a target is first touched along [path], as (time, fill price), or null.
+     *
+     * Each bar is walked open → nearer extreme → farther extreme → close, TradingView's own
+     * assumption about a bar's path. A bar that opens beyond a level fills at its open — a gap does
+     * not honour a stop's price, and pretending it does is the most flattering lie a backtest tells.
+     */
+    fun firstTouch(path: List<Candle>, long: Boolean, stop: Double?, target: Double?): Pair<Long, Double>? {
+        for (candle in path) {
+            val gapStop = stop != null && (if (long) candle.o <= stop else candle.o >= stop)
+            if (gapStop) return candle.t to candle.o
+            val gapTarget = target != null && (if (long) candle.o >= target else candle.o <= target)
+            if (gapTarget) return candle.t to candle.o
+            val highFirst = candle.h - candle.o <= candle.o - candle.l
+            val legs = if (highFirst) listOf(candle.h, candle.l) else listOf(candle.l, candle.h)
+            for (extreme in legs) {
+                val reachesUp = extreme == candle.h
+                // Long: the stop is below and is touched on the way down; the target above, on the way up.
+                if (stop != null && (if (long) !reachesUp && extreme <= stop else reachesUp && extreme >= stop)) {
+                    return candle.t to stop
+                }
+                if (target != null && (if (long) reachesUp && extreme >= target else !reachesUp && extreme <= target)) {
+                    return candle.t to target
+                }
+            }
+        }
+        return null
+    }
+
     fun inferBarSeconds(series: CandleSeries): Long {
         if (series.size < 2) return 0L
         val gaps = ArrayList<Long>(series.size - 1)

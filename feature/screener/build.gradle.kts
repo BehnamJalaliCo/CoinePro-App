@@ -24,6 +24,8 @@ dependencies {
     // of its types appear in this module's own API — the screener asks it for arithmetic over a
     // list of bars and hands back plain doubles, so a caller never has to know it is here.
     implementation(project(":chart-core"))
+    implementation(project(":core:export"))
+    implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.androidx.lifecycle.runtime.compose)

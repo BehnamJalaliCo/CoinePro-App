@@ -97,6 +97,7 @@ import com.coinepro.app.widget.MarketsWidget
 import com.coinepro.app.widget.SymbolWidget
 import com.coinepro.app.widget.WidgetRefreshEngine
 import com.coinepro.core.marketdata.CandleArchive
+import com.coinepro.core.marketdata.TickHistory
 import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.network.NetworkStatus
 import com.coinepro.core.datastore.WatchlistStore
@@ -153,6 +154,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var widgetRefreshEngine: WidgetRefreshEngine
     @Inject lateinit var candleCache: CandleCache
     @Inject lateinit var candleArchive: CandleArchive
+    @Inject lateinit var tickHistory: TickHistory
     @Inject lateinit var notificationSettingsStore: NotificationSettingsStore
     @Inject lateinit var localAlertStore: LocalAlertStore
     @Inject lateinit var localAlertScheduler: LocalAlertScheduler
@@ -394,6 +396,7 @@ class MainActivity : FragmentActivity() {
                 networkStatus = networkStatus,
                 candleCache = candleCache,
                 candleArchive = candleArchive,
+                tickHistory = tickHistory,
                 notificationSettingsStore = notificationSettingsStore,
                 localAlertStore = localAlertStore,
                 localAlertScheduler = localAlertScheduler,

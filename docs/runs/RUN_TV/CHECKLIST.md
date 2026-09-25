@@ -44,7 +44,6 @@ scorecard) and a second pixel-level pass over the old Pro-Chart terminal
 
 | Item | State | Evidence | Frame |
 |---|---|---|---|
-| Seconds and tick intervals from the server | ✅ not a gap | Neither backend serves them; the seconds intervals this chart has are built from the live feed (`ChartInterval.Seconds`) | — **a data limit**, stated in the dissection's own §12 |
 | TradingView's font stack | ✅ not a gap | IRANYekanX by the owner's standing rule; every size is matched in sp | — **the rule in CLAUDE.md** |
 
 ## 5.16.1 — the scorecard's behind rows (`docs/design/TRADINGVIEW_SCORECARD.md`)
@@ -61,3 +60,24 @@ scorecard) and a second pixel-level pass over the old Pro-Chart terminal
 | Alert expiry: never, 1, 7, 30, 60 days | ✅ 5.16.1 | `AlertDraft.expiresAt` written and read back (`AlertDraftTest`) | — **a chip row in the alert sheet**, outside the captured decor view |
 | Alerts checked every minute while the app is open | ✅ 5.16.1 | `LocalAlertScheduler.checkNow` on a lifecycle loop, one pass at a time behind `PASS_LOCK` | — **a timer**, not a picture; the fifteen-minute background period is unchanged |
 | Screener: add every result to the watchlist | ✅ 5.16.1 | `ScreenerScreen(onAddToWatchlist)` → `watchlistStore.add` | — **one button under the result count**; the watchlist is where its effect shows |
+
+## 5.17.0 — the growth scan, and the rest of the behind rows
+
+| Item | State | Evidence | Frame |
+|---|---|---|---|
+| Growth scan on the phone: eleven setups, bars since, growth score, ranked | ✅ 5.17.0 | `GrowthScan` (`GrowthScanTest`), `ScreenerMode.SIGNALS` (`ScreenerControllerTest`, `ScreenerGrowthProofTest`) | `docs/runs/RUN_TV/frames/tv-screener-growth-fa-dark.png` |
+| Growth scan on the web, narrowed to two setups, headings in English | ✅ 5.17.0 | `ScreenerGrowthProofTest.theGrowthScanOnTheWeb`, `ScreenerField.labelIn` | `docs/runs/RUN_TV/frames/tv-screener-growth-en-desktop.png` |
+| Screener on the web's rail, after the chart, and at `/terminal/screener` | ✅ 5.17.0 | `coineProRailItems` (`NavigationParityTest`), `WebApp.fromAddress` | — **the rail's order is what can be wrong**, and `NavigationParityTest` pins it |
+| Scan watch: a notification when a new market enters a saved scan | ✅ 5.17.0 | `ScanWatch.entrants` (`ScanWatchTest`), `ScanWatchWorker` | — **a notification is outside the app's window** |
+| Screener CSV export | ✅ 5.17.0 | `ScreenerController.csv` (`ScreenerControllerTest`) | `docs/runs/RUN_TV/frames/tv-screener-growth-en-desktop.png` (the CSV button) |
+| Tick bars (1, 10, 100, 1000) and seconds with server history | ✅ 5.17.0 | `ChartInterval.Ticks`, `TickBars.fold` (`TickIntervalTest`, `TickChartTest`); CoinePro-FX `market_ticks.py` (`test_market_ticks.py`) | — **a live feed**, not a fixture; the fold is tested |
+| Session volume profile chart type | ✅ 5.17.0 | `drawSessionVolumeProfiles` (`ChartTypeGoldenTest`) | `app/src/test/goldens/chart-type-svp-fa-411.png` |
+| Legend «⋯» menu: own scale, front, back | ✅ 5.17.0 | `ChartController.setOwnScale / bringToFront / sendToBack` | — **a menu closes before a frame is taken** |
+| Currency label on the price scale | ✅ 5.17.0 | `ChartAppearance.scaleUnit`, key `unit` | — **drawn from the quote currency on a live chart**; the goldens render without a symbol |
+| Drawing alerts on rectangles and channels | ✅ 5.17.0 | `AlertDrawingLevel.boundsAt` (`AlertShapeBoundsTest`) | — **an alert fires in the background**, not on screen |
+| Server alerts: channel, move, RSI on CoinePro-FX; Telegram and email | ✅ 5.17.0 | `ServerAlertSpec` (`ServerAlertRowsTest`); CoinePro-FX `test_alert_specs.py`; TradeYar `test_mobile_alert_eval.py` | — **a server-side evaluation**; the three test suites pin it |
+| Backtest slippage, stop / target, bar magnifier | ✅ 5.17.0 | `Backtest.run`, `firstTouch` (`BacktestPropertiesTest`) | — **a sheet**, outside the captured decor view |
+| Drag an order line; trade from the DOM | ✅ 5.17.0 | `ChartTradeLines` (`ChartTradeLinesTest`), `DomTradeControls` | — **a drag and a tap**, not a still |
+| News filters | ✅ 5.17.0 | `NewsFilter` (`NewsFilterTest`) | — **the fixture feed is empty in the proof rig**; the filter is tested |
+| Community «Following» | ✅ 5.17.0 | `CommunityController.toggleFollow / visiblePosts` (`CommunityControllerTest`) | — **the board is served live**; the narrowing is tested |
+

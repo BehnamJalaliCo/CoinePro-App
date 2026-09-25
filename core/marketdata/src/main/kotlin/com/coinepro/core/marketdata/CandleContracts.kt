@@ -327,6 +327,28 @@ sealed interface ChartInterval {
             Math.floorDiv(epochSeconds, count.toLong()) * count
     }
 
+    /**
+     * A bar of [count] trades rather than of a length of time — TradingView's `1T`, `100T` (5.17.0).
+     *
+     * Not a time bar at all, so [bucketStart] is the identity: nothing buckets a tick bar by the
+     * clock, and every caller that would has a branch for this kind. [seconds] is one, the finest the
+     * axis can label, because a tick bar can be shorter than any length it knows.
+     */
+    data class Ticks(val count: Int) : ChartInterval {
+
+        init {
+            require(count in TICK_KEYS) { "A tick bar is one of $TICK_KEYS, not $count." }
+        }
+
+        override val wire: String get() = "${count}T"
+
+        override val seconds: Long get() = 1L
+
+        override val label: String get() = "${count.toPersianDigits()} تیک"
+
+        override fun bucketStart(epochSeconds: Long, zone: ZoneId): Long = epochSeconds
+    }
+
     /** A minute count the reader typed, aggregated on the client from a finer bar. */
     data class Custom(val interval: CustomInterval) : ChartInterval {
         override val wire: String get() = interval.wire
@@ -350,6 +372,7 @@ sealed interface ChartInterval {
 fun ChartInterval.Companion.of(wire: String?): ChartInterval? {
     Timeframe.of(wire)?.let { return ChartInterval.Preset(it) }
     secondsOf(wire)?.let { return it }
+    ticksOf(wire)?.let { return it }
     return customOf(wire)?.let { ChartInterval.Custom(it) }
 }
 
@@ -361,7 +384,17 @@ fun ChartInterval.Companion.of(wire: String?): ChartInterval? {
  * a fifty-second bar sits on the epoch's fifty-second grid and drifts against the minute, which is
  * true of every seconds chart that is not a divisor of sixty and is not a defect.
  */
-val SECONDS_KEYS: List<Int> = listOf(10, 15, 20, 30, 45, 50)
+val SECONDS_KEYS: List<Int> = listOf(1, 5, 10, 15, 20, 30, 45, 50)
+
+/** The tick-bar sizes the picker offers, TradingView's own four (5.17.0). */
+val TICK_KEYS: List<Int> = listOf(1, 10, 100, 1000)
+
+/** Reads `100T` as a [ChartInterval.Ticks], or null. Outside [TICK_KEYS] is null, not a neighbour. */
+fun ticksOf(wire: String?): ChartInterval.Ticks? {
+    val clean = wire?.trim()?.uppercase()?.takeIf { it.length >= 2 && it.endsWith("T") } ?: return null
+    val count = clean.dropLast(1).toIntOrNull() ?: return null
+    return if (count in TICK_KEYS) ChartInterval.Ticks(count) else null
+}
 
 /**
  * Reads `10S`, `30s` or a bare `45S` as a [ChartInterval.Seconds], or null.

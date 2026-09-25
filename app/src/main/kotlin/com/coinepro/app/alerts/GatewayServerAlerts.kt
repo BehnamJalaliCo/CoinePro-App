@@ -1,5 +1,6 @@
 package com.coinepro.app.alerts
 
+import com.coinepro.core.notifications.FX_ALERT_SYMBOLS
 import com.coinepro.app.di.CryptoPlatform
 import com.coinepro.app.di.ForexPlatform
 import com.coinepro.core.model.MarketPlatform
@@ -81,7 +82,7 @@ class GatewayServerAlerts @Inject constructor(
     private fun platformFor(symbol: String): MarketPlatform? {
         val normalized = symbol.trim().uppercase().replace("/", "").replace("-", "")
         return when {
-            normalized == "XAUUSD" || normalized == "XAGUSD" -> MarketPlatform.COINEPRO_FX
+            normalized in FX_ALERT_SYMBOLS -> MarketPlatform.COINEPRO_FX
             normalized.endsWith("USDT") && normalized.length > 4 -> MarketPlatform.TRADEYAR
             else -> null
         }
@@ -104,12 +105,24 @@ class GatewayServerAlerts @Inject constructor(
     override suspend fun create(request: ServerAlertRequest): Boolean {
         val platform = platformFor(request.symbol) ?: return false
         val created = runCatching {
-            gatewayOf(platform).createAlert(
-                symbol = request.symbol,
-                condition = request.condition,
-                value = request.value,
-                trigger = request.trigger,
-            )
+            if (request.spec == null && request.channels == listOf("push") && request.expiresAtMs == null) {
+                gatewayOf(platform).createAlert(
+                    symbol = request.symbol,
+                    condition = request.condition,
+                    value = request.value,
+                    trigger = request.trigger,
+                )
+            } else {
+                gatewayOf(platform).createAdvancedAlert(
+                    symbol = request.symbol,
+                    condition = request.condition,
+                    value = request.value,
+                    trigger = request.trigger,
+                    spec = request.spec,
+                    channels = request.channels,
+                    expiresAtMs = request.expiresAtMs,
+                )
+            }
         }.getOrNull() ?: return false
         // Written into the cache rather than re-read, so the new alert is in the list by the time
         // the sheet closes. A round trip here would leave a beat where the reader has saved an

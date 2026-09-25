@@ -246,4 +246,6 @@
     <string name="starter_colours_green_up">Green</string>
     <string name="starter_colours_red_up">Red</string>
     <string name="starter_done">Let’s go</string>
+    <string name="scan_watch_title">New markets entered your growth scan</string>
+    <string name="scan_watch_body_more">%1$s and %2$d more</string>
 </resources>

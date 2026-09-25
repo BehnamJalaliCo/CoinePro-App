@@ -106,6 +106,9 @@ internal fun CommunityPostCard(
     onReport: (() -> Unit)? = null,
     /** Copy the post's text. The board has no links to share, so sharing is what a reader can do. */
     onCopy: (() -> Unit)? = null,
+    /** Follow or unfollow the author (5.17.0), with whether they are followed now. Null drops the entry. */
+    onFollow: (() -> Unit)? = null,
+    followed: Boolean = false,
     /**
      * The post's picture, once it has been fetched, or null.
      *
@@ -281,9 +284,9 @@ internal fun CommunityPostCard(
                     active = false,
                     onClick = onOpen,
                 )
-                if (onReport != null || onCopy != null) {
+                if (onReport != null || onCopy != null || onFollow != null) {
                     Spacer(Modifier.weight(1f))
-                    PostMenu(onReport = onReport, onCopy = onCopy)
+                    PostMenu(onReport = onReport, onCopy = onCopy, onFollow = onFollow, followed = followed)
                 }
             }
 
@@ -303,7 +306,12 @@ internal fun CommunityPostCard(
  * sharing a board with no public links can honestly offer.
  */
 @Composable
-private fun PostMenu(onReport: (() -> Unit)?, onCopy: (() -> Unit)?) {
+private fun PostMenu(
+    onReport: (() -> Unit)?,
+    onCopy: (() -> Unit)?,
+    onFollow: (() -> Unit)? = null,
+    followed: Boolean = false,
+) {
     var open by remember { mutableStateOf(false) }
     val haptics = rememberCoineProHaptics()
     Box {
@@ -321,6 +329,15 @@ private fun PostMenu(onReport: (() -> Unit)?, onCopy: (() -> Unit)?) {
                 },
         )
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            onFollow?.let { follow ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(if (followed) R.string.community_unfollow else R.string.community_follow)) },
+                    onClick = {
+                        open = false
+                        follow()
+                    },
+                )
+            }
             onCopy?.let { copy ->
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.community_copy)) },

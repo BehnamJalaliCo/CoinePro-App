@@ -127,6 +127,11 @@ fun DepthOfMarketScreen(
      * The instrument and the venue stay either way — those are what the row is actually for.
      */
     showTitle: Boolean = true,
+    /**
+     * Places a paper limit order at a tapped rung (5.17.0) — TradingView's DOM trading. A bid rung
+     * buys, an ask rung sells, sized at a notional the reader picks. Null keeps the ladder read-only.
+     */
+    onPlaceOrder: ((buy: Boolean, price: Double, notional: Double) -> Unit)? = null,
 ) {
     LaunchedEffect(controller, symbol) { controller.start(symbol) }
     // Stopped when the screen leaves, so a ladder nobody is looking at is not polling a venue once
@@ -143,6 +148,7 @@ fun DepthOfMarketScreen(
         levels = levels,
         preferences = preferences,
         showTitle = showTitle,
+        onPlaceOrder = onPlaceOrder,
     )
 }
 
@@ -171,7 +177,17 @@ fun DepthOfMarketBody(
      * The instrument and the venue stay either way — those are what the row is actually for.
      */
     showTitle: Boolean = true,
+    onPlaceOrder: ((buy: Boolean, price: Double, notional: Double) -> Unit)? = null,
 ) {
+    // **Armed, never by default.** The note at the top of this file is why: a rung is twenty-eight
+    // points tall and a mis-tap on an armed ladder is an order. The reader arms it on purpose, sees
+    // that it is armed, and a tap then places a paper limit at that rung.
+    var armed by rememberSaveable { mutableStateOf(false) }
+    var notional by rememberSaveable { mutableStateOf(DOM_NOTIONALS[1]) }
+    val onPick: (LadderRow) -> Unit = { row ->
+        val place = onPlaceOrder
+        if (armed && place != null) place(row.side == BookSide.BID, row.price, notional) else onPickPrice(row.price)
+    }
     val book = state.book
     val unavailable = state.unavailable
 
@@ -256,7 +272,10 @@ fun DepthOfMarketBody(
                     onStep = { choose(it, figure) },
                     onFigure = { choose(step, it) },
                 )
-                DepthLadderTable(ladder = ladder, figure = figure, onPickPrice = onPickPrice)
+                if (onPlaceOrder != null) {
+                    DomTradeControls(armed = armed, onArm = { armed = it }, notional = notional, onNotional = { notional = it })
+                }
+                DepthLadderTable(ladder = ladder, figure = figure, onPick = onPick)
                 curve?.let { DepthCurvePanel(curve = it, ladder = ladder) }
                 DepthFootnotes(showOrdersNote = ladder.hasOrders, showStepNote = steps.isNotEmpty())
                 // With the other two explanations rather than above the ladder.
@@ -635,7 +654,7 @@ private fun StepChip(label: String, selected: Boolean, onClick: () -> Unit) {
 private fun DepthLadderTable(
     ladder: DepthLadder,
     figure: LadderFigure,
-    onPickPrice: (Double) -> Unit,
+    onPick: (LadderRow) -> Unit,
 ) {
     val decimals = ladderFigureDecimals(ladder, figure)
     LtrDirection {
@@ -652,11 +671,11 @@ private fun DepthLadderTable(
             Column(modifier = Modifier.fillMaxWidth()) {
                 LadderHeaderRow(figure)
                 ladder.asks.forEach { row ->
-                    LadderRowView(row, figure, ladder.priceDecimals, decimals, showStackedMarks, onPickPrice)
+                    LadderRowView(row, figure, ladder.priceDecimals, decimals, showStackedMarks, onPick)
                 }
                 SpreadRow(ladder)
                 ladder.bids.forEach { row ->
-                    LadderRowView(row, figure, ladder.priceDecimals, decimals, showStackedMarks, onPickPrice)
+                    LadderRowView(row, figure, ladder.priceDecimals, decimals, showStackedMarks, onPick)
                 }
             }
         }
@@ -730,7 +749,7 @@ private fun LadderRowView(
     priceDecimals: Int,
     figureDecimals: Int,
     showStackedMarks: Boolean,
-    onPickPrice: (Double) -> Unit,
+    onPick: (LadderRow) -> Unit,
 ) {
     val colour = when (row.side) {
         // Read from the palette, so the reader's own colour-direction preference is already
@@ -764,7 +783,7 @@ private fun LadderRowView(
         modifier = Modifier
             .fillMaxWidth()
             .height(RowHeight)
-            .clickable { onPickPrice(row.price) }
+            .clickable { onPick(row) }
             .semantics { contentDescription = pickDescription }
             .padding(horizontal = CoineProSpacing.Gutter),
         verticalAlignment = Alignment.CenterVertically,
@@ -1161,3 +1180,36 @@ private const val MarkGroundAlpha = 0.55f
 
 /** An em dash, for a figure that is genuinely absent rather than zero. */
 private const val NoFigure = "—"
+
+/**
+ * The ladder's trading switch and size (5.17.0): off until the reader turns it on, and the size as
+ * a notional in the quote currency — a hundred dollars of gold and a hundred dollars of a coin are
+ * the same decision, where «0.1 units» would be two very different ones.
+ */
+@Composable
+private fun DomTradeControls(armed: Boolean, onArm: (Boolean) -> Unit, notional: Double, onNotional: (Double) -> Unit) {
+    androidx.compose.foundation.layout.Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = CoineProSpacing.Gutter),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(CoineProSpacing.Half),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        com.coinepro.core.designsystem.CoineProToggleChip(
+            label = stringResource(if (armed) R.string.dom_trade_armed else R.string.dom_trade_arm),
+            selected = armed,
+            onClick = { onArm(!armed) },
+            compact = true,
+        )
+        if (armed) {
+            DOM_NOTIONALS.forEach { value ->
+                com.coinepro.core.designsystem.CoineProToggleChip(
+                    label = BidiText.isolateLtr("$" + value.toLong()),
+                    selected = value == notional,
+                    onClick = { onNotional(value) },
+                    compact = true,
+                )
+            }
+        }
+    }
+}
+
+private val DOM_NOTIONALS = listOf(100.0, 1_000.0, 10_000.0)

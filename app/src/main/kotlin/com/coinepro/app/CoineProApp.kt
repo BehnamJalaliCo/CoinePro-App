@@ -135,6 +135,7 @@ import com.coinepro.core.designsystem.ProChartWordmark
 import com.coinepro.core.designsystem.CoineProListDetail
 import com.coinepro.core.designsystem.coineProWindowClass
 import com.coinepro.core.marketdata.CandleArchive
+import com.coinepro.core.marketdata.TickHistory
 import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.network.NetworkStatus
 import com.coinepro.core.datastore.MarketColorScheme
@@ -537,7 +538,10 @@ private const val HEATMAP_ROUTE = "market/heatmap"
  * Guest-safe like the heat map, and for the same reason — it is the public catalogue plus the
  * public quote feed, neither of which needs an account.
  */
-private const val SCREENER_ROUTE = "screener"
+private const val SCREENER_ROUTE = SCREENER_RAIL_KEY
+
+/** The screens a web address may open directly. Named, so an address cannot navigate anywhere. */
+internal val LAUNCHABLE_ROUTES: Set<String> = setOf(SCREENER_ROUTE)
 
 /** The portfolio's own report: the curve, the attribution, the month matrix and the export. */
 private const val PORTFOLIO_REPORT_ROUTE = "portfolio-report"
@@ -967,6 +971,8 @@ fun CoineProApp(
     candleCache: CandleCache,
     /** Every bar ever fetched, so paging back deepens across sessions. See [CandleArchive]. */
     candleArchive: CandleArchive,
+    /** Trades and seconds bars from the server (5.17.0). */
+    tickHistory: TickHistory? = null,
     notificationSettingsStore: NotificationSettingsStore,
     localAlertStore: LocalAlertStore,
     localAlertScheduler: LocalAlertScheduler,
@@ -1118,6 +1124,9 @@ fun CoineProApp(
     notificationPermissionState: NotificationPermissionUiState,
     onSignalLaunchConsumed: () -> Unit,
     onActivityLaunchConsumed: () -> Unit,
+    /** A top-level screen a web address asked for — `/terminal/screener` (5.17.0). */
+    launchRoute: String? = null,
+    onRouteLaunchConsumed: () -> Unit = {},
     onSymbolLaunchConsumed: () -> Unit,
     onResetTokenConsumed: () -> Unit,
     onScriptLaunchConsumed: () -> Unit,
@@ -1200,6 +1209,12 @@ fun CoineProApp(
     val storedAlerts by localAlertStore.alerts.collectAsStateWithLifecycle(initialValue = emptyList())
     LaunchedEffect(storedAlerts) {
         localAlertScheduler.sync(hasActiveAlerts = storedAlerts.any { it.active })
+    }
+    // The screener's growth-scan alerts (5.17.0): scheduled while there is a watch, and not otherwise.
+    val scanWatchContext = androidx.compose.ui.platform.LocalContext.current
+    val scanWatches by screenerStore.watches.collectAsStateWithLifecycle(initialValue = emptyList())
+    LaunchedEffect(scanWatches.isNotEmpty()) {
+        com.coinepro.app.alerts.ScanWatchWorker.sync(scanWatchContext, scanWatches.isNotEmpty())
     }
     // **Once a minute while the app is open** (5.16.1). The periodic pass is Android's to schedule
     // and never tighter than fifteen minutes; a reader looking at the screen should not have to wait
@@ -1588,6 +1603,7 @@ fun CoineProApp(
                 orderBookGateways = orderBookGateways,
                 candleCache = candleCache,
                 candleArchive = candleArchive,
+                tickHistory = tickHistory,
                 chartDrawingStore = chartDrawingStore,
                 drawingImageStore = drawingImageStore,
                 chartLayoutStore = chartLayoutStore,
@@ -1660,6 +1676,8 @@ fun CoineProApp(
                 onDeleteLayout = { id -> scope.launch { chartLayoutStore.delete(id) } },
                 onSignalLaunchConsumed = onSignalLaunchConsumed,
                 onActivityLaunchConsumed = onActivityLaunchConsumed,
+                launchRoute = launchRoute,
+                onRouteLaunchConsumed = onRouteLaunchConsumed,
                 onRequestNotificationPermission = onRequestNotificationPermission,
                 onOpenNotificationSettings = onOpenNotificationSettings,
                 onSendFeedback = onSendFeedback,
@@ -1829,6 +1847,7 @@ fun CoineProApp(
                         orderBookGateways = orderBookGateways,
                         candleCache = candleCache,
                         candleArchive = candleArchive,
+                        tickHistory = tickHistory,
                         chartDrawingStore = chartDrawingStore,
                         drawingImageStore = drawingImageStore,
                         chartLayoutStore = chartLayoutStore,
@@ -1899,6 +1918,8 @@ fun CoineProApp(
                         onDeleteLayout = { id -> scope.launch { chartLayoutStore.delete(id) } },
                         onSignalLaunchConsumed = onSignalLaunchConsumed,
                         onActivityLaunchConsumed = onActivityLaunchConsumed,
+                        launchRoute = launchRoute,
+                        onRouteLaunchConsumed = onRouteLaunchConsumed,
                         onRequestNotificationPermission = onRequestNotificationPermission,
                         onOpenNotificationSettings = onOpenNotificationSettings,
                         onSendFeedback = onSendFeedback,
@@ -2088,6 +2109,8 @@ private fun MainShell(
     candleCache: CandleCache,
     /** Every bar ever fetched, so paging back deepens across sessions. See [CandleArchive]. */
     candleArchive: CandleArchive,
+    /** Trades and seconds bars from the server (5.17.0). */
+    tickHistory: TickHistory? = null,
     chartDrawingStore: ChartDrawingStore,
     /** Where the image drawing tool's pictures live. See `DrawingImageStore`. */
     drawingImageStore: DrawingImageStore,
@@ -2223,6 +2246,9 @@ private fun MainShell(
     onToggleWatch: (String) -> Unit,
     onSignalLaunchConsumed: () -> Unit,
     onActivityLaunchConsumed: () -> Unit,
+    /** A top-level screen a web address asked for — `/terminal/screener` (5.17.0). */
+    launchRoute: String? = null,
+    onRouteLaunchConsumed: () -> Unit = {},
     onRequestNotificationPermission: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
     onSendFeedback: () -> Unit,
@@ -2555,6 +2581,7 @@ private fun MainShell(
         // Remembered on the store rather than rebuilt each recomposition: the controller holder is
         // keyed on it, and a new instance per frame would rebuild every chart in the map.
         drawingAlerts = remember(localAlertStore) { StoredDrawingAlerts(localAlertStore) },
+        tickHistory = tickHistory,
     )
 
     // The catalogue's own prices, which is what makes the strips below useful at all.
@@ -2905,6 +2932,13 @@ private fun MainShell(
             )
         }
     }
+    LaunchedEffect(launchRoute) {
+        val route = launchRoute ?: return@LaunchedEffect
+        if (route in LAUNCHABLE_ROUTES) {
+            navController.navigate(route) { tabSwitch(navController, route) }
+        }
+        onRouteLaunchConsumed()
+    }
     LaunchedEffect(launchActivity) {
         if (launchActivity) {
             navController.navigate(ACTIVITY_ROUTE) {
@@ -3123,6 +3157,8 @@ private fun MainShell(
          * `symbol` is the instrument to open; `timeframe` is the bar length a fired alert was
          * decided on, or null for the reader's own last one.
          */
+        // Studies the screener asked a chart to open with, by symbol, spent by the chart that opens.
+        val pendingSetups = remember { mutableMapOf<String, List<String>>() }
         val chartPane: @Composable (symbol: String, timeframe: String?) -> Unit =
             @Composable { routeSymbol, routeTimeframe ->
             /**
@@ -3145,6 +3181,10 @@ private fun MainShell(
             // controller's own restore reads a stored interval for this symbol and whichever
             // ran last would win — see `ChartController.openAt`.
             LaunchedEffect(chartController, routeTimeframe) { chartController.openAt(routeTimeframe) }
+            // The screener's growth scan opens a market with the studies that show its setup.
+            LaunchedEffect(chartController) {
+                pendingSetups.remove(routeSymbol)?.let(chartController::showSetup)
+            }
             // The reader's own open trade on the instrument in front of them, so the chart draws
             // the setup from the candle it opened on. Read here rather than inside the screen
             // because the paper book is one account across every symbol, and the screen is one
@@ -3366,6 +3406,18 @@ private fun MainShell(
                         symbol = activeChartSymbol,
                         preferences = depthPreferences,
                         onPickPrice = { price -> alertFromChart = activeChartSymbol to price },
+                        // Paper trading from the ladder (5.17.0), armed by the reader on the ladder itself.
+                        onPlaceOrder = { buy, price, notional ->
+                            paperTradeController.place(
+                                PaperOrderRequest(
+                                    symbol = activeChartSymbol,
+                                    side = if (buy) PaperSide.BUY else PaperSide.SELL,
+                                    type = PaperOrderType.LIMIT,
+                                    size = notional / price,
+                                    limitPrice = price,
+                                ),
+                            )
+                        },
                         // The panel writes the name above the content; the ladder would write it
                         // again one line below.
                         showTitle = false,
@@ -3564,6 +3616,16 @@ private fun MainShell(
                 },
                 onOpenSymbolSearch = { navController.navigate(MARKET_SEARCH_ROUTE) },
                 position = openPosition,
+                // Trading on the chart (5.17.0): working orders drawn, and a drag edits the book.
+                workingOrders = paperBook.book.working.filter { it.symbol.equals(activeChartSymbol, ignoreCase = true) },
+                onEditTrade = { edit ->
+                    when (edit) {
+                        is com.coinepro.feature.chart.ChartTradeEdit.Protection ->
+                            paperTradeController.setProtection(edit.positionId, edit.stopLoss, edit.takeProfit)
+                        is com.coinepro.feature.chart.ChartTradeEdit.Amend ->
+                            paperTradeController.amend(edit.orderId, limitPrice = edit.limitPrice, stopPrice = edit.stopPrice)
+                    }
+                },
                 layouts = chartLayouts,
                 onSaveLayout = onSaveLayoutAnnounced,
                 onDeleteLayout = onDeleteLayoutAnnounced,
@@ -4761,6 +4823,18 @@ private fun MainShell(
                     // stopped on is exactly the price they want to be told about later, which is
                     // what the composer already does with a price picked off the chart.
                     onPickPrice = { price -> alertFromChart = activeChartSymbol to price },
+                        // Paper trading from the ladder (5.17.0), armed by the reader on the ladder itself.
+                        onPlaceOrder = { buy, price, notional ->
+                            paperTradeController.place(
+                                PaperOrderRequest(
+                                    symbol = activeChartSymbol,
+                                    side = if (buy) PaperSide.BUY else PaperSide.SELL,
+                                    type = PaperOrderType.LIMIT,
+                                    size = notional / price,
+                                    limitPrice = price,
+                                ),
+                            )
+                        },
                 )
             }
             composable(
@@ -4866,9 +4940,10 @@ private fun MainShell(
             }
             composable(SCREENER_ROUTE) {
                 var pairedSymbol by rememberSaveable { mutableStateOf<String?>(null) }
+                var pairedTimeframe by rememberSaveable { mutableStateOf<String?>(null) }
                 val screenerScope = rememberCoroutineScope()
                 CoineProListDetail(
-                    detail = pairedSymbol?.let { symbol -> { chartPane(symbol, null) } },
+                    detail = pairedSymbol?.let { symbol -> { chartPane(symbol, pairedTimeframe) } },
                 ) { twoPane ->
                     ScreenerScreen(
                         controller = screenerController,
@@ -4877,6 +4952,15 @@ private fun MainShell(
                         // three without losing the filter that found them.
                         onOpenSymbol = {
                             if (twoPane) pairedSymbol = it else navController.navigate(chartRoute(it))
+                        },
+                        onOpenSetup = { symbol, studies, timeframe ->
+                            pendingSetups[symbol] = studies
+                            if (twoPane) {
+                                pairedSymbol = symbol
+                                pairedTimeframe = timeframe.wire
+                            } else {
+                                navController.navigate(chartRoute(symbol, timeframe.wire))
+                            }
                         },
                         // TradingView's «results to a watchlist» (5.16.1), into the default list.
                         onAddToWatchlist = { symbols ->

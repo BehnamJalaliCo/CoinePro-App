@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.17.0
+
+**fa**
+
+> اسکرینر حالا بازارهایی را که در آستانه‌ی رشدند نشان می‌دهد: شروع روند، شکست با حجم و هشت الگوی دیگر با امتیاز رشد، اعلان ورود نماد تازه و خروجی CSV؛ در وب کنار چارت است.
+> نمودار تیکی و ثانیه‌ای با تاریخچه، هشدار سروری با تلگرام و ایمیل، لغزش در بک‌تست، کشیدن خط سفارش و فیلتر اخبار.
+
+**en**
+
+> The screener now shows markets about to grow: trend starts, breakouts on volume and eight more setups with a growth score, alerts for new entrants and CSV export; on the web it sits beside the chart.
+> Tick and seconds charts with history, server alerts by Telegram and email, backtest slippage, draggable order lines and news filters.
+
 ## 5.16.1
 
 **fa**

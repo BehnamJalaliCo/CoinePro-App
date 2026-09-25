@@ -206,8 +206,10 @@ object BacktestReports {
         allowShorts: Boolean = false,
         startingEquity: Double = Engine.DEFAULT_STARTING_EQUITY,
         moreHistoryAvailable: Boolean = false,
+        /** Lower-timeframe bars inside each bar, for the bar magnifier (5.17.0). */
+        magnifier: ((Int) -> List<com.coinepro.core.chart.Candle>)? = null,
     ): BacktestReport? {
-        val result = StrategyRules.run(series, settings, allowShorts, startingEquity) ?: return null
+        val result = StrategyRules.run(series, settings, allowShorts, startingEquity, magnifier) ?: return null
         val barSeconds = Engine.inferBarSeconds(series)
         val longs = result.trades.filter { it.isLong }
         val shorts = result.trades.filter { !it.isLong }

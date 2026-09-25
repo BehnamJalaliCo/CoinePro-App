@@ -117,6 +117,31 @@ enum class ScreenerField(
     QUOTE_CURRENCY("ارز مبنا", ScreenerUnit.TEXT),
     ;
 
+    /** The column header in the reader's language (5.17.0): [label] in Persian, this in English. */
+    fun labelIn(english: Boolean): String = if (!english) label else when (this) {
+        LAST_PRICE -> "Last price"
+        CHANGE_PERCENT -> "Change %"
+        CHANGE_ABSOLUTE -> "Change"
+        VOLUME -> "Volume"
+        QUOTE_VOLUME -> "Turnover"
+        HIGH -> "High"
+        LOW -> "Low"
+        RANGE_PERCENT -> "Day range %"
+        DISTANCE_FROM_HIGH -> "From high %"
+        DISTANCE_FROM_LOW -> "From low %"
+        RSI -> "RSI"
+        ADX -> "ADX"
+        STOCHASTIC_K -> "Stochastic %K"
+        MACD_HISTOGRAM -> "MACD histogram"
+        ATR_PERCENT -> "ATR %"
+        SMA_DISTANCE -> "From SMA %"
+        EMA_DISTANCE -> "From EMA %"
+        BOLLINGER_PERCENT -> "Bollinger %B"
+        MARKET -> "Market"
+        ASSET_CLASS -> "Asset class"
+        QUOTE_CURRENCY -> "Quote currency"
+    }
+
     /** True where the value has to be computed from a series before this field can be read. */
     val isDerived: Boolean get() = indicatorId != null
 

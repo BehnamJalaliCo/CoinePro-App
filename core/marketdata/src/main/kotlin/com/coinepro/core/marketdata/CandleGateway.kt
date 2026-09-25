@@ -556,6 +556,8 @@ fun sourceTimeframeFor(
     // does this come from" is none, which is what `null` means here and what stops a request going
     // out for a length no server would recognise. See [ChartInterval.Seconds].
     is ChartInterval.Seconds -> null
+    // A bar of trades, not of time: the only source is the trade history. See [TickHistory].
+    is ChartInterval.Ticks -> null
 }
 
 /**
@@ -793,7 +795,7 @@ internal fun finerSourcesFor(
     source: Timeframe,
     natives: List<Timeframe>,
 ): List<Timeframe> {
-    if (interval is ChartInterval.Seconds) return emptyList()
+    if (interval is ChartInterval.Seconds || interval is ChartInterval.Ticks) return emptyList()
     if (interval is ChartInterval.Preset && interval.timeframe in CALENDAR_TIMEFRAMES) return emptyList()
     return natives
         .filter { it.seconds < source.seconds && interval.seconds % it.seconds == 0L }

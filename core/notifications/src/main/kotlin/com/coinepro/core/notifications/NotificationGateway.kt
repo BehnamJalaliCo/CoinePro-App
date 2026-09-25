@@ -38,6 +38,20 @@ interface NotificationGateway {
         value: Double,
         trigger: PriceAlertTrigger,
     ): PriceAlert
+
+    /**
+     * An alert the server evaluates with an advanced condition or delivers beyond push (5.17.0).
+     * The default refuses — a gateway that has no route for it must not pretend to have made it.
+     */
+    suspend fun createAdvancedAlert(
+        symbol: String,
+        condition: PriceAlertCondition,
+        value: Double,
+        trigger: PriceAlertTrigger,
+        spec: Map<String, String>?,
+        channels: List<String>,
+        expiresAtMs: Long?,
+    ): PriceAlert = throw UnsupportedOperationException("advanced alerts")
     suspend fun setAlertActive(alertId: String, active: Boolean): PriceAlert
     suspend fun deleteAlert(alertId: String): Boolean
 }
@@ -160,6 +174,8 @@ internal data class PriceAlertDto(
     val active: Boolean = false,
     val createdAtMs: Long? = null,
     val lastTriggeredAtMs: Long? = null,
+    val spec: Map<String, String>? = null,
+    val channels: List<String>? = null,
 )
 internal data class AlertListResponseDto(val items: List<PriceAlertDto> = emptyList())
 internal data class AlertResponseDto(val alert: PriceAlertDto? = null)
@@ -168,6 +184,11 @@ internal data class PriceAlertCreateDto(
     val condition: String,
     val value: Double,
     val trigger: String,
+    // 5.17.0, CoinePro-FX: the advanced condition, the delivery channels and the reader's expiry.
+    // Null is omitted on the wire, so TradeYar's route sees the four fields it always did.
+    val spec: Map<String, String>? = null,
+    val channels: List<String>? = null,
+    val expiresAtMs: Long? = null,
 )
 internal data class PriceAlertPatchDto(val active: Boolean)
 internal data class DeleteAlertResponseDto(val removed: Boolean = false)
@@ -233,6 +254,36 @@ class NetworkNotificationGateway private constructor(
         ) { "Invalid alert payload" }
     }
 
+    override suspend fun createAdvancedAlert(
+        symbol: String,
+        condition: PriceAlertCondition,
+        value: Double,
+        trigger: PriceAlertTrigger,
+        spec: Map<String, String>?,
+        channels: List<String>,
+        expiresAtMs: Long?,
+    ): PriceAlert {
+        val safeSymbol = requireNotNull(normalizeProductAlertSymbol(symbol, platform)) { "Unsupported alert symbol" }
+        require(value.isFinite() && value > 0.0) { "Alert value must be a positive finite number" }
+        // TradeYar's route takes the plain four; an advanced condition there is refused here, before
+        // a round trip, rather than stored as something it cannot evaluate.
+        require(spec == null || platform == MarketPlatform.COINEPRO_FX) { "Advanced alerts are CoinePro-FX only" }
+        return requireNotNull(
+            api.createAlert(
+                paths.alerts,
+                PriceAlertCreateDto(
+                    symbol = safeSymbol,
+                    condition = condition.wireValue,
+                    value = value,
+                    trigger = trigger.wireValue,
+                    spec = spec,
+                    channels = channels.takeIf { platform == MarketPlatform.COINEPRO_FX },
+                    expiresAtMs = expiresAtMs,
+                ),
+            ).alert?.toDomain(platform),
+        ) { "Invalid alert payload" }
+    }
+
     override suspend fun setAlertActive(alertId: String, active: Boolean): PriceAlert = requireNotNull(
         api.patchAlert(paths.alert(alertId), PriceAlertPatchDto(active)).alert?.toDomain(platform),
     ) { "Invalid alert payload" }
@@ -249,10 +300,19 @@ class NetworkNotificationGateway private constructor(
     }
 }
 
+/** CoinePro-FX's instrument list, the same as its server's `settings.SYMBOLS`. */
+val FX_ALERT_SYMBOLS: Set<String> = setOf(
+    "XAUUSD", "XAGUSD",
+    "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "AUDUSD", "NZDUSD", "USDCAD",
+    "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "EURAUD",
+    "XTIUSD", "US30", "US500", "NAS100", "DE40",
+)
+
 internal fun normalizeProductAlertSymbol(raw: String, platform: MarketPlatform): String? {
     val normalized = raw.trim().uppercase().replace("/", "").replace("-", "")
     return when (platform) {
-        MarketPlatform.COINEPRO_FX -> normalized.takeIf { it == "XAUUSD" || it == "XAGUSD" }
+        // Every forex, metal and index market the platform quotes (5.17.0), not only gold and silver.
+        MarketPlatform.COINEPRO_FX -> normalized.takeIf { it in FX_ALERT_SYMBOLS }
         MarketPlatform.TRADEYAR -> normalized.takeIf { it.endsWith("USDT") && it.length > 4 }
     }
 }
@@ -304,6 +364,8 @@ internal fun PriceAlertDto.toDomain(platform: MarketPlatform): PriceAlert? {
         active = active,
         createdAtEpochMillis = createdAtMs ?: 0L,
         lastTriggeredAtEpochMillis = lastTriggeredAtMs,
+        spec = spec,
+        channels = channels ?: listOf("push"),
     )
 }
 

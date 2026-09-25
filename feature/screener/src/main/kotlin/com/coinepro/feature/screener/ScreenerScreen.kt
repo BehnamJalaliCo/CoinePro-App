@@ -1,6 +1,19 @@
 package com.coinepro.feature.screener
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.FilterChip
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.semantics
+import com.coinepro.core.chart.GrowthScan
+import com.coinepro.core.designsystem.inEnglish
+import com.coinepro.core.marketdata.Timeframe
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
@@ -105,8 +118,31 @@ fun ScreenerScreen(
      * watchlist» flow (5.16.1). Null where the build has no watchlist to add to.
      */
     onAddToWatchlist: ((List<String>) -> Unit)? = null,
+    /**
+     * Opens a market with the studies that draw the setup it was listed for, on the interval it was
+     * scanned on (5.17.0) — the chart the reader lands on shows why the market is on the list. Null
+     * falls back to [onOpenSymbol].
+     */
+    onOpenSetup: ((symbol: String, studies: List<String>, timeframe: Timeframe) -> Unit)? = null,
 ) {
     val state by controller.state.collectAsStateWithLifecycle()
+    val english = inEnglish()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val savedMessage = stringResource(R.string.screener_export_saved)
+    val failedMessage = stringResource(R.string.screener_export_failed)
+    var exportOutcome by remember { mutableStateOf<String?>(null) }
+    val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(CSV_MIME)) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val bytes = withContext(Dispatchers.Default) { controller.csv(english).toByteArray(Charsets.UTF_8) }
+            exportOutcome = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) } ?: error("no stream")
+                }.fold(onSuccess = { savedMessage }, onFailure = { failedMessage })
+            }
+        }
+    }
     var sheetOpen by rememberSaveable { mutableStateOf(false) }
     val listState = rememberLazyListState()
     // One scroll position shared by the heading strip and every row's value strip. Two states would
@@ -131,8 +167,32 @@ fun ScreenerScreen(
     }
 
     Column(modifier = modifier.fillMaxSize().background(CoineProColors.Stage)) {
-        Header(onOpenFilters = { sheetOpen = true })
+        Header(
+            onOpenFilters = { sheetOpen = true },
+            filtersEnabled = state.mode == ScreenerMode.TABLE,
+            onExport = { exporter.launch(EXPORT_NAME) }.takeIf { state.rows.isNotEmpty() },
+        )
+        exportOutcome?.let { outcome ->
+            Text(
+                text = outcome,
+                style = MaterialTheme.typography.labelSmall,
+                color = CoineProColors.TextMuted,
+                modifier = Modifier.padding(horizontal = CoineProSpacing.Two),
+            )
+        }
         CoineProTeachingStrip(TeachingSurface.SCREENER)
+        ModeChips(selected = state.mode, onSelect = controller::setMode)
+        TimeframeChips(selected = state.timeframe, onSelect = controller::setTimeframe)
+        if (state.mode == ScreenerMode.SIGNALS) {
+            ScanControls(
+                state = state,
+                english = english,
+                onSetIds = controller::setScanIds,
+                onSetWithin = controller::setScanWithin,
+                onSetMinGrowth = controller::setMinGrowth,
+                onToggleWatch = controller::toggleWatch,
+            )
+        }
         CategoryChips(
             selected = selectedCategory(state.filters),
             onSelect = { category -> controller.setFilters(withCategory(state.filters, category)) },
@@ -160,6 +220,7 @@ fun ScreenerScreen(
             indicatorColumns = state.indicatorColumns,
             sort = state.sort,
             scroll = valuesScroll,
+            english = english,
             onSort = controller::toggleSort,
             onSortIndicator = controller::toggleIndicatorSort,
         )
@@ -203,12 +264,26 @@ fun ScreenerScreen(
             ) {
                 items(state.rows, key = ScreenerRow::symbol) { row ->
                     Column(modifier = rowMotion().fillMaxWidth()) {
+                        val tags = if (state.mode == ScreenerMode.SIGNALS) {
+                            ScreenerScanTags.of(row, state.scanWithin)
+                        } else {
+                            emptyList()
+                        }
                         ScreenerTableRow(
                             row = row,
                             columns = state.columns,
                             indicatorColumns = state.indicatorColumns,
                             scroll = valuesScroll,
-                            onClick = { onOpenSymbol(row.symbol) },
+                            tags = tags,
+                            english = english,
+                            onClick = {
+                                val open = onOpenSetup
+                                if (state.mode == ScreenerMode.SIGNALS && open != null) {
+                                    open(row.symbol, setupStudiesOf(tags), state.timeframe)
+                                } else {
+                                    onOpenSymbol(row.symbol)
+                                }
+                            },
                         )
                         HorizontalDivider(
                             modifier = Modifier.padding(horizontal = CoineProSpacing.Two),
@@ -240,7 +315,7 @@ fun ScreenerScreen(
  * learn. The label is two words and the row has space for it.
  */
 @Composable
-private fun Header(onOpenFilters: () -> Unit) {
+private fun Header(onOpenFilters: () -> Unit, filtersEnabled: Boolean, onExport: (() -> Unit)?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -258,11 +333,21 @@ private fun Header(onOpenFilters: () -> Unit) {
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f),
         )
-        CoineProSecondaryButton(
-            text = stringResource(R.string.screener_open_filters),
-            onClick = onOpenFilters,
-            icon = CoineProIcons.Filter,
-        )
+        if (onExport != null) {
+            CoineProSecondaryButton(
+                text = stringResource(R.string.screener_export_csv),
+                onClick = onExport,
+                modifier = Modifier.semantics { contentDescription = "screener-export" },
+            )
+            Spacer(modifier = Modifier.width(CoineProSpacing.One))
+        }
+        if (filtersEnabled) {
+            CoineProSecondaryButton(
+                text = stringResource(R.string.screener_open_filters),
+                onClick = onOpenFilters,
+                icon = CoineProIcons.Filter,
+            )
+        }
     }
 }
 
@@ -358,6 +443,7 @@ private fun ColumnHeadings(
     indicatorColumns: List<ScreenerIndicatorColumn>,
     sort: ScreenerSort,
     scroll: ScrollState,
+    english: Boolean,
     onSort: (ScreenerField) -> Unit,
     onSortIndicator: (String) -> Unit,
 ) {
@@ -381,7 +467,7 @@ private fun ColumnHeadings(
         ) {
             columns.forEach { column ->
                 Heading(
-                    label = column.label,
+                    label = column.labelIn(english),
                     // An indicator sort parks itself on a field it is not using, so a field
                     // heading is only the sorted one when no indicator key is set. Without that
                     // check two headings would carry the arrow at once.
@@ -392,7 +478,7 @@ private fun ColumnHeadings(
             }
             indicatorColumns.forEach { column ->
                 Heading(
-                    label = column.label,
+                    label = column.labelIn(english),
                     sorted = sort.indicatorKey == column.key,
                     descending = sort.descending,
                     onClick = { onSortIndicator(column.key) },
@@ -453,6 +539,8 @@ private fun ScreenerTableRow(
     columns: List<ScreenerField>,
     indicatorColumns: List<ScreenerIndicatorColumn>,
     scroll: ScrollState,
+    tags: List<Pair<GrowthScan.Kind, Int>> = emptyList(),
+    english: Boolean = false,
     onClick: () -> Unit,
 ) {
     val haptics = rememberCoineProHaptics()
@@ -496,6 +584,15 @@ private fun ScreenerTableRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            tags.firstOrNull()?.let { (kind, ago) ->
+                Text(
+                    text = scanTag(kind, ago, english) + if (tags.size > 1) " +" + (tags.size - 1).proseDigits() else "",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CoineProColors.MarketUp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         Row(
             modifier = Modifier.weight(1f).horizontalScroll(scroll),
@@ -510,11 +607,15 @@ private fun ScreenerTableRow(
             }
             indicatorColumns.forEach { column ->
                 val value = column.valueOf(row)
-                Figure(
-                    text = ScreenerFormat.cell(value, column.unit),
-                    unit = column.unit,
-                    value = value,
-                )
+                if (column.key == GrowthScan.GROWTH_ID) {
+                    GrowthFigure(value)
+                } else {
+                    Figure(
+                        text = ScreenerFormat.cell(value, column.unit),
+                        unit = column.unit,
+                        value = value,
+                    )
+                }
             }
         }
     }
@@ -551,6 +652,155 @@ private fun Figure(text: String, unit: ScreenerUnit, value: Double?) {
 @Composable
 private fun ColumnScope.Centred(content: @Composable () -> Unit) {
     Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { content() }
+}
+
+/** The two faces of the screener. */
+@Composable
+private fun ModeChips(selected: ScreenerMode, onSelect: (ScreenerMode) -> Unit) {
+    CoineProChipRow(
+        options = listOf(
+            CoineProChip(ScreenerMode.TABLE.name, stringResource(R.string.screener_mode_table)),
+            CoineProChip(ScreenerMode.SIGNALS.name, stringResource(R.string.screener_mode_signals)),
+        ),
+        selectedId = selected.name,
+        onSelect = { id -> ScreenerMode.entries.firstOrNull { it.name == id }?.let(onSelect) },
+        compact = true,
+    )
+}
+
+/**
+ * The interval every indicator and setup is read on. The day's figures — the move, the range, the
+ * volume — stay the day's whichever is chosen.
+ */
+@Composable
+private fun TimeframeChips(selected: Timeframe, onSelect: (Timeframe) -> Unit) {
+    CoineProChipRow(
+        options = SCAN_TIMEFRAMES.map { CoineProChip(it.name, timeframeCode(it)) },
+        selectedId = selected.name,
+        onSelect = { id -> SCAN_TIMEFRAMES.firstOrNull { it.name == id }?.let(onSelect) },
+        compact = true,
+    )
+}
+
+/**
+ * The growth scan's controls: which setups, how recent, and how high a score (5.17.0).
+ *
+ * Setups are a multi-choice row — «any of these» — because the question is «what is starting to
+ * move», and a reader who ticks breakout and trend start wants both kinds of answer.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ScanControls(
+    state: ScreenerState,
+    english: Boolean,
+    onSetIds: (Set<String>) -> Unit,
+    onSetWithin: (Int) -> Unit,
+    onSetMinGrowth: (Double?) -> Unit,
+    onToggleWatch: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = CoineProSpacing.Two),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.screener_scan_setups),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            GrowthScan.Kind.BULLISH.forEach { kind ->
+                val on = kind.id in state.scanIds
+                FilterChip(
+                    selected = on,
+                    onClick = { onSetIds(if (on) state.scanIds - kind.id else state.scanIds + kind.id) },
+                    label = { Text(if (english) kind.labelEn else kind.label, style = MaterialTheme.typography.labelSmall) },
+                    modifier = Modifier.semantics { contentDescription = "scan-" + kind.id },
+                )
+            }
+        }
+        Text(
+            text = stringResource(R.string.screener_scan_within),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+        )
+        CoineProChipRow(
+            options = WITHIN_CHOICES.map {
+                CoineProChip(it.toString(), stringResource(R.string.screener_scan_within_bars, it.proseDigits()))
+            },
+            selectedId = state.scanWithin.toString(),
+            onSelect = { id -> id?.toIntOrNull()?.let(onSetWithin) },
+            compact = true,
+        )
+        Text(
+            text = stringResource(R.string.screener_scan_min_growth),
+            style = MaterialTheme.typography.labelSmall,
+            color = CoineProColors.TextMuted,
+        )
+        CoineProChipRow(
+            options = GROWTH_CHOICES.map { CoineProChip(it.toInt().toString(), "≥ " + it.toInt()) },
+            selectedId = state.minGrowth?.toInt()?.toString(),
+            onSelect = { id -> onSetMinGrowth(id?.toDoubleOrNull()) },
+            allLabel = stringResource(R.string.screener_scan_min_any),
+            compact = true,
+        )
+        // TradingView's screener alerts: told when a market enters this scan, in the background.
+        CoineProSecondaryButton(
+            text = stringResource(
+                if (state.currentWatch != null) R.string.screener_scan_watching else R.string.screener_scan_watch,
+            ),
+            onClick = onToggleWatch,
+            icon = CoineProIcons.Bell,
+            modifier = Modifier.semantics { contentDescription = "screener-scan-watch" },
+        )
+    }
+}
+
+/** The growth score, tinted by where it sits: the colour is the reading, the number its detail. */
+@Composable
+private fun GrowthFigure(value: Double?) {
+    val ink = when {
+        value == null -> CoineProColors.TextMuted
+        value >= STRONG_GROWTH -> CoineProColors.MarketUp
+        value <= WEAK_GROWTH -> CoineProColors.MarketDown
+        else -> CoineProColors.TextPrimary
+    }
+    Text(
+        text = value?.let { it.toInt().toString() } ?: ScreenerFormat.cell(null, ScreenerUnit.PLAIN),
+        style = MaterialTheme.typography.labelMedium.copy(textDirection = TextDirection.Ltr),
+        color = ink,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.width(FIGURE_COLUMN),
+        textAlign = TextAlign.Right,
+        maxLines = 1,
+    )
+}
+
+/** «Breakout · 2 bars ago», or «· this bar» for the newest. Persian digits: a count in prose. */
+@Composable
+private fun scanTag(kind: GrowthScan.Kind, ago: Int, english: Boolean): String {
+    val name = if (english) kind.labelEn else kind.label
+    return if (ago == 0) {
+        stringResource(R.string.screener_scan_tag_now, name)
+    } else {
+        stringResource(R.string.screener_scan_tag_ago, name, ago.proseDigits())
+    }
+}
+
+/** The studies that draw a row's setups, or the trend's where it has none fresh. */
+internal fun setupStudiesOf(tags: List<Pair<GrowthScan.Kind, Int>>): List<String> =
+    tags.flatMap { it.first.studies }.distinct().ifEmpty { GrowthScan.Kind.TREND_START.studies }
+
+/** The interval's own short code, the one the chart's strip prints. Latin: a code, not prose. */
+private fun timeframeCode(timeframe: Timeframe): String = when (timeframe) {
+    Timeframe.M15 -> "15m"
+    Timeframe.H1 -> "1H"
+    Timeframe.H4 -> "4H"
+    Timeframe.D1 -> "1D"
+    Timeframe.W1 -> "1W"
+    else -> timeframe.wire
 }
 
 /**
@@ -596,3 +846,11 @@ private val SYMBOL_COLUMN = 96.dp
 
 /** One figure column. Matches the markets list's price column so the two screens align. */
 private val FIGURE_COLUMN = 88.dp
+
+private val SCAN_TIMEFRAMES = listOf(Timeframe.M15, Timeframe.H1, Timeframe.H4, Timeframe.D1, Timeframe.W1)
+private val WITHIN_CHOICES = listOf(1, 3, 5, 10, 20)
+private val GROWTH_CHOICES = listOf(50.0, 65.0, 80.0)
+private const val STRONG_GROWTH = 65.0
+private const val WEAK_GROWTH = 35.0
+private const val CSV_MIME = "text/csv"
+private const val EXPORT_NAME = "screener.csv"

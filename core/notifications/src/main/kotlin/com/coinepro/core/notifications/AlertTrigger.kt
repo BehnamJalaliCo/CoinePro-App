@@ -394,6 +394,12 @@ sealed interface AlertTrigger {
 
         override fun evaluate(previous: Double?, current: Double, series: DoubleArray?): Boolean {
             if (series == null || series.isEmpty()) return false
+            // A shape (5.17.0): (before, now) per boundary, and crossing any one enters or leaves it.
+            if (series.size >= 4 && series.size % 2 == 0) {
+                return (series.indices step 2).any { at ->
+                    evaluate(previous, current, doubleArrayOf(series[at], series[at + 1]))
+                }
+            }
             val levelNow = series[series.size - 1]
             val now = current - levelNow
             if (now == 0.0) return true

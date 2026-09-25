@@ -1,5 +1,6 @@
 package com.coinepro.feature.screener
 
+import com.coinepro.core.chart.GrowthScan
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.coinepro.core.common.foldDigitsToLatin
+import com.coinepro.core.designsystem.inEnglish
 import com.coinepro.core.designsystem.CoineProChip
 import com.coinepro.core.designsystem.CoineProChipRow
 import com.coinepro.core.designsystem.CoineProColors
@@ -172,7 +174,7 @@ private fun ActiveConditions(filters: List<ScreenerFilter>, onRemove: (Int) -> U
                 horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
             ) {
                 Text(
-                    text = describe(filter),
+                    text = describe(filter, inEnglish()),
                     style = MaterialTheme.typography.labelMedium,
                     color = CoineProColors.TextPrimary,
                     modifier = Modifier.weight(1f),
@@ -215,7 +217,7 @@ private fun ConditionBuilder(onAdd: (ScreenerFilter) -> Unit) {
         // see [115]. They are still columns, still sortable and still saved; they are simply no
         // longer two routes to writing the same condition.
         options = ScreenerField.NUMERIC.filterNot(ScreenerField::isDerived)
-            .map { CoineProChip(it.name, it.label) },
+            .map { CoineProChip(it.name, it.labelIn(inEnglish())) },
         selectedId = field.name,
         onSelect = { id -> ScreenerField.entries.firstOrNull { it.name == id }?.let { field = it } },
         compact = true,
@@ -223,7 +225,7 @@ private fun ConditionBuilder(onAdd: (ScreenerFilter) -> Unit) {
 
     SectionLabel(stringResource(R.string.screener_operator))
     CoineProChipRow(
-        options = NumericOp.entries.map { CoineProChip(it.name, it.label) },
+        options = NumericOp.entries.map { CoineProChip(it.name, it.labelIn(inEnglish())) },
         selectedId = op.name,
         onSelect = { id -> NumericOp.entries.firstOrNull { it.name == id }?.let { op = it } },
         compact = true,
@@ -335,7 +337,7 @@ private fun IndicatorBuilder(hasVolume: Boolean, onAdd: (ScreenerFilter) -> Unit
         )
     } else {
         CoineProChipRow(
-            options = offered.map { CoineProChip(it.id, it.label) },
+            options = offered.map { CoineProChip(it.id, ScreenerIndicatorCatalog.labelOf(it.id, inEnglish())) },
             selectedId = selected?.id,
             onSelect = { id -> id?.let { indicatorId = it } },
             compact = true,
@@ -344,7 +346,7 @@ private fun IndicatorBuilder(hasVolume: Boolean, onAdd: (ScreenerFilter) -> Unit
 
     SectionLabel(stringResource(R.string.screener_operator))
     CoineProChipRow(
-        options = NumericOp.entries.map { CoineProChip(it.name, it.label) },
+        options = NumericOp.entries.map { CoineProChip(it.name, it.labelIn(inEnglish())) },
         selectedId = op.name,
         onSelect = { id -> NumericOp.entries.firstOrNull { it.name == id }?.let { op = it } },
         compact = true,
@@ -588,11 +590,11 @@ internal fun withTextMatch(filters: List<ScreenerFilter>, query: String): List<S
  * period is spelled into the field name for an indicator condition, because «شاخص قدرت نسبی» with
  * no number beside it does not say which of the reader's two RSI conditions this is.
  */
-internal fun describe(filter: ScreenerFilter): String = when (filter) {
+internal fun describe(filter: ScreenerFilter, english: Boolean = false): String = when (filter) {
     is ScreenerFilter.Numeric -> buildString {
-        append(filter.field.label)
+        append(filter.field.labelIn(english))
         append(' ')
-        append(filter.op.label)
+        append(filter.op.labelIn(english))
         append(' ')
         append(ScreenerFormat.threshold(filter.value))
         if (filter.op.takesSecondValue && filter.bound != null) {
@@ -602,13 +604,13 @@ internal fun describe(filter: ScreenerFilter): String = when (filter) {
     }
 
     is ScreenerFilter.IndicatorFilter -> buildString {
-        append(labelOf(filter.indicatorId))
+        append(ScreenerIndicatorCatalog.labelOf(filter.indicatorId, english))
         filter.period?.let {
             append(' ')
             append(ScreenerFormat.threshold(it.toDouble()))
         }
         append(' ')
-        append(filter.op.label)
+        append(filter.op.labelIn(english))
         append(' ')
         append(ScreenerFormat.threshold(filter.value))
         if (filter.op.takesSecondValue && filter.bound != null) {
@@ -617,16 +619,10 @@ internal fun describe(filter: ScreenerFilter): String = when (filter) {
         }
     }
 
-    is ScreenerFilter.Category -> filter.field.label + ": " + filter.values.sorted().joinToString("، ")
+    is ScreenerFilter.Category -> filter.field.labelIn(english) + ": " + filter.values.sorted().joinToString(if (english) ", " else "، ")
 
     is ScreenerFilter.TextMatch -> filter.query
-}
 
-/**
- * The Persian name of an indicator, wherever it comes from.
- *
- * The chart's catalogue first, the eight legacy fields second, the raw id last. Before [115] this
- * knew only the eight, so a condition on any of the other seventy-five would have printed a bare
- * id in the middle of a Persian sentence.
- */
-private fun labelOf(indicatorId: String): String = ScreenerIndicatorCatalog.labelOf(indicatorId)
+    is ScreenerFilter.AnySignal -> filter.ids.mapNotNull { GrowthScan.labelOf(it, english) }
+        .joinToString(" / ") + " ≤ " + filter.withinBars
+}

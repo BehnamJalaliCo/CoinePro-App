@@ -106,6 +106,8 @@ import com.coinepro.core.guest.NetworkGuestGateway
 import com.coinepro.core.journal.JournalController
 import com.coinepro.core.marketdata.AcademyTokenStore
 import com.coinepro.core.marketdata.CandleArchive
+import com.coinepro.core.marketdata.CoineProFxTickHistory
+import com.coinepro.core.marketdata.TickHistory
 import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.CoineProFxCandleGateway
@@ -1525,6 +1527,14 @@ object AppModule {
     @CryptoPlatform
     fun cryptoCandleGateway(@CryptoPlatform retrofit: Retrofit): CandleGateway =
         TradeYarCandleGateway(retrofit)
+
+    /**
+     * Trades and seconds bars (5.17.0), for both platforms from CoinePro-FX's public route — the
+     * one server that keeps them. See [TickHistory].
+     */
+    @Provides
+    @Singleton
+    fun tickHistory(@ForexPlatform retrofit: Retrofit): TickHistory = CoineProFxTickHistory(retrofit)
 
     /**
      * Closed-trade history, per platform.

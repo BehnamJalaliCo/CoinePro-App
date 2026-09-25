@@ -45,7 +45,7 @@ class HelpCatalogTest {
         // `elderRay` — were already in the export and are pointed at, not rewritten.
         // Then three for the session, separator and prior-period studies (5.12.0), and four for the
         // detections and the technical rating (5.13.0).
-        assertEquals(177 - 4 + 9 + 55 + 1 + 6 + 18 + 3 + 4, catalog.size)
+        assertEquals(177 - 4 + 9 + 55 + 1 + 6 + 18 + 3 + 4 + 1, catalog.size)
     }
 
     @Test

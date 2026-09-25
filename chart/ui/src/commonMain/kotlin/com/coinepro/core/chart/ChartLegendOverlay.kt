@@ -543,6 +543,8 @@ internal fun ChartLegendOverlay(
     onToggleVisibility: (ChartLegendTarget) -> Unit,
     onOpenSettings: ((ChartLegendTarget) -> Unit)?,
     onRemove: ((ChartLegendTarget) -> Unit)?,
+    /** TradingView's «⋯»: move to a pane, pin to a scale, visual order (5.17.0). Null draws no button. */
+    onMore: ((ChartLegendTarget) -> Unit)? = null,
     /**
      * The session's move, from whoever already measures it. Null lets the bar answer for itself.
      *
@@ -657,7 +659,8 @@ internal fun ChartLegendOverlay(
             // for; the controls are what a reader reaches for occasionally, and they now cost
             // nothing until they are reached for. See [expanded].
             val slots = if (expanded) {
-                1 + (if (onOpenSettings != null) 1 else 0) + (if (onRemove != null) 1 else 0)
+                1 + (if (onOpenSettings != null) 1 else 0) + (if (onRemove != null) 1 else 0) +
+                    (if (onMore != null) 1 else 0)
             } else {
                 0
             }
@@ -819,6 +822,7 @@ internal fun ChartLegendOverlay(
                         onToggleVisibility = onToggleVisibility,
                         onOpenSettings = onOpenSettings,
                         onRemove = onRemove,
+                        onMore = onMore,
                     )
                 }
                 // Open and still truncated by the height budget: the «+N» keeps its own line, as
@@ -870,6 +874,8 @@ private fun LegendRow(
     onToggleVisibility: (ChartLegendTarget) -> Unit,
     onOpenSettings: ((ChartLegendTarget) -> Unit)?,
     onRemove: ((ChartLegendTarget) -> Unit)?,
+    /** TradingView's «⋯»: move to a pane, pin to a scale, visual order (5.17.0). Null draws no button. */
+    onMore: ((ChartLegendTarget) -> Unit)? = null,
     /**
      * Opens and closes the per-row controls. Non-null on the head row only.
      *
@@ -1068,7 +1074,16 @@ private fun LegendRow(
                     fontSize = fontSize,
                 ) { remove(row.target) }
             }
-            val carried = 1 + (if (onOpenSettings != null) 1 else 0) + (if (onRemove != null) 1 else 0)
+            onMore?.let { more ->
+                LegendButton(
+                    glyph = GLYPH_MORE,
+                    description = chartText(ChartText.LEGEND_MORE),
+                    colour = palette.text,
+                    fontSize = fontSize,
+                ) { more(row.target) }
+            }
+            val carried = 1 + (if (onOpenSettings != null) 1 else 0) + (if (onRemove != null) 1 else 0) +
+                (if (onMore != null) 1 else 0)
             repeat((slots - carried).coerceAtLeast(0)) {
                 Spacer(modifier = Modifier.size(LEGEND_BUTTON_DP))
             }
@@ -1341,6 +1356,9 @@ private val GLYPH_VISIBLE: String get() = ChartMarks.visible
 private val GLYPH_HIDDEN: String get() = ChartMarks.hidden
 private val GLYPH_SETTINGS: String get() = ChartMarks.settings
 private val GLYPH_REMOVE: String get() = ChartMarks.remove
+
+/** «…», which every face this app ships carries. */
+private const val GLYPH_MORE: String = "\u2026"
 
 /**
  * The disclosure, closed and open.

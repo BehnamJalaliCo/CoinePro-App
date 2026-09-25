@@ -83,4 +83,10 @@
     <string name="news_platform_crypto">کریپتو</string>
     <string name="news_platform_forex">فارکس</string>
     <string name="news_image_retry">تصویر نیامد. برای تلاش دوباره بزنید.</string>
+    <string name="news_filter_search">نماد یا واژه</string>
+    <string name="news_filter_high_impact">اثر زیاد</string>
+    <string name="news_filter_bullish">صعودی</string>
+    <string name="news_filter_bearish">نزولی</string>
+    <string name="news_filter_none">هیچ خبری با این فیلترها جور نیست.</string>
+    <string name="news_filter_clear">پاک کردن فیلترها</string>
 </resources>

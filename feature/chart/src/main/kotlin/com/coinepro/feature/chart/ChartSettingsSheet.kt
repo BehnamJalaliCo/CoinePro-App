@@ -109,6 +109,9 @@ fun ChartSettingsBody(
                 Toggle(R.string.chart_settings_prev_line, appearance.previousCloseLine) {
                     onChange(appearance.copy(previousCloseLine = it))
                 }
+                Toggle(R.string.chart_settings_scale_unit, appearance.scaleUnit) {
+                    onChange(appearance.copy(scaleUnit = it))
+                }
                 HorizontalDivider(color = CoineProColors.Border)
                 scales()
             }

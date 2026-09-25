@@ -246,4 +246,6 @@
     <string name="starter_colours_green_up">سبز</string>
     <string name="starter_colours_red_up">قرمز</string>
     <string name="starter_done">بزن بریم</string>
+    <string name="scan_watch_title">نمادهای تازه وارد اسکن رشد شما شدند</string>
+    <string name="scan_watch_body_more">%1$s و %2$d نماد دیگر</string>
 </resources>

@@ -50,9 +50,13 @@ class NavigationParityTest {
                 labels = AppDestination.entries.map { stringResource(it.labelRes) }
             }
         }
-        assertEquals(AppDestination.entries.map { it.route }, items.map { it.key })
-        assertEquals(labels, items.map { it.label })
-        assertEquals(AppDestination.entries.size, items.size)
+        // The rail has one more: the screener (5.17.0), a desk-width tool the phone reaches from
+        // Explore and the tools page. Everything the bar carries is still on the rail, in the bar's order.
+        val shared = items.filterNot { it.key == SCREENER_RAIL_KEY }
+        assertEquals(AppDestination.entries.map { it.route }, shared.map { it.key })
+        assertEquals(labels, shared.map { it.label })
+        assertEquals(AppDestination.entries.size + 1, items.size)
+        assertEquals(AppDestination.CHART.route, items[items.indexOfFirst { it.key == SCREENER_RAIL_KEY } - 1].key)
     }
 
     @Test

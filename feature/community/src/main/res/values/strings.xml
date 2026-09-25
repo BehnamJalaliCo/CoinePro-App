@@ -80,4 +80,9 @@
     <string name="community_add_script">Add “%1$s” to my chart</string>
     <string name="community_script_installed">You have added this one</string>
     <string name="community_founding_member">Founding member</string>
+    <string name="community_follow">Follow author</string>
+    <string name="community_unfollow">Unfollow author</string>
+    <string name="community_following">Following</string>
+    <string name="community_following_empty">No posts from the authors you follow here yet.</string>
+    <string name="community_following_all">Show all posts</string>
 </resources>

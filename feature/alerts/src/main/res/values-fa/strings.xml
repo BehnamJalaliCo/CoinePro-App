@@ -122,4 +122,8 @@
     <string name="alerts_expiry_week">۱ هفته</string>
     <string name="alerts_expiry_month">۱ ماه</string>
     <string name="alerts_expiry_two_months">۲ ماه</string>
+    <string name="alerts_server_delivery">روش ارسال</string>
+    <string name="alerts_server_push">اعلان گوشی</string>
+    <string name="alerts_server_telegram">تلگرام</string>
+    <string name="alerts_server_email">ایمیل</string>
 </resources>

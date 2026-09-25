@@ -753,6 +753,15 @@ class AlertsController(
     }
 
     /** When the alert expires, or null for never — TradingView's «Expiration» (5.16.1). */
+    /** Telegram or email for a server alert, on or off; push is always on (5.17.0). */
+    fun toggleServerChannel(channel: String) {
+        if (channel == "push") return
+        editDraft { draft ->
+            val next = if (channel in draft.serverChannels) draft.serverChannels - channel else draft.serverChannels + channel
+            draft.copy(serverChannels = next + "push")
+        }
+    }
+
     fun setExpiresAt(at: Long?) {
         editDraft { it.copy(expiresAt = at) }
     }

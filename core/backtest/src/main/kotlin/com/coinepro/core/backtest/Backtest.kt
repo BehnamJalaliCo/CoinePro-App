@@ -36,6 +36,22 @@ object Backtest {
 
         /** Long above the upper Donchian, out below the lower. Trend following. */
         BREAKOUT("breakout"),
+
+        /** MACD over its signal line (5.17.0). Momentum. */
+        MACD_CROSS("macd_cross"),
+
+        /** SuperTrend (10, 3) direction (5.17.0). Trend following with a trailing stop built in. */
+        SUPERTREND("supertrend"),
+
+        /** Long under the lower Bollinger band, out at the basis (5.17.0). Mean reversion. */
+        BOLLINGER_REVERSION("bb_reversion"),
+
+        /**
+         * The screener's growth setups as a strategy (5.17.0): in on a SuperTrend turn or a
+         * breakout with ADX over 20, out when the SuperTrend turns down. Long only — it is a rule
+         * about growth.
+         */
+        GROWTH_SCAN("growth_scan"),
     }
 
     data class Settings(
@@ -53,6 +69,12 @@ object Backtest {
          * like a fortune, and a reader who never changes a default should not be handed that one.
          */
         val costFraction: Double = 0.0005,
+        /** Adverse fill per side, in percent (5.17.0) — TradingView's «Slippage». */
+        val slippagePercent: Double = 0.0,
+        /** A protective stop, percent from entry, or null (5.17.0). */
+        val stopPercent: Double? = null,
+        /** A profit target, percent from entry, or null (5.17.0). */
+        val targetPercent: Double? = null,
     )
 
     data class Trade(
@@ -195,6 +217,10 @@ object Backtest {
                 }
                 wanted
             }
+
+            Strategy.MACD_CROSS, Strategy.SUPERTREND, Strategy.BOLLINGER_REVERSION, Strategy.GROWTH_SCAN ->
+                StrategyRules.directions(com.coinepro.core.chart.CandleSeries(bars), settings)
+                    ?.let { wanted -> BooleanArray(bars.size) { wanted[it] == StrategyRules.LONG } }
 
             Strategy.BREAKOUT -> {
                 val channel = Indicators.donchian(high, low, settings.channel)

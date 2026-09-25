@@ -1,5 +1,8 @@
 package com.coinepro.feature.alerts
 
+import com.coinepro.core.notifications.FX_ALERT_SYMBOLS
+import com.coinepro.core.notifications.MoveOp
+import com.coinepro.core.notifications.ChannelOp
 import com.coinepro.core.notifications.AlertChannel
 import com.coinepro.core.notifications.AlertFrequency
 import com.coinepro.core.notifications.AlertRepeat
@@ -54,6 +57,12 @@ data class ServerAlertRequest(
     val condition: PriceAlertCondition,
     val value: Double,
     val trigger: PriceAlertTrigger,
+    /** The advanced condition, for [PriceAlertCondition.SPEC] (5.17.0). See [ServerAlertSpec]. */
+    val spec: Map<String, String>? = null,
+    /** Delivery beyond push: `telegram`, `email` (5.17.0). */
+    val channels: List<String> = listOf("push"),
+    /** The reader's expiry, epoch milliseconds, or null for the server's own. */
+    val expiresAtMs: Long? = null,
 )
 
 /**
@@ -167,7 +176,11 @@ object ServerAlertRows {
         active = alert.active,
         createdAtEpochMillis = alert.createdAtEpochMillis,
         lastFiredAtEpochMillis = alert.lastTriggeredAtEpochMillis,
-        trigger = crossingOf(alert.condition)?.let { AlertTrigger.Price(it, alert.value) },
+        trigger = if (alert.condition == PriceAlertCondition.SPEC) {
+            ServerAlertSpec.triggerOf(alert.spec)
+        } else {
+            crossingOf(alert.condition)?.let { AlertTrigger.Price(it, alert.value) }
+        },
         scope = AlertScope.Symbol(alert.symbol),
         expiresAt = alert.expiresAtEpochMillis,
         channels = setOf(AlertChannel.PUSH),
@@ -184,13 +197,22 @@ object ServerAlertRows {
     fun requestOf(draft: AlertDraft): ServerAlertRequest? {
         if (draft.scopeListId != null) return null
         val symbol = draft.symbol.trim().uppercase().takeIf(String::isNotEmpty) ?: return null
-        val trigger = draft.trigger() as? AlertTrigger.Price ?: return null
-        val condition = conditionOf(trigger.op) ?: return null
-        if (!trigger.value.isFinite() || trigger.value <= 0.0) return null
+        val built = draft.trigger() ?: return null
+        val advanced = built !is AlertTrigger.Price
+        // The advanced conditions are CoinePro-FX's alone (5.17.0); TradeYar's route takes the plain five.
+        if (advanced && symbol !in FX_ALERT_SYMBOLS) return null
+        val spec = if (advanced) ServerAlertSpec.specOf(built) ?: return null else null
+        val price = built as? AlertTrigger.Price
+        val condition = if (price != null) conditionOf(price.op) ?: return null else PriceAlertCondition.SPEC
+        val value = price?.value ?: 1.0
+        if (!value.isFinite() || value <= 0.0) return null
         return ServerAlertRequest(
             symbol = symbol,
             condition = condition,
-            value = trigger.value,
+            value = value,
+            spec = spec,
+            channels = draft.serverChannels.toList().sorted(),
+            expiresAtMs = draft.expiresAt,
             // Anything that is not «یک‌بار» is «هر بار» to the server: it has two settings and the
             // bar-aware ones are a promise only the device evaluator can keep, because only it
             // knows which timeframe the reader is looking at.
@@ -212,7 +234,7 @@ object ServerAlertRows {
     }
 
     private fun conditionOf(condition: PriceAlertCondition): LocalAlertCondition = when (condition) {
-        PriceAlertCondition.ABOVE, PriceAlertCondition.CROSS_UP, PriceAlertCondition.CROSS ->
+        PriceAlertCondition.ABOVE, PriceAlertCondition.CROSS_UP, PriceAlertCondition.CROSS, PriceAlertCondition.SPEC ->
             LocalAlertCondition.ABOVE
         PriceAlertCondition.BELOW, PriceAlertCondition.CROSS_DOWN -> LocalAlertCondition.BELOW
     }
@@ -221,6 +243,103 @@ object ServerAlertRows {
         PriceAlertCondition.CROSS_UP -> PriceOp.CROSSING_UP
         PriceAlertCondition.CROSS_DOWN -> PriceOp.CROSSING_DOWN
         PriceAlertCondition.CROSS -> PriceOp.CROSSING
-        PriceAlertCondition.ABOVE, PriceAlertCondition.BELOW -> null
+        PriceAlertCondition.ABOVE, PriceAlertCondition.BELOW, PriceAlertCondition.SPEC -> null
+    }
+}
+
+/**
+ * This app's advanced conditions in CoinePro-FX's server spelling (5.17.0), and back.
+ *
+ * The same three the server evaluates (`src/api/mobile/alert_specs.py`): a channel, a move over
+ * bars, and RSI against a level. A moving-average condition stays on the device — here it compares
+ * the average to a level, on the server it would compare the price to the average, and a condition
+ * that means two things depending on where it runs is not a condition to send.
+ */
+object ServerAlertSpec {
+
+    /** The server timeframe a bar-counted condition is measured on — the device's own default. */
+    const val TIMEFRAME: String = "H1"
+
+    /**
+     * Every value as text: the web build's serializer has no `Any`, and the server reads numbers
+     * from strings (`_num`) and answers with numbers, which [triggerOf] reads either way.
+     */
+    fun specOf(trigger: AlertTrigger): Map<String, String>? = specValuesOf(trigger)?.mapValues { (_, value) -> value.toString() }
+
+    private fun specValuesOf(trigger: AlertTrigger): Map<String, Any>? = when (trigger) {
+        is AlertTrigger.Channel -> mapOf(
+            "kind" to "channel",
+            "low" to trigger.low,
+            "high" to trigger.high,
+            "op" to when (trigger.op) {
+                ChannelOp.ENTERING -> "enter"
+                ChannelOp.EXITING -> "exit"
+                ChannelOp.INSIDE -> "inside"
+                ChannelOp.OUTSIDE -> "outside"
+            },
+        )
+        is AlertTrigger.Move -> when (trigger.op) {
+            MoveOp.UP_PERCENT, MoveOp.DOWN_PERCENT -> mapOf(
+                "kind" to "move",
+                "op" to trigger.op.id,
+                "amount" to trigger.amount,
+                "bars" to trigger.bars,
+                "tf" to TIMEFRAME,
+            )
+            else -> null
+        }
+        is AlertTrigger.Indicator -> if (trigger.indicatorId == "rsi") {
+            val op = when (trigger.op) {
+                PriceOp.GREATER_THAN -> "above"
+                PriceOp.LESS_THAN -> "below"
+                PriceOp.CROSSING_UP -> "cross_up"
+                PriceOp.CROSSING_DOWN -> "cross_down"
+                PriceOp.CROSSING -> null
+            }
+            op?.let {
+                mapOf("kind" to "indicator", "id" to "rsi", "period" to (trigger.period ?: 14), "op" to it, "value" to trigger.value, "tf" to TIMEFRAME)
+            }
+        } else {
+            null
+        }
+        else -> null
+    }
+
+    /** The server's spec read back as the trigger this app draws it with, or null for one it cannot read. */
+    fun triggerOf(spec: Map<String, String>?): AlertTrigger? {
+        spec ?: return null
+        fun number(key: String): Double? = spec[key]?.toDoubleOrNull()
+        return runCatching {
+            when (spec["kind"]) {
+                "channel" -> {
+                    val op = when (spec["op"]) {
+                        "enter" -> ChannelOp.ENTERING
+                        "exit" -> ChannelOp.EXITING
+                        "inside" -> ChannelOp.INSIDE
+                        "outside" -> ChannelOp.OUTSIDE
+                        else -> return null
+                    }
+                    AlertTrigger.Channel(op, number("low") ?: return null, number("high") ?: return null)
+                }
+                "move" -> AlertTrigger.Move(
+                    MoveOp.entries.firstOrNull { it.id == spec["op"] } ?: return null,
+                    number("amount") ?: return null,
+                    number("bars")?.toInt() ?: 1,
+                )
+                "indicator" -> AlertTrigger.Indicator(
+                    indicatorId = spec["id"] ?: return null,
+                    period = number("period")?.toInt(),
+                    op = when (spec["op"]) {
+                        "above" -> PriceOp.GREATER_THAN
+                        "below" -> PriceOp.LESS_THAN
+                        "cross_up" -> PriceOp.CROSSING_UP
+                        "cross_down" -> PriceOp.CROSSING_DOWN
+                        else -> return null
+                    },
+                    value = number("value") ?: return null,
+                )
+                else -> null
+            }
+        }.getOrNull()
     }
 }

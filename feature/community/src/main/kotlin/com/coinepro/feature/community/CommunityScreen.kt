@@ -302,7 +302,12 @@ fun CommunityScreen(
         // Hidden while searching: the chips filter the *board*, and a topic chip over a result list
         // would be a control that appears to narrow a search and does nothing.
         if (!state.isSearch) {
-            CategoryChips(selected = state.category, onSelect = controller::setCategory)
+            CategoryChips(
+                selected = state.category,
+                onSelect = controller::setCategory,
+                followingOnly = state.followingOnly,
+                onFollowing = { controller.setFollowingOnly(!state.followingOnly) },
+            )
         }
 
         AnimatedContent(
@@ -368,26 +373,37 @@ fun CommunityScreen(
                     modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
                 )
 
-                CommunityMode.POSTS -> PostList(
-                    founding = foundingMember,
-                    mine = state.displayName,
-                    // Handed the controller, not a picture: a card fetches its own when it scrolls
-                    // into view, because a feed that loaded twenty photographs to show three would
-                    // spend a reader's data on cards they never reach. See `rememberPostImage`.
-                    controller = controller,
-                    posts = state.posts,
-                    canLoadMore = state.canLoadMore,
-                    loadingMore = state.loadingMore,
-                    onOpenThread = onOpenThread,
-                    onLike = { id -> withName { controller.toggleLike(id) } },
-                    onLoadMore = controller::loadMore,
-                    // A report needs a name, like every other write on this board.
-                    onReport = { id -> withName { controller.report(id, reported) } },
-                    onCopy = { post ->
-                        clipboard.setText(AnnotatedString(post.content))
-                        controller.notice(copied)
-                    },
-                )
+                CommunityMode.POSTS -> if (state.followingOnly && state.visiblePosts.isEmpty()) {
+                    CoineProEmptyState(
+                        icon = CoineProIcons.Assistant,
+                        message = stringResource(R.string.community_following_empty),
+                        action = stringResource(R.string.community_following_all),
+                        onAction = { controller.setFollowingOnly(false) },
+                    )
+                } else {
+                    PostList(
+                        founding = foundingMember,
+                        mine = state.displayName,
+                        // Handed the controller, not a picture: a card fetches its own when it scrolls
+                        // into view, because a feed that loaded twenty photographs to show three would
+                        // spend a reader's data on cards they never reach. See `rememberPostImage`.
+                        controller = controller,
+                        posts = state.visiblePosts,
+                        follows = state.follows,
+                        onFollow = { post -> controller.toggleFollow(post.author) },
+                        canLoadMore = state.canLoadMore,
+                        loadingMore = state.loadingMore,
+                        onOpenThread = onOpenThread,
+                        onLike = { id -> withName { controller.toggleLike(id) } },
+                        onLoadMore = controller::loadMore,
+                        // A report needs a name, like every other write on this board.
+                        onReport = { id -> withName { controller.report(id, reported) } },
+                        onCopy = { post ->
+                            clipboard.setText(AnnotatedString(post.content))
+                            controller.notice(copied)
+                        },
+                    )
+                }
             }
         }
     }
@@ -504,6 +520,8 @@ private fun PostList(
     onLoadMore: () -> Unit,
     onReport: (Long) -> Unit,
     onCopy: (CommunityPost) -> Unit,
+    follows: Set<String> = emptySet(),
+    onFollow: ((CommunityPost) -> Unit)? = null,
     /** Whether the reader carries the founding mark, and the name their own posts are under. */
     founding: Boolean = false,
     mine: String? = null,
@@ -526,6 +544,9 @@ private fun PostList(
                 onLike = { onLike(post.id) },
                 onReport = { onReport(post.id) },
                 onCopy = { onCopy(post) },
+                // Not on the reader's own posts: following yourself is a filter that shows your own writing.
+                onFollow = onFollow?.takeIf { mine == null || post.author != mine }?.let { follow -> { follow(post) } },
+                followed = post.author in follows,
                 founding = founding && mine != null && post.author == mine,
             )
         }
@@ -560,7 +581,12 @@ private fun PostList(
  * squeezed them all in would give «تجربه» the same weight as the whole board.
  */
 @Composable
-private fun CategoryChips(selected: CommunityCategory?, onSelect: (CommunityCategory?) -> Unit) {
+private fun CategoryChips(
+    selected: CommunityCategory?,
+    onSelect: (CommunityCategory?) -> Unit,
+    followingOnly: Boolean = false,
+    onFollowing: () -> Unit = {},
+) {
     val haptics = rememberCoineProHaptics()
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
@@ -575,6 +601,17 @@ private fun CategoryChips(selected: CommunityCategory?, onSelect: (CommunityCate
                     // Only a change is worth a tick.
                     if (!active) haptics.select()
                     onSelect(category)
+                },
+            )
+        }
+        // «Following» narrows whichever topic is chosen to the authors this reader follows (5.17.0).
+        item("following") {
+            Chip(
+                label = stringResource(R.string.community_following),
+                active = followingOnly,
+                onClick = {
+                    haptics.select()
+                    onFollowing()
                 },
             )
         }

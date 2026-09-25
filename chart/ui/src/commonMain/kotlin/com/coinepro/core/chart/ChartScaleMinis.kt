@@ -67,6 +67,8 @@ internal fun PriceAxisScaleMinis(
      * broken rather than that the build has no route.
      */
     onToggleLogarithmic: (() -> Unit)? = null,
+    /** The quote currency, printed above the letters — TradingView's «Currency and unit» (5.17.0). */
+    unit: String? = null,
     modifier: Modifier = Modifier,
 ) {
     if (frame == null || frame.tagGutterWidth <= 0f) return
@@ -74,7 +76,8 @@ internal fun PriceAxisScaleMinis(
     val stack = with(density) { (MINI_DP * 2 + MINI_GAP_DP).toPx() }
     // Above the time axis and inside the gutter, so the letters never sit over a candle. Clamped at
     // zero for the short-canvas case — a 100 dp thumbnail has no room for this and gets nothing.
-    val top = plotBottom - stack - with(density) { MINI_INSET_DP.toPx() }
+    val unitHeight = if (unit != null) with(density) { (MINI_DP + MINI_GAP_DP).toPx() } else 0f
+    val top = plotBottom - stack - unitHeight - with(density) { MINI_INSET_DP.toPx() }
     if (top < 0f) return
     val left = if (frame.tagsOnRight) {
         frame.right + (frame.rightGutter - with(density) { MINI_DP.toPx() }) / 2f
@@ -85,7 +88,17 @@ internal fun PriceAxisScaleMinis(
         Column(
             modifier = Modifier.offset { IntOffset(left.roundToInt(), top.roundToInt()) },
             verticalArrangement = Arrangement.spacedBy(MINI_GAP_DP),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            unit?.let {
+                Text(
+                    text = it,
+                    color = palette.text,
+                    fontSize = MINI_TEXT_SP.sp,
+                    maxLines = 1,
+                    modifier = Modifier.semantics { contentDescription = "scale-unit" },
+                )
+            }
             Mini(
                 letter = "A",
                 lit = manualScale,

@@ -229,6 +229,10 @@ fun CoineProChart(
      * [PriceAxisAlertLines].
      */
     onMoveAlert: ((id: String, price: Double) -> Unit)? = null,
+    /** A position's entry, stop and target and the working orders, as draggable lines (5.17.0). */
+    orderLines: List<ChartOrderLine> = emptyList(),
+    /** A dragged order line's new price. Null draws the lines and lets nothing be moved. */
+    onMoveOrderLine: ((id: String, price: Double) -> Unit)? = null,
     /**
      * Open the price axis' own menu — log scale, percent, decimals, which side it sits on.
      *
@@ -347,6 +351,10 @@ fun CoineProChart(
     onToggleSeriesVisibility: ((ChartLegendTarget) -> Unit)? = null,
     /** A legend row's settings were asked for. Null hides the affordance rather than disabling it. */
     onSeriesSettings: ((ChartLegendTarget) -> Unit)? = null,
+    /** The legend row's «…» menu (5.17.0). Null draws no button. */
+    onSeriesMore: ((ChartLegendTarget) -> Unit)? = null,
+    /** The quote currency for the price scale's «Currency and unit» label (5.17.0); null prints none. */
+    scaleUnit: String? = null,
     /**
      * Tapping a legend row's **name** — «what is this and what is it saying» (4.75.0, run Ω1).
      *
@@ -3006,6 +3014,7 @@ fun CoineProChart(
                         (!view.series.hasVolume || view.barWidth < FOOTPRINT_MIN_SLOT_DP.toPx()) ->
                         ChartType.CANDLES
                     type == ChartType.TPO && !view.series.hasVolume -> ChartType.CANDLES
+                    type == ChartType.SESSION_VOLUME_PROFILE && !view.series.hasVolume -> ChartType.CANDLES
                     else -> type
                 }
 
@@ -3130,6 +3139,10 @@ fun CoineProChart(
                             wicks = decoration.drawWicks,
                         )
                     }
+                }
+                // The session profiles over the candles they are measured from (5.17.0).
+                if (priceShown && drawnType == ChartType.SESSION_VOLUME_PROFILE) {
+                    clipRect(0f, 0f, plotWidth, plotHeight) { drawSessionVolumeProfiles(view, palette) }
                 }
                 // Clipped, like the drawings below and for the same reason. An overlay is a value
                 // per bar and most of them stay near the price — but a pivot ladder, a SuperTrend
@@ -3630,6 +3643,7 @@ fun CoineProChart(
                 onExplain = onExplainSeries,
                 onBack = onBack,
                 onRemove = onRemoveSeries,
+                onMore = onSeriesMore,
                 change = change,
                 marketStatus = marketStatus,
                 // Inset past the gutter it sits beside, so a left-hand axis does not have the
@@ -3677,6 +3691,19 @@ fun CoineProChart(
             )
         }
 
+        // Trading on the chart (5.17.0): entry, stop, target and working orders.
+        if (orderLines.isNotEmpty()) {
+            PriceAxisOrderLines(
+                frame = frames[0],
+                view = lastView[0],
+                lines = orderLines,
+                palette = palette,
+                accent = alertAccent,
+                onMove = onMoveOrderLine,
+                onGrab = onSnap,
+            )
+        }
+
         // `A` and `L` in the corner of the price gutter (run Ω2). Drawn only where there is an axis
         // to put them on: a thumbnail with `showAxes = false` has no gutter and gets nothing.
         if (decoration.showAxes) {
@@ -3688,6 +3715,7 @@ fun CoineProChart(
                 palette = palette,
                 onAutoScale = { viewport = viewport.autoPriceScale() },
                 onToggleLogarithmic = onToggleLogScale,
+                unit = scaleUnit,
             )
         }
         // TradingView's «»» (5.16.0): back to the newest bar, once the reader has left it.
@@ -4411,13 +4439,28 @@ private fun DrawScope.drawVolumeProfileRows(
     }
 }
 
+/** The y of a value on a scale fitted to [values]' visible range (5.17.0). */
+private fun ownScaleOf(view: ChartViewport, values: Line): (Double) -> Float {
+    val range = values.extent(view.firstVisible, view.lastVisible + 1)
+    if (range == null || range.second <= range.first) return { view.plotHeight / 2f }
+    val (low, high) = range
+    val margin = view.plotHeight * OWN_SCALE_MARGIN
+    val span = view.plotHeight - 2 * margin
+    return { value -> (margin + (1.0 - (value - low) / (high - low)) * span).toFloat() }
+}
+
+private const val OWN_SCALE_MARGIN = 0.1f
+
 private fun DrawScope.drawOverlay(
     view: ChartViewport,
     overlay: ChartLine,
     density: Float,
     conflateGap: Float,
 ) {
-    overlay.fillTo?.let { other -> drawFillBetween(view, overlay.values, other, Color(overlay.fillColour ?: overlay.colour)) { view.yOf(it) } }
+    // A line pinned to its own scale (5.17.0) maps its visible range onto the plot, a tenth kept
+    // clear at each edge; every other line is on the price scale.
+    val yOf: (Double) -> Float = if (overlay.ownScale) ownScaleOf(view, overlay.values) else { value -> view.yOf(value) }
+    overlay.fillTo?.let { other -> drawFillBetween(view, overlay.values, other, Color(overlay.fillColour ?: overlay.colour)) { yOf(it) } }
     if (overlay.widthDp <= 0f) return
     val path = Path()
     var started = false
@@ -4449,7 +4492,7 @@ private fun DrawScope.drawOverlay(
             }
             continue
         }
-        conflator.add(view.xOf(index), view.yOf(value))
+        conflator.add(view.xOf(index), yOf(value))
     }
     conflator.flush()
     drawPath(

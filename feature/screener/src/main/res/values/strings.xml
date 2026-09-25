@@ -43,4 +43,18 @@
     <string name="screener_add_indicator">Add indicator condition</string>
     <string name="screener_add_to_watchlist">Add all %1$s to the watchlist</string>
     <string name="screener_added_to_watchlist">Added to the watchlist</string>
+    <string name="screener_export_csv">CSV</string>
+    <string name="screener_export_saved">Saved</string>
+    <string name="screener_export_failed">Could not save the file</string>
+    <string name="screener_mode_table">Table</string>
+    <string name="screener_mode_signals">Growth signals</string>
+    <string name="screener_scan_setups">Setups</string>
+    <string name="screener_scan_within">Fired within the last … bars</string>
+    <string name="screener_scan_within_bars">%1$s</string>
+    <string name="screener_scan_min_growth">Growth score</string>
+    <string name="screener_scan_min_any">Any</string>
+    <string name="screener_scan_tag_now">%1$s · this bar</string>
+    <string name="screener_scan_tag_ago">%1$s · %2$s bars ago</string>
+    <string name="screener_scan_watch">Notify me of new matches</string>
+    <string name="screener_scan_watching">Notifying you of new matches</string>
 </resources>

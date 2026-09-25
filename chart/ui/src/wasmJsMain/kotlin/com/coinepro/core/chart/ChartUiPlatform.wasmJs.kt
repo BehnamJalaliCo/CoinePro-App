@@ -259,6 +259,7 @@ internal actual fun chartText(text: ChartText): String {
         ChartText.LEGEND_HIDE -> if (persian) "پنهان کردن" else "Hide"
         ChartText.LEGEND_SHOW -> if (persian) "نمایش دادن" else "Show"
         ChartText.LEGEND_SETTINGS -> if (persian) "تنظیمات" else "Settings"
+        ChartText.LEGEND_MORE -> if (persian) "بیشتر" else "More"
         ChartText.LEGEND_REMOVE -> if (persian) "حذف" else "Remove"
         ChartText.LEGEND_CONTROLS_CLOSE -> if (persian) "بستن کنترل‌ها" else "Close the controls"
         ChartText.LEGEND_CONTROLS_OPEN -> if (persian) "کنترل‌های اندیکاتورها" else "Indicator controls"

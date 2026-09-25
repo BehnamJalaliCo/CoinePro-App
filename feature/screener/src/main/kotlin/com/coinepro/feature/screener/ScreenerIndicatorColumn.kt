@@ -1,5 +1,6 @@
 package com.coinepro.feature.screener
 
+import com.coinepro.core.chart.GrowthScan
 import com.coinepro.core.common.BidiText
 import com.coinepro.feature.screener.model.ScreenerField
 import com.coinepro.feature.screener.model.ScreenerFilter
@@ -36,7 +37,11 @@ data class ScreenerIndicatorColumn(
     val key: String,
     val label: String,
     val unit: ScreenerUnit,
+    /** The English heading, where one exists; the growth scan's columns carry both (5.17.0). */
+    val labelEn: String = label,
 ) {
+    fun labelIn(english: Boolean): String = if (english) labelEn else label
+
     /** This column's value for a row, or null where the market has not been reduced yet. */
     fun valueOf(row: ScreenerRow): Double? = row.indicators[key]
 
@@ -83,6 +88,14 @@ data class ScreenerIndicatorColumn(
             val separator = key.lastIndexOf(':')
             val id = if (separator < 0) key else key.substring(0, separator)
             val period = if (separator < 0) null else key.substring(separator + 1)
+            if (GrowthScan.isScanId(id)) {
+                return ScreenerIndicatorColumn(
+                    key = key,
+                    label = GrowthScan.labelOf(id, english = false) ?: id,
+                    unit = ScreenerUnit.PLAIN,
+                    labelEn = GrowthScan.labelOf(id, english = true) ?: id,
+                )
+            }
             val name = ScreenerIndicatorCatalog.labelOf(id)
             return ScreenerIndicatorColumn(
                 key = key,

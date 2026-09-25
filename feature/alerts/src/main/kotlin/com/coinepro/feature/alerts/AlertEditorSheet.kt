@@ -228,6 +228,27 @@ private fun EditorForm(draft: AlertDraft, refusal: AlertRefusal?, controller: Al
             serverOffered = controller.canUseServer(draft),
             onSelect = controller::setVenue,
         )
+        if (draft.venue == AlertVenue.SERVER) {
+            // Delivered by the server beyond push (5.17.0): Telegram, to the account's linked chat,
+            // and email, to its verified address.
+            FieldLabel(stringResource(R.string.alerts_server_delivery))
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = CoineProSpacing.Gutter),
+                horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
+            ) {
+                TapChip(label = stringResource(R.string.alerts_server_push), selected = true, onClick = {})
+                TapChip(
+                    label = stringResource(R.string.alerts_server_telegram),
+                    selected = "telegram" in draft.serverChannels,
+                    onClick = { controller.toggleServerChannel("telegram") },
+                )
+                TapChip(
+                    label = stringResource(R.string.alerts_server_email),
+                    selected = "email" in draft.serverChannels,
+                    onClick = { controller.toggleServerChannel("email") },
+                )
+            }
+        }
 
         FieldLabel(stringResource(R.string.alerts_channels))
         ChannelRow(selected = draft.channels, onToggle = controller::toggleChannel)

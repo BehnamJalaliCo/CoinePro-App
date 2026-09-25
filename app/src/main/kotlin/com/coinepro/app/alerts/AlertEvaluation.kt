@@ -357,4 +357,37 @@ object AlertDrawingLevel {
         val slope = (second.second - first.second) / span.toDouble()
         return (first.second + slope * (atEpochSeconds - first.first)).takeIf(Double::isFinite)
     }
+
+    /**
+     * Every price boundary the drawing has at [atEpochSeconds] (5.17.0) — TradingView's shape
+     * alerts. A rectangle is its top and bottom, a parallel channel its two rails, a flat top/bottom
+     * its sloped side and its flat one, a disjoint channel its two lines. Price entering or leaving
+     * the shape crosses one of them, and that is the touch. Anything else is its one line.
+     */
+    fun boundsAt(toolId: String, points: List<Pair<Long, Double>>, atEpochSeconds: Long): List<Double> {
+        if (toolId in TIME_ONLY_TOOLS) return emptyList()
+        fun lineAt(a: Pair<Long, Double>, b: Pair<Long, Double>): Double? =
+            levelAt("trend", listOf(a, b), atEpochSeconds)
+        return when (toolId) {
+            "rect" -> points.take(2).map { it.second }.takeIf { it.size == 2 }?.sorted()
+            "channel" -> if (points.size >= 3) {
+                val base = lineAt(points[0], points[1])
+                val offset = levelAt("trend", points.take(2), points[2].first)?.let { points[2].second - it }
+                if (base != null && offset != null) listOf(base, base + offset).sorted() else null
+            } else {
+                null
+            }
+            "flattop" -> if (points.size >= 3) {
+                lineAt(points[0], points[1])?.let { listOf(it, points[2].second).sorted() }
+            } else {
+                null
+            }
+            "disjoint" -> if (points.size >= 4) {
+                listOfNotNull(lineAt(points[0], points[1]), lineAt(points[2], points[3])).sorted()
+            } else {
+                null
+            }
+            else -> null
+        } ?: listOfNotNull(levelAt(toolId, points, atEpochSeconds))
+    }
 }

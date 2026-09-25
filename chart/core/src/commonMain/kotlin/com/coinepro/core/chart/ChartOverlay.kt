@@ -72,6 +72,11 @@ data class ChartLine(
      * headline — so hiding that legend row hides the bars with it.
      */
     val profile: VolumeProfile? = null,
+    /**
+     * Drawn on a scale of its own, fitted to the plot, rather than on the price scale (5.17.0) —
+     * TradingView's «Pin to scale → No scale». For a study whose values are not prices.
+     */
+    val ownScale: Boolean = false,
 )
 
 /**
@@ -149,6 +154,25 @@ data class ChartAlertLine(
      * full strength would be the chart claiming a level is being watched when it is not.
      */
     val armed: Boolean = true,
+)
+
+/** What an order line on the chart stands for (5.17.0). */
+enum class OrderLineKind { ENTRY, STOP, TARGET, WORKING }
+
+/**
+ * A trading line on the price axis — a position's entry, its stop and target, or a working order
+ * (5.17.0). TradingView's chart trading: the stop and the target and a working order are dragged
+ * to a new price, and the chart reports the price and nothing else.
+ */
+data class ChartOrderLine(
+    /** Whatever the host needs to name the order or position again. */
+    val id: String,
+    val price: Double,
+    val kind: OrderLineKind,
+    /** The tag's text — «SL», «TP», «BUY 0.10 LMT». */
+    val label: String,
+    /** Whether a drag may move it. An entry is history and is never draggable. */
+    val movable: Boolean = kind != OrderLineKind.ENTRY,
 )
 
 /** What a marker looks like. */

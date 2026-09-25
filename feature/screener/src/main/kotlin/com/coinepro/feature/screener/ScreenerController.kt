@@ -1,8 +1,11 @@
 package com.coinepro.feature.screener
 
+import com.coinepro.core.chart.GrowthScan
 import com.coinepro.core.common.MessageKey
 import com.coinepro.core.common.UiMessage
 import com.coinepro.core.common.toUiMessage
+import com.coinepro.core.export.Csv
+import com.coinepro.core.export.Numbers
 import com.coinepro.core.marketdata.CandleGateway
 import com.coinepro.core.marketdata.MarketCatalogGateway
 import com.coinepro.core.marketdata.MarketSnapshotGateway
@@ -12,6 +15,8 @@ import com.coinepro.core.marketdata.Timeframe
 import com.coinepro.core.model.MarketQuote
 import com.coinepro.core.symbols.SymbolMeta
 import com.coinepro.core.symbols.SymbolRanking
+import com.coinepro.feature.screener.model.NumericOp
+import com.coinepro.feature.screener.model.ScanWatch
 import com.coinepro.feature.screener.model.ScreenerField
 import com.coinepro.feature.screener.model.ScreenerFilter
 import com.coinepro.feature.screener.model.ScreenerRow
@@ -50,6 +55,14 @@ fun interface ScreenerBarSource {
      * would show a table that fills in halfway and then never finishes.
      */
     suspend fun bars(symbol: String): List<OhlcBar>
+
+    /**
+     * The bars for [symbol] on [timeframe] (5.17.0). A source that only knows one interval answers
+     * with that interval's bars on [Timeframe.D1] and with nothing on any other, so a scan on a
+     * timeframe the source cannot serve shows as unresolved rather than as daily bars mislabelled.
+     */
+    suspend fun bars(symbol: String, timeframe: Timeframe): List<OhlcBar> =
+        if (timeframe == Timeframe.D1) bars(symbol) else emptyList()
 }
 
 /**
@@ -66,7 +79,9 @@ class CandleScreenerBarSource(
     private val limit: Int = LIMIT,
 ) : ScreenerBarSource {
 
-    override suspend fun bars(symbol: String): List<OhlcBar> =
+    override suspend fun bars(symbol: String): List<OhlcBar> = bars(symbol, timeframe)
+
+    override suspend fun bars(symbol: String, timeframe: Timeframe): List<OhlcBar> =
         runCatching { gateway.load(symbol, timeframe, limit = limit).candles }.getOrDefault(emptyList())
 
     private companion object {
@@ -129,7 +144,49 @@ data class ScreenerState(
      * printed under the picker rather than silently scoring every market as zero.
      */
     val feedHasVolume: Boolean = false,
+    /** The table, or the growth scan (5.17.0). */
+    val mode: ScreenerMode = ScreenerMode.TABLE,
+    /** The bars indicators and scans are read on. The day's figures stay the day's whatever this is. */
+    val timeframe: Timeframe = Timeframe.D1,
+    /** The setups the growth scan is looking for; empty is «any setup, ranked by growth». */
+    val scanIds: Set<String> = emptySet(),
+    /** How recent a setup has to be, in bars. */
+    val scanWithin: Int = GrowthScan.FRESH,
+    /** The lowest growth score shown, or null for any. */
+    val minGrowth: Double? = null,
+    /** The scans the reader is being told about in the background. */
+    val watches: List<ScanWatch> = emptyList(),
 ) {
+    /** The watch matching the scan on screen, if the reader has one. */
+    val currentWatch: ScanWatch?
+        get() = watches.firstOrNull {
+            it.scanIds == scanIds && it.withinBars == scanWithin && it.minGrowth == minGrowth && it.timeframe == timeframe.wire
+        }
+
+    /**
+     * The conditions actually applied: the table's own, or — on the growth scan — the asset-class
+     * chip plus the scan's setups and threshold. The two modes keep separate conditions so leaving
+     * the scan does not leave its filters behind on the table.
+     */
+    val effectiveFilters: List<ScreenerFilter>
+        get() = when (mode) {
+            ScreenerMode.TABLE -> filters
+            ScreenerMode.SIGNALS -> buildList {
+                addAll(filters.filter { it is ScreenerFilter.Category && it.field == ScreenerField.ASSET_CLASS })
+                // The scan must have run for a market to be listed at all, even with no setup
+                // chosen: a market with no growth score is one the scan knows nothing about.
+                add(
+                    ScreenerFilter.IndicatorFilter(
+                        GrowthScan.GROWTH_ID,
+                        period = null,
+                        op = NumericOp.GTE,
+                        value = minGrowth ?: 0.0,
+                    ),
+                )
+                if (scanIds.isNotEmpty()) add(ScreenerFilter.AnySignal(scanIds, scanWithin))
+            }
+        }
+
     /** How many markets passed. The number the screen prints in Persian digits. */
     val matchCount: Int get() = rows.size
 
@@ -141,13 +198,19 @@ data class ScreenerState(
      * the table does not show is a filter a reader cannot check, correct, or sort by.
      */
     val indicatorColumns: List<ScreenerIndicatorColumn>
-        get() = ScreenerIndicatorColumn.of(filters, columns)
+        get() = when (mode) {
+            ScreenerMode.TABLE -> ScreenerIndicatorColumn.of(filters, columns)
+            ScreenerMode.SIGNALS -> listOf(
+                ScreenerIndicatorColumn.of(GrowthScan.GROWTH_ID),
+                ScreenerIndicatorColumn.of(GrowthScan.RELIABILITY_ID),
+            )
+        }
 
     /** True where the screen has finished, has not failed, and still has nothing to show. */
     val empty: Boolean get() = rows.isEmpty() && !loading && error == null
 
     /** True where the reader has narrowed the list at all, which decides the empty copy. */
-    val narrowed: Boolean get() = filters.isNotEmpty()
+    val narrowed: Boolean get() = if (mode == ScreenerMode.SIGNALS) scanIds.isNotEmpty() || minGrowth != null else filters.isNotEmpty()
 
     /** The current working set as a screen, ready to be saved under [name]. */
     fun asScreen(id: String, name: String): ScreenerScreen =
@@ -286,6 +349,9 @@ class ScreenerController(
             scope.launch {
                 saved.screens.collect { screens -> _state.update { it.copy(saved = screens) } }
             }
+            scope.launch {
+                saved.watches.collect { watches -> _state.update { it.copy(watches = watches) } }
+            }
         }
         followTickers()
         if (pollJob == null && quotes != null) {
@@ -383,6 +449,117 @@ class ScreenerController(
     // ── the filter set ──────────────────────────────────────────────────────────────────────
 
     /** Replaces the whole condition list, which is what the filter sheet's one primary action does. */
+    // ── the growth scan (5.17.0) ─────────────────────────────────────────────────────────────
+
+    /** Switches between the table and the growth scan. The scan sorts by its score. */
+    fun setMode(mode: ScreenerMode) {
+        if (_state.value.mode == mode) return
+        _state.update {
+            it.copy(
+                mode = mode,
+                sort = if (mode == ScreenerMode.SIGNALS) GROWTH_SORT else ScreenerSort.DEFAULT,
+            )
+        }
+        onRequirementsChanged()
+    }
+
+    /**
+     * Reads indicators and scans on [timeframe]. Every bar series and reading is dropped with the old
+     * interval — a four-hour RSI and a daily one share a key, and the cache must not answer one for
+     * the other.
+     */
+    fun setTimeframe(timeframe: Timeframe) {
+        if (_state.value.timeframe == timeframe) return
+        resolveJob?.cancel()
+        resolveJob = null
+        barsBySymbol.clear()
+        readings.clear()
+        asked.clear()
+        _state.update { it.copy(timeframe = timeframe, resolving = false) }
+        rebuild(rowBySymbol.keys.toList())
+        recompute()
+        scheduleResolution()
+    }
+
+    fun setScanIds(ids: Set<String>) {
+        if (_state.value.scanIds == ids) return
+        _state.update { it.copy(scanIds = ids) }
+        recompute()
+    }
+
+    fun setScanWithin(bars: Int) {
+        val clamped = bars.coerceIn(0, GrowthScan.LOOKBACK)
+        if (_state.value.scanWithin == clamped) return
+        _state.update { it.copy(scanWithin = clamped) }
+        recompute()
+    }
+
+    fun setMinGrowth(score: Double?) {
+        if (_state.value.minGrowth == score) return
+        _state.update { it.copy(minGrowth = score) }
+        recompute()
+    }
+
+    /**
+     * Asks to be told when a market enters the scan on screen, or stops asking (5.17.0).
+     *
+     * The markets it will scan are the most liquid [ScanWatch.MAX_SYMBOLS] of those the asset-class
+     * chip allows, and the ones matching now are recorded as already known — so the first
+     * notification is about a market that *started* to qualify, not a list of what already did.
+     */
+    fun toggleWatch() {
+        val store = store ?: return
+        val current = _state.value
+        current.currentWatch?.let { existing ->
+            scope.launch { store.deleteWatch(existing.id) }
+            return
+        }
+        val category = current.filters.filterIsInstance<ScreenerFilter.Category>()
+            .firstOrNull { it.field == ScreenerField.ASSET_CLASS }
+        val symbols = universe.asSequence()
+            .filter { meta -> category == null || category.values.isEmpty() || meta.category.name in category.values }
+            .map(SymbolMeta::symbol)
+            .take(ScanWatch.MAX_SYMBOLS)
+            .toList()
+        val watch = ScanWatch(
+            id = "watch_" + System.currentTimeMillis().toString(),
+            scanIds = current.scanIds,
+            withinBars = current.scanWithin,
+            minGrowth = current.minGrowth,
+            timeframe = current.timeframe.wire,
+            symbols = symbols,
+            known = current.rows.map(ScreenerRow::symbol).toSet(),
+        )
+        scope.launch { store.saveWatch(watch) }
+    }
+
+    /** The rows on screen as a spreadsheet: every column the table shows, in its order. */
+    fun csv(english: Boolean): String {
+        val current = _state.value
+        val header = buildList {
+            add(if (english) "Symbol" else "نماد")
+            addAll(current.columns.map { it.labelIn(english) })
+            addAll(current.indicatorColumns.map { it.labelIn(english) })
+            if (current.mode == ScreenerMode.SIGNALS) add(if (english) "Setups" else "الگوها")
+        }
+        val rows = current.rows.map { row ->
+            buildList {
+                add(row.symbol)
+                current.columns.forEach { column ->
+                    add(row.textOf(column) ?: Numbers.cell(row.valueOf(column)))
+                }
+                current.indicatorColumns.forEach { column -> add(Numbers.cell(column.valueOf(row))) }
+                if (current.mode == ScreenerMode.SIGNALS) {
+                    add(
+                        ScreenerScanTags.of(row, current.scanWithin)
+                            .joinToString("; ") { (kind, ago) -> (if (english) kind.labelEn else kind.label) + " (" + ago + ")" },
+                    )
+                }
+            }
+        }
+        return Csv.build(header, rows)
+    }
+
     fun setFilters(filters: List<ScreenerFilter>) {
         if (_state.value.filters == filters) return
         _state.update { it.copy(filters = filters, activeScreenId = null) }
@@ -557,7 +734,7 @@ class ScreenerController(
             rowBySymbol[symbol] = ScreenerMetrics.rowOf(
                 meta = meta,
                 quote = quoteBySymbol[symbol],
-                bars = barsBySymbol[symbol].orEmpty(),
+                bars = dayBarsOf(barsBySymbol[symbol].orEmpty(), _state.value.timeframe),
                 ticker = tickerBySymbol[symbol],
                 indicators = if (cached == null || keys.isEmpty()) {
                     emptyMap()
@@ -617,8 +794,8 @@ class ScreenerController(
         // and a second walk over a catalogue of a thousand on every quote tick is a walk too many.
         var unknown = 0
         val matched = all.filter { row ->
-            val kept = ScreenerFilter.allMatch(current.filters, row)
-            if (!kept && ScreenerFilter.anyUndecided(current.filters, row)) unknown += 1
+            val kept = ScreenerFilter.allMatch(current.effectiveFilters, row)
+            if (!kept && ScreenerFilter.anyUndecided(current.effectiveFilters, row)) unknown += 1
             kept
         }
         _state.update {
@@ -658,7 +835,7 @@ class ScreenerController(
         // Hoisted rather than asked per symbol: it is the same answer for every market in the pass,
         // and it builds a set each time it is called.
         val needsSeries = requiredIndicatorKeys().isNotEmpty()
-        val cheap = _state.value.filters.filter(::answerableWithoutBars)
+        val cheap = _state.value.effectiveFilters.filter(::answerableWithoutBars)
         val candidates = buildList {
             addAll(visible)
             rowBySymbol.values.forEach { row ->
@@ -677,13 +854,14 @@ class ScreenerController(
         }
 
         asked.addAll(wanted)
+        val timeframe = _state.value.timeframe
         _state.update { it.copy(resolving = true) }
         resolveJob = scope.launch {
             coroutineScope {
                 wanted.forEach { symbol ->
                     launch {
                         resolveGate.withPermit {
-                            val bars = source.bars(symbol)
+                            val bars = source.bars(symbol, timeframe)
                             if (bars.isNotEmpty()) barsBySymbol[symbol] = bars
                         }
                     }
@@ -696,7 +874,14 @@ class ScreenerController(
             // Only for a window that scrolled in while this pass was running. Deliberately not an
             // unconditional re-schedule: that would walk the whole catalogue a budget at a time and
             // undo the bound the budget exists to impose.
-            if (visible.any { it !in asked }) scheduleResolution()
+            if (visible.any { it !in asked }) {
+                scheduleResolution()
+            } else if (_state.value.mode == ScreenerMode.SIGNALS && asked.size < SIGNAL_UNIVERSE) {
+                // A scan lists only the markets that matched, so nothing below the fold pulls the
+                // next pass in by scrolling. It keeps going on its own, down the liquidity order,
+                // to [SIGNAL_UNIVERSE] markets.
+                scheduleResolution()
+            }
         }
     }
 
@@ -718,12 +903,13 @@ class ScreenerController(
         is ScreenerFilter.Numeric ->
             filter.field == ScreenerField.LAST_PRICE ||
                 (tickerBySymbol.isNotEmpty() && !filter.field.isDerived)
-        is ScreenerFilter.IndicatorFilter -> false
+        is ScreenerFilter.IndicatorFilter, is ScreenerFilter.AnySignal -> false
     }
 
     /** Every indicator reading this screen's filters and columns name, as normalised keys. */
     private fun requiredIndicatorKeys(): Set<String> {
         val current = _state.value
+        if (current.mode == ScreenerMode.SIGNALS) return GrowthScan.IDS.toSet()
         return ScreenerFilter.indicatorKeys(current.filters) +
             current.columns.mapNotNull(ScreenerField::indicatorKey)
     }
@@ -750,5 +936,45 @@ class ScreenerController(
 
         /** How many bar requests may be in flight. The number `SparklineStore` settled on. */
         const val RESOLUTION_CONCURRENCY = 4
+
+        /** How far down the liquidity order the growth scan goes on its own. */
+        const val SIGNAL_UNIVERSE = 360
+
+        val GROWTH_SORT = ScreenerSort(ScreenerField.LAST_PRICE, descending = true, indicatorKey = GrowthScan.GROWTH_ID)
+    }
+}
+
+/** The screener's two faces: the table of figures, and the growth scan (5.17.0). */
+enum class ScreenerMode { TABLE, SIGNALS }
+
+/** The fresh setups on a row, freshest first — the tags under a scanned market's name. */
+object ScreenerScanTags {
+    fun of(row: ScreenerRow, within: Int): List<Pair<GrowthScan.Kind, Int>> =
+        GrowthScan.Kind.entries.mapNotNull { kind ->
+            val ago = row.indicators[kind.id]?.toInt() ?: return@mapNotNull null
+            if (ago <= within) kind to ago else null
+        }.sortedBy { it.second }
+}
+
+/**
+ * The day's figures out of bars on [timeframe]: the bars themselves on a day, folded into UTC days
+ * below one, and none above — a week's bar is not a day's, and the day's move column must not
+ * print one as if it were.
+ */
+private const val DAY_SECONDS = 86_400L
+
+internal fun dayBarsOf(bars: List<OhlcBar>, timeframe: Timeframe): List<OhlcBar> = when {
+    bars.isEmpty() || timeframe == Timeframe.D1 -> bars
+    timeframe.seconds > Timeframe.D1.seconds -> emptyList()
+    else -> bars.groupBy { it.t.floorDiv(DAY_SECONDS) }.entries.sortedBy { it.key }.map { (key, day) ->
+        OhlcBar(
+            t = key * DAY_SECONDS,
+            o = day.first().o,
+            h = day.maxOf(OhlcBar::h),
+            l = day.minOf(OhlcBar::l),
+            c = day.last().c,
+            v = day.sumOf(OhlcBar::v),
+            closed = day.last().closed,
+        )
     }
 }

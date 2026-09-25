@@ -15,6 +15,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -65,6 +68,7 @@ import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.CoineProTeachingStrip
+import com.coinepro.core.designsystem.CoineProTextField
 import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.marketintel.MarketImpact
 import com.coinepro.core.marketintel.MarketIntelController
@@ -190,6 +194,7 @@ fun NewsScreen(
     val state by reader.state.collectAsStateWithLifecycle()
     var relevance by remember { mutableStateOf<MarketRelevance?>(null) }
     var savedOnly by rememberSaveable { mutableStateOf(false) }
+    var newsFilter by remember { mutableStateOf(NewsFilter()) }
     // The open story is held twice, and both halves earn their place.
     //
     // The **id** is what survives a rotation and a process death, because it is the only part of a
@@ -217,8 +222,8 @@ fun NewsScreen(
 
     LaunchedEffect(reader) { reader.refresh() }
 
-    val filtered = remember(state.news, relevance, savedOnly, savedArticles) {
-        when {
+    val filtered = remember(state.news, relevance, savedOnly, savedArticles, newsFilter) {
+        val narrowed = when {
             // A saved story is drawn from the reader's own copy, not looked up in the feed. The feed
             // is a two-hour window; anything older than that is gone from it, and a saved list that
             // could only show what happened to still be in the window would be a saved list that
@@ -227,7 +232,9 @@ fun NewsScreen(
             relevance == null -> state.news.map(MarketNewsItem::asStory)
             else -> state.news.filter { relevance in it.relevance }.map(MarketNewsItem::asStory)
         }
+        newsFilter.apply(narrowed)
     }
+    val feedStories = remember(state.news) { state.news.map(MarketNewsItem::asStory) }
 
     // The moment the newest story on screen was published — the one fact that settles «اخبار
     // آپدیت نمی‌شود» without an export, a log or a second person. It is read off the list rather
@@ -252,7 +259,10 @@ fun NewsScreen(
             MarketPlatform.COINEPRO_FX -> listOf(MarketRelevance.GOLD, MarketRelevance.SILVER)
         }
     }
-    LaunchedEffect(shown) { relevance = null }
+    LaunchedEffect(shown) {
+        relevance = null
+        newsFilter = NewsFilter()
+    }
 
     // The item first, then the two lists — the second path is what a reader who was killed mid-story
     // comes back through, and it is why saving is worth offering at all: it is the only one of the
@@ -419,6 +429,15 @@ fun NewsScreen(
                 )
             }
 
+            if (!savedOnly && feedStories.isNotEmpty()) {
+                NewsFilterBar(
+                    filter = newsFilter,
+                    sources = remember(feedStories) { NewsFilter.sourcesOf(feedStories) },
+                    classified = remember(feedStories) { NewsFilter.classified(feedStories) },
+                    onChange = { newsFilter = it },
+                )
+            }
+
             AnimatedContent(
                 targetState = when {
                     savedOnly && filtered.isEmpty() -> "saved-empty"
@@ -430,6 +449,7 @@ fun NewsScreen(
                     // Before the plain empty, because "nothing matched" is the wrong sentence for
                     // a body that had thirty rows in it.
                     filtered.isEmpty() && unreadable -> "unreadable"
+                    filtered.isEmpty() && newsFilter.active -> "filtered-empty"
                     filtered.isEmpty() -> "empty"
                     else -> "content"
                 },
@@ -470,6 +490,12 @@ fun NewsScreen(
                         hint = stringResource(R.string.news_none_readable_hint),
                         action = stringResource(R.string.news_refresh),
                         onAction = reader::refresh,
+                    )
+                    "filtered-empty" -> CoineProEmptyState(
+                        icon = CoineProIcons.News,
+                        message = stringResource(R.string.news_filter_none),
+                        action = stringResource(R.string.news_filter_clear),
+                        onAction = { newsFilter = NewsFilter() },
                     )
                     "empty" -> CoineProEmptyState(
                         icon = CoineProIcons.News,
@@ -915,4 +941,56 @@ internal fun paragraphOf(text: String): String = CoineProProse.paragraph(text)
 private fun MarketPlatform.labelRes(): Int = when (this) {
     MarketPlatform.TRADEYAR -> R.string.news_platform_crypto
     MarketPlatform.COINEPRO_FX -> R.string.news_platform_forex
+}
+
+/**
+ * The filters over the feed (5.17.0): a symbol or word, high impact, the two sentiments, and the
+ * publishers the feed actually carries. Impact and sentiment are drawn only over a classified feed;
+ * the guest feed has neither, and a chip that can only ever empty the list is not a filter.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun NewsFilterBar(
+    filter: NewsFilter,
+    sources: List<String>,
+    classified: Boolean,
+    onChange: (NewsFilter) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        CoineProTextField(
+            value = filter.query,
+            onValueChange = { onChange(filter.copy(query = it)) },
+            label = stringResource(R.string.news_filter_search),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            if (classified) {
+                FilterChip(
+                    selected = filter.highImpact,
+                    onClick = { onChange(filter.copy(highImpact = !filter.highImpact)) },
+                    label = { Text(stringResource(R.string.news_filter_high_impact), style = MaterialTheme.typography.labelSmall) },
+                )
+                listOf(
+                    NewsSentiment.BULLISH to R.string.news_filter_bullish,
+                    NewsSentiment.BEARISH to R.string.news_filter_bearish,
+                ).forEach { (sentiment, label) ->
+                    FilterChip(
+                        selected = filter.sentiment == sentiment,
+                        onClick = { onChange(filter.copy(sentiment = sentiment.takeIf { filter.sentiment != it })) },
+                        label = { Text(stringResource(label), style = MaterialTheme.typography.labelSmall) },
+                    )
+                }
+            }
+            sources.forEach { source ->
+                FilterChip(
+                    selected = filter.source == source,
+                    onClick = { onChange(filter.copy(source = source.takeIf { filter.source != it })) },
+                    label = { Text(source, style = MaterialTheme.typography.labelSmall) },
+                )
+            }
+        }
+    }
 }

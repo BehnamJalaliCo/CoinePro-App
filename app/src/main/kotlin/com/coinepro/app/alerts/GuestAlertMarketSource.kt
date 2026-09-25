@@ -240,7 +240,16 @@ class GuestAlertMarketSource @Inject constructor(
         val beforeBar = closed.getOrNull(closed.size - 2)?.timeSeconds
         return wanted.mapNotNull { id ->
             val drawing = placed[id] ?: return@mapNotNull null
-            val levelNow = levelOf(drawing, nowBar) ?: return@mapNotNull null
+            val now = AlertDrawingLevel.boundsAt(drawing.toolId, drawing.points, nowBar)
+            if (now.isEmpty()) return@mapNotNull null
+            // A shape's boundaries travel as (before, now) pairs (5.17.0); a single line keeps the
+            // shape it always had, so an alert stored before shapes existed reads the same.
+            if (now.size > 1) {
+                val before = beforeBar?.let { AlertDrawingLevel.boundsAt(drawing.toolId, drawing.points, it) }
+                    ?.takeIf { it.size == now.size } ?: now
+                return@mapNotNull id to now.indices.flatMap { listOf(before[it], now[it]) }
+            }
+            val levelNow = now.single()
             val levelBefore = beforeBar?.let { levelOf(drawing, it) }
             id to listOfNotNull(levelBefore, levelNow)
         }.toMap()

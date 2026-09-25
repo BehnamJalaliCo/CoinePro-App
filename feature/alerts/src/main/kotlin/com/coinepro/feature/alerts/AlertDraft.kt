@@ -327,6 +327,11 @@ data class AlertDraft(
     /** Where this alert is decided. See [AlertVenue]; the editor only offers the second where it can. */
     val venue: AlertVenue = AlertVenue.DEVICE,
     /**
+     * How a server alert is delivered (5.17.0): push always, and Telegram or email where the reader
+     * asks. Only read for [AlertVenue.SERVER]; a device alert has its own [channels].
+     */
+    val serverChannels: Set<String> = setOf("push"),
+    /**
      * The drawings on this symbol's chart, for the drawing picker.
      *
      * Loaded by the controller when the symbol is chosen rather than held by the sheet, for the same

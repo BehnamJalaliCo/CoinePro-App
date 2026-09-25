@@ -8,6 +8,9 @@ enum class PriceAlertCondition(val wireValue: String) {
     CROSS_UP("cross_up"),
     CROSS_DOWN("cross_down"),
     CROSS("cross"),
+
+    /** A channel, a move over bars or an indicator, described by [PriceAlert.spec] (5.17.0, CoinePro-FX). */
+    SPEC("spec"),
 }
 
 enum class PriceAlertTrigger(val wireValue: String) {
@@ -46,6 +49,10 @@ data class PriceAlert(
     val active: Boolean,
     val createdAtEpochMillis: Long,
     val lastTriggeredAtEpochMillis: Long?,
+    /** The advanced condition, for [PriceAlertCondition.SPEC] (5.17.0). See `ServerAlertSpec`. */
+    val spec: Map<String, String>? = null,
+    /** How the server delivers it: `push`, `telegram`, `email`. */
+    val channels: List<String> = listOf("push"),
 )
 
 data class NotificationCenterState(

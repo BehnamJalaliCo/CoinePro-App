@@ -797,3 +797,52 @@ internal fun closePath(view: ChartViewport, conflateGap: Float): Path {
     conflator.flush()
     return path
 }
+
+/**
+ * One volume profile per session in view (5.17.0), each drawn from its session's first bar across
+ * [SESSION_PROFILE_SHARE] of the session's width: the rows in the neutral ink, the value area a
+ * shade stronger, the point of control as a line. A session is a UTC day.
+ */
+internal fun DrawScope.drawSessionVolumeProfiles(view: ChartViewport, palette: ChartPalette) {
+    val series = view.series
+    if (!series.hasVolume) return
+    var start = view.firstVisible
+    while (start <= view.lastVisible) {
+        val day = series[start].t.floorDiv(DAY_SECONDS)
+        var end = start
+        while (end + 1 <= view.lastVisible && series[end + 1].t.floorDiv(DAY_SECONDS) == day) end += 1
+        drawSessionProfile(view, palette, start, end)
+        start = end + 1
+    }
+}
+
+private fun DrawScope.drawSessionProfile(view: ChartViewport, palette: ChartPalette, from: Int, to: Int) {
+    val series = view.series
+    val profile = IndicatorsExtC.volumeProfile(
+        series.high, series.low, series.close, series.open, series.volume, from, to, rows = SESSION_PROFILE_ROWS,
+    )
+    val peak = profile.volume.maxOrNull()?.takeIf { it > 0.0 } ?: return
+    val left = view.xOf(from) - view.barWidth / 2f
+    val span = max(view.barWidth, view.xOf(to) - view.xOf(from) + view.barWidth) * SESSION_PROFILE_SHARE
+    for (row in profile.volume.indices) {
+        val top = view.yOf(profile.rowHigh[row])
+        val bottom = view.yOf(profile.rowLow[row])
+        val height = max(1f, bottom - top - 1f)
+        val width = (profile.volume[row] / peak * span).toFloat()
+        val inValue = row in profile.valueAreaLow..profile.valueAreaHigh
+        drawRect(
+            color = palette.text.copy(alpha = if (inValue) SESSION_VALUE_ALPHA else SESSION_ROW_ALPHA),
+            topLeft = Offset(left, top),
+            size = Size(width, height),
+        )
+    }
+    val poc = profile.pocIndex.takeIf { it in profile.volume.indices } ?: return
+    val y = view.yOf((profile.rowLow[poc] + profile.rowHigh[poc]) / 2.0)
+    drawLine(color = palette.down.copy(alpha = 0.9f), start = Offset(left, y), end = Offset(left + span, y), strokeWidth = 1.dp.toPx())
+}
+
+private const val DAY_SECONDS = 86_400L
+private const val SESSION_PROFILE_ROWS = 24
+private const val SESSION_PROFILE_SHARE = 0.7f
+private const val SESSION_ROW_ALPHA = 0.18f
+private const val SESSION_VALUE_ALPHA = 0.32f

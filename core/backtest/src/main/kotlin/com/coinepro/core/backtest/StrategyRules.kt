@@ -146,6 +146,74 @@ object StrategyRules {
                 }
             }
 
+            Backtest.Strategy.MACD_CROSS -> {
+                val macd = Indicators.macd(close)
+                for (index in 0 until size) {
+                    val line = macd.macd[index]
+                    val signal = macd.signal[index]
+                    wanted[index] = when {
+                        line == null || signal == null -> FLAT
+                        line > signal -> LONG
+                        allowShorts && line < signal -> SHORT
+                        else -> FLAT
+                    }
+                }
+            }
+
+            Backtest.Strategy.SUPERTREND -> {
+                val trend = Indicators.supertrend(series.high, series.low, close, 10, 3.0).trend
+                for (index in 0 until size) {
+                    val direction = trend[index]
+                    wanted[index] = when {
+                        direction == null -> FLAT
+                        direction > 0 -> LONG
+                        allowShorts -> SHORT
+                        else -> FLAT
+                    }
+                }
+            }
+
+            Backtest.Strategy.BOLLINGER_REVERSION -> {
+                val bands = Indicators.bollinger(close, 20, 2.0)
+                var held = FLAT
+                for (index in 0 until size) {
+                    val upper = bands.upper[index]
+                    val lower = bands.lower[index]
+                    val basis = bands.basis[index]
+                    if (upper != null && lower != null && basis != null) {
+                        held = when {
+                            held == LONG -> if (close[index] >= basis) FLAT else LONG
+                            held == SHORT -> if (close[index] <= basis) FLAT else SHORT
+                            close[index] < lower -> LONG
+                            allowShorts && close[index] > upper -> SHORT
+                            else -> FLAT
+                        }
+                    }
+                    wanted[index] = held
+                }
+            }
+
+            Backtest.Strategy.GROWTH_SCAN -> {
+                val trend = Indicators.supertrend(series.high, series.low, close, 10, 3.0).trend
+                val channel = Indicators.donchian(series.high, series.low, settings.channel)
+                val adx = Indicators.adx(series.high, series.low, close, 14).adx
+                var held = FLAT
+                for (index in 1 until size) {
+                    val now = trend[index]
+                    val before = trend[index - 1]
+                    val ceiling = channel.upper[index - 1]
+                    val strength = adx[index]
+                    val turnedUp = now != null && before != null && now > 0 && before < 0
+                    val brokeOut = ceiling != null && strength != null && close[index] > ceiling && strength >= 20.0
+                    held = when {
+                        held == LONG -> if (now != null && now < 0) FLAT else LONG
+                        turnedUp || brokeOut -> LONG
+                        else -> FLAT
+                    }
+                    wanted[index] = held
+                }
+            }
+
             Backtest.Strategy.BREAKOUT -> {
                 val channel = Indicators.donchian(series.high, series.low, settings.channel)
                 var held = FLAT
@@ -205,6 +273,8 @@ object StrategyRules {
         settings: Backtest.Settings = Backtest.Settings(),
         allowShorts: Boolean = false,
         startingEquity: Double = Engine.DEFAULT_STARTING_EQUITY,
+        /** Lower-timeframe bars inside each bar, for the bar magnifier (5.17.0). */
+        magnifier: ((Int) -> List<com.coinepro.core.chart.Candle>)? = null,
     ): EngineResult? {
         if (series.size < Backtest.MINIMUM_BARS) return null
         val wanted = directions(series, settings, allowShorts) ?: return null
@@ -214,6 +284,10 @@ object StrategyRules {
             strategy = strategy(wanted, size),
             startingEquity = startingEquity,
             feePercent = feePercentPerSide(settings.costFraction),
+            slippagePercent = settings.slippagePercent,
+            stopPercent = settings.stopPercent,
+            targetPercent = settings.targetPercent,
+            magnifier = magnifier,
         )
     }
 }

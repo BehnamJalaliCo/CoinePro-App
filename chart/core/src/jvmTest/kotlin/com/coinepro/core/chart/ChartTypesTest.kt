@@ -36,7 +36,7 @@ class ChartTypesTest {
 
     @Test
     fun `every chart type the engine offers is accounted for`() {
-        assertEquals(20, ChartType.entries.size)
+        assertEquals(21, ChartType.entries.size)
     }
 
     @Test
@@ -49,7 +49,7 @@ class ChartTypesTest {
         )) {
             assertTrue("$type must draw as a line", type.isLine)
         }
-        for (type in listOf(ChartType.VOLUME_CANDLES, ChartType.FOOTPRINT, ChartType.TPO, ChartType.COLUMNS, ChartType.HIGH_LOW)) {
+        for (type in listOf(ChartType.VOLUME_CANDLES, ChartType.FOOTPRINT, ChartType.TPO, ChartType.COLUMNS, ChartType.HIGH_LOW, ChartType.SESSION_VOLUME_PROFILE)) {
             assertFalse("$type draws a mark per bar, not a line", type.isLine)
         }
         // And the old answers are unchanged.
@@ -69,6 +69,7 @@ class ChartTypesTest {
             ChartType.TPO,
             ChartType.COLUMNS,
             ChartType.HIGH_LOW,
+            ChartType.SESSION_VOLUME_PROFILE,
         )) {
             assertTrue("$type plots the feed's own bars, so its x axis is time", type.isTimeBased)
         }
@@ -95,6 +96,7 @@ class ChartTypesTest {
             ChartType.TPO,
             ChartType.COLUMNS,
             ChartType.HIGH_LOW,
+            ChartType.SESSION_VOLUME_PROFILE,
         )) {
             assertEquals(series.bars, ChartTransforms.apply(series, type).bars)
         }

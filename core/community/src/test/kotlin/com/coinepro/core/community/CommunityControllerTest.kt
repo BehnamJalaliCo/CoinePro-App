@@ -54,6 +54,14 @@ class CommunityControllerTest {
         override suspend fun setDisplayName(name: String?) {
             held.value = name
         }
+
+        val followed = MutableStateFlow<Set<String>>(emptySet())
+
+        override val follows: Flow<Set<String>> = followed
+
+        override suspend fun setFollows(names: Set<String>) {
+            followed.value = names
+        }
     }
 
     private class FakeGateway(
@@ -346,5 +354,29 @@ class CommunityControllerTest {
         assertEquals(emptyList<CommunityPost>(), controller.state.value.posts)
         assertNull(controller.state.value.error)
         assertEquals("رضا", controller.state.value.displayName)
+    }
+
+    @Test
+    fun `following narrows the feed to the followed authors and is kept by the store`() = runTest {
+        val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
+        val other = samplePost(2).copy(author = "مینا")
+        val gateway = FakeGateway(pages = mapOf(1 to listOf(samplePost(1), other)))
+        val identity = FakeIdentity()
+        val controller = CommunityController(gateway, identity, scope)
+
+        controller.start()
+        advanceUntilIdle()
+        controller.toggleFollow("مینا")
+        controller.setFollowingOnly(true)
+        advanceUntilIdle()
+
+        assertEquals(setOf("مینا"), identity.followed.value)
+        assertEquals(listOf(2L), controller.state.value.visiblePosts.map { it.id })
+
+        controller.toggleFollow("مینا")
+        advanceUntilIdle()
+        assertTrue(controller.state.value.visiblePosts.isEmpty())
+        controller.setFollowingOnly(false)
+        assertEquals(2, controller.state.value.visiblePosts.size)
     }
 }

@@ -224,7 +224,7 @@ object ChartCatalog {
     fun chartTypeCount(hasVolume: Boolean): Int = chartTypesFor(hasVolume).size
 
     /** The two types that are meaningless without a volume column. */
-    val VOLUME_ONLY_TYPES: Set<ChartType> = setOf(ChartType.FOOTPRINT, ChartType.TPO)
+    val VOLUME_ONLY_TYPES: Set<ChartType> = setOf(ChartType.FOOTPRINT, ChartType.TPO, ChartType.SESSION_VOLUME_PROFILE)
 
     val CHART_TYPES: List<ChartTypeOption> = listOf(
         ChartTypeOption(ChartType.CANDLES, "کندل", "candles", ChartIcon("tv_chart_candles")),
@@ -257,6 +257,7 @@ object ChartCatalog {
         // The two Pro-Chart's terminal drew and this app did not, until 5.11.0.
         ChartTypeOption(ChartType.COLUMNS, "ستونی", "columns", ChartIcon("tv_chart_columns")),
         ChartTypeOption(ChartType.HIGH_LOW, "سقف و کف", "highlow", ChartIcon("tv_chart_highlow")),
+        ChartTypeOption(ChartType.SESSION_VOLUME_PROFILE, "پروفایل حجم جلسه", "svp", ChartIcon("tv_tool_volumeprofile")),
     )
 
     /**

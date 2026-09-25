@@ -506,6 +506,7 @@ fun ChartStudioScreen(
                             hasMoreHistory = state.hasMore,
                             loadingHistory = state.loadingMore,
                             onLoadMoreHistory = controller::loadMore,
+                            loadMagnifier = controller::magnifierBars,
                         )
                     } else {
                         Text(

@@ -3,6 +3,7 @@ package com.coinepro.feature.screener
 import com.coinepro.core.chart.Candle
 import com.coinepro.core.chart.CandleSeries
 import com.coinepro.core.chart.ChartCatalog
+import com.coinepro.core.chart.GrowthScan
 import com.coinepro.core.chart.IndicatorPane
 import com.coinepro.core.chart.Indicators
 import com.coinepro.core.chart.IndicatorsExt
@@ -70,6 +71,9 @@ object ScreenerIndicators {
      */
     fun compute(indicatorId: String, period: Int?, bars: List<OhlcBar>): Double? {
         if (bars.size < MIN_BARS) return null
+        if (GrowthScan.isScanId(indicatorId)) {
+            return GrowthScan.of(seriesOf(bars))?.let { GrowthScan.valueOf(indicatorId, it) }
+        }
         return reading(indicatorId, period, seriesOf(bars))
     }
 
@@ -89,8 +93,15 @@ object ScreenerIndicators {
     fun computeAll(keys: Set<String>, bars: List<OhlcBar>): Map<String, Double> {
         if (keys.isEmpty() || bars.size < MIN_BARS) return emptyMap()
         val series = seriesOf(bars)
+        // The scan answers every one of its ids from one pass, so it is run once per series and
+        // only when a key asks for it.
+        val scan by lazy { GrowthScan.of(series) }
         return buildMap {
             keys.forEach { key ->
+                if (GrowthScan.isScanId(key)) {
+                    scan?.let { GrowthScan.valueOf(key, it) }?.takeIf(Double::isFinite)?.let { put(key, it) }
+                    return@forEach
+                }
                 val separator = key.lastIndexOf(':')
                 val id = if (separator < 0) key else key.substring(0, separator)
                 val period = if (separator < 0) null else key.substring(separator + 1).toIntOrNull()

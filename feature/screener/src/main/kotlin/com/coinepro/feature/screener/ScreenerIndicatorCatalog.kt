@@ -1,6 +1,7 @@
 package com.coinepro.feature.screener
 
 import com.coinepro.core.chart.ChartCatalog
+import com.coinepro.core.chart.GrowthScan
 import com.coinepro.core.chart.IndicatorOption
 import com.coinepro.core.chart.IndicatorPane
 import com.coinepro.feature.screener.model.ScreenerField
@@ -198,8 +199,9 @@ object ScreenerIndicatorCatalog {
      * condition row that prints nothing is worse than one that prints a ticker the reader
      * half-recognises.
      */
-    fun labelOf(id: String): String =
-        ChartCatalog.INDICATORS.firstOrNull { it.id == id }?.label
+    fun labelOf(id: String, english: Boolean = false): String =
+        GrowthScan.labelOf(id, english)
+            ?: ChartCatalog.INDICATORS.firstOrNull { it.id == id }?.label
             ?: ScreenerField.entries.firstOrNull { it.indicatorId == id }?.label
             ?: id
 

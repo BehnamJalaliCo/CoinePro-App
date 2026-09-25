@@ -91,4 +91,9 @@
     <string name="community_add_script">«%1$s» را به چارت من اضافه کنید</string>
     <string name="community_script_installed">شما این را اضافه کرده‌اید</string>
     <string name="community_founding_member">عضو بنیان‌گذار</string>
+    <string name="community_follow">دنبال کردن نویسنده</string>
+    <string name="community_unfollow">لغو دنبال کردن</string>
+    <string name="community_following">دنبال‌شده‌ها</string>
+    <string name="community_following_empty">هنوز پستی از نویسنده‌هایی که دنبال می‌کنید اینجا نیست.</string>
+    <string name="community_following_all">نمایش همه‌ی پست‌ها</string>
 </resources>

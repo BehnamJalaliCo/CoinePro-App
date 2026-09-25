@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.coinepro.feature.screener.model.NumericOp
+import com.coinepro.feature.screener.model.ScanWatch
 import com.coinepro.feature.screener.model.ScreenerField
 import com.coinepro.feature.screener.model.ScreenerFilter
 import com.coinepro.feature.screener.model.ScreenerScreen
@@ -71,6 +72,38 @@ class ScreenerStore(private val dataStore: DataStore<Preferences>) {
     }
 
     /** Forgets one screen. An id that is not stored is a no-op rather than an error. */
+    /** The growth scans the reader asked to be told about (5.17.0). */
+    val watches: Flow<List<ScanWatch>> = dataStore.data
+        .map { preferences -> preferences[WATCHES].orEmpty() }
+        .distinctUntilChanged()
+        .map(ScanWatchCodec::decodeAll)
+
+    suspend fun saveWatch(watch: ScanWatch) {
+        dataStore.edit { preferences ->
+            val existing = ScanWatchCodec.decodeAll(preferences[WATCHES].orEmpty()).filterNot { it.id == watch.id }
+            preferences[WATCHES] = ScanWatchCodec.encodeAll((existing + watch).takeLast(MAX_WATCHES))
+        }
+    }
+
+    suspend fun deleteWatch(id: String) {
+        dataStore.edit { preferences ->
+            preferences[WATCHES] = ScanWatchCodec.encodeAll(
+                ScanWatchCodec.decodeAll(preferences[WATCHES].orEmpty()).filterNot { it.id == id },
+            )
+        }
+    }
+
+    /** Records what a watch matched on its last pass, so the next announces only newcomers. */
+    suspend fun recordMatches(id: String, matched: Set<String>) {
+        dataStore.edit { preferences ->
+            preferences[WATCHES] = ScanWatchCodec.encodeAll(
+                ScanWatchCodec.decodeAll(preferences[WATCHES].orEmpty()).map {
+                    if (it.id == id) it.copy(known = matched) else it
+                },
+            )
+        }
+    }
+
     suspend fun delete(id: String) {
         dataStore.edit { preferences ->
             val remaining = ScreenerCodec.decodeAll(preferences[SCREENS].orEmpty())
@@ -81,6 +114,8 @@ class ScreenerStore(private val dataStore: DataStore<Preferences>) {
 
     private companion object {
         val SCREENS = stringPreferencesKey("screener_saved_screens")
+        val WATCHES = stringPreferencesKey("screener_scan_watches")
+        const val MAX_WATCHES = 20
 
         /** A fuse against a caller bug, not a limit on the reader. See the class note. */
         const val MAX_SCREENS = 500
@@ -198,6 +233,9 @@ internal object ScreenerCodec {
         is ScreenerFilter.TextMatch ->
             if (SEPARATORS.any { filter.query.contains(it) }) null else "t" + UNIT + filter.query
 
+        is ScreenerFilter.AnySignal -> listOf(
+            "s", filter.ids.joinToString(LIST), filter.withinBars.toString(),
+        ).joinToString(UNIT)
         is ScreenerFilter.IndicatorFilter -> listOf(
             "i",
             filter.indicatorId,
@@ -230,6 +268,10 @@ internal object ScreenerCodec {
             }
 
             "t" -> parts.getOrNull(1)?.let(ScreenerFilter::TextMatch)
+            "s" -> ScreenerFilter.AnySignal(
+                ids = parts.getOrNull(1).orEmpty().split(LIST).filter(String::isNotBlank).toSet(),
+                withinBars = parts.getOrNull(2)?.toIntOrNull() ?: return null,
+            )
 
             "i" -> {
                 val indicatorId = parts.getOrNull(1)?.takeIf(String::isNotBlank) ?: return null
@@ -253,4 +295,37 @@ internal object ScreenerCodec {
 
     private fun op(name: String?): NumericOp? =
         NumericOp.entries.firstOrNull { it.name == name }
+}
+
+/** The watches, in the same control-character shape as the screens beside them. */
+internal object ScanWatchCodec {
+    private const val FILE = "\u001C"
+    private const val GROUP = "\u001D"
+    private const val LIST = ","
+
+    fun encodeAll(watches: List<ScanWatch>): String = watches.joinToString(FILE) { watch ->
+        listOf(
+            watch.id,
+            watch.scanIds.joinToString(LIST),
+            watch.withinBars.toString(),
+            watch.minGrowth?.toString().orEmpty(),
+            watch.timeframe,
+            watch.symbols.joinToString(LIST),
+            watch.known.joinToString(LIST),
+        ).joinToString(GROUP)
+    }
+
+    fun decodeAll(stored: String): List<ScanWatch> = stored.split(FILE).filter(String::isNotBlank).mapNotNull { record ->
+        val parts = record.split(GROUP)
+        val id = parts.getOrNull(0)?.takeIf(String::isNotBlank) ?: return@mapNotNull null
+        ScanWatch(
+            id = id,
+            scanIds = parts.getOrNull(1).orEmpty().split(LIST).filter(String::isNotBlank).toSet(),
+            withinBars = parts.getOrNull(2)?.toIntOrNull() ?: return@mapNotNull null,
+            minGrowth = parts.getOrNull(3)?.toDoubleOrNull(),
+            timeframe = parts.getOrNull(4)?.takeIf(String::isNotBlank) ?: return@mapNotNull null,
+            symbols = parts.getOrNull(5).orEmpty().split(LIST).filter(String::isNotBlank),
+            known = parts.getOrNull(6).orEmpty().split(LIST).filter(String::isNotBlank).toSet(),
+        )
+    }
 }

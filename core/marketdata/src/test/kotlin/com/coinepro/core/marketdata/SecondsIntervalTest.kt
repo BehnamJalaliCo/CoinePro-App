@@ -97,7 +97,7 @@ class SecondsIntervalTest {
 
     @Test
     fun `the offered set is the range the owner named`() {
-        assertEquals(listOf(10, 15, 20, 30, 45, 50), SECONDS_KEYS)
+        assertEquals(listOf(1, 5, 10, 15, 20, 30, 45, 50), SECONDS_KEYS)
         // Constructing one outside the set is a programming error, not a fallback.
         SECONDS_KEYS.forEach { ChartInterval.Seconds(it) }
         runCatching { ChartInterval.Seconds(7) }.let { assertTrue(it.isFailure) }

@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import java.security.SecureRandom
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 /**
@@ -45,6 +46,16 @@ interface CommunityIdentityStore {
 
     /** Records the name the server confirmed — or forgets it, on a refusal that says it is gone. */
     suspend fun setDisplayName(name: String?)
+
+    /**
+     * The authors this reader follows (5.17.0), kept on this phone.
+     *
+     * The board has no social graph on the server, so «Following» is the reader's own list of names
+     * and the feed is narrowed to them here. Nothing about it leaves the device.
+     */
+    val follows: Flow<Set<String>> get() = flowOf(emptySet())
+
+    suspend fun setFollows(names: Set<String>) = Unit
 }
 
 /**
@@ -73,8 +84,26 @@ class PreferencesCommunityIdentityStore(
         }
     }
 
+    override val follows: Flow<Set<String>> = dataStore.data.map { preferences ->
+        preferences[FOLLOWS].orEmpty().split(FOLLOW_SEPARATOR).filter(String::isNotBlank).toSet()
+    }
+
+    override suspend fun setFollows(names: Set<String>) {
+        dataStore.edit { preferences ->
+            if (names.isEmpty()) {
+                preferences.remove(FOLLOWS)
+            } else {
+                preferences[FOLLOWS] = names.sorted().joinToString(FOLLOW_SEPARATOR)
+            }
+        }
+    }
+
     private companion object {
         val KEY = stringPreferencesKey("community_key")
+        val FOLLOWS = stringPreferencesKey("community_follows")
+
+        /** A line break: a display name is one line, so it cannot hold one. */
+        const val FOLLOW_SEPARATOR = "\n"
         val NAME = stringPreferencesKey("community_display_name")
 
         /** Thirty-two random bytes as hex: sixty-four characters, inside the server's 16–128 window. */

@@ -122,4 +122,8 @@
     <string name="alerts_expiry_week">1 week</string>
     <string name="alerts_expiry_month">1 month</string>
     <string name="alerts_expiry_two_months">2 months</string>
+    <string name="alerts_server_delivery">Delivered by</string>
+    <string name="alerts_server_push">Push</string>
+    <string name="alerts_server_telegram">Telegram</string>
+    <string name="alerts_server_email">Email</string>
 </resources>
