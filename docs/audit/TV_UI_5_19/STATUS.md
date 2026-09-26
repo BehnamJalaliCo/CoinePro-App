@@ -23,12 +23,20 @@ four teams closed them in 5.19.0, each on its own files.
 - Lists: full-width desktop screener, compact desktop rows, headings aligned, FX/metal prices filled
   from the other catalogue, 429 retry in the scan, symbol search as a dialog on desktop.
 
-## Still open
-- DIALOGS-16: the toolbar «Alert» button still opens the quick composer, not the full editor.
-- DIALOGS-28: coach marks are not hidden while a sheet is open.
-- DIALOGS-30: Compare has no search field.
-- CHART-08: a few toolbar glyphs are still from the second icon family (no 28-viewport twins yet).
-- CHART-20: the light theme's plot ground stays off-white (`SurfaceLadderTest` requires it).
-- CHART-10: crosshair tag colour is the palette's, not TradingView's #3D3D3D.
-- LISTS-22: the sparkline "pending" state is a 10-second window, not the store's in-flight set.
-- MOBILE-07: about 17 Persian literals remain in `ChartPickers.kt` (chart-type picker empty states).
+## Closed in 5.19.1
+The eight items listed open after 5.19.0 are closed: DIALOGS-16 (one alert editor everywhere, price
+pre-filled), DIALOGS-28 (no coach marks over sheets), DIALOGS-30 (Compare search), CHART-08 (partly: one
+28-viewport icon family on the toolbar, the drawing rail and three of the five side panels), CHART-10 (TradingView's tag grounds),
+CHART-20 (rails on the page ground), LISTS-22 (the store's in-flight set), MOBILE-07 (no Persian-only
+literal left in the pickers); and MOBILE-28 / MOBILE-29 were finished (English Rasad sentence case,
+zero counts on the picker chips). Every one of the 116 items and its status is in `ITEMS.md`.
+
+## Known fragility on the web (read before touching `ChartScreen`)
+Twice in this run a change that is correct on Android made the web build's chart screen crash on its
+first recomposition with `RuntimeError: array element access out of bounds` inside
+`getInterfaceVTable`, reading the chart's time-zone state: a `composed {}` modifier (5.19.0, replaced
+by a modifier node) and swapping the objects/explain side-panel icons to `tv_list` / `tv_sparkle`
+(5.19.1, reverted). Both were found by bisecting with the unoptimised wasm. The composition of
+`ChartScreen` on wasm is sensitive to changes that should be inert; every change to the chart
+screen must be opened in a real browser (pro-chart.com/terminal/BTCUSDT/4h and a click on the
+toolbar) before release, not only compiled.

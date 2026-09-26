@@ -1,5 +1,6 @@
 package com.coinepro.feature.chart
 
+import com.coinepro.core.designsystem.CoineProSheetSearch
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -4825,7 +4826,20 @@ private fun ComparisonSheetBody(
     var refusal by remember { mutableStateOf<ComparisonRefusal?>(null) }
     val haptics = rememberCoineProHaptics()
     val drawn = comparisons.map { it.symbol.uppercase() }.toSet()
-    val offered = watchlist.filter { it.uppercase() != base.uppercase() && it.uppercase() !in drawn }
+    // A search over the list, and any ticker typed in full (DIALOGS-30): TradingView's compare
+    // dialog opens on a search field, and a reader comparing against a market they do not keep in
+    // the watchlist had no way to reach it here.
+    var query by rememberSaveable { mutableStateOf("") }
+    val typed = query.trim().uppercase()
+    val candidates = watchlist.filter { it.uppercase() != base.uppercase() && it.uppercase() !in drawn }
+    val offered = buildList {
+        addAll(candidates.filter { typed.isEmpty() || it.uppercase().contains(typed) })
+        if (typed.length >= 3 && COMPARE_TICKER.matches(typed) && typed != base.uppercase() &&
+            typed !in drawn && none { it.uppercase() == typed }
+        ) {
+            add(typed)
+        }
+    }
     val full = comparisons.size >= MAX_COMPARISONS
 
     Column(
@@ -4863,6 +4877,15 @@ private fun ComparisonSheetBody(
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextMuted,
             )
+        } else {
+            CoineProSheetSearch(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = stringResource(R.string.chart_compare_search),
+            )
+        }
+        if (full) {
+            // The limit sentence above is the whole answer; there is nothing to offer.
         } else if (offered.isEmpty()) {
             Text(
                 text = stringResource(R.string.chart_compare_empty),
@@ -6073,6 +6096,9 @@ internal const val STALE_ALPHA = 0.4f
 private val TIME_AXIS_CLEARANCE = 28.dp
 
 private val INTERVAL_KEY_HEIGHT = 40.dp
+
+/** A ticker typed into the compare search: letters and digits, the way every catalogue spells one. */
+private val COMPARE_TICKER = Regex("[A-Z0-9.]{3,20}")
 
 /** The starring pills' height, one step under a key so the two rows are not mistaken for each other. */
 private val STAR_KEY_HEIGHT = 34.dp

@@ -1,5 +1,8 @@
 package com.coinepro.core.designsystem
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -76,6 +79,15 @@ import kotlin.math.roundToInt
  * that all but disappears on this near-black stage. Four density-independent pixels of the strong
  * border colour is the smallest thing that still reads as "drag me".
  */
+/**
+ * How many sheets and sheet-dialogs are open right now. The coach-mark host reads it so a mark
+ * never floats over a sheet (DIALOGS-28); nothing else should need it.
+ */
+object CoineProSheetPresence {
+    var open by mutableIntStateOf(0)
+        internal set
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CoineProSheet(
@@ -102,6 +114,10 @@ fun CoineProSheet(
     contentPadding: PaddingValues? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    DisposableEffect(Unit) {
+        CoineProSheetPresence.open++
+        onDispose { CoineProSheetPresence.open-- }
+    }
     // On an expanded window a bottom sheet is a strip across a twelve-inch glass — the wrong
     // shape and, at full width, a wall of controls the reader has to walk. The same body opens as
     // a dialog capped at [dialogMaxWidth] instead: the reader's eye, not the glass, decides how

@@ -83,9 +83,9 @@ import com.coinepro.core.designsystem.onPageAccent
  * layouts, settings, fullscreen, the camera and the trade button.
  *
  * Measured against TradingView's own (CHART-08, -09, -14): a 38 dp bar; every control a 34 dp plate
- * with 4 dp corners that lights on hover and darkens while pressed; the vendored `tv_*` glyphs at
- * their own 28 dp box and the few Phosphor ones at 22 dp, so every glyph's ink is the same 21–22 dp;
- * words 14 sp regular. Every icon-only control names itself in a tooltip (CHART-11).
+ * with 4 dp corners that lights on hover and darkens while pressed; one glyph family, the vendored
+ * `tv_*` set, each at its own 28 dp box, so every glyph's ink is the same weight; words 14 sp regular.
+ * Every icon-only control names itself in a tooltip (CHART-11).
  *
  * The row follows the reader's direction, as TradingView's Arabic chart does: in Persian the symbol
  * sits at the right-hand end and the layout cluster at the left. The drawing rail and the price axis
@@ -151,7 +151,7 @@ internal fun ChartDesktopToolbar(
                         maxLines = 1,
                     )
                 }
-                GlyphButton(DesignR.drawable.icon_plus, stringResource(R.string.chart_toolbar_compare)) {
+                GlyphButton(DesignR.drawable.tv_plus, stringResource(R.string.chart_toolbar_compare), vendored = true) {
                     onOpen(ChartSheet.COMPARE)
                 }
                 ToolbarSeparator()
@@ -173,7 +173,7 @@ internal fun ChartDesktopToolbar(
                         )
                     }
                 }
-                GlyphButton(DesignR.drawable.icon_caret_down, stringResource(R.string.chart_sheet_interval)) {
+                GlyphButton(DesignR.drawable.tv_caret_down, stringResource(R.string.chart_sheet_interval), vendored = true) {
                     onOpen(ChartSheet.INTERVAL)
                 }
                 ToolbarSeparator()
@@ -182,7 +182,8 @@ internal fun ChartDesktopToolbar(
                 GlyphButton(typeIcon, stringResource(R.string.chart_toolbar_type), vendored = true) { onOpen(ChartSheet.TYPE) }
                 ToolbarSeparator()
                 LabelledButton(
-                    icon = DesignR.drawable.icon_sliders_horizontal,
+                    icon = DesignR.drawable.tv_indicators,
+                    vendored = true,
                     label = stringResource(R.string.chart_band_indicators),
                     active = indicators > 0,
                     worded = worded,
@@ -202,7 +203,8 @@ internal fun ChartDesktopToolbar(
                     )
                 }
                 LabelledButton(
-                    icon = DesignR.drawable.icon_rewind,
+                    icon = DesignR.drawable.tv_replay,
+                    vendored = true,
                     label = stringResource(R.string.chart_toolbar_replay),
                     active = replayOn,
                     worded = worded,
@@ -211,14 +213,16 @@ internal fun ChartDesktopToolbar(
                 )
                 ToolbarSeparator()
                 GlyphButton(
-                    DesignR.drawable.icon_arrow_counter_clockwise,
+                    DesignR.drawable.tv_undo,
                     stringResource(R.string.chart_more_undo),
+                    vendored = true,
                     mirrored = true,
                     onClick = onUndo,
                 )
                 GlyphButton(
-                    DesignR.drawable.icon_arrow_clockwise,
+                    DesignR.drawable.tv_redo,
                     stringResource(R.string.chart_more_redo),
+                    vendored = true,
                     mirrored = true,
                     onClick = onRedo,
                 )
@@ -376,8 +380,7 @@ private fun ToolbarChip(
 
 /**
  * One glyph button. [vendored] says the glyph is one of the `tv_*` set, drawn inside its own 28-unit
- * box, and so takes the full 28 dp; a Phosphor glyph reaches its box's edges and takes 22 so the two
- * families' ink comes out the same size (CHART-08). [mirrored] turns an arrow for a right-to-left bar.
+ * box, and so takes the full 28 dp (CHART-08). [mirrored] turns an arrow for a right-to-left bar.
  */
 @Composable
 private fun GlyphButton(
@@ -489,25 +492,15 @@ private val DESKTOP_TOOLBAR_HEIGHT = 38.dp
 private val DESKTOP_CONTROL = 34.dp
 
 /**
- * The box a chrome glyph is drawn in so that every glyph's *ink* is TradingView's 21–22 dp
- * (CHART-08). The vendored `tv_*` set draws inside a 28-unit box with a margin, so it takes 28; the
- * Phosphor set reaches its box's edges, so it takes 22; and the few vendored glyphs cut on another
- * grid — the 44-unit help ring and calendar, the 21-unit layout grid, the 18-unit code mark — take
- * the size that brings their ink to the same measure.
+ * The box a chrome glyph is drawn in so that every glyph's *ink* is TradingView's (CHART-08). The
+ * `tv_*` set draws inside a 28-unit box with a margin, so it takes 28; a Phosphor glyph a caller
+ * still hands in reaches its box's edges, so it takes 22.
  */
-internal fun chromeGlyphSize(@DrawableRes icon: Int, vendored: Boolean = false): Dp = when (icon) {
-    DesignR.drawable.tv_help_circle, DesignR.drawable.tv_calendar_days -> WIDE_GRID_GLYPH
-    DesignR.drawable.tv_layout_grid -> LAYOUT_GRID_GLYPH
-    DesignR.drawable.tv_code2 -> CODE_GLYPH
-    in VENDORED_ON_28 -> VENDORED_GLYPH
-    else -> if (vendored) VENDORED_GLYPH else PHOSPHOR_GLYPH
-}
+internal fun chromeGlyphSize(@DrawableRes icon: Int, vendored: Boolean = false): Dp =
+    if (vendored || icon in VENDORED_ON_28) VENDORED_GLYPH else PHOSPHOR_GLYPH
 
 private val VENDORED_GLYPH = 28.dp
 private val PHOSPHOR_GLYPH = 22.dp
-private val WIDE_GRID_GLYPH = 33.dp
-private val LAYOUT_GRID_GLYPH = 20.dp
-private val CODE_GLYPH = 24.dp
 
 /** The vendored glyphs a caller may hand the chrome without saying so — the side rail's panels. */
 private val VENDORED_ON_28 = setOf(
@@ -515,6 +508,13 @@ private val VENDORED_ON_28 = setOf(
     DesignR.drawable.tv_bell,
     DesignR.drawable.tv_bell_ring,
     DesignR.drawable.tv_star,
+    DesignR.drawable.tv_info,
+    DesignR.drawable.tv_list,
+    DesignR.drawable.tv_sparkle,
+    DesignR.drawable.tv_help_circle,
+    DesignR.drawable.tv_calendar_days,
+    DesignR.drawable.tv_layout_grid,
+    DesignR.drawable.tv_code2,
     DesignR.drawable.tv_settings2,
     DesignR.drawable.tv_camera,
     DesignR.drawable.tv_search,

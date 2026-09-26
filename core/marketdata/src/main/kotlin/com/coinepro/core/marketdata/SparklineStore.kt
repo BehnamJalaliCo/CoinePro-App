@@ -43,6 +43,15 @@ class SparklineStore(
     /** Symbol to its closes, oldest first. A symbol absent here has nothing to draw yet. */
     val lines: StateFlow<Map<String, List<Double>>> = _lines.asStateFlow()
 
+    private val _pending = MutableStateFlow<Set<String>>(emptySet())
+
+    /**
+     * Symbols whose line has been asked for and has not answered yet (LISTS-22). A row reads it to
+     * draw «loading» rather than «no data» — the two looked identical, and the second is a claim
+     * about the market that nothing had checked yet.
+     */
+    val pending: StateFlow<Set<String>> = _pending.asStateFlow()
+
     /**
      * Symbols already asked for, whether or not the answer arrived.
      *
@@ -58,17 +67,26 @@ class SparklineStore(
         val ticker = symbol.trim().uppercase()
         if (ticker.isEmpty()) return
         synchronized(asked) { if (!asked.add(ticker)) return }
+        _pending.update { it + ticker }
         scope.launch {
-            gate.withPermit {
-                val closes = runCatching {
-                    gateway.load(ticker, timeframe, limit = bars).candles.map(OhlcBar::c)
-                }.getOrNull()
-                // A one-point answer is dropped rather than stored: the renderer would have to
-                // decide what a single price looks like as a line, and every answer to that is a
-                // shape the market did not make.
-                if (closes != null && closes.size >= 2) {
-                    _lines.update { it + (ticker to closes) }
-                }
+            try {
+                loadLine(ticker)
+            } finally {
+                _pending.update { it - ticker }
+            }
+        }
+    }
+
+    private suspend fun loadLine(ticker: String) {
+        gate.withPermit {
+            val closes = runCatching {
+                gateway.load(ticker, timeframe, limit = bars).candles.map(OhlcBar::c)
+            }.getOrNull()
+            // A one-point answer is dropped rather than stored: the renderer would have to decide
+            // what a single price looks like as a line, and every answer to that is a shape the
+            // market did not make.
+            if (closes != null && closes.size >= 2) {
+                _lines.update { it + (ticker to closes) }
             }
         }
     }
@@ -77,6 +95,7 @@ class SparklineStore(
     fun clear() {
         synchronized(asked) { asked.clear() }
         _lines.value = emptyMap()
+        _pending.value = emptySet()
     }
 
     private companion object {

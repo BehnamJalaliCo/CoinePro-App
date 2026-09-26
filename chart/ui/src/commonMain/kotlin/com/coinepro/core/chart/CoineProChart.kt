@@ -1310,6 +1310,7 @@ fun CoineProChart(
             text = Color(TradingViewPalette.DARK_TEXT),
             crosshair = Color(TradingViewPalette.DARK_CROSSHAIR),
             stage = CoineProColors.Stage,
+            crosshairTag = Color(CROSSHAIR_TAG_DARK),
         )
     } else {
         ChartPalette(
@@ -1321,6 +1322,7 @@ fun CoineProChart(
             text = Color(TradingViewPalette.LIGHT_TEXT),
             crosshair = Color(TradingViewPalette.LIGHT_CROSSHAIR),
             stage = CoineProColors.Stage,
+            crosshairTag = Color(CROSSHAIR_TAG_LIGHT),
         )
     }
 
@@ -4071,6 +4073,12 @@ internal data class ChartPalette(
     val text: Color,
     val crosshair: Color,
     val stage: Color,
+    /**
+     * The ground of the crosshair's price and time tags (CHART-10): TradingView's #3D3D3D on
+     * dark, #6A6D78 on light — a plate a step darker than the dashed rule, not the rule's grey.
+     * A colour template that names no tag keeps the rule's colour, which is what it drew before.
+     */
+    val crosshairTag: Color = crosshair,
 )
 
 // ---------------------------------------------------------------------------- series
@@ -6304,7 +6312,7 @@ private fun DrawScope.drawCrosshair(
             text = formatPrice(band.valueAt(y), band.decimals),
             y = y,
             frame = frame,
-            fill = palette.crosshair,
+            fill = palette.crosshairTag,
             textColour = TAG_INK,
             measurer = measurer,
             plotHeight = band.top + band.height,
@@ -6318,7 +6326,7 @@ private fun DrawScope.drawCrosshair(
             text = view.axisText(crosshair.price),
             y = y,
             frame = frame,
-            fill = palette.crosshair,
+            fill = palette.crosshairTag,
             textColour = TAG_INK,
             measurer = measurer,
             plotHeight = view.plotHeight,
@@ -6344,7 +6352,7 @@ private fun DrawScope.drawCrosshair(
     val width = stamp.size.width + side * 2
     val left = (x - width / 2).coerceIn(0f, max(0f, plotWidth - width))
     drawRoundRect(
-        color = palette.crosshair,
+        color = palette.crosshairTag,
         topLeft = Offset(left, fullHeight + 1f),
         size = Size(width, stamp.size.height + pad * 2),
         cornerRadius = CornerRadius(TAG_RADIUS_DP.toPx(), TAG_RADIUS_DP.toPx()),
@@ -7227,6 +7235,10 @@ private val CROSSHAIR_TAG_PADDING_DP = 4.dp
  * shadow under a chip sitting on the axis read as a second, blurred tag (CHART-10).
  */
 private val CROSSHAIR_SHADOW_DP = 0.dp
+
+/** TradingView's crosshair tag grounds, measured off its dark and light charts (CHART-10). */
+private const val CROSSHAIR_TAG_DARK = 0xFF3D3D3D
+private const val CROSSHAIR_TAG_LIGHT = 0xFF6A6D78
 private val CROSSHAIR_TAG_INSET_DP = 8.dp
 
 /**

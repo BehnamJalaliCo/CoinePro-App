@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cut by hand on the tv_* 28-unit grid (CHART-08): a 1-unit line, ink inside a 5-unit margin. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="28"
+    android:viewportHeight="28"
+    >
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 6.5 8 v 12" />
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1"
+        android:strokeLineCap="butt"
+        android:strokeLineJoin="round"
+        android:pathData="M 14.5 20 V 8 l -6 6 6 6 Z M 21.5 20 V 8 l -6 6 6 6 Z" />
+</vector>

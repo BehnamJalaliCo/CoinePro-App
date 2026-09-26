@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.19.1
+
+**fa**
+
+> هر «هشدار تازه» حالا یک ویرایشگر کامل دارد و قیمت از چارت در آن نوشته می‌شود. مقایسه‌ی نماد جست‌وجو دارد، راهنماها روی پنجره‌ها نمی‌آیند، آیکن‌های نوار ابزار یک‌دست شدند و برچسب نشانگر رنگ تریدینگ‌ویو را گرفت.
+
+**en**
+
+> Every new alert opens one full editor with the chart's price filled in. Compare can search, tips no longer float over open sheets, toolbar icons are one family, and the crosshair tag takes TradingView's colour.
+
+---
+
 ## 5.19.0
 
 **fa**

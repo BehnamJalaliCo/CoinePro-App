@@ -137,7 +137,7 @@ internal fun ChartWorkbench(
         ChartSidePanel(
             id = READINGS_PANEL_ID,
             labelRes = R.string.chart_readings_disclosure,
-            icon = DesignR.drawable.icon_info,
+            icon = DesignR.drawable.tv_info,
             content = it,
         )
     }

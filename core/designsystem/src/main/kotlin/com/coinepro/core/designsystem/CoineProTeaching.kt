@@ -236,7 +236,10 @@ fun CoineProTeachingHost(
     Box(modifier = modifier) {
         CompositionLocalProvider(LocalTeachingHost provides host) { content() }
         val surface = host.current
-        val showing = surface != null && dismissals.ready && surface.key !in dismissals.dismissed
+        // Never over an open sheet or dialog (DIALOGS-28): a mark about the page, floating over a
+        // sheet that hides the page, points at nothing and covers the controls being read.
+        val showing = surface != null && dismissals.ready && surface.key !in dismissals.dismissed &&
+            CoineProSheetPresence.open == 0
         if (showing && surface != null) {
             // Dismissed by the clock as well as by the reader, and the clock is the point: a
             // coach-mark that waits for a tap is a modal with extra steps.
@@ -268,6 +271,8 @@ fun CoineProTeachingHost(
                     Modifier
                         .align(Alignment.TopStart)
                         .offset { IntOffset(0, anchorY.roundToInt()) }
+                        // Inside the glass by a gutter on both sides, never on its edge.
+                        .padding(horizontal = CoineProSpacing.Gutter)
                 },
                 anchored = anchorY != null,
             )

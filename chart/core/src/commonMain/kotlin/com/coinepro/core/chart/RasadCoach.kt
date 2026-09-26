@@ -198,6 +198,21 @@ object RasadCoach {
         strength: String,
         swing: String,
         english: Boolean,
+    ): String {
+        // The labels are chip captions, capitalised to stand alone; inside an English sentence they
+        // are ordinary words (MOBILE-28: "with Low swing"). Persian has no case to fold.
+        val swingWord = if (english) swing.lowercase() else swing
+        val strengthWord = if (english) strength.lowercase() else strength
+        val directionWord = if (english) direction?.lowercase() else direction
+        return trendTemplate(trending, directionWord, strengthWord, swingWord, english)
+    }
+
+    private fun trendTemplate(
+        trending: Boolean,
+        direction: String?,
+        strength: String,
+        swing: String,
+        english: Boolean,
     ): String = when {
         // No trend is a fact about the market and the most useful one there is: every signal a
         // trend study gives inside a range is a signal measured against something that is not

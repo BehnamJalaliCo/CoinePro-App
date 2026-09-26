@@ -316,6 +316,7 @@ import com.coinepro.feature.admin.AdminScreen
 import com.coinepro.feature.ai.AiStudioScreen
 import com.coinepro.feature.aiassistant.AiAssistantScreen
 import com.coinepro.feature.aivision.AiVisionScreen
+import com.coinepro.feature.alerts.AlertEditorHost
 import com.coinepro.feature.alerts.AlertCenterScreen
 import com.coinepro.feature.alerts.AlertsController
 import com.coinepro.feature.auth.AuthScreen
@@ -368,7 +369,6 @@ import com.coinepro.feature.menu.MenuScreen
 import com.coinepro.feature.menu.R as MenuR
 import com.coinepro.feature.news.NewsScreen
 import com.coinepro.feature.news.PublicNewsScreen
-import com.coinepro.feature.notifications.AlertComposerSheet
 import com.coinepro.feature.notifications.NotificationSection
 import com.coinepro.feature.notifications.NotificationSettingsScreen
 import com.coinepro.feature.papertrade.PaperTradeScreen
@@ -3517,7 +3517,7 @@ private fun MainShell(
             }
 
             val sidePanels = listOf(
-                ChartSidePanel("watchlist", ChartR.string.chart_panel_watchlist, DesignR.drawable.icon_star) {
+                ChartSidePanel("watchlist", ChartR.string.chart_panel_watchlist, DesignR.drawable.tv_star) {
                     WatchlistScreen(
                         controller = marketSearchController,
                         store = watchlistStore,
@@ -4501,26 +4501,13 @@ private fun MainShell(
                 if (composing) {
                     // The reader's own first market, or the platform's — the same rule the chart
                     // tab and the script studio already follow, so "new alert" never opens on a
-                    // ticker this backend does not carry.
+                    // ticker this backend does not carry. It opens the one full editor, the same
+                    // one every chart's «alert here» opens (DIALOGS-16).
                     val symbol = defaultScriptSymbol(activePlatform, watchlist)
-                    AlertComposerSheet(
-                        symbol = symbol,
-                        currentPrice = marketState.quotes[symbol]?.price,
-                        full = localAlerts.size >= LocalPriceAlert.MAX_ALERTS,
-                        onCreate = { alert ->
-                            scope.launch {
-                                localAlertStore.add(alert)
-                                localAlertScheduler.sync(hasActiveAlerts = true)
-                            }
-                            composing = false
-                            // The sheet closes on create, so without this the reader watches the
-                            // screen they were on come back and has no way to tell whether the
-                            // alert was made. The list behind it is the proof, but it is below the
-                            // fold on a full list.
-                            toaster.show(savedToast(alertSavedMessage))
-                        },
-                        onDismiss = { composing = false },
-                    )
+                    LaunchedEffect(symbol) {
+                        alertsController.openEditor(symbol, marketState.quotes[symbol]?.price, hosted = true)
+                        composing = false
+                    }
                 }
             }
             composable(KYC_ROUTE) {
@@ -5417,23 +5404,15 @@ private fun MainShell(
         }
     }
 
-    alertFromChart?.let { (symbol, price) ->
-        val localAlerts by localAlertStore.alerts.collectAsStateWithLifecycle(initialValue = emptyList())
-        AlertComposerSheet(
-            symbol = symbol,
-            currentPrice = price,
-            full = localAlerts.size >= LocalPriceAlert.MAX_ALERTS,
-            onCreate = { alert ->
-                shellScope.launch {
-                    localAlertStore.add(alert)
-                    localAlertScheduler.sync(hasActiveAlerts = true)
-                }
-                alertFromChart = null
-                toaster.show(savedToast(alertSavedMessage))
-            },
-            onDismiss = { alertFromChart = null },
-        )
+    // One editor for every «new alert» (DIALOGS-16): a chart's «alert here», its toolbar button
+    // and a market row's alert all open the alert centre's full editor with the price typed in,
+    // drawn here once so it opens over whichever screen asked.
+    LaunchedEffect(alertFromChart) {
+        val (symbol, price) = alertFromChart ?: return@LaunchedEffect
+        alertsController.openEditor(symbol, price, hosted = true)
+        alertFromChart = null
     }
+    AlertEditorHost(alertsController)
 
     if (appLockOpen) {
         AppLockSheet(

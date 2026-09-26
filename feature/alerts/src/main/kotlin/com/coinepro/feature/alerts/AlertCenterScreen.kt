@@ -227,7 +227,7 @@ fun AlertCenterScreen(
         )
     }
 
-    state.draft?.let { draft ->
+    state.draft?.takeIf { !it.hosted }?.let { draft ->
         AlertEditorSheet(
             draft = draft,
             matches = state.symbolMatches,
@@ -621,4 +621,21 @@ private fun AlertSectionKind.ink() = when (this) {
     AlertSectionKind.ARMED -> CoineProColors.TextSecondary
     AlertSectionKind.FIRED -> CoineProColors.Gold
     AlertSectionKind.EXPIRED -> CoineProColors.TextMuted
+}
+
+/**
+ * The alert editor for a draft opened from a chart (DIALOGS-16): the same sheet the alert centre
+ * draws, placed once at the app shell so «alert here» on any chart opens the one full editor.
+ */
+@Composable
+fun AlertEditorHost(controller: AlertsController) {
+    val state by controller.state.collectAsStateWithLifecycle()
+    state.draft?.takeIf { it.hosted }?.let { draft ->
+        AlertEditorSheet(
+            draft = draft,
+            matches = state.symbolMatches,
+            refusal = state.refusal,
+            controller = controller,
+        )
+    }
 }

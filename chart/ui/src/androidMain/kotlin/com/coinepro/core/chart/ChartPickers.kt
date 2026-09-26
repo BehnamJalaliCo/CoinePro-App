@@ -247,8 +247,8 @@ fun IndicatorPicker(
     // ones exist only where something feeds them — a preview has no store.
     val personal = if (onToggleFavourite != null) {
         listOf(
-            CoineProChip(id = CHIP_FAVOURITES, label = if (english) "Favorites" else "برگزیده‌ها", count = favourites.size),
-            CoineProChip(id = CHIP_RECENT, label = if (english) "Recent" else "اخیر", count = recent.size),
+            CoineProChip(id = CHIP_FAVOURITES, label = if (english) "Favorites" else "برگزیده‌ها", count = favourites.size.takeIf { it > 0 }),
+            CoineProChip(id = CHIP_RECENT, label = if (english) "Recent" else "اخیر", count = recent.size.takeIf { it > 0 }),
         )
     } else {
         emptyList()
@@ -257,7 +257,7 @@ fun IndicatorPicker(
         CoineProChip(
             id = candidate.name,
             label = candidate.label(english),
-            count = offered.count { ChartCatalog.categoryOf(it.id) == candidate },
+            count = offered.count { ChartCatalog.categoryOf(it.id) == candidate }.takeIf { it > 0 },
         )
     }
     val allLabel = if (english) "All" else "همه"

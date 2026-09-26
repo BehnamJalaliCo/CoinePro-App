@@ -550,8 +550,14 @@ class AlertsController(
      * row — and the picker then stays shut, because they have already answered the question it
      * asks.
      */
-    fun openEditor(symbol: String? = null) {
+    fun openEditor(symbol: String? = null, price: Double? = null, hosted: Boolean = false) {
         val ticker = symbol?.trim()?.uppercase().orEmpty()
+        // A level the reader pointed at on the chart arrives already typed: the chart's «alert
+        // here» and the toolbar's «Alert» used to open a second, smaller composer for exactly
+        // this, and the two editors disagreed about what an alert could be (DIALOGS-16).
+        val conditions = price?.takeIf { it > 0.0 && it.isFinite() }
+            ?.let { listOf(AlertConditionDraft(priceOp = PriceOp.CROSSING, first = levelText(it))) }
+            ?: listOf(AlertConditionDraft())
         // The audit sheet is closed with it: two modal sheets stacked on one another is a state
         // the reader cannot reason about, and the editor is the one they just asked for.
         closeAudit()
@@ -560,10 +566,30 @@ class AlertsController(
                 actionsFor = null,
                 refusal = null,
                 drawings = emptyList(),
-                draft = AlertDraft(symbol = ticker, pickingSymbol = ticker.isEmpty()),
+                draft = AlertDraft(
+                    symbol = ticker,
+                    pickingSymbol = ticker.isEmpty(),
+                    conditions = conditions,
+                    hosted = hosted,
+                ),
             )
         }
         loadDrawings(ticker)
+    }
+
+    /** A price as the level field shows it: Latin digits, no grouping, no trailing zeros. */
+    private fun levelText(price: Double): String {
+        val decimals = when {
+            price >= 1_000.0 -> 2
+            price >= 1.0 -> 4
+            else -> 8
+        }
+        var scale = 1L
+        repeat(decimals) { scale *= 10 }
+        val rounded = kotlin.math.round(price * scale).toLong()
+        val whole = rounded / scale
+        val fraction = (rounded % scale).toString().padStart(decimals, '0').trimEnd('0')
+        return if (fraction.isEmpty()) whole.toString() else "$whole.$fraction"
     }
 
     /**

@@ -149,6 +149,7 @@ fun WatchlistScreen(
     val state by controller.state.collectAsStateWithLifecycle()
     val companionState = companion?.state?.collectAsStateWithLifecycle()?.value
     val lines by sparklines.lines.collectAsStateWithLifecycle()
+    val loadingLines by sparklines.pending.collectAsStateWithLifecycle()
     val catalogue = remember(state.results, companionState?.results, companionState?.catalogueQuotes) {
         withCompanionQuotes(
             state.results,
@@ -199,6 +200,7 @@ fun WatchlistScreen(
                 catalogue = catalogue,
                 lines = lines,
                 onRequestLine = sparklines::request,
+                loadingLines = loadingLines,
                 onOpenSymbol = onOpenSymbol,
                 watchlistSync = watchlistSync,
                 onCreateAlert = onCreateAlert,

@@ -183,8 +183,7 @@ internal fun ChartToolRailColumn(
         )
         val allHidden = drawing.hidden.size == DrawingLayer.entries.size
         RailCell(
-            icon = if (allHidden) DesignR.drawable.tv_eye_off else DesignR.drawable.icon_eye,
-            vendored = allHidden,
+            icon = if (allHidden) DesignR.drawable.tv_eye_off else DesignR.drawable.tv_eye,
             description = stringResource(R.string.keys_hide_all),
             active = allHidden,
             lit = allHidden,
@@ -320,8 +319,8 @@ private fun ToolFlyout(
 }
 
 /**
- * One rail cell: a [RAIL_CELL] pitch, a 34 dp plate, the glyph at 28 (a vendored `tv_*` glyph) or
- * 22 (Phosphor) so both families' ink comes out the same size. [lit] draws the glyph in the accent
+ * One rail cell: a [RAIL_CELL] pitch, a 34 dp plate, the glyph at 28 — every rail glyph is one of
+ * the vendored `tv_*` set (CHART-08). [lit] draws the glyph in the accent
  * — a switch that is on — where [active] only deepens the plate.
  */
 @Composable

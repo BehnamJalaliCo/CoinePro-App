@@ -122,6 +122,11 @@ fun WatchlistPanel(
     lines: Map<String, List<Double>>,
     /** Asks for one symbol's line. Called as a row appears, never for the whole list. */
     onRequestLine: (String) -> Unit,
+    /**
+     * The lines still on their way, from the store (LISTS-22). Null where the caller has no store to
+     * ask, which falls back to a ten-second window after the row asked.
+     */
+    loadingLines: Set<String>? = null,
     onOpenSymbol: (String) -> Unit,
     /** Sync, where the platform serves it. Null draws nothing — see [MarketsScreen]'s own note. */
     watchlistSync: WatchlistSyncController? = null,
@@ -360,7 +365,7 @@ MarketListRow(
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 val figures = figuresFor(row, lines[symbol].orEmpty())
-                                    .copy(linePending = symbol !in lines && symbol in pendingLines)
+                                    .copy(linePending = symbol !in lines && symbol in (loadingLines ?: pendingLines))
                                 columns.forEach { column ->
                                     WatchlistFigureCell(column = column, figures = figures)
                                 }

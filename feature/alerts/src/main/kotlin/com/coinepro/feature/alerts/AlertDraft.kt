@@ -285,6 +285,12 @@ data class AlertListOption(val id: String, val name: String, val count: Int)
 data class AlertDraft(
     /** The alert being changed, or null for a new one. */
     val editingId: String? = null,
+    /**
+     * Opened from a chart rather than from the alert centre (DIALOGS-16), so the app shell's
+     * [AlertEditorHost] draws it and the centre, which may be open beside the chart, does not
+     * draw it a second time.
+     */
+    val hosted: Boolean = false,
     val symbol: String = "",
     /** At least one, at most [AlertTrigger.MultiCondition.MAX_CONDITIONS]. ANDed together. */
     val conditions: List<AlertConditionDraft> = listOf(AlertConditionDraft()),
