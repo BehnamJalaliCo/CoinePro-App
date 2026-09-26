@@ -59,7 +59,7 @@ scorecard) and a second pixel-level pass over the old Pro-Chart terminal
 | Alert «moves N % within K bars» | ✅ 5.16.1 | `AlertConditionDraft.moveBars`, capped at 500 (`AlertDraftTest`) | — **a chip row in the alert sheet**, outside the captured decor view |
 | Alert expiry: never, 1, 7, 30, 60 days | ✅ 5.16.1 | `AlertDraft.expiresAt` written and read back (`AlertDraftTest`) | — **a chip row in the alert sheet**, outside the captured decor view |
 | Alerts checked every minute while the app is open | ✅ 5.16.1 | `LocalAlertScheduler.checkNow` on a lifecycle loop, one pass at a time behind `PASS_LOCK` | — **a timer**, not a picture; the fifteen-minute background period is unchanged |
-| Screener: add every result to the watchlist | ✅ 5.16.1 | `ScreenerScreen(onAddToWatchlist)` → `watchlistStore.add` | — **one button under the result count**; the watchlist is where its effect shows |
+| Screener: add a result to the watchlist | ✅ 5.19.2 | `ScreenerScreen(onToggleWatchlist)` → `watchlistStore.toggle` | — **a star on each row**; the old «add every result» button put the whole catalogue (800+ markets) into the watchlist and is gone |
 
 ## 5.17.0 — the growth scan, and the rest of the behind rows
 

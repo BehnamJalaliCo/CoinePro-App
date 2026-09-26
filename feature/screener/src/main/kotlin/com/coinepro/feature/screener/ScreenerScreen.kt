@@ -1,5 +1,7 @@
 package com.coinepro.feature.screener
 
+import com.coinepro.core.designsystem.R as DesignR
+import androidx.compose.material3.minimumInteractiveComponentSize
 import com.coinepro.core.designsystem.coineProHorizontalScroll
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
@@ -137,10 +139,16 @@ fun ScreenerScreen(
     onOpenSymbol: (String) -> Unit,
     modifier: Modifier = Modifier,
     /**
-     * Every market the screen found, into the watchlist — TradingView's first-class «results to a
-     * watchlist» flow (5.16.1). Null where the build has no watchlist to add to.
+     * The markets already on the reader's watchlist, for the star on each row.
+     *
+     * One market at a time (5.19.2). This used to be a single «add every result» button, and with
+     * the whole catalogue in the table one press put eight hundred symbols into the watchlist —
+     * not what anybody pressing a button beside a list expects. The star is the same control the
+     * market list and the search already use.
      */
-    onAddToWatchlist: ((List<String>) -> Unit)? = null,
+    watchlisted: Set<String> = emptySet(),
+    /** Stars or un-stars one market. Null where the build has no watchlist, which hides the star. */
+    onToggleWatchlist: ((String) -> Unit)? = null,
     /**
      * Opens a market with the studies that draw the setup it was listed for, on the interval it was
      * scanned on (5.17.0) — the chart the reader lands on shows why the market is on the list. Null
@@ -265,26 +273,6 @@ fun ScreenerScreen(
                 )
             }
             item(key = "h:count") { ResultCount(state) }
-            if (onAddToWatchlist != null && state.rows.isNotEmpty()) {
-                item(key = "h:add") {
-                    var added by rememberSaveable(state.rows.size, state.filters) { mutableStateOf(false) }
-                    CoineProSecondaryButton(
-                        text = if (added) {
-                            stringResource(R.string.screener_added_to_watchlist)
-                        } else {
-                            stringResource(R.string.screener_add_to_watchlist, state.rows.size.proseDigits())
-                        },
-                        onClick = {
-                            if (!added) onAddToWatchlist(state.rows.map(ScreenerRow::symbol))
-                            added = true
-                        },
-                        modifier = Modifier
-                            .padding(horizontal = CoineProSpacing.Two)
-                            .padding(bottom = CoineProSpacing.One)
-                            .semantics { contentDescription = "screener-add-to-watchlist" },
-                    )
-                }
-            }
             // The one piece of chrome that stays: the column headings, on the stage colour with a
             // rule under them, as the reference's table keeps its own.
             stickyHeader(key = "h:columns") {
@@ -355,6 +343,8 @@ fun ScreenerScreen(
                             scrolls = !wide,
                             tags = tags,
                             english = english,
+                            watched = onToggleWatchlist?.let { row.symbol.uppercase() in watchlisted },
+                            onToggleWatch = onToggleWatchlist?.let { toggle -> { toggle(row.symbol) } },
                             onClick = {
                                 val open = onOpenSetup
                                 if (state.mode == ScreenerMode.SIGNALS && open != null) {
@@ -744,6 +734,9 @@ private fun ScreenerTableRow(
     scrolls: Boolean,
     tags: List<Pair<GrowthScan.Kind, Int>> = emptyList(),
     english: Boolean = false,
+    /** On the reader's watchlist, or null where this build offers no star. */
+    watched: Boolean? = null,
+    onToggleWatch: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
     val haptics = rememberCoineProHaptics()
@@ -782,6 +775,29 @@ private fun ScreenerTableRow(
         // was the one list where the only thing to recognise was a Latin ticker in the same weight
         // as the fifty-nine above it. A logo is read before a word is: it is what turns "read every
         // row" into "find the orange disc".
+        if (watched != null && onToggleWatch != null) {
+            // The star, on the reading edge like every other market list's (5.19.2): one market
+            // into the watchlist, the one on this row, and back out again.
+            val starInteraction = remember { MutableInteractionSource() }
+            Icon(
+                painter = painterResource(
+                    if (watched) DesignR.drawable.icon_filled_star else DesignR.drawable.icon_star,
+                ),
+                contentDescription = stringResource(
+                    if (watched) DesignR.string.market_row_unwatch else DesignR.string.market_row_watch,
+                ),
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .clip(CoineProShapes.small)
+                    .clickable(starInteraction, null) {
+                        haptics.commit()
+                        onToggleWatch()
+                    }
+                    .padding(4.dp)
+                    .size(18.dp),
+                tint = if (watched) CoineProColors.Accent else CoineProColors.TextDisabled,
+            )
+        }
         CoineProAssetLogo(symbol = row.meta.symbol, size = layout.logo)
         Spacer(modifier = Modifier.width(CoineProSpacing.One))
         Column(modifier = Modifier.width(layout.symbol)) {

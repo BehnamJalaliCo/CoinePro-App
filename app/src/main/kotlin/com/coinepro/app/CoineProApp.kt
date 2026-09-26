@@ -5044,13 +5044,10 @@ private fun MainShell(
                             pendingSetups[symbol] = studies
                             navController.navigate(chartRoute(symbol, timeframe.wire))
                         },
-                        // TradingView's «results to a watchlist» (5.16.1), into the default list.
-                        onAddToWatchlist = { symbols ->
-                            screenerScope.launch {
-                                symbols.forEach { symbol ->
-                                    runCatching { watchlistStore.add(Watchlist.DEFAULT_LIST_ID, symbol) }
-                                }
-                            }
+                        // One market at a time, by the row's star (5.19.2) — never the whole table.
+                        watchlisted = watchlist.map(String::uppercase).toSet(),
+                        onToggleWatchlist = { symbol ->
+                            screenerScope.launch { runCatching { watchlistStore.toggle(symbol) } }
                         },
                     )
                 }

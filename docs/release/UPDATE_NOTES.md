@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.19.2
+
+**fa**
+
+> درصد تغییر در رصد و فهرست نمادها حالا در یک ستون زیر هم می‌نشیند. در فیلتر بازار، هر نماد با ستاره‌ی کنار ردیف خودش به دیده‌بان اضافه می‌شود و دکمه‌ای که همه‌ی نتیجه‌ها را یک‌جا اضافه می‌کرد برداشته شد.
+
+**en**
+
+> The change column in Rasad and the market list now lines up row under row. In the screener each market is added to the watchlist by the star on its own row; the button that added every result at once is gone.
+
+---
+
 ## 5.19.1
 
 **fa**

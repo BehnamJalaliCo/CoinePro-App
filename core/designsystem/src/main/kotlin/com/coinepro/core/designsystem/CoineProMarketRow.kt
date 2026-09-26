@@ -1,5 +1,6 @@
 package com.coinepro.core.designsystem
 
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -424,18 +425,27 @@ fun CoineProMarketRow(
                         color = trailingNoteColor,
                         fontWeight = FontWeight.Normal,
                     )
+                    // A fixed width, so both edges of every pill line up down the list (5.19.2).
                     changePercent != null ->
-                        CoineProPercentPill(changePercent, background = background)
+                        CoineProPercentPill(changePercent, background = background, modifier = Modifier.width(PILL_WIDTH))
                     // Nothing at all rather than a dash. A missing move is missing; a dash in the
                     // column where the movers are read looks like a market that did not move.
                     else -> Unit
                 }
+                // **The price in a slot of its own width** (5.19.2). Packed against the edge with
+                // no slot, the pill sat wherever the price ended — `83,802.20` put it in one place
+                // and `1.5036` in another, and the column of moves zig-zagged down the list (the
+                // owner's circled screenshot of Rasad and the market list). The slot is as wide as
+                // the longest price either backend quotes; the figure hugs the outer edge inside
+                // it, so the pill beside it lands at the same x on every row.
                 Text(
                     text = price ?: "—",
                     style = CoineProTextStyles.RowFigure,
                     color = if (price == null) CoineProColors.TextMuted else CoineProColors.TextPrimary,
                     maxLines = 1,
-                    textAlign = TextAlign.Right,
+                    softWrap = false,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.widthIn(min = PRICE_SLOT),
                 )
             }
             // The day's range keeps the second line to itself, which is what it was sharing with
@@ -474,7 +484,13 @@ private val ROW_MIN_HEIGHT = 56.dp
  */
 // Wide enough for the price **and** the move on one line: `105,432.10` plus a gap plus the pill.
 // It was 98 when the two were stacked.
-private val FIGURE_COLUMN = 152.dp
+private val FIGURE_COLUMN = 164.dp
+
+/** The move's pill in a row: wide enough for `+123.45%`, and the same on every row. */
+private val PILL_WIDTH = 66.dp
+
+/** The price's slot: `105,432.10` at the row figure's size. */
+private val PRICE_SLOT = 88.dp
 
 /** The sparkline cell: the reference's 24dp line, at the width this row has to spare. */
 private val SPARKLINE_WIDTH = 52.dp
