@@ -522,6 +522,19 @@ def service_impl(text, decl, qualified):
 # silently dropping the browser's version of it. Every entry says why the browser needs it.
 
 PATCHES = [
+    # **The chart page is never restarted on its own in the browser** (5.19.3).
+    #
+    # `ChartScreen` takes over a hundred parameters. Composed from its parent it is correct; restarted
+    # as its own recompose scope, the wasm build laid its leading slots out differently from the
+    # first pass, so every value it had remembered was read one or two slots off — its time-zone
+    # state came back as `collectAsStateWithLifecycle`'s own coroutine lambda and the page died in
+    # `getInterfaceVTable` («array element access out of bounds»). Which change set it off looked
+    # arbitrary — a modifier in 5.19.0, two panel icons in 5.19.1, a back button in 5.19.3 — because
+    # any of them could be what first made the page recompose by itself. Non-restartable, a state
+    # read inside it invalidates the parent, which calls it again the way that has always worked.
+    ('feature/chart', 'com/coinepro/feature/chart/ChartScreen.kt',
+     '@OptIn(ExperimentalMaterial3Api::class)\n@Composable\nfun ChartScreen(',
+     '@OptIn(ExperimentalMaterial3Api::class)\n@Composable\n@androidx.compose.runtime.NonRestartableComposable\nfun ChartScreen('),
     # An access-ordered LinkedHashMap is a JVM constructor Kotlin's common map does not have; the
     # browser's map is kept in the same order by re-inserting a series each time it is read.
     ('core/marketdata', 'com/coinepro/core/marketdata/CandleArchive.kt',

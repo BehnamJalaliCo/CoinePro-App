@@ -133,6 +133,16 @@ data class AuthMethods(
      * release could have known. A server always knows where it is serving from.
      */
     val terminalUrl: String? = null,
+    /**
+     * The markets this deployment has charts for, or null where it did not say (5.19.3).
+     *
+     * TradeYar's price feed carries every market on its venue — eight hundred and more — and its
+     * candle routes serve a scope of about half of them; everything else is a 422, «در این پلتفرم
+     * پشتیبانی نمی‌شود». A list built from the first and opened through the second therefore has
+     * rows that can never become a chart. Null keeps every row, which is the right answer for a
+     * server that reports nothing: it has not said any market is missing.
+     */
+    val symbols: List<String>? = null,
 ) {
     val any: Boolean get() = emailPassword || googleUsable || telegram
 

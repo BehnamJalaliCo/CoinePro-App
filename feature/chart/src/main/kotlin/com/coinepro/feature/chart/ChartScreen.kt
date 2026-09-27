@@ -1340,7 +1340,7 @@ fun ChartScreen(
             )
             when {
                 state.loading && state.series.isEmpty -> ChartSkeleton()
-                state.error != null && state.series.isEmpty -> ChartFailure(state.error!!, controller::retry)
+                state.error != null && state.series.isEmpty -> ChartFailure(state.error!!, controller::retry, onBack)
                 // **A seconds chart with nothing on it yet is not a broken chart.**
                 //
                 // No venue serves a bar shorter than a minute, so these are built here out of the
@@ -2434,6 +2434,7 @@ fun ChartScreen(
                 onFullscreen = { fullscreenRequested = true },
                 onSnapshot = copyPicture,
                 onTrade = onTrade,
+                onBack = onBack,
             )
         }
 
@@ -6015,7 +6016,7 @@ private fun ChartInlineFailure(error: ChartError, onRetry: () -> Unit, modifier:
  * candles on it is [ChartInlineFailure] instead.
  */
 @Composable
-private fun ChartFailure(error: ChartError, onRetry: () -> Unit) {
+private fun ChartFailure(error: ChartError, onRetry: () -> Unit, onBack: (() -> Unit)? = null) {
     Column(
         modifier = Modifier.fillMaxSize().padding(CoineProSpacing.Four),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf, Alignment.CenterVertically),
@@ -6037,6 +6038,21 @@ private fun ChartFailure(error: ChartError, onRetry: () -> Unit) {
                 modifier = Modifier
                     .clip(com.coinepro.core.designsystem.CoineProPillShape)
                     .clickable(onClick = onRetry)
+                    .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.One),
+            )
+        }
+        // The way back, on the one screen that has no legend to carry it (5.19.3). A chart that
+        // failed draws no plate and no arrow, and the owner's reader was left on «چارت بارگیری
+        // نشد» with nothing on the page that led anywhere else.
+        onBack?.let { back ->
+            Text(
+                text = stringResource(DesignR.string.legend_back),
+                style = MaterialTheme.typography.labelLarge,
+                color = CoineProColors.TextPrimary,
+                modifier = Modifier
+                    .clip(com.coinepro.core.designsystem.CoineProPillShape)
+                    .background(CoineProColors.SurfaceElevated)
+                    .clickable(onClick = back)
                     .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.One),
             )
         }

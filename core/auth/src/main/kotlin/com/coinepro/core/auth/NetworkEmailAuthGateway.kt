@@ -44,6 +44,9 @@ class NetworkEmailAuthGateway internal constructor(
                 accountDeletion = it.accountDeletion,
                 guestAuth = it.guestAuth,
                 terminalUrl = it.terminalUrl?.trim()?.takeIf(String::isNotEmpty),
+                symbols = it.symbols
+                    ?.mapNotNull { row -> row.symbol?.trim()?.uppercase()?.takeIf(String::isNotEmpty) }
+                    ?.takeIf { list -> list.isNotEmpty() },
             )
         }
     }

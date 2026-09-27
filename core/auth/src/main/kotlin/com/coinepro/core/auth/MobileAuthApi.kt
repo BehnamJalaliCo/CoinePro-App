@@ -152,7 +152,12 @@ internal data class AuthMethodsDto(
      */
     @SerializedName(value = "terminal_url", alternate = ["terminalUrl"])
     val terminalUrl: String? = null,
+    /** The markets this deployment serves candles for. See [AuthMethods.symbols]. */
+    val symbols: List<AuthSymbolDto>? = null,
 )
+
+/** One row of `auth/methods`' `symbols`; only the ticker is read. */
+internal data class AuthSymbolDto(val symbol: String? = null)
 
 /**
  * How each backend answers the profile read.

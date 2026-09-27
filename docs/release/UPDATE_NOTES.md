@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.19.3
+
+**fa**
+
+> چارت در گوشی، تبلت و وب دکمه‌ی بازگشتِ روشن دارد، حتی وقتی بارگیری نشود. فیلتر بازار فقط نمادهایی را نشان می‌دهد که چارت دارند، پس زدن روی ردیف دیگر به «چارت بارگیری نشد» نمی‌رسد؛ بررسی نمادها هم وقتی از فیلتر بیرون می‌روید می‌ایستد و با برگشتن ادامه پیدا می‌کند.
+
+**en**
+
+> The chart has a clear back button on phone, tablet and web, even when it fails to load. The screener now lists only markets that have a chart, so a row no longer opens «Chart could not load», and its scan pauses while you are away and resumes when you return.
+
+---
+
 ## 5.19.2
 
 **fa**

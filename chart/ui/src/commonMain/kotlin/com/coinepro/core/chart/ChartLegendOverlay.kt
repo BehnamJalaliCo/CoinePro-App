@@ -1165,9 +1165,14 @@ private fun LegendButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
+    // The way back sits on a plate of its own (5.19.3). As a bare one-point arrow the size of the
+    // eye and the gear it read as one more legend ornament, and the owner looked for a back button
+    // on a page that had one. The plate is what makes it a button at a glance.
+    val plated = mark == LegendMark.BACK
+    val footprint = if (plated) BACK_PLATE_DP else LEGEND_BUTTON_DP
     Box(
         modifier = modifier
-            .touchTarget(footprint = LEGEND_BUTTON_DP, target = LEGEND_TOUCH_DP)
+            .touchTarget(footprint = footprint, target = LEGEND_TOUCH_DP)
             .hoverable(interaction)
             .chartControl(onClick = onClick)
             .semantics { contentDescription = description },
@@ -1175,10 +1180,14 @@ private fun LegendButton(
     ) {
         Box(
             modifier = Modifier
-                .size(LEGEND_BUTTON_DP)
+                .size(footprint)
                 .background(
-                    color = if (hovered) colour.copy(alpha = LEGEND_HOVER_ALPHA) else Color.Transparent,
-                    shape = RoundedCornerShape(LEGEND_HOVER_RADIUS_DP),
+                    color = when {
+                        plated -> colour.copy(alpha = if (hovered) BACK_PLATE_HOVER_ALPHA else BACK_PLATE_ALPHA)
+                        hovered -> colour.copy(alpha = LEGEND_HOVER_ALPHA)
+                        else -> Color.Transparent
+                    },
+                    shape = if (plated) CircleShape else RoundedCornerShape(LEGEND_HOVER_RADIUS_DP),
                 ),
             contentAlignment = Alignment.Center,
         ) {
@@ -1215,7 +1224,7 @@ private fun legendMarkVector(mark: LegendMark): ImageVector {
     fun stroke(data: String) = builder.addPath(
         pathData = addPathNodes(data),
         stroke = SolidColor(Color.Black),
-        strokeLineWidth = MARK_STROKE,
+        strokeLineWidth = if (mark == LegendMark.BACK) BACK_STROKE else MARK_STROKE,
         strokeLineCap = StrokeCap.Round,
         strokeLineJoin = StrokeJoin.Round,
     )
@@ -1259,6 +1268,12 @@ private val LEGEND_MARK_DP = 18.dp
 /** The hover plate under a legend button: TradingView's 4 px corner, the mark's ink at 14 %. */
 private val LEGEND_HOVER_RADIUS_DP = 4.dp
 private const val LEGEND_HOVER_ALPHA = 0.14f
+
+/** The back button's round plate, its tint at rest and under a pointer, and its heavier line. */
+private val BACK_PLATE_DP = 30.dp
+private const val BACK_PLATE_ALPHA = 0.12f
+private const val BACK_PLATE_HOVER_ALPHA = 0.2f
+private const val BACK_STROKE = 1.8f
 
 /**
  * A touch target larger than the space the control occupies in its row.

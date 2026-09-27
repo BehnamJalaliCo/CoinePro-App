@@ -183,6 +183,18 @@ class AuthWireTest {
     }
 
     @Test
+    fun `TradeYar's chart scope is read from its methods, and absent elsewhere`() {
+        // 5.19.3: the screener lists only what these name. TradeYar sends objects, not strings.
+        val tradeYar = gson.fromJson(
+            """{"email_password": true, "symbols": [{"symbol": "BTCUSDT", "display_name": "x", "price_tick": 0.1}, {"symbol": "ethusdt"}]}""",
+            AuthMethodsDto::class.java,
+        )
+        assertEquals(listOf("BTCUSDT", "ethusdt"), tradeYar.symbols?.map { it.symbol })
+        val forex = gson.fromJson("""{"email_password": true}""", AuthMethodsDto::class.java)
+        assertNull("a server that does not say filters nothing", forex.symbols)
+    }
+
+    @Test
     fun `an empty profile keeps the defaults rather than inventing a name`() {
         val profile = gson.fromJson("{}", AuthUserDto::class.java).toDomain()
 

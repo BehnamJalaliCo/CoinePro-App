@@ -40,3 +40,16 @@ by a modifier node) and swapping the objects/explain side-panel icons to `tv_lis
 `ChartScreen` on wasm is sensitive to changes that should be inert; every change to the chart
 screen must be opened in a real browser (pro-chart.com/terminal/BTCUSDT/4h and a click on the
 toolbar) before release, not only compiled.
+
+**Root cause, found in 5.19.3.** It was never the change. `ChartScreen` takes over a hundred
+parameters, and when the wasm build *restarts it as its own recompose scope* it lays the leading
+slots out differently from a call by its parent: instrumented, its time-zone state came back on the
+first self-restart as `collectAsStateWithLifecycle`'s own coroutine lambda, one or two slots off. The
+three "triggers" were simply the first changes that made the page recompose by itself (a modifier, two
+panel icons, a back button — and in bisection, a navigation rail beside it). The web build now marks
+`ChartScreen` `@NonRestartableComposable` through `web/tools/share_sources.py`'s `PATCHES`, so a state
+read inside it invalidates the parent, which calls it the way that has always worked. Android is
+unchanged. The web drawable painter was also keyed on the drawable (`VectorDrawables.drawablePainter`)
+so a loading icon and a loaded one never share slots. Still open a real browser after touching the
+chart; the checks are `pw/v519.js` (desktop) and `pw/back.js` (desktop back, phone screener → chart →
+back).

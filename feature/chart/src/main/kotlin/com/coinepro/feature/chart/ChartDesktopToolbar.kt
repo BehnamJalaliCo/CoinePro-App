@@ -112,6 +112,15 @@ internal fun ChartDesktopToolbar(
     onSnapshot: () -> Unit,
     onTrade: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    /**
+     * The way out of the chart, first on the row (5.19.3).
+     *
+     * The phone carries it at the head of the legend; this toolbar replaced that on a wide window
+     * and the arrow did not come with it, so a reader who opened a chart in the browser or on a
+     * tablet had nothing on the page that led back — «کاربر بعد از ورود نمی‌تواند برگردد». Worded
+     * where the row has the room, so it is found by reading rather than by guessing at a glyph.
+     */
+    onBack: (() -> Unit)? = null,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         // Below a desktop's width the worded buttons keep their glyph and lose the word — TradingView
@@ -126,6 +135,30 @@ internal fun ChartDesktopToolbar(
                 .testTag(DESKTOP_TOOLBAR_TAG),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            onBack?.let { back ->
+                ToolbarChip(
+                    onClick = back,
+                    description = BACK_DESCRIPTION,
+                    tooltip = stringResource(DesignR.string.legend_back).takeUnless { worded },
+                ) { ink ->
+                    Icon(
+                        painter = painterResource(DesignR.drawable.icon_arrow_left),
+                        contentDescription = null,
+                        tint = ink,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    if (worded) {
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(DesignR.string.legend_back),
+                            style = ChromeTextStyle(),
+                            color = ink,
+                            maxLines = 1,
+                        )
+                    }
+                }
+                ToolbarSeparator()
+            }
             val scroll = rememberScrollState()
             Row(
                 modifier = Modifier
@@ -673,3 +706,6 @@ internal fun rangeCode(range: ChartRange): String = when (range) {
 object ChartClock {
     var now: () -> Long = { System.currentTimeMillis() }
 }
+
+/** The back chip's accessibility name, which a test finds it by. */
+internal const val BACK_DESCRIPTION = "toolbar-back"

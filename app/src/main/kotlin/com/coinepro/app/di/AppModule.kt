@@ -1898,6 +1898,7 @@ object AppModule {
         @ForexPlatform tickerStore: MarketTickerStore,
         store: ScreenerStore,
         scope: CoroutineScope,
+        capabilities: PlatformCapabilities,
     ): ScreenerController = ScreenerController(
         gateway = catalog,
         scope = scope,
@@ -1905,6 +1906,8 @@ object AppModule {
         barSource = CandleScreenerBarSource(candles),
         tickers = MarketTickerScreenerSource(tickerStore),
         store = store,
+        // Only the markets TradeYar has charts for (5.19.3). See `ScreenerController.chartable`.
+        chartable = capabilities.chartableReader(MarketPlatform.TRADEYAR),
     )
 
     @Provides

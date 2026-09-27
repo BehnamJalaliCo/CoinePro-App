@@ -60,6 +60,9 @@ scorecard) and a second pixel-level pass over the old Pro-Chart terminal
 | Alert expiry: never, 1, 7, 30, 60 days | ✅ 5.16.1 | `AlertDraft.expiresAt` written and read back (`AlertDraftTest`) | — **a chip row in the alert sheet**, outside the captured decor view |
 | Alerts checked every minute while the app is open | ✅ 5.16.1 | `LocalAlertScheduler.checkNow` on a lifecycle loop, one pass at a time behind `PASS_LOCK` | — **a timer**, not a picture; the fifteen-minute background period is unchanged |
 | Screener: add a result to the watchlist | ✅ 5.19.2 | `ScreenerScreen(onToggleWatchlist)` → `watchlistStore.toggle` | — **a star on each row**; the old «add every result» button put the whole catalogue (800+ markets) into the watchlist and is gone |
+| A way back from the chart on every window | ✅ 5.19.3 | `ChartDesktopToolbar(onBack)` on a wide window, a plated `LegendMark.BACK` on the phone, a «بازگشت» key on the failure screen, all calling `leaveChart` (pop, or the watchlist when nothing is under the chart) | — **a worded chip at the head of the desktop row**; checked in the browser at 1600×900 and 412×900, including a chart opened by direct link |
+| Leaving the screener pauses its scan | ✅ 5.19.3 | `ScreenerController.stop` → `pauseResolution`, resumed by `start` (`ScreenerControllerTest`); the chart's second load attempt waits `LOAD_RETRY_PAUSE_MS` | — **a network effect**, not a picture; the test pins that no bar is read while the screen is closed |
+| The screener lists only markets that have a chart | ✅ 5.19.3 | `ScreenerController(chartable)` ← `PlatformCapabilities.chartableSymbols` ← `auth/methods` `symbols` (`ScreenerControllerTest`, `AuthWireTest`); the chart's failure screen carries the way back | — **864 in the venue's feed, 441 with candles**; the rest answered the chart with a 422 and were the top rows of the owner's screen |
 
 ## 5.17.0 — the growth scan, and the rest of the behind rows
 

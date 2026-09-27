@@ -324,6 +324,19 @@ class ScreenerController(
      * than hard-coded so a test can pass an unconfined dispatcher and stay deterministic.
      */
     private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    /**
+     * The markets that can be opened as a chart, or null for «every one» (5.19.3).
+     *
+     * The catalogue is the venue's whole price feed, and on TradeYar only about half of it has
+     * candles: the rest answer the chart with «در این پلتفرم پشتیبانی نمی‌شود». Those were exactly
+     * the rows at the top of the owner's screen — thin markets with the day's largest moves — so a
+     * tap on the first row opened a chart that could only fail, with no way back from the failure.
+     * A screener is a way into a chart; a row that cannot be one is not listed.
+     *
+     * A null or empty answer, or a failed one, filters nothing: a server that has not said which
+     * markets it serves has not said any is missing.
+     */
+    private val chartable: (suspend () -> Set<String>?)? = null,
 ) {
     private val _state = MutableStateFlow(ScreenerState())
     val state: StateFlow<ScreenerState> = _state.asStateFlow()
@@ -362,6 +375,20 @@ class ScreenerController(
     private var resolveJob: Job? = null
     private val resolveGate = Semaphore(RESOLUTION_CONCURRENCY)
 
+    /** The markets the pass in flight was asked to read. See [stop]. */
+    private var passSymbols: List<String> = emptyList()
+
+    /**
+     * Bumped by every pause, so a read whose permit was handed over while its pass was being
+     * cancelled sees that the pass is over before it asks the network for anything.
+     */
+    private var passGeneration = 0
+
+    /**
+     * Markets a paused pass had already read but not yet folded into the table. See [stop].
+     */
+    private val parked = mutableSetOf<String>()
+
     /**
      * True from the moment the day's table is asked for until the platform has answered once.
      *
@@ -394,8 +421,29 @@ class ScreenerController(
                 }
             }
         }
-        if (universe.isNotEmpty() || loadJob?.isActive == true) return
+        if (loadJob?.isActive == true) return
+        if (universe.isNotEmpty()) {
+            resume()
+            return
+        }
         refresh()
+    }
+
+    /**
+     * Picks a paused pass back up where [stop] left it: what it had read is folded in, and what it
+     * had not is asked for again.
+     */
+    private fun resume() {
+        val read = parked.toList()
+        parked.clear()
+        scope.launch {
+            if (read.isNotEmpty()) {
+                warm(read)
+                rebuild(read)
+                recompute()
+            }
+            scheduleResolution()
+        }
     }
 
     /** Re-reads the catalogue. The pull-to-refresh target, and the retry on the error state. */
@@ -403,11 +451,15 @@ class ScreenerController(
         loadJob?.cancel()
         _state.update { it.copy(loading = true, error = null) }
         loadJob = scope.launch {
+            val allowed = chartable?.let { read -> runCatching { read() }.getOrNull() }
+                ?.takeIf { it.isNotEmpty() }
             runCatching { gateway.load() }
                 .onSuccess { catalog ->
                     // Sorted once, here, rather than on every recompute: this order is what
                     // "resolve the most important markets first" means, and it does not change.
-                    universe = catalog.markets.sortedBy { SymbolRanking.rank(it) }
+                    universe = catalog.markets
+                        .filter { meta -> allowed == null || meta.symbol.uppercase() in allowed }
+                        .sortedBy { SymbolRanking.rank(it) }
                     quoteBySymbol.putAll(catalog.quotes)
                     // The readings are answers about bars, and a fresh catalogue is a fresh scan.
                     // Dropped together so a cached number can never outlive the series it came from.
@@ -443,6 +495,29 @@ class ScreenerController(
         tickerJob?.cancel()
         tickerJob = null
         awaitingTickers = false
+        pauseResolution()
+    }
+
+    /**
+     * Stops the bar pass, too (5.19.3).
+     *
+     * The pass used to outlive the screen. A reader who tapped a row while it was reading «۳۵۹ از
+     * ۸۶۳» opened a chart whose own history request queued behind four candle requests at a time
+     * for another two hundred markets — on the same connection and under the same rate limit — and
+     * the chart gave up and offered «تلاش مجدد». A screener nobody is looking at has no reason to
+     * be reading anything, so the pass is cancelled here and [start] resumes it: the markets it had
+     * not reached go back in the queue, and the ones it had read are kept for the table.
+     */
+    private fun pauseResolution() {
+        val job = resolveJob ?: return
+        passGeneration += 1
+        job.cancel()
+        resolveJob = null
+        passSymbols.forEach { symbol ->
+            if (symbol in barsBySymbol) parked.add(symbol) else asked.remove(symbol)
+        }
+        passSymbols = emptyList()
+        if (_state.value.resolving) _state.update { it.copy(resolving = false) }
     }
 
     /**
@@ -508,6 +583,8 @@ class ScreenerController(
         readings.clear()
         asked.clear()
         throttled.clear()
+        parked.clear()
+        passSymbols = emptyList()
         _state.update { it.copy(timeframe = timeframe, resolving = false, readCount = 0) }
         rebuild(rowBySymbol.keys.toList())
         recompute()
@@ -887,7 +964,9 @@ class ScreenerController(
         }
 
         asked.addAll(wanted)
+        passSymbols = wanted
         val timeframe = _state.value.timeframe
+        val generation = passGeneration
         _state.update { it.copy(resolving = true) }
         var refused = false
         resolveJob = scope.launch {
@@ -895,6 +974,7 @@ class ScreenerController(
                 wanted.forEach { symbol ->
                     launch {
                         resolveGate.withPermit {
+                            if (generation != passGeneration) return@withPermit
                             val bars = try {
                                 source.bars(symbol, timeframe)
                             } catch (_: ScreenerBarsThrottled) {
@@ -918,6 +998,7 @@ class ScreenerController(
             }
             warm(wanted)
             rebuild(wanted)
+            passSymbols = emptyList()
             _state.update { it.copy(resolving = false) }
             recompute()
             // This pass is over. Without letting go of the handle, the re-schedules below met

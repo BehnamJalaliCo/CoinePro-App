@@ -191,6 +191,70 @@ class ScreenerControllerTest {
     }
 
     @Test
+    fun `only markets that can be opened as a chart are listed`() = runTest {
+        // 5.19.3. The venue's feed lists more markets than the candle routes serve; a row outside
+        // the chart scope opened «چارت بارگیری نشد» and nothing else.
+        val controller = ScreenerController(
+            gateway = catalogue,
+            scope = TestScope(UnconfinedTestDispatcher(testScheduler)),
+            chartable = { setOf("BTCUSDT", "ETHUSDT") },
+        )
+        controller.refresh()
+        advanceUntilIdle()
+        assertEquals(setOf("BTCUSDT", "ETHUSDT"), controller.state.value.rows.map(ScreenerRow::symbol).toSet())
+        assertEquals(2, controller.state.value.universeSize)
+    }
+
+    @Test
+    fun `a scope that could not be read filters nothing`() = runTest {
+        val controller = ScreenerController(
+            gateway = catalogue,
+            scope = TestScope(UnconfinedTestDispatcher(testScheduler)),
+            chartable = { error("unreachable") },
+        )
+        controller.refresh()
+        advanceUntilIdle()
+        assertEquals(universe.size, controller.state.value.rows.size)
+    }
+
+    @Test
+    fun `leaving the screener stops the bar pass and coming back finishes it`() = runTest {
+        // 5.19.3. A row tapped mid-scan opened a chart whose history request queued behind the
+        // screener's candle requests, and the chart gave up with «تلاش مجدد». A screen nobody is
+        // looking at reads nothing; the pass resumes where it stopped.
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val reads = mutableListOf<String>()
+        val controller = ScreenerController(
+            gateway = catalogueWithoutPrices,
+            scope = TestScope(UnconfinedTestDispatcher(testScheduler)),
+            barSource = { symbol ->
+                reads += symbol
+                gate.await()
+                bars(100.0, 110.0)
+            },
+        )
+        controller.start()
+        advanceUntilIdle()
+        assertTrue("a pass is under way", controller.state.value.resolving)
+        val before = reads.size
+
+        controller.stop()
+        gate.complete(Unit)
+        advanceUntilIdle()
+        assertEquals("nothing is read while the screen is closed", before, reads.size)
+        assertEquals(false, controller.state.value.resolving)
+        assertEquals(0, controller.state.value.readCount)
+
+        controller.start()
+        advanceUntilIdle()
+        val state = controller.state.value
+        assertTrue("every market was read after coming back", state.rows.all { it.high != null })
+        assertEquals(universe.size, state.readCount)
+        assertEquals(false, state.resolving)
+        controller.stop()
+    }
+
+    @Test
     fun `a 429 from the gateway is told apart from any other failure`() {
         assertTrue(isThrottle(IllegalStateException("HTTP 429 Too Many Requests")))
         assertTrue(isThrottle(RuntimeException("wrapped", IllegalStateException("Too Many Requests"))))

@@ -75,6 +75,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -673,6 +674,26 @@ private fun executionRoute(signalId: Long) = "execution/$signalId"
  * A ticker is safe in a path segment — both feeds spell them in ASCII letters and digits — but
  * encoding it costs nothing and a symbol that ever grows a slash would otherwise route nowhere.
  */
+/**
+ * The chart's way back (5.19.3).
+ *
+ * `popBackStack` alone was the arrow's whole action, and it is the wrong one whenever the chart is
+ * the only page on the stack: the chart tab replaces itself with the chart it opens, so a reader
+ * who launched on that tab, or arrived at `/terminal/BTCUSDT/4h` from outside, had nothing under
+ * the chart to return to — the pop either did nothing or left an empty page. With something below,
+ * this is the same pop; with nothing, it goes to the watchlist, as the root of the app.
+ */
+private fun NavHostController.leaveChart() {
+    if (previousBackStackEntry != null) {
+        popBackStack()
+    } else {
+        navigate(AppDestination.WATCHLIST.route) {
+            popUpTo(graph.id) { inclusive = true }
+            launchSingleTop = true
+        }
+    }
+}
+
 private fun chartRoute(symbol: String, timeframe: String? = null): String {
     val base = "chart/" + Uri.encode(symbol)
     val bar = timeframe?.trim()?.takeIf(String::isNotEmpty) ?: return base
@@ -1839,6 +1860,9 @@ fun CoineProApp(
                             scope = scope,
                             barSource = CandleScreenerBarSource(guestCandles),
                             store = screenerStore,
+                            // The guest's catalogue and candles are TradeYar's public routes, so
+                            // its rows are held to TradeYar's chart scope. See `chartable`.
+                            chartable = platformCapabilities.chartableReader(MarketPlatform.TRADEYAR),
                         )
                     }
                     MainShell(
@@ -3611,7 +3635,7 @@ private fun MainShell(
                 // The arrow the app bar used to hold. The bar is not drawn over this route any
                 // more — see `showTopBar` — and this is the same `popBackStack` it called, handed
                 // to the page so it can put it where it costs the plot nothing.
-                onBack = { navController.popBackStack() },
+                onBack = { navController.leaveChart() },
                 // How much of the chart's chrome this reader asked for, and the hub's one-tap way
                 // to change their mind. See `ReaderMode`: nothing is gated, so the tap is a
                 // statement about what to draw and it is reversible.
@@ -4878,7 +4902,7 @@ private fun MainShell(
                     workspace = chartWorkspaceStore,
                     symbolChartStates = symbolChartStateStore,
                     chartLayoutStore = chartLayoutStore,
-                    onBack = { navController.popBackStack() },
+                    onBack = { navController.leaveChart() },
                 )
             }
             composable(

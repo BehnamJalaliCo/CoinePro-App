@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -258,12 +259,31 @@ fun rememberDrawable(name: String): WebDrawable? {
     return Drawables.peek(name)
 }
 
-/** The painter for a drawable, or null while it loads or when the bundle has none by that name. */
+/**
+ * The painter for a drawable, or null while it loads or when the bundle has none by that name.
+ *
+ * ### Why the `key`
+ *
+ * The drawable arrives after the first frame, and the branch it lands in remembers a painter that
+ * the loading branch did not. Without a group of its own, that remember was inserted into the
+ * *caller's* slots on the recomposition that brought the drawable, and every value the caller had
+ * remembered after this call moved by one. On the chart screen the next such value was its
+ * time-zone state, and the page died reading a painter as a `State` — `getInterfaceVTable`, «array
+ * element access out of bounds». Three changes were blamed for it in turn, each of which only
+ * put a new icon on that screen (5.19.0's modifier, 5.19.1's panel icons, 5.19.3's back button).
+ * Keyed on the drawable, the loading branch and the loaded one are separate groups, and the
+ * swap replaces one with the other instead of shifting whatever follows.
+ */
 @Composable
-fun drawablePainter(name: String): Painter? = when (val drawable = rememberDrawable(name)) {
-    is WebDrawable.Vector -> rememberVectorPainter(drawable.image)
-    is WebDrawable.Bitmap -> remember(drawable) { BitmapPainter(drawable.image) }
-    WebDrawable.Missing, null -> null
+fun drawablePainter(name: String): Painter? {
+    val drawable = rememberDrawable(name)
+    return key(drawable) {
+        when (drawable) {
+            is WebDrawable.Vector -> rememberVectorPainter(drawable.image)
+            is WebDrawable.Bitmap -> remember(drawable) { BitmapPainter(drawable.image) }
+            WebDrawable.Missing, null -> null
+        }
+    }
 }
 
 /** An icon by its Android name, tinted like `Icon` tints — or nothing while it loads. */

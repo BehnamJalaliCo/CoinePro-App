@@ -4291,7 +4291,11 @@ class ChartController(
      */
     private suspend fun loadPage(symbol: String, interval: ChartInterval): Result<CandlePage> {
         var last: Throwable? = null
-        repeat(LOAD_ATTEMPTS) {
+        repeat(LOAD_ATTEMPTS) { attempt ->
+            // A pause before the second ask (5.19.3). The first usually fails for a reason that
+            // lasts a moment — a rate limit another screen had just spent, a connection being
+            // re-made — and asking again in the same millisecond met the same answer.
+            if (attempt > 0) delay(LOAD_RETRY_PAUSE_MS)
             val outcome = runCatching {
                 try {
                     withTimeout(LOAD_TIMEOUT_MS) { gateway.load(symbol, interval) }
@@ -4915,6 +4919,9 @@ class ChartController(
 
         /** How many times a page is asked for before the reader is told: two. See [loadPage]. */
         const val LOAD_ATTEMPTS = 2
+
+        /** The pause between the two. See [loadPage]. */
+        const val LOAD_RETRY_PAUSE_MS = 1_200L
 
         /**
          * How many bars one page-back takes off the **disk**: five thousand.

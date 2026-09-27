@@ -51,6 +51,30 @@ class PlatformCapabilities(
         }
     }
 
+    /**
+     * The markets [platform] has charts for, or null where it did not say (5.19.3).
+     *
+     * Read from the answer this class already holds when there is one, and asked for otherwise:
+     * the screener needs it for a guest too, and [refresh] runs only after a sign-in. The question
+     * is public on both servers, so asking it signed out is the same request the sign-in screen
+     * makes.
+     */
+    suspend fun chartableSymbols(platform: MarketPlatform): Set<String>? {
+        mutableState.value[platform]?.let { return it.symbols?.toSet() }
+        val methods = (gateways[platform]?.methods() as? AppResult.Success)?.value ?: return null
+        mutableState.value = mutableState.value + (platform to methods)
+        return methods.symbols?.toSet()
+    }
+
+    /**
+     * [chartableSymbols] for one platform, as the reader a screener is built with.
+     *
+     * A function here rather than a lambda written at the call site: the call site is a
+     * composable, and a suspending lambda created inside one is the kind of change the browser
+     * build has twice miscompiled into a crash on the chart's first frame.
+     */
+    fun chartableReader(platform: MarketPlatform): suspend () -> Set<String>? = { chartableSymbols(platform) }
+
     fun clear() {
         mutableState.value = emptyMap()
     }
