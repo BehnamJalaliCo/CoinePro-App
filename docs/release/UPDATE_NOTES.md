@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.19.4
+
+**fa**
+
+> پرو چارت دیگر هیچ دسترسی دوربینی نمی‌خواهد. دکمه‌ی «دوربین» در تحلیل تصویر حالا برنامه‌ی دوربین خود گوشی را باز می‌کند و عکس را از همان‌جا می‌گیرد؛ انتخاب از گالری مثل قبل کار می‌کند.
+
+**en**
+
+> Pro Chart no longer asks for any camera permission. Camera in chart analysis now opens your phone's own camera app and takes the picture from there; choosing from the gallery works as before.
+
+---
+
 ## 5.19.3
 
 **fa**

@@ -1,7 +1,5 @@
 package com.coinepro.feature.aivision
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -38,7 +36,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.aivision.AiVisionAssessment
 import com.coinepro.core.aivision.AiVisionController
@@ -73,10 +71,9 @@ fun AiVisionScreen(
     var prepared by remember { mutableStateOf<AiVisionImageUpload?>(null) }
     var preparing by remember { mutableStateOf(false) }
     var selectionError by remember { mutableStateOf<String?>(null) }
-    var showCamera by remember { mutableStateOf(false) }
     // Resolved out here: the failure handlers below are not composable scopes.
     val prepareFailure = stringResource(R.string.vision_prepare_failed)
-    val cameraDenied = stringResource(R.string.vision_camera_denied)
+    val cameraUnavailable = stringResource(R.string.vision_camera_unavailable)
 
     fun prepare(uri: Uri) {
         scope.launch {
@@ -92,20 +89,37 @@ fun AiVisionScreen(
     val documentPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let(::prepare)
     }
-    val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) {
-            showCamera = true
-        } else {
-            selectionError = cameraDenied
-        }
+    // **The phone's own camera app, and no camera permission** (5.19.4).
+    //
+    // This screen used to open a camera of its own inside the page, which needs
+    // `android.permission.CAMERA`, and Cafe Bazaar refused the release for declaring it. A photo
+    // is all the screen wants, so the system camera takes it: the app hands it a file to write,
+    // through the one directory `shared_files.xml` exposes, and reads that file back. An app that
+    // does not declare the permission needs none for this — and one that declared it would need
+    // it granted, which is why the manifest no longer lists it at all.
+    var captureTarget by remember { mutableStateOf<Uri?>(null) }
+    val takePicture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
+        val target = captureTarget
+        captureTarget = null
+        if (saved && target != null) prepare(target)
     }
 
     fun openCamera() {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-            showCamera = true
-        } else {
-            cameraPermission.launch(Manifest.permission.CAMERA)
+        val target = runCatching {
+            val dir = java.io.File(context.cacheDir, "shared").apply { mkdirs() }
+            val file = java.io.File(dir, "vision-capture.jpg")
+            FileProvider.getUriForFile(context, context.packageName + ".shared", file)
+        }.getOrNull()
+        if (target == null) {
+            selectionError = cameraUnavailable
+            return
         }
+        captureTarget = target
+        runCatching { takePicture.launch(target) }
+            .onFailure {
+                captureTarget = null
+                selectionError = cameraUnavailable
+            }
     }
 
     Column(
@@ -127,71 +141,56 @@ fun AiVisionScreen(
             color = CoineProColors.TextSecondary,
         )
 
-        if (showCamera) {
-            CoineProCard(modifier = Modifier.fillMaxWidth()) {
-                Column {
-                    CameraCapturePanel(
-                        onCaptured = { uri ->
-                            showCamera = false
-                            prepare(uri)
-                        },
-                        onError = { selectionError = it },
-                        onCancel = { showCamera = false },
+        CoineProCard(modifier = Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf)) {
+                Text(
+                    text = stringResource(R.string.vision_source_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = CoineProColors.TextPrimary,
+                )
+                Text(
+                    text = stringResource(R.string.vision_permission_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = CoineProColors.TextMuted,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
+                    CoineProSecondaryButton(
+                        text = stringResource(R.string.vision_camera),
+                        onClick = ::openCamera,
+                        modifier = Modifier.weight(1f),
+                    )
+                    CoineProSecondaryButton(
+                        text = stringResource(R.string.vision_gallery),
+                        onClick = { documentPicker.launch(arrayOf("image/*")) },
+                        modifier = Modifier.weight(1f),
                     )
                 }
-            }
-        } else {
-            CoineProCard(modifier = Modifier.fillMaxWidth()) {
-                Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.OneHalf)) {
+                if (preparing) {
+                    CoineProSkeleton(Modifier.fillMaxWidth(), height = 14.dp)
                     Text(
-                        text = stringResource(R.string.vision_source_title),
-                        style = MaterialTheme.typography.titleSmall,
+                        text = stringResource(R.string.vision_preparing),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CoineProColors.TextSecondary,
+                    )
+                }
+                prepared?.let { image ->
+                    Text(
+                        text = stringResource(
+                            R.string.vision_prepared,
+                            BidiText.isolateLtr("${image.bytes.size / 1024} KB"),
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
                         color = CoineProColors.TextPrimary,
                     )
-                    Text(
-                        text = stringResource(R.string.vision_permission_note),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = CoineProColors.TextMuted,
+                    CoineProNote(R.string.vision_prepared_note, style = MaterialTheme.typography.bodySmall)
+                    val ready = !state.uploading && state.job?.isPending != true
+                    CoineProPrimaryButton(
+                        text = stringResource(
+                            if (state.uploading) R.string.vision_uploading else R.string.vision_analyze,
+                        ),
+                        onClick = { if (ready) controller.submit(image) },
+                        modifier = Modifier.fillMaxWidth().alpha(if (ready) 1f else 0.45f),
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
-                        CoineProSecondaryButton(
-                            text = stringResource(R.string.vision_camera),
-                            onClick = ::openCamera,
-                            modifier = Modifier.weight(1f),
-                        )
-                        CoineProSecondaryButton(
-                            text = stringResource(R.string.vision_gallery),
-                            onClick = { documentPicker.launch(arrayOf("image/*")) },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    if (preparing) {
-                        CoineProSkeleton(Modifier.fillMaxWidth(), height = 14.dp)
-                        Text(
-                            text = stringResource(R.string.vision_preparing),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = CoineProColors.TextSecondary,
-                        )
-                    }
-                    prepared?.let { image ->
-                        Text(
-                            text = stringResource(
-                                R.string.vision_prepared,
-                                BidiText.isolateLtr("${image.bytes.size / 1024} KB"),
-                            ),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = CoineProColors.TextPrimary,
-                        )
-                        CoineProNote(R.string.vision_prepared_note, style = MaterialTheme.typography.bodySmall)
-                        val ready = !state.uploading && state.job?.isPending != true
-                        CoineProPrimaryButton(
-                            text = stringResource(
-                                if (state.uploading) R.string.vision_uploading else R.string.vision_analyze,
-                            ),
-                            onClick = { if (ready) controller.submit(image) },
-                            modifier = Modifier.fillMaxWidth().alpha(if (ready) 1f else 0.45f),
-                        )
-                    }
                 }
             }
         }

@@ -522,6 +522,11 @@ def service_impl(text, decl, qualified):
 # silently dropping the browser's version of it. Every entry says why the browser needs it.
 
 PATCHES = [
+    # A browser has no camera app to hand a file to: the page's «Camera» opens the file chooser,
+    # which on a phone's browser offers the camera itself (5.19.4).
+    ('feature/ai-vision', 'com/coinepro/feature/aivision/AiVisionScreen.kt',
+     'runCatching { takePicture.launch(target) }',
+     'runCatching { documentPicker.launch(arrayOf("image/*")) }'),
     # **The chart page is never restarted on its own in the browser** (5.19.3).
     #
     # `ChartScreen` takes over a hundred parameters. Composed from its parent it is correct; restarted

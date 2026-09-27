@@ -4,7 +4,7 @@
     <string name="vision_title">تحلیل چارت</string>
     <string name="vision_subtitle">اسکرین‌شات چارت را بگیرید یا انتخاب کنید. تصویر پیش از ارسال دوباره کدگذاری می‌شود تا اطلاعات EXIF حذف شود.</string>
     <string name="vision_source_title">تصویر چارت</string>
-    <string name="vision_permission_note">دسترسی دوربین فقط وقتی خواسته می‌شود که «دوربین» را بزنی. انتخاب از گالری به دسترسی دوربین نیاز ندارد، پس رد کردن آن جلوی تحلیل را نمی‌گیرد.</string>
+    <string name="vision_permission_note">«دوربین» برنامه‌ی دوربین خود گوشی را باز می‌کند و «پرو چارت» هیچ دسترسی دوربینی نمی‌خواهد. می‌توانید تصویر را از گالری هم انتخاب کنید.</string>
     <string name="vision_camera">دوربین</string>
     <string name="vision_gallery">گالری</string>
     <string name="vision_preparing">در حال آماده‌سازی تصویر…</string>
@@ -13,7 +13,7 @@
     <string name="vision_uploading">در حال ارسال…</string>
     <string name="vision_analyze">تحلیل چارت</string>
     <string name="vision_prepare_failed">آماده‌سازی تصویر انتخاب‌شده ممکن نشد.</string>
-    <string name="vision_camera_denied">دسترسی دوربین رد شد. انتخاب از گالری بدون این دسترسی همچنان کار می‌کند.</string>
+    <string name="vision_camera_unavailable">برنامه‌ی دوربینی برای گرفتن عکس پیدا نشد. می‌توانید تصویر را از گالری انتخاب کنید.</string>
     <string name="vision_analysis_title">تحلیل تصویر</string>
     <string name="vision_state_queued">در صف</string>
     <string name="vision_state_running">در حال تحلیل</string>
