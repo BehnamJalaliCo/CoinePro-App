@@ -1,5 +1,11 @@
 package com.coinepro.core.chart
 
+import androidx.compose.runtime.DisposableEffect
+
+import androidx.compose.ui.layout.boundsInRoot
+
+import androidx.compose.ui.layout.onGloballyPositioned
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
@@ -85,8 +91,11 @@ internal fun PriceAxisScaleMinis(
         (frame.leftGutter - with(density) { MINI_DP.toPx() }) / 2f
     }
     Box(modifier = modifier.fillMaxSize()) {
+        val anchors = LocalChartCoachAnchors.current
         Column(
-            modifier = Modifier.offset { IntOffset(left.roundToInt(), top.roundToInt()) },
+            modifier = Modifier
+                .offset { IntOffset(left.roundToInt(), top.roundToInt()) }
+                .then(if (anchors == null) Modifier else Modifier.onGloballyPositioned { anchors.minis = it.boundsInRoot() }),
             verticalArrangement = Arrangement.spacedBy(MINI_GAP_DP),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -193,10 +202,13 @@ internal fun ScrollToRealtimeButton(
     val top = plotBottom - side - inset
     if (top < 0f) return
     val left = frame.right - side - inset
+    val anchors = LocalChartCoachAnchors.current
+    if (anchors != null) DisposableEffect(anchors) { onDispose { anchors.realtime = null } }
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
                 .offset { IntOffset(left.roundToInt(), top.roundToInt()) }
+                .then(if (anchors == null) Modifier else Modifier.onGloballyPositioned { anchors.realtime = it.boundsInRoot() })
                 .size(REALTIME_DP)
                 .clip(RoundedCornerShape(REALTIME_DP / 2))
                 .background(palette.stage)

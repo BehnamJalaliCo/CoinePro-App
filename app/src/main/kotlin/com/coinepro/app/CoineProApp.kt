@@ -2,6 +2,7 @@
 
 package com.coinepro.app
 
+import com.coinepro.core.designsystem.CoachLibrary
 import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -515,6 +516,9 @@ private const val COMMUNITY_THREAD_PATTERN = "community/{pid}"
 
 private fun communityThreadRoute(postId: Long) = "community/$postId"
 private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
+
+/** The coach's library: every tip, playable again (5.21.0). See `CoachLibrary`. */
+private const val TUTORIALS_ROUTE = "tutorials"
 private const val ADMIN_ROUTE = "diagnostics"
 internal const val PROFILE_ROUTE = "profile"
 private const val NOTIFICATIONS_ROUTE = "notifications"
@@ -798,6 +802,7 @@ internal fun menuRoute(id: String, platform: MarketPlatform, watchlist: List<Str
         "search" -> MARKET_SEARCH_ROUTE
         "home" -> HOME_ROUTE
         "safety" -> LAUNCH_READINESS_ROUTE
+        "tutorials" -> TUTORIALS_ROUTE
         "delete" -> DELETE_ACCOUNT_ROUTE
         "terms" -> TERMS_ROUTE
         "privacy" -> PRIVACY_ROUTE
@@ -2754,6 +2759,7 @@ private fun MainShell(
         // place a reader goes, so it keeps the bar, like News and the calendar above.
         COMMUNITY_THREAD_PATTERN,
         LAUNCH_READINESS_ROUTE,
+        TUTORIALS_ROUTE,
         ADMIN_ROUTE,
     )
     // How much glass there is, read once for the whole shell. `CoineProTheme` provides it, so this
@@ -2807,6 +2813,7 @@ private fun MainShell(
         NEWS_PATTERN -> R.string.screen_news
         CALENDAR_ROUTE -> R.string.screen_calendar
         LAUNCH_READINESS_ROUTE -> R.string.screen_launch_readiness
+        TUTORIALS_ROUTE -> R.string.screen_tutorials
         else -> R.string.app_name
     }
     val showTopBar = showsTopBar(currentRoute, isSubScreen)
@@ -5254,6 +5261,9 @@ private fun MainShell(
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
                     platform = activePlatform,
                 )
+            }
+            composable(TUTORIALS_ROUTE) {
+                CoachLibrary()
             }
             composable(LAUNCH_READINESS_ROUTE) {
                 val context = LocalContext.current

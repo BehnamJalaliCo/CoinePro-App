@@ -1,5 +1,7 @@
 package com.coinepro.feature.chart
 
+import com.coinepro.core.designsystem.coachTarget
+import com.coinepro.core.designsystem.CoachTip
 import com.coinepro.core.designsystem.CoineProLazyRow
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
@@ -189,13 +191,15 @@ internal fun ChartCommandBand(
                 .height(TOOLBAR_HEIGHT)
                 // TradingView's phone bar keeps an outer gutter; at four points the fullscreen
                 // glyph sat on the glass's edge (MOBILE-04).
-                .padding(horizontal = CoineProSpacing.OneHalf),
+                .padding(horizontal = CoineProSpacing.OneHalf)
+                .coachTarget(CoachTip.BAND_TOOLS),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // The symbol, bold, on the reading edge — a drag on it turns the wheel. Then the
             // interval beside it, which opens the date-range sheet. Both 16 sp bold, measured off
             // the phone app's `BTCUSD 4H`.
             onSelectSymbol?.let { select ->
+                Box(Modifier.coachTarget(CoachTip.SYMBOL_WHEEL, enabled = symbols.size > 1)) {
                 SymbolScrollWheel(
                     symbols = symbols,
                     current = symbol,
@@ -204,6 +208,7 @@ internal fun ChartCommandBand(
                     onTravel = onSymbolTravel,
                     onClick = onSymbolSearch,
                 )
+                }
             }
             ToolbarText(
                 // TradingView's spelling on the key — `4h`, not `H4`; the stored wire is unchanged.
@@ -372,7 +377,8 @@ internal fun ChartDrawingBand(
                 .fillMaxWidth()
                 .height(TOOLBAR_HEIGHT)
                 .padding(horizontal = CoineProSpacing.OneHalf)
-                .testTag(DRAWING_BAND_TAG),
+                .testTag(DRAWING_BAND_TAG)
+                .coachTarget(CoachTip.DRAW_BAND),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {

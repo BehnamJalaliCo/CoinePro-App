@@ -1,5 +1,8 @@
 package com.coinepro.feature.chart
 
+import com.coinepro.core.designsystem.coachTarget
+import com.coinepro.core.designsystem.CoachInline
+import com.coinepro.core.designsystem.CoachTip
 import com.coinepro.core.designsystem.CoineProSheetSearch
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -143,6 +146,7 @@ import com.coinepro.core.chart.CoineProChart
 import com.coinepro.core.chart.DrawingImages
 import com.coinepro.core.chart.DrawingTools
 import com.coinepro.core.chart.ChartIcon
+import com.coinepro.core.chart.LocalChartCoachAnchors
 import com.coinepro.core.chart.ChartIcons
 import com.coinepro.core.chart.MagnetMode
 import com.coinepro.core.marketdata.SymbolExpression
@@ -1357,6 +1361,10 @@ fun ChartScreen(
                 state.series.isEmpty && state.interval is ChartInterval.Seconds ->
                     SecondsWarmingUp(state.interval)
                 else -> {
+                // The coach's anchors (5.21.0): the renderer reports where its plot, price column,
+                // legend and keys are, and the requests below light them. See `ChartCoach`.
+                val coachAnchors = rememberChartCoach()
+                CompositionLocalProvider(LocalChartCoachAnchors provides coachAnchors) {
                 CoineProChart(
                     series = state.visibleSeries,
                     // The wipe's trigger, and nothing else — see the note on `symbolFade` above.
@@ -1696,6 +1704,17 @@ fun ChartScreen(
                         }
                     },
                 )
+                }
+                ChartCoachRequests(
+                    anchors = coachAnchors,
+                    hasBars = !state.series.isEmpty,
+                    drawing = state.drawing,
+                    drawingMode = drawingMode,
+                    canAlert = onCreateAlert != null,
+                    hasAlerts = alerts.isNotEmpty(),
+                    hasEvents = eventMarks.isNotEmpty(),
+                    hasIndicators = state.activeIndicators.isNotEmpty(),
+                )
                 // The right-click (or S Pen button) menu at the pointer. Anchored at the plot's
                 // absolute top-left and offset in left-to-right pixels, because the position came
                 // from the pointer and the time axis reads left to right on every locale; the
@@ -2006,7 +2025,8 @@ fun ChartScreen(
                         val bar = with(density) { SELECTION_TOOLBAR_HEIGHT.roundToPx() }
                         val y = (top - bar).roundToInt().coerceIn(0, (canvasHeightPx - bar).coerceAtLeast(0))
                         IntOffset(0, y)
-                    },
+                    }
+                    .coachTarget(CoachTip.SELECT_BAR),
             )
             // The reader's pinned tools along the plot's leading edge, one tap from armed (run E).
             // Only when there are some: a strip with nothing on it is a strip in the way.
@@ -2618,6 +2638,7 @@ fun ChartScreen(
         }
 
         if (state.replay.isOn) {
+            Box(Modifier.coachTarget(CoachTip.REPLAY_BAR)) {
             ReplayBar(
                 state = state.replay,
                 onToggle = controller::replayToggle,
@@ -2635,6 +2656,7 @@ fun ChartScreen(
                 // Cleared by the bar itself on dispose, so leaving replay takes the drawing with it.
                 onSetupOverlay = { replaySetup = it },
             )
+            }
         }
 
         // One band, where there were four.
@@ -4664,6 +4686,9 @@ private fun StarredIntervalSection(
     // a tip is drawn inline or folded into an ⓘ: holding a timeframe here removes it from the page
     // as well as from the strip, which is not recoverable by tapping the same place again.
     if (onHide != null) CoineProNote(R.string.chart_favourites_hide_note)
+    // The hold that hides one, shown once as a film (5.21.0): a sheet is its own window, so the
+    // coach comes inline rather than as a spotlight.
+    if (onHide != null) CoachInline(CoachTip.INTERVAL_HIDE)
     IntervalKeyFlow {
         Timeframe.entries.forEach { frame ->
             val wire = frame.wire

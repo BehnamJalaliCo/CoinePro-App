@@ -29,6 +29,7 @@
     <string name="screen_news">اخبار بازار</string>
     <string name="screen_calendar">تقویم اقتصادی</string>
     <string name="screen_diagnostics">پنل تشخیص</string>
+    <string name="screen_tutorials">آموزش‌ها</string>
     <string name="screen_launch_readiness">ایمنی و انتشار</string>
 
     <string name="safety_title">ایمنی و انتشار</string>

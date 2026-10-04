@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.21.0
+
+**fa**
+
+> پرو چارت حالا کارهای پنهانش را خودش یاد می‌دهد: اولین بار که به زوم دو انگشتی، کشیدن ستون قیمت، نشانگر ترسیم یا ردیف‌های دیده‌بان می‌رسید، صفحه تاریک می‌شود، همان قسمت روشن می‌ماند و یک انیمیشن کوتاه با یک جمله نشانش می‌دهد. هر آموزش فقط یک بار می‌آید و از «آموزش‌ها» در منو دوباره دیده می‌شود.
+
+**en**
+
+> Pro Chart now teaches its hidden gestures itself: the first time you reach pinch-zoom, the price column, the drawing cursor or your watchlist rows, the app dims, that control stays lit and a short animation with one sentence shows how. Each tip appears once and can be watched again from Tips and tutorials in the menu.
+
+---
+
 ## 5.20.0
 
 **fa**

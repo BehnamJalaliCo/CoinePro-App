@@ -2,6 +2,7 @@
 
 package com.coinepro.app
 
+import androidx.compose.runtime.SideEffect
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Box
@@ -46,6 +47,7 @@ import kotlinx.coroutines.launch
 class MainActivity : androidx.fragment.app.FragmentActivity()
 
 private fun pathJs(): String = js("window.location.pathname")
+private fun coarsePointerJs(): Boolean = js("window.matchMedia('(pointer: coarse)').matches")
 private fun searchJs(): String = js("window.location.search")
 private fun onVisibleJs(callback: () -> Unit): Unit =
     js("document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') callback(); })")
@@ -199,6 +201,8 @@ fun WebApp() {
                 LocalLogoProvider provides remoteLogos,
                 // A browser window has no hinge.
                 LocalCoineProFold provides CoineProFold.Flat,
+                // A finger or a mouse, for the coach's wording and its touch-only tips (5.21.0).
+                com.coinepro.core.designsystem.LocalCoachTouchFirst provides coarsePointerJs(),
             ) {
                 CoineProTeachingHost {
                     CoineProApp(
@@ -317,6 +321,11 @@ fun WebApp() {
         val starterTheme by store.themeMode.collectAsStateWithLifecycle(initialValue = ThemeMode.SYSTEM)
         val starterQuote by store.quoteCurrency.collectAsStateWithLifecycle(initialValue = QuoteCurrency.Default)
         val starterColours by store.marketColors.collectAsStateWithLifecycle(initialValue = MarketColorScheme.GREEN_UP)
+        // No coach while the first-run screens cover the app (5.21.0). See `CoachPause`.
+        SideEffect {
+            com.coinepro.core.designsystem.CoachPause.held =
+                !launched || !welcomeSeen || !startPreferencesSet || !readerModeChosen
+        }
         if (launched && !welcomeSeen) {
             WelcomeSlides(
                 onStart = { scope.launch { store.setWelcomeSeen() } },

@@ -1,5 +1,6 @@
 package com.coinepro.app
 
+import androidx.compose.runtime.SideEffect
 import android.app.Activity
 import android.Manifest
 import android.content.Context
@@ -525,6 +526,11 @@ class MainActivity : FragmentActivity() {
                 .collectAsStateWithLifecycle(initialValue = QuoteCurrency.Default)
             val starterColours by userPreferencesStore.marketColors
                 .collectAsStateWithLifecycle(initialValue = MarketColorScheme.GREEN_UP)
+            // No coach while the first-run screens cover the app (5.21.0). See `CoachPause`.
+            SideEffect {
+                com.coinepro.core.designsystem.CoachPause.held =
+                    !launched || !welcomeSeen || !startPreferencesSet || !readerModeChosen
+            }
             if (launched && !welcomeSeen) {
                 WelcomeSlides(
                     onStart = { lifecycleScope.launch { userPreferencesStore.setWelcomeSeen() } },

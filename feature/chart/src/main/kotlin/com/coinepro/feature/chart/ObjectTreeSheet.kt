@@ -1,5 +1,7 @@
 package com.coinepro.feature.chart
 
+import com.coinepro.core.designsystem.CoachInline
+import com.coinepro.core.designsystem.CoachTip
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -124,6 +126,8 @@ internal fun ObjectTreeSheetBody(
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(bottom = CoineProSpacing.One),
         )
+        // The swipe that deletes and the hold that restacks, shown once (5.21.0).
+        CoachInline(CoachTip.TREE_SWIPE)
         groups.forEach { group ->
             ObjectGroupBlock(
                 group = group,

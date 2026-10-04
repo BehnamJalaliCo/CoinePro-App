@@ -1,5 +1,7 @@
 package com.coinepro.feature.search
 
+import com.coinepro.core.designsystem.CoachTip
+import com.coinepro.core.designsystem.coachTarget
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -506,7 +508,11 @@ fun MarketsScreen(
                         // thousand markets would be a thousand requests nobody looked at.
                         LaunchedEffect(row.meta.symbol) { sparklines.request(row.meta.symbol) }
                         MarketListRow(
-                            modifier = rowMotion(fades = false),
+                            // The first row carries the coach's two list tips (5.21.0): the swipe
+                            // that stars and the hold that previews.
+                            modifier = rowMotion(fades = false)
+                                .coachTarget(CoachTip.ROW_STAR, enabled = index == 0 && onToggleWatch != null)
+                                .coachTarget(CoachTip.ROW_HOLD, enabled = index == 0),
                             row = row,
                             // The row's place in this list. Numbered on the markets tab, where the
                             // order is a ranking, and never on a search result or the watchlist,

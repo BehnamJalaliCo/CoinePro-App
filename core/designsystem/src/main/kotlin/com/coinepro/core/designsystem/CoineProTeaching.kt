@@ -233,13 +233,15 @@ fun CoineProTeachingHost(
 ) {
     val dismissals = LocalTeachingDismissals.current
     val host = remember { TeachingHost() }
+    val coach = remember { CoachHost() }
     Box(modifier = modifier) {
-        CompositionLocalProvider(LocalTeachingHost provides host) { content() }
+        CompositionLocalProvider(LocalTeachingHost provides host, LocalCoachHost provides coach) { content() }
         val surface = host.current
         // Never over an open sheet or dialog (DIALOGS-28): a mark about the page, floating over a
-        // sheet that hides the page, points at nothing and covers the controls being read.
+        // sheet that hides the page, points at nothing and covers the controls being read. Nor
+        // under the coach (5.21.0), which has the whole glass while it is up.
         val showing = surface != null && dismissals.ready && surface.key !in dismissals.dismissed &&
-            CoineProSheetPresence.open == 0
+            CoineProSheetPresence.open == 0 && !coach.active
         if (showing && surface != null) {
             // Dismissed by the clock as well as by the reader, and the clock is the point: a
             // coach-mark that waits for a tap is a modal with extra steps.
@@ -277,6 +279,9 @@ fun CoineProTeachingHost(
                 anchored = anchorY != null,
             )
         }
+        // The coach, over everything: the dimmed app, the lit control and its film. See
+        // `CoineProCoach`.
+        CoineProCoachLayer(coach)
     }
 }
 

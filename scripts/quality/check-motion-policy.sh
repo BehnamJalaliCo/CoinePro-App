@@ -99,7 +99,11 @@ fi
 # chrome exists, with no card, no header and no button fill touched by it — the 2 % lift across the
 # whole page is the depth the five scenes are lit against, and without it a near-black screen with a
 # glow in the middle of it reads as a badly compressed photograph.
-gradient_allow='CoineProBrand.kt|CoineProSurfaces.kt|CoineProThinking.kt|CoineProMotionEffects.kt|EquityCurve.kt|CoineProChart.kt|ChartSeriesTypes.kt|HomeScreen.kt|WelcomeSlides.kt'
+# `CoachScenes.kt` and `CoineProCoach.kt` (5.21.0): the coach's films are illustrations in the same
+# sense — a lit stage, out-of-focus glows, a light sweep — and the pastel card they sit on and the
+# ring round the spotlight are part of that one picture, drawn over a dimmed app rather than being
+# a card in its layout. The owner's brief was «پاستیلی و سینمایی».
+gradient_allow='CoineProBrand.kt|CoineProCoach.kt|CoachScenes.kt|CoineProSurfaces.kt|CoineProThinking.kt|CoineProMotionEffects.kt|EquityCurve.kt|CoineProChart.kt|ChartSeriesTypes.kt|HomeScreen.kt|WelcomeSlides.kt'
 gradient_hits="$( { git grep -lE 'Brush\.(vertical|horizontal|linear|radial|sweep)Gradient' -- 'app/**/*.kt' 'core/**/*.kt' 'feature/**/*.kt' 'chart/**/*.kt' 'namascript/**/*.kt' || true; } | grep -vE "$gradient_allow" || true)"
 if [[ -n "$gradient_hits" ]]; then
   echo "$gradient_hits"

@@ -1,5 +1,7 @@
 package com.coinepro.feature.chart
 
+import com.coinepro.core.designsystem.coachTarget
+import com.coinepro.core.designsystem.CoachTip
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -114,6 +116,7 @@ internal fun FloatingDrawingToolbar(
                     .width(TOOLBAR_WIDTH)
                     .heightIn(max = maxHeight - EDGE * 2)
                     .shadow(TOOLBAR_SHADOW, RoundedCornerShape(TOOLBAR_RADIUS))
+                    .coachTarget(CoachTip.DRAW_TOOLBAR)
                     .semantics { contentDescription = "chart-floating-tools" },
                 shape = RoundedCornerShape(TOOLBAR_RADIUS),
                 color = PILL,

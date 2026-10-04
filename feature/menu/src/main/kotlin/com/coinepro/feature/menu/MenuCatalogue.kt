@@ -309,6 +309,14 @@ object MenuCatalogue {
             icon = CoineProIcons.Community,
             group = MenuGroup.LEARN,
         ),
+        // The coach's library (5.21.0): every tip the app teaches once, playable again, and the
+        // switch that brings them all back. See `CoineProCoach`.
+        MenuEntry(
+            id = "tutorials",
+            titleRes = R.string.menu_tutorials_title,
+            icon = CoineProIcons.Help,
+            group = MenuGroup.LEARN,
+        ),
         MenuEntry(
             id = "safety",
             titleRes = R.string.menu_safety_title,

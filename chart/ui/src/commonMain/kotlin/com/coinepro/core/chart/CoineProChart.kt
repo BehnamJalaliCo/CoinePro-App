@@ -1,5 +1,9 @@
 package com.coinepro.core.chart
 
+import androidx.compose.ui.layout.positionInRoot
+
+import androidx.compose.ui.layout.onGloballyPositioned
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -1692,12 +1696,16 @@ fun CoineProChart(
     // The lens over a held handle (run E): Android's own magnifier, twice the size, following the
     // fingertip while a point is dragged and gone on the lift. Below Android 9 the modifier is a
     // no-op, which is the platform's answer and the right one.
+    // Where the coach finds the plot and the price column (5.21.0). See `ChartCoachAnchors`.
+    val coachAnchors = LocalChartCoachAnchors.current
     Box(
         modifier = modifier.chartMagnifier(
             sourceCenter = { magnifierAt ?: Offset.Unspecified },
             zoom = MAGNIFIER_ZOOM,
             size = DpSize(MAGNIFIER_WIDTH_DP.dp, MAGNIFIER_HEIGHT_DP.dp),
             cornerRadius = MAGNIFIER_CORNER_DP.dp,
+        ).then(
+            if (coachAnchors == null) Modifier else Modifier.onGloballyPositioned { coachAnchors.origin = it.positionInRoot() },
         ),
     ) {
         Canvas(
@@ -3096,6 +3104,13 @@ fun CoineProChart(
                 priceRangeOverride = drawnRange?.takeIf { it != fitted },
             )
             lastView[0] = view
+            coachAnchors?.publish(
+                plotLocal = Rect(frame.left, 0f, frame.right, view.plotHeight),
+                gutterLocal = if (frame.tagsOnRight) Rect(frame.right, 0f, frame.right + frame.rightGutter, view.plotHeight) else null,
+                eventsHeight = COACH_EVENTS_DP.dp.toPx(),
+                legendWidth = COACH_LEGEND_WIDTH_DP.dp.toPx(),
+                legendHeight = COACH_LEGEND_HEIGHT_DP.dp.toPx(),
+            )
             // The live close: only while the newest bar is on screen, and only for the bar types
             // that draw a close. See `liveClose`.
             val liveCloseNow = if (view.lastVisible == view.series.size - 1) liveClose.value.toDouble() else null
@@ -3995,6 +4010,13 @@ private fun Color.lifted(by: Float): Color = Color(
     blue = (blue + by).coerceAtMost(1f),
     alpha = alpha,
 )
+
+/** The strip at the foot of the plot the coach lights for the event marks (5.21.0). */
+private const val COACH_EVENTS_DP = 30f
+
+/** The legend's head rows at the plot's top-left, as the coach lights them. */
+private const val COACH_LEGEND_WIDTH_DP = 250f
+private const val COACH_LEGEND_HEIGHT_DP = 58f
 
 /** How many frames the placement cursor waits for the first draw before giving up (5.20.0). */
 private const val CURSOR_FRAME_WAIT = 30

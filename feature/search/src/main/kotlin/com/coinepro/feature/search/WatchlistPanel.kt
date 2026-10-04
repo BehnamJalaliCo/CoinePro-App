@@ -1,5 +1,7 @@
 package com.coinepro.feature.search
 
+import com.coinepro.core.designsystem.CoachTip
+import com.coinepro.core.designsystem.coachTarget
 import com.coinepro.core.designsystem.coineProHorizontalScroll
 import com.coinepro.core.designsystem.pageAccentInk
 import androidx.compose.foundation.ScrollState
@@ -336,7 +338,8 @@ fun WatchlistPanel(
                     }
                     Column(modifier = rowMotion(fades = false)) {
 MarketListRow(
-                        modifier = Modifier,
+                        // The hold that opens the row's menu, taught on the first row (5.21.0).
+                        modifier = Modifier.coachTarget(CoachTip.ROW_HOLD, enabled = symbol == order.firstOrNull()),
                         row = row,
                         onClick = { onOpenSymbol(row.meta.symbol) },
                         onLongClick = { sheet = WatchlistSheet.RowMenu(symbol) },
@@ -345,6 +348,7 @@ MarketListRow(
                         handle = if (editing && settings.sort.isManual) {
                             {
                                 ReorderHandle(
+                                    modifier = Modifier.coachTarget(CoachTip.ROW_REORDER, enabled = symbol == order.firstOrNull()),
                                     symbol = symbol,
                                     order = orderState,
                                     onPreview = { draft = it },
@@ -794,13 +798,14 @@ private fun ReorderHandle(
     order: State<List<String>>,
     onPreview: (List<String>?) -> Unit,
     onCommit: (Int, Int) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val haptics = rememberCoineProHaptics()
     // The row's own height at this density — every row in the list settles at it, dense or not.
     val rows = listDensity()
     val rowHeightPx = with(LocalDensity.current) { rows.rowHeight.toPx() }
     Box(
-        modifier = Modifier
+        modifier = modifier
             // Thirty-two wide — see [HandleWidth] — and forty
             // tall, which with the row's nine points of padding at each end is exactly
             // [MarketRowHeight]. Deliberately not `minimumInteractiveComponentSize`: its
