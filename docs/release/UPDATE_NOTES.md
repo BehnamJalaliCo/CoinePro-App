@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.21.1
+
+**fa**
+
+> ضربه روی صفحه‌های خوش‌آمد دیگر به چارتِ پشت آن‌ها نمی‌رسد و چیزی را پشت صفحه باز نمی‌کند. لبه‌ی نورِ آموزش‌ها هم نرم‌تر و تمیزتر شد و روی ستون قیمت گوشی دیگر چندلایه دیده نمی‌شود.
+
+**en**
+
+> A tap on the welcome screens no longer reaches the chart behind them and opens nothing underneath. The light around a tip is softer and cleaner too, and no longer shows a layered edge on the phone's price column.
+
+---
+
 ## 5.21.0
 
 **fa**

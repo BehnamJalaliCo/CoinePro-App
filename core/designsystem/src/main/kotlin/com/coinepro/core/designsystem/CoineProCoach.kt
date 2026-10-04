@@ -508,18 +508,24 @@ private fun CoachSpotlight(
                 // The band travels round the light: the palette sampled a little further on each
                 // frame, rather than the frame itself turning.
                 val brush = Brush.sweepGradient(ringStops(breathe), center = hole.center)
-                for (layer in 3 downTo 0) {
-                    val spread = layer * 3.dp.toPx()
-                    val edge = hole.inflate(spread)
-                    drawRoundRect(
-                        brush = brush,
-                        topLeft = edge.topLeft,
-                        size = edge.size,
-                        cornerRadius = CornerRadius(corner + spread),
-                        style = Stroke(width = if (layer == 0) 2.dp.toPx() else 3.dp.toPx()),
-                        alpha = if (layer == 0) glow else glow * 0.16f / layer,
-                    )
-                }
+                // One soft halo and one clean line (5.21.1). Four stepped strokes read, on a
+                // phone's price column, as a smeared double edge rather than as light.
+                drawRoundRect(
+                    brush = brush,
+                    topLeft = hole.topLeft,
+                    size = hole.size,
+                    cornerRadius = CornerRadius(corner),
+                    style = Stroke(width = RING_HALO.toPx()),
+                    alpha = glow * RING_HALO_ALPHA,
+                )
+                drawRoundRect(
+                    brush = brush,
+                    topLeft = hole.topLeft,
+                    size = hole.size,
+                    cornerRadius = CornerRadius(corner),
+                    style = Stroke(width = RING_LINE.toPx()),
+                    alpha = glow,
+                )
             }
         }
         // The card: under the light when there is room, over it when not, in the middle of the glass
@@ -791,12 +797,15 @@ private const val IRIS_STIFFNESS = 60f
 
 private const val MIN_TARGET_PX = 8f
 private const val SCRIM_ALPHA = 0.8f
-private const val FEATHER_STEPS = 8
-private const val FEATHER_ALPHA = 0.17f
+private const val FEATHER_STEPS = 6
+private const val FEATHER_ALPHA = 0.2f
+private const val RING_HALO_ALPHA = 0.22f
 
 private val HOLE_PAD = 8.dp
 private val HOLE_RADIUS = 18.dp
-private val FEATHER_STEP = 2.dp
+private val FEATHER_STEP = 1.2.dp
+private val RING_HALO = 6.dp
+private val RING_LINE = 1.5.dp
 private val CARD_MAX_WIDTH = 380.dp
 private val CARD_GAP = 16.dp
 private val CARD_RISE = 36.dp

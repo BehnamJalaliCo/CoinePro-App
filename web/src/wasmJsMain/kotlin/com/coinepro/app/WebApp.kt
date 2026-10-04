@@ -2,6 +2,7 @@
 
 package com.coinepro.app
 
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.SideEffect
 import android.content.Intent
 import android.net.Uri
@@ -328,12 +329,14 @@ fun WebApp() {
         }
         if (launched && !welcomeSeen) {
             WelcomeSlides(
+                modifier = Modifier.coverTouches(),
                 onStart = { scope.launch { store.setWelcomeSeen() } },
                 onSignIn = { scope.launch { store.setWelcomeSeen() } },
             )
         } else if (launched && !startPreferencesSet) {
             val starterContext = LocalContext.current
             StarterPreferences(
+                modifier = Modifier.coverTouches(),
                 theme = starterTheme,
                 onTheme = { mode -> scope.launch { store.setThemeMode(mode) } },
                 language = AppLanguageStore.current(starterContext),
@@ -349,6 +352,7 @@ fun WebApp() {
             )
         } else if (launched && !readerModeChosen) {
             FirstRunQuestion(
+                modifier = Modifier.coverTouches(),
                 onChoose = { mode -> scope.launch { store.setReaderMode(mode) } },
                 onSkip = { scope.launch { store.setReaderMode(ReaderMode.TRADER) } },
             )

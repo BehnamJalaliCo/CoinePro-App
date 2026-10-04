@@ -1,5 +1,6 @@
 package com.coinepro.app
 
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.SideEffect
 import android.app.Activity
 import android.Manifest
@@ -533,6 +534,7 @@ class MainActivity : FragmentActivity() {
             }
             if (launched && !welcomeSeen) {
                 WelcomeSlides(
+                    modifier = Modifier.coverTouches(),
                     onStart = { lifecycleScope.launch { userPreferencesStore.setWelcomeSeen() } },
                     // Sign-in is a destination inside the app rather than a screen of its own here:
                     // the slides close and the menu's own «ورود» is one tap from where they land. A
@@ -544,6 +546,7 @@ class MainActivity : FragmentActivity() {
             } else if (launched && !startPreferencesSet) {
                 val starterContext = LocalContext.current
                 StarterPreferences(
+                    modifier = Modifier.coverTouches(),
                     theme = starterTheme,
                     onTheme = { mode -> lifecycleScope.launch { userPreferencesStore.setThemeMode(mode) } },
                     language = AppLanguageStore.current(starterContext),
@@ -561,6 +564,7 @@ class MainActivity : FragmentActivity() {
                 )
             } else if (launched && !readerModeChosen) {
                 FirstRunQuestion(
+                    modifier = Modifier.coverTouches(),
                     onChoose = { mode -> lifecycleScope.launch { userPreferencesStore.setReaderMode(mode) } },
                     // «بعداً» stores the default rather than leaving the flag unset, and that is
                     // deliberate: a reader who declined the question should not be asked it again on
