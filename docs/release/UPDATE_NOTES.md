@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.21.2
+
+**fa**
+
+> نسخه‌ی وب برای مهمان دیگر درخواست‌هایی را که فقط با حساب جواب می‌گیرند به سرور نمی‌فرستد، پس صفحه سبک‌تر است و خطای بی‌مورد ثبت نمی‌شود. هاله‌ی دور بخش روشنِ آموزش‌ها هم کاملاً نرم و بدون پله شد.
+
+**en**
+
+> For a guest, the web version no longer sends the requests only a signed-in account can use, so the page is lighter and logs no needless errors. The glow around a tip's lit area is now completely smooth, with no steps.
+
+---
+
 ## 5.21.1
 
 **fa**

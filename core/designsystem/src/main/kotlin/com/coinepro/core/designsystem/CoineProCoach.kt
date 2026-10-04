@@ -510,14 +510,19 @@ private fun CoachSpotlight(
                 val brush = Brush.sweepGradient(ringStops(breathe), center = hole.center)
                 // One soft halo and one clean line (5.21.1). Four stepped strokes read, on a
                 // phone's price column, as a smeared double edge rather than as light.
-                drawRoundRect(
-                    brush = brush,
-                    topLeft = hole.topLeft,
-                    size = hole.size,
-                    cornerRadius = CornerRadius(corner),
-                    style = Stroke(width = RING_HALO.toPx()),
-                    alpha = glow * RING_HALO_ALPHA,
-                )
+                // The halo as a ramp of thin strokes rather than one wide band (5.21.2), so it fades
+                // out instead of ending at an edge of its own.
+                val haloStep = RING_HALO.toPx() / HALO_STEPS
+                for (ring in HALO_STEPS downTo 1) {
+                    drawRoundRect(
+                        brush = brush,
+                        topLeft = hole.topLeft,
+                        size = hole.size,
+                        cornerRadius = CornerRadius(corner),
+                        style = Stroke(width = haloStep * ring * 2f),
+                        alpha = glow * RING_HALO_ALPHA / HALO_STEPS,
+                    )
+                }
                 drawRoundRect(
                     brush = brush,
                     topLeft = hole.topLeft,
@@ -797,14 +802,15 @@ private const val IRIS_STIFFNESS = 60f
 
 private const val MIN_TARGET_PX = 8f
 private const val SCRIM_ALPHA = 0.8f
-private const val FEATHER_STEPS = 6
-private const val FEATHER_ALPHA = 0.2f
-private const val RING_HALO_ALPHA = 0.22f
+private const val FEATHER_STEPS = 16
+private const val FEATHER_ALPHA = 0.085f
+private const val RING_HALO_ALPHA = 0.5f
+private const val HALO_STEPS = 8
 
 private val HOLE_PAD = 8.dp
 private val HOLE_RADIUS = 18.dp
-private val FEATHER_STEP = 1.2.dp
-private val RING_HALO = 6.dp
+private val FEATHER_STEP = 0.6.dp
+private val RING_HALO = 5.dp
 private val RING_LINE = 1.5.dp
 private val CARD_MAX_WIDTH = 380.dp
 private val CARD_GAP = 16.dp

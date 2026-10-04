@@ -511,8 +511,49 @@ internal class RealChain(
     }
 }
 
+/**
+ * The member routes that answer a request with no sign-in by refusing it (5.21.2).
+ *
+ * A guest's page used to send each of them anyway and print the refusal in the console on every
+ * visit — the server check of 5.21.0 and 5.21.1 listed them. The gateways already read the refusal
+ * and fall back to the public sources, so the answer is given here, in the page, with the status
+ * the server itself returns, and nothing goes over the network. A request that carries a token is
+ * sent as before; so is everything not on this list.
+ */
+private val GUEST_REFUSED: List<Pair<String, Int>> = listOf(
+    "/up/tradeyar/api/mobile/v1/alerts" to 401,
+    "/up/tradeyar/api/mobile/v1/venues/lbank" to 401,
+    "/up/tradeyar/api/mobile/v1/market-intelligence" to 401,
+    "/up/tradeyar/api/mobile/v1/ws/snapshot" to 401,
+    "/up/tradeyar/api/mobile/v1/entitlements" to 404,
+    "/up/tradeyar/api/mobile/v1/symbols" to 404,
+    "/up/coineprofx/api/user/mobile/alerts" to 401,
+    "/up/coineprofx/api/user/mobile/market-intelligence" to 401,
+    "/up/coineprofx/api/v1/symbols" to 404,
+    "/up/coineprofx/v1/symbols" to 404,
+)
+
+/** The server's own refusal of a guest's member request, without asking it. Null to send it. */
+private fun guestRefusal(request: Request, mapped: String): Response? {
+    if (request.header("Authorization") != null) return null
+    val path = mapped.substringBefore('?').substringAfter("://").let { "/" + it.substringAfter('/') }
+    val code = GUEST_REFUSED.firstOrNull { (route, _) -> path == route || path.endsWith(route) }?.second ?: return null
+    val now = com.coinepro.web.jvm.nowMillisJs().toLong()
+    val type = with(MediaType) { "application/json".toMediaTypeOrNull() }
+    return Response.Builder()
+        .request(request)
+        .code(code)
+        .message(if (code == 401) "Unauthorized" else "Not Found")
+        .headers(Headers.Builder().add("Content-Type", "application/json").build())
+        .body(with(ResponseBody) { "{\"detail\":\"Not authenticated\"}".encodeToByteArray().toResponseBody(type) })
+        .sentRequestAtMillis(now)
+        .receivedResponseAtMillis(now)
+        .build()
+}
+
 /** The last link of every chain: the request, mapped onto the relay, sent by `fetch`. */
 internal suspend fun transport(client: OkHttpClient, request: Request): Response {
+    guestRefusal(request, WebRoutes.map(request.url.toString()))?.let { return it }
     val sent = com.coinepro.web.jvm.nowMillisJs().toLong()
     val timeout = if (client.callTimeoutMillis > 0) client.callTimeoutMillis else client.readTimeoutMillis + client.connectTimeoutMillis
     val result = browserFetch(

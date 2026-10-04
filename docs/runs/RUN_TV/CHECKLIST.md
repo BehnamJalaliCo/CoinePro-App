@@ -71,6 +71,8 @@ scorecard) and a second pixel-level pass over the old Pro-Chart terminal
 | «آموزش‌ها» in the menu | ✅ 5.21.0 | `MenuCatalogue` `tutorials` → `CoachLibrary`: every tip playable on demand, and «نمایش دوباره‌ی همه‌ی آموزش‌ها» restores the coach and the screen coach-marks | — **a list and a replay**; checked in the browser |
 | The first-run screens cover the app | ✅ 5.21.1 | `Modifier.coverTouches()` on `WelcomeSlides`, `StarterPreferences` and `FirstRunQuestion` in `MainActivity` and `WebApp` | — **a tap that used to fall through** to the chart and open «چرا این حرکت؟»; checked in the browser on a touch phone viewport |
 | The spotlight's edge | ✅ 5.21.1 | `CoachSpotlight`: six 1.2 dp feather steps and one halo plus one line for the ring, where there were four stepped strokes | — **the server check's report** of a layered edge on the phone's price column; checked in the browser |
+| A guest's page sends no member-only request | ✅ 5.21.2 | `GUEST_REFUSED` in the web `okhttp3` shim answers both backends' member `alerts` and `market-intelligence`, TradeYar's `venues/lbank`, `ws/snapshot` and `entitlements`, and the `symbols` probes with the server's own status when no token is carried | — **a network effect**, not a picture; checked in the browser, where the guest run logs none of them |
+| The spotlight's glow without steps | ✅ 5.21.2 | `CoachSpotlight`: sixteen 0.6 dp feather steps and an eight-stroke halo ramp | — **the server check's zoomed report** of faint steps under the card; checked in the browser |
 
 ## 5.17.0 — the growth scan, and the rest of the behind rows
 
