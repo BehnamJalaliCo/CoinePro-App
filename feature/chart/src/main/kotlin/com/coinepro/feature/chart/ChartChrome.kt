@@ -338,6 +338,91 @@ private fun ToolbarButton(
     }
 }
 
+/**
+ * The band while the phone is in drawing mode (5.20.0), TradingView's from the owner's recording.
+ *
+ * The pencil no longer opens a sheet of ninety-one tools over the chart being drawn on: it puts
+ * the page into drawing mode, the floating toolbar comes up over the plot, and this band replaces
+ * the reading band with the switches a hand reaches for *between* strokes — leave, the tool
+ * palette, the magnet, the lock, the eye, the object tree and the full screen. The intervals and
+ * the studies are not here because nobody changes them half-way through a trend line.
+ */
+@Composable
+internal fun ChartDrawingBand(
+    @DrawableRes toolIcon: Int,
+    toolLabel: String,
+    toolArmed: Boolean,
+    magnetOn: Boolean,
+    lockedAll: Boolean,
+    allHidden: Boolean,
+    drawings: Int,
+    onExit: () -> Unit,
+    onTools: () -> Unit,
+    onMagnet: () -> Unit,
+    onLock: () -> Unit,
+    onEye: () -> Unit,
+    onObjects: () -> Unit,
+    onFullscreen: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth().background(CoineProColors.Stage)) {
+        HorizontalDivider(color = CoineProColors.BorderSubtle, thickness = 1.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(TOOLBAR_HEIGHT)
+                .padding(horizontal = CoineProSpacing.OneHalf)
+                .testTag(DRAWING_BAND_TAG),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            ToolbarButton(
+                icon = DesignR.drawable.tv_pencil,
+                label = stringResource(R.string.chart_band_exit_draw),
+                active = true,
+                onClick = onExit,
+            )
+            ToolbarDivider()
+            ToolbarButton(icon = toolIcon, label = toolLabel, active = toolArmed, onClick = onTools)
+            ToolbarButton(
+                icon = DesignR.drawable.tv_magnet,
+                label = stringResource(R.string.keys_magnet),
+                active = magnetOn,
+                onClick = onMagnet,
+            )
+            ToolbarButton(
+                icon = if (lockedAll) DesignR.drawable.tv_lock else DesignR.drawable.tv_unlock,
+                label = stringResource(R.string.chart_rail_lock_all),
+                active = lockedAll,
+                onClick = onLock,
+            )
+            ToolbarButton(
+                icon = if (allHidden) DesignR.drawable.tv_eye_off else DesignR.drawable.tv_eye,
+                label = stringResource(R.string.keys_hide_all),
+                active = allHidden,
+                onClick = onEye,
+            )
+            ToolbarButton(
+                icon = DesignR.drawable.tv_layers,
+                label = stringResource(R.string.chart_sheet_objects),
+                active = drawings > 0,
+                count = drawings,
+                onClick = onObjects,
+            )
+            ToolbarDivider()
+            ToolbarButton(
+                icon = DesignR.drawable.icon_arrows_out,
+                label = stringResource(R.string.chart_band_fullscreen),
+                active = false,
+                onClick = onFullscreen,
+            )
+        }
+    }
+}
+
+/** Where a test finds the drawing band. */
+internal const val DRAWING_BAND_TAG = "chart-drawing-band"
+
 /** The 1 px hairline between the toolbar's groups, the glyph's height. */
 @Composable
 private fun ToolbarDivider() {

@@ -91,6 +91,9 @@ internal actual fun screenWidthDp(): Int = LocalConfiguration.current.screenWidt
 internal actual fun deviceReadsPersian(): Boolean =
     LocalConfiguration.current.locales[0]?.language == AppLanguage.PERSIAN.tag
 
+/** A phone or a tablet: a finger first. A mouse plugged in is noticed on its first press. */
+internal actual fun touchFirstPlatform(): Boolean = true
+
 @Composable
 internal actual fun rememberChartHost(): ChartHost {
     val view = LocalView.current
@@ -192,6 +195,13 @@ internal actual fun chartText(text: ChartText): String = stringResource(
         ChartText.LEGEND_CONTROLS_CLOSE -> DesignR.string.legend_controls_close
         ChartText.LEGEND_CONTROLS_OPEN -> DesignR.string.legend_controls_open
         ChartText.LEGEND_BACK -> DesignR.string.legend_back
+        ChartText.DRAW_MOVE_START -> DesignR.string.draw_move_start
+        ChartText.DRAW_MOVE_NEXT -> DesignR.string.draw_move_next
+        ChartText.DRAW_TAP_FIRST -> DesignR.string.draw_tap_first
+        ChartText.DRAW_TAP_NEXT -> DesignR.string.draw_tap_next
+        ChartText.DRAW_TAP_FINISH -> DesignR.string.draw_tap_finish
+        ChartText.DRAW_STEP_OF -> DesignR.string.draw_step_of
+        ChartText.DRAW_CANCEL -> DesignR.string.draw_cancel
     },
 )
 

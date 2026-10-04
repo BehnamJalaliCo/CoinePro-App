@@ -146,6 +146,12 @@ internal actual fun screenWidthDp(): Int {
 @Composable
 internal actual fun deviceReadsPersian(): Boolean = ChartWeb.persian
 
+/** A coarse pointer — a phone's or a tablet's browser — is a finger first. */
+internal actual fun touchFirstPlatform(): Boolean = coarsePointerJs()
+
+@OptIn(kotlin.js.ExperimentalWasmJsInterop::class)
+private fun coarsePointerJs(): Boolean = js("window.matchMedia && window.matchMedia('(pointer: coarse)').matches")
+
 /** A browser paints at the display's own rate and has no stylus predictor: nothing to ask for. */
 private object WebChartHost : ChartHost {
     override fun requestHighFrameRate(high: Boolean) = Unit
@@ -211,6 +217,13 @@ internal actual fun chartText(text: ChartText): String {
         ChartText.LEGEND_CONTROLS_CLOSE -> if (persian) "بستن کنترل‌ها" else "Close the controls"
         ChartText.LEGEND_CONTROLS_OPEN -> if (persian) "کنترل‌های اندیکاتورها" else "Indicator controls"
         ChartText.LEGEND_BACK -> if (persian) "بازگشت" else "Back"
+        ChartText.DRAW_MOVE_START -> if (persian) "نشانگر را روی نقطه‌ی شروع ببرید" else "Move cursor to start point"
+        ChartText.DRAW_MOVE_NEXT -> if (persian) "نشانگر را روی نقطه‌ی بعد ببرید" else "Move cursor to next point"
+        ChartText.DRAW_TAP_FIRST -> if (persian) "بزنید تا نقطه‌ی اول ثبت شود" else "Tap to set first point"
+        ChartText.DRAW_TAP_NEXT -> if (persian) "بزنید تا این نقطه ثبت شود" else "Tap to set this point"
+        ChartText.DRAW_TAP_FINISH -> if (persian) "بزنید تا ترسیم تمام شود" else "Tap to finish up"
+        ChartText.DRAW_STEP_OF -> if (persian) "%1\$s از %2\$s" else "%1\$s of %2\$s"
+        ChartText.DRAW_CANCEL -> if (persian) "لغو ترسیم" else "Cancel drawing"
     }
 }
 

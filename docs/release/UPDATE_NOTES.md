@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.20.0
+
+**fa**
+
+> ترسیم روی چارت گوشی حالا مثل تریدینگ‌ویو است: نشانگر آبی را با کشیدن انگشت هر جای صفحه جابه‌جا می‌کنید و با یک ضربه نقطه را دقیقاً زیر آن ثبت می‌کنید، و خط تا نقطه‌ی بعد دنبال نشانگر کشیده می‌شود. نوار ابزار ترسیم کنار چارت جابه‌جا و جمع می‌شود، و محور قیمت بازه‌ی بازتری با برچسب‌های گرد و پرتراکم نشان می‌دهد.
+
+**en**
+
+> Drawing on the phone chart now works like TradingView: drag anywhere to move a blue cursor, tap to set the point exactly under it, and the line follows the cursor to the next point. The drawing toolbar floats beside the chart, moves and folds away, and the price axis shows a wider range with dense round labels.
+
+---
+
 ## 5.19.4
 
 **fa**

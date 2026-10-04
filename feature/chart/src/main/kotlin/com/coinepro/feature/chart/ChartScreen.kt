@@ -142,6 +142,9 @@ import com.coinepro.core.chart.ChartTypePicker
 import com.coinepro.core.chart.CoineProChart
 import com.coinepro.core.chart.DrawingImages
 import com.coinepro.core.chart.DrawingTools
+import com.coinepro.core.chart.ChartIcon
+import com.coinepro.core.chart.ChartIcons
+import com.coinepro.core.chart.MagnetMode
 import com.coinepro.core.marketdata.SymbolExpression
 import com.coinepro.core.chart.DrawingLayer
 import com.coinepro.core.chart.DataWindow
@@ -768,6 +771,9 @@ fun ChartScreen(
         }
     }
     var sheet by remember { mutableStateOf<ChartSheet?>(null) }
+    // The phone's drawing mode (5.20.0): the pencil toggles it, the floating toolbar and the
+    // drawing band show while it is on. See `FloatingDrawingToolbar` and `ChartDrawingBand`.
+    var drawingMode by rememberSaveable { mutableStateOf(false) }
     // The live LBank book (5.18.0). A flow that never emits stands in where there is none, so the
     // collection below is unconditional and the composition's shape does not depend on it.
     val liveFlow = remember(liveTrade) { liveTrade?.state ?: MutableStateFlow(LiveTradeState()) }
@@ -2462,7 +2468,10 @@ fun ChartScreen(
         // costing it any width, and they are what the band below attaches to. Under the desktop
         // toolbar the toolbar's own rule is the one; a second made a double hairline (CHART-15).
         if (!desktopChrome || fullscreenRequested) HorizontalDivider(color = CoineProColors.Border)
-        canvas(
+        // A tool armed from anywhere — the palette, a shortcut, a template — is drawing mode.
+        val armedAnywhere = state.drawing.tool != null
+        LaunchedEffect(armedAnywhere) { if (armedAnywhere && !columns.hasTools) drawingMode = true }
+        Box(
             Modifier
                 .fillMaxWidth()
                 .then(
@@ -2474,14 +2483,30 @@ fun ChartScreen(
                         else -> Modifier.height(phonePlot ?: plotHeight)
                     },
                 )
-                .background(CoineProColors.Terminal)
-                // The chart alone, recorded into a layer. Sharing the whole screen would hand
-                // over the header and the toolbar; sharing this hands over the chart.
-                .drawWithContent {
-                    chartLayer.record { this@drawWithContent.drawContent() }
-                    drawLayer(chartLayer)
-                },
-        )
+                .background(CoineProColors.Terminal),
+        ) {
+            canvas(
+                Modifier
+                    .fillMaxSize()
+                    // The chart alone, recorded into a layer. Sharing the whole screen would hand
+                    // over the header and the toolbar; sharing this hands over the chart — and not
+                    // the floating drawing toolbar laid over it.
+                    .drawWithContent {
+                        chartLayer.record { this@drawWithContent.drawContent() }
+                        drawLayer(chartLayer)
+                    },
+            )
+            // TradingView's floating drawing toolbar (5.20.0), over the plot while the phone is
+            // in drawing mode. Not where a tool column already stands beside the plot.
+            if (drawingMode && !columns.hasTools && !desktopChrome) {
+                FloatingDrawingToolbar(
+                    state = state,
+                    controller = controller,
+                    onAllTools = { sheet = ChartSheet.TOOLS },
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
+        }
         HorizontalDivider(color = CoineProColors.Border)
         // TradingView's desktop bar under the plot (5.16.0) — the ranges, the clock, `%` and `log`.
         if (desktopChrome && !fullscreenRequested) {
@@ -2675,6 +2700,31 @@ fun ChartScreen(
             enter = slideInVertically(CoineProMotionSpecs.defaultSpatialFor()) { it } + fadeIn(tween(FULLSCREEN_SLIDE_MS)),
             exit = slideOutVertically(CoineProMotionSpecs.defaultSpatialFor()) { it } + fadeOut(tween(FULLSCREEN_SLIDE_MS)),
         ) {
+        if (drawingMode && !columns.hasTools) {
+            val armedTool = state.drawing.tool
+            val shownTool = armedTool ?: state.drawing.lastUsed.values.firstNotNullOfOrNull { id ->
+                DrawingTools.ALL.firstOrNull { it.id == id }
+            }
+            ChartDrawingBand(
+                toolIcon = shownTool?.let { ChartIcons.drawable(ChartIcon(it.icon.name)) } ?: DesignR.drawable.tv_layout_grid,
+                toolLabel = shownTool?.label(inEnglish()) ?: stringResource(R.string.chart_band_draw),
+                toolArmed = armedTool != null,
+                magnetOn = state.drawing.magnetMode != MagnetMode.OFF,
+                lockedAll = state.drawing.lockedAll,
+                allHidden = state.drawing.hidden.size == DrawingLayer.entries.size,
+                drawings = state.drawing.drawings.size,
+                onExit = {
+                    controller.arm(null)
+                    drawingMode = false
+                },
+                onTools = { sheet = ChartSheet.TOOLS },
+                onMagnet = controller::cycleMagnet,
+                onLock = { controller.setLockAllDrawings(!state.drawing.lockedAll) },
+                onEye = { controller.setAllLayersHidden(state.drawing.hidden.size != DrawingLayer.entries.size) },
+                onObjects = { sheet = ChartSheet.DRAWINGS },
+                onFullscreen = { fullscreenRequested = true },
+            )
+        } else {
         ChartCommandBand(
             interval = state.interval,
             starred = starredWires,
@@ -2703,7 +2753,11 @@ fun ChartScreen(
             showDraw = !columns.hasTools,
             indicators = state.activeIndicators.size,
             drawings = state.drawing.drawings.size,
-            onOpen = { sheet = it },
+            // The pencil puts the phone into drawing mode rather than opening the palette over the
+            // chart (5.20.0); the palette is one tap further, on the floating toolbar's grid.
+            onOpen = { target ->
+                if (target == ChartSheet.TOOLS && !columns.hasTools) drawingMode = true else sheet = target
+            },
             onFullscreen = { fullscreenRequested = true },
             onMore = { sheet = ChartSheet.MORE },
             // What the sheet would otherwise swallow. A reader who has set the chart to a year, or
@@ -2730,6 +2784,7 @@ fun ChartScreen(
             // A tap on the ticker opens symbol search, the desktop toolbar's own route (MOBILE-05).
             onSymbolSearch = onOpenSymbolSearch,
         )
+        }
         }
 
         // Once, under the band, for the reader who has not found the band yet. «خیلی موارد رو

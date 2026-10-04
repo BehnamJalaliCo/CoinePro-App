@@ -400,6 +400,7 @@
     <string name="chart_band_type">نوع</string>
     <string name="chart_band_objects">ترسیم‌ها</string>
     <string name="chart_band_fullscreen">تمام‌صفحه</string>
+    <string name="chart_band_exit_draw">خروج از حالت ترسیم</string>
     <string name="chart_band_more">تحلیل</string>
 
     <!-- Everything a reader reaches for about once a month, behind the band's «بیشتر». -->

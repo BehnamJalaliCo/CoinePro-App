@@ -399,6 +399,7 @@
     <string name="chart_band_type">Type</string>
     <string name="chart_band_objects">Objects</string>
     <string name="chart_band_fullscreen">Full screen</string>
+    <string name="chart_band_exit_draw">Leave drawing mode</string>
     <string name="chart_band_more">Analysis</string>
 
     <string name="chart_more_title">Analysis hub</string>

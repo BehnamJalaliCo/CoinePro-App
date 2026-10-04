@@ -184,6 +184,13 @@
     <string name="legend_controls_open">Indicator controls</string>
     <string name="legend_controls_close">Close the controls</string>
     <string name="legend_back">Back</string>
+    <string name="draw_move_start">Move cursor to start point</string>
+    <string name="draw_move_next">Move cursor to next point</string>
+    <string name="draw_tap_first">Tap to set first point</string>
+    <string name="draw_tap_next">Tap to set this point</string>
+    <string name="draw_tap_finish">Tap to finish up</string>
+    <string name="draw_step_of">%1$s of %2$s</string>
+    <string name="draw_cancel">Cancel drawing</string>
     <string name="brand_positioning">Crypto analysis, with an eye on gold and the dollar</string>
     <string name="brand_positioning_free">The full app, free for everyone — no limits, no ads</string>
     <string name="free_banner_dismiss">Close</string>

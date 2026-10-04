@@ -422,9 +422,28 @@ data class ChartViewport(
         // the same inverted or not — inversion stays a pure reflection, applied last (see
         // [inverted]) — so an inverted chart keeps the larger margin over the *highest* price.
         val zoom = priceZoom.coerceIn(MIN_PRICE_ZOOM, MAX_PRICE_ZOOM).toDouble()
-        val top = topMargin.coerceIn(0.0, MAX_MARGIN)
-        val bottom = bottomMargin.coerceIn(0.0, MAX_MARGIN)
-        val usable = 1.0 - top - bottom
+        val marginTop = topMargin.coerceIn(0.0, MAX_MARGIN)
+        val marginBottom = bottomMargin.coerceIn(0.0, MAX_MARGIN)
+        // **A tall plot does not stretch the bars over its whole height** (5.20.0).
+        //
+        // On a phone held upright the plot is nearly twice as tall as it is wide, and filling it
+        // corner to corner made every move look like a cliff: the owner's screenshot set ours,
+        // showing a few thousand dollars of bitcoin top to bottom, beside TradingView's, where the
+        // same bars take a little over half the height and the axis reads 52,500 to 95,000. So the
+        // bars' share of the height is capped at the plot's width over its height, never below
+        // [MIN_TALL_FILL]; the air is shared out in the margins' own proportion. A wide plot — a
+        // tablet, a browser — has more width than height and is not touched.
+        val usableByMargins = 1.0 - marginTop - marginBottom
+        val tallFill = if (plotWidth > 0f && plotHeight > plotWidth) {
+            (plotWidth.toDouble() / plotHeight).coerceAtLeast(MIN_TALL_FILL)
+        } else {
+            1.0
+        }
+        val usable = minOf(usableByMargins, tallFill)
+        val extra = usableByMargins - usable
+        val marginSum = marginTop + marginBottom
+        val top = if (marginSum > 0.0) marginTop + extra * marginTop / marginSum else marginTop + extra / 2
+        val bottom = if (marginSum > 0.0) marginBottom + extra * marginBottom / marginSum else marginBottom + extra / 2
         if (scaleMode == PriceScaleMode.LOGARITHMIC && low > 0.0 && high > low) {
             val span = ln(high / low) / usable
             val lo = ln(low) - span * bottom
@@ -908,6 +927,9 @@ data class ChartViewport(
 
         /** Past this the two margins would leave the bars no room at all. */
         const val MAX_MARGIN = 0.4
+
+        /** The least of a tall plot's height the visible bars are given. See [fittedPriceRange]. */
+        const val MIN_TALL_FILL = 0.5
 
         /** Below this the visible bars are several times the plot's height. See [priceZoom]. */
         const val MIN_PRICE_ZOOM = 0.25f

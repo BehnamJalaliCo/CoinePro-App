@@ -177,6 +177,13 @@
     <string name="legend_controls_open">کنترل‌های اندیکاتورها</string>
     <string name="legend_controls_close">بستن کنترل‌ها</string>
     <string name="legend_back">بازگشت</string>
+    <string name="draw_move_start">نشانگر را روی نقطه‌ی شروع ببرید</string>
+    <string name="draw_move_next">نشانگر را روی نقطه‌ی بعد ببرید</string>
+    <string name="draw_tap_first">بزنید تا نقطه‌ی اول ثبت شود</string>
+    <string name="draw_tap_next">بزنید تا این نقطه ثبت شود</string>
+    <string name="draw_tap_finish">بزنید تا ترسیم تمام شود</string>
+    <string name="draw_step_of">%1$s از %2$s</string>
+    <string name="draw_cancel">لغو ترسیم</string>
     <string name="brand_positioning">خانه‌ی تحلیل کریپتو — با یک نگاه به طلا و دلار</string>
     <string name="brand_positioning_free">نسخه‌ی کامل، رایگان برای همه — بدون محدودیت، بدون آگهی</string>
     <string name="free_banner_dismiss">بستن</string>

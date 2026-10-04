@@ -37,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
@@ -1201,6 +1202,17 @@ fun CoineProChart(
     /** The stroke under the stylus, in plot pixels, drawn live in the cursor layer. */
     var strokePreview by remember { mutableStateOf<List<Offset>>(emptyList()) }
 
+    // **The placement cursor** (5.20.0) — TradingView's trackpad pointer. See [DrawCursor].
+    //
+    // In canvas pixels, the frame the taps arrive in. Null whenever no tool that places points is
+    // armed. A finger moves it by dragging anywhere; a mouse moves it by hovering.
+    var drawCursor by remember { mutableStateOf<Offset?>(null) }
+    // Whether it has travelled since the last point went down: the two halves of a banner step.
+    var drawCursorMoved by remember { mutableStateOf(false) }
+    // A finger until a mouse says otherwise. Decides between the trackpad and the hover pointer.
+    var touchPointer by remember { mutableStateOf(touchFirstPlatform()) }
+    val placesPoints = armed != null && armed.points > 0 && !eraser
+
     // Pull every magnet-bound anchor back onto its channel whenever the bars are replaced.
     //
     // This is what the binding is *for*, and without it the whole apparatus — the channel chosen at
@@ -1573,6 +1585,29 @@ fun CoineProChart(
 
     /** The plot rectangle the last draw published, for the overlays stacked on top of it. */
     val frames = remember { arrayOfNulls<PlotFrame>(1) }
+    LaunchedEffect(placesPoints, touchPointer) {
+        if (!placesPoints) {
+            drawCursor = null
+            drawCursorMoved = false
+        } else if (touchPointer && drawCursor == null) {
+            // In the middle of the plot, where TradingView puts it: the frame is published by the
+            // draw pass, so on the very first arming it may not exist yet, and one frame later it
+            // does. Bounded, so a chart that is never drawn — off screen, or a test host that does
+            // not draw — is not a composition that never goes idle.
+            var frame = frames[0]
+            var view = lastView[0]
+            var waited = 0
+            while ((frame == null || view == null) && waited < CURSOR_FRAME_WAIT) {
+                withFrameNanos { }
+                waited++
+                frame = frames[0]
+                view = lastView[0]
+            }
+            if (frame == null || view == null) return@LaunchedEffect
+            drawCursor = Offset(frame.left + frame.width / 2f, view.plotHeight / 2f)
+            drawCursorMoved = false
+        }
+    }
 
     /**
      * The setup's own levels, which the price range has to open far enough to include.
@@ -1689,6 +1724,56 @@ fun CoineProChart(
                         Modifier
                     } else {
                         Modifier
+                            .pointerInput(placesPoints) {
+                                // **The trackpad** (5.20.0). With a tool armed, a finger dragged
+                                // anywhere moves the placement cursor by the same distance rather
+                                // than putting a point under itself — TradingView's phone pointer,
+                                // the owner's recording. On the Initial pass, so once a drag is a
+                                // drag the movement is consumed before the tap detector sees it and
+                                // a drag never also places a point. A still tap passes through, and
+                                // the tap handler places it where the cursor is.
+                                //
+                                // A mouse is recorded and left alone: it is already a pointer the
+                                // hand does not cover, and its hover moves the cursor instead.
+                                awaitEachGesture {
+                                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                    if (down.type == PointerType.Mouse) {
+                                        touchPointer = false
+                                        return@awaitEachGesture
+                                    }
+                                    if (down.type == PointerType.Touch && !touchPointer) touchPointer = true
+                                    if (!placesPoints) return@awaitEachGesture
+                                    val slop = viewConfiguration.touchSlop
+                                    var travelled = Offset.Zero
+                                    var dragging = false
+                                    while (true) {
+                                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                                        // A second finger is a pinch, and the pinch is not ours.
+                                        if (event.changes.count { it.pressed } > 1) break
+                                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                        if (!change.pressed) break
+                                        val delta = change.position - change.previousPosition
+                                        if (!dragging) {
+                                            travelled += delta
+                                            if (travelled.getDistance() > slop) dragging = true
+                                        }
+                                        if (dragging) {
+                                            val frame = frames[0]
+                                            val view = lastView[0]
+                                            val from = drawCursor ?: change.previousPosition
+                                            if (frame != null && view != null) {
+                                                drawCursor = Offset(
+                                                    (from.x + delta.x).coerceIn(frame.left, frame.left + frame.width),
+                                                    (from.y + delta.y).coerceIn(0f, view.plotHeight),
+                                                )
+                                                drawCursorMoved = true
+                                                invalidate(Invalidation.CURSOR)
+                                            }
+                                            change.consume()
+                                        }
+                                    }
+                                }
+                            }
                             .pointerInput(armed != null) {
                                 // Panning is off while a tool is armed. A one-finger drag on a
                                 // chart in drawing mode is a placement, and a chart that scrolls
@@ -2112,6 +2197,14 @@ fun CoineProChart(
                                                 if (change.pressed || tracking) continue
                                                 val view = lastView[0] ?: continue
                                                 val inside = plot.x in 0f..frame.width && plot.y >= 0f
+                                                // With a mouse and a tool armed, the placement
+                                                // cursor is the hover itself (5.20.0): the click
+                                                // places where it is, and the shape stretches to it
+                                                // on the way.
+                                                if (!touchPointer && currentDrawing.value?.tool?.let { it.points > 0 } == true) {
+                                                    drawCursor = if (inside) change.position else null
+                                                    drawCursorMoved = inside
+                                                }
                                                 if (inside) {
                                                     hovering = true
                                                     crosshair = view.crosshairAt(plot, crosshairMagnetState.value)
@@ -2674,7 +2767,11 @@ fun CoineProChart(
                                             }
                                         }
                                     },
-                                    onTap = { position ->
+                                    onTap = { tapAt ->
+                                        // On the trackpad the point goes where the cursor is, not
+                                        // under the finger that tapped (5.20.0). See [DrawCursor].
+                                        val cursorAt = drawCursor
+                                        val position = if (cursorAt != null && touchPointer) cursorAt else tapAt
                                         // A single tap is the way out of both modes, and it takes
                                         // priority over everything else a tap can mean. A reader in
                                         // tracking mode who taps is asking for the crosshair to go
@@ -2835,6 +2932,7 @@ fun CoineProChart(
                                         if (placed.pending.size > state.pending.size ||
                                             placed.drawings.size > state.drawings.size
                                         ) {
+                                            drawCursorMoved = false
                                             onPlace?.invoke()
                                             placedPoint = snapped.point
                                             placedSeq += 1
@@ -3628,6 +3726,54 @@ fun CoineProChart(
                         constraintAnchors(live).forEach { drawConstraintSpokes(view, it, palette) }
                     }
                 }
+                // The placement cursor and the shape stretched to it (5.20.0). See [DrawCursor].
+                val cursorAt = drawCursor
+                val placing = drawing?.tool
+                if (cursorAt != null && placing != null && placing.points > 0) {
+                    val at = Offset(cursorAt.x - frame.left, cursorAt.y)
+                    val live = drawing
+                    clipRect(0f, 0f, frame.width, view.plotHeight) {
+                        if (live.pending.isNotEmpty()) {
+                            val reach = view.rawChartPointAt(at)
+                            drawDrawing(
+                                drawing = Drawing(
+                                    id = PREVIEW_DRAWING_ID,
+                                    toolId = placing.id,
+                                    points = live.pending + reach,
+                                    colour = live.colour,
+                                    widthDp = live.widthDp,
+                                ),
+                                view = view,
+                                measurer = measurer,
+                                plate = palette.stage,
+                            )
+                            drawPendingAnchors(
+                                anchors = live.pending.map { Offset(view.xOfTime(it.time), view.yOf(it.price)) },
+                                colour = DrawCursor.Accent,
+                                stage = palette.stage,
+                            )
+                        }
+                        drawPlacementCursor(at, frame.width, view.plotHeight, palette.stage)
+                    }
+                    // The cursor's own price and time, in the two gutters, as the crosshair prints
+                    // its reading — but with no rules of its own, which the cursor has drawn.
+                    if (mark == null) {
+                        drawCrosshair(
+                            view = view,
+                            crosshair = view.crosshairAt(at),
+                            plotWidth = frame.width,
+                            frame = frame,
+                            fullHeight = max(0f, size.height - timeAxis),
+                            palette = palette,
+                            measurer = measurer,
+                            decoration = decoration,
+                            zone = zone,
+                            mode = DrawingMode.ARROW_CURSOR,
+                            paneBands = paneBands[0],
+                            jalali = jalaliDates,
+                        )
+                    }
+                }
                 if (mark != null) {
                     drawCrosshair(
                         view = view,
@@ -3648,6 +3794,26 @@ fun CoineProChart(
                     )
                 }
             }
+        }
+
+        // TradingView's «۱ از ۴» line over the plot while a point is being aimed (5.20.0). With a
+        // finger only: a mouse needs no instructions to move a pointer it is already holding.
+        val bannerTool = drawing?.tool
+        if (touchPointer && drawCursor != null && bannerTool != null && bannerTool.points > 0) {
+            val live = drawing
+            DrawStepBanner(
+                step = DrawCursor.step(
+                    points = bannerTool.points,
+                    placed = live.pending.size,
+                    moved = drawCursorMoved,
+                    variable = DrawingActions.isVariablePoint(bannerTool.id),
+                ),
+                persian = deviceReadsPersian(),
+                onCancel = {
+                    onDrawing?.invoke(DrawingActions.cancel(live))
+                },
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
         }
 
         if (decoration.showLegend) {
@@ -3829,6 +3995,9 @@ private fun Color.lifted(by: Float): Color = Color(
     blue = (blue + by).coerceAtMost(1f),
     alpha = alpha,
 )
+
+/** How many frames the placement cursor waits for the first draw before giving up (5.20.0). */
+private const val CURSOR_FRAME_WAIT = 30
 
 /** How far the plot's ground lifts at the top of the canvas. Run Ξ, item 15. */
 private const val PLOT_LIFT = 0.02f
@@ -7296,13 +7465,18 @@ private fun gridRows(plotHeight: Float, density: Float): Int {
 private const val GRID_ROWS = 5
 
 /** See [gridRows]. One horizontal division per this many device-independent pixels. */
-private const val GRID_PITCH_DP = 76f
+/**
+ * 5.20.0: thirty-four, TradingView's own pitch. At seventy-six a phone's axis printed six or seven
+ * prices and the owner read it as a zoomed-in scale — «یک صفحه از ۶۵ تا ۷۰ هزار» — beside a
+ * TradingView axis listing every 2,500 from 52,500 to 95,000.
+ */
+private const val GRID_PITCH_DP = 34f
 
 private const val MIN_GRID_ROWS = 3
-private const val MAX_GRID_ROWS = 12
+private const val MAX_GRID_ROWS = 30
 
 /** A ceiling on the tick loop, so a degenerate range cannot spin inside a draw pass. */
-private const val MAX_TICKS = 24
+private const val MAX_TICKS = 40
 
 /** As many decimals as any instrument this app quotes deserves. */
 private const val MAX_DECIMALS = 8

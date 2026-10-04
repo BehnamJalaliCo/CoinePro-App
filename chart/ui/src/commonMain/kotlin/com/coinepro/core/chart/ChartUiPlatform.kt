@@ -72,6 +72,15 @@ internal expect fun screenWidthDp(): Int
 internal expect fun deviceReadsPersian(): Boolean
 
 /**
+ * Whether this device's pointer is a finger before it is a mouse (5.20.0).
+ *
+ * Decides how a drawing is placed before the first touch says otherwise: a phone or a tablet starts
+ * with TradingView's trackpad cursor in the middle of the plot, a desktop browser with a pointer
+ * that follows the mouse. See [DrawCursor].
+ */
+internal expect fun touchFirstPlatform(): Boolean
+
+/**
  * What the chart asks of the view it is drawn in: a refresh-rate vote while it moves, and the
  * stylus's predicted next point for live ink.
  */
@@ -133,6 +142,13 @@ enum class ChartText {
     LEGEND_CONTROLS_CLOSE,
     LEGEND_CONTROLS_OPEN,
     LEGEND_BACK,
+    DRAW_MOVE_START,
+    DRAW_MOVE_NEXT,
+    DRAW_TAP_FIRST,
+    DRAW_TAP_NEXT,
+    DRAW_TAP_FINISH,
+    DRAW_STEP_OF,
+    DRAW_CANCEL,
 }
 
 @Composable
