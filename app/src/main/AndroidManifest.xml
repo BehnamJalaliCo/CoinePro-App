@@ -8,9 +8,13 @@
       No CAMERA permission (5.19.4). The chart-image screen takes its photo through the phone's own
       camera app, which needs none; Cafe Bazaar refused 5.0.6 for declaring it. Declaring it again
       would also break that path: an app that lists the permission must hold it before it may ask
-      the camera app for a picture.
+      the camera app for a picture. Lint reads the removal as a declaration and asks for a
+      camera <uses-feature>; there is no permission left for one to qualify.
     -->
-    <uses-permission android:name="android.permission.CAMERA" tools:node="remove" />
+    <uses-permission
+        android:name="android.permission.CAMERA"
+        tools:ignore="PermissionImpliesUnsupportedChromeOsHardware"
+        tools:node="remove" />
 
     <application
         android:name=".CoineProApplication"
