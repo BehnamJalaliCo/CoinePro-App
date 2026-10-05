@@ -103,7 +103,9 @@ fi
 # sense — a lit stage, out-of-focus glows, a light sweep — and the pastel card they sit on and the
 # ring round the spotlight are part of that one picture, drawn over a dimmed app rather than being
 # a card in its layout. The owner's brief was «پاستیلی و سینمایی».
-gradient_allow='CoineProBrand.kt|CoineProCoach.kt|CoachScenes.kt|CoineProSurfaces.kt|CoineProThinking.kt|CoineProMotionEffects.kt|EquityCurve.kt|CoineProChart.kt|ChartSeriesTypes.kt|HomeScreen.kt|WelcomeSlides.kt'
+# `ProScreen.kt` (5.24.0): the Pro card and hero are the one commercial thing on their page,
+# drawn in the brand's gold — the brand mark's own gradient, not a card treatment.
+gradient_allow='ProScreen.kt|CoineProBrand.kt|CoineProCoach.kt|CoachScenes.kt|CoineProSurfaces.kt|CoineProThinking.kt|CoineProMotionEffects.kt|EquityCurve.kt|CoineProChart.kt|ChartSeriesTypes.kt|HomeScreen.kt|WelcomeSlides.kt'
 gradient_hits="$( { git grep -lE 'Brush\.(vertical|horizontal|linear|radial|sweep)Gradient' -- 'app/**/*.kt' 'core/**/*.kt' 'feature/**/*.kt' 'chart/**/*.kt' 'namascript/**/*.kt' || true; } | grep -vE "$gradient_allow" || true)"
 if [[ -n "$gradient_hits" ]]; then
   echo "$gradient_hits"
