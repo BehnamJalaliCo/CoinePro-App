@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.24.1
+
+**fa**
+
+> این نسخه تغییرات نسخه‌ی قبل را منتشر می‌کند: منوی خلوت‌تر با یک در برای هر امکان، صفحه‌ی یکپارچه‌ی بازارها و هیت‌مپ و اسکرینر، و کارت «پرو چارت پرو». همه‌ی ابزارها همچنان رایگان‌اند.
+
+**en**
+
+> This version ships the previous one's changes: a calmer menu with one door per feature, one page for markets, the heat map and the screener, and the Pro Chart Pro card. Every tool is still free.
+
+---
+
 ## 5.24.0
 
 **fa**
