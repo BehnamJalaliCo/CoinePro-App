@@ -367,4 +367,4 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
-            gradle --no-daemon :benchmark:connectedBenchmarkAndroidTest -x lintVitalAnalyzeRelease -x lintVitalReportRelease -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.dryRunMode.enable=true -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=Macrobenchmark -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.suppressErrors=EMULATOR
+            gradle --no-daemon :benchmark:connectedBenchmarkAndroidTest -x lintVitalAnalyzeRelease -x lintVitalReportRelease -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.dryRunMode.enable=true -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=Macrobenchmark -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.suppressErrors=EMULATOR || { adb logcat -d -b crash | tail -120; adb logcat -d | grep -E 'AndroidRuntime|FATAL|coinepro' | tail -120; exit 1; }
