@@ -87,6 +87,7 @@ scorecard) and a second pixel-level pass over the old Pro-Chart terminal
 | The store build's centre tab is Markets | ✅ 5.24.0 | `HOME_ROUTE` draws the hub when `storeRestricted`; `AppDestination.shownLabel()` and the markets glyph on the bar and rail | — **the release APK's bar**; the web keeps «رصد» |
 | Pro Chart Pro card and page | ✅ 5.24.0 | `ProCard` in the menu, `ProScreen` at `pro`: the four raised limits and three plans, «به‌زودی» until `FeatureFlags.billingLive` | — **checked in the browser** |
 | Cafe Bazaar billing, wired and off | ✅ 5.24.0 | `BazaarBilling` (Poolakey 2.2.0, the package's RSA key, subscriptions `pro_monthly`, `pro_quarterly`, `pro_yearly`) → `PaymentsGateway.claimBazaar` → TradeYar `payments/bazaar`; constructed only when `billingLive` | — **off in this build**: no purchase can start |
+| The minified build opens | ✅ 5.24.2 | `app/proguard-rules.pro` keeps every Retrofit service whole, not only the ones something calls: with billing off R8 dropped `PaymentsApi.bazaar`, the `-if` rule stopped matching and the injection of `MainActivity` threw a ClassCastException; the benchmark smoke now prints the device's crash log when it fails | — **the CI emulator's launch**; checked in the R8 output that the cast survives |
 
 ## 5.17.0 — the growth scan, and the rest of the behind rows
 

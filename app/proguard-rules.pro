@@ -39,6 +39,13 @@
 -if interface * { @retrofit2.http.* <methods>; }
 -keep,allowobfuscation interface <1> { <methods>; }
 
+# And unconditionally (5.24.1). The `-if` above is evaluated after shrinking, so a service whose
+# methods nothing calls yet — `PaymentsApi` while Pro's billing is switched off — loses them, the
+# rule stops matching, R8 concludes the interface can have no instance and rewrites the cast of
+# Retrofit's proxy into a guaranteed ClassCastException. That crashed the app at launch, in Hilt's
+# injection of MainActivity. Keeping every annotated service whole makes "not called yet" harmless.
+-keep,allowobfuscation interface * { @retrofit2.http.* <methods>; }
+
 # Retrofit resolves suspend response types from the generic signature, so it must survive.
 -keepattributes Signature, InnerClasses, EnclosingMethod
 -keepattributes RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations

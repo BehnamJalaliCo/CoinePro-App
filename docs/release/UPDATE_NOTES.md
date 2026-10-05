@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.24.2
+
+**fa**
+
+> نسخه‌ی قبلی اندروید هنگام باز شدن بسته می‌شد و این نسخه آن را درست می‌کند. منوی خلوت‌تر، صفحه‌ی یکپارچه‌ی بازارها و کارت «پرو چارت پرو» همه در این نسخه هستند.
+
+**en**
+
+> The previous Android version closed as it opened; this one fixes that. The calmer menu, the single markets page and the Pro Chart Pro card are all in this version.
+
+---
+
 ## 5.24.1
 
 **fa**

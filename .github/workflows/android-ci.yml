@@ -186,8 +186,13 @@ jobs:
         # the runner losing its agent mid-build ("received a shutdown signal") on two attempts in a
         # row, so the daemon is stopped first and the workers are capped.
         run: |
+          # Two runs, not one (5.24.1): the tests in the first, lint and the five assembles in the
+          # second. One Gradle run held lint's three analyses and the Robolectric forks at once and
+          # the runner lost its agent mid-test on every first attempt from 5.23.0 on.
           pkill -f KotlinCompileDaemon || true
-          gradle --no-daemon --max-workers=2 :chart-core:jvmTest :namascript:jvmTest :chart-ui:testDebugUnitTest :core:script:testDebugUnitTest :core:auth:testDebugUnitTest :core:network:testDebugUnitTest :core:marketdata:testDebugUnitTest :core:signals:testDebugUnitTest :core:notifications:testDebugUnitTest :core:execution:testDebugUnitTest :core:aisignal:testDebugUnitTest :core:aivision:testDebugUnitTest :core:aiassistant:testDebugUnitTest :core:marketintel:testDebugUnitTest :core:database:testDebugUnitTest :feature:tools:testDebugUnitTest :app:lintDebug :app:lintStaging :app:lintRelease :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleStaging :app:assembleRelease :app:assembleBenchmark :benchmark:assembleBenchmark
+          gradle --no-daemon --max-workers=2 :chart-core:jvmTest :namascript:jvmTest :chart-ui:testDebugUnitTest :core:script:testDebugUnitTest :core:auth:testDebugUnitTest :core:network:testDebugUnitTest :core:marketdata:testDebugUnitTest :core:signals:testDebugUnitTest :core:notifications:testDebugUnitTest :core:execution:testDebugUnitTest :core:aisignal:testDebugUnitTest :core:aivision:testDebugUnitTest :core:aiassistant:testDebugUnitTest :core:marketintel:testDebugUnitTest :core:database:testDebugUnitTest :feature:tools:testDebugUnitTest :app:testDebugUnitTest
+          pkill -f KotlinCompileDaemon || true
+          gradle --no-daemon --max-workers=2 :app:lintDebug :app:lintStaging :app:lintRelease :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleStaging :app:assembleRelease :app:assembleBenchmark :benchmark:assembleBenchmark
 
       - name: Verify protected release signing path
         shell: bash
