@@ -80,6 +80,8 @@ scorecard) and a second pixel-level pass over the old Pro-Chart terminal
 | Multi-chart from the layout button | ✅ 5.23.0 | `GridButton` in `ChartDesktopToolbar`: every `ChartLayoutPreset` the window holds as its `LayoutGlyph`, then the saved layouts; a choice writes `ChartWorkspaceStore.setPaneLayout` and opens the panes | — **a popup and a page**; checked in the browser, «2h» opened two charts side by side |
 | News and the calendar on the right rail | ✅ 5.23.0 | `ChartSidePanel("news")` → `NewsScreen`, `ChartSidePanel("calendar")` → `EconomicCalendarScreen`, each opening the chart from a story or a release | — **two rail glyphs**; checked in the browser |
 | TradingView's bottom panel | ✅ 5.23.0 | `ChartBottomDock`: a 36 dp strip, an open panel 320 dp tall dragged by its top edge between 200 and 600 (a double-click puts it back), maximise and minimise; NamaScript editor, the strategy tester (`BacktestSheetBody`) and paper trading (`PaperTradeScreen`); web only, the tablet keeps its layout | — **checked in the browser**: each tab opened under a live chart |
+| The multi-chart page reads left to right on the web | ✅ 5.23.1 | the panes route under `LayoutDirection.Ltr` when `FeatureFlags.desktopShellLtr` | — **the first chart at the top left**, as TradingView's grid; checked in the browser |
+| Tips headed for a mouse | ✅ 5.23.1 | `CoachTip.mouseTitle` on `CHART_PINCH` («زوم با چرخ موس») and `CHART_HOLD` («منوی کلیک راست»), in the card and the library | — **the browser check's card** read «زوم با دو انگشت» over a wheel sentence |
 
 ## 5.17.0 — the growth scan, and the rest of the behind rows
 

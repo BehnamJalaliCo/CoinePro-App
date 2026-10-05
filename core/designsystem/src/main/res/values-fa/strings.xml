@@ -207,12 +207,14 @@
     <string name="coach_draw_toolbar_text">شش نقطه را بکشید تا نوار جابه‌جا شود و با یک ضربه جمعش کنید. روی هر ابزار نگه دارید تا ابزارهای هم‌گروهش باز شوند.</string>
     <string name="coach_draw_toolbar_mouse">شش نقطه را بکشید تا نوار جابه‌جا شود و با کلیک جمعش کنید. دکمه‌ی موس را روی هر ابزار نگه دارید تا ابزارهای هم‌گروهش باز شوند.</string>
     <string name="coach_chart_pinch_title">زوم با دو انگشت</string>
+    <string name="coach_chart_pinch_mouse_title">زوم با چرخ موس</string>
     <string name="coach_chart_pinch_text">دو انگشت را باز و بسته کنید تا چارت بزرگ و کوچک شود. روی ستون قیمت، فقط قیمت زوم می‌شود.</string>
     <string name="coach_chart_pinch_mouse">با چرخ موس زمان را زوم کنید و با نگه‌داشتن Ctrl و چرخاندن، قیمت را.</string>
     <string name="coach_chart_axis_title">کشیدن ستون قیمت</string>
     <string name="coach_chart_axis_text">ستون قیمت را بالا و پایین بکشید تا چارت کشیده یا فشرده شود. دو ضربه روی آن، اندازه را خودکار می‌کند.</string>
     <string name="coach_chart_axis_mouse">ستون قیمت را با موس بالا و پایین بکشید. دوبار کلیک روی آن، اندازه را خودکار می‌کند.</string>
     <string name="coach_chart_hold_title">نگه‌داشتن روی چارت</string>
+    <string name="coach_chart_hold_mouse_title">منوی کلیک راست</string>
     <string name="coach_chart_hold_text">انگشت را روی چارت نگه دارید تا نشانگر بماند و قیمت و زمان هر نقطه را بخوانید.</string>
     <string name="coach_chart_hold_mouse">روی چارت کلیک راست کنید تا منوی همان قیمت باز شود.</string>
     <string name="coach_chart_double_title">بازگشت به آخرین شمع</string>

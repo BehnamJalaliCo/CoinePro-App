@@ -216,12 +216,14 @@
     <string name="coach_draw_toolbar_text">Drag the six dots to move the toolbar and tap them to fold it. Hold a tool to see the rest of its group.</string>
     <string name="coach_draw_toolbar_mouse">Drag the six dots to move the toolbar and click them to fold it. Hold the button on a tool to see the rest of its group.</string>
     <string name="coach_chart_pinch_title">Pinch to zoom</string>
+    <string name="coach_chart_pinch_mouse_title">Zoom with the wheel</string>
     <string name="coach_chart_pinch_text">Spread or pinch two fingers to zoom the chart. On the price column only the price scale zooms.</string>
     <string name="coach_chart_pinch_mouse">Scroll the wheel to zoom time; hold Ctrl and scroll to zoom price.</string>
     <string name="coach_chart_axis_title">Stretch the price scale</string>
     <string name="coach_chart_axis_text">Drag the price column up or down to stretch or squeeze the chart. Double-tap it to fit again.</string>
     <string name="coach_chart_axis_mouse">Drag the price column up or down with the mouse. Double-click it to fit again.</string>
     <string name="coach_chart_hold_title">Press and hold</string>
+    <string name="coach_chart_hold_mouse_title">The right-click menu</string>
     <string name="coach_chart_hold_text">Press and hold on the chart to keep the crosshair and read the price and time of any point.</string>
     <string name="coach_chart_hold_mouse">Right-click the chart to open the menu for that price.</string>
     <string name="coach_chart_double_title">Back to the latest candle</string>

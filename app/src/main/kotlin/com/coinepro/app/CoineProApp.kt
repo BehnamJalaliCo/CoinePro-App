@@ -71,7 +71,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -4985,25 +4988,31 @@ private fun MainShell(
                 ),
             ) { entry ->
                 val symbol = entry.arguments?.getString("symbol").orEmpty()
-                ChartPanesScreen(
-                    firstSymbol = symbol,
-                    // Empty on every other way in, and then the panes come back from the workspace
-                    // exactly as they always have. See `compareRoute`.
-                    compareSymbols = entry.arguments?.getString("compare")
-                        ?.split(',')
-                        ?.filter(String::isNotBlank)
-                        .orEmpty(),
-                    // The same holder both other chart routes use, so a pane opened on a symbol
-                    // the reader has already charted arrives with that symbol's drawings and its
-                    // own timeframe rather than on the defaults.
-                    controllerFor = chartControllers::controllerFor,
-                    watchlist = watchlist,
-                    quotes = watchlistQuotes,
-                    workspace = chartWorkspaceStore,
-                    symbolChartStates = symbolChartStateStore,
-                    chartLayoutStore = chartLayoutStore,
-                    onBack = { navController.leaveChart() },
-                )
+                // TradingView's grid on the web reads left to right: the first chart at the top left
+                // (5.23.0). See `FeatureFlags.desktopShellLtr`.
+                CompositionLocalProvider(
+                    LocalLayoutDirection provides if (FeatureFlags.desktopShellLtr) LayoutDirection.Ltr else LocalLayoutDirection.current,
+                ) {
+                    ChartPanesScreen(
+                        firstSymbol = symbol,
+                        // Empty on every other way in, and then the panes come back from the workspace
+                        // exactly as they always have. See `compareRoute`.
+                        compareSymbols = entry.arguments?.getString("compare")
+                            ?.split(',')
+                            ?.filter(String::isNotBlank)
+                            .orEmpty(),
+                        // The same holder both other chart routes use, so a pane opened on a symbol
+                        // the reader has already charted arrives with that symbol's drawings and its
+                        // own timeframe rather than on the defaults.
+                        controllerFor = chartControllers::controllerFor,
+                        watchlist = watchlist,
+                        quotes = watchlistQuotes,
+                        workspace = chartWorkspaceStore,
+                        symbolChartStates = symbolChartStateStore,
+                        chartLayoutStore = chartLayoutStore,
+                        onBack = { navController.leaveChart() },
+                    )
+                }
             }
             composable(
                 route = DOM_PATTERN,

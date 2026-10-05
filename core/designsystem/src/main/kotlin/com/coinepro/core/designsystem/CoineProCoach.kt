@@ -113,6 +113,8 @@ enum class CoachTip(
     @StringRes val text: Int,
     /** The sentence for a mouse, where the gesture differs. Null when the touch one holds. */
     @StringRes val mouseText: Int? = null,
+    /** The heading for a mouse, where the touch one names a gesture a mouse does not make. */
+    @StringRes val mouseTitle: Int? = null,
     /** A gesture a mouse does not have; never shown to a mouse. */
     val touchOnly: Boolean = false,
     /** Needed this second: bypasses the cooldown and the session cap. */
@@ -134,6 +136,7 @@ enum class CoachTip(
     CHART_PINCH(
         "chart_pinch", CoachGroup.CHART, CoachScene.PINCH,
         R.string.coach_chart_pinch_title, R.string.coach_chart_pinch_text, R.string.coach_chart_pinch_mouse,
+        mouseTitle = R.string.coach_chart_pinch_mouse_title,
     ),
     CHART_AXIS(
         "chart_axis", CoachGroup.CHART, CoachScene.AXIS,
@@ -142,6 +145,7 @@ enum class CoachTip(
     CHART_HOLD(
         "chart_hold", CoachGroup.CHART, CoachScene.HOLD,
         R.string.coach_chart_hold_title, R.string.coach_chart_hold_text, R.string.coach_chart_hold_mouse,
+        mouseTitle = R.string.coach_chart_hold_mouse_title,
     ),
     CHART_DOUBLE(
         "chart_double", CoachGroup.CHART, CoachScene.DOUBLE_TAP,
@@ -629,7 +633,7 @@ fun CoachCard(
             )
             Spacer(Modifier.size(CoineProSpacing.One))
             Text(
-                text = stringResource(tip.title),
+                text = stringResource(if (!touchFirst && tip.mouseTitle != null) tip.mouseTitle else tip.title),
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 color = CARD_INK,
             )
@@ -795,7 +799,7 @@ private fun CoachLibraryRow(tip: CoachTip, onPlay: () -> Unit) {
         Spacer(Modifier.size(CoineProSpacing.OneHalf))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = stringResource(tip.title),
+                text = stringResource(if (!LocalCoachTouchFirst.current && tip.mouseTitle != null) tip.mouseTitle else tip.title),
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                 color = CoineProColors.TextPrimary,
             )

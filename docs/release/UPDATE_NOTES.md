@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.23.1
+
+**fa**
+
+> در نسخه‌ی وب، صفحه‌ی چندچارتی هم مثل تریدینگ‌ویو از چپ به راست چیده می‌شود و اولین چارت بالا سمت چپ است. آموزش‌ها روی دسکتاپ عنوانی مخصوص موس دارند.
+
+**en**
+
+> On the web, the multi-chart page also reads left to right like TradingView, with the first chart at the top left. On a desktop, the tips carry headings written for a mouse.
+
+---
+
 ## 5.23.0
 
 **fa**
