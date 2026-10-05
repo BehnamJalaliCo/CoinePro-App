@@ -670,6 +670,16 @@ fun ChartScreen(
      * up as a switch that comes back rather than as two halves of the app disagreeing.
      */
     chartEventPrefs: ChartEventPrefsStore? = null,
+    /**
+     * Opens the multi-chart page on a layout (5.23.0), from TradingView's grid button on the desktop
+     * toolbar. Null keeps the button as the saved-layouts sheet alone.
+     */
+    onOpenGrid: ((ChartLayoutPreset) -> Unit)? = null,
+    /**
+     * TradingView's bottom panel on a desktop window (5.23.0): the script editor and paper trading
+     * from the shell; the strategy tester is this screen's own and goes between them.
+     */
+    bottomPanels: List<ChartSidePanel> = emptyList(),
 ) {
     // Trading on the chart (5.17.0): the position's entry, stop and target and the working orders.
     val tradeWords = TradeLineWords(
@@ -2439,8 +2449,9 @@ fun ChartScreen(
         // **TradingView's desktop toolbar** (5.16.0), on a window wide enough to be a desktop —
         // the browser, a tablet held sideways. It takes the band's place: the phone keeps
         // TradingView's phone band under the plot, a desktop gets TradingView's desktop row over it.
-        if (desktopChrome && !fullscreenRequested) {
+        if (desktopChrome && !fullscreenRequested) DesktopShellDirection {
             ChartDesktopToolbar(
+                onGrid = onOpenGrid,
                 symbol = state.symbol,
                 interval = state.interval,
                 starred = starredWires,
@@ -2529,7 +2540,7 @@ fun ChartScreen(
         }
         HorizontalDivider(color = CoineProColors.Border)
         // TradingView's desktop bar under the plot (5.16.0) — the ranges, the clock, `%` and `log`.
-        if (desktopChrome && !fullscreenRequested) {
+        if (desktopChrome && !fullscreenRequested) DesktopShellDirection {
             ChartDesktopBottomBar(
                 range = state.range,
                 zone = chartZone,
@@ -2554,6 +2565,26 @@ fun ChartScreen(
                 onGoToDate = { sheet = ChartSheet.MORE }.takeIf { !state.series.isEmpty },
                 auto = priceAuto,
                 onAuto = { priceAutoNudge++ },
+            )
+        }
+
+        if (desktopChrome && !fullscreenRequested && bottomPanels.isNotEmpty()) {
+            val tester = ChartSidePanel("tester", R.string.chart_sheet_backtest, DesignR.drawable.tv_code2) {
+                BacktestSheetBody(
+                    bars = state.series.bars,
+                    symbol = state.symbol,
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    hasMoreHistory = state.hasMore,
+                    loadingHistory = state.loadingMore,
+                    onLoadMoreHistory = controller::loadMore,
+                    loadMagnifier = controller::magnifierBars,
+                )
+            }
+            ChartBottomDock(
+                panels = bottomPanels.take(1) + tester + bottomPanels.drop(1),
+                ltrChrome = com.coinepro.core.common.FeatureFlags.desktopShellLtr,
             )
         }
 
@@ -6356,3 +6387,16 @@ internal fun tabTitle(symbol: String, price: Double, movePercent: Double?): Stri
 
 /** How tall a wide window must be before it gets TradingView's desktop bars (5.16.0). */
 private const val DESKTOP_CHROME_MIN_HEIGHT_DP = 600
+
+/**
+ * The web's desktop chrome, left to right in every language (5.23.0), as TradingView's is: the symbol
+ * at the left edge, the layout cluster at the right. See `FeatureFlags.desktopShellLtr`.
+ */
+@Composable
+private fun DesktopShellDirection(content: @Composable () -> Unit) {
+    if (!com.coinepro.core.common.FeatureFlags.desktopShellLtr) return content()
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr,
+        content = content,
+    )
+}

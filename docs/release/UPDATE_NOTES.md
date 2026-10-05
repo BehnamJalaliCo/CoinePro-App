@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.23.0
+
+**fa**
+
+> نسخه‌ی وب روی دسکتاپ حالا مثل تریدینگ‌ویو از چپ به راست چیده شده است. دکمه‌ی چیدمان، شبکه‌ی چندچارتی را باز می‌کند؛ اخبار و تقویم اقتصادی در ستون راست کنار چارت باز می‌شوند؛ و پنل پایین، ویرایشگر نمااسکریپت، بک‌تست و معامله‌ی آزمایشی را زیر همان چارت نگه می‌دارد.
+
+**en**
+
+> On a desktop, the web version is now laid out left to right like TradingView. The layout button opens the multi-chart grid, news and the economic calendar open in the right-hand column beside the chart, and the bottom panel keeps the NamaScript editor, the backtest and paper trading under the same chart.
+
+---
+
 ## 5.22.0
 
 **fa**

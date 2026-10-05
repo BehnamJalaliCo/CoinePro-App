@@ -911,7 +911,7 @@ private fun LayoutPresetRow(
 
 /** The grid a preset makes, as cells of a [LAYOUT_GLYPH] square with a hairline between them. */
 @Composable
-private fun LayoutGlyph(preset: ChartLayoutPreset, ink: Color) {
+internal fun LayoutGlyph(preset: ChartLayoutPreset, ink: Color) {
     val gap = with(LocalDensity.current) { LAYOUT_GLYPH_GAP.toPx() }
     Canvas(modifier = Modifier.size(LAYOUT_GLYPH)) {
         val columns = preset.columns

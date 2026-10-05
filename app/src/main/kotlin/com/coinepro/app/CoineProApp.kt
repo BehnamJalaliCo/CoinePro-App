@@ -333,6 +333,7 @@ import com.coinepro.feature.chart.ChartPanesScreen
 import com.coinepro.feature.chart.ChartMirror
 import com.coinepro.feature.chart.ChartScriptSource
 import com.coinepro.feature.chart.ChartShare
+import com.coinepro.feature.chart.ChartLayoutPreset
 import com.coinepro.feature.chart.ChartScreen
 import com.coinepro.feature.chart.ChartStudioScreen
 import com.coinepro.feature.chart.ChartWorkspaceStore
@@ -3564,6 +3565,7 @@ private fun MainShell(
                 duelPending = false
             }
 
+            val gridScope = rememberCoroutineScope()
             val sidePanels = listOf(
                 ChartSidePanel("watchlist", ChartR.string.chart_panel_watchlist, DesignR.drawable.tv_star) {
                     WatchlistScreen(
@@ -3619,6 +3621,25 @@ private fun MainShell(
                 ChartSidePanel("alerts", ChartR.string.chart_panel_alerts, DesignR.drawable.icon_bell) {
                     AlertCenterScreen(controller = alertsController, initialSymbol = activeChartSymbol, showTitle = false)
                 },
+                // TradingView's right rail carries the news and the calendar beside the chart
+                // (5.23.0): read them without leaving it, and a story or a release still opens the
+                // chart at its own second.
+                ChartSidePanel("news", ChartR.string.chart_panel_news, DesignR.drawable.icon_newspaper) {
+                    NewsScreen(
+                        platform = activePlatform,
+                        controller = marketIntelController,
+                        readers = marketIntelControllers,
+                        onOpenCalendar = { navController.navigate(CALENDAR_ROUTE) },
+                        onOpenChart = { symbol, _ -> navController.navigate(chartRoute(symbol)) },
+                    )
+                },
+                ChartSidePanel("calendar", ChartR.string.chart_panel_calendar, DesignR.drawable.tv_calendar_days) {
+                    EconomicCalendarScreen(
+                        controller = marketIntelController,
+                        onOpenNews = { navController.navigate(NEWS_ROUTE) },
+                        onOpenChart = { symbol, _ -> navController.navigate(chartRoute(symbol)) },
+                    )
+                },
                 ChartSidePanel("script", ChartR.string.chart_panel_script, DesignR.drawable.tv_code2) {
                     ScriptScreen(
                         controller = scriptController,
@@ -3656,6 +3677,34 @@ private fun MainShell(
             ChartScreen(
                 foundingMember = profile.foundingMember,
                 sidePanels = sidePanels,
+                // TradingView's bottom panel, on the web's desktop page only (5.23.0): the tablet
+                // keeps its own layout. The editor is the rail's own script panel, docked under
+                // the chart; the strategy tester is the chart's and goes between the two.
+                bottomPanels = if (FeatureFlags.desktopShellLtr) {
+                    listOfNotNull(
+                        sidePanels.firstOrNull { it.id == "script" },
+                        ChartSidePanel("paper", R.string.screen_paper_trade, DesignR.drawable.tv_code2) {
+                            PaperTradeScreen(
+                                controller = paperTradeController,
+                                priceFor = { symbol -> marketState.quotes[symbol]?.price },
+                                quoteFor = { symbol -> marketState.quotes[symbol]?.asPaperQuote() },
+                                onOpenSymbol = { navController.navigate(chartRoute(it)) },
+                                markets = catalogue,
+                            )
+                        },
+                    )
+                } else {
+                    emptyList()
+                },
+                // TradingView's grid button (5.23.0): one chart stays here, more open the panes.
+                onOpenGrid = { preset ->
+                    if (preset != ChartLayoutPreset.ONE) {
+                        gridScope.launch {
+                            runCatching { chartWorkspaceStore.setPaneLayout(preset) }
+                            navController.navigate(panesRoute(activeChartSymbol))
+                        }
+                    }
+                },
                 // The arrow the app bar used to hold. The bar is not drawn over this route any
                 // more — see `showTopBar` — and this is the same `popBackStack` it called, handed
                 // to the page so it can put it where it costs the plot nothing.

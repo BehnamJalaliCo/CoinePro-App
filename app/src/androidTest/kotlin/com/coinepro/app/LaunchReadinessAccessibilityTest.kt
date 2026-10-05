@@ -1,5 +1,6 @@
 package com.coinepro.app
 
+import com.coinepro.core.common.FeatureFlags
 import android.content.Context
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
@@ -55,7 +56,7 @@ class LaunchReadinessAccessibilityTest {
         }
 
         composeRule
-            .onNodeWithText(context.getString(R.string.safety_push_available))
+            .onNodeWithText(context.getString(if (FeatureFlags.storeRestricted) R.string.safety_push_available_store else R.string.safety_push_available))
             .performScrollTo()
             .assertIsDisplayed()
         // The whole point of the screen, asserted before the tap: nothing is requested by arriving.
@@ -111,7 +112,7 @@ class LaunchReadinessAccessibilityTest {
         }
 
         composeRule
-            .onNodeWithText(context.getString(R.string.safety_risk_body))
+            .onNodeWithText(context.getString(if (FeatureFlags.storeRestricted) R.string.safety_risk_body_store else R.string.safety_risk_body))
             .performScrollTo()
             .assertIsDisplayed()
         composeRule

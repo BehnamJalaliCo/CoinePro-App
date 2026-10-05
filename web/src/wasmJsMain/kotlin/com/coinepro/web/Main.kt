@@ -54,6 +54,8 @@ fun main() {
     Strings.persian = !AppLocale.english
     setDocumentLanguage(if (Strings.persian) "fa" else "en", rtl = Strings.persian)
     ChartWeb.persian = Strings.persian
+    // TradingView's desktop chart page reads left to right in every language.
+    com.coinepro.core.common.FeatureFlags.desktopShellLtr = true
 
     // What Hilt and Room are on the phone.
     androidx.room.WebRoom.register(CoineProDatabase::class) { WebCoineProDatabase() }

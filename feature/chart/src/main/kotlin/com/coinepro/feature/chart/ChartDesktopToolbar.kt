@@ -11,6 +11,7 @@ import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -121,6 +122,11 @@ internal fun ChartDesktopToolbar(
      * where the row has the room, so it is found by reading rather than by guessing at a glyph.
      */
     onBack: (() -> Unit)? = null,
+    /**
+     * TradingView's layout button (5.23.0): a grid of the multi-chart layouts this window can hold.
+     * Null keeps the button as the saved-layouts sheet alone.
+     */
+    onGrid: ((ChartLayoutPreset) -> Unit)? = null,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         // Below a desktop's width the worded buttons keep their glyph and lose the word — TradingView
@@ -261,8 +267,12 @@ internal fun ChartDesktopToolbar(
                 )
             }
             ToolbarSeparator()
-            GlyphButton(DesignR.drawable.tv_layout_grid, stringResource(R.string.chart_sheet_layouts), vendored = true) {
-                onOpen(ChartSheet.LAYOUTS)
+            if (onGrid != null) {
+                GridButton(onGrid = onGrid, onSaved = { onOpen(ChartSheet.LAYOUTS) })
+            } else {
+                GlyphButton(DesignR.drawable.tv_layout_grid, stringResource(R.string.chart_sheet_layouts), vendored = true) {
+                    onOpen(ChartSheet.LAYOUTS)
+                }
             }
             GlyphButton(DesignR.drawable.tv_settings2, stringResource(R.string.chart_sheet_settings), vendored = true) {
                 onOpen(ChartSheet.SETTINGS)
@@ -325,6 +335,56 @@ private fun TemplatesButton(onTemplate: (BuiltInIndicatorTemplate) -> Unit) {
         }
     }
 }
+
+/**
+ * TradingView's layout button: every grid this window can hold, drawn as the grid it makes, and
+ * the saved layouts under them. One chart is the first key, so the way back is where the way in was.
+ */
+@Composable
+private fun GridButton(onGrid: (ChartLayoutPreset) -> Unit, onSaved: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val offered = listOf(ChartLayoutPreset.ONE) +
+        ChartLayoutPreset.offered(com.coinepro.core.designsystem.coineProWindowClass().maxChartPanes)
+    Box {
+        GlyphButton(DesignR.drawable.tv_layout_grid, stringResource(R.string.chart_sheet_layouts), vendored = true) {
+            open = true
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                offered.chunked(GRID_PICKER_COLUMNS).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        row.forEach { preset ->
+                            val interaction = remember { MutableInteractionSource() }
+                            Box(
+                                modifier = Modifier
+                                    .size(DESKTOP_CONTROL)
+                                    .chromePlate(interaction) {
+                                        open = false
+                                        onGrid(preset)
+                                    }
+                                    .semantics { contentDescription = "toolbar-grid-${preset.id}" },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                LayoutGlyph(preset, CoineProColors.TextSecondary)
+                            }
+                        }
+                    }
+                }
+            }
+            HorizontalDivider(color = CoineProColors.Border)
+            CoineProMenuItem(
+                text = stringResource(R.string.chart_sheet_layouts),
+                icon = DesignR.drawable.tv_layout_grid,
+                onClick = {
+                    open = false
+                    onSaved()
+                },
+            )
+        }
+    }
+}
+
+private const val GRID_PICKER_COLUMNS = 5
 
 /** The chrome's words: TradingView's 14 px regular (CHART-14). */
 @Composable

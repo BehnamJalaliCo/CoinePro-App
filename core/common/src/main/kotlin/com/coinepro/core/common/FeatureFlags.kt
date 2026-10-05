@@ -105,10 +105,18 @@ object FeatureFlags {
      */
     const val FULL_SITE_URL: String = "https://pro-chart.com"
 
+    /**
+     * The web's desktop chart page reads left to right whatever the language (5.23.0), exactly as
+     * TradingView's does: the toolbar starts at the left edge with the symbol, the bottom bar with the
+     * ranges. Set by the web entry only; the phone and the tablet keep the reader's direction.
+     */
+    var desktopShellLtr: Boolean = false
+
     /** Puts them all back, for a test that changed one. */
     fun reset() {
         forexTrading = FOREX_TRADING_DEFAULT
         allUnlocked = ALL_UNLOCKED_DEFAULT
         storeRestricted = STORE_RESTRICTED_DEFAULT
+        desktopShellLtr = false
     }
 }
