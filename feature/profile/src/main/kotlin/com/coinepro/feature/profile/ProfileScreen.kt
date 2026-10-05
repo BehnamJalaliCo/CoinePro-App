@@ -1,5 +1,6 @@
 package com.coinepro.feature.profile
 
+import com.coinepro.core.common.FeatureFlags
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
@@ -428,7 +429,7 @@ private fun SignInInvitation(onSignIn: () -> Unit) {
                 color = CoineProColors.TextPrimary,
             )
             Text(
-                text = stringResource(R.string.profile_signin_body),
+                text = stringResource(if (FeatureFlags.storeRestricted) R.string.profile_signin_body_store else R.string.profile_signin_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = CoineProColors.TextSecondary,
             )

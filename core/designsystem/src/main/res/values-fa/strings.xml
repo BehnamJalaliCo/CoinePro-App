@@ -238,8 +238,8 @@
     <string name="coach_legend_title">نام اندیکاتورها</string>
     <string name="coach_legend_text">روی نام هر اندیکاتور بزنید تا توضیحش را ببینید و از همان‌جا پنهان یا تنظیمش کنید.</string>
     <string name="coach_chart_events_title">علامت‌های روی چارت</string>
-    <string name="coach_chart_events_text">علامت‌های پایین چارت رویدادها و سیگنال‌ها هستند. رویشان بزنید تا جزئیات را ببینید.</string>
-    <string name="coach_chart_events_mouse">علامت‌های پایین چارت رویدادها و سیگنال‌ها هستند. رویشان کلیک کنید تا جزئیات را ببینید.</string>
+    <string name="coach_chart_events_text">علامت‌های پایین چارت رویدادها و نشانه‌های چارت هستند. رویشان بزنید تا جزئیات را ببینید.</string>
+    <string name="coach_chart_events_mouse">علامت‌های پایین چارت رویدادها و نشانه‌های چارت هستند. رویشان کلیک کنید تا جزئیات را ببینید.</string>
     <string name="coach_realtime_title">رفتن به آخرین شمع</string>
     <string name="coach_realtime_text">با این دکمه به آخرین شمع برمی‌گردید.</string>
     <string name="coach_replay_bar_title">ریپلی</string>
@@ -254,6 +254,8 @@
     <string name="coach_row_hold_mouse">دکمه‌ی موس را روی هر ردیف نگه دارید تا پیش‌نمایش و کارهای بیشتر باز شود.</string>
     <string name="coach_row_reorder_title">چیدن دیده‌بان</string>
     <string name="coach_row_reorder_text">دستگیره‌ی کنار هر ردیف را بکشید تا ترتیب دیده‌بان عوض شود.</string>
+    <string name="coach_full_site_title">نسخه‌ی کامل</string>
+    <string name="coach_full_site_text">پرو چارت در سایت pro-chart.com همه‌ی امکانات را دارد. پیوندش در منو است.</string>
     <string name="coach_tree_swipe_title">مدیریت ترسیم‌ها</string>
     <string name="coach_tree_swipe_text">ترسیم را به کنار بکشید تا حذف شود. نگه دارید و بکشید تا ترتیبش عوض شود.</string>
 </resources>

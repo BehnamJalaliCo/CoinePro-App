@@ -247,8 +247,8 @@
     <string name="coach_legend_title">Indicator names</string>
     <string name="coach_legend_text">Tap an indicator\'s name to read about it, hide it or change its settings.</string>
     <string name="coach_chart_events_title">Marks on the chart</string>
-    <string name="coach_chart_events_text">The marks along the bottom of the chart are events and signals. Tap one for the details.</string>
-    <string name="coach_chart_events_mouse">The marks along the bottom of the chart are events and signals. Click one for the details.</string>
+    <string name="coach_chart_events_text">The marks along the bottom of the chart are events and chart cues. Tap one for the details.</string>
+    <string name="coach_chart_events_mouse">The marks along the bottom of the chart are events and chart cues. Click one for the details.</string>
     <string name="coach_realtime_title">Jump to now</string>
     <string name="coach_realtime_text">This button takes you back to the latest candle.</string>
     <string name="coach_replay_bar_title">Replay</string>
@@ -263,6 +263,8 @@
     <string name="coach_row_hold_mouse">Hold the mouse button on a row for a preview and more actions.</string>
     <string name="coach_row_reorder_title">Arrange your watchlist</string>
     <string name="coach_row_reorder_text">Drag the handle beside a row to change the order of your watchlist.</string>
+    <string name="coach_full_site_title">The full version</string>
+    <string name="coach_full_site_text">Pro Chart on the web, at pro-chart.com, carries every feature. The menu has a link to it.</string>
     <string name="coach_tree_swipe_title">Manage drawings</string>
     <string name="coach_tree_swipe_text">Swipe a drawing aside to delete it. Hold and drag to change its order.</string>
 </resources>

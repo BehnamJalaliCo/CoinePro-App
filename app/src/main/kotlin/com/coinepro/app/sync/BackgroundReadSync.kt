@@ -1,5 +1,6 @@
 package com.coinepro.app.sync
 
+import com.coinepro.core.common.FeatureFlags
 import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.BackoffPolicy
@@ -73,7 +74,8 @@ class BackgroundReadSyncEngine @Inject constructor(
                 retryableFailure = true
             }
 
-            try {
+            // The store build carries no signals, so it fetches none in the background either.
+            if (!FeatureFlags.storeRestricted) try {
                 val history = SignalHistoryLoader(signalGateways.getValue(platform)).load()
                 signalCache.replace(history)
             } catch (_: SignalMembershipRequiredException) {

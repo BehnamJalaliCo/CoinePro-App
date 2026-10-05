@@ -45,7 +45,7 @@
     <string name="screener_export_saved">screener.csv saved</string>
     <string name="screener_export_failed">Could not save the file</string>
     <string name="screener_mode_table">Table</string>
-    <string name="screener_mode_signals">Growth signals</string>
+    <string name="screener_mode_signals">Growth cues</string>
     <string name="screener_scan_setups">Setups</string>
     <string name="screener_scan_within">Fired within the last … bars</string>
     <string name="screener_scan_within_bars">%1$s</string>

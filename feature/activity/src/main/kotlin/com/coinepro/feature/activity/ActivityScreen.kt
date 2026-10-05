@@ -98,6 +98,11 @@ fun ActivityScreen(
      */
     onOpenAlerts: (() -> Unit)? = null,
     platform: MarketPlatform = MarketPlatform.COINEPRO_FX,
+    /**
+     * Whether the signal record and the execution ledger are part of this screen. False in the
+     * store build (5.22.0), which has neither: the screen is then alerts and notifications only.
+     */
+    tradingRecord: Boolean = true,
 ) {
     val notificationState by controller.state.collectAsStateWithLifecycle()
     val executionState by executionController.history.collectAsStateWithLifecycle()
@@ -112,8 +117,10 @@ fun ActivityScreen(
     LaunchedEffect(controller, executionController, signalController) {
         controller.refresh()
         controller.markRead()
-        executionController.refreshExecutions()
-        signalController.refreshHistory()
+        if (tradingRecord) {
+            executionController.refreshExecutions()
+            signalController.refreshHistory()
+        }
     }
 
     val filteredHistory = historyState.items.filterHistory(
@@ -140,7 +147,7 @@ fun ActivityScreen(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item {
+            if (tradingRecord) item {
                 ActivityHeader(
                     loadedSignals = historyState.items.size,
                     expectedSignals = historyState.expectedTotal,
@@ -186,6 +193,7 @@ fun ActivityScreen(
                 }
             }
 
+            if (tradingRecord) {
             if (historyState.loading && historyState.items.isEmpty()) {
                 item { LoadingPanel(stringResource(R.string.activity_history_loading)) }
             } else if (historyState.membershipRequired) {
@@ -299,6 +307,7 @@ fun ActivityScreen(
                         ExecutionHistoryCard(execution, onOpenSignal)
                     }
                 }
+            }
             }
             }
 

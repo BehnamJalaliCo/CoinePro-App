@@ -41,6 +41,9 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptionsBuilder
+import com.coinepro.core.common.FeatureFlags
+import com.coinepro.core.designsystem.CoachTip
+import com.coinepro.core.designsystem.coachTarget
 import com.coinepro.core.designsystem.CoineProColors
 import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProShapes
@@ -209,7 +212,13 @@ fun CoineProBottomBar(
                     // Equal columns, so the five never redistribute themselves around the longest
                     // Persian word. Material's own bar weights by content and the bar shifted every
                     // time the language changed.
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        // Once, in the store build only: the menu holds the link to the full site.
+                        .coachTarget(
+                            CoachTip.FULL_SITE,
+                            enabled = destination == AppDestination.MENU && FeatureFlags.storeRestricted,
+                        ),
                 )
             }
         }

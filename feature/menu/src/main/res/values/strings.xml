@@ -8,6 +8,7 @@
     <string name="menu_member_line">Account active</string>
     <string name="menu_plan_none">No subscription</string>
     <string name="menu_guest_offer">An account also opens signals, the portfolio and the assistant. The watchlist and the tools stay free either way.</string>
+    <string name="menu_guest_offer_store">An account keeps your watchlist, alerts and settings with you on every device. Every tool stays free.</string>
     <string name="menu_sign_in">Sign in or create an account</string>
     <string name="menu_locked">Needs an account</string>
     <string name="menu_footer">Everything this app contains is on this page. What needs an account is shown rather than hidden.</string>
@@ -37,6 +38,7 @@
     <string name="menu_paper_title">Paper trading</string>
     <string name="menu_journal_title">Trading journal</string>
     <string name="menu_connections_title">Account connections</string>
+    <string name="menu_full_site_title">Full version at pro-chart.com</string>
     <string name="menu_terminal_title">Web terminal</string>
 
     <string name="menu_studio_title">Chart studio</string>

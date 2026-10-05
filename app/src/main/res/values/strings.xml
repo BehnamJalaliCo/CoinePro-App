@@ -34,10 +34,16 @@
 
     <string name="safety_title">Safety and launch</string>
     <string name="safety_subtitle">Before using anything with consequences, see how Pro Chart handles signals, permissions, outside brokers and exchanges, and support.</string>
+    <string name="safety_subtitle_store">How Pro Chart treats permissions, your data and support.</string>
+    <string name="safety_risk_title_store">Market risk</string>
+    <string name="safety_risk_body_store">Trading and investing carry a risk of loss. A chart reading or an indicator does not guarantee an outcome, and past results are no promise of future ones. Pro Chart places no orders and holds no money.</string>
+    <string name="safety_push_available_store">Notifications can tell you about your price alerts and market news. The permission is optional and is asked for only after you press the button below.</string>
+    <string name="profile_action_notifications_note_store">Price alerts, news and quiet hours</string>
     <string name="safety_how_title">How Pro Chart works</string>
     <string name="safety_how_body">Signal → analysis → entry / stop / targets → execute → monitor → close or target hit → result. Execution always requires an explicit confirmation path, and the app never invents a broker or exchange outcome.</string>
     <string name="safety_permissions_title">Permissions</string>
     <string name="safety_camera_body">Camera access is requested only when you choose Camera in chart analysis. Gallery selection stays available without it.</string>
+    <string name="safety_camera_body_store">Pro Chart asks for no camera access.</string>
     <string name="safety_push_not_configured">Notifications are not set up in this version, so the app will not ask for permission.</string>
     <string name="safety_push_not_required">This Android version does not require the runtime notification permission.</string>
     <string name="safety_push_available">Notifications can alert you to the signal and activity updates the server sends. Permission is optional and is requested only after you tap the button below.</string>
@@ -227,7 +233,8 @@
     <string name="welcome_sign_in">Sign in</string>
     <string name="welcome_terms">By continuing you accept the terms and the privacy note.</string>
     <string name="welcome_chart_headline">A chart that explains itself</string>
-    <string name="welcome_chart_body">Every signal comes with the reason behind it, in plain words.</string>
+    <string name="full_site_line">The full version, with every feature, is at pro-chart.com.</string>
+    <string name="welcome_chart_body">Every chart reading comes with the reason behind it, in plain words.</string>
     <string name="welcome_tools_headline">240+ tools, and your own</string>
     <string name="welcome_tools_body">Indicators, drawings, and NamaScript for anything the list does not have.</string>
     <string name="welcome_alerts_headline">Alerts and the order book</string>

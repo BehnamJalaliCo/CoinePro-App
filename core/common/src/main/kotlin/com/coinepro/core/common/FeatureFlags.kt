@@ -61,13 +61,54 @@ object FeatureFlags {
      */
     var allUnlocked: Boolean = ALL_UNLOCKED_DEFAULT
 
+    /**
+     * Whether this is the **store build** (5.22.0): the Android app as Cafe Bazaar publishes it.
+     *
+     * Bazaar publishes finance apps — wallets, exchanges and anything near them — only from a
+     * company developer account, and refused 5.19.4 for its membership and exchange-UID screens.
+     * The owner's answer is a store build without everything of that kind: membership and the
+     * exchange UID, broker and exchange connections, LBank live trading, the portfolio, identity
+     * verification, signals, and the AI setup builder, assistant and chart-image analysis.
+     *
+     * They go **absent, never greyed**, as [forexTrading] does: no menu row, no search result, no
+     * card, no button, and a route that pops itself if anything still reaches it. True only on
+     * Android — `CoineProApplication.onCreate` sets it — so the web, whose start-up never runs that
+     * class, keeps every one of them. See [STORE_RESTRICTED_SURFACES].
+     */
+    var storeRestricted: Boolean = STORE_RESTRICTED_DEFAULT
+
     /** What a shipping build starts with. Tests restore these; nothing else writes them. */
     const val FOREX_TRADING_DEFAULT: Boolean = false
     const val ALL_UNLOCKED_DEFAULT: Boolean = true
+    const val STORE_RESTRICTED_DEFAULT: Boolean = false
 
-    /** Puts both back, for a test that changed one. */
+    /**
+     * The menu and search ids the store build drops. One list, read by both the menu and the
+     * search screen, so the two cannot disagree about what the store build is.
+     */
+    val STORE_RESTRICTED_SURFACES: Set<String> = setOf(
+        "membership",
+        "connections",
+        "portfolio",
+        "verify",
+        "signals",
+        "ai",
+        "ai-vision",
+        "ai-assistant",
+        // The web terminal is the whole site in a WebView — every surface above, one tap in.
+        "terminal",
+    )
+
+    /**
+     * Where the store build sends a reader for the rest: the site carries every surface above.
+     * Named in the menu, the tutorials and the safety page — never beside a price or a plan.
+     */
+    const val FULL_SITE_URL: String = "https://pro-chart.com"
+
+    /** Puts them all back, for a test that changed one. */
     fun reset() {
         forexTrading = FOREX_TRADING_DEFAULT
         allUnlocked = ALL_UNLOCKED_DEFAULT
+        storeRestricted = STORE_RESTRICTED_DEFAULT
     }
 }

@@ -124,7 +124,8 @@ fun HomeScreen(
     portfolio: HomePortfolio? = null,
     subscription: HomeSubscription? = null,
     openSignals: List<HomeSignal> = emptyList(),
-    onGenerateSignal: () -> Unit = {},
+    /** The gold «سیگنال» action. Null drops it — the store build has no AI section (5.22.0). */
+    onGenerateSignal: (() -> Unit)? = {},
     onSendChart: () -> Unit = {},
     onOpenMarket: () -> Unit = {},
     onOpenSignal: (Long) -> Unit = {},
@@ -181,6 +182,11 @@ fun HomeScreen(
     onVisibleSymbols: (Set<String>) -> Unit = {},
     /** Opens the chart for a market row. Null leaves the card inert — see `MarketRow` in search. */
     onOpenSymbol: ((String) -> Unit)? = null,
+    /**
+     * Whether the balance hero and the daily briefing card are drawn. False in the store build
+     * (5.22.0), which has no portfolio and no AI voice; the markets take the hero's place.
+     */
+    accountCards: Boolean = true,
     /**
      * Whether the reader has asked for their money not to be drawn.
      *
@@ -364,7 +370,10 @@ fun HomeScreen(
                 }
             }
 
-            if (wide) {
+            if (!accountCards) {
+                // No hero to sit beside: the markets come up into its place on every width.
+                if (wide) item { markets() }
+            } else if (wide) {
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -427,7 +436,7 @@ fun HomeScreen(
                 item { SignalsCard(signals = openSignals, onOpenSignal = onOpenSignal) }
             }
 
-            item { AssistantCard(briefing) }
+            if (accountCards) item { AssistantCard(briefing) }
 
             state.recoveryNote()?.let { note ->
                 item {
@@ -1060,7 +1069,7 @@ private fun marketRank(quote: MarketQuote): Int = when (quote.instrument.symbol)
  */
 @Composable
 private fun QuickActions(
-    onGenerateSignal: () -> Unit,
+    onGenerateSignal: (() -> Unit)?,
     onSendChart: () -> Unit,
     onOpenMarket: () -> Unit,
     onOpenTools: (() -> Unit)?,
@@ -1068,7 +1077,7 @@ private fun QuickActions(
     onOpenNews: (() -> Unit)?,
 ) {
     val actions = buildList {
-        add(Triple(stringResource(R.string.home_action_signal), CoineProIcons.Ai, onGenerateSignal))
+        onGenerateSignal?.let { add(Triple(stringResource(R.string.home_action_signal), CoineProIcons.Ai, it)) }
         add(Triple(stringResource(R.string.home_action_chart), CoineProIcons.Chart, onSendChart))
         add(Triple(stringResource(R.string.home_action_market), CoineProIcons.Markets, onOpenMarket))
         onOpenTools?.let { add(Triple(stringResource(R.string.home_shortcut_tools), DesignR.drawable.nav_tools, it)) }

@@ -1,5 +1,6 @@
 package com.coinepro.app
 
+import com.coinepro.core.common.FeatureFlags
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -122,6 +123,9 @@ fun LaunchReadinessScreen(
     update: AppUpdateStatus = AppUpdateStatus.Unknown,
     /** Hands the address to the browser. This app never downloads or installs a package itself. */
     onDownloadUpdate: (AppRelease) -> Unit = {},
+    /** The store build's line naming the site that carries the rest; null on the web. */
+    siteNote: String? = null,
+    onOpenSite: () -> Unit = {},
 ) {
     // Five taps, and they have to be consecutive: the counter resets whenever the gap between two
     // taps grows past a deliberate rhythm, so an ordinary stray tap on a scrolling screen never
@@ -152,17 +156,18 @@ fun LaunchReadinessScreen(
                 color = CoineProColors.TextPrimary,
             )
             Text(
-                text = stringResource(R.string.safety_subtitle),
+                text = stringResource(if (FeatureFlags.storeRestricted) R.string.safety_subtitle_store else R.string.safety_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = CoineProColors.TextSecondary,
             )
         }
 
-        SafetyCard(R.string.safety_how_title, R.string.safety_how_body)
+        // The store build carries no signal, broker or exchange, so the two cards about them go.
+        if (!FeatureFlags.storeRestricted) SafetyCard(R.string.safety_how_title, R.string.safety_how_body)
 
         CoineProCard(modifier = Modifier.fillMaxWidth()) {
             CardTitle(R.string.safety_permissions_title)
-            Body(R.string.safety_camera_body)
+            Body(if (FeatureFlags.storeRestricted) R.string.safety_camera_body_store else R.string.safety_camera_body)
             Spacer(Modifier.height(CoineProSpacing.One))
 
             val permissionCopy = stringResource(notificationPermissionState.copyRes())
@@ -195,8 +200,12 @@ fun LaunchReadinessScreen(
             }
         }
 
-        SafetyCard(R.string.safety_risk_title, R.string.safety_risk_body, accent = CoineProColors.Warning)
-        SafetyCard(R.string.safety_provider_title, R.string.safety_provider_body, accent = CoineProColors.Warning)
+        if (FeatureFlags.storeRestricted) {
+            SafetyCard(R.string.safety_risk_title_store, R.string.safety_risk_body_store, accent = CoineProColors.Warning)
+        } else {
+            SafetyCard(R.string.safety_risk_title, R.string.safety_risk_body, accent = CoineProColors.Warning)
+            SafetyCard(R.string.safety_provider_title, R.string.safety_provider_body, accent = CoineProColors.Warning)
+        }
         SafetyCard(R.string.safety_privacy_title, R.string.safety_privacy_body)
 
         CoineProCard(modifier = Modifier.fillMaxWidth()) {
@@ -240,6 +249,17 @@ fun LaunchReadinessScreen(
             style = MaterialTheme.typography.bodySmall,
             color = CoineProColors.TextMuted,
         )
+
+        siteNote?.let { note ->
+            Text(
+                text = note,
+                modifier = Modifier
+                    .padding(horizontal = CoineProSpacing.Half)
+                    .clickable(onClick = onOpenSite),
+                style = MaterialTheme.typography.bodyMedium,
+                color = CoineProColors.Accent,
+            )
+        }
 
         if (versionLabel.isNotBlank()) {
             Text(
@@ -429,7 +449,8 @@ private fun Body(@StringRes body: Int) {
 private fun NotificationPermissionUiState.copyRes(): Int = when (this) {
     NotificationPermissionUiState.NOT_CONFIGURED -> R.string.safety_push_not_configured
     NotificationPermissionUiState.NOT_REQUIRED -> R.string.safety_push_not_required
-    NotificationPermissionUiState.AVAILABLE_TO_REQUEST -> R.string.safety_push_available
+    NotificationPermissionUiState.AVAILABLE_TO_REQUEST ->
+        if (FeatureFlags.storeRestricted) R.string.safety_push_available_store else R.string.safety_push_available
     NotificationPermissionUiState.DENIED -> R.string.safety_push_denied
     NotificationPermissionUiState.GRANTED -> R.string.safety_push_granted
 }

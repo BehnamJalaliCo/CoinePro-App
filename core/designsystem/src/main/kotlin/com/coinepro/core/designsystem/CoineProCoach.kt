@@ -117,6 +117,11 @@ enum class CoachTip(
     val touchOnly: Boolean = false,
     /** Needed this second: bypasses the cooldown and the session cap. */
     val urgent: Boolean = false,
+    /**
+     * The store build's own (5.22.0): shown there once and never listed in the library, which
+     * carries the same sentence as a line of its own. See `FeatureFlags.storeRestricted`.
+     */
+    val storeOnly: Boolean = false,
 ) {
     DRAW_CURSOR(
         "draw_cursor", CoachGroup.DRAWING, CoachScene.TRACKPAD,
@@ -188,6 +193,10 @@ enum class CoachTip(
     TREE_SWIPE(
         "tree_swipe", CoachGroup.DRAWING, CoachScene.TREE_SWIPE,
         R.string.coach_tree_swipe_title, R.string.coach_tree_swipe_text,
+    ),
+    FULL_SITE(
+        "full_site", CoachGroup.LISTS, null,
+        R.string.coach_full_site_title, R.string.coach_full_site_text, storeOnly = true,
     ),
     ;
 
@@ -668,7 +677,12 @@ fun CoachCard(
  * «آموزش‌ها» in the menu: every tip, playable on demand, and the way to have them all again.
  */
 @Composable
-fun CoachLibrary(modifier: Modifier = Modifier) {
+fun CoachLibrary(
+    modifier: Modifier = Modifier,
+    /** The store build's line naming the site that carries the rest; null on the web. */
+    siteNote: String? = null,
+    onOpenSite: (() -> Unit)? = null,
+) {
     val host = LocalCoachHost.current
     val dismissals = LocalTeachingDismissals.current
     var replayed by remember { mutableStateOf(false) }
@@ -722,8 +736,23 @@ fun CoachLibrary(modifier: Modifier = Modifier) {
                     modifier = Modifier.padding(top = CoineProSpacing.Two, bottom = CoineProSpacing.Half),
                 )
             }
-            items(CoachTip.entries.filter { it.group == group }, key = { it.id }) { tip ->
+            items(CoachTip.entries.filter { it.group == group && !it.storeOnly }, key = { it.id }) { tip ->
                 CoachLibraryRow(tip = tip, onPlay = { host?.play(tip) })
+            }
+        }
+        siteNote?.let { note ->
+            item(key = "site") {
+                Text(
+                    text = note,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CoineProColors.Accent,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = CoineProSpacing.Two)
+                        .clip(MaterialTheme.shapes.medium)
+                        .then(if (onOpenSite != null) Modifier.clickable(onClick = onOpenSite) else Modifier)
+                        .padding(vertical = CoineProSpacing.One),
+                )
             }
         }
     }

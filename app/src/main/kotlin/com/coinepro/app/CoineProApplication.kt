@@ -1,5 +1,6 @@
 package com.coinepro.app
 
+import com.coinepro.core.common.FeatureFlags
 import android.app.Application
 import coil3.ImageLoader
 import coil3.PlatformContext
@@ -70,6 +71,10 @@ class CoineProApplication : Application(), Configuration.Provider, SingletonImag
             message = "process start",
             fields = mapOf("version" to BuildConfig.VERSION_NAME, "debug" to BuildConfig.DEBUG.toString()),
         )
+        // The store build (5.22.0): Cafe Bazaar publishes this app without its membership,
+        // trading, portfolio, verification, signal and AI surfaces. Android only — the web never
+        // runs this class — and not under Robolectric, whose tests choose the flag themselves.
+        FeatureFlags.storeRestricted = android.os.Build.FINGERPRINT != ROBOLECTRIC_FINGERPRINT
         entitlements.begin()
         initializeFirebaseIfConfigured()
         NotificationChannels.ensure(this)
@@ -101,3 +106,6 @@ class CoineProApplication : Application(), Configuration.Provider, SingletonImag
 
 /** Two per cent of the cache partition, which on any phone this app runs on is tens of megabytes of logos. */
 private const val IMAGE_DISK_CACHE_SHARE = 0.02
+
+/** What Robolectric reports as the device fingerprint; a real device never does. */
+private const val ROBOLECTRIC_FINGERPRINT = "robolectric"

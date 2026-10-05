@@ -42,6 +42,7 @@ import com.coinepro.core.designsystem.CoineProIcons
 import com.coinepro.core.designsystem.CoineProMarketRow
 import com.coinepro.core.designsystem.ProChartWordmark
 import com.coinepro.core.designsystem.CoineProSecondaryButton
+import com.coinepro.core.designsystem.CoineProPrimaryButton
 import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.CoineProThinkingDots
 import com.coinepro.core.guest.GuestController
@@ -89,10 +90,15 @@ fun GuestScreen(
     onOpenTools: (() -> Unit)? = null,
     /** Opens the terms in the app from the membership gate. */
     onOpenTerms: (() -> Unit)? = null,
+    /**
+     * False in the store build: no signal record, no membership card — only a plain way in. That
+     * build carries neither signals nor the exchange membership the card explains.
+     */
+    membership: Boolean = true,
 ) {
     val prices by controller.prices.collectAsStateWithLifecycle()
     val trackRecord by controller.trackRecord.collectAsStateWithLifecycle()
-    val membership by controller.membership.collectAsStateWithLifecycle()
+    val membershipTerms by controller.membership.collectAsStateWithLifecycle()
 
     // Started and stopped with the screen rather than the process. A poll that outlives the screen
     // is a request nobody is looking at, on a connection somebody is paying for.
@@ -184,7 +190,7 @@ fun GuestScreen(
         // The track record goes *above* the membership card, not below it. It is the reason to
         // read the card; a card asking for a sign-up before showing what the signals did is asking
         // for trust it has not earned yet.
-        when (val record = trackRecord) {
+        when (val record = trackRecord.takeIf { membership }) {
             is GuestTrackRecordState.Ready -> {
                 item {
                     Text(
@@ -197,15 +203,23 @@ fun GuestScreen(
             }
             // Nothing at all when the server has nothing gradeable. An empty section headed
             // "results" is worse than no section: it reads as a bot that has never traded.
-            GuestTrackRecordState.Loading, GuestTrackRecordState.Unavailable -> Unit
+            GuestTrackRecordState.Loading, GuestTrackRecordState.Unavailable, null -> Unit
         }
 
         item {
-            MembershipGate(
-                onSignIn = onSignIn,
-                terms = (membership as? GuestMembershipState.Ready)?.terms,
-                onOpenTerms = onOpenTerms,
-            )
+            if (membership) {
+                MembershipGate(
+                    onSignIn = onSignIn,
+                    terms = (membershipTerms as? GuestMembershipState.Ready)?.terms,
+                    onOpenTerms = onOpenTerms,
+                )
+            } else {
+                CoineProPrimaryButton(
+                    text = stringResource(R.string.membership_sign_in),
+                    onClick = onSignIn,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
 
         // News is **not** here any more, on the owner's call, and it lives in Tools.

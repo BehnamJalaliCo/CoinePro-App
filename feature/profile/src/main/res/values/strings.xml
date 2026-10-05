@@ -10,6 +10,7 @@
 
     <string name="profile_signin_title">Make an account, if you want one</string>
     <string name="profile_signin_body">Markets, the professional chart, search, the journal, paper trading and NamaScript all work without an account. An account adds signals, the AI, the wallet and copy trading.</string>
+    <string name="profile_signin_body_store">Markets, the pro chart, search, the trade journal, paper trading and NamaScript all work without an account. An account keeps your watchlist and settings in step across devices.</string>
     <string name="profile_signin_action">Sign in or register</string>
     <string name="profile_signin_note">Nobody is pushed into signing up. It is here whenever you want it.</string>
 

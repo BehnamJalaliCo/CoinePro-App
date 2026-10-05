@@ -71,6 +71,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -519,6 +520,9 @@ private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
 
 /** The coach's library: every tip, playable again (5.21.0). See `CoachLibrary`. */
 private const val TUTORIALS_ROUTE = "tutorials"
+
+/** The store build's pointer to pro-chart.com: opens the browser and steps back. */
+private const val FULL_SITE_ROUTE = "full-site"
 private const val ADMIN_ROUTE = "diagnostics"
 internal const val PROFILE_ROUTE = "profile"
 private const val NOTIFICATIONS_ROUTE = "notifications"
@@ -679,6 +683,16 @@ private fun executionRoute(signalId: Long) = "execution/$signalId"
  * encoding it costs nothing and a symbol that ever grows a slash would otherwise route nowhere.
  */
 /**
+ * A store-build route reached anyway — a stale deep link, a notification from before the update,
+ * a back stack restored from an older version: it leaves at once, the way [leaveChart] does.
+ * See `FeatureFlags.storeRestricted`.
+ */
+@Composable
+private fun LeaveRestricted(navController: NavHostController) {
+    LaunchedEffect(Unit) { navController.leaveChart() }
+}
+
+/**
  * The chart's way back (5.19.3).
  *
  * `popBackStack` alone was the arrow's whole action, and it is the wrong one whenever the chart is
@@ -803,6 +817,7 @@ internal fun menuRoute(id: String, platform: MarketPlatform, watchlist: List<Str
         "home" -> HOME_ROUTE
         "safety" -> LAUNCH_READINESS_ROUTE
         "tutorials" -> TUTORIALS_ROUTE
+        "full-site" -> FULL_SITE_ROUTE
         "delete" -> DELETE_ACCOUNT_ROUTE
         "terms" -> TERMS_ROUTE
         "privacy" -> PRIVACY_ROUTE
@@ -2858,6 +2873,8 @@ private fun MainShell(
                             if (!assistantAvailable) add("ai-assistant")
                             if (!aiSignalsAvailable) add("ai")
                             if (!terminalController.isConfigured) add("terminal")
+                            // The store build (5.22.0): see `FeatureFlags.storeRestricted`.
+                            if (FeatureFlags.storeRestricted) addAll(FeatureFlags.STORE_RESTRICTED_SURFACES)
                             // The connections screen is a broker or an exchange login, and on a
                             // platform this build offers no way to trade on there is neither (F5).
                             //
@@ -3580,7 +3597,7 @@ private fun MainShell(
                     val depthPreferences = remember(symbolChartStateStore) {
                         SymbolChartDepthPreferences(symbolChartStateStore)
                     }
-                    val liveLadder = liveTradeController?.takeIf { belongsTo(activeChartSymbol, MarketPlatform.TRADEYAR) }
+                    val liveLadder = liveTradeController?.takeIf { belongsTo(activeChartSymbol, MarketPlatform.TRADEYAR) && !FeatureFlags.storeRestricted }
                     LaunchedEffect(liveLadder) { liveLadder?.refreshAvailability() }
                     val liveLadderReady = liveLadder?.state?.collectAsStateWithLifecycle()?.value?.available == true
                     DepthOfMarketScreen(
@@ -3590,7 +3607,7 @@ private fun MainShell(
                         onPickPrice = { price -> alertFromChart = activeChartSymbol to price },
                         // Paper trading from the ladder (5.17.0), armed by the reader on the ladder itself.
                         onPlaceOrder = { buy, price, notional ->
-                            placeLadderOrder(activeChartSymbol, buy, price, notional, liveLadder.takeIf { liveLadderReady }, paperTradeController)
+                            placeLadderOrder(activeChartSymbol, buy, price, notional, liveLadder.takeIf { liveLadderReady && !FeatureFlags.storeRestricted }, paperTradeController)
                         },
                         // A real venue on a crypto ladder with a futures key linked (5.18.0).
                         liveVenue = stringResource(ChartR.string.live_venue).takeIf { liveLadderReady },
@@ -3804,7 +3821,7 @@ private fun MainShell(
                 },
                 // Real orders on LBank (5.18.0) — crypto only, and only once a futures key is linked;
                 // the chart asks the controller, which asks the server.
-                liveTrade = liveTradeController.takeIf { belongsTo(activeChartSymbol, MarketPlatform.TRADEYAR) },
+                liveTrade = liveTradeController.takeIf { belongsTo(activeChartSymbol, MarketPlatform.TRADEYAR) && !FeatureFlags.storeRestricted },
                 layouts = chartLayouts,
                 onSaveLayout = onSaveLayoutAnnounced,
                 onDeleteLayout = onDeleteLayoutAnnounced,
@@ -3875,12 +3892,12 @@ private fun MainShell(
                 // opens an empty studio is worse than no tile. The symbol travels with the tap —
                 // see `AI_SYMBOL_QUERY`, which is what stops the studio opening on whatever market
                 // it happened to default to.
-                onAskAi = if (aiSignalsAvailable) {
+                onAskAi = if (aiSignalsAvailable && !FeatureFlags.storeRestricted) {
                     { symbol -> navController.navigate(aiRouteFor(symbol)) }
                 } else {
                     null
                 },
-                onOpenTerminal = if (terminalController.isConfigured) {
+                onOpenTerminal = if (terminalController.isConfigured && !FeatureFlags.storeRestricted) {
                     { navController.navigate(TERMINAL_ROUTE) }
                 } else {
                     null
@@ -3948,6 +3965,10 @@ private fun MainShell(
         // differently.** On its own route it is a screen and needs its heading; under the Ideas
         // switch the page is already named — by the key the reader just pressed — and the screen's
         // own headline is a second name for it. See `SignalsScreen.embedded`.
+        // The store build names the site that carries the rest (5.22.0). Null on the web.
+        val uriHandler = LocalUriHandler.current
+        val openFullSite: () -> Unit = { runCatching { uriHandler.openUri(FeatureFlags.FULL_SITE_URL) } }
+        val siteNote = if (FeatureFlags.storeRestricted) stringResource(R.string.full_site_line) else null
         val signalsPane: @Composable (Boolean) -> Unit = @Composable { embedded ->
             if (guest) {
                 GuestGateScreen(
@@ -4063,6 +4084,7 @@ private fun MainShell(
                         onOpenMarket = { navController.navigate(MARKETS_ROUTE) },
                         onOpenTools = { navController.navigate(TOOLS_ROUTE) },
                         onOpenTerms = { navController.navigate(TERMS_ROUTE) },
+                        membership = !FeatureFlags.storeRestricted,
                     )
                     return@composable
                 }
@@ -4105,8 +4127,10 @@ private fun MainShell(
                     onDoChallenge = { surface -> navController.navigate(challengeRoute(surface, activePlatform, watchlist)) },
                     portfolio = portfolio?.copy(
                         equity = equityState.stats.equity.map { it.equity },
-                    ),
-                    subscription = subscription,
+                    )?.takeUnless { FeatureFlags.storeRestricted },
+                    subscription = subscription?.takeUnless { FeatureFlags.storeRestricted },
+                    // The store build (5.22.0): no balance, no AI briefing, no AI action.
+                    accountCards = !FeatureFlags.storeRestricted,
                     onRetry = {
                         onMarketRetry()
                         onRefreshAccount()
@@ -4115,7 +4139,7 @@ private fun MainShell(
                     onOpenTools = { navController.navigate(TOOLS_ROUTE) },
                     onOpenActivity = { navController.navigate(ACTIVITY_ROUTE) },
                     onOpenNews = { navController.navigate(NEWS_ROUTE) },
-                    onGenerateSignal = { navController.navigate(AI_ROUTE) },
+                    onGenerateSignal = { navController.navigate(AI_ROUTE) }.takeUnless { FeatureFlags.storeRestricted },
                     // **A pill labelled «چارت» opens the chart.**
                     //
                     // It used to open AI chart-analysis, on the reasoning that "send a chart" is
@@ -4172,13 +4196,22 @@ private fun MainShell(
                     logText = adminController::logText,
                 )
             }
-            composable(SIGNALS_ROUTE) { signalsPane(false) }
+            composable(SIGNALS_ROUTE) {
+                if (FeatureFlags.storeRestricted) { LeaveRestricted(navController); return@composable }
+                signalsPane(false)
+            }
 
             // «ایده‌ها»: the two answers to "is there an opportunity here?" under one tab. The two
             // panes are the same composables their own routes draw — see `IdeasScreen`, which is a
             // frame and nothing else, so `signals` and `community` keep working as routes a saved
             // back stack or a notification can name.
             composable(IDEAS_ROUTE) {
+                // The store build has no signals (5.22.0): the tab is the board alone, with no
+                // switch that would name a face it does not have.
+                if (FeatureFlags.storeRestricted) {
+                    communityPane(true)
+                    return@composable
+                }
                 IdeasScreen(
                     signals = { signalsPane(true) },
                     community = { communityPane(true) },
@@ -4188,12 +4221,14 @@ private fun MainShell(
                 route = SIGNAL_DETAIL_PATTERN,
                 arguments = listOf(navArgument("signalId") { type = NavType.LongType }),
             ) { entry ->
+                if (FeatureFlags.storeRestricted) { LeaveRestricted(navController); return@composable }
                 signalPane(entry.arguments?.getLong("signalId") ?: return@composable)
             }
             composable(
                 route = EXECUTION_PATTERN,
                 arguments = listOf(navArgument("signalId") { type = NavType.LongType }),
             ) { entry ->
+                if (FeatureFlags.storeRestricted) { LeaveRestricted(navController); return@composable }
                 val signalId = entry.arguments?.getLong("signalId") ?: return@composable
                 ExecutionScreen(
                     signalId = signalId,
@@ -4237,7 +4272,7 @@ private fun MainShell(
                     // The founding mark, and nothing else on this card yet: the rest of a reader's
                     // standing is the server's and this build asks for none of it here (F10).
                     standing = listOfNotNull(foundingMemberFact(profile.foundingMember)),
-                    planLabel = subscription?.planLabel,
+                    planLabel = subscription?.planLabel?.takeUnless { FeatureFlags.storeRestricted },
                     platformLabel = stringResource(activePlatform.labelRes()),
                     // Three figures, and every one of them is about this reader: what they chose
                     // to watch, what they wrote down, what they practised. No market number
@@ -4262,7 +4297,7 @@ private fun MainShell(
                             // for them as it is for a member.
                             ProfileAction(
                                 label = stringResource(R.string.screen_notifications),
-                                noteRes = R.string.profile_action_notifications_note,
+                                noteRes = if (FeatureFlags.storeRestricted) R.string.profile_action_notifications_note_store else R.string.profile_action_notifications_note,
                                 icon = CoineProIcons.Bell,
                                 onClick = { navController.navigate(NOTIFICATIONS_ROUTE) },
                             ),
@@ -4295,25 +4330,28 @@ private fun MainShell(
                         )
                     } else {
                         buildList {
-                            add(
-                                ProfileAction(
-                                    label = stringResource(R.string.screen_membership),
-                                    noteRes = R.string.profile_action_membership_note,
-                                    icon = CoineProIcons.Wallet,
-                                    onClick = { navController.navigate(MEMBERSHIP_ROUTE) },
-                                ),
-                            )
-                            add(
-                                ProfileAction(
-                                    label = stringResource(R.string.profile_action_verification),
-                                    icon = CoineProIcons.IdentityCard,
-                                    onClick = { navController.navigate(KYC_ROUTE) },
-                                ),
-                            )
+                            // Membership and verification are not in the store build (5.22.0).
+                            if (!FeatureFlags.storeRestricted) {
+                                add(
+                                    ProfileAction(
+                                        label = stringResource(R.string.screen_membership),
+                                        noteRes = R.string.profile_action_membership_note,
+                                        icon = CoineProIcons.Wallet,
+                                        onClick = { navController.navigate(MEMBERSHIP_ROUTE) },
+                                    ),
+                                )
+                                add(
+                                    ProfileAction(
+                                        label = stringResource(R.string.profile_action_verification),
+                                        icon = CoineProIcons.IdentityCard,
+                                        onClick = { navController.navigate(KYC_ROUTE) },
+                                    ),
+                                )
+                            }
                             add(
                                 ProfileAction(
                                     label = stringResource(R.string.screen_notifications),
-                                    noteRes = R.string.profile_action_notifications_note,
+                                    noteRes = if (FeatureFlags.storeRestricted) R.string.profile_action_notifications_note_store else R.string.profile_action_notifications_note,
                                     icon = CoineProIcons.Bell,
                                     onClick = { navController.navigate(NOTIFICATIONS_ROUTE) },
                                 ),
@@ -4429,6 +4467,7 @@ private fun MainShell(
                 }
             }
             composable(MEMBERSHIP_ROUTE) {
+                if (FeatureFlags.storeRestricted) { LeaveRestricted(navController); return@composable }
                 // The screen that step three of the membership card has always pointed at and
                 // that nothing in the app reached. A reader could register on an exchange, fund
                 // it, and then find no way to tell CoinePro their UID — which is the one step the
@@ -4542,6 +4581,7 @@ private fun MainShell(
                 }
             }
             composable(KYC_ROUTE) {
+                if (FeatureFlags.storeRestricted) { LeaveRestricted(navController); return@composable }
                 KycScreen(controller = accountController)
             }
             composable(PAPER_TRADE_ROUTE) {
@@ -4615,6 +4655,7 @@ private fun MainShell(
                 )
             }
             composable(CONNECTIONS_ROUTE) {
+                if (FeatureFlags.storeRestricted) { LeaveRestricted(navController); return@composable }
                 // One screen, one design, two venues — because a platform has exactly one and they
                 // are different kinds of thing. TradeYar takes an LBank key pair and places orders
                 // per signal; CoinePro-FX takes a MetaTrader 5 broker login over the copy-trading
@@ -4655,6 +4696,7 @@ private fun MainShell(
                     },
                 ),
             ) { entry ->
+                if (FeatureFlags.storeRestricted) { LeaveRestricted(navController); return@composable }
                 if (guest) {
                     GuestGateScreen(
                         gate = GuestGate.AI,
@@ -4682,12 +4724,14 @@ private fun MainShell(
                 )
             }
             composable(AI_VISION_ROUTE) {
+                if (FeatureFlags.storeRestricted) { LeaveRestricted(navController); return@composable }
                 AiVisionScreen(
                     controller = aiVisionController,
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
                 )
             }
             composable(AI_ASSISTANT_ROUTE) {
+                if (FeatureFlags.storeRestricted) { LeaveRestricted(navController); return@composable }
                 AiAssistantScreen(
                     controller = aiAssistantController,
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
@@ -4766,7 +4810,7 @@ private fun MainShell(
                     onCreateAlert = { symbol, price -> alertFromChart = symbol to price },
                     // Only when there is something to say. A strip reading «۰ سیگنال باز» is a row
                     // of chrome reporting the absence of news.
-                    openSignals = signals.items.takeIf { it.isNotEmpty() }?.let { open ->
+                    openSignals = signals.items.takeIf { it.isNotEmpty() && !FeatureFlags.storeRestricted }?.let { open ->
                         MarketsSignalStrip(
                             count = open.size,
                             summary = open.take(2).joinToString(" · ") { signal ->
@@ -4872,7 +4916,7 @@ private fun MainShell(
                     drawingTemplates = drawingTemplateStore,
                     onOpenScript = { navController.navigate(scriptRoute(symbol)) },
                     onOpenPanes = { navController.navigate(panesRoute(symbol)) },
-                    onOpenChartVision = if (chartVisionAvailable) {
+                    onOpenChartVision = if (chartVisionAvailable && !FeatureFlags.storeRestricted) {
                         { navController.navigate(AI_VISION_ROUTE) }
                     } else {
                         null
@@ -4939,7 +4983,7 @@ private fun MainShell(
                 val depthPreferences = remember(symbolChartStateStore) {
                     SymbolChartDepthPreferences(symbolChartStateStore)
                 }
-                val liveLadder = liveTradeController?.takeIf { belongsTo(activeChartSymbol, MarketPlatform.TRADEYAR) }
+                val liveLadder = liveTradeController?.takeIf { belongsTo(activeChartSymbol, MarketPlatform.TRADEYAR) && !FeatureFlags.storeRestricted }
                 LaunchedEffect(liveLadder) { liveLadder?.refreshAvailability() }
                 val liveLadderReady = liveLadder?.state?.collectAsStateWithLifecycle()?.value?.available == true
                 DepthOfMarketScreen(
@@ -4953,7 +4997,7 @@ private fun MainShell(
                     onPickPrice = { price -> alertFromChart = activeChartSymbol to price },
                         // Paper trading from the ladder (5.17.0), armed by the reader on the ladder itself.
                         onPlaceOrder = { buy, price, notional ->
-                            placeLadderOrder(activeChartSymbol, buy, price, notional, liveLadder.takeIf { liveLadderReady }, paperTradeController)
+                            placeLadderOrder(activeChartSymbol, buy, price, notional, liveLadder.takeIf { liveLadderReady && !FeatureFlags.storeRestricted }, paperTradeController)
                         },
                         // A real venue on a crypto ladder with a futures key linked (5.18.0).
                         liveVenue = stringResource(ChartR.string.live_venue).takeIf { liveLadderReady },
@@ -5100,7 +5144,7 @@ private fun MainShell(
                     // on this screen is local to the phone and opens for anybody.
                     // Null for a guest, and null on a platform this build offers no way to trade
                     // on (F5) — the row is absent rather than opening a screen with nothing on it.
-                    onOpenConnections = if (guest || !tradingOffered(activePlatform)) {
+                    onOpenConnections = if (guest || !tradingOffered(activePlatform) || FeatureFlags.storeRestricted) {
                         null
                     } else {
                         ({ navController.navigate(CONNECTIONS_ROUTE) })
@@ -5110,7 +5154,7 @@ private fun MainShell(
                     // the app reads it from the published file when the server sends nothing — so
                     // there is no longer a 401 behind this entry, and no reason to hide the door.
                     onOpenCalendar = { navController.navigate(CALENDAR_ROUTE) },
-                    onOpenPortfolio = if (guest) null else ({ navController.navigate(PORTFOLIO_ROUTE) }),
+                    onOpenPortfolio = if (guest || FeatureFlags.storeRestricted) null else ({ navController.navigate(PORTFOLIO_ROUTE) }),
                     onOpenAcademy = if (hasAcademy && !guest) {
                         { navController.navigate(ACADEMY_ROUTE) }
                     } else {
@@ -5119,6 +5163,7 @@ private fun MainShell(
                 )
             }
             composable(TERMINAL_ROUTE) {
+                if (FeatureFlags.storeRestricted) { LeaveRestricted(navController); return@composable }
                 TerminalScreen(
                     controller = terminalController,
                     onClose = { navController.popBackStack() },
@@ -5128,7 +5173,7 @@ private fun MainShell(
                 AcademyScreen(
                     controller = academyController,
                     onOpenLesson = { navController.navigate(lessonRoute(it)) },
-                    onOpenProfile = { navController.navigate(KYC_ROUTE) },
+                    onOpenProfile = { navController.navigate(if (FeatureFlags.storeRestricted) PROFILE_ROUTE else KYC_ROUTE) },
                 )
             }
             composable(
@@ -5139,10 +5184,11 @@ private fun MainShell(
                     controller = academyController,
                     slug = entry.arguments?.getString("slug").orEmpty(),
                     onClose = { navController.popBackStack() },
-                    onOpenProfile = { navController.navigate(KYC_ROUTE) },
+                    onOpenProfile = { navController.navigate(if (FeatureFlags.storeRestricted) PROFILE_ROUTE else KYC_ROUTE) },
                 )
             }
             composable(PORTFOLIO_ROUTE) {
+                if (FeatureFlags.storeRestricted) { LeaveRestricted(navController); return@composable }
                 PortfolioScreen(
                     controller = portfolioController,
                     onOpenConnections = if (tradingOffered(activePlatform)) {
@@ -5154,6 +5200,7 @@ private fun MainShell(
                 )
             }
             composable(PORTFOLIO_REPORT_ROUTE) {
+                if (FeatureFlags.storeRestricted) { LeaveRestricted(navController); return@composable }
                 // The same controller as the list above it, not a second one: the report is a
                 // reading of the trades already loaded, and a second fetch would let the two
                 // screens disagree about what the account did.
@@ -5181,6 +5228,10 @@ private fun MainShell(
                             if (!terminalController.isConfigured) add("terminal")
                             if (!hasAcademy) add("academy")
                             if (!accountDeletionAvailable) add("delete")
+                            // The store build (5.22.0): see `FeatureFlags.storeRestricted`. The
+                            // site row is the other half: the web *is* the site, so it is absent there.
+                            if (FeatureFlags.storeRestricted) addAll(FeatureFlags.STORE_RESTRICTED_SURFACES)
+                            else add("full-site")
                             // Both, and for the reason the other call site spells out: a build
                             // that opens no forex account has nothing for copy trading to copy to.
                             if (!tradingOffered(activePlatform)) {
@@ -5189,11 +5240,14 @@ private fun MainShell(
                             }
                         },
                     ),
-                    onOpen = { id -> navController.navigate(menuRoute(id, activePlatform, watchlist)) },
+                    onOpen = { id ->
+                        val route = menuRoute(id, activePlatform, watchlist)
+                        if (route == FULL_SITE_ROUTE) openFullSite() else navController.navigate(route)
+                    },
                     avatar = profile.avatar,
                     name = profile.displayName ?: accountName,
                     email = accountEmail,
-                    planLabel = subscription?.planLabel,
+                    planLabel = subscription?.planLabel?.takeUnless { FeatureFlags.storeRestricted },
                     platformLabel = stringResource(activePlatform.labelRes()),
                     watchlistCount = activeListSize ?: watchlist.size,
                     onSignIn = onSignIn.takeIf { guest },
@@ -5260,10 +5314,18 @@ private fun MainShell(
                     signalController = signalController,
                     onOpenSignal = { navController.navigate(signalDetailRoute(it)) },
                     platform = activePlatform,
+                    tradingRecord = !FeatureFlags.storeRestricted,
                 )
             }
             composable(TUTORIALS_ROUTE) {
-                CoachLibrary()
+                CoachLibrary(siteNote = siteNote, onOpenSite = openFullSite)
+            }
+            composable(FULL_SITE_ROUTE) {
+                // Reached only by a restored back stack or a link; the menu opens the browser itself.
+                LaunchedEffect(Unit) {
+                    openFullSite()
+                    navController.popBackStack()
+                }
             }
             composable(LAUNCH_READINESS_ROUTE) {
                 val context = LocalContext.current
@@ -5281,6 +5343,9 @@ private fun MainShell(
                 // the card simply does not appear.
                 var update by remember { mutableStateOf<AppUpdateStatus>(AppUpdateStatus.Unknown) }
                 LaunchedEffect(appUpdateGateway) {
+                    // The store build is updated by the store; a second way to update would be a
+                    // package from outside it, which the store's rules refuse.
+                    if (FeatureFlags.storeRestricted) return@LaunchedEffect
                     val gateway = appUpdateGateway ?: return@LaunchedEffect
                     update = AppUpdate.decide(BuildConfig.VERSION_CODE.toLong(), gateway.latest())
                 }
@@ -5308,6 +5373,8 @@ private fun MainShell(
                     onSendFeedback = onSendFeedback,
                     onOpenSupportChat = { SupportHandoff.open(context) },
                     versionLabel = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                    siteNote = siteNote,
+                    onOpenSite = openFullSite,
                     // Null on the store build: the five taps on the version then do nothing, which
                     // is the honest behaviour for a door that leads to a room the build does not
                     // contain.
@@ -5493,12 +5560,26 @@ private fun notificationSections(guest: Boolean): List<NotificationSection> {
             NotificationCategory.NEWS,
             NotificationCategory.ANNOUNCEMENT,
             NotificationCategory.CALENDAR,
-            NotificationCategory.AI_SETUP.takeUnless { guest },
+            NotificationCategory.AI_SETUP.takeUnless { guest || FeatureFlags.storeRestricted },
         ),
     )
     if (guest) {
         return listOf(
             market,
+            NotificationSection(
+                title = stringResource(R.string.channel_group_other),
+                categories = listOf(NotificationCategory.MARKETING),
+            ),
+        )
+    }
+    // The store build has no signals and no trading to tell anybody about (5.22.0).
+    if (FeatureFlags.storeRestricted) {
+        return listOf(
+            market,
+            NotificationSection(
+                title = stringResource(R.string.channel_group_account),
+                categories = listOf(NotificationCategory.SECURITY),
+            ),
             NotificationSection(
                 title = stringResource(R.string.channel_group_other),
                 categories = listOf(NotificationCategory.MARKETING),

@@ -324,6 +324,15 @@ object MenuCatalogue {
             icon = CoineProIcons.Secure,
             group = MenuGroup.LEARN,
         ),
+        // The store build's pointer to the site (5.22.0). Cafe Bazaar's build carries a subset; the
+        // site carries everything, and this row says where. Absent on the web, which *is* the site,
+        // and never beside a price or a plan — see `FeatureFlags.storeRestricted`.
+        MenuEntry(
+            id = "full-site",
+            titleRes = R.string.menu_full_site_title,
+            icon = CoineProIcons.Link,
+            group = MenuGroup.LEARN,
+        ),
         // ── حساب من ──────────────────────────────────────────────────────────────────────────
         // **The screen that used to be the app's front door.**
         //

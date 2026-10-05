@@ -10,6 +10,7 @@
     <string name="menu_member_line">حساب فعال</string>
     <string name="menu_plan_none">بدون اشتراک</string>
     <string name="menu_guest_offer">با یک حساب، سیگنال‌ها، پرتفوی و دستیار هم باز می‌شوند. دیده‌بان و ابزارها همین‌طور رایگان می‌مانند.</string>
+    <string name="menu_guest_offer_store">با یک حساب، دیده‌بان، هشدارها و تنظیمات شما در همه‌ی دستگاه‌ها همراهتان است. همه‌ی ابزارها رایگان می‌مانند.</string>
     <string name="menu_sign_in">ورود یا ساخت حساب</string>
     <string name="menu_locked">با ورود به حساب</string>
     <string name="menu_footer">هر چه این برنامه دارد در همین صفحه است. آنچه به حساب نیاز دارد نشان داده می‌شود و پنهان نمی‌ماند.</string>
@@ -38,6 +39,7 @@
     <string name="menu_paper_title">معامله‌ی آزمایشی</string>
     <string name="menu_journal_title">ژورنال معاملات</string>
     <string name="menu_connections_title">اتصال حساب</string>
+    <string name="menu_full_site_title">نسخه‌ی کامل در pro-chart.com</string>
     <string name="menu_terminal_title">ترمینال وب</string>
 
     <!-- ── تحلیل و ابزار ───────────────────────────────────────────────────────────────── -->

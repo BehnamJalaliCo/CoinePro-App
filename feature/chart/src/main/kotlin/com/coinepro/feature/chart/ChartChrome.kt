@@ -974,7 +974,8 @@ internal fun ChartMoreSheetBody(
 
         HorizontalDivider(color = CoineProColors.BorderSubtle)
 
-        TradeCard(onClick = onTrade)
+        // Absent rather than inert where there is nowhere to trade (the store build, 5.22.0).
+        onTrade?.let { TradeCard(onClick = it) }
 
         Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Half)) {
             SheetLabel(stringResource(R.string.chart_more_span))

@@ -1,5 +1,6 @@
 package com.coinepro.app.notifications
 
+import com.coinepro.core.common.FeatureFlags
 import android.app.NotificationChannel
 import android.app.NotificationChannelGroup
 import android.app.NotificationManager
@@ -90,14 +91,21 @@ object NotificationChannels {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
 
-        listOf(
-            NotificationChannelGroup(GROUP_TRADING, context.getString(R.string.channel_group_trading)),
+        // The store build has no signals, copy trading or AI: no channel names them in the
+        // system's settings either, and one an earlier install created is taken away.
+        val restricted = FeatureFlags.storeRestricted
+        if (restricted) {
+            STORE_RESTRICTED_PUSHES.forEach { manager.deleteNotificationChannel(channelId(it)) }
+            manager.deleteNotificationChannelGroup(GROUP_TRADING)
+        }
+        listOfNotNull(
+            NotificationChannelGroup(GROUP_TRADING, context.getString(R.string.channel_group_trading)).takeUnless { restricted },
             NotificationChannelGroup(GROUP_MARKET, context.getString(R.string.channel_group_market)),
             NotificationChannelGroup(GROUP_ACCOUNT, context.getString(R.string.channel_group_account)),
             NotificationChannelGroup(GROUP_OTHER, context.getString(R.string.channel_group_other)),
         ).forEach(manager::createNotificationChannelGroup)
 
-        NotificationCategory.entries.forEach { category ->
+        NotificationCategory.entries.filterNot { restricted && it in STORE_RESTRICTED_PUSHES }.forEach { category ->
             manager.createNotificationChannel(
                 NotificationChannel(
                     channelId(category),

@@ -83,6 +83,7 @@ class NotificationManager internal constructor() {
     fun createNotificationChannels(list: List<NotificationChannel>) = list.forEach(::createNotificationChannel)
     fun createNotificationChannelGroup(group: NotificationChannelGroup) {}
     fun deleteNotificationChannel(id: String) { channels.remove(id) }
+    fun deleteNotificationChannelGroup(id: String) {}
     fun getNotificationChannel(id: String): NotificationChannel? = channels[id]
     val notificationChannels: List<NotificationChannel> get() = channels.values.toList()
     fun notify(id: Int, notification: Notification) = com.coinepro.web.content.WebNotifications.show(id.toString(), notification)

@@ -3366,7 +3366,8 @@ fun ChartScreen(
                 // app's own terminal. The in-app route is still the first thing on that sheet where
                 // there is one — see `TradePartnersSheetBody` for why it is above the three cards
                 // and not below them.
-                onTrade = { sheet = ChartSheet.PARTNERS },
+                // Not in the store build (5.22.0): no broker, no exchange, no sign-up referral.
+                onTrade = { sheet = ChartSheet.PARTNERS }.takeUnless { com.coinepro.core.common.FeatureFlags.storeRestricted },
                 // Offered with bars to rewind through and not already rewinding. `Replay.enter`
                 // wants thirty bars and returns null under that; the tile is dimmed on the same
                 // condition rather than opening a mode that then does nothing.

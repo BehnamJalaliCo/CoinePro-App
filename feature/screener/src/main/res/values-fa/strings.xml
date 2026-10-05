@@ -46,7 +46,7 @@
     <string name="screener_export_saved">فایل screener.csv ذخیره شد</string>
     <string name="screener_export_failed">فایل ذخیره نشد</string>
     <string name="screener_mode_table">جدول</string>
-    <string name="screener_mode_signals">سیگنال‌های رشد</string>
+    <string name="screener_mode_signals">نشانه‌های رشد</string>
     <string name="screener_scan_setups">الگوها</string>
     <string name="screener_scan_within">رخ داده در</string>
     <string name="screener_scan_within_bars">%1$s کندل اخیر</string>

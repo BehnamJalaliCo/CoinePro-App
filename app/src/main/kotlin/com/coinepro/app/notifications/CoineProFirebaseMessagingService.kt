@@ -1,5 +1,6 @@
 package com.coinepro.app.notifications
 
+import com.coinepro.core.common.FeatureFlags
 import com.coinepro.core.common.BrandConfig
 import android.Manifest
 import android.app.PendingIntent
@@ -38,6 +39,13 @@ class CoineProFirebaseMessagingService : FirebaseMessagingService() {
         // Read on this thread on purpose. `onMessageReceived` already runs off the main thread, the
         // read is a single small file, and the alternative — showing the notification and hiding it
         // once the preference arrives — is a notification the reader has already seen.
+        // The store build has no signals, no trading and no AI section (5.22.0): a push about one
+        // of them would open a screen this build does not have, so it is not shown at all.
+        if (FeatureFlags.storeRestricted &&
+            (category in STORE_RESTRICTED_PUSHES || positiveSignalId(data["signal_id"]) != null)
+        ) {
+            return
+        }
         val settings = runBlocking { settingsStore.settings.first() }
         if (!settings.shouldShow(category, System.currentTimeMillis(), minuteOfDay())) return
 
@@ -97,3 +105,15 @@ internal fun minuteOfDay(calendar: Calendar = Calendar.getInstance()): Int =
 /** Kept for the settings screen's preview of what a category maps to. */
 internal fun NotificationSettings.allows(category: NotificationCategory): Boolean =
     shouldShow(category, System.currentTimeMillis(), minuteOfDay())
+
+/** The pushes the store build drops: signal lifecycle, copy trading and the AI setup builder. */
+internal val STORE_RESTRICTED_PUSHES = setOf(
+    NotificationCategory.NEW_SIGNAL,
+    NotificationCategory.TARGET_HIT,
+    NotificationCategory.STOP_HIT,
+    NotificationCategory.SIGNAL_CLOSED,
+    NotificationCategory.COPY_OPENED,
+    NotificationCategory.COPY_CLOSED,
+    NotificationCategory.COPY_FAILED,
+    NotificationCategory.AI_SETUP,
+)

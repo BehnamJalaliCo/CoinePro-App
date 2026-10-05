@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.22.0
+
+**fa**
+
+> نسخه‌ی اندروید حالا روی ابزارهای تحلیل تمرکز دارد: چارت، ابزارهای رسم، اندیکاتورها، اسکرینر، دیده‌بان، هشدار، اخبار، تقویم، معامله‌ی آزمایشی، ژورنال و نمااسکریپت. نسخه‌ی کامل، با همه‌ی امکانات، در pro-chart.com است و پیوندش در منو آمده است.
+
+**en**
+
+> The Android version now focuses on analysis: the chart, drawing tools, indicators, screener, watchlist, alerts, news, calendar, paper trading, journal and NamaScript. The full version, with every feature, is at pro-chart.com, linked from the menu.
+
+---
+
 ## 5.21.2
 
 **fa**

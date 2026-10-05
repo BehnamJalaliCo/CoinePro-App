@@ -1,5 +1,6 @@
 package com.coinepro.feature.menu
 
+import com.coinepro.core.common.FeatureFlags
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -270,7 +271,7 @@ private fun Identity(
     }
     val standing = listOfNotNull(
         platformLabel?.let(BidiText::isolateLtr),
-        planLabel ?: stringResource(R.string.menu_plan_none).takeIf { signedIn },
+        planLabel ?: stringResource(R.string.menu_plan_none).takeIf { signedIn && !FeatureFlags.storeRestricted },
     ).joinToString(" · ")
 
     CoineProCard(
@@ -315,7 +316,7 @@ private fun Identity(
         if (!signedIn && onSignIn != null) {
             Column(modifier = Modifier.padding(top = CoineProSpacing.OneHalf)) {
                 Text(
-                    text = stringResource(R.string.menu_guest_offer),
+                    text = stringResource(if (FeatureFlags.storeRestricted) R.string.menu_guest_offer_store else R.string.menu_guest_offer),
                     style = MaterialTheme.typography.bodySmall,
                     color = CoineProColors.TextSecondary,
                 )
