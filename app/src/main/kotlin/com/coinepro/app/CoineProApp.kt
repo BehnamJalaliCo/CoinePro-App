@@ -249,6 +249,7 @@ import com.coinepro.core.guest.GuestMembershipState
 import com.coinepro.core.journal.JournalController
 import com.coinepro.core.marketdata.AcademyTokenStore
 import com.coinepro.core.marketdata.CandleGateway
+import com.coinepro.core.marketdata.SymbolRoutedCandleGateway
 import com.coinepro.core.marketdata.MarketConnectionState
 import com.coinepro.core.marketdata.MarketDataCache
 import com.coinepro.core.marketdata.MarketDataController
@@ -1680,7 +1681,14 @@ fun CoineProApp(
                 companionSearchController = MarketPlatform.entries.firstOrNull { it != activePlatform }
                     ?.let(marketSearchControllers::get),
                 screenerController = screenerController,
-                candleGateway = candleGateways.getValue(activePlatform),
+                // By the symbol, not the tab (5.24.3): the watchlist spans both platforms.
+                candleGateway = remember(candleGateways, activePlatform) {
+                    SymbolRoutedCandleGateway(
+                        crypto = candleGateways.getValue(MarketPlatform.TRADEYAR),
+                        forex = candleGateways.getValue(MarketPlatform.COINEPRO_FX),
+                        primary = candleGateways.getValue(activePlatform),
+                    )
+                },
                 orderBookGateways = orderBookGateways,
                 candleCache = candleCache,
                 candleArchive = candleArchive,
@@ -1862,6 +1870,12 @@ fun CoineProApp(
                     // lifetime is this branch: signing in disposes them along with the shell.
                     val guestCatalog = remember(guestGateway) { GuestMarketCatalogGateway(guestGateway) }
                     val guestCandles = remember(guestGateway) { GuestCandleGateway(guestGateway) }
+                    val guestRoutedCandles = remember(guestCandles, candleGateways) {
+                        SymbolRoutedCandleGateway(
+                            crypto = guestCandles,
+                            forex = candleGateways.getValue(MarketPlatform.COINEPRO_FX),
+                        )
+                    }
                     // **A guest has a live price now, and did not.**
                     //
                     // The catalogue is read once when a screen opens, so every price a guest saw was
@@ -1891,7 +1905,7 @@ fun CoineProApp(
                         ScreenerController(
                             gateway = guestCatalog,
                             scope = scope,
-                            barSource = CandleScreenerBarSource(guestCandles),
+                            barSource = CandleScreenerBarSource(com.coinepro.core.marketdata.PacedCandleGateway(guestCandles)),
                             store = screenerStore,
                             // The guest's catalogue and candles are TradeYar's public routes, so
                             // its rows are held to TradeYar's chart scope. See `chartable`.
@@ -1925,7 +1939,9 @@ fun CoineProApp(
                         // answers without a session, so a guest's gold and majors get a price too.
                         companionSearchController = marketSearchControllers[MarketPlatform.COINEPRO_FX],
                         screenerController = guestScreener,
-                        candleGateway = guestCandles,
+                        // Forex and metals from CoinePro-FX on the guest credential (5.24.3); the
+                        // public crypto route answers them with 422.
+                        candleGateway = guestRoutedCandles,
                         // The signed-in gateway, because there is no guest depth route to build one
                         // against — the relay's `market/depth` answers 401 to a reader with no
                         // session, where the public candle and price routes answer 200. That gap is
@@ -4042,7 +4058,9 @@ private fun MainShell(
             HeatmapScreen(
                 controller = marketSearchController,
                 onOpenSymbol = { navController.navigate(chartRoute(it)) },
-                bars = remember(candleGateway) { CandleHeatmapBarSource(candleGateway) },
+                bars = remember(candleGateway) {
+                    CandleHeatmapBarSource(com.coinepro.core.marketdata.PacedCandleGateway(candleGateway))
+                },
                 // The whole catalogue's day in one request, from the store the market list is
                 // already reading. Reference counted, so the map holds it only while it is
                 // open — and the candles above stay, for the two figures a rolling

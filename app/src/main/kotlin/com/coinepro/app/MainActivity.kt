@@ -812,9 +812,7 @@ class MainActivity : FragmentActivity() {
  * `…/api/assets/logo/XAUUSD.webp` and got a JSON 404 for every symbol it was built to cover. The
  * server publishing the twenty-one forex marks on 2026-09-05 is what made a silent miss visible.
  */
-private val remoteLogos: LogoProvider = LogoProvider { symbol ->
-    SiteAssets.url(BuildConfig.API_BASE_URL, "assets/logo/${symbol.uppercase()}.webp")
-}
+private val remoteLogos: LogoProvider = siteLogos(BuildConfig.API_BASE_URL)
 
 private fun com.coinepro.app.billing.BillingOutcome.messageRes(): Int = when (this) {
     com.coinepro.app.billing.BillingOutcome.ACTIVATED -> R.string.pro_result_activated

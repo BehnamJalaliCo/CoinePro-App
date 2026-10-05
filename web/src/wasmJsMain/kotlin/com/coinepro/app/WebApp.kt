@@ -19,7 +19,6 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.app.di.WebGraph
-import com.coinepro.core.common.SiteAssets
 import com.coinepro.core.datastore.MarketColorScheme
 import com.coinepro.core.datastore.QuoteCurrency
 import com.coinepro.core.datastore.ReaderMode
@@ -162,9 +161,7 @@ object WebLaunch {
 }
 
 /** `/assets/logo/<SYMBOL>.webp` on the API host's site, for a symbol the artwork does not draw — as on the phone. */
-private val remoteLogos: LogoProvider = LogoProvider { symbol ->
-    SiteAssets.url(BuildConfig.API_BASE_URL, "assets/logo/${symbol.uppercase()}.webp")
-}
+private val remoteLogos: LogoProvider = siteLogos(BuildConfig.API_BASE_URL)
 
 private fun sendFeedback() {
     val body = buildString {

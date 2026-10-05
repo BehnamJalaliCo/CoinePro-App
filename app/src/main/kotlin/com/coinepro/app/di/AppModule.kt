@@ -1529,7 +1529,15 @@ object AppModule {
     fun forexCandleGateway(
         @ForexPlatform retrofit: Retrofit,
         tokens: AcademyTokenStore,
-    ): CandleGateway = CoineProFxCandleGateway(retrofit, tokens)
+    ): CandleGateway = CoineProFxCandleGateway(
+        retrofit,
+        // A reader with no forex session — a guest, or the crypto platform only — still gets gold
+        // and the majors' candles, on the guest credential (5.24.3).
+        com.coinepro.core.marketdata.FallbackAcademyTokens(
+            session = tokens,
+            guest = com.coinepro.core.marketdata.NetworkGuestTokenStore(retrofit),
+        ),
+    )
 
     @Provides
     @Singleton
@@ -1909,7 +1917,7 @@ object AppModule {
         gateway = catalog,
         scope = scope,
         quotes = quotes,
-        barSource = CandleScreenerBarSource(candles),
+        barSource = CandleScreenerBarSource(com.coinepro.core.marketdata.PacedCandleGateway(candles)),
         tickers = MarketTickerScreenerSource(tickerStore),
         store = store,
         // Only the markets TradeYar has charts for (5.19.3). See `ScreenerController.chartable`.
@@ -1932,7 +1940,7 @@ object AppModule {
         gateway = catalog,
         scope = scope,
         quotes = quotes,
-        barSource = CandleScreenerBarSource(candles),
+        barSource = CandleScreenerBarSource(com.coinepro.core.marketdata.PacedCandleGateway(candles)),
         tickers = MarketTickerScreenerSource(tickerStore),
         store = store,
     )

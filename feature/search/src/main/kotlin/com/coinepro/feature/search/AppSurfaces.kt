@@ -297,7 +297,7 @@ object AppSurfaces {
             id = "activity",
             titleRes = R.string.surface_activity_title,
             bodyRes = DesignR.string.feature_activity_body,
-            icon = CoineProIcons.Activity,
+            icon = CoineProIcons.History,
             keywords = listOf(
                 "فعالیت", "تاریخچه", "رویدادها", "گزارش فعالیت",
                 "activity", "history", "log",

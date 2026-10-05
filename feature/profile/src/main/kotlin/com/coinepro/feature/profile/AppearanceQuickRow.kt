@@ -4,15 +4,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.coinepro.core.common.AppLanguage
 import com.coinepro.core.datastore.ThemeMode
-import com.coinepro.core.designsystem.CoineProColors
-import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProSegmentedControl
 import com.coinepro.core.designsystem.CoineProSpacing
 
@@ -72,14 +68,9 @@ fun AppearanceQuickRow(
             selected = language,
             onSelect = onSelectLanguage,
         )
-        // The one thing a reader has to be told before they press it, and the reason it is one
-        // line here rather than the sheet's paragraph: the activity restarts, because the locale
-        // is applied in `attachBaseContext` and nothing already composed would pick it up.
-        CoineProNote(
-            R.string.appearance_language_note,
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.fillMaxWidth().padding(top = CoineProSpacing.Half),
-        )
+        // No note under the language row (5.24.3). Collapsed, which is how the menu draws it, a
+        // note is an ⓘ alone on a line of its own — the stray circle the 5.24.2 check reported
+        // under this control. The restart it warned of is one frame; the sheet still says so.
     }
 }
 

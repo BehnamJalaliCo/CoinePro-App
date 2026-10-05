@@ -386,7 +386,7 @@ object MenuCatalogue {
         MenuEntry(
             id = "activity",
             titleRes = R.string.menu_activity_title,
-            icon = CoineProIcons.Activity,
+            icon = CoineProIcons.History,
             group = MenuGroup.ACCOUNT,
             account = true,
         ),

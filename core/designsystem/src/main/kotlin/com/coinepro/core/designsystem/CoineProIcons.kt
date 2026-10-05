@@ -46,6 +46,12 @@ object CoineProIcons {
     @DrawableRes val Activity = R.drawable.nav_activity
 
     /**
+     * The account's own history — sign-ins, changes, what happened when. A clock, not the bell
+     * [Activity] draws: the menu put «فعالیت» and «مرکز هشدار» under one bell (5.24.3).
+     */
+    @DrawableRes val History = R.drawable.icon_clock
+
+    /**
      * The two tabs that borrow a shape from elsewhere in the app.
      *
      * Markets takes Phosphor's rising line, Chart TradingView's candles. Both now have a filled

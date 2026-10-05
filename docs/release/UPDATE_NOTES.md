@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.24.3
+
+**fa**
+
+> نمودار طلا، فارکس و شاخص‌ها حالا در فهرست‌های کریپتو و برای مهمان هم باز می‌شود. نقشه‌ی حرارتی و اسکرینر درخواست‌هایشان را آهسته‌تر می‌فرستند تا ستون‌ها خالی نمانند. ارقام بازار برای مهمان پر می‌شود و نماد «فعالیت» از «مرکز هشدار» جدا شده است.
+
+**en**
+
+> Gold, forex and index charts now open from the crypto lists and for guests. The heat map and screener pace their requests so tiles and columns no longer stay empty. Market figures fill in for guests, and Activity has its own icon apart from the alert centre.
+
+---
+
 ## 5.24.2
 
 **fa**
