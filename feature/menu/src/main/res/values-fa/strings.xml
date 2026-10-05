@@ -57,7 +57,7 @@
 
     <!-- ── حساب من ─────────────────────────────────────────────────────────────────────── -->
     <string name="menu_profile_title">پروفایل و تنظیمات</string>
-    <string name="menu_membership_title">اشتراک</string>
+    <string name="menu_membership_title">عضویت صرافی</string>
     <string name="menu_verify_title">احراز هویت</string>
     <string name="menu_activity_title">فعالیت</string>
     <string name="menu_notifications_title">تنظیمات اعلان</string>

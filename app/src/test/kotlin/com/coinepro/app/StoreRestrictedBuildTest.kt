@@ -39,7 +39,7 @@ class StoreRestrictedBuildTest {
 
     @Test
     fun `both the menu and search hide the restricted rows`() {
-        val uses = Regex("""if \(FeatureFlags\.storeRestricted\) addAll\(FeatureFlags\.STORE_RESTRICTED_SURFACES\)""")
+        val uses = Regex("""addAll\(FeatureFlags\.STORE_RESTRICTED_SURFACES\)""")
             .findAll(shell)
             .count()
         assertTrue("the menu and the search screen must both drop the restricted rows ($uses)", uses >= 2)

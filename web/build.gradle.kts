@@ -520,6 +520,8 @@ val replacedFiles = listOf(
     "com/coinepro/app/widget/WidgetSnapshotBridge.kt",
     // Credential Manager → Google Identity Services: web/src/wasmJsMain/.../app/auth/GoogleSignIn.web.kt
     "com/coinepro/app/auth/GoogleSignIn.kt",
+    // Cafe Bazaar's in-app billing: the store build's alone; the browser pays in USDT on the site.
+    "com/coinepro/app/billing/BazaarBilling.kt",
     // `:chart-ui`'s Android actuals; the browser's are `:chart-ui`'s own `wasmJsMain`.
     "com/coinepro/core/chart/ChartUiPlatform.android.kt",
     "com/coinepro/core/chart/ChartStrokePredictor.kt",

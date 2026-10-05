@@ -284,7 +284,7 @@ private fun BarItem(
             }
         }
         Text(
-            text = stringResource(destination.labelRes),
+            text = stringResource(destination.shownLabel()),
             style = MaterialTheme.typography.labelSmall,
             fontSize = LABEL_SIZE,
             lineHeight = LABEL_LINE,
@@ -347,8 +347,12 @@ private fun AppDestination.icon(selected: Boolean): Int = when (this) {
     // The compass: «look around», which is what a briefing is. It was Explore's glyph and it
     // stays, because the promise has not changed — a screen that reads the board for you is the
     // same invitation as a screen that lets you read it, and رَصد is the one that answers first.
-    AppDestination.RASAD ->
-        if (selected) DesignR.drawable.icon_compass_fill else DesignR.drawable.icon_compass
+    // The store build's centre is the markets hub (5.24.0), and it carries the markets glyph.
+    AppDestination.RASAD -> when {
+        FeatureFlags.storeRestricted -> if (selected) CoineProIcons.Filled.Markets else CoineProIcons.Markets
+        selected -> DesignR.drawable.icon_compass_fill
+        else -> DesignR.drawable.icon_compass
+    }
     // The four-pointed burst, and **not** the nav set's signal glyph. That one is a pair of
     // faders, which at 24 dp is two vertical bars with a knob on each — a shape a reader cannot
     // tell apart from the candle pair one position over, which is the whole failure a five-glyph
@@ -364,6 +368,14 @@ private fun AppDestination.icon(selected: Boolean): Int = when (this) {
 }
 
 /**
+ * The word under a tab. The store build's centre tab is the markets hub (5.24.0), so it is named
+ * that; everywhere else a destination is named by its own label.
+ */
+@androidx.annotation.StringRes
+internal fun AppDestination.shownLabel(): Int =
+    if (this == AppDestination.RASAD && FeatureFlags.storeRestricted) R.string.hub_markets else labelRes
+
+/**
  * The five destinations as [CoineProNavigationRail] wants them.
  *
  * Here rather than in `core:designsystem` for the same reason the glyph pairs are: the rail takes
@@ -374,7 +386,7 @@ private fun AppDestination.icon(selected: Boolean): Int = when (this) {
 fun coineProRailItems(): List<CoineProRailItem> = AppDestination.entries.map { destination ->
     CoineProRailItem(
         key = destination.route,
-        label = stringResource(destination.labelRes),
+        label = stringResource(destination.shownLabel()),
         icon = destination.icon(selected = false),
         selectedIcon = destination.icon(selected = true),
     )

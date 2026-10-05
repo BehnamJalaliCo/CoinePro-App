@@ -112,6 +112,19 @@ enum class IdeasFace { SIGNALS, COMMUNITY }
  */
 @Composable
 private fun IdeasSwitch(face: IdeasFace, onSelect: (IdeasFace) -> Unit) {
+    TraySwitch(
+        labels = IdeasFace.entries.map { stringFor(it) },
+        selected = face.ordinal,
+        onSelect = { onSelect(IdeasFace.entries[it]) },
+    )
+}
+
+/**
+ * The tray-and-lifted-key switch, for any handful of faces of one destination — the Ideas pair and
+ * the markets hub (5.24.0) draw the same control, so it reads the same in both.
+ */
+@Composable
+internal fun TraySwitch(labels: List<String>, selected: Int, onSelect: (Int) -> Unit) {
     val haptics = rememberCoineProHaptics()
     Row(
         modifier = Modifier
@@ -131,13 +144,13 @@ private fun IdeasSwitch(face: IdeasFace, onSelect: (IdeasFace) -> Unit) {
             .selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(TRAY_PADDING),
     ) {
-        IdeasFace.entries.forEach { option ->
+        labels.forEachIndexed { index, label ->
             IdeasKey(
-                label = stringFor(option),
-                active = option == face,
+                label = label,
+                active = index == selected,
                 onClick = {
-                    if (option != face) haptics.select()
-                    onSelect(option)
+                    if (index != selected) haptics.select()
+                    onSelect(index)
                 },
                 modifier = Modifier.weight(1f),
             )

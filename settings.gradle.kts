@@ -23,6 +23,12 @@ dependencyResolutionManagement {
             }
             filter { includeModule("com.github.webassembly", "binaryen") }
         }
+        // Cafe Bazaar's in-app billing library (Poolakey), and nothing else (5.24.0): published on
+        // JitPack only, so JitPack answers for that one module and never for any other.
+        exclusiveContent {
+            forRepository { maven("https://jitpack.io") { name = "JitPack" } }
+            filter { includeModule("com.github.cafebazaar.Poolakey", "poolakey") }
+        }
     }
 }
 

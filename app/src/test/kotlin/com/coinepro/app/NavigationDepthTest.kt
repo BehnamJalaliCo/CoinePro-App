@@ -178,6 +178,7 @@ class NavigationDepthTest {
          */
         val REASONS: Map<String, String> = mapOf(
             "SIGNAL_DETAIL_PATTERN" to "One signal, which only the signal list can name.",
+            "PRO_ROUTE" to "Reached from the menu's Pro card, which sits above the rows rather than among them.",
             "EXECUTION_PATTERN" to "The second half of a signal: it needs the signal it is executing.",
             "LESSON_PATTERN" to "One lesson, which only the academy's own list can name.",
             "COMMUNITY_THREAD_PATTERN" to "One thread, named by the community list.",

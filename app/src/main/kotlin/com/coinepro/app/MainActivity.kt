@@ -210,6 +210,11 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var adminController: AdminController
     @Inject lateinit var appLog: AppLog
     @Inject lateinit var appUpdateGateway: AppUpdateGateway
+    @Inject lateinit var paymentsGateway: com.coinepro.core.account.PaymentsGateway
+    @Inject lateinit var entitlementStartUp: EntitlementStartUp
+
+    /** Pro through Cafe Bazaar (5.24.0); null until `FeatureFlags.billingLive`. */
+    private var bazaarBilling: com.coinepro.app.billing.BazaarBilling? = null
     @Inject lateinit var platformSessions: PlatformSessions
     @Inject lateinit var platformCapabilities: PlatformCapabilities
     @Inject lateinit var marketDataCache: MarketDataCache
@@ -314,6 +319,19 @@ class MainActivity : FragmentActivity() {
         // over here, before the first frame is composed. See `LaunchSplash`.
         setTheme(R.style.Theme_CoinePro)
         super.onCreate(savedInstanceState)
+        if (com.coinepro.core.common.FeatureFlags.billingLive) {
+            bazaarBilling = com.coinepro.app.billing.BazaarBilling(
+                activity = this,
+                payments = paymentsGateway,
+                scope = lifecycleScope,
+                onResult = { outcome ->
+                    android.widget.Toast.makeText(this, getString(outcome.messageRes()), android.widget.Toast.LENGTH_LONG).show()
+                    if (outcome == com.coinepro.app.billing.BillingOutcome.ACTIVATED) {
+                        entitlementStartUp.begin()
+                    }
+                },
+            )
+        }
         consumeDeepLink(intent)
         updateNotificationPermissionState()
         enableEdgeToEdge()
@@ -449,6 +467,7 @@ class MainActivity : FragmentActivity() {
                 adminController = adminController,
                 appLog = appLog,
                 appUpdateGateway = appUpdateGateway,
+                onBuyPro = bazaarBilling?.let { billing -> billing::buy },
                 platformSessions = platformSessions,
                 platformCapabilities = platformCapabilities,
                 marketDataCache = marketDataCache,
@@ -795,4 +814,12 @@ class MainActivity : FragmentActivity() {
  */
 private val remoteLogos: LogoProvider = LogoProvider { symbol ->
     SiteAssets.url(BuildConfig.API_BASE_URL, "assets/logo/${symbol.uppercase()}.webp")
+}
+
+private fun com.coinepro.app.billing.BillingOutcome.messageRes(): Int = when (this) {
+    com.coinepro.app.billing.BillingOutcome.ACTIVATED -> R.string.pro_result_activated
+    com.coinepro.app.billing.BillingOutcome.PENDING -> R.string.pro_result_pending
+    com.coinepro.app.billing.BillingOutcome.CANCELLED -> R.string.pro_result_cancelled
+    com.coinepro.app.billing.BillingOutcome.FAILED -> R.string.pro_result_failed
+    com.coinepro.app.billing.BillingOutcome.UNAVAILABLE -> R.string.pro_result_unavailable
 }

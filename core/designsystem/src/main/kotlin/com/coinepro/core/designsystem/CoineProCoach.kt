@@ -686,6 +686,8 @@ fun CoachLibrary(
     /** The store build's line naming the site that carries the rest; null on the web. */
     siteNote: String? = null,
     onOpenSite: (() -> Unit)? = null,
+    /** The academy's lessons (5.24.0): its own menu row folded into this page. Null where none. */
+    onOpenAcademy: (() -> Unit)? = null,
 ) {
     val host = LocalCoachHost.current
     val dismissals = LocalTeachingDismissals.current
@@ -728,6 +730,23 @@ fun CoachLibrary(
                         }
                         .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.One)
                         .semantics { contentDescription = "coach-replay-all" },
+                )
+            }
+        }
+        onOpenAcademy?.let { open ->
+            item(key = "academy") {
+                Text(
+                    text = stringResource(R.string.coach_library_academy),
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = CoineProColors.TextPrimary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.medium)
+                        .background(CoineProColors.SurfaceRaised)
+                        .clickable(onClick = open)
+                        .heightIn(min = 56.dp)
+                        .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.OneHalf)
+                        .semantics { contentDescription = "coach-academy" },
                 )
             }
         }

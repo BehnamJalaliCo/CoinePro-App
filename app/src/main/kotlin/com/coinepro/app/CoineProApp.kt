@@ -163,6 +163,9 @@ import com.coinepro.core.datastore.MarketColorScheme
 import com.coinepro.core.datastore.QuoteCurrency
 import com.coinepro.core.datastore.ThemeMode
 import com.coinepro.app.ideas.IdeasScreen
+import com.coinepro.app.ideas.MarketsHub
+import com.coinepro.app.pro.ProCard
+import com.coinepro.app.pro.ProScreen
 import com.coinepro.core.datastore.UserPreferencesStore
 import com.coinepro.core.datastore.StoredProfile
 import com.coinepro.core.datastore.LastVisitStore
@@ -524,6 +527,9 @@ private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
 
 /** The coach's library: every tip, playable again (5.21.0). See `CoachLibrary`. */
 private const val TUTORIALS_ROUTE = "tutorials"
+
+/** «پرو چارت پرو» (5.24.0): what Pro raises, and the plans. */
+private const val PRO_ROUTE = "pro"
 
 /** The store build's pointer to pro-chart.com: opens the browser and steps back. */
 private const val FULL_SITE_ROUTE = "full-site"
@@ -1146,6 +1152,8 @@ fun CoineProApp(
      * serve the document yet effectively is.
      */
     appUpdateGateway: AppUpdateGateway? = null,
+    /** Starts a Pro purchase for one plan id, or null where this build sells nothing yet. */
+    onBuyPro: ((String) -> Unit)? = null,
     platformSessions: PlatformSessions,
     platformCapabilities: PlatformCapabilities,
     marketDataCache: MarketDataCache,
@@ -1703,6 +1711,7 @@ fun CoineProApp(
                 adminController = adminController,
                 appLog = appLog,
                 appUpdateGateway = appUpdateGateway,
+                onBuyPro = onBuyPro,
                 hub = hub,
                 hubActions = hubActions,
                 briefing = briefingState.toHomeBriefing(briefingReadAt),
@@ -1957,6 +1966,7 @@ fun CoineProApp(
                         adminController = adminController,
                         appLog = appLog,
                         appUpdateGateway = appUpdateGateway,
+                        onBuyPro = onBuyPro,
                         hub = hub,
                         hubActions = hubActions,
                         briefing = HomeBriefing.Resting,
@@ -2286,6 +2296,8 @@ private fun MainShell(
     appLog: AppLog,
     /** See `CoineProApp`'s own parameter. Null on a build with no update channel. */
     appUpdateGateway: AppUpdateGateway? = null,
+    /** Starts a Pro purchase for one plan id, or null where this build sells nothing yet. */
+    onBuyPro: ((String) -> Unit)? = null,
     hub: ControlHub,
     hubActions: HubActions,
     briefing: HomeBriefing,
@@ -2779,6 +2791,7 @@ private fun MainShell(
         COMMUNITY_THREAD_PATTERN,
         LAUNCH_READINESS_ROUTE,
         TUTORIALS_ROUTE,
+        PRO_ROUTE,
         ADMIN_ROUTE,
     )
     // How much glass there is, read once for the whole shell. `CoineProTheme` provides it, so this
@@ -2833,6 +2846,7 @@ private fun MainShell(
         CALENDAR_ROUTE -> R.string.screen_calendar
         LAUNCH_READINESS_ROUTE -> R.string.screen_launch_readiness
         TUTORIALS_ROUTE -> R.string.screen_tutorials
+        PRO_ROUTE -> R.string.pro_title
         else -> R.string.app_name
     }
     val showTopBar = showsTopBar(currentRoute, isSubScreen)
@@ -4017,6 +4031,137 @@ private fun MainShell(
         // differently.** On its own route it is a screen and needs its heading; under the Ideas
         // switch the page is already named — by the key the reader just pressed — and the screen's
         // own headline is a second name for it. See `SignalsScreen.embedded`.
+        val heatmapPane: @Composable () -> Unit = {
+            // The catalogue controller the search screen already uses, rather than a second
+            // one: two would fetch the same several thousand symbols twice and could disagree
+            // about which of them the app has artwork for.
+            // And the candles, because without a bar source the map has no second variable
+            // and draws itself entirely hatched — honest, and useless. `candleGateway` is
+            // whichever one this shell was built with, so the guest's map reads the guest's
+            // candles without a second branch here.
+            HeatmapScreen(
+                controller = marketSearchController,
+                onOpenSymbol = { navController.navigate(chartRoute(it)) },
+                bars = remember(candleGateway) { CandleHeatmapBarSource(candleGateway) },
+                // The whole catalogue's day in one request, from the store the market list is
+                // already reading. Reference counted, so the map holds it only while it is
+                // open — and the candles above stay, for the two figures a rolling
+                // twenty-four hours cannot carry: the period return and the median daily range.
+                tickers = remember(marketTickerStore) { MarketTickerHeatmapSource(marketTickerStore) },
+            )
+        }
+        val screenerPane: @Composable () -> Unit = {
+            val screenerScope = rememberCoroutineScope()
+            // **The whole width, and no detail pane** (LISTS-02). In a list-detail split the
+            // table was a 360-point strip beside nine hundred points of «یک مورد را انتخاب
+            // کنید» — the reference's screener is a table across the page, and so is this one.
+            // A row opens the chart as a page; the back arrow returns to the same scroll and
+            // the same filters.
+            run {
+                ScreenerScreen(
+                    controller = screenerController,
+                    onOpenSymbol = { navController.navigate(chartRoute(it)) },
+                    onOpenSetup = { symbol, studies, timeframe ->
+                        pendingSetups[symbol] = studies
+                        navController.navigate(chartRoute(symbol, timeframe.wire))
+                    },
+                    // One market at a time, by the row's star (5.19.2) — never the whole table.
+                    watchlisted = watchlist.map(String::uppercase).toSet(),
+                    onToggleWatchlist = { symbol ->
+                        screenerScope.launch { runCatching { watchlistStore.toggle(symbol) } }
+                    },
+                )
+            }
+        }
+        val marketsPane: @Composable () -> Unit = {
+            val signals by signalController.state.collectAsStateWithLifecycle()
+            // The newsroom, for the ticker over the list (run ΤΦΥ, U4). Collected here and
+            // never refreshed from this screen: the controller is a singleton the news screen
+            // and Explore already poll, so the ticker draws whatever is in hand and costs this
+            // surface no request at all. Empty draws no ticker.
+            val marketIntel by marketIntelController.state.collectAsStateWithLifecycle()
+            // The instrument in the detail pane, or null where there is only one pane and a
+            // row tap is still a navigation. Saveable, so a rotation on a tablet does not
+            // close the chart the reader is looking at.
+            var pairedSymbol by rememberSaveable { mutableStateOf<String?>(null) }
+            CoineProListDetail(
+                detail = pairedSymbol?.let { symbol -> { chartPane(symbol, null) } },
+            ) { twoPane ->
+            MarketsScreen(
+                controller = marketSearchController,
+                sparklines = sparklineStore,
+                previewCandles = previewCandles,
+                // A tap answers the question most taps are asking, for everybody but the reader
+                // who asked for the whole surface. See `ReaderMode.opensPreviewOnTap`.
+                //
+                // And never on two panes (run Ω5): the preview exists because opening a chart
+                // costs a route and four seconds, and on a tablet it costs neither — the chart
+                // appears *beside* the list with the list still on screen, which is the preview's
+                // own argument, better. A sheet over a two-pane layout would cover the answer.
+                previewOnTap = readerMode.opensPreviewOnTap && !twoPane,
+                onMilestoneAlert = onMilestoneAlertArmed,
+                // The day's figures, which is what the gainers, losers and «داغ» tabs are made
+                // of. Passed as the store rather than a table so the screen starts and stops
+                // the poll with its own lifetime — it is reference counted, so the heat map
+                // reading the same table keeps it running when this screen leaves.
+                tickers = marketTickerStore,
+                watchlist = watchlist,
+                watchlistStore = watchlistStore,
+                watchlistSync = watchlistSyncController,
+                // Two panes: the chart appears beside the list and the list stays where it
+                // is. One pane: exactly what it always did. See `CoineProListDetail` — the
+                // decision is made on the width this layout was given, not on the window.
+                onOpenSymbol = { symbol ->
+                    if (twoPane) pairedSymbol = symbol else navController.navigate(chartRoute(symbol))
+                },
+                onOpenSearch = openSymbolSearch,
+                // **The day's headlines, above the list** (run ΤΦΥ, U4). Mapped to the plain
+                // four fields the ticker takes rather than handed the newsroom's own model, so
+                // the markets surface still owes nothing to `feature:news` — see
+                // `MarketNewsTicker`. Six, because a seventh is a scroll nobody makes.
+                headlines = remember(marketIntel.news) {
+                    marketIntel.news.take(TICKER_HEADLINES).map { story ->
+                        MarketHeadline(
+                            id = story.id,
+                            title = story.title,
+                            important = story.impact == MarketImpact.HIGH,
+                        )
+                    }
+                },
+                // The story itself, not the news list. See `NEWS_PATTERN`.
+                onOpenHeadline = { id -> navController.navigate(newsRoute(id)) },
+                // What is left of Explore, one tap from the surface whose subject they are
+                // (run ΤΦΥ, U7). The bottom bar is five destinations now and Explore is not
+                // one of them; its three rooms are all still here.
+                onOpenNews = { navController.navigate(NEWS_ROUTE) },
+                onOpenCalendar = { navController.navigate(CALENDAR_ROUTE) },
+                onOpenHeatmap = { navController.navigate(HEATMAP_ROUTE) },
+                companion = companionSearchController,
+                // «تحلیل» on the watchlist tab: the reader's list, side by side (run ΤΦΥ, U6).
+                onCompare = { symbols -> navController.navigate(compareRoute(symbols)) },
+                // The same hoisted composer the chart uses, at the price the preview showed —
+                // the shell's live map carries only the subscribed handful, and looking the
+                // price up again here would find nothing for most of the list.
+                onCreateAlert = { symbol, price -> alertFromChart = symbol to price },
+                // Only when there is something to say. A strip reading «۰ سیگنال باز» is a row
+                // of chrome reporting the absence of news.
+                openSignals = signals.items.takeIf { it.isNotEmpty() && !FeatureFlags.storeRestricted }?.let { open ->
+                    MarketsSignalStrip(
+                        count = open.size,
+                        summary = open.take(2).joinToString(" · ") { signal ->
+                            signal.symbol + " " + if (signal.direction == SignalDirection.BUY) "خرید" else "فروش"
+                        },
+                        onClick = { navController.navigate(SIGNALS_ROUTE) },
+                    )
+                },
+            )
+            }
+        }
+        // The markets hub (5.24.0): the list, the heat map and the screener behind one switch. See
+        // `MarketsHub` for the five doors this replaced.
+        val marketsHub: @Composable () -> Unit = {
+            MarketsHub(markets = marketsPane, heatmap = heatmapPane, screener = screenerPane)
+        }
         // The store build names the site that carries the rest (5.22.0). Null on the web.
         val uriHandler = LocalUriHandler.current
         val openFullSite: () -> Unit = { runCatching { uriHandler.openUri(FeatureFlags.FULL_SITE_URL) } }
@@ -4123,6 +4268,13 @@ private fun MainShell(
             popExitTransition = { appPopExit(motion) },
         ) {
             composable(HOME_ROUTE) {
+                // The store build's centre tab is the markets hub (5.24.0): the briefing that is this
+                // tab's reason on the web reads the board through the assistant, which that build
+                // does not carry, and what was left was a thinner list of the same markets.
+                if (FeatureFlags.storeRestricted) {
+                    marketsHub()
+                    return@composable
+                }
                 // The same tab, two homes. A guest's is the public feed's — real prices, the real
                 // track record, the real headlines — with their own avatar at the top of it, and
                 // the market rows open the same chart a member's do.
@@ -4791,88 +4943,7 @@ private fun MainShell(
                 )
             }
             sharedComposable(MARKETS_ROUTE) {
-                val signals by signalController.state.collectAsStateWithLifecycle()
-                // The newsroom, for the ticker over the list (run ΤΦΥ, U4). Collected here and
-                // never refreshed from this screen: the controller is a singleton the news screen
-                // and Explore already poll, so the ticker draws whatever is in hand and costs this
-                // surface no request at all. Empty draws no ticker.
-                val marketIntel by marketIntelController.state.collectAsStateWithLifecycle()
-                // The instrument in the detail pane, or null where there is only one pane and a
-                // row tap is still a navigation. Saveable, so a rotation on a tablet does not
-                // close the chart the reader is looking at.
-                var pairedSymbol by rememberSaveable { mutableStateOf<String?>(null) }
-                CoineProListDetail(
-                    detail = pairedSymbol?.let { symbol -> { chartPane(symbol, null) } },
-                ) { twoPane ->
-                MarketsScreen(
-                    controller = marketSearchController,
-                    sparklines = sparklineStore,
-                    previewCandles = previewCandles,
-                    // A tap answers the question most taps are asking, for everybody but the reader
-                    // who asked for the whole surface. See `ReaderMode.opensPreviewOnTap`.
-                    //
-                    // And never on two panes (run Ω5): the preview exists because opening a chart
-                    // costs a route and four seconds, and on a tablet it costs neither — the chart
-                    // appears *beside* the list with the list still on screen, which is the preview's
-                    // own argument, better. A sheet over a two-pane layout would cover the answer.
-                    previewOnTap = readerMode.opensPreviewOnTap && !twoPane,
-                    onMilestoneAlert = onMilestoneAlertArmed,
-                    // The day's figures, which is what the gainers, losers and «داغ» tabs are made
-                    // of. Passed as the store rather than a table so the screen starts and stops
-                    // the poll with its own lifetime — it is reference counted, so the heat map
-                    // reading the same table keeps it running when this screen leaves.
-                    tickers = marketTickerStore,
-                    watchlist = watchlist,
-                    watchlistStore = watchlistStore,
-                    watchlistSync = watchlistSyncController,
-                    // Two panes: the chart appears beside the list and the list stays where it
-                    // is. One pane: exactly what it always did. See `CoineProListDetail` — the
-                    // decision is made on the width this layout was given, not on the window.
-                    onOpenSymbol = { symbol ->
-                        if (twoPane) pairedSymbol = symbol else navController.navigate(chartRoute(symbol))
-                    },
-                    onOpenSearch = openSymbolSearch,
-                    // **The day's headlines, above the list** (run ΤΦΥ, U4). Mapped to the plain
-                    // four fields the ticker takes rather than handed the newsroom's own model, so
-                    // the markets surface still owes nothing to `feature:news` — see
-                    // `MarketNewsTicker`. Six, because a seventh is a scroll nobody makes.
-                    headlines = remember(marketIntel.news) {
-                        marketIntel.news.take(TICKER_HEADLINES).map { story ->
-                            MarketHeadline(
-                                id = story.id,
-                                title = story.title,
-                                important = story.impact == MarketImpact.HIGH,
-                            )
-                        }
-                    },
-                    // The story itself, not the news list. See `NEWS_PATTERN`.
-                    onOpenHeadline = { id -> navController.navigate(newsRoute(id)) },
-                    // What is left of Explore, one tap from the surface whose subject they are
-                    // (run ΤΦΥ, U7). The bottom bar is five destinations now and Explore is not
-                    // one of them; its three rooms are all still here.
-                    onOpenNews = { navController.navigate(NEWS_ROUTE) },
-                    onOpenCalendar = { navController.navigate(CALENDAR_ROUTE) },
-                    onOpenHeatmap = { navController.navigate(HEATMAP_ROUTE) },
-                    companion = companionSearchController,
-                    // «تحلیل» on the watchlist tab: the reader's list, side by side (run ΤΦΥ, U6).
-                    onCompare = { symbols -> navController.navigate(compareRoute(symbols)) },
-                    // The same hoisted composer the chart uses, at the price the preview showed —
-                    // the shell's live map carries only the subscribed handful, and looking the
-                    // price up again here would find nothing for most of the list.
-                    onCreateAlert = { symbol, price -> alertFromChart = symbol to price },
-                    // Only when there is something to say. A strip reading «۰ سیگنال باز» is a row
-                    // of chrome reporting the absence of news.
-                    openSignals = signals.items.takeIf { it.isNotEmpty() && !FeatureFlags.storeRestricted }?.let { open ->
-                        MarketsSignalStrip(
-                            count = open.size,
-                            summary = open.take(2).joinToString(" · ") { signal ->
-                                signal.symbol + " " + if (signal.direction == SignalDirection.BUY) "خرید" else "فروش"
-                            },
-                            onClick = { navController.navigate(SIGNALS_ROUTE) },
-                        )
-                    },
-                )
-                }
+                marketsHub()
             }
             sharedComposable(AppDestination.CHART.route) {
                 // The tab opens the reader's own first market, or the platform's first quoted one.
@@ -5144,46 +5215,10 @@ private fun MainShell(
                 )
             }
             composable(HEATMAP_ROUTE) {
-                // The catalogue controller the search screen already uses, rather than a second
-                // one: two would fetch the same several thousand symbols twice and could disagree
-                // about which of them the app has artwork for.
-                // And the candles, because without a bar source the map has no second variable
-                // and draws itself entirely hatched — honest, and useless. `candleGateway` is
-                // whichever one this shell was built with, so the guest's map reads the guest's
-                // candles without a second branch here.
-                HeatmapScreen(
-                    controller = marketSearchController,
-                    onOpenSymbol = { navController.navigate(chartRoute(it)) },
-                    bars = remember(candleGateway) { CandleHeatmapBarSource(candleGateway) },
-                    // The whole catalogue's day in one request, from the store the market list is
-                    // already reading. Reference counted, so the map holds it only while it is
-                    // open — and the candles above stay, for the two figures a rolling
-                    // twenty-four hours cannot carry: the period return and the median daily range.
-                    tickers = remember(marketTickerStore) { MarketTickerHeatmapSource(marketTickerStore) },
-                )
+                heatmapPane()
             }
             composable(SCREENER_ROUTE) {
-                val screenerScope = rememberCoroutineScope()
-                // **The whole width, and no detail pane** (LISTS-02). In a list-detail split the
-                // table was a 360-point strip beside nine hundred points of «یک مورد را انتخاب
-                // کنید» — the reference's screener is a table across the page, and so is this one.
-                // A row opens the chart as a page; the back arrow returns to the same scroll and
-                // the same filters.
-                run {
-                    ScreenerScreen(
-                        controller = screenerController,
-                        onOpenSymbol = { navController.navigate(chartRoute(it)) },
-                        onOpenSetup = { symbol, studies, timeframe ->
-                            pendingSetups[symbol] = studies
-                            navController.navigate(chartRoute(symbol, timeframe.wire))
-                        },
-                        // One market at a time, by the row's star (5.19.2) — never the whole table.
-                        watchlisted = watchlist.map(String::uppercase).toSet(),
-                        onToggleWatchlist = { symbol ->
-                            screenerScope.launch { runCatching { watchlistStore.toggle(symbol) } }
-                        },
-                    )
-                }
+                screenerPane()
             }
             composable(TOOLS_ROUTE) {
                 ToolsScreen(
@@ -5288,8 +5323,15 @@ private fun MainShell(
                             if (!accountDeletionAvailable) add("delete")
                             // The store build (5.22.0): see `FeatureFlags.storeRestricted`. The
                             // site row is the other half: the web *is* the site, so it is absent there.
-                            if (FeatureFlags.storeRestricted) addAll(FeatureFlags.STORE_RESTRICTED_SURFACES)
-                            else add("full-site")
+                            if (FeatureFlags.storeRestricted) {
+                                addAll(FeatureFlags.STORE_RESTRICTED_SURFACES)
+                                // The centre tab is the markets hub there, and activity is the
+                                // trading record that build does not keep (5.24.0).
+                                add("markets")
+                                add("activity")
+                            } else {
+                                add("full-site")
+                            }
                             // Both, and for the reason the other call site spells out: a build
                             // that opens no forex account has nothing for copy trading to copy to.
                             if (!tradingOffered(activePlatform)) {
@@ -5305,6 +5347,12 @@ private fun MainShell(
                     avatar = profile.avatar,
                     name = profile.displayName ?: accountName,
                     email = accountEmail,
+                    pro = {
+                        ProCard(
+                            onOpen = { navController.navigate(PRO_ROUTE) },
+                            status = stringResource(R.string.pro_soon),
+                        )
+                    },
                     planLabel = subscription?.planLabel?.takeUnless { FeatureFlags.storeRestricted },
                     platformLabel = stringResource(activePlatform.labelRes()),
                     watchlistCount = activeListSize ?: watchlist.size,
@@ -5376,7 +5424,15 @@ private fun MainShell(
                 )
             }
             composable(TUTORIALS_ROUTE) {
-                CoachLibrary(siteNote = siteNote, onOpenSite = openFullSite)
+                CoachLibrary(
+                    siteNote = siteNote,
+                    onOpenSite = openFullSite,
+                    onOpenAcademy = { navController.navigate(ACADEMY_ROUTE) }.takeIf { hasAcademy },
+                )
+            }
+            composable(PRO_ROUTE) {
+                // Null until payment opens: every plan says «به‌زودی» (5.24.0).
+                ProScreen(onBuy = onBuyPro.takeIf { FeatureFlags.billingLive })
             }
             composable(FULL_SITE_ROUTE) {
                 // Reached only by a restored back stack or a link; the menu opens the browser itself.

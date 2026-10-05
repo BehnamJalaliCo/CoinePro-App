@@ -65,6 +65,12 @@ data class MenuEntry(
     val platform: MarketPlatform? = null,
     val account: Boolean = false,
     val destructive: Boolean = false,
+    /**
+     * Whether the menu draws it (5.24.0). False for a row that only repeated a door the reader
+     * already has — a bottom-bar tab, a face of the markets hub, a row of the profile. It stays in
+     * [MenuCatalogue.ALL] so search, routes and deep links still know it.
+     */
+    val directory: Boolean = true,
 )
 
 /**
@@ -126,12 +132,14 @@ object MenuCatalogue {
             titleRes = R.string.menu_watchlist_title,
             icon = DesignR.drawable.icon_star,
             group = MenuGroup.MARKET,
+            directory = false,
         ),
         MenuEntry(
             id = "search",
             titleRes = R.string.menu_search_title,
             icon = CoineProIcons.Search,
             group = MenuGroup.MARKET,
+            directory = false,
         ),
         MenuEntry(
             id = "screener",
@@ -139,12 +147,14 @@ object MenuCatalogue {
             bodyRes = DesignR.string.feature_screener_body,
             icon = CoineProIcons.Filter,
             group = MenuGroup.MARKET,
+            directory = false,
         ),
         MenuEntry(
             id = "heatmap",
             titleRes = R.string.menu_heatmap_title,
             icon = CoineProIcons.Heatmap,
             group = MenuGroup.MARKET,
+            directory = false,
         ),
         // The full list, which stopped being a tab when Explore took that position. Explore's own
         // «همه‌ی بازارها» is the primary door; this is the second one, because a reader looking for a
@@ -160,6 +170,7 @@ object MenuCatalogue {
             titleRes = R.string.menu_explore_title,
             icon = CoineProIcons.Explore,
             group = MenuGroup.MARKET,
+            directory = false,
         ),
         MenuEntry(
             id = "news",
@@ -235,6 +246,7 @@ object MenuCatalogue {
             titleRes = R.string.menu_studio_title,
             icon = DesignR.drawable.tv_pencil,
             group = MenuGroup.ANALYSIS,
+            directory = false,
         ),
         MenuEntry(
             id = "backtest",
@@ -253,6 +265,7 @@ object MenuCatalogue {
             titleRes = R.string.menu_tools_title,
             icon = CoineProIcons.Tools,
             group = MenuGroup.ANALYSIS,
+            directory = false,
         ),
         MenuEntry(
             id = "ai-vision",
@@ -300,6 +313,7 @@ object MenuCatalogue {
             group = MenuGroup.LEARN,
             platform = MarketPlatform.COINEPRO_FX,
             account = true,
+            directory = false,
         ),
         // The app's own board, on both platforms and for a guest: it belongs to neither account.
         // Reading needs nothing; writing needs a display name the screen asks for itself.
@@ -308,6 +322,7 @@ object MenuCatalogue {
             titleRes = R.string.menu_community_title,
             icon = CoineProIcons.Community,
             group = MenuGroup.LEARN,
+            directory = false,
         ),
         // The coach's library (5.21.0): every tip the app teaches once, playable again, and the
         // switch that brings them all back. See `CoineProCoach`.
@@ -346,6 +361,7 @@ object MenuCatalogue {
             titleRes = R.string.menu_home_title,
             icon = CoineProIcons.Home,
             group = MenuGroup.ACCOUNT,
+            directory = false,
         ),
         MenuEntry(
             id = "profile",
@@ -379,6 +395,7 @@ object MenuCatalogue {
             titleRes = R.string.menu_notifications_title,
             icon = CoineProIcons.Settings,
             group = MenuGroup.ACCOUNT,
+            directory = false,
         ),
         // Last, and drawn in the refusal colour. The one row here that cannot be undone.
         MenuEntry(
@@ -443,7 +460,8 @@ object MenuCatalogue {
         catalogue: List<MenuEntry> = ALL,
     ): List<MenuSection> {
         val reachable = catalogue.filter { entry ->
-            (entry.platform == null || entry.platform == access.platform) && entry.id !in access.absent
+            entry.directory &&
+                (entry.platform == null || entry.platform == access.platform) && entry.id !in access.absent
         }
         return MenuGroup.entries.mapNotNull { group ->
             val items = reachable

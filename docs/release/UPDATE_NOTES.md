@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.24.0
+
+**fa**
+
+> منو خلوت‌تر شد: هر امکان فقط یک در دارد و ردیف‌های تکراری حذف شدند. بازارها، هیت‌مپ و اسکرینر حالا یک صفحه با سه زبانه‌اند. کارت «پرو چارت پرو» به منو آمد و فعلاً همه‌ی ابزارها رایگان‌اند. در نسخه‌ی اندروید، وسط نوار پایین «بازارها» است.
+
+**en**
+
+> The menu is calmer: every feature has one door and the repeated rows are gone. Markets, the heat map and the screener are now one page with three tabs. A Pro Chart Pro card is in the menu, and every tool is still free. On Android, the centre of the bottom bar is Markets.
+
+---
+
 ## 5.23.1
 
 **fa**

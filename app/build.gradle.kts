@@ -11,6 +11,10 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+/** Cafe Bazaar's in-app billing key for `com.coinepro.app`. Public: see the BuildConfig field. */
+val BAZAAR_RSA_PUBLIC_KEY =
+    "MIHNMA0GCSqGSIb3DQEBAQUAA4G7ADCBtwKBrwDCgeMjZEs5+IMfa03SQuNUCT/fycycUhaiqw/FDuBrvKqKwVMX2MIHM7B9Gr1i3+lVZsswSrdmAlOmCwnef06w7ueF8/hUo+u0dneO4S7r41G1CnCWpqiO9Jmslg4Os2Vu185/rrUxbvJD+9RmEqjEAzbnhFfc+Md536rF0sdfZ6OOIZhWD09Lot3TzZcbWqVKXpuzRkrckm4HSSs5wasFwBSjor8iltWKK5JHSm8CAwEAAQ=="
+
 /**
  * Firebase, only where it is actually configured.
  *
@@ -329,6 +333,10 @@ android {
         // Empty is a legitimate answer and means this build has no key in its admin door at all —
         // `AdminGate` then refuses every attempt, which is what a clone of this repository should
         // produce rather than a panel anybody can open.
+        // Cafe Bazaar's public key for this package's in-app billing (5.24.0). A public key, so it
+        // is in the source; Poolakey checks each purchase's signature against it on the phone, and
+        // the server checks the purchase with the store again before it writes a period.
+        buildConfigField("String", "BAZAAR_RSA_PUBLIC_KEY", "\"$BAZAAR_RSA_PUBLIC_KEY\"")
         buildConfigField(
             "String",
             "ADMIN_USERNAME",
@@ -588,6 +596,9 @@ val expectedSigners = (releaseSignerFingerprints() + extraExpectedSigners.split(
 }
 
 dependencies {
+    // Cafe Bazaar's billing (5.24.0): Pro's subscriptions in the store build. Off until
+    // `FeatureFlags.billingLive`; see `billing/BazaarBilling.kt`.
+    implementation(libs.poolakey)
     implementation(project(":core:auth"))
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services)
@@ -712,3 +723,4 @@ tasks.named("preBuild") {
     dependsOn(rootProject.tasks.named("checkStrayAssets"))
     dependsOn(rootProject.tasks.named("checkDefaultLocaleIsEnglish"))
 }
+

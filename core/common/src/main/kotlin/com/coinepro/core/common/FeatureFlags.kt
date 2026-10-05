@@ -112,6 +112,12 @@ object FeatureFlags {
      */
     var desktopShellLtr: Boolean = false
 
+    /**
+     * Whether Pro can be bought (5.24.0). Off: the Pro page shows «به‌زودی» on every plan and every
+     * tool stays free. Turned on together with the server's `PAYWALL_ENABLED`.
+     */
+    const val billingLive: Boolean = false
+
     /** Puts them all back, for a test that changed one. */
     fun reset() {
         forexTrading = FOREX_TRADING_DEFAULT

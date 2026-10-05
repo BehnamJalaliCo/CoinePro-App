@@ -271,6 +271,12 @@ object AppModule {
     fun entitlementsGateway(@CryptoPlatform retrofit: Retrofit): EntitlementsGateway =
         NetworkEntitlementsGateway.create(retrofit, MarketPlatform.TRADEYAR)
 
+    /** Pro's proof of payment, to the same deployment that answers `entitlements` (5.24.0). */
+    @Provides
+    @Singleton
+    fun paymentsGateway(@CryptoPlatform retrofit: Retrofit): com.coinepro.core.account.PaymentsGateway =
+        com.coinepro.core.account.NetworkPaymentsGateway.create(retrofit)
+
     /**
      * One log for both platforms, with each entry naming which one made the call.
      *

@@ -21,6 +21,27 @@ class MenuCatalogueTest {
     private fun ids(access: MenuAccess): List<String> =
         MenuCatalogue.sections(access).flatMap { section -> section.items.map { it.entry.id } }
 
+    /**
+     * The platform rule on its own, with every row drawn: the academy is the one platform-scoped
+     * row and it is not in the directory any more (5.24.0) — it is reached from «آموزش‌ها».
+     */
+    private fun platformIds(access: MenuAccess): List<String> =
+        MenuCatalogue.sections(access, MenuCatalogue.ALL.map { it.copy(directory = true) })
+            .flatMap { section -> section.items.map { it.entry.id } }
+
+    @Test
+    fun `no row repeats a door the reader already has`() {
+        // 5.24.0: the bar's tabs, the faces of the markets hub and the profile's own rows.
+        val drawn = ids(MenuAccess(platform = MarketPlatform.COINEPRO_FX, signedIn = true))
+        listOf(
+            "watchlist", "community", "home", "search", "explore", "heatmap", "screener",
+            "tools", "chart-studio", "academy", "notifications",
+        ).forEach { id -> assertFalse("«$id» is drawn twice", id in drawn) }
+        listOf("watchlist", "screener", "academy").forEach { id ->
+            assertTrue("«$id» left the catalogue — search and deep links lose it", MenuCatalogue.ALL.any { it.id == id })
+        }
+    }
+
     @Test
     fun `every id is unique`() {
         val ids = MenuCatalogue.ALL.map { it.id }
@@ -48,7 +69,7 @@ class MenuCatalogueTest {
         // is not a row this reader is missing — it is a room that does not exist on their side, and
         // the calendar is the case: TradeYar publishes no calendar route at all.
         val expected = MenuCatalogue.ALL
-            .filter { it.group == MenuGroup.MARKET }
+            .filter { it.group == MenuGroup.MARKET && it.directory }
             .filter { it.platform == null || it.platform == member.platform }
             .map { it.id }
         assertEquals(expected, market.items.map { it.entry.id })
@@ -60,8 +81,8 @@ class MenuCatalogueTest {
         // an absent one says nothing, which is the only honest thing to say about a feature the
         // reader's platform does not have. The academy and copy trading are the cases — see below.
         val forex = MenuAccess(platform = MarketPlatform.COINEPRO_FX, signedIn = true)
-        assertTrue("academy" !in ids(member))
-        assertTrue("academy" in ids(forex))
+        assertTrue("academy" !in platformIds(member))
+        assertTrue("academy" in platformIds(forex))
     }
 
     @Test
@@ -109,10 +130,10 @@ class MenuCatalogueTest {
             .filterNot { it.locked }
             .map { it.entry.id }
         listOf(
-            "watchlist", "search", "screener", "heatmap", "news",
+            "markets", "news", "calendar",
             "paper-trade", "journal",
-            "chart-studio", "backtest", "alerts", "tools",
-            "safety", "profile", "notifications",
+            "backtest", "alerts",
+            "tutorials", "safety", "profile",
         ).forEach { id -> assertTrue(id, id in open) }
     }
 
@@ -128,11 +149,11 @@ class MenuCatalogueTest {
     fun `a platform that does not serve a surface is not offered it`() {
         // The academy is a CoinePro-FX route; TradeYar does not have it. Copy trading was the
         // other such row until run Ψ, and it is not a platform's now — it is nobody's.
-        assertFalse("academy" in ids(member))
+        assertFalse("academy" in platformIds(member))
         assertFalse("copy-trade" in ids(member))
 
         val fx = MenuAccess(platform = MarketPlatform.COINEPRO_FX, signedIn = true)
-        assertTrue("academy" in ids(fx))
+        assertTrue("academy" in platformIds(fx))
         assertFalse("copy-trade" in ids(fx))
     }
 

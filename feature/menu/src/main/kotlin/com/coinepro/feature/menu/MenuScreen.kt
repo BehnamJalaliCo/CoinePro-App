@@ -109,6 +109,8 @@ fun MenuScreen(
      * the screenshot tests get.
      */
     appearance: (@Composable () -> Unit)? = null,
+    /** The Pro card (5.24.0), under who the reader is. The shell draws it; null draws nothing. */
+    pro: (@Composable () -> Unit)? = null,
 ) {
     val sections = remember(access) { MenuCatalogue.sections(access) }
 
@@ -129,6 +131,8 @@ fun MenuScreen(
                 onOpenProfile = { onOpen("profile") },
             )
         }
+
+        pro?.let { card -> item(key = "pro") { card() } }
 
         // **What this app is, in one sentence** (run Τ2, item B10).
         //
