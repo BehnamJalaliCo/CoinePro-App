@@ -34,8 +34,8 @@ import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.proseDigits
 
 /**
- * «پرو چارت پرو» (5.24.0): what Pro raises, the three plans, and — until payment opens — a plain
- * «به‌زودی» where the button will be.
+ * «پرو چارت پرو» (5.24.0): what Pro raises, the three plans, and the button that buys one — Cafe
+ * Bazaar on the phone, USDT on the site (5.25.0). Where a build sells nothing, a plain «به‌زودی».
  *
  * Everything is free today, and the page says so first: a reader who opens it learns what Pro will
  * add, not that something they use now is about to be taken away. Nothing here names a signal, an
@@ -44,12 +44,17 @@ import com.coinepro.core.designsystem.proseDigits
  * @param onBuy starts a purchase of one plan id (`monthly`, `quarterly`, `yearly`), or null while
  *   payment is not open on this build — then every plan shows «به‌زودی».
  * @param activeUntil the end of a running subscription, already formatted, or null.
+ * @param prices each plan's price as this build sells it, by plan id — USDT on the site (5.25.0).
+ *   A plan missing here shows its toman price, which is what Cafe Bazaar charges.
+ * @param note one line under the plans — why the button asks for a sign-in, say — or null.
  */
 @Composable
 fun ProScreen(
     onBuy: ((String) -> Unit)?,
     modifier: Modifier = Modifier,
     activeUntil: String? = null,
+    prices: Map<String, String> = emptyMap(),
+    note: String? = null,
 ) {
     Column(
         modifier = modifier
@@ -59,8 +64,10 @@ fun ProScreen(
             .padding(horizontal = CoineProSpacing.Gutter, vertical = CoineProSpacing.Two),
         verticalArrangement = Arrangement.spacedBy(CoineProSpacing.Two),
     ) {
-        ProHero(subtitle = activeUntil?.let { stringResource(R.string.pro_active_until, it) }
-            ?: stringResource(R.string.pro_lead))
+        ProHero(
+            subtitle = activeUntil?.let { stringResource(R.string.pro_active_until, it) }
+                ?: stringResource(if (onBuy != null) R.string.pro_lead_open else R.string.pro_lead),
+        )
 
         // Free against Pro, four rows. Prose counts, so Persian digits.
         Column(
@@ -80,7 +87,11 @@ fun ProScreen(
         }
 
         PLANS.forEach { plan ->
-            PlanRow(plan = plan, onBuy = onBuy?.let { buy -> { buy(plan.id) } })
+            PlanRow(plan = plan, price = prices[plan.id], onBuy = onBuy?.let { buy -> { buy(plan.id) } })
+        }
+
+        note?.let {
+            Text(text = it, style = MaterialTheme.typography.bodyMedium, color = CoineProColors.TextSecondary)
         }
 
         Text(
@@ -174,7 +185,7 @@ private fun LimitRow(label: String, free: String, pro: String, header: Boolean =
 }
 
 @Composable
-private fun PlanRow(plan: ProPlan, onBuy: (() -> Unit)?) {
+private fun PlanRow(plan: ProPlan, price: String?, onBuy: (() -> Unit)?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -186,7 +197,7 @@ private fun PlanRow(plan: ProPlan, onBuy: (() -> Unit)?) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(stringResource(plan.title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = CoineProColors.TextPrimary)
-            Text(stringResource(plan.price), style = MaterialTheme.typography.bodyMedium, color = CoineProColors.TextSecondary)
+            Text(price ?: stringResource(plan.price), style = MaterialTheme.typography.bodyMedium, color = CoineProColors.TextSecondary)
         }
         Text(
             text = stringResource(if (onBuy != null) R.string.pro_buy else R.string.pro_soon),

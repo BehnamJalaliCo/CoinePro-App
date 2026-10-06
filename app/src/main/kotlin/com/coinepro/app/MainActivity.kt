@@ -213,7 +213,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var paymentsGateway: com.coinepro.core.account.PaymentsGateway
     @Inject lateinit var entitlementStartUp: EntitlementStartUp
 
-    /** Pro through Cafe Bazaar (5.24.0); null until `FeatureFlags.billingLive`. */
+    /** Pro through Cafe Bazaar (5.24.0); on since 5.25.0, null only if `FeatureFlags.billingLive` is off. */
     private var bazaarBilling: com.coinepro.app.billing.BazaarBilling? = null
     @Inject lateinit var platformSessions: PlatformSessions
     @Inject lateinit var platformCapabilities: PlatformCapabilities
@@ -468,6 +468,7 @@ class MainActivity : FragmentActivity() {
                 appLog = appLog,
                 appUpdateGateway = appUpdateGateway,
                 onBuyPro = bazaarBilling?.let { billing -> billing::buy },
+                payments = paymentsGateway,
                 platformSessions = platformSessions,
                 platformCapabilities = platformCapabilities,
                 marketDataCache = marketDataCache,

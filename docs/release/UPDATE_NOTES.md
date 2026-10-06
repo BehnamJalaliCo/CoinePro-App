@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.25.0
+
+**fa**
+
+> خرید پرو باز شد. در اپ با پرداخت بازار و در سایت با تتر روی شبکه‌ی BEP20: مبلغ و آدرس را کپی کنید، تتر را بفرستید و شناسه‌ی تراکنش را بگذارید تا پرو بعد از تأیید شبکه فعال شود. همه‌ی ابزارها همچنان برای همه رایگان است.
+
+**en**
+
+> Pro is on sale: through Cafe Bazaar in the app, and in USDT on BEP20 on the site. Copy the amount and address, send the USDT and paste the transaction hash; Pro turns on once the network confirms it. Every tool is still free for everyone.
+
+---
+
 ## 5.24.3
 
 **fa**

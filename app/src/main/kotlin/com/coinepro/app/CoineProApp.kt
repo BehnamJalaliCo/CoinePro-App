@@ -165,7 +165,7 @@ import com.coinepro.core.datastore.ThemeMode
 import com.coinepro.app.ideas.IdeasScreen
 import com.coinepro.app.ideas.MarketsHub
 import com.coinepro.app.pro.ProCard
-import com.coinepro.app.pro.ProScreen
+import com.coinepro.app.pro.ProRoute
 import com.coinepro.core.datastore.UserPreferencesStore
 import com.coinepro.core.datastore.StoredProfile
 import com.coinepro.core.datastore.LastVisitStore
@@ -1155,6 +1155,8 @@ fun CoineProApp(
     appUpdateGateway: AppUpdateGateway? = null,
     /** Starts a Pro purchase for one plan id, or null where this build sells nothing yet. */
     onBuyPro: ((String) -> Unit)? = null,
+    /** Pro's plans, period and the site's USDT claim (5.25.0). Null in previews and tests. */
+    payments: com.coinepro.core.account.PaymentsGateway? = null,
     platformSessions: PlatformSessions,
     platformCapabilities: PlatformCapabilities,
     marketDataCache: MarketDataCache,
@@ -1720,6 +1722,8 @@ fun CoineProApp(
                 appLog = appLog,
                 appUpdateGateway = appUpdateGateway,
                 onBuyPro = onBuyPro,
+                payments = payments,
+                proAccount = sessionStates[MarketPlatform.TRADEYAR] is SessionState.SignedIn,
                 hub = hub,
                 hubActions = hubActions,
                 briefing = briefingState.toHomeBriefing(briefingReadAt),
@@ -1983,6 +1987,7 @@ fun CoineProApp(
                         appLog = appLog,
                         appUpdateGateway = appUpdateGateway,
                         onBuyPro = onBuyPro,
+                        payments = payments,
                         hub = hub,
                         hubActions = hubActions,
                         briefing = HomeBriefing.Resting,
@@ -2314,6 +2319,10 @@ private fun MainShell(
     appUpdateGateway: AppUpdateGateway? = null,
     /** Starts a Pro purchase for one plan id, or null where this build sells nothing yet. */
     onBuyPro: ((String) -> Unit)? = null,
+    /** Pro's plans, period and the site's USDT claim (5.25.0). Null in previews and tests. */
+    payments: com.coinepro.core.account.PaymentsGateway? = null,
+    /** Whether the reader holds the TradeYar session Pro is bought on (5.25.0). */
+    proAccount: Boolean = false,
     hub: ControlHub,
     hubActions: HubActions,
     briefing: HomeBriefing,
@@ -5368,7 +5377,7 @@ private fun MainShell(
                     pro = {
                         ProCard(
                             onOpen = { navController.navigate(PRO_ROUTE) },
-                            status = stringResource(R.string.pro_soon),
+                            status = stringResource(if (FeatureFlags.billingLive) R.string.pro_buy else R.string.pro_soon),
                         )
                     },
                     planLabel = subscription?.planLabel?.takeUnless { FeatureFlags.storeRestricted },
@@ -5449,8 +5458,13 @@ private fun MainShell(
                 )
             }
             composable(PRO_ROUTE) {
-                // Null until payment opens: every plan says «به‌زودی» (5.24.0).
-                ProScreen(onBuy = onBuyPro.takeIf { FeatureFlags.billingLive })
+                // Cafe Bazaar where the build has it, USDT on the site (5.25.0).
+                ProRoute(
+                    payments = payments,
+                    onBuyInStore = onBuyPro,
+                    account = proAccount,
+                    onSignIn = onSignIn.takeIf { guest },
+                )
             }
             composable(FULL_SITE_ROUTE) {
                 // Reached only by a restored back stack or a link; the menu opens the browser itself.

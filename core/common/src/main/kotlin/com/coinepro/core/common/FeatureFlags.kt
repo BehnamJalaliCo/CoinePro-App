@@ -113,10 +113,13 @@ object FeatureFlags {
     var desktopShellLtr: Boolean = false
 
     /**
-     * Whether Pro can be bought (5.24.0). Off: the Pro page shows «به‌زودی» on every plan and every
-     * tool stays free. Turned on together with the server's `PAYWALL_ENABLED`.
+     * Whether Pro can be bought (5.24.0; on since 5.25.0 — Cafe Bazaar on the phone, USDT on the
+     * site). Off: the Pro page shows «به‌زودی» on every plan.
+     *
+     * Not the paywall. Buying is open while the server's `PAYWALL_ENABLED` is still off, so every
+     * tool stays free for everybody and a buyer's period is already running when the limits arrive.
      */
-    const val billingLive: Boolean = false
+    const val billingLive: Boolean = true
 
     /** Puts them all back, for a test that changed one. */
     fun reset() {

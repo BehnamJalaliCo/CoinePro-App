@@ -263,6 +263,8 @@ fun WebApp() {
                         adminController = WebGraph.adminController,
                         appLog = WebGraph.appLog,
                         appUpdateGateway = WebGraph.appUpdateGateway,
+                        // The site sells Pro for USDT (5.25.0); there is no store in a browser.
+                        payments = WebGraph.paymentsGateway,
                         platformSessions = WebGraph.platformSessions,
                         platformCapabilities = WebGraph.platformCapabilities,
                         marketDataCache = WebGraph.marketDataCache,
