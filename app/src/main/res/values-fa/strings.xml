@@ -61,7 +61,7 @@
     <string name="usdt_failed">این پرداخت بررسی نشد. لطفاً یک دقیقه‌ی دیگر دوباره امتحان کنید.</string>
     <string name="usdt_hash_invalid">شناسه‌ی تراکنش BSC با 0x شروع می‌شود و ۶۴ نویسه دارد.</string>
     <string name="usdt_sign_in">پرو روی حساب کریپتوی شما ثبت می‌شود. اول وارد آن شوید و بعد خرید کنید.</string>
-    <string name="pro_link_explained">پرو روی حساب کریپتو ثبت می‌شود. با زدن «خرید»، حساب کریپتو با همین ایمیل باز یا ساخته می‌شود و خرید ادامه پیدا می‌کند.</string>
+    <string name="pro_link_explained">پرو روی حساب کریپتو ثبت می‌شود. اگر با همین ایمیل حساب کریپتو دارید، «خرید» به همان وصل می‌شود و اگر ندارید، ساخته می‌شود؛ بعد خرید ادامه پیدا می‌کند.</string>
     <string name="pro_link_running">در حال اتصال حساب کریپتو…</string>
     <string name="pro_link_failed">حساب کریپتو وصل نشد. لطفاً یک دقیقه‌ی دیگر دوباره امتحان کنید.</string>
     <string name="hub_markets">بازارها</string>

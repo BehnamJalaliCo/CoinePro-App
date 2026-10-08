@@ -150,7 +150,7 @@ class ProCheckoutTest {
         }
         composeRule.waitForIdle()
         composeRule.onNodeWithText(
-            "Pro is held on a crypto account. Buying opens the crypto account with this same email — or creates it — and then continues.",
+            "Pro is held on a crypto account. If you have one with this email, Buy connects to it; if not, one is created — then the purchase continues.",
         ).assertIsDisplayed()
 
         composeRule.onNodeWithTag("pro-buy-monthly").performClick()
