@@ -78,6 +78,22 @@ class GuestTokenStoreTest {
         val failure = runCatching { store.token() }
         assertTrue(failure.isFailure)
     }
+
+    @Test
+    fun `a failed mint is not retried by every request that follows it`() = runTest {
+        // 5.25.1: ten 502s and four 429s in one opening, one per candle request.
+        var now = 0L
+        val api = CountingApi(GuestTokenDto(token = null))
+        val store = NetworkGuestTokenStore.forTest(api) { now }
+
+        repeat(10) { runCatching { store.token() } }
+        assertEquals(1, api.calls)
+
+        now += 16_000
+        api.next = GuestTokenDto(token = "t1", expiresIn = 7_200)
+        assertEquals("t1", store.token())
+        assertEquals(2, api.calls)
+    }
 }
 
 private class CountingApi(var next: GuestTokenDto) : GuestTokenApi {

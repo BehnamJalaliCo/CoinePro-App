@@ -373,7 +373,11 @@ internal data class WatchlistFigures(
  */
 internal fun figuresFor(row: MarketSearchRow, line: List<Double>): WatchlistFigures {
     val price = row.quote?.price
+    // The feed's own day change where it sent one; otherwise the spark line's, which is the last
+    // day of M30 closes beside it (5.25.2). Every signed-in quote arrives without a change, so this
+    // column read «–» on every row, crypto and forex alike.
     val percent = row.quote?.changePercent
+        ?: line.takeIf { it.size >= 2 && it.first() > 0.0 }?.let { (it.last() / it.first() - 1.0) * 100.0 }
     val open = if (price != null && percent != null && percent != -100.0) {
         price / (1.0 + percent / 100.0)
     } else {
@@ -419,13 +423,16 @@ internal fun WatchlistFigureCell(
     val density = listDensity()
     if (column == WatchlistColumn.SPARKLINE) {
         // The day's line in the move's colour, with the wash under it. 52×24, as the reference.
-        val rising = (figures.changePercent ?: 0.0) >= 0.0
+        // The way the line went when no change is known, never «up» by default (5.25.2): a fall
+        // was being drawn green.
+        val direction = figures.changePercent
+            ?: figures.line.takeIf { it.size >= 2 }?.let { it.last() - it.first() }
         val size = modifier.width(widthOf(column)).height(if (density.singleLine) 18.dp else SPARKLINE_HEIGHT)
         // Still on its way (LISTS-22): the design system's pending rule, so a line that is loading
         // does not look exactly like a market that will never have one.
         CoineProSparkline(
             values = figures.line,
-            colour = if (rising) CoineProColors.MarketUp else CoineProColors.MarketDown,
+            colour = CoineProColors.marketMove(direction),
             fill = true,
             pending = figures.line.size < 2 && figures.linePending,
             modifier = size,

@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.25.2
+
+**fa**
+
+> قیمت کریپتو حالا برای حساب فارکس هم، پیش از وصل شدن حساب کریپتو، نشان داده می‌شود. ستون «تغییر ٪» از نمودار کوچک هر نماد پر می‌شود و رنگ نمودار کوچک با جهت قیمت یکی است. درخواست‌های تکراری و بی‌نتیجه هم کمتر شد.
+
+**en**
+
+> Crypto prices now show for a forex account too, before a crypto account is connected. The change column fills from each row's spark line, and the spark line is coloured by the way the price went. Repeated requests that could not succeed are fewer.
+
+---
+
 ## 5.25.1
 
 **fa**

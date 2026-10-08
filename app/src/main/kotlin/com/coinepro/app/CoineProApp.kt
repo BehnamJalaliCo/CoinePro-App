@@ -1287,6 +1287,21 @@ fun CoineProApp(
     // a second-by-second update would buy nothing and would be continuous motion for its own sake.
     val briefingReadAt = remember(briefingState) { System.currentTimeMillis() / 1_000 }
     val scope = rememberCoroutineScope()
+    // Crypto prices for a reader with no TradeYar session (5.25.2): the public prices route, as the
+    // guest shell reads it. The signed-in crypto controllers read `ws/snapshot` with a TradeYar
+    // token, and a reader whose one account is on CoinePro-FX saw «–» on every coin.
+    val publicCryptoFeed = remember(guestGateway, scope) { GuestPriceFeed(guestGateway, scope) }
+    val publicCryptoSearch = remember(guestGateway, scope, publicCryptoFeed) {
+        MarketSearchController(
+            gateway = GuestMarketCatalogGateway(guestGateway),
+            scope = scope,
+            liveQuotes = publicCryptoFeed.quotes,
+            universe = BundledSymbolUniverseGateway,
+        )
+    }
+    val searchFor: (MarketPlatform) -> MarketSearchController? = { platform ->
+        if (platform == MarketPlatform.TRADEYAR && !cryptoSignedIn) publicCryptoSearch else marketSearchControllers[platform]
+    }
     val signedIn = session is SessionState.SignedIn
     // Signed in on the platform on screen, not merely somewhere (5.25.1). The account, push and
     // preference reads go to `activePlatform`'s server with that server's token; a reader whose one
@@ -1689,9 +1704,9 @@ fun CoineProApp(
                 guestController = guestController,
                 membershipController = membershipController,
                 marketState = marketState,
-                marketSearchController = marketSearchController,
+                marketSearchController = searchFor(activePlatform) ?: marketSearchController,
                 companionSearchController = MarketPlatform.entries.firstOrNull { it != activePlatform }
-                    ?.let(marketSearchControllers::get),
+                    ?.let(searchFor),
                 screenerController = screenerController,
                 // By the symbol, not the tab (5.24.3): the watchlist spans both platforms. A reader
                 // with no TradeYar session reads crypto bars from the public route (5.25.1); the
@@ -1811,11 +1826,22 @@ fun CoineProApp(
                 onOpenNotificationSettings = onOpenNotificationSettings,
                 onSendFeedback = onSendFeedback,
                 onMarketRetry = marketDataController::retry,
-                onSubscribeSymbols = marketDataController::subscribe,
+                onSubscribeSymbols = { symbols ->
+                    marketDataController.subscribe(symbols)
+                    if (!cryptoSignedIn) {
+                        publicCryptoFeed.subscribe(symbols.filter { belongsTo(it, MarketPlatform.TRADEYAR) })
+                    }
+                },
                 // The socket the watchlist is already running, as the chart's ticks. Keyed on the
                 // controller so switching platform hands the chart the feed for the markets it is
                 // now drawing rather than a forex socket under a crypto chart.
-                chartTicks = remember(marketDataController) { marketDataController.chartTicks() },
+                chartTicks = remember(marketDataController, cryptoSignedIn, activePlatform, publicCryptoFeed) {
+                    if (!cryptoSignedIn && activePlatform == MarketPlatform.TRADEYAR) {
+                        publicCryptoFeed.chartTicks()
+                    } else {
+                        marketDataController.chartTicks()
+                    }
+                },
                 startRoute = startRoute ?: AppDestination.WATCHLIST.route,
                 onRootVisited = onRootVisited,
                 platforms = activePlatformStore.available,

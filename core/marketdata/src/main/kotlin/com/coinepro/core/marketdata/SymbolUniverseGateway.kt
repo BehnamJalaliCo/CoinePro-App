@@ -90,10 +90,10 @@ internal interface SymbolUniverseApi {
  * prefix its nginx owns, and one hard-coded path means the universe on one platform never fills.
  */
 internal fun MarketPlatform.universePath(): String? = when (this) {
-    // Nothing on CoinePro-FX serves a universe (5.25.1): `v1/symbols` was a 404 on every refresh
-    // after sign-in. The catalogue below is its list; asking first only cost a request.
-    MarketPlatform.COINEPRO_FX -> null
-    MarketPlatform.TRADEYAR -> "api/mobile/v1/symbols"
+    // Neither backend serves a universe (5.25.1, 5.25.2): `v1/symbols` was a 404 on CoinePro-FX,
+    // and `api/mobile/v1/symbols` one on TradeYar, on every refresh. The catalogue below is each
+    // platform's list; asking first only cost a request. A route that arrives goes back here.
+    MarketPlatform.COINEPRO_FX, MarketPlatform.TRADEYAR -> null
 }
 
 class NetworkSymbolUniverseGateway private constructor(

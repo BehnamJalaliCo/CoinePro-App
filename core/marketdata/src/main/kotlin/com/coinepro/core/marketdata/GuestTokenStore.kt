@@ -64,14 +64,40 @@ class NetworkGuestTokenStore private constructor(
     @Volatile
     private var expiresAtMillis: Long = 0
 
+    /**
+     * No new mint before this (5.25.2). A refused or failed mint used to be retried by the very
+     * next candle request, and a page of forty rows asked forty times: the 5.25.1 check counted
+     * ten 502s and then four 429s from this route in one opening, while CoinePro-FX restarted.
+     */
+    @Volatile
+    private var quietUntilMillis: Long = 0
+
+    @Volatile
+    private var backoffMillis: Long = FIRST_BACKOFF_MS
+
     override suspend fun token(): String {
         current()?.let { return it }
-        return lock.withLock { current() ?: mint() }
+        return lock.withLock {
+            current() ?: run {
+                if (nowMillis() < quietUntilMillis) error("guest token mint backing off")
+                try {
+                    mint().also { backoffMillis = FIRST_BACKOFF_MS }
+                } catch (error: kotlinx.coroutines.CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    quietUntilMillis = nowMillis() + backoffMillis
+                    backoffMillis = (backoffMillis * 2).coerceAtMost(MAX_BACKOFF_MS)
+                    throw error
+                }
+            }
+        }
     }
 
     override fun clear() {
         held = null
         expiresAtMillis = 0
+        quietUntilMillis = 0
+        backoffMillis = FIRST_BACKOFF_MS
     }
 
     private fun current(): String? =
@@ -95,6 +121,10 @@ class NetworkGuestTokenStore private constructor(
 
         /** Renewed this long before it dies, so a request in flight cannot straddle the boundary. */
         private const val RENEW_MARGIN_MS = 2 * 60 * 1_000L
+
+        /** The first pause after a failed mint, doubled on each further failure up to [MAX_BACKOFF_MS]. */
+        private const val FIRST_BACKOFF_MS = 15_000L
+        private const val MAX_BACKOFF_MS = 5 * 60 * 1_000L
 
         /** Well under the stated two hours, for a response that omitted the lifetime. */
         private const val FALLBACK_SECONDS = 30 * 60L

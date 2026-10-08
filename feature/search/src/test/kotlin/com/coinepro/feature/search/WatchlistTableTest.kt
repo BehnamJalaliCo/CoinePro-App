@@ -50,6 +50,15 @@ class WatchlistTableTest {
     }
 
     @Test
+    fun `with no change from the feed, the change is the spark line's own`() {
+        // 5.25.2: every signed-in quote arrives without a change, and the column read «–» on every row.
+        val figures = figuresFor(row("XAUUSD", price = 95.0, percent = null), listOf(100.0, 98.0, 95.0))
+
+        assertEquals(-5.0, figures.changePercent!!, 1e-9)
+        assertEquals(-5.0, figures.change!!, 1e-9)
+    }
+
+    @Test
     fun `the day high and low come from the same series the sparkline draws`() {
         val figures = figuresFor(
             row("BTCUSDT", price = 105.0, percent = 5.0),
