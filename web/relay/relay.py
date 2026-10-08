@@ -75,9 +75,11 @@ FORWARDED_REQUEST_HEADERS = (
 RETURNED_RESPONSE_HEADERS = ("Content-Type", "Retry-After", "X-Request-Id")
 
 # Where each backend hands out tokens (`AuthPaths` in core/auth, `EndpointCatalog` in
-# core/diagnostics): sign-in, sign-up verification, Google, Telegram, guest, refresh.
+# core/diagnostics): sign-in, sign-up verification, Google, Telegram, guest, refresh — and the
+# forex-to-crypto link (5.25.1), which mints a TradeYar session like a sign-in does and was handing
+# the browser the real tokens.
 AUTH_ISSUING = re.compile(
-    r"^(api/mobile/v1/auth/(login|refresh|register/verify|google)"
+    r"^(api/mobile/v1/auth/(login|refresh|register/verify|google|link/coinepro)"
     r"|api/user/auth/(login|refresh|register/verify|google|telegram|guest))/?$"
 )
 AUTH_LOGOUT = re.compile(r"^(api/mobile/v1/auth/logout|api/user/auth/logout)/?$")

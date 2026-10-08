@@ -67,6 +67,12 @@ def fake_backend() -> web.Application:
     app = web.Application()
     app.router.add_post("/api/mobile/v1/auth/login", login)
     app.router.add_post("/api/mobile/v1/auth/refresh", refresh)
+
+    async def link(request: web.Request) -> web.Response:
+        body = await request.json()
+        return web.json_response({"access_token": REAL_ACCESS, "refresh_token": REAL_REFRESH, "seen": body.get("coinepro_token")})
+
+    app.router.add_post("/api/mobile/v1/auth/link/coinepro", link)
     app.router.add_route("*", "/api/echo", echo)
     app.router.add_get("/api/ws/prices", socket)
     app.router.add_get("/img/{kind}", publisher)
@@ -128,6 +134,16 @@ class RelayTest(AioHTTPTestCase):
         self.assertTrue(fresh["access_token"].startswith(relay.HANDLE_PREFIX))
         seen = await (await self.client.get("/up/tradeyar/api/echo", headers={"Authorization": "Bearer " + fresh["access_token"]})).json()
         self.assertEqual(seen["headers"]["Authorization"], "Bearer " + REAL_ACCESS + "-2")
+
+    async def test_the_account_link_takes_a_handle_and_gives_handles_back(self) -> None:
+        # The forex handle goes in as the real token; the TradeYar tokens come back as handles.
+        signed_in = await self.sign_in()
+        answer = await (await self.client.post(
+            "/up/tradeyar/api/mobile/v1/auth/link/coinepro", json={"coinepro_token": signed_in["access_token"]},
+        )).json()
+        self.assertEqual(answer["seen"], REAL_ACCESS)
+        self.assertTrue(answer["access_token"].startswith(relay.HANDLE_PREFIX))
+        self.assertTrue(answer["refresh_token"].startswith(relay.HANDLE_PREFIX))
 
     async def test_the_reader_address_reaches_the_backend(self) -> None:
         # Our nginx appends the reader on the right; the left-most entry is the browser's own claim.
