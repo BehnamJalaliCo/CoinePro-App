@@ -258,7 +258,7 @@
     <string name="coach_row_reorder_text">دستگیره‌ی کنار هر ردیف را بکشید تا ترتیب دیده‌بان عوض شود.</string>
     <string name="coach_library_academy">درس‌های آکادمی</string>
     <string name="coach_full_site_title">نسخه‌ی کامل</string>
-    <string name="coach_full_site_text">پرو چارت در سایت pro-chart.com همه‌ی امکانات را دارد. پیوندش در منو است.</string>
+    <string name="coach_full_site_text">پرو چارت در سایت pro-chart.com همه‌ی امکانات را دارد.</string>
     <string name="coach_tree_swipe_title">مدیریت ترسیم‌ها</string>
     <string name="coach_tree_swipe_text">ترسیم را به کنار بکشید تا حذف شود. نگه دارید و بکشید تا ترتیبش عوض شود.</string>
 </resources>

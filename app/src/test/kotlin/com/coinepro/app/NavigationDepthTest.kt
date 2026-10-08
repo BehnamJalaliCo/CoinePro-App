@@ -186,7 +186,8 @@ class NavigationDepthTest {
             "STUDIO_PATTERN" to "Opens on the chart's own symbol, so it is reached from the chart.",
             "PANES_PATTERN" to "Two charts, on the symbol the first one had.",
             "DOM_PATTERN" to "The depth ladder, on the symbol in front of the reader.",
-            "SCRIPT_PATTERN" to "The studio on a symbol; the menu reaches it as «backtest».",
+            "SCRIPT_PATTERN" to "The NamaScript editor on a symbol; the menu reaches it as «script».",
+            "BACKTEST_PATTERN" to "The strategy tester on a symbol; the menu reaches it as «backtest» (5.26.0).",
             "MARKET_SEARCH_ROUTE" to "The search field itself, which is in the bar on every screen.",
             "PORTFOLIO_REPORT_ROUTE" to "The report on a portfolio: the second half of that screen.",
             "TERMS_ROUTE" to

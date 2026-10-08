@@ -237,7 +237,9 @@ fun NewsScreen(
             relevance == null -> state.news.map(MarketNewsItem::asStory)
             else -> state.news.filter { relevance in it.relevance }.map(MarketNewsItem::asStory)
         }
-        newsFilter.apply(narrowed)
+        // Newest first, whatever order the desk sent (5.26.0). The saved list keeps the reader's own.
+        val ordered = if (savedOnly) narrowed else narrowed.sortedByDescending { it.publishedAt ?: java.time.Instant.EPOCH }
+        newsFilter.apply(ordered)
     }
     val feedStories = remember(state.news) { state.news.map(MarketNewsItem::asStory) }
 
@@ -258,12 +260,10 @@ fun NewsScreen(
 
     // Only the markets this platform serves. A crypto session filtering by "Gold" would be asking
     // the feed for a market its own signals never mention.
-    val relevances = remember(shown) {
-        when (shown) {
-            MarketPlatform.TRADEYAR -> listOf(MarketRelevance.CRYPTO)
-            MarketPlatform.COINEPRO_FX -> listOf(MarketRelevance.GOLD, MarketRelevance.SILVER)
-        }
-    }
+    // No market switch on either desk (5.26.0): the forex desk's «همه / طلا / نقره» split a feed
+    // that is mostly gold into one tab that held it all and one that held nearly nothing. Both desks
+    // now read as one list, newest first.
+    val relevances = remember(shown) { emptyList<MarketRelevance>() }
     LaunchedEffect(shown) {
         relevance = null
         newsFilter = NewsFilter()

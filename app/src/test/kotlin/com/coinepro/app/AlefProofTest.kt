@@ -121,22 +121,9 @@ class AlefProofTest {
 
     @Test
     @Config(sdk = [34], qualifiers = PHONE)
-    fun `the install's own certificate is on the screen, so the fingerprint need not be guessed`() {
-        render {
-            SafetyScreen(
-                update = AppUpdateStatus.Unknown,
-                fingerprints = listOf("SHA-1  $SHA1", "SHA-256  $SHA256"),
-            )
-        }
-        assertOnce("گواهی این نصب")
-        assertOnce("SHA-256  $SHA256")
-        capture("alef-signing-certificate-fa")
-    }
-
-    @Test
-    @Config(sdk = [34], qualifiers = PHONE)
-    fun `a build that could not read its own certificate draws no card rather than an empty one`() {
-        render { SafetyScreen(update = AppUpdateStatus.Unknown, fingerprints = emptyList()) }
+    fun `the safety page carries no signing certificate card`() {
+        // Removed at the owner's word (5.26.0).
+        render { SafetyScreen(update = AppUpdateStatus.Unknown) }
         assertOnce("ایمنی و انتشار")
         assertAbsent("گواهی این نصب")
     }
@@ -146,14 +133,12 @@ class AlefProofTest {
     @Composable
     private fun SafetyScreen(
         update: AppUpdateStatus,
-        fingerprints: List<String> = emptyList(),
     ) {
         LaunchReadinessScreen(
             notificationPermissionState = NotificationPermissionUiState.GRANTED,
             onRequestNotificationPermission = {},
             onOpenNotificationSettings = {},
             onSendFeedback = {},
-            signingFingerprints = fingerprints,
             update = update,
         )
     }
@@ -208,10 +193,5 @@ class AlefProofTest {
         const val ENGLISH = "en-rUS-ldltr-w411dp-h914dp-420dpi"
         const val PIXEL_TABLET = "fa-rIR-ldrtl-sw800dp-w1280dp-h800dp-xhdpi"
 
-        /** Invented, and shaped like the real thing: colon-separated hex, as the platform prints it. */
-        const val SHA1 = "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD"
-        const val SHA256 =
-            "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:" +
-                "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99"
     }
 }

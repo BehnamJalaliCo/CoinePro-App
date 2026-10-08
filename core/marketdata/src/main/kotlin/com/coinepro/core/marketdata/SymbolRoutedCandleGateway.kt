@@ -77,6 +77,8 @@ class FallbackAcademyTokens(
     }
 
     private companion object {
-        const val RETRY_MS = 5 * 60 * 1_000L
+        // A minute, not five (5.26.0): the shell clears the session store on a forex sign-in, not
+        // this wrapper, so a reader who signs in during the window was on guest candles that long.
+        const val RETRY_MS = 60 * 1_000L
     }
 }

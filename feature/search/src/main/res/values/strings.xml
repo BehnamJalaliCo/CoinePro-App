@@ -87,7 +87,8 @@
     <string name="surface_academy_title">Academy</string>
     <string name="surface_journal_title">Trading journal</string>
     <string name="surface_paper_title">Paper trading</string>
-    <string name="surface_backtest_title">Backtest and script</string>
+    <string name="surface_backtest_title">Backtest</string>
+    <string name="surface_script_title">Scripts (NamaScript)</string>
     <string name="surface_screener_title">Screener</string>
     <string name="surface_heatmap_title">Market heatmap</string>
     <string name="surface_tools_title">Trader toolkit</string>

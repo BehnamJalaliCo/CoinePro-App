@@ -27,7 +27,6 @@ internal class BackendUniverse(
     private val lock = Mutex()
     private var crypto: Set<String>? = null
     private var forexSymbols: Set<String>? = null
-    private var asked = false
 
     override suspend fun allows(symbol: String): Boolean {
         load()
@@ -35,16 +34,23 @@ internal class BackendUniverse(
         return list.isNullOrEmpty() || symbol.uppercase() in list
     }
 
+    /**
+     * Each list is kept once it has arrived, and asked for again while it has not (5.26.0). The
+     * first version marked both as asked before either loaded, so a cancelled or failed first read
+     * left the filter open — and the 404s back — until the app restarted.
+     */
     private suspend fun load() = lock.withLock {
-        if (asked) return@withLock
-        asked = true
-        crypto = capabilities.chartableSymbols(MarketPlatform.TRADEYAR)?.map { it.uppercase() }?.toSet()
-        forexSymbols = try {
-            (forex as? CoineProFxCandleGateway)?.symbolsWithBars()?.toSet()
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Exception) {
-            null
+        if (crypto == null) {
+            crypto = capabilities.chartableSymbols(MarketPlatform.TRADEYAR)?.map { it.uppercase() }?.toSet()
+        }
+        if (forexSymbols == null) {
+            forexSymbols = try {
+                (forex as? CoineProFxCandleGateway)?.symbolsWithBars()?.toSet()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                null
+            }
         }
     }
 }

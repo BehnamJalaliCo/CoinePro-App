@@ -97,7 +97,7 @@ class ProCheckoutTest {
 
         assertEquals(listOf("quarterly" to HASH), payments.claims)
         assertTrue(composeRule.onAllNodesWithTag(USDT_SHEET_TAG).fetchSemanticsNodes().isEmpty())
-        composeRule.onNodeWithText("Pro is active until 2026-11-05.").assertIsDisplayed()
+        composeRule.onNodeWithText("Premium is active until 2026-11-05.").assertIsDisplayed()
     }
 
     @Test
@@ -150,7 +150,7 @@ class ProCheckoutTest {
         }
         composeRule.waitForIdle()
         composeRule.onNodeWithText(
-            "Pro is held on a crypto account. If you have one with this email, Buy connects to it; if not, one is created — then the purchase continues.",
+            "Premium is held on a crypto account. If you have one with this email, Buy connects to it; if not, one is created — then the purchase continues.",
         ).assertIsDisplayed()
 
         composeRule.onNodeWithTag("pro-buy-monthly").performClick()

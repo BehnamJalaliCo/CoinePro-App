@@ -72,6 +72,7 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -746,7 +747,8 @@ fun CoachLibrary(
                         .clickable(onClick = open)
                         .heightIn(min = 56.dp)
                         .padding(horizontal = CoineProSpacing.Two, vertical = CoineProSpacing.OneHalf)
-                        .semantics { contentDescription = "coach-academy" },
+                        // A test tag, not a content description: TalkBack read "coach-academy".
+                        .testTag("coach-academy"),
                 )
             }
         }

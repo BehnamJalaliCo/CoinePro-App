@@ -254,6 +254,14 @@ object MenuCatalogue {
             icon = CoineProIcons.Backtest,
             group = MenuGroup.ANALYSIS,
         ),
+        // NamaScript on its own row (5.26.0). It shared «بک‌تست و اسکریپت» with the tester, which
+        // opened the editor — two jobs behind one name, and the tester was not behind it at all.
+        MenuEntry(
+            id = "script",
+            titleRes = R.string.menu_script_title,
+            icon = CoineProIcons.Script,
+            group = MenuGroup.ANALYSIS,
+        ),
         MenuEntry(
             id = "alerts",
             titleRes = R.string.menu_alerts_title,
@@ -265,7 +273,8 @@ object MenuCatalogue {
             titleRes = R.string.menu_tools_title,
             icon = CoineProIcons.Tools,
             group = MenuGroup.ANALYSIS,
-            directory = false,
+            // Back in the directory (5.26.0). 5.24.0 took it out as a second door to rows the menu
+            // already had, and with it went the one door to the trader's calculators.
         ),
         MenuEntry(
             id = "ai-vision",
@@ -347,6 +356,9 @@ object MenuCatalogue {
             titleRes = R.string.menu_full_site_title,
             icon = CoineProIcons.Link,
             group = MenuGroup.LEARN,
+            // Off the menu (5.26.0), at the owner's word. Kept in the catalogue for a saved back
+            // stack or a link that still names the route.
+            directory = false,
         ),
         // ── حساب من ──────────────────────────────────────────────────────────────────────────
         // **The screen that used to be the app's front door.**

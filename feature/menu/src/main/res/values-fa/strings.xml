@@ -44,7 +44,8 @@
 
     <!-- ── تحلیل و ابزار ───────────────────────────────────────────────────────────────── -->
     <string name="menu_studio_title">استودیوی چارت</string>
-    <string name="menu_backtest_title">بک‌تست و اسکریپت</string>
+    <string name="menu_backtest_title">بک‌تست</string>
+    <string name="menu_script_title">اسکریپت‌نویسی (نمااسکریپت)</string>
     <string name="menu_alerts_title">مرکز هشدار</string>
     <string name="menu_tools_title">جعبه‌ابزار تریدر</string>
     <string name="menu_vision_title">تحلیل تصویر چارت</string>

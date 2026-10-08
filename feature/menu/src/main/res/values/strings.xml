@@ -42,7 +42,8 @@
     <string name="menu_terminal_title">Web terminal</string>
 
     <string name="menu_studio_title">Chart studio</string>
-    <string name="menu_backtest_title">Backtest and scripts</string>
+    <string name="menu_backtest_title">Backtest</string>
+    <string name="menu_script_title">Scripts (NamaScript)</string>
     <string name="menu_alerts_title">Alert centre</string>
     <string name="menu_tools_title">Trader\'s toolkit</string>
     <string name="menu_vision_title">Chart image analysis</string>

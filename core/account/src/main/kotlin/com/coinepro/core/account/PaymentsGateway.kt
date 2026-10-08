@@ -107,6 +107,8 @@ class NetworkPaymentsGateway internal constructor(private val api: PaymentsApi) 
     override suspend fun claimBazaar(plan: String, purchaseToken: String): Boolean = try {
         // 409 is «this token was already recorded»: the period exists, which is what was asked.
         api.bazaar(BazaarClaimDto(plan, purchaseToken)).let { it.isSuccessful || it.code() == 409 }
+    } catch (error: kotlinx.coroutines.CancellationException) {
+        throw error
     } catch (error: Throwable) {
         false
     }
@@ -123,6 +125,8 @@ class NetworkPaymentsGateway internal constructor(private val api: PaymentsApi) 
                 bazaar = body.bazaar == true,
             )
         }
+    } catch (error: kotlinx.coroutines.CancellationException) {
+        throw error
     } catch (error: Throwable) {
         null
     }
@@ -131,6 +135,8 @@ class NetworkPaymentsGateway internal constructor(private val api: PaymentsApi) 
         api.entitlements().takeIf { it.isSuccessful }?.body()
             ?.takeIf { it.premium == true }
             ?.let { ProPeriod(plan = it.plan, endsAt = it.endsAt) }
+    } catch (error: kotlinx.coroutines.CancellationException) {
+        throw error
     } catch (error: Throwable) {
         null
     }
@@ -142,6 +148,8 @@ class NetworkPaymentsGateway internal constructor(private val api: PaymentsApi) 
             response.code() == 401 -> UsdtClaim.Refused(null, needsSignIn = true)
             else -> UsdtClaim.Refused(ApiErrors.parse(response.errorBody()?.string()).message)
         }
+    } catch (error: kotlinx.coroutines.CancellationException) {
+        throw error
     } catch (error: Throwable) {
         UsdtClaim.Refused(null)
     }

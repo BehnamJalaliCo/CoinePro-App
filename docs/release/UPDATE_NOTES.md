@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.26.0
+
+**fa**
+
+> «پرو چارت پرو» حالا «پرو چارت پرمیوم» است. بک‌تست و نمااسکریپت در منو دو ردیف جدا شدند و جعبه‌ابزار تریدر با ماشین‌حساب‌ها به منو برگشت. اخبار فارکس بدون دکمه‌های طلا و نقره و به ترتیب تازه‌ترین نشان داده می‌شود. خریدی که در بازار انجام شده ولی ثبت نشده بود، با باز کردن اپ ثبت می‌شود و چند ایراد دیگر هم رفع شد.
+
+**en**
+
+> Pro Chart Pro is now Pro Chart Premium. Backtest and NamaScript are two separate menu rows, and the trader's toolkit with its calculators is back in the menu. Forex news reads as one list, newest first. A Bazaar purchase that was paid but not recorded is recorded when the app opens, and several other faults are fixed.
+
+---
+
 ## 5.25.4
 
 **fa**

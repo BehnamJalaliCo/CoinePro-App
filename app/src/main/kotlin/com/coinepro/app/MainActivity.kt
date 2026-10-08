@@ -331,7 +331,7 @@ class MainActivity : FragmentActivity() {
                         entitlementStartUp.begin()
                     }
                 },
-            )
+            ).also { billing -> billing.recover(onClaimed = entitlementStartUp::begin) }
         }
         consumeDeepLink(intent)
         updateNotificationPermissionState()
@@ -596,6 +596,14 @@ class MainActivity : FragmentActivity() {
             }
             }
         }
+    }
+
+    override fun onDestroy() {
+        // The bound Bazaar service goes with the activity it was bound for (5.26.0); a language
+        // change recreates the activity, and each one leaked a connection and the old activity.
+        bazaarBilling?.release()
+        bazaarBilling = null
+        super.onDestroy()
     }
 
     override fun onResume() {

@@ -194,6 +194,9 @@ object CoineProIcons {
     @DrawableRes val Membership = R.drawable.icon_crown_simple
     @DrawableRes val Backtest = R.drawable.icon_clock_counter_clockwise
     @DrawableRes val Terminal = R.drawable.icon_terminal_window
+
+    /** NamaScript, the menu's own row since 5.26.0: code brackets, not the tester's clock. */
+    @DrawableRes val Script = R.drawable.icon_code
     @DrawableRes val Explore = R.drawable.icon_compass
     @DrawableRes val Heatmap = R.drawable.brand_grid
     @DrawableRes val CopyTrade = R.drawable.brand_copy_trade

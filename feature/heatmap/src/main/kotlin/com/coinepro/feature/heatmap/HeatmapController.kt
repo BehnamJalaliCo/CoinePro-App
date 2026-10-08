@@ -199,7 +199,9 @@ class HeatmapController(
 
     private fun assetsOf(all: List<MarketSearchRow>): List<HeatmapAsset> {
         val bars = synchronized(barsBySymbol) { barsBySymbol.toMap() }
-        val out = synchronized(excluded) { excluded.toSet() }
+        // A market the day's table carries still has a tile: it is coloured from the ticker, and
+        // only its candles are missing.
+        val out = synchronized(excluded) { excluded.toSet() } - tickerBySymbol.keys
         val rows = if (out.isEmpty()) all else all.filter { it.meta.symbol !in out }
         return heatmapAssetsFrom(rows, bars, tickerBySymbol, period, asked + tickerBySymbol.keys)
     }

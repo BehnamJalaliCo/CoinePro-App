@@ -96,24 +96,6 @@ fun LaunchReadinessScreen(
     onShareCrash: (String) -> Unit = {},
     onClearCrash: () -> Unit = {},
     /**
-     * The certificate this install is actually signed with — SHA-1 first, then SHA-256.
-     *
-     * Here because there is otherwise no way to be certain which key a given install carries, and
-     * that uncertainty cost days: Google sign-in needs the SHA-1 registered in the Google console,
-     * a downloaded `google-services.json` does not prove it was, and Play App Signing re-signs
-     * uploads with a different key entirely. A phone showing its own answer settles all of it.
-     *
-     * Not a secret. It is derived from the APK, which anybody can download.
-     *
-     * It earns its place on this screen twice over now that the app is installed by hand rather
-     * than by a store: `/.well-known/assetlinks.json` on the brand host has to name the SHA-256 of
-     * the key the *installed* APK carries, and with no Play App Signing in the picture that is this
-     * one. A phone showing its own answer is the only reading of it nobody can get wrong.
-     */
-    signingFingerprints: List<String> = emptyList(),
-    /** Copies a fingerprint, because nobody retypes sixty-four hex characters correctly. */
-    onCopyFingerprint: (String) -> Unit = {},
-    /**
      * Whether a newer build has been published.
      *
      * Defaulted to [AppUpdateStatus.Unknown], which draws nothing — the same thing the screen does
@@ -237,10 +219,6 @@ fun LaunchReadinessScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-        }
-
-        if (signingFingerprints.isNotEmpty()) {
-            SigningCard(fingerprints = signingFingerprints, onCopy = onCopyFingerprint)
         }
 
         Text(
@@ -368,38 +346,6 @@ private fun UpdateCard(release: AppRelease, onDownload: (AppRelease) -> Unit) {
         CoineProPrimaryButton(
             text = stringResource(R.string.update_get),
             onClick = { onDownload(release) },
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
-
-/**
- * The certificate this install is signed with — the answer to a question that used to cost days.
- *
- * Google's console wants a SHA-1 to enable sign-in and the App Links verifier wants a SHA-256, and
- * neither can be read off a keystore with certainty once a build has been through anybody's hands.
- * The phone holding the install knows, and this is it saying so. Public information: it is derived
- * from an APK anybody can download.
- */
-@Composable
-private fun SigningCard(fingerprints: List<String>, onCopy: (String) -> Unit) {
-    CoineProCard(modifier = Modifier.fillMaxWidth()) {
-        CardTitle(R.string.safety_signing_title)
-        Body(R.string.safety_signing_body)
-        fingerprints.forEach { fingerprint ->
-            LtrDirection {
-                Text(
-                    text = fingerprint,
-                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
-                    color = CoineProColors.TextSecondary,
-                    modifier = Modifier.padding(top = CoineProSpacing.One),
-                )
-            }
-        }
-        Spacer(Modifier.height(CoineProSpacing.OneHalf))
-        CoineProSecondaryButton(
-            text = stringResource(R.string.safety_signing_copy),
-            onClick = { onCopy(fingerprints.joinToString("\n")) },
             modifier = Modifier.fillMaxWidth(),
         )
     }

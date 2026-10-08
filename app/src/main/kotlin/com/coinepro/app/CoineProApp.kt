@@ -531,7 +531,7 @@ private const val LAUNCH_READINESS_ROUTE = "launch-readiness"
 /** The coach's library: every tip, playable again (5.21.0). See `CoachLibrary`. */
 private const val TUTORIALS_ROUTE = "tutorials"
 
-/** «پرو چارت پرو» (5.24.0): what Pro raises, and the plans. */
+/** «پرو چارت پرمیوم» (5.24.0; «پرو» until 5.26.0): what Pro raises, and the plans. */
 private const val PRO_ROUTE = "pro"
 
 /** The store build's pointer to pro-chart.com: opens the browser and steps back. */
@@ -662,6 +662,9 @@ private val MENU_ROUTE = AppDestination.MENU.route
 /** The reader's own list, which is also the bar's first position. See [MENU_ROUTE]. */
 internal val WATCHLIST_ROUTE = AppDestination.WATCHLIST.route
 private const val SCRIPT_PATTERN = "script/{symbol}"
+
+/** The strategy tester as a page (5.26.0); it shared a menu row with NamaScript until then. */
+private const val BACKTEST_PATTERN = "backtest/{symbol}"
 private const val STUDIO_PATTERN = "chart/{symbol}/studio"
 
 /**
@@ -740,6 +743,8 @@ private fun chartRoute(symbol: String, timeframe: String? = null): String {
  */
 private fun scriptRoute(symbol: String) = "script/" + Uri.encode(symbol)
 
+private fun backtestRoute(symbol: String) = "backtest/" + Uri.encode(symbol)
+
 /** The chart's working surface, on a symbol. */
 private fun studioRoute(symbol: String) = "chart/" + Uri.encode(symbol) + "/studio"
 
@@ -759,7 +764,8 @@ internal fun surfaceRoute(id: String, platform: MarketPlatform, watchlist: List<
         "academy" -> ACADEMY_ROUTE
         "journal" -> JOURNAL_ROUTE
         "paper-trade" -> PAPER_TRADE_ROUTE
-        "backtest" -> scriptRoute(defaultScriptSymbol(platform, watchlist))
+        "backtest" -> backtestRoute(defaultScriptSymbol(platform, watchlist))
+        "script" -> scriptRoute(defaultScriptSymbol(platform, watchlist))
         "screener" -> SCREENER_ROUTE
         "heatmap" -> HEATMAP_ROUTE
         "tools" -> TOOLS_ROUTE
@@ -959,6 +965,7 @@ private val SELF_TITLED: Set<String> = setOf(
     PANES_PATTERN,
     DOM_PATTERN,
     SCRIPT_PATTERN,
+    BACKTEST_PATTERN,
     SIGNAL_DETAIL_PATTERN,
     PORTFOLIO_ROUTE,
     NEWS_PATTERN,
@@ -992,6 +999,7 @@ private fun accentFor(route: String?): PageAccent = when (route) {
     AI_VISION_ROUTE,
     AI_ASSISTANT_ROUTE,
     SCRIPT_PATTERN,
+    BACKTEST_PATTERN,
     STUDIO_PATTERN,
     PANES_PATTERN,
     DOM_PATTERN,
@@ -1299,6 +1307,11 @@ fun CoineProApp(
             universe = BundledSymbolUniverseGateway,
         )
     }
+    // Quiet once a TradeYar session exists or nobody is signed in (5.26.0): the guest shell runs its
+    // own feed, and this one otherwise kept polling the public route for good.
+    LaunchedEffect(cryptoSignedIn, sessionStates.values.any { it is SessionState.SignedIn }) {
+        if (cryptoSignedIn || sessionStates.values.none { it is SessionState.SignedIn }) publicCryptoFeed.subscribe(emptyList())
+    }
     val searchFor: (MarketPlatform) -> MarketSearchController? = { platform ->
         if (platform == MarketPlatform.TRADEYAR && !cryptoSignedIn) publicCryptoSearch else marketSearchControllers[platform]
     }
@@ -1433,7 +1446,9 @@ fun CoineProApp(
             if (platform != activePlatform) controller.stop()
         }
         if (signedIn) {
-            marketDataController.start()
+            // The platform's own feed only with the platform's own session (5.26.0): without one
+            // the socket reconnects for ever into 401s, and the public feed carries the prices.
+            if (platformSignedIn) marketDataController.start() else marketDataController.stop()
             if (platformSignedIn) {
                 accountController.refresh()
                 pushCoordinator.registerCurrentToken()
@@ -1778,24 +1793,9 @@ fun CoineProApp(
                 heatmapUniverse = backendUniverse,
                 cryptoScreener = if (cryptoSignedIn) screenerControllers[MarketPlatform.TRADEYAR] else publicCryptoScreener,
                 proAccount = cryptoSignedIn,
-                linkCryptoAccount = accountLink
-                    ?.takeIf { !cryptoSignedIn && sessionStates[MarketPlatform.COINEPRO_FX] is SessionState.SignedIn }
-                    ?.let { link ->
-                        suspend {
-                            val forexToken = platformSessions.controller(MarketPlatform.COINEPRO_FX).storedAccessToken()
-                            if (forexToken == null) {
-                                ""
-                            } else {
-                                when (val linked = link.fromCoinePro(forexToken)) {
-                                    is AppResult.Success -> {
-                                        platformSessions.controller(MarketPlatform.TRADEYAR).adoptSession(linked.value)
-                                        null
-                                    }
-                                    is AppResult.Failure -> linked.message.orEmpty()
-                                }
-                            }
-                        }
-                    },
+                linkCryptoAccount = remember(accountLink, platformSessions) {
+                    accountLink?.let { link -> linkCryptoAccountWith(link, platformSessions) }
+                }?.takeIf { !cryptoSignedIn && sessionStates[MarketPlatform.COINEPRO_FX] is SessionState.SignedIn },
                 hub = hub,
                 hubActions = hubActions,
                 briefing = briefingState.toHomeBriefing(briefingReadAt),
@@ -1858,12 +1858,15 @@ fun CoineProApp(
                 // The socket the watchlist is already running, as the chart's ticks. Keyed on the
                 // controller so switching platform hands the chart the feed for the markets it is
                 // now drawing rather than a forex socket under a crypto chart.
-                chartTicks = remember(marketDataController, cryptoSignedIn, activePlatform, publicCryptoFeed) {
-                    if (!cryptoSignedIn && activePlatform == MarketPlatform.TRADEYAR) {
-                        publicCryptoFeed.chartTicks()
-                    } else {
-                        marketDataController.chartTicks()
-                    }
+                chartTicks = remember(marketDataControllers, cryptoSignedIn, publicCryptoFeed) {
+                    com.coinepro.core.marketdata.symbolRoutedTicks(
+                        crypto = if (cryptoSignedIn) {
+                            marketDataControllers.getValue(MarketPlatform.TRADEYAR).chartTicks()
+                        } else {
+                            publicCryptoFeed.chartTicks()
+                        },
+                        forex = marketDataControllers.getValue(MarketPlatform.COINEPRO_FX).chartTicks(),
+                    )
                 },
                 startRoute = startRoute ?: AppDestination.WATCHLIST.route,
                 onRootVisited = onRootVisited,
@@ -2898,6 +2901,7 @@ private fun MainShell(
         JOURNAL_ROUTE,
         PAPER_TRADE_ROUTE,
         SCRIPT_PATTERN,
+        BACKTEST_PATTERN,
         STUDIO_PATTERN,
         PANES_PATTERN,
         DOM_PATTERN,
@@ -2943,6 +2947,7 @@ private fun MainShell(
         JOURNAL_ROUTE -> R.string.screen_journal
         PAPER_TRADE_ROUTE -> R.string.screen_paper_trade
         SCRIPT_PATTERN -> R.string.screen_script
+        BACKTEST_PATTERN -> R.string.screen_backtest
         STUDIO_PATTERN -> R.string.screen_chart_studio
         TOOLS_ROUTE -> R.string.screen_tools
         ACTIVITY_ROUTE -> R.string.screen_activity
@@ -5152,6 +5157,15 @@ private fun MainShell(
                 )
             }
             composable(
+                route = BACKTEST_PATTERN,
+                arguments = listOf(navArgument("symbol") { type = NavType.StringType }),
+            ) { entry ->
+                // The chart's own controller for this symbol, so a run here and a run from the
+                // chart's toolbar read the same bars. See `BacktestScreen`.
+                val symbol = entry.arguments?.getString("symbol").orEmpty()
+                com.coinepro.feature.chart.BacktestScreen(controller = chartControllers.controllerFor(symbol))
+            }
+            composable(
                 route = STUDIO_PATTERN,
                 arguments = listOf(navArgument("symbol") { type = NavType.StringType }),
             ) { entry ->
@@ -5608,24 +5622,9 @@ private fun MainShell(
                     val gateway = appUpdateGateway ?: return@LaunchedEffect
                     update = AppUpdate.decide(BuildConfig.VERSION_CODE.toLong(), gateway.latest())
                 }
-                // Read from the package manager, which is the only reader that cannot be wrong
-                // about which key this install carries. Both algorithms: the sign-in console asks
-                // for SHA-1 and App Links verification for SHA-256.
-                val signingFingerprints = remember(context) {
-                    listOf("SHA-1", "SHA-256").flatMap { algorithm ->
-                        AppIntegrity.fingerprints(context, algorithm).map { "$algorithm  $it" }
-                    }
-                }
                 LaunchReadinessScreen(
                     update = update,
                     onDownloadUpdate = { release -> UpdateHandoff.open(context, release) },
-                    signingFingerprints = signingFingerprints,
-                    onCopyFingerprint = { text ->
-                        val clipboard = context.getSystemService(ClipboardManager::class.java)
-                        clipboard?.setPrimaryClip(
-                            ClipData.newPlainText("${BrandConfig.DISPLAY_NAME} certificate", text),
-                        )
-                    },
                     notificationPermissionState = notificationPermissionState,
                     onRequestNotificationPermission = onRequestNotificationPermission,
                     onOpenNotificationSettings = onOpenNotificationSettings,
@@ -6037,3 +6036,26 @@ private fun placeLadderOrder(
 /** The desktop symbol search's box (DIALOGS-04): the reference's dialog is about 720 by 680. */
 private val SYMBOL_SEARCH_WIDTH = 720.dp
 private val SYMBOL_SEARCH_HEIGHT = 680.dp
+
+/**
+ * The forex reader's TradeYar account, linked (5.25.1): null when it worked, otherwise the server's
+ * sentence or an empty string. Built here, outside any composable, because the browser build has
+ * miscompiled a suspending lambda created inside one (5.26.0).
+ */
+private fun linkCryptoAccountWith(
+    link: com.coinepro.core.auth.AccountLink,
+    sessions: PlatformSessions,
+): suspend () -> String? = {
+    val forexToken = sessions.controller(MarketPlatform.COINEPRO_FX).storedAccessToken()
+    if (forexToken == null) {
+        ""
+    } else {
+        when (val linked = link.fromCoinePro(forexToken)) {
+            is AppResult.Success -> {
+                sessions.controller(MarketPlatform.TRADEYAR).adoptSession(linked.value)
+                null
+            }
+            is AppResult.Failure -> linked.message.orEmpty()
+        }
+    }
+}

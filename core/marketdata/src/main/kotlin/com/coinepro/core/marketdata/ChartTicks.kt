@@ -98,3 +98,16 @@ fun MarketDataController.chartTicks(): ChartTickSource = ChartTickSource { symbo
             )
         }
 }
+
+/**
+ * Ticks by the symbol, not the open tab (5.26.0), as the candles are since 5.24.3: a coin's chart
+ * opened from the forex tab got no live price, and on the crypto tab a forex chart asked the coin
+ * feed for EURUSD every second.
+ */
+fun symbolRoutedTicks(crypto: ChartTickSource, forex: ChartTickSource): ChartTickSource = ChartTickSource { symbol ->
+    if (com.coinepro.core.symbols.SymbolClassifier.classify(symbol).category == com.coinepro.core.symbols.SymbolCategory.CRYPTO) {
+        crypto.ticks(symbol)
+    } else {
+        forex.ticks(symbol)
+    }
+}

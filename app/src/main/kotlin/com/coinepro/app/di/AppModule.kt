@@ -1944,6 +1944,7 @@ object AppModule {
         @CryptoPlatform tickerStore: MarketTickerStore,
         store: ScreenerStore,
         scope: CoroutineScope,
+        capabilities: PlatformCapabilities,
     ): ScreenerController = ScreenerController(
         gateway = catalog,
         scope = scope,
@@ -1951,6 +1952,9 @@ object AppModule {
         barSource = CandleScreenerBarSource(com.coinepro.core.marketdata.PacedCandleGateway(candles)),
         tickers = MarketTickerScreenerSource(tickerStore),
         store = store,
+        // Only the markets TradeYar has charts for (5.19.3). It sat on the forex provider by
+        // mistake until 5.25.3 moved that one to its own list and left this one with none.
+        chartable = capabilities.chartableReader(MarketPlatform.TRADEYAR),
     )
 
     @Provides

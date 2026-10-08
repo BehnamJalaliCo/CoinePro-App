@@ -34,7 +34,7 @@ import com.coinepro.core.designsystem.CoineProSpacing
 import com.coinepro.core.designsystem.proseDigits
 
 /**
- * «پرو چارت پرو» (5.24.0): what Pro raises, the three plans, and the button that buys one — Cafe
+ * «پرو چارت پرمیوم» (5.24.0; «پرو» until 5.26.0): what Pro raises, the three plans, and the button that buys one — Cafe
  * Bazaar on the phone, USDT on the site (5.25.0). Where a build sells nothing, a plain «به‌زودی».
  *
  * Everything is free today, and the page says so first: a reader who opens it learns what Pro will

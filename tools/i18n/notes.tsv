@@ -246,7 +246,6 @@ safety_how_body	visible	app
 safety_privacy_body	visible	app
 safety_provider_body	visible	app
 safety_risk_body	visible	app
-safety_signing_body	visible	app
 safety_support_body	visible	app
 screener_empty_hint	state	feature/screener
 screener_free_note	tip	feature/screener

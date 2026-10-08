@@ -401,15 +401,19 @@ class ScreenerController(
      */
     private var awaitingTickers = false
 
+    /** The saved screens and watches, followed once. See [start]. */
+    private var savedJob: kotlinx.coroutines.Job? = null
+
     /** Loads the catalogue once, follows the day's table, and starts the quote poll. */
     fun start() {
         val saved = store
-        if (saved != null) {
-            scope.launch {
-                saved.screens.collect { screens -> _state.update { it.copy(saved = screens) } }
-            }
-            scope.launch {
-                saved.watches.collect { watches -> _state.update { it.copy(watches = watches) } }
+        // Once per controller (5.26.0). Each `start()` launched two more collectors that never
+        // ended, and the screen starts its controller every time it is shown — the Crypto chip on
+        // the forex tab swaps controllers on every press.
+        if (saved != null && savedJob?.isActive != true) {
+            savedJob = scope.launch {
+                launch { saved.screens.collect { screens -> _state.update { it.copy(saved = screens) } } }
+                launch { saved.watches.collect { watches -> _state.update { it.copy(watches = watches) } } }
             }
         }
         followTickers()

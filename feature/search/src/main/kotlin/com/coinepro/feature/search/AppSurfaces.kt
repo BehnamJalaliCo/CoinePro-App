@@ -126,8 +126,18 @@ object AppSurfaces {
             bodyRes = DesignR.string.feature_backtest_body,
             icon = CoineProIcons.Backtest,
             keywords = listOf(
-                "بک تست", "بک‌تست", "بکتست", "اسکریپت", "استراتژی", "کد", "آزمون استراتژی",
-                "backtest", "script", "strategy", "pine", "code",
+                "بک تست", "بک‌تست", "بکتست", "استراتژی", "آزمون استراتژی", "تست استراتژی",
+                "backtest", "strategy", "strategy tester",
+            ),
+        ),
+        AppSurface(
+            id = "script",
+            titleRes = R.string.surface_script_title,
+            bodyRes = DesignR.string.feature_script_body,
+            icon = CoineProIcons.Script,
+            keywords = listOf(
+                "اسکریپت", "نمااسکریپت", "نما اسکریپت", "کد", "اندیکاتور سفارشی", "برنامه‌نویسی",
+                "script", "namascript", "pine", "code", "custom indicator",
             ),
         ),
         AppSurface(

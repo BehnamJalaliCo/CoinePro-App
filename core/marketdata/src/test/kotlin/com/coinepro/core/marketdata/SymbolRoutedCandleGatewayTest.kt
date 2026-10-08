@@ -57,12 +57,12 @@ class SymbolRoutedCandleGatewayTest {
         val tokens = FallbackAcademyTokens(session, guest) { now }
 
         assertEquals("guest", tokens.token())
-        now += 60_000
+        now += 30_000
         assertEquals("guest", tokens.token())
         assertEquals(1, session.calls)
 
         session.fail = null
-        now += 5 * 60_000
+        now += 60_000
         assertEquals("session", tokens.token())
     }
 

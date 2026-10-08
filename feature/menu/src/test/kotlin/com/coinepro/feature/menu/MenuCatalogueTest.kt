@@ -35,8 +35,10 @@ class MenuCatalogueTest {
         val drawn = ids(MenuAccess(platform = MarketPlatform.COINEPRO_FX, signedIn = true))
         listOf(
             "watchlist", "community", "home", "search", "explore", "heatmap", "screener",
-            "tools", "chart-studio", "academy", "notifications",
+            "chart-studio", "academy", "notifications", "full-site",
         ).forEach { id -> assertFalse("«$id» is drawn twice", id in drawn) }
+        // 5.26.0, at the owner's word: the toolkit back as a row, and Backtest and NamaScript as two.
+        listOf("tools", "backtest", "script").forEach { id -> assertTrue("«$id» is not in the menu", id in drawn) }
         listOf("watchlist", "screener", "academy").forEach { id ->
             assertTrue("«$id» left the catalogue — search and deep links lose it", MenuCatalogue.ALL.any { it.id == id })
         }
@@ -132,7 +134,7 @@ class MenuCatalogueTest {
         listOf(
             "markets", "news", "calendar",
             "paper-trade", "journal",
-            "backtest", "alerts",
+            "backtest", "script", "tools", "alerts",
             "tutorials", "safety", "profile",
         ).forEach { id -> assertTrue(id, id in open) }
     }

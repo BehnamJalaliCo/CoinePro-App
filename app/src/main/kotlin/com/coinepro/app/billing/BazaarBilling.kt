@@ -42,7 +42,7 @@ class BazaarBilling(
         val start = {
             payment.subscribeProduct(
                 registry = activity.activityResultRegistry,
-                request = PurchaseRequest(productId = "pro_$plan"),
+                request = PurchaseRequest(productId = SKU_PREFIX + plan),
             ) {
                 purchaseSucceed { info ->
                     scope.launch {
@@ -69,11 +69,46 @@ class BazaarBilling(
         }
     }
 
+    /**
+     * Hands the server every subscription Cafe Bazaar says this account holds (5.26.0).
+     *
+     * A purchase is claimed once, right after it succeeds; a dropped connection, a 5xx or an expired
+     * TradeYar session at that moment left a paid subscription unclaimed with nothing to try again.
+     * This runs at every start. The server records a token once and answers 409 for one it has —
+     * the gateway reads that as success — so asking again costs one request and changes nothing.
+     */
+    fun recover(onClaimed: () -> Unit = {}) {
+        val query = {
+            payment.getSubscribedProducts {
+                querySucceed { purchases ->
+                    purchases.filter { it.productId.startsWith(SKU_PREFIX) }.forEach { info ->
+                        scope.launch {
+                            if (payments.claimBazaar(info.productId.removePrefix(SKU_PREFIX), info.purchaseToken)) onClaimed()
+                        }
+                    }
+                }
+                queryFailed { }
+            }
+        }
+        if (connection != null) {
+            query()
+            return
+        }
+        connection = payment.connect {
+            connectionSucceed { query() }
+            connectionFailed { connection = null }
+            disconnected { connection = null }
+        }
+    }
+
     fun release() {
         connection?.disconnect()
         connection = null
     }
 }
+
+/** The store's product id for a plan is this and the plan id: `pro_monthly`. */
+private const val SKU_PREFIX = "pro_"
 
 /** What a reader is told after a purchase. */
 enum class BillingOutcome {
