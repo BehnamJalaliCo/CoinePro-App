@@ -404,6 +404,7 @@ import com.coinepro.feature.terminal.TerminalController
 import com.coinepro.feature.terminal.TerminalScreen
 import com.coinepro.feature.tools.ToolsScreen
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -1775,6 +1776,7 @@ fun CoineProApp(
                 onBuyPro = onBuyPro,
                 payments = payments,
                 heatmapUniverse = backendUniverse,
+                cryptoScreener = if (cryptoSignedIn) screenerControllers[MarketPlatform.TRADEYAR] else publicCryptoScreener,
                 proAccount = cryptoSignedIn,
                 linkCryptoAccount = accountLink
                     ?.takeIf { !cryptoSignedIn && sessionStates[MarketPlatform.COINEPRO_FX] is SessionState.SignedIn }
@@ -2407,6 +2409,11 @@ private fun MainShell(
     proAccount: Boolean = false,
     /** The markets each backend has bars for, for the heat map (5.25.3). See `BackendUniverse`. */
     heatmapUniverse: com.coinepro.feature.heatmap.HeatmapUniverse? = null,
+    /**
+     * The crypto screener, for the screener's «کریپتو» chip on the forex tab (5.25.4). The forex
+     * controller holds no coin, so the chip read «۰ بازار» there. Null keeps the tab's own.
+     */
+    cryptoScreener: ScreenerController? = null,
     /**
      * Links the forex reader's TradeYar account (5.25.1): null when it worked, otherwise the
      * server's sentence or an empty string. Null itself where there is nothing to link.
@@ -4174,9 +4181,24 @@ private fun MainShell(
             // کنید» — the reference's screener is a table across the page, and so is this one.
             // A row opens the chart as a page; the back arrow returns to the same scroll and
             // the same filters.
+            // The «کریپتو» chip on the forex tab shows the crypto screener (5.25.4), under the same
+            // filters. Its filters are mirrored back, so choosing «همه» there returns here.
+            val baseState by screenerController.state.collectAsStateWithLifecycle()
+            val baseFilters = baseState.filters
+            val coins = cryptoScreener?.takeIf {
+                activePlatform != MarketPlatform.TRADEYAR &&
+                    com.coinepro.feature.screener.selectedCategory(baseFilters) == com.coinepro.core.symbols.SymbolCategory.CRYPTO
+            }
+            val shownScreener = coins ?: screenerController
+            if (coins != null) {
+                LaunchedEffect(coins, screenerController) {
+                    coins.setFilters(screenerController.state.value.filters)
+                    coins.state.map { it.filters }.distinctUntilChanged().collect { screenerController.setFilters(it) }
+                }
+            }
             run {
                 ScreenerScreen(
-                    controller = screenerController,
+                    controller = shownScreener,
                     onOpenSymbol = { navController.navigate(chartRoute(it)) },
                     onOpenSetup = { symbol, studies, timeframe ->
                         pendingSetups[symbol] = studies

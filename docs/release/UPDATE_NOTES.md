@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.25.4
+
+**fa**
+
+> در اسکرینر، دکمه‌ی «کریپتو» حالا بازارهای کریپتو را نشان می‌دهد، حتی وقتی در بخش فارکس هستید یا فقط حساب فارکس دارید.
+
+**en**
+
+> In the screener, the Crypto chip now shows crypto markets, even from the forex side or with a forex account only.
+
+---
+
 ## 5.25.3
 
 **fa**

@@ -1101,7 +1101,7 @@ private fun timeframeCode(timeframe: Timeframe): String = when (timeframe) {
  * filtered. A chip row with its own copy of the answer is a chip row that shows «کریپتو» after the
  * sheet has removed the condition behind it.
  */
-internal fun selectedCategory(filters: List<ScreenerFilter>): SymbolCategory? {
+fun selectedCategory(filters: List<ScreenerFilter>): SymbolCategory? {
     val filter = filters.filterIsInstance<ScreenerFilter.Category>()
         .firstOrNull { it.field == ScreenerField.ASSET_CLASS } ?: return null
     val only = filter.values.singleOrNull() ?: return null
