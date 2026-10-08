@@ -128,6 +128,26 @@ class HeatmapControllerTest {
     }
 
     @Test
+    fun `a market no backend has bars for is neither asked for nor drawn`() = runTest {
+        // 5.25.3: 28 × 404 and 4 × 422 on every opening, for markets only the bundled universe named.
+        val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
+        val asked = mutableListOf<String>()
+        val source = HeatmapBarSource { symbol ->
+            asked += symbol
+            bars()
+        }
+        val missing = symbols.first()
+        val search = MarketSearchController(catalogue(), scope)
+        val controller = HeatmapController(search, scope, source, universe = HeatmapUniverse { it != missing })
+        controller.start()
+        advanceUntilIdle()
+
+        assertFalse(missing in asked)
+        assertEquals(symbols.size - 1, asked.size)
+        assertFalse(controller.state.value.assets.any { it.symbol == missing })
+    }
+
+    @Test
     fun `a market whose bars come back empty is still counted as read, not as pending`() = runTest {
         // Otherwise the coverage line above the map counts it as arriving forever, and a reader
         // waits for a figure that is never coming.

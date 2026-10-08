@@ -126,10 +126,12 @@ fun HeatmapScreen(
      * route: the map there is exactly the map that shipped, filled in from bars.
      */
     tickers: HeatmapTickerSource? = null,
+    /** Which markets have bars at all (5.25.3). Null asks for every market, as before. */
+    universe: HeatmapUniverse? = null,
 ) {
     val scope = rememberCoroutineScope()
-    val heatmap = remember(controller, bars, tickers, scope) {
-        HeatmapController(controller, scope, bars, tickers)
+    val heatmap = remember(controller, bars, tickers, universe, scope) {
+        HeatmapController(controller, scope, bars, tickers, universe)
     }
     HeatmapScreen(controller = heatmap, onOpenSymbol = onOpenSymbol, modifier = modifier)
 }

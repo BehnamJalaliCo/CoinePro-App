@@ -248,7 +248,10 @@ internal interface AcademyChartApi {
     ): AcademyCandleDto
 
     @GET("academy/chart/symbols")
-    suspend fun symbols(@Header("Authorization") authorization: String): AcademySymbolsDto
+    suspend fun symbols(
+        @Header("Authorization") authorization: String,
+        @Query("with_data") withData: Int? = null,
+    ): AcademySymbolsDto
 }
 
 internal data class AcademyCandleDto(
@@ -338,6 +341,13 @@ class CoineProFxCandleGateway(
         val response = api.symbols("Bearer ${tokens.token()}")
         return response.symbols.map { it.uppercase() }
     }
+
+    /**
+     * Only the symbols that have bars here (5.25.3) — `with_data=1`. The plain list adds every
+     * symbol the master MT5 account names, and a request for one with no bars is a 404.
+     */
+    suspend fun symbolsWithBars(): List<String> =
+        api.symbols("Bearer ${tokens.token()}", withData = 1).symbols.map { it.uppercase() }
 
     private companion object {
         /** The server's stated cap. Larger is silently truncated there, so it is clamped here. */

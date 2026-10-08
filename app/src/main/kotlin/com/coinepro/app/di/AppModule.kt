@@ -1926,8 +1926,10 @@ object AppModule {
         barSource = CandleScreenerBarSource(com.coinepro.core.marketdata.PacedCandleGateway(candles)),
         tickers = MarketTickerScreenerSource(tickerStore),
         store = store,
-        // Only the markets TradeYar has charts for (5.19.3). See `ScreenerController.chartable`.
-        chartable = capabilities.chartableReader(MarketPlatform.TRADEYAR),
+        // CoinePro-FX's own chart list (5.25.3), not TradeYar's: TradeYar's names coins only, so
+        // every forex row was filtered out and the screener stood empty for a forex reader. A
+        // server that reports no list filters nothing. See `ScreenerController.chartable`.
+        chartable = capabilities.chartableReader(MarketPlatform.COINEPRO_FX),
     )
 
     @Provides

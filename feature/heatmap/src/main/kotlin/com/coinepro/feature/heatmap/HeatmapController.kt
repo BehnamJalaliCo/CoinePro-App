@@ -102,6 +102,13 @@ class HeatmapController(
      * was one argument at the call site rather than a rework of the resolution path.
      */
     private val tickers: HeatmapTickerSource? = null,
+    /**
+     * Which markets the backends actually have bars for (5.25.3). The catalogue merges in the
+     * bundled universe, and asking for all of it cost 28 × 404 from CoinePro-FX (GER40, USOIL,
+     * minor crosses) and 4 × 422 from TradeYar (USDC, DAI, XMR, OKB) on every opening. Null asks
+     * for everything, as before.
+     */
+    private val universe: HeatmapUniverse? = null,
 ) {
     private val _state = MutableStateFlow(HeatmapState(canResolve = bars != null || tickers != null))
     val state: StateFlow<HeatmapState> = _state.asStateFlow()
@@ -187,8 +194,13 @@ class HeatmapController(
         _state.update { it.copy(assets = assetsOf(search.state.value.results)) }
     }
 
-    private fun assetsOf(rows: List<MarketSearchRow>): List<HeatmapAsset> {
+    /** Markets [universe] said no to: not asked for, and not drawn as a tile that never fills. */
+    private val excluded = mutableSetOf<String>()
+
+    private fun assetsOf(all: List<MarketSearchRow>): List<HeatmapAsset> {
         val bars = synchronized(barsBySymbol) { barsBySymbol.toMap() }
+        val out = synchronized(excluded) { excluded.toSet() }
+        val rows = if (out.isEmpty()) all else all.filter { it.meta.symbol !in out }
         return heatmapAssetsFrom(rows, bars, tickerBySymbol, period, asked + tickerBySymbol.keys)
     }
 
@@ -221,8 +233,14 @@ class HeatmapController(
         asked.addAll(pending)
         _state.update { it.copy(resolving = true) }
         resolveJob = scope.launch {
+            val served = universe?.let { known ->
+                pending.filter { symbol ->
+                    known.allows(symbol).also { allowed -> if (!allowed) synchronized(excluded) { excluded += symbol } }
+                }
+            } ?: pending
+            if (served.size != pending.size) _state.update { it.copy(assets = assetsOf(search.state.value.results)) }
             coroutineScope {
-                pending.forEach { symbol ->
+                served.forEach { symbol ->
                     launch {
                         gate.withPermit {
                             val loaded = source.bars(symbol)
@@ -266,4 +284,14 @@ class HeatmapController(
         /** How many candle requests may be in flight at once. `SparklineStore`'s own number. */
         const val CONCURRENCY = 4
     }
+}
+
+/**
+ * Whether a backend has bars for a market (5.25.3). See [HeatmapController]'s `universe`.
+ *
+ * An interface rather than a suspending lambda, because the app builds it inside a composable, and
+ * a suspending lambda created there is what the browser build has miscompiled before.
+ */
+fun interface HeatmapUniverse {
+    suspend fun allows(symbol: String): Boolean
 }

@@ -1257,7 +1257,6 @@ fun CoineProApp(
     val marketDataController = marketDataControllers.getValue(activePlatform)
     val marketSearchController = marketSearchControllers.getValue(activePlatform)
     val marketTickerStore = marketTickerStores.getValue(activePlatform)
-    val screenerController = screenerControllers.getValue(activePlatform)
     val marketState by marketDataController.state.collectAsStateWithLifecycle()
     // The account reads follow the same rule as the feed: one platform at a time, and the balance
     // on screen always belongs to the backend named above it.
@@ -1301,6 +1300,27 @@ fun CoineProApp(
     }
     val searchFor: (MarketPlatform) -> MarketSearchController? = { platform ->
         if (platform == MarketPlatform.TRADEYAR && !cryptoSignedIn) publicCryptoSearch else marketSearchControllers[platform]
+    }
+    val backendUniverse = remember(platformCapabilities, candleGateways) {
+        BackendUniverse(platformCapabilities, candleGateways[MarketPlatform.COINEPRO_FX])
+    }
+    // The crypto screener on the public routes for the same reader (5.25.3): the signed-in one
+    // reads `ws/snapshot` with a TradeYar token, and answered «markets unavailable».
+    val publicCryptoScreener = remember(guestGateway, scope, screenerStore, platformCapabilities) {
+        ScreenerController(
+            gateway = GuestMarketCatalogGateway(guestGateway),
+            scope = scope,
+            barSource = CandleScreenerBarSource(
+                com.coinepro.core.marketdata.PacedCandleGateway(GuestCandleGateway(guestGateway)),
+            ),
+            store = screenerStore,
+            chartable = platformCapabilities.chartableReader(MarketPlatform.TRADEYAR),
+        )
+    }
+    val screenerController = if (activePlatform == MarketPlatform.TRADEYAR && !cryptoSignedIn) {
+        publicCryptoScreener
+    } else {
+        screenerControllers.getValue(activePlatform)
     }
     val signedIn = session is SessionState.SignedIn
     // Signed in on the platform on screen, not merely somewhere (5.25.1). The account, push and
@@ -1754,6 +1774,7 @@ fun CoineProApp(
                 appUpdateGateway = appUpdateGateway,
                 onBuyPro = onBuyPro,
                 payments = payments,
+                heatmapUniverse = backendUniverse,
                 proAccount = cryptoSignedIn,
                 linkCryptoAccount = accountLink
                     ?.takeIf { !cryptoSignedIn && sessionStates[MarketPlatform.COINEPRO_FX] is SessionState.SignedIn }
@@ -2048,6 +2069,7 @@ fun CoineProApp(
                         appUpdateGateway = appUpdateGateway,
                         onBuyPro = onBuyPro,
                         payments = payments,
+                        heatmapUniverse = backendUniverse,
                         hub = hub,
                         hubActions = hubActions,
                         briefing = HomeBriefing.Resting,
@@ -2383,6 +2405,8 @@ private fun MainShell(
     payments: com.coinepro.core.account.PaymentsGateway? = null,
     /** Whether the reader holds the TradeYar session Pro is bought on (5.25.0). */
     proAccount: Boolean = false,
+    /** The markets each backend has bars for, for the heat map (5.25.3). See `BackendUniverse`. */
+    heatmapUniverse: com.coinepro.feature.heatmap.HeatmapUniverse? = null,
     /**
      * Links the forex reader's TradeYar account (5.25.1): null when it worked, otherwise the
      * server's sentence or an empty string. Null itself where there is nothing to link.
@@ -4140,6 +4164,7 @@ private fun MainShell(
                 // open — and the candles above stay, for the two figures a rolling
                 // twenty-four hours cannot carry: the period return and the median daily range.
                 tickers = remember(marketTickerStore) { MarketTickerHeatmapSource(marketTickerStore) },
+                universe = heatmapUniverse,
             )
         }
         val screenerPane: @Composable () -> Unit = {

@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.25.3
+
+**fa**
+
+> اسکرینر برای حساب فارکس دوباره پر می‌شود، چه در فارکس و چه در کریپتو. نقشه‌ی حرارتی فقط بازارهایی را می‌خواهد که داده دارند و دیگر خانه‌ی خالی نمی‌کشد. متن صفحه‌ی پرو برای حسابی که از قبل حساب کریپتو دارد روشن‌تر شد.
+
+**en**
+
+> The screener fills again for a forex account, on both the forex and the crypto side. The heat map asks only for markets that have data and no longer draws tiles that never fill. The Pro page explains the crypto account more clearly when one already exists.
+
+---
+
 ## 5.25.2
 
 **fa**
