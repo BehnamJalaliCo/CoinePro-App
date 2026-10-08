@@ -238,6 +238,7 @@ class MainActivity : FragmentActivity() {
 
     private var launchSignalId by mutableStateOf<Long?>(null)
     private var launchActivity by mutableStateOf(false)
+    private var launchRoute by mutableStateOf<String?>(null)
     private var launchResetToken by mutableStateOf<String?>(null)
 
     /**
@@ -260,6 +261,9 @@ class MainActivity : FragmentActivity() {
     /** The bar `?tf=` asked for, alongside [launchSymbol] and consumed with it. */
     private var launchTimeframe by mutableStateOf<String?>(null)
     private var notificationPermissionState by mutableStateOf(NotificationPermissionUiState.NOT_CONFIGURED)
+
+    /** The once-a-day offer to turn notifications on (5.27.0). See `NotificationOfferPolicy`. */
+    private var notificationOfferVisible by mutableStateOf(false)
 
     private val notificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -496,6 +500,8 @@ class MainActivity : FragmentActivity() {
                 notificationPermissionState = notificationPermissionState,
                 onSignalLaunchConsumed = { launchSignalId = null },
                 onActivityLaunchConsumed = { launchActivity = false },
+                launchRoute = launchRoute,
+                onRouteLaunchConsumed = { launchRoute = null },
                 onResetTokenConsumed = { launchResetToken = null },
                 onScriptLaunchConsumed = { launchScriptId = null },
                 onSymbolLaunchConsumed = {
@@ -593,6 +599,15 @@ class MainActivity : FragmentActivity() {
                     // the next launch, which is the behaviour an unset flag would give them.
                     onSkip = { lifecycleScope.launch { userPreferencesStore.setReaderMode(ReaderMode.TRADER) } },
                 )
+            } else if (launched && notificationOfferVisible) {
+                // After the first-run screens, never over them: the offer is the last thing a new
+                // reader is asked, and on later days the first thing a returning one sees.
+                NotificationOfferSheet(
+                    modifier = Modifier.coverTouches(),
+                    onEnable = ::acceptNotificationOffer,
+                    onLater = { closeNotificationOffer(never = false) },
+                    onNever = { closeNotificationOffer(never = true) },
+                )
             }
             }
         }
@@ -609,6 +624,7 @@ class MainActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         updateNotificationPermissionState()
+        evaluateNotificationOffer()
         refreshWidgets()
         // The reader's session, not TradeYar's. The unqualified controller is bound to the
         // crypto platform, so a reader whose only account is on CoinePro-FX got no refresh on
@@ -711,6 +727,7 @@ class MainActivity : FragmentActivity() {
         when (target) {
             is CoineProDeepLink.Signal -> launchSignalId = target.signalId
             CoineProDeepLink.Activity -> launchActivity = true
+            is CoineProDeepLink.Screen -> launchRoute = launchRouteFor(target.name)
             is CoineProDeepLink.PasswordReset -> launchResetToken = target.token
             is CoineProDeepLink.Market -> {
                 // Set before the symbol, and both in the same frame. The chart's launch effect is
@@ -726,8 +743,9 @@ class MainActivity : FragmentActivity() {
 
     private fun updateNotificationPermissionState() {
         val previouslyRequested = launchPreferences().getBoolean(KEY_NOTIFICATION_PERMISSION_REQUESTED, false)
+        // Not tied to Firebase any more (5.27.0): the price alerts, the market notifications and the
+        // morning brief are all posted by the phone itself, and each needs the permission.
         notificationPermissionState = when {
-            BuildConfig.FIREBASE_PROJECT_ID.isBlank() -> NotificationPermissionUiState.NOT_CONFIGURED
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU -> NotificationPermissionUiState.NOT_REQUIRED
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED -> {
                 NotificationPermissionUiState.GRANTED
@@ -740,12 +758,50 @@ class MainActivity : FragmentActivity() {
     private fun requestNotificationPermission() {
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            BuildConfig.FIREBASE_PROJECT_ID.isNotBlank() &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
             launchPreferences().edit().putBoolean(KEY_NOTIFICATION_PERMISSION_REQUESTED, true).apply()
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+    }
+
+    private fun notificationsEnabled(): Boolean {
+        val granted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        return granted && androidx.core.app.NotificationManagerCompat.from(this).areNotificationsEnabled()
+    }
+
+    private fun evaluateNotificationOffer() {
+        val preferences = launchPreferences()
+        notificationOfferVisible = NotificationOfferPolicy.shouldOffer(
+            enabled = notificationsEnabled(),
+            never = preferences.getBoolean(KEY_NOTIFICATION_OFFER_NEVER, false),
+            lastOfferDay = preferences.getLong(KEY_NOTIFICATION_OFFER_DAY, -1L).takeIf { it >= 0L },
+            today = java.time.LocalDate.now().toEpochDay(),
+        )
+    }
+
+    private fun closeNotificationOffer(never: Boolean) {
+        launchPreferences().edit()
+            .putLong(KEY_NOTIFICATION_OFFER_DAY, java.time.LocalDate.now().toEpochDay())
+            .apply { if (never) putBoolean(KEY_NOTIFICATION_OFFER_NEVER, true) }
+            .apply()
+        notificationOfferVisible = false
+    }
+
+    /**
+     * The system's own dialog while Android will still show it; its settings page once it will not
+     * — after two refusals on Android 13 and later, or whenever the reader switched them off there.
+     */
+    private fun acceptNotificationOffer() {
+        closeNotificationOffer(never = false)
+        val canAsk = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+            (
+                !launchPreferences().getBoolean(KEY_NOTIFICATION_PERMISSION_REQUESTED, false) ||
+                    shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)
+                )
+        if (canAsk) requestNotificationPermission() else openNotificationSettings()
     }
 
     private fun openNotificationSettings() {
@@ -784,6 +840,8 @@ class MainActivity : FragmentActivity() {
     companion object {
         private const val LAUNCH_PREFERENCES = "launch_readiness"
         private const val KEY_NOTIFICATION_PERMISSION_REQUESTED = "notification_permission_requested"
+        private const val KEY_NOTIFICATION_OFFER_DAY = "notification_offer_day"
+        private const val KEY_NOTIFICATION_OFFER_NEVER = "notification_offer_never"
 
         /**
          * The denominator the aspect ratio is expressed over.

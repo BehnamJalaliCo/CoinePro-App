@@ -83,7 +83,7 @@ class AndroidMorningBriefDeliverer @Inject constructor(
             context,
             NotificationChannels.channelId(NotificationCategory.MORNING_BRIEF),
         )
-            .setSmallIcon(android.R.drawable.stat_notify_more)
+            .setSmallIcon(R.drawable.ic_stat_coinepro)
             .setContentTitle(brief.headline)
             .setContentText(body)
             .setAutoCancel(true)

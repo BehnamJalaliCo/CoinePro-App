@@ -92,6 +92,12 @@ enum class NotificationCategory(
      */
     WATCHLIST_MOVE("watchlist_move", null, defaultOn = true, needsAccount = false),
 
+    /** A sharp move in bitcoin, gold or the major pairs, worked out on the phone (5.27.0). */
+    MARKET_MOVE("market_move", null, defaultOn = true, needsAccount = false),
+
+    /** The day's summary: the majors and the screener's biggest movers, once a morning (5.27.0). */
+    MARKET_DIGEST("market_digest", null, defaultOn = true, needsAccount = false),
+
     /** Headlines the server marked important. Off by default: news is a stream, not an event. */
     NEWS("news", null, defaultOn = false, needsAccount = false),
 
@@ -107,7 +113,8 @@ enum class NotificationCategory(
     ANNOUNCEMENT("announcement", ServerSwitch.ANNOUNCEMENTS, defaultOn = true, needsAccount = false),
 
     /** A high-importance economic release is due. Off by default for the same reason. */
-    CALENDAR("calendar", null, defaultOn = false, needsAccount = false),
+    /** On by default since 5.27.0: the reminder before a high-importance release is the owner's choice. */
+    CALENDAR("calendar", null, defaultOn = true, needsAccount = false),
 
     /**
      * **رصد صبح** — the reader's own markets, once a day, at an hour they chose.
@@ -177,6 +184,8 @@ enum class NotificationCategory(
             "copy_failed", "copy_error" -> COPY_FAILED
             "alert", "price_alert" -> PRICE_ALERT
             "watchlist", "watchlist_move", "volatility" -> WATCHLIST_MOVE
+            "market_move", "btc_move" -> MARKET_MOVE
+            "market_digest", "digest" -> MARKET_DIGEST
             "news" -> NEWS
             "announcement", "announcements", "notice" -> ANNOUNCEMENT
             "calendar", "economic" -> CALENDAR

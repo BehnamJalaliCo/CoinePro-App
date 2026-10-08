@@ -115,4 +115,16 @@ class WidgetSnapshotCodecTest {
         assertTrue(snapshot.stale)
         assertFalse(snapshot.isEmpty)
     }
+
+    @Test
+    fun `the change in price and the wire symbol travel too, and an older record still reads`() {
+        // 5.27.0: TradingView's widgets carry the change in price beside the percent, and the mark is
+        // found by the wire symbol rather than the display one.
+        val market = WidgetMarket("BTC/USDT", "Bitcoin", "64,210.50", "+3.24%", 1, changeAmountText = "+2,015.10", wire = "BTCUSDT")
+        assertEquals(listOf(market), roundTrip(listOf(market)))
+        val older = listOf("XAU/USD", "Gold", "2,592.60", "+0.2%", "1").joinToString(WidgetSnapshotStore.RECORD)
+        val decoded = WidgetSnapshotStore.decode(older, "0", "0").markets.single()
+        assertEquals("XAU/USD", decoded.wire)
+        assertEquals("", decoded.changeAmountText)
+    }
 }

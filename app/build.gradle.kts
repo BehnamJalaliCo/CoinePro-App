@@ -312,6 +312,15 @@ android {
         // level this app has today. See `NetworkFactory.okHttpClient`'s `pinnedUntilEpochMs`.
         buildConfigField("long", "CERTIFICATE_PINS_UNTIL", "${certificatePinsUntilEpochMs}L")
 
+        // The second road to a host filtered inside Iran (5.27.0): `host=https://mirror/;…`, read by
+        // `HostMirror.parse`. The forex platform is reached through TradeYar's own host, which
+        // readers there can open without a VPN; its web server hands `/fx/` on to coineprofx.com.
+        buildConfigField(
+            "String",
+            "HOST_MIRRORS",
+            escapedBuildConfig(signingProperty("COINEPRO_HOST_MIRRORS") ?: "coineprofx.com=https://tradeyar.trade-future.ir/fx/"),
+        )
+
         // Whether the app may read Investing.com, Cointelegraph and the ForexFactory calendar file
         // from the device itself, as the fallback for a section the backend answered empty.
         //

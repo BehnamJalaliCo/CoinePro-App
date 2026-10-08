@@ -78,6 +78,11 @@ class CoineProApplication : Application(), Configuration.Provider, SingletonImag
         entitlements.begin()
         initializeFirebaseIfConfigured()
         NotificationChannels.ensure(this)
+        // The market notifications' quarter-hour (5.27.0). The engine checks the permission and
+        // every switch itself, so booking it for a reader who has them off costs one quiet wake-up.
+        if (android.os.Build.FINGERPRINT != ROBOLECTRIC_FINGERPRINT) {
+            com.coinepro.app.pulse.MarketPulseWorker.schedule(this)
+        }
     }
 
     private fun initializeFirebaseIfConfigured() {

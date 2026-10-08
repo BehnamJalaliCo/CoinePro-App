@@ -582,7 +582,18 @@ private const val HEATMAP_ROUTE = "market/heatmap"
 private const val SCREENER_ROUTE = SCREENER_RAIL_KEY
 
 /** The screens a web address may open directly. Named, so an address cannot navigate anywhere. */
-internal val LAUNCHABLE_ROUTES: Set<String> = setOf(SCREENER_ROUTE)
+internal val LAUNCHABLE_ROUTES: Set<String> = setOf(SCREENER_ROUTE, NEWS_ROUTE, CALENDAR_ROUTE)
+
+/**
+ * The route a `coinepro://<name>` link opens (5.27.0) — the news widget's «more», a market
+ * notification's screener or calendar — or null for a name that is not one of them.
+ */
+internal fun launchRouteFor(name: String): String? = when (name) {
+    "news" -> NEWS_ROUTE
+    "screener" -> SCREENER_ROUTE
+    "calendar" -> CALENDAR_ROUTE
+    else -> null
+}
 
 /** The portfolio's own report: the curve, the attribution, the month matrix and the export. */
 private const val PORTFOLIO_REPORT_ROUTE = "portfolio-report"
@@ -1435,16 +1446,10 @@ fun CoineProApp(
     // Off unless the server said yes. A delete button that does nothing is the worst button in the
     // app; where this is false the screen shows the published out-of-app route, which works today.
     val accountDeletionAvailable = methods?.accountDeletion == true
-    // Asking spends the one prompt Android grants, and it is spent for good: a reader who declines
-    // is not asked again. A deployment that cannot deliver a push would spend it on nothing, and
-    // one who granted it and then never heard anything has been told something untrue by the
-    // request itself. Unconfigured is already the case for a build without Firebase and reads the
-    // same way here, so it is reused rather than given a second name.
-    val deliverablePermissionState = if (pushAvailable) {
-        notificationPermissionState
-    } else {
-        NotificationPermissionUiState.NOT_CONFIGURED
-    }
+    // The permission is the phone's own business since 5.27.0: price alerts, the market
+    // notifications and the morning brief are posted by the app with no push behind them, so the
+    // switch is offered whether or not this deployment has Firebase.
+    val deliverablePermissionState = notificationPermissionState
 
     LaunchedEffect(signedIn, activePlatform, platformSignedIn) {
         marketDataControllers.forEach { (platform, controller) ->
@@ -5821,10 +5826,12 @@ private fun notificationSections(guest: Boolean): List<NotificationSection> {
         title = stringResource(R.string.channel_group_market),
         categories = listOfNotNull(
             NotificationCategory.PRICE_ALERT,
+            NotificationCategory.MARKET_MOVE,
             NotificationCategory.WATCHLIST_MOVE,
+            NotificationCategory.MARKET_DIGEST,
+            NotificationCategory.CALENDAR,
             NotificationCategory.NEWS,
             NotificationCategory.ANNOUNCEMENT,
-            NotificationCategory.CALENDAR,
             NotificationCategory.AI_SETUP.takeUnless { guest || FeatureFlags.storeRestricted },
         ),
     )

@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.coinepro.app.MainActivity
+import com.coinepro.app.R
 import com.coinepro.app.positiveSignalId
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.notifications.NotificationCategory
@@ -72,7 +73,7 @@ class CoineProFirebaseMessagingService : FirebaseMessagingService() {
             ?.let(NotificationChannels::channelId)
             ?: NotificationChannels.GENERAL
         val notification = NotificationCompat.Builder(this, channel)
-            .setSmallIcon(android.R.drawable.stat_notify_more)
+            .setSmallIcon(R.drawable.ic_stat_coinepro)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))

@@ -331,6 +331,7 @@ val generateWebBuildConfig by tasks.registering {
             |    const val EXPECTED_SIGNERS: String = ""
             |    const val PLAY_INTEGRITY_PROJECT: Long = 0L
             |    const val CERTIFICATE_PINS: String = ""
+            |    const val HOST_MIRRORS: String = ""
             |    const val CERTIFICATE_PINS_UNTIL: Long = 0L
             |    const val DIRECT_THIRD_PARTY_FEEDS: Boolean = true
             |}
@@ -518,6 +519,20 @@ val replacedFiles = listOf(
     "com/coinepro/app/widget/WidgetConfigureActivity.kt",
     "com/coinepro/app/widget/SymbolWidgetConfigureActivity.kt",
     "com/coinepro/app/widget/WidgetSnapshotBridge.kt",
+    // 5.27.0: the news widget, the marks the widgets and notifications draw, and the market
+    // notifications' worker — all `android.graphics`, `RemoteViews` or the launcher. The news widget's
+    // two names the shared refresh worker calls are in web/src/wasmJsMain/.../app/widget/Widgets.web.kt.
+    "com/coinepro/app/widget/NewsWidget.kt",
+    "com/coinepro/app/widget/NewsWidgetConfigureActivity.kt",
+    "com/coinepro/app/widget/WidgetLogo.kt",
+    "com/coinepro/app/widget/WidgetPlacement.kt",
+    "com/coinepro/app/pulse/MarketPulseEngine.kt",
+    "com/coinepro/app/pulse/MarketPulseStore.kt",
+    "com/coinepro/app/pulse/MarketPulseWorker.kt",
+    "com/coinepro/app/pulse/PulseCards.kt",
+    // The second road to a filtered host is the phone's; the page already goes through the
+    // pro-chart.com relay. Twin: web/src/wasmJsMain/.../core/network/HostMirror.web.kt
+    "com/coinepro/core/network/HostMirror.kt",
     // Credential Manager → Google Identity Services: web/src/wasmJsMain/.../app/auth/GoogleSignIn.web.kt
     "com/coinepro/app/auth/GoogleSignIn.kt",
     // Cafe Bazaar's in-app billing: the store build's alone; the browser pays in USDT on the site.

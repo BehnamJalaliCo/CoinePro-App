@@ -64,6 +64,21 @@ class SymbolWidget : AppWidgetProvider() {
         SymbolWidgetRenderer.renderAll(context, manager, intArrayOf(id))
     }
 
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        // The tile's own refresh glyph (5.27.0): one fetch for every widget, then a redraw.
+        if (intent.action == MarketsWidget.ACTION_REFRESH) {
+            WidgetRefreshWorker.requestNow(context)
+            refreshAll(context)
+        }
+    }
+
+    override fun onEnabled(context: Context) {
+        // A tile placed with no markets widget beside it still needs the shared schedule.
+        WidgetRefreshWorker.schedule(context)
+        WidgetRefreshWorker.requestNow(context)
+    }
+
     /**
      * Forgets the ticker a removed tile was configured with.
      *
@@ -78,9 +93,7 @@ class SymbolWidget : AppWidgetProvider() {
     override fun onDisabled(context: Context) {
         // Only when the *markets* widget is also gone. Two widgets share one schedule, and
         // cancelling it because one of them was removed would leave the other frozen.
-        if (AppWidgetManager.getInstance(context).marketWidgetIds(context).isEmpty()) {
-            WidgetRefreshWorker.cancel(context)
-        }
+        if (!WidgetPlacement.anyPlaced(context)) WidgetRefreshWorker.cancel(context)
     }
 
     companion object {
@@ -88,9 +101,6 @@ class SymbolWidget : AppWidgetProvider() {
         /** Every placed instance of this widget. */
         fun AppWidgetManager.symbolWidgetIds(context: Context): IntArray =
             getAppWidgetIds(ComponentName(context, SymbolWidget::class.java))
-
-        private fun AppWidgetManager.marketWidgetIds(context: Context): IntArray =
-            getAppWidgetIds(ComponentName(context, MarketsWidget::class.java))
 
         /** Redraw every placed tile. Called from the worker after a fetch. */
         fun refreshAll(context: Context) {
@@ -108,8 +118,10 @@ class SymbolWidget : AppWidgetProvider() {
  */
 object SymbolWidgetRenderer {
 
-    fun renderAll(context: Context, manager: AppWidgetManager, ids: IntArray) {
+    fun renderAll(base: Context, manager: AppWidgetManager, ids: IntArray) {
         if (ids.isEmpty()) return
+        // The reader's language, not the phone's (5.27.0): see `AppLanguageStore.localized`.
+        val context = com.coinepro.app.AppLanguageStore.localized(base)
         val snapshot = WidgetSnapshotBridge.read(context)
         val colours = WidgetSnapshotBridge.colours(context)
         val symbols = SymbolWidgetBridge.symbols(context)
@@ -127,12 +139,7 @@ object SymbolWidgetRenderer {
                         context = context,
                         market = SymbolWidgetPick.marketFor(snapshot, symbol),
                         symbol = symbol,
-                        freshness = WidgetFreshness.describe(
-                            context = context,
-                            capturedAtEpochMillis = snapshot.capturedAtEpochMillis,
-                            nowEpochMillis = System.currentTimeMillis(),
-                            stale = snapshot.stale,
-                        ),
+                        freshness = WidgetFreshness.clock(context, snapshot.capturedAtEpochMillis, snapshot.stale),
                         layout = layout,
                         colours = colours,
                     ),
@@ -153,7 +160,8 @@ object SymbolWidgetRenderer {
         // The tile opens this market's chart, or the app where there is no market to open. The
         // data URI is what makes the intent distinct — see `WidgetRenderer.openSymbol` for the
         // classic bug it avoids.
-        views.setOnClickPendingIntent(R.id.symbol_root, open(context, market?.symbol ?: symbol))
+        views.setOnClickPendingIntent(R.id.symbol_root, open(context, market?.wire ?: symbol))
+        views.setOnClickPendingIntent(R.id.symbol_refresh, refresh(context))
 
         if (market == null) {
             // The configured market is not in the snapshot: unstarred, dropped from the catalogue,
@@ -165,6 +173,8 @@ object SymbolWidgetRenderer {
             views.setViewVisibility(R.id.symbol_price, View.GONE)
             views.setViewVisibility(R.id.symbol_change, View.GONE)
             views.setViewVisibility(R.id.symbol_freshness, View.GONE)
+            views.setViewVisibility(R.id.symbol_logo, View.GONE)
+            views.setViewVisibility(R.id.symbol_refresh, View.GONE)
             views.setViewVisibility(R.id.symbol_missing, View.VISIBLE)
             views.setTextViewText(
                 R.id.symbol_missing,
@@ -183,11 +193,16 @@ object SymbolWidgetRenderer {
         views.setTextViewText(R.id.symbol_name, market.name)
 
         views.setViewVisibility(R.id.symbol_change, layout.change.visibility())
-        views.setTextViewText(R.id.symbol_change, market.changeText)
+        views.setTextViewText(R.id.symbol_change, WidgetRenderer.changeLine(market))
         views.setTextColor(R.id.symbol_change, context.getColor(market.direction.colourFor(colours)))
 
         views.setViewVisibility(R.id.symbol_freshness, layout.freshness.visibility())
         views.setTextViewText(R.id.symbol_freshness, freshness)
+
+        views.setViewVisibility(R.id.symbol_refresh, layout.refresh.visibility())
+        val logo = if (layout.logo) WidgetLogo.bitmap(context, market.wire, LOGO_DP) else null
+        views.setViewVisibility(R.id.symbol_logo, (logo != null).visibility())
+        logo?.let { views.setImageViewBitmap(R.id.symbol_logo, it) }
         return views
     }
 
@@ -220,7 +235,17 @@ object SymbolWidgetRenderer {
         )
     }
 
+    private fun refresh(context: Context): PendingIntent = PendingIntent.getBroadcast(
+        context,
+        REQUEST_REFRESH,
+        Intent(context, SymbolWidget::class.java).setAction(MarketsWidget.ACTION_REFRESH),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+
+    private const val LOGO_DP = 34
+    private const val REQUEST_REFRESH = 3
+
     /** What a launcher that reports no size is assumed to have given: the declared target. */
     private const val DEFAULT_WIDTH_DP = 160
-    private const val DEFAULT_HEIGHT_DP = 110
+    private const val DEFAULT_HEIGHT_DP = 150
 }

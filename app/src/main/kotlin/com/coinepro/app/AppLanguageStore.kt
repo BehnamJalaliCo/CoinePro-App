@@ -48,6 +48,21 @@ object AppLanguageStore {
         return context.createConfigurationContext(configuration)
     }
 
+    /**
+     * [context] in the reader's chosen language, without touching the process default (5.27.0) —
+     * for what is drawn with no activity behind it: the widgets and the notifications. Persian is
+     * the product's default, while `values/` is English, so the phone's own locale is the wrong one
+     * to read their words in.
+     */
+    fun localized(context: Context): Context {
+        val locale = Locale.forLanguageTag(current(context).tag)
+        val configuration = Configuration(context.resources.configuration).apply {
+            setLocale(locale)
+            setLayoutDirection(locale)
+        }
+        return context.createConfigurationContext(configuration)
+    }
+
     private fun preferences(context: Context) =
         context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
 }

@@ -7,6 +7,9 @@ internal sealed interface CoineProDeepLink {
     data class Signal(val signalId: Long) : CoineProDeepLink
     data object Activity : CoineProDeepLink
 
+    /** One of the screens `launchRouteFor` names — news, screener, calendar (5.27.0). */
+    data class Screen(val name: String) : CoineProDeepLink
+
     /**
      * One market's chart, from a row of the home-screen widget.
      *
@@ -155,6 +158,7 @@ internal fun parseCoineProDeepLink(
     return when (host) {
         "signal" -> positiveSignalId(pathSegments.singleOrNull())?.let(CoineProDeepLink::Signal)
         "activity" -> if (pathSegments.isEmpty()) CoineProDeepLink.Activity else null
+        "news", "screener", "calendar" -> if (pathSegments.isEmpty()) CoineProDeepLink.Screen(host) else null
         "market" -> tickerOrNull(pathSegments.singleOrNull())
             ?.let { CoineProDeepLink.Market(it, timeframeOrNull(timeframe)) }
         else -> null

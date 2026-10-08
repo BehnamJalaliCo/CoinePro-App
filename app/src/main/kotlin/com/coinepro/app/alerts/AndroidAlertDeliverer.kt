@@ -139,7 +139,7 @@ class AndroidAlertDeliverer @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val notification = NotificationCompat.Builder(context, channelFor(fired))
-            .setSmallIcon(android.R.drawable.stat_notify_more)
+            .setSmallIcon(R.drawable.ic_stat_coinepro)
             .setContentTitle(context.getString(R.string.alert_fired_title))
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))

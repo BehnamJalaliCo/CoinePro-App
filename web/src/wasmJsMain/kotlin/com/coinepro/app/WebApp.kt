@@ -113,6 +113,8 @@ object WebLaunch {
                 symbol = target.symbol
             }
             is CoineProDeepLink.Script -> scriptId = target.scriptId
+            // The page's own address already names its screen; see `WebLaunch.route`.
+            is CoineProDeepLink.Screen -> Unit
             null -> Unit
         }
     }

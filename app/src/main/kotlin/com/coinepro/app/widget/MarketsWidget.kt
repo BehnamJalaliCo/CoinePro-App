@@ -28,12 +28,12 @@ import com.coinepro.core.datastore.WidgetSnapshot
  * the only surface of this product somebody sees *without deciding to*. A widget that is right
  * every time they unlock their phone is worth more attention than a screen they visit weekly.
  *
- * ### It follows the watchlist rather than being configured
+ * ### It follows a watchlist
  *
- * There is no configuration activity, deliberately. A reader who has already starred the markets
- * they care about has answered this question, and asking it again — in a different screen, with a
- * different list that can drift out of step — is the sort of duplication that ends with two
- * watchlists nobody trusts. Star a market in the app and it is on the home screen.
+ * The starred list by default, or the one the reader picks in [WidgetConfigureActivity] — opened
+ * when the widget is placed and again from the gear in its header (5.27.0), as TradingView's is.
+ * It never keeps a list of its own: a second list that drifts from the app's is two watchlists
+ * nobody trusts.
  *
  * ### The three processes
  *
@@ -83,7 +83,8 @@ class MarketsWidget : AppWidgetProvider() {
     }
 
     override fun onDisabled(context: Context) {
-        WidgetRefreshWorker.cancel(context)
+        // Only when the other two are gone as well: three widgets share one schedule.
+        if (!WidgetPlacement.anyPlaced(context)) WidgetRefreshWorker.cancel(context)
     }
 
     companion object {
@@ -115,8 +116,10 @@ class MarketsWidget : AppWidgetProvider() {
  */
 object WidgetRenderer {
 
-    fun renderAll(context: Context, manager: AppWidgetManager, ids: IntArray) {
+    fun renderAll(base: Context, manager: AppWidgetManager, ids: IntArray) {
         if (ids.isEmpty()) return
+        // The reader's language, not the phone's (5.27.0): see `AppLanguageStore.localized`.
+        val context = com.coinepro.app.AppLanguageStore.localized(base)
         // One read for every widget on the screen rather than one each: a reader with the same
         // widget in two sizes is common, and the snapshot is the same for both.
         val snapshot = WidgetSnapshotBridge.read(context)
@@ -128,7 +131,7 @@ object WidgetRenderer {
                 heightDp = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT) ?: DEFAULT_HEIGHT_DP,
             )
             runCatching {
-                manager.updateAppWidget(id, render(context, snapshot, layout, colours))
+                manager.updateAppWidget(id, render(context, snapshot, layout, colours, id))
             }
         }
     }
@@ -138,25 +141,27 @@ object WidgetRenderer {
         snapshot: WidgetSnapshot,
         layout: WidgetLayout,
         colours: MarketColorScheme,
+        widgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID,
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_markets)
 
         views.setViewVisibility(R.id.widget_header, layout.header.visibility())
         views.setViewVisibility(R.id.widget_footer, layout.footer.visibility())
 
-        val freshness = WidgetFreshness.describe(
-            context = context,
-            capturedAtEpochMillis = snapshot.capturedAtEpochMillis,
-            nowEpochMillis = System.currentTimeMillis(),
-            stale = snapshot.stale,
+        // The list's own name where the reader chose one; «دیده‌بان» for the starred list.
+        views.setTextViewText(
+            R.id.widget_title,
+            snapshot.title.ifBlank { context.getString(R.string.widget_watchlist_title) },
         )
+        val freshness = WidgetFreshness.clock(context, snapshot.capturedAtEpochMillis, snapshot.stale)
         views.setTextViewText(R.id.widget_freshness, freshness)
         views.setTextViewText(R.id.widget_footer, freshness)
 
-        // The whole plate opens the app; the refresh glyph refetches. Two targets, and the larger
-        // one is the one a thumb finds by accident — which should be the harmless one.
+        // The whole plate opens the app; the refresh glyph refetches; the gear chooses the list.
+        // Three targets, and the largest is the one a thumb finds by accident — the harmless one.
         views.setOnClickPendingIntent(R.id.widget_root, openApp(context))
         views.setOnClickPendingIntent(R.id.widget_refresh, refresh(context))
+        views.setOnClickPendingIntent(R.id.widget_settings, settings(context, widgetId))
 
         val shown = snapshot.markets.take(layout.rows)
         if (shown.isEmpty()) {
@@ -188,17 +193,27 @@ object WidgetRenderer {
         layout: WidgetLayout,
         colours: MarketColorScheme,
     ) {
-        views.setTextViewText(R.id.row_symbol, market.symbol)
-        views.setTextViewText(R.id.row_name, market.name)
-        views.setViewVisibility(R.id.row_name, layout.names.visibility())
-        views.setTextViewText(R.id.row_price, market.priceText)
-        views.setTextViewText(R.id.row_change, market.changeText)
-        views.setTextColor(R.id.row_change, context.getColor(market.direction.colourFor(colours)))
+        // Each row is its own `RemoteViews` so the ids inside the included layout — the same
+        // eight times — are addressed per row rather than all at once.
+        val row = RemoteViews(context.packageName, R.layout.widget_row)
+        row.setTextViewText(R.id.row_symbol, market.symbol)
+        row.setTextViewText(R.id.row_name, market.name)
+        row.setViewVisibility(R.id.row_name, layout.names.visibility())
+        row.setTextViewText(R.id.row_price, market.priceText)
+        row.setTextViewText(R.id.row_change, changeLine(market))
+        row.setTextColor(R.id.row_change, context.getColor(market.direction.colourFor(colours)))
+        WidgetLogo.bitmap(context, market.wire, ROW_LOGO_DP)?.let { row.setImageViewBitmap(R.id.row_logo, it) }
+        views.removeAllViews(rowId)
+        views.addView(rowId, row)
         // The row opens that market's chart. `PendingIntent` needs a distinct request code *and* a
         // distinct data URI per row, or Android reuses one intent for all of them and every row
         // opens whichever was created first.
-        views.setOnClickPendingIntent(rowId, openSymbol(context, market.symbol))
+        views.setOnClickPendingIntent(rowId, openSymbol(context, market.wire))
     }
+
+    /** `+7.14  +1.84%`, as TradingView's row carries it; the percent alone where no amount came. */
+    internal fun changeLine(market: WidgetMarket): String =
+        listOf(market.changeAmountText, market.changeText).filter(String::isNotBlank).joinToString("  ")
 
     /**
      * Which colour a direction takes, under the reader's own convention.
@@ -242,6 +257,16 @@ object WidgetRenderer {
         )
     }
 
+    private fun settings(context: Context, widgetId: Int): PendingIntent = PendingIntent.getActivity(
+        context,
+        REQUEST_SETTINGS_BASE + widgetId,
+        Intent(context, WidgetConfigureActivity::class.java)
+            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+            .setData(Uri.parse("${BrandConfig.SCHEME_PREFIX}widget/$widgetId"))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+
     private fun refresh(context: Context): PendingIntent = PendingIntent.getBroadcast(
         context,
         REQUEST_REFRESH,
@@ -262,4 +287,6 @@ object WidgetRenderer {
     private const val REQUEST_OPEN = 1
     private const val REQUEST_REFRESH = 2
     private const val REQUEST_SYMBOL_BASE = 1_000
+    private const val REQUEST_SETTINGS_BASE = 500_000
+    private const val ROW_LOGO_DP = 26
 }

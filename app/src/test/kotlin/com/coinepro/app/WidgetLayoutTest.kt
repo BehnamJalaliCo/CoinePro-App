@@ -29,14 +29,13 @@ class WidgetLayoutTest {
     }
 
     @Test
-    fun `a two-cell-high widget spends its height on prices`() {
-        // The header would cost a third of the glass, and somebody who put a *price* widget on
-        // their home screen did not ask for a title bar. They still get the clock.
-        listOf(cells(2, 2), cells(4, 2)).forEach { small ->
-            assertFalse("A header would cost a third of this widget", small.header)
-            assertTrue("It still has to say when", small.footer)
-            assertTrue(small.rows >= 2)
-        }
+    fun `a two-cell-high widget carries the header and two rows, as TradingView's does`() {
+        // 5.27.0: the watchlist at 4×2 is the size readers place, and TradingView's carries its
+        // name, the time it was updated, refresh and settings at that size. So does this one.
+        val small = cells(4, 2)
+        assertTrue(small.header)
+        assertFalse(small.footer)
+        assertTrue(small.rows >= 2)
     }
 
     @Test

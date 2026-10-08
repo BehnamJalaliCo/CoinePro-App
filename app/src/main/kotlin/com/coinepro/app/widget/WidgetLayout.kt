@@ -41,19 +41,19 @@ data class WidgetLayout(
     companion object {
 
         /** One market row, at the app's own list-row height. */
-        const val ROW_HEIGHT_DP = 44
+        const val ROW_HEIGHT_DP = 40
 
         /** The full strip: wordmark, freshness, refresh. */
-        const val HEADER_HEIGHT_DP = 36
+        const val HEADER_HEIGHT_DP = 40
 
         /** The compact strip: the freshness alone, for widgets too short for a header. */
         const val FOOTER_HEIGHT_DP = 18
 
         /** The widget's own padding, top and bottom together. */
-        const val VERTICAL_PADDING_DP = 16
+        const val VERTICAL_PADDING_DP = 8
 
         /** How many rows must survive the header for it to be worth drawing. */
-        const val HEADER_MIN_ROWS = 3
+        const val HEADER_MIN_ROWS = 2
 
         /** Below this width a row cannot carry a ticker, a name, a price and a change. */
         const val NAMES_MIN_WIDTH_DP = 220

@@ -115,7 +115,7 @@ class ScanWatchWorker @AssistedInject constructor(
             shown
         }
         val notification = NotificationCompat.Builder(context, NotificationChannels.channelId(NotificationCategory.PRICE_ALERT))
-            .setSmallIcon(android.R.drawable.stat_notify_more)
+            .setSmallIcon(R.drawable.ic_stat_coinepro)
             .setContentTitle(context.getString(R.string.scan_watch_title))
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))

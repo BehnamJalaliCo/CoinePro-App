@@ -229,15 +229,6 @@ fun MenuScreen(
                 }
             }
         }
-
-        item(key = "footer") {
-            Text(
-                text = stringResource(R.string.menu_footer),
-                style = MaterialTheme.typography.bodySmall,
-                color = CoineProColors.TextMuted,
-                modifier = Modifier.padding(horizontal = CoineProSpacing.Gutter),
-            )
-        }
     }
 }
 

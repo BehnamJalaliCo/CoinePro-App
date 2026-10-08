@@ -210,7 +210,7 @@ private val EQUITY = mapOf(
 )
 
 @DrawableRes
-private fun logoFor(symbol: String): Int? {
+internal fun logoFor(symbol: String): Int? {
     val base = baseOf(symbol)
     // Equity first. A ticker like `COIN` or `META` also exists as a coin on some venue, and the
     // instrument somebody is looking at decides which mark is right — but on the feeds this app

@@ -201,6 +201,8 @@ notify_calendar_note	system	app
 notify_copy_closed_note	system	app
 notify_copy_failed_note	system	app
 notify_copy_opened_note	system	app
+notify_market_digest_note	system	app
+notify_market_move_note	system	app
 notify_marketing_note	system	app
 notify_morning_brief_note	tip	app
 notify_new_signal_note	system	app

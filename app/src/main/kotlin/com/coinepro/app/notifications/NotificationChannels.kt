@@ -255,6 +255,8 @@ object NotificationChannels {
 
         NotificationCategory.PRICE_ALERT,
         NotificationCategory.WATCHLIST_MOVE,
+        NotificationCategory.MARKET_MOVE,
+        NotificationCategory.MARKET_DIGEST,
         NotificationCategory.NEWS,
         NotificationCategory.ANNOUNCEMENT,
         NotificationCategory.CALENDAR,
@@ -308,6 +310,8 @@ fun NotificationCategory.channelNameRes(): Int = when (this) {
     NotificationCategory.COPY_FAILED -> R.string.notify_copy_failed
     NotificationCategory.PRICE_ALERT -> R.string.notify_price_alert
     NotificationCategory.WATCHLIST_MOVE -> R.string.notify_watchlist_move
+    NotificationCategory.MARKET_MOVE -> R.string.notify_market_move
+    NotificationCategory.MARKET_DIGEST -> R.string.notify_market_digest
     NotificationCategory.NEWS -> R.string.notify_news
     NotificationCategory.ANNOUNCEMENT -> R.string.notify_announcement
     NotificationCategory.CALENDAR -> R.string.notify_calendar
@@ -329,6 +333,8 @@ fun NotificationCategory.channelDescriptionRes(): Int = when (this) {
     NotificationCategory.COPY_FAILED -> R.string.notify_copy_failed_note
     NotificationCategory.PRICE_ALERT -> R.string.notify_price_alert_note
     NotificationCategory.WATCHLIST_MOVE -> R.string.notify_watchlist_move_note
+    NotificationCategory.MARKET_MOVE -> R.string.notify_market_move_note
+    NotificationCategory.MARKET_DIGEST -> R.string.notify_market_digest_note
     NotificationCategory.NEWS -> R.string.notify_news_note
     NotificationCategory.ANNOUNCEMENT -> R.string.notify_announcement_note
     NotificationCategory.CALENDAR -> R.string.notify_calendar_note

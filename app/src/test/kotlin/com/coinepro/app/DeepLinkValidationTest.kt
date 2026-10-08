@@ -112,4 +112,16 @@ class DeepLinkValidationTest {
         assertNull(webChartLinkOrNull(listOf("BTCUSDT", "4h", "extra")))
         assertNull(webChartLinkOrNull(listOf("BTC USDT")))
     }
+
+    @Test
+    fun `the news, screener and calendar links open their screens and nothing else does`() {
+        // 5.27.0: the news widget's «more», and the market notifications' summary and calendar.
+        assertEquals(CoineProDeepLink.Screen("news"), parseCoineProDeepLink("coinepro", "news", emptyList()))
+        assertEquals(CoineProDeepLink.Screen("screener"), parseCoineProDeepLink("coinepro", "screener", emptyList()))
+        assertEquals(CoineProDeepLink.Screen("calendar"), parseCoineProDeepLink("coinepro", "calendar", emptyList()))
+        assertEquals(null, parseCoineProDeepLink("coinepro", "news", listOf("x")))
+        assertEquals(null, parseCoineProDeepLink("coinepro", "admin", emptyList()))
+        assertEquals("market/news", launchRouteFor("news"))
+        assertEquals(null, launchRouteFor("admin"))
+    }
 }

@@ -205,7 +205,17 @@ object CoineProColors {
     @Composable
     @ReadOnlyComposable
     fun assetTint(symbol: String): Color {
-        val brand = when (val base = symbol.removeSuffix("USDT").removeSuffix("USD")) {
+        val brand = assetBrand(symbol)
+        val shift = LocalCoineProPalette.current.assetInkShift
+        return if (shift == 0f) brand else lerp(brand, Color.Black, shift)
+    }
+
+    /**
+     * [assetTint] before the light theme's shift — for the marks drawn outside Compose (5.27.0):
+     * the widgets and the notifications, which sit on their own plates.
+     */
+    fun assetBrand(symbol: String): Color =
+        when (val base = symbol.removeSuffix("USDT").removeSuffix("USD")) {
             "XAU" -> InstrumentGold
             "XAG" -> InstrumentSilver
             "BTC" -> Color(0xFFF7931A)
@@ -218,9 +228,6 @@ object CoineProColors {
             "DOGE" -> Color(0xFFC2A633)
             else -> monogramHue(base)
         }
-        val shift = LocalCoineProPalette.current.assetInkShift
-        return if (shift == 0f) brand else lerp(brand, Color.Black, shift)
-    }
 
     /**
      * A colour a ticker can be recognised by, derived from the ticker and nothing else.

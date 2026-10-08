@@ -63,7 +63,7 @@ import java.net.URLEncoder
  * * **A length cap.** Past [MAX_URL_LENGTH] a "URL" is a payload, not an address.
  * * **Failure renders the publisher, not a broken glyph.** See `SourcePlate`.
  */
-internal object NewsImagePolicy {
+object NewsImagePolicy {
 
     /** Past this a "URL" is a payload, not an address. */
     const val MAX_URL_LENGTH: Int = 2048

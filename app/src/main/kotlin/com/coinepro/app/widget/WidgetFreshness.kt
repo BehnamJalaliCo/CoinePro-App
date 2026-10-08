@@ -59,6 +59,26 @@ object WidgetFreshness {
         return if (stale) context.getString(R.string.widget_stale, text) else text
     }
 
+    /**
+     * «Updated 12:00» — the clock time of the last fetch, as TradingView's widgets say it (5.27.0).
+     *
+     * A clock rather than an age on the widgets themselves: a widget is redrawn when a fetch lands,
+     * not every minute, so «5 min ago» drawn at the fetch would still read «5 min ago» an hour
+     * later. A time is true for as long as it stays on the glass.
+     */
+    fun clock(
+        context: Context,
+        capturedAtEpochMillis: Long,
+        stale: Boolean,
+        zone: java.time.ZoneId = java.time.ZoneId.systemDefault(),
+    ): String {
+        if (capturedAtEpochMillis <= 0L) return context.getString(R.string.widget_never)
+        val time = java.time.Instant.ofEpochMilli(capturedAtEpochMillis).atZone(zone)
+        // Latin digits: a time beside a price is a market figure.
+        val text = context.getString(R.string.widget_updated_at, "%02d:%02d".format(java.util.Locale.US, time.hour, time.minute))
+        return if (stale) context.getString(R.string.widget_stale, text) else text
+    }
+
     /** Under this, "now". Anything shorter is precision a glance cannot use. */
     private const val JUST_NOW_MILLIS = 60_000L
     private const val MINUTE_MILLIS = 60_000L

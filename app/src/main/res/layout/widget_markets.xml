@@ -2,6 +2,10 @@
 <!--
   The markets widget.
 
+  Each row is an empty frame the provider fills with its own `widget_row` (5.27.0). An `include`
+  repeated eight times declares the same child ids eight times, and a `RemoteViews` call by id
+  reaches only the first of them.
+
   Every row that could ever be drawn exists in this file and is hidden by default; the provider
   shows the ones that fit. `RemoteViews` cannot inflate a view at runtime — it can only toggle and
   fill what the layout already declares — so a fixed set of eight rows is not a shortcut, it is how
@@ -9,50 +13,81 @@
   `WidgetLayoutTest` holds the two together.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/widget_background"
-    android:padding="8dp">
+    android:padding="1dp"
+    android:paddingBottom="6dp"
+    tools:ignore="UseAppTint">
 
-    <!-- The full strip. Wordmark, freshness, refresh. -->
+    <!--
+      The full strip, as TradingView's watchlist widget carries it (5.27.0): the mark, the list's
+      name over the time it was last updated, refresh, settings.
+    -->
     <LinearLayout
         android:id="@+id/widget_header"
         android:layout_width="match_parent"
-        android:layout_height="36dp"
+        android:layout_height="40dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="8dp"
+        android:background="@drawable/widget_header_background"
+        android:paddingStart="10dp"
         android:paddingEnd="4dp">
 
-        <TextView
-            android:id="@+id/widget_title"
+        <ImageView
+            android:id="@+id/widget_mark"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:src="@mipmap/ic_launcher_round"
+            android:importantForAccessibility="no" />
+
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            android:maxLines="1"
-            android:ellipsize="end"
-            android:textColor="@color/widget_text_primary"
-            android:text="@string/app_name" />
+            android:layout_marginStart="8dp"
+            android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/widget_freshness"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="11sp"
-            android:maxLines="1"
-            android:textColor="@color/widget_text_muted" />
+            <TextView
+                android:id="@+id/widget_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="@color/widget_text_primary"
+                android:text="@string/widget_watchlist_title" />
+
+            <TextView
+                android:id="@+id/widget_freshness"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="10sp"
+                android:maxLines="1"
+                android:textColor="@color/widget_text_muted" />
+        </LinearLayout>
 
         <ImageView
             android:id="@+id/widget_refresh"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:padding="7dp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="8dp"
             android:src="@drawable/icon_arrows_clockwise"
+            android:tint="@color/widget_text_primary"
             android:contentDescription="@string/widget_refresh" />
+
+        <ImageView
+            android:id="@+id/widget_settings"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="8dp"
+            android:src="@drawable/icon_gear_six"
+            android:tint="@color/widget_text_primary"
+            android:contentDescription="@string/widget_settings" />
     </LinearLayout>
 
     <!-- What the reader sees before the first fetch lands, or when there is nothing to show. -->
@@ -74,14 +109,14 @@
         android:layout_weight="1"
         android:orientation="vertical">
 
-        <include android:id="@+id/widget_row_0" layout="@layout/widget_row" />
-        <include android:id="@+id/widget_row_1" layout="@layout/widget_row" />
-        <include android:id="@+id/widget_row_2" layout="@layout/widget_row" />
-        <include android:id="@+id/widget_row_3" layout="@layout/widget_row" />
-        <include android:id="@+id/widget_row_4" layout="@layout/widget_row" />
-        <include android:id="@+id/widget_row_5" layout="@layout/widget_row" />
-        <include android:id="@+id/widget_row_6" layout="@layout/widget_row" />
-        <include android:id="@+id/widget_row_7" layout="@layout/widget_row" />
+        <FrameLayout android:id="@+id/widget_row_0" android:layout_width="match_parent" android:layout_height="40dp" android:visibility="gone" />
+        <FrameLayout android:id="@+id/widget_row_1" android:layout_width="match_parent" android:layout_height="40dp" android:visibility="gone" />
+        <FrameLayout android:id="@+id/widget_row_2" android:layout_width="match_parent" android:layout_height="40dp" android:visibility="gone" />
+        <FrameLayout android:id="@+id/widget_row_3" android:layout_width="match_parent" android:layout_height="40dp" android:visibility="gone" />
+        <FrameLayout android:id="@+id/widget_row_4" android:layout_width="match_parent" android:layout_height="40dp" android:visibility="gone" />
+        <FrameLayout android:id="@+id/widget_row_5" android:layout_width="match_parent" android:layout_height="40dp" android:visibility="gone" />
+        <FrameLayout android:id="@+id/widget_row_6" android:layout_width="match_parent" android:layout_height="40dp" android:visibility="gone" />
+        <FrameLayout android:id="@+id/widget_row_7" android:layout_width="match_parent" android:layout_height="40dp" android:visibility="gone" />
     </LinearLayout>
 
     <!-- The compact strip, for widgets too short for a header. The freshness alone. -->

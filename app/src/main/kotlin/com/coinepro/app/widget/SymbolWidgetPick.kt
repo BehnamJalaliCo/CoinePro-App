@@ -33,7 +33,8 @@ object SymbolWidgetPick {
      */
     fun marketFor(snapshot: WidgetSnapshot, symbol: String?): WidgetMarket? {
         val key = symbol?.trim()?.uppercase()?.takeIf { it.isNotEmpty() } ?: return null
-        return snapshot.markets.firstOrNull { it.symbol.trim().uppercase() == key }
+        return snapshot.markets.firstOrNull { it.wire.trim().uppercase() == key }
+            ?: snapshot.markets.firstOrNull { it.symbol.trim().uppercase() == key }
     }
 
     /**
@@ -51,6 +52,10 @@ object SymbolWidgetPick {
         // and a live one look identical, and on a trading app that is not cosmetic. It is the last
         // thing dropped, and only where the tile is too short to hold two lines at all.
         freshness = heightDp >= FRESHNESS_MIN_HEIGHT_DP,
+        // The mark and the refresh glyph are the 2×2 tile's (5.27.0); a one-cell strip keeps the
+        // price and gives them up first.
+        logo = heightDp >= NAME_MIN_HEIGHT_DP,
+        refresh = heightDp >= NAME_MIN_HEIGHT_DP,
     )
 
     /** Below this the tile is one column of digits and the name would wrap. */
@@ -71,4 +76,6 @@ data class SymbolWidgetLayout(
     val name: Boolean,
     val change: Boolean,
     val freshness: Boolean,
+    val logo: Boolean = false,
+    val refresh: Boolean = false,
 )

@@ -189,7 +189,7 @@
 
         <receiver
             android:name=".widget.MarketsWidget"
-            android:label="@string/app_name"
+            android:label="@string/widget_watchlist_title"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -223,10 +223,35 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.coinepro.app.widget.REFRESH" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_symbol_info" />
+        </receiver>
+
+        <!-- The news widget (5.27.0): one headline at a time, paged, with the feed chosen here. -->
+        <activity
+            android:name=".widget.NewsWidgetConfigureActivity"
+            android:exported="true"
+            android:theme="@style/Theme.CoinePro">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <receiver
+            android:name=".widget.NewsWidget"
+            android:label="@string/widget_news_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.coinepro.app.widget.NEWS_PAGE" />
+                <action android:name="com.coinepro.app.widget.REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_news_info" />
         </receiver>
 
         <!--

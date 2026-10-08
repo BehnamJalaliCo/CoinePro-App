@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  One market, as a tile.
+  One market, as a tile — laid out as TradingView's 2×2 symbol widget is (5.27.0): the ticker and
+  its name beside the mark, the price large, the change in price and percent under it, refresh.
 
   The price is the widget. Everything else — the name, the change, the freshness — is declared here
   and hidden by the provider where the tile is too small to carry it; `RemoteViews` cannot inflate
@@ -12,62 +13,122 @@
   without the direction forced, one beginning with a minus reorders the tile.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/symbol_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:gravity="center_vertical"
     android:background="@drawable/widget_background"
-    android:padding="12dp">
+    android:paddingStart="14dp"
+    android:paddingEnd="10dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="8dp"
+    tools:ignore="UseAppTint">
 
-    <TextView
-        android:id="@+id/symbol_ticker"
+    <LinearLayout
+        android:id="@+id/symbol_head"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="12sp"
-        android:textStyle="bold"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:textDirection="ltr"
-        android:textColor="@color/widget_text_secondary" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
-    <TextView
-        android:id="@+id/symbol_name"
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/symbol_ticker"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textDirection="ltr"
+                android:textColor="@color/widget_text_primary" />
+
+            <TextView
+                android:id="@+id/symbol_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:visibility="gone"
+                android:textColor="@color/widget_text_muted" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/symbol_logo"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:importantForAccessibility="no" />
+    </LinearLayout>
+
+    <!-- Not `Space`: a `RemoteViews` tree may hold only the views the launcher agrees to inflate. -->
+    <FrameLayout
+        android:id="@+id/symbol_gap"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textSize="11sp"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:visibility="gone"
-        android:textColor="@color/widget_text_muted" />
+        android:layout_height="0dp"
+        android:layout_weight="1" />
 
     <TextView
         android:id="@+id/symbol_price"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="22sp"
+        android:textSize="24sp"
+        android:textStyle="bold"
         android:maxLines="1"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="14sp"
+        android:autoSizeMaxTextSize="26sp"
         android:textDirection="ltr"
         android:textColor="@color/widget_text_primary" />
 
-    <TextView
-        android:id="@+id/symbol_change"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="13sp"
-        android:maxLines="1"
-        android:visibility="gone"
-        android:textDirection="ltr"
-        android:textColor="@color/widget_text_muted" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
-    <TextView
-        android:id="@+id/symbol_freshness"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textSize="10sp"
-        android:maxLines="1"
-        android:visibility="gone"
-        android:textColor="@color/widget_text_muted" />
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/symbol_change"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:visibility="gone"
+                android:textDirection="ltr"
+                android:textColor="@color/widget_text_muted" />
+
+            <TextView
+                android:id="@+id/symbol_freshness"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="10sp"
+                android:maxLines="1"
+                android:visibility="gone"
+                android:textColor="@color/widget_text_muted" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/symbol_refresh"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:padding="7dp"
+            android:src="@drawable/icon_arrows_clockwise"
+            android:tint="@color/widget_text_secondary"
+            android:contentDescription="@string/widget_refresh" />
+    </LinearLayout>
 
     <!-- Shown alone when the snapshot does not carry this market. See `SymbolWidgetPick`. -->
     <TextView

@@ -72,6 +72,12 @@ object NetworkFactory {
          * interceptor so it sees the request as it will be sent. Null installs nothing.
          */
         attestation: Interceptor? = null,
+        /**
+         * The second road to a host the reader's network filters — see [HostMirror]. After the
+         * recorder, so the log shows the call the reader made; before the auth interceptor, so the
+         * rewritten request still carries its token.
+         */
+        mirror: Interceptor? = null,
     ): OkHttpClient {
         val auth = Interceptor { chain ->
             // A call that set its own Authorization keeps it. CoinePro-FX's chart routes take an
@@ -119,6 +125,7 @@ object NetworkFactory {
             .callTimeout(CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .pingInterval(20, TimeUnit.SECONDS)
             .apply { recorder?.let(::addInterceptor) }
+            .apply { mirror?.let(::addInterceptor) }
             .apply {
                 // Pins with no expiry are refused rather than installed for ever — see
                 // [pinnedUntilEpochMs]. A build that pins permanently is a build one bad renewal

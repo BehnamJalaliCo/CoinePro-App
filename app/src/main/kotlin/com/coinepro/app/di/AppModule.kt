@@ -145,6 +145,7 @@ import com.coinepro.core.membership.MembershipController
 import com.coinepro.core.membership.MembershipGateway
 import com.coinepro.core.membership.NetworkMembershipGateway
 import com.coinepro.core.model.MarketPlatform
+import com.coinepro.core.network.HostMirror
 import com.coinepro.core.network.NetworkFactory
 import com.coinepro.core.network.NetworkStatus
 import com.coinepro.core.notifications.NetworkNotificationGateway
@@ -370,6 +371,12 @@ object AppModule {
         initialPlatform = activePlatformStore.available.first(),
     )
 
+    /** The forex platform's second road, through TradeYar's host (5.27.0). See `HostMirror`. */
+    @Provides
+    @Singleton
+    fun hostMirror(@ApplicationContext context: Context): HostMirror =
+        HostMirror(HostMirror.parse(BuildConfig.HOST_MIRRORS), com.coinepro.app.PreferencesMirrorMemory(context))
+
     // ── CoinePro-FX (Forex) ────────────────────────────────────────────────────────────────────
     // The unqualified bindings stay pointed at CoinePro-FX so every existing gateway keeps working
     // unchanged while the crypto side is wired up screen by screen.
@@ -402,6 +409,7 @@ object AppModule {
         requestLog: RequestLog,
         appLog: AppLog,
         @ApplicationContext context: Context,
+        mirror: HostMirror,
     ): OkHttpClient = NetworkFactory.okHttpClient(
         bearerToken = memory::token,
         onUnauthorized = memory::notifyUnauthorized,
@@ -414,6 +422,7 @@ object AppModule {
         // date is the one fault in this app that cannot be fixed from a server.
         pinnedUntilEpochMs = BuildConfig.CERTIFICATE_PINS_UNTIL,
         attestation = PlayIntegrityInterceptor(context, BuildConfig.PLAY_INTEGRITY_PROJECT),
+        mirror = mirror,
     )
 
     @Provides
@@ -454,6 +463,7 @@ object AppModule {
         requestLog: RequestLog,
         appLog: AppLog,
         @ApplicationContext context: Context,
+        mirror: HostMirror,
     ): OkHttpClient = NetworkFactory.okHttpClient(
         bearerToken = memory::token,
         onUnauthorized = memory::notifyUnauthorized,
@@ -466,6 +476,7 @@ object AppModule {
         // date is the one fault in this app that cannot be fixed from a server.
         pinnedUntilEpochMs = BuildConfig.CERTIFICATE_PINS_UNTIL,
         attestation = PlayIntegrityInterceptor(context, BuildConfig.PLAY_INTEGRITY_PROJECT),
+        mirror = mirror,
     )
 
     @Provides

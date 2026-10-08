@@ -11,7 +11,6 @@
     <string name="menu_guest_offer_store">An account keeps your watchlist, alerts and settings with you on every device. Every tool stays free.</string>
     <string name="menu_sign_in">Sign in or create an account</string>
     <string name="menu_locked">Needs an account</string>
-    <string name="menu_footer">Everything this app contains is on this page. What needs an account is shown rather than hidden.</string>
     <!--
       The one sentence the store listing and this page say identically. See
       docs/product/STORE_LISTING.md and docs/runs/RUN_T2/CHECKLIST.md item B10.

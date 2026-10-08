@@ -13,7 +13,6 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.coinepro.app.AppLanguageStore
 import com.coinepro.core.common.AppLanguage
-import com.coinepro.core.common.AppResult
 import com.coinepro.core.common.MarketNumberFormatter
 import com.coinepro.core.common.toPersianDigits
 import com.coinepro.core.datastore.Watchlist
@@ -23,8 +22,6 @@ import com.coinepro.core.datastore.WidgetSnapshot
 import com.coinepro.core.datastore.WidgetSnapshotStore
 import com.coinepro.core.diagnostics.AppLog
 import com.coinepro.core.diagnostics.LogTag
-import com.coinepro.core.guest.GuestGateway
-import com.coinepro.core.guest.GuestQuote
 import com.coinepro.core.marketdata.MarketDataSymbols
 import com.coinepro.core.symbols.SymbolClassifier
 import dagger.assisted.Assisted
@@ -62,6 +59,10 @@ class WidgetRefreshWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result {
         val refreshed = engine.refresh()
+        // The news widget's stories on the same wake-up (5.27.0); a failure leaves the last ones.
+        runCatching { NewsWidget.refreshStories(applicationContext) }
+            .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
+        NewsWidget.refreshAll(applicationContext)
         // Redrawn whether or not the fetch succeeded: a failure still changes what is on screen,
         // because the freshness line now says «آفلاین». A widget that goes quiet on a failure is
         // one that shows an old price as if it were current.
@@ -141,7 +142,7 @@ class WidgetRefreshWorker @AssistedInject constructor(
  */
 class WidgetRefreshEngine @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val guest: GuestGateway,
+    private val quotes: BackgroundQuotes,
     private val watchlist: WatchlistStore,
     private val store: WidgetSnapshotStore,
     private val log: AppLog,
@@ -149,67 +150,65 @@ class WidgetRefreshEngine @Inject constructor(
 
     /** True when fresh prices were written. False leaves what is stored and marks it stale. */
     suspend fun refresh(): Boolean {
-        val symbols = symbols()
+        val (symbols, title) = symbols()
         if (symbols.isEmpty()) {
-            store.write(WidgetSnapshot(capturedAtEpochMillis = System.currentTimeMillis()))
+            store.write(WidgetSnapshot(capturedAtEpochMillis = System.currentTimeMillis(), title = title))
             return true
         }
-        return when (val result = guest.prices(symbols)) {
-            is AppResult.Success -> {
-                val quotes = result.value.quotes.associateBy { it.symbol.uppercase() }
-                // Ordered by the watchlist rather than by the response: the reader put their most
-                // important market first and the server has no idea which that is.
-                // The widget is drawn outside any activity, so there is no composition to read the
-                // language from — `AppLanguageStore` is the same preference `attachBaseContext`
-                // reads, and it is the one place that knows the reader chose English while the
-                // phone itself is in Persian, or the other way round.
-                val english = AppLanguageStore.current(context) == AppLanguage.ENGLISH
-                val markets = symbols.mapNotNull { symbol -> quotes[symbol]?.toWidgetMarket(english) }
-                store.write(
-                    WidgetSnapshot(
-                        markets = markets,
-                        capturedAtEpochMillis = System.currentTimeMillis(),
-                        // The server's own verdict, carried through rather than recomputed — the
-                        // same flag the guest home reads.
-                        stale = result.value.stale,
-                    ),
-                )
-                log.debug(LogTag.STATE, "widget refreshed", mapOf("markets" to markets.size.toString()))
-                true
-            }
-            is AppResult.Failure -> {
-                // The prices are kept and labelled. Throwing them away would put a blank rectangle
-                // on somebody's home screen because one request timed out; an hour-old price that
-                // *says* it is an hour old is still useful.
-                store.markStale()
-                log.warn(LogTag.STATE, "widget refresh failed")
-                false
-            }
+        // Crypto from TradeYar's public route, forex and gold from the forex platform's daily bars
+        // (5.27.0) — the widget drew no forex row at all before, because the first route has none.
+        val read = quotes.read(symbols)
+        if (read.failed) {
+            // The prices are kept and labelled. Throwing them away would put a blank rectangle
+            // on somebody's home screen because one request timed out; an hour-old price that
+            // *says* it is an hour old is still useful.
+            store.markStale()
+            log.warn(LogTag.STATE, "widget refresh failed")
+            return false
         }
+        // Ordered by the watchlist rather than by the response: the reader put their most
+        // important market first and the server has no idea which that is.
+        // The widget is drawn outside any activity, so there is no composition to read the
+        // language from — `AppLanguageStore` is the same preference `attachBaseContext`
+        // reads, and it is the one place that knows the reader chose English while the
+        // phone itself is in Persian, or the other way round.
+        val english = AppLanguageStore.current(context) == AppLanguage.ENGLISH
+        val markets = symbols.mapNotNull { symbol -> read.quotes[symbol]?.toWidgetMarket(english) }
+        store.write(
+            WidgetSnapshot(
+                markets = markets,
+                capturedAtEpochMillis = System.currentTimeMillis(),
+                // The server's own verdict, carried through rather than recomputed — the
+                // same flag the guest home reads.
+                stale = read.stale,
+                title = title,
+            ),
+        )
+        log.debug(LogTag.STATE, "widget refreshed", mapOf("markets" to markets.size.toString()))
+        return true
     }
 
     /**
-     * Which markets the widget shows.
+     * Which markets the widget shows, and the name of the list they came from.
      *
      * The reader's watchlist, and where that is empty, the crypto majors — which is the same
      * fallback the guest home uses. A widget that says "star something first" on the day it is
      * placed is a widget that gets removed the same day.
      */
-    private suspend fun symbols(): List<String> {
+    private suspend fun symbols(): Pair<List<String>, String> {
         // The list the reader chose when placing the widget, and otherwise the default list by
         // name — not the active one. A widget is glanced at from the home screen with the app
         // closed; having it follow whichever list happened to be open last would make its contents
         // change for a reason the reader cannot see from where they are standing. A chosen list
         // that has since been deleted or emptied falls back to the default the same way.
         val listId = runCatching { store.preferredListId.first() }.getOrNull() ?: Watchlist.DEFAULT_LIST_ID
-        val starred = runCatching { watchlist.symbols(listId).first() }
-            .getOrDefault(emptyList())
-            .ifEmpty {
-                if (listId == Watchlist.DEFAULT_LIST_ID) emptyList()
-                else runCatching { watchlist.symbols(Watchlist.DEFAULT_LIST_ID).first() }.getOrDefault(emptyList())
-            }
+        val lists = runCatching { watchlist.lists().first() }.getOrDefault(emptyList())
+        val chosenList = lists.firstOrNull { it.id == listId && it.symbols.isNotEmpty() }
+            ?: lists.firstOrNull { it.id == Watchlist.DEFAULT_LIST_ID }
+        val starred = chosenList?.symbols.orEmpty()
+        val title = chosenList?.takeUnless { it.isDefault }?.name?.takeIf(String::isNotBlank).orEmpty()
         val chosen = starred.ifEmpty { MarketDataSymbols.crypto }
-        return chosen.map { it.uppercase() }.distinct().take(WidgetSnapshotStore.MAX_MARKETS)
+        return chosen.map { it.uppercase() }.distinct().take(WidgetSnapshotStore.MAX_MARKETS) to title
     }
 }
 
@@ -221,9 +220,12 @@ class WidgetRefreshEngine @Inject constructor(
  * builder cannot reach. Formatting at write time means the widget and the app spell the same
  * number the same way, which they would not if this were re-implemented in the provider.
  */
-private fun GuestQuote.toWidgetMarket(english: Boolean): WidgetMarket {
+private fun BackgroundQuotes.Quote.toWidgetMarket(english: Boolean): WidgetMarket {
     val meta = SymbolClassifier.classify(symbol)
-    val change = changePercent24h
+    val change = changePercent
+    // The day's move in price as well as percent, as TradingView's widgets carry it: the open is
+    // the price the percent was measured from.
+    val amount = change?.takeIf { it > -100.0 }?.let { percent -> price - price / (1 + percent / 100.0) }
     return WidgetMarket(
         symbol = meta.pretty,
         name = meta.description(english),
@@ -234,7 +236,7 @@ private fun GuestQuote.toWidgetMarket(english: Boolean): WidgetMarket {
         changeText = change?.let { percent ->
             val magnitude = MarketNumberFormatter.price(kotlin.math.abs(percent), 2)
             val sign = if (percent < 0) "−" else "+"
-            "$sign$magnitude٪"
+            "$sign$magnitude%"
         }.orEmpty(),
         direction = when {
             change == null -> 0
@@ -242,5 +244,10 @@ private fun GuestQuote.toWidgetMarket(english: Boolean): WidgetMarket {
             change < 0 -> -1
             else -> 0
         },
+        changeAmountText = amount?.let { value ->
+            val sign = if (value < 0) "−" else "+"
+            sign + MarketNumberFormatter.priceAuto(kotlin.math.abs(value))
+        }.orEmpty(),
+        wire = symbol,
     )
 }

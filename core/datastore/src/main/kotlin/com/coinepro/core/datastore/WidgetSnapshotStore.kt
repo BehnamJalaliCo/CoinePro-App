@@ -46,6 +46,10 @@ data class WidgetMarket(
      * [MarketColorScheme].
      */
     val direction: Int,
+    /** The change in price, signed and formatted, beside [changeText]'s percent (5.27.0). */
+    val changeAmountText: String = "",
+    /** The wire symbol — `BTCUSDT` — which the logo and the deep link are found by. */
+    val wire: String = symbol,
 )
 
 /**
@@ -60,6 +64,8 @@ data class WidgetSnapshot(
     val capturedAtEpochMillis: Long = 0L,
     /** Whether the last refresh failed. The widget says so rather than silently showing old prices. */
     val stale: Boolean = false,
+    /** The list's own name, for the widget's header (5.27.0). Empty draws the app's name. */
+    val title: String = "",
 ) {
     val isEmpty: Boolean get() = markets.isEmpty()
 }
@@ -88,7 +94,7 @@ class WidgetSnapshotStore(private val dataStore: DataStore<Preferences>) {
             preferences[MARKETS].orEmpty(),
             preferences[CAPTURED_AT].orEmpty(),
             preferences[STALE].orEmpty(),
-        )
+        ).copy(title = preferences[TITLE].orEmpty())
     }
 
     /** A single read, for the provider — which has no lifecycle to collect a flow in. */
@@ -99,6 +105,7 @@ class WidgetSnapshotStore(private val dataStore: DataStore<Preferences>) {
             preferences[MARKETS] = encode(snapshot.markets)
             preferences[CAPTURED_AT] = snapshot.capturedAtEpochMillis.toString()
             preferences[STALE] = if (snapshot.stale) "1" else "0"
+            preferences[TITLE] = snapshot.title
         }
     }
 
@@ -133,6 +140,7 @@ class WidgetSnapshotStore(private val dataStore: DataStore<Preferences>) {
         internal val CAPTURED_AT = stringPreferencesKey("widget_captured_at")
         internal val STALE = stringPreferencesKey("widget_stale")
         internal val LIST = stringPreferencesKey("widget_list")
+        internal val TITLE = stringPreferencesKey("widget_title")
 
         /** Between markets. */
         internal const val GROUP = "\u001D"
@@ -158,6 +166,8 @@ class WidgetSnapshotStore(private val dataStore: DataStore<Preferences>) {
                     market.priceText,
                     market.changeText,
                     market.direction.toString(),
+                    market.changeAmountText,
+                    market.wire,
                 )
                 // A field carrying a separator would parse back as two fields and shift every
                 // field after it — one market's price under another's name. Dropped instead.
@@ -175,7 +185,8 @@ class WidgetSnapshotStore(private val dataStore: DataStore<Preferences>) {
 
         private fun decodeMarket(record: String): WidgetMarket? {
             val parts = record.split(RECORD)
-            if (parts.size != 5) return null
+            // Five fields before 5.27.0, seven since; a snapshot written by the older build still reads.
+            if (parts.size != 5 && parts.size != 7) return null
             val symbol = parts[0].takeIf(String::isNotBlank) ?: return null
             return WidgetMarket(
                 symbol = symbol,
@@ -184,6 +195,8 @@ class WidgetSnapshotStore(private val dataStore: DataStore<Preferences>) {
                 changeText = parts[3],
                 // An unreadable direction is flat, not a crash and not a guess at a colour.
                 direction = parts[4].toIntOrNull()?.coerceIn(-1, 1) ?: 0,
+                changeAmountText = parts.getOrNull(5).orEmpty(),
+                wire = parts.getOrNull(6)?.takeIf(String::isNotBlank) ?: symbol,
             )
         }
     }

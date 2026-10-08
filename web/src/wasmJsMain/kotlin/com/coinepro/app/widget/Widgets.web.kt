@@ -15,3 +15,10 @@ object MarketsWidget {
 object SymbolWidget {
     fun refreshAll(context: Context) {}
 }
+
+/** The news widget (5.27.0), as a browser has it: none. The shared refresh worker calls both. */
+object NewsWidget {
+    fun refreshAll(context: Context) {}
+
+    suspend fun refreshStories(context: Context) {}
+}
