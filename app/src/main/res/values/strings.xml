@@ -80,9 +80,9 @@
     <string name="screen_calendar">Economic calendar</string>
     <string name="screen_diagnostics">Diagnostics</string>
     <string name="screen_tutorials">Tips and tutorials</string>
-    <string name="screen_launch_readiness">Launch &amp; safety</string>
+    <string name="screen_launch_readiness">Safety and version</string>
 
-    <string name="safety_title">Safety and launch</string>
+    <string name="safety_title">Safety and version</string>
     <string name="safety_subtitle">Before using anything with consequences, see how Pro Chart handles signals, permissions, outside brokers and exchanges, and support.</string>
     <string name="safety_subtitle_store">How Pro Chart treats permissions, your data and support.</string>
     <string name="safety_risk_title_store">Market risk</string>

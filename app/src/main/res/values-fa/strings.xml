@@ -80,9 +80,9 @@
     <string name="screen_calendar">تقویم اقتصادی</string>
     <string name="screen_diagnostics">پنل تشخیص</string>
     <string name="screen_tutorials">آموزش‌ها</string>
-    <string name="screen_launch_readiness">ایمنی و انتشار</string>
+    <string name="screen_launch_readiness">ایمنی و نسخه</string>
 
-    <string name="safety_title">ایمنی و انتشار</string>
+    <string name="safety_title">ایمنی و نسخه</string>
     <string name="safety_subtitle">پیش از استفاده از قابلیت‌های پرریسک، ببینید پرو چارت با سیگنال، دسترسی‌ها، کارگزار و صرافی‌های بیرونی و پشتیبانی چطور رفتار می‌کند.</string>
     <string name="safety_subtitle_store">ببینید پرو چارت با دسترسی‌ها، داده‌های شما و پشتیبانی چطور رفتار می‌کند.</string>
     <string name="safety_risk_title_store">ریسک بازار</string>

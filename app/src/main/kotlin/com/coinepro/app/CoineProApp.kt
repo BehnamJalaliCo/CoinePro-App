@@ -363,6 +363,7 @@ import com.coinepro.feature.heatmap.HeatmapScreen
 import com.coinepro.feature.home.HomeScreen
 import com.coinepro.feature.portfolio.PortfolioReportScreen
 import com.coinepro.feature.screener.CandleScreenerBarSource
+import com.coinepro.feature.screener.MarketTickerScreenerSource
 import com.coinepro.feature.screener.ScreenerController
 import com.coinepro.feature.screener.ScreenerScreen
 import com.coinepro.feature.screener.ScreenerStore
@@ -1320,13 +1321,17 @@ fun CoineProApp(
     }
     // The crypto screener on the public routes for the same reader (5.25.3): the signed-in one
     // reads `ws/snapshot` with a TradeYar token, and answered «markets unavailable».
-    val publicCryptoScreener = remember(guestGateway, scope, screenerStore, platformCapabilities) {
+    val publicCryptoScreener = remember(guestGateway, scope, screenerStore, platformCapabilities, marketTickerStores) {
         ScreenerController(
             gateway = GuestMarketCatalogGateway(guestGateway),
             scope = scope,
             barSource = CandleScreenerBarSource(
                 com.coinepro.core.marketdata.PacedCandleGateway(GuestCandleGateway(guestGateway)),
             ),
+            // The day's table in one request (5.26.1), now that TradeYar serves it without a
+            // token: volume, turnover, high and low for all ~430 coins at once, where the paced
+            // candles alone took some ten minutes to fill the columns.
+            tickers = marketTickerStores[MarketPlatform.TRADEYAR]?.let(::MarketTickerScreenerSource),
             store = screenerStore,
             chartable = platformCapabilities.chartableReader(MarketPlatform.TRADEYAR),
         )
@@ -1991,11 +1996,13 @@ fun CoineProApp(
                     // here — the catalogue's prices simply do not tick, which is the honest
                     // degradation rather than a broken screen. Saved screens are the same file,
                     // because a filter belongs to the phone rather than to a session.
-                    val guestScreener = remember(guestCatalog, guestCandles, screenerStore, scope) {
+                    val guestScreener = remember(guestCatalog, guestCandles, screenerStore, scope, marketTickerStores) {
                         ScreenerController(
                             gateway = guestCatalog,
                             scope = scope,
                             barSource = CandleScreenerBarSource(com.coinepro.core.marketdata.PacedCandleGateway(guestCandles)),
+                            // The day's table in one request (5.26.1); see `publicCryptoScreener`.
+                            tickers = marketTickerStores[MarketPlatform.TRADEYAR]?.let(::MarketTickerScreenerSource),
                             store = screenerStore,
                             // The guest's catalogue and candles are TradeYar's public routes, so
                             // its rows are held to TradeYar's chart scope. See `chartable`.
@@ -5608,7 +5615,7 @@ private fun MainShell(
                 var lastCrash by remember { mutableStateOf(crashes.last()) }
                 // Asked when the screen is opened rather than at start-up, and once per visit.
                 //
-                // A reader who has come to «ایمنی و انتشار» is already asking the app about itself,
+                // A reader who has come to «ایمنی و نسخه» is already asking the app about itself,
                 // which is the one moment «there is a newer one» is an answer rather than an
                 // interruption. Doing it at launch would mean a request on every cold start for a
                 // fact that changes a few times a year, on networks where every request costs

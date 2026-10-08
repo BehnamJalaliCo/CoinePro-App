@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.26.1
+
+**fa**
+
+> ستون‌های حجم، ارزش معاملات، بیشترین و کمترین در اسکرینر کریپتو حالا یک‌جا و فوری پر می‌شوند. نقشه‌ی حرارتی بازاری را که هیچ داده‌ای ندارد دیگر نشان نمی‌دهد. نام صفحه‌ی «ایمنی و نسخه» با ردیف منو یکی شد.
+
+**en**
+
+> The crypto screener's volume, turnover, high and low columns now fill at once. The heat map no longer shows a market that has no data. The Safety and version page now carries the same name as its menu row.
+
+---
+
 ## 5.26.0
 
 **fa**

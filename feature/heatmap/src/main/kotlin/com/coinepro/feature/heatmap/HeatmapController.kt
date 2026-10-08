@@ -202,7 +202,14 @@ class HeatmapController(
         // A market the day's table carries still has a tile: it is coloured from the ticker, and
         // only its candles are missing.
         val out = synchronized(excluded) { excluded.toSet() } - tickerBySymbol.keys
-        val rows = if (out.isEmpty()) all else all.filter { it.meta.symbol !in out }
+        // A market whose bars came back empty, with no ticker and no quote to colour it, has
+        // nothing to show (5.26.1): it was drawn as a grey «no data» tile that never fills —
+        // BSV, EGLD, LDO and DE40 in the 5.26.0 check. It is dropped, like a blocked one.
+        val empty = bars.filterValues { it.isEmpty() }.keys - tickerBySymbol.keys
+        val rows = all.filter { row ->
+            val symbol = row.meta.symbol
+            symbol !in out && !(symbol in empty && row.quote?.changePercent == null)
+        }
         return heatmapAssetsFrom(rows, bars, tickerBySymbol, period, asked + tickerBySymbol.keys)
     }
 

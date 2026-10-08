@@ -78,7 +78,7 @@ class AlefProofTest {
         render { SafetyScreen(update = AppUpdateStatus.Current) }
         // Asserted against a screen that is definitely the right one: the safety title has to be
         // there, or «no update card» would be satisfied by an empty render.
-        assertOnce("ایمنی و انتشار")
+        assertOnce("ایمنی و نسخه")
         assertAbsent("نسخه‌ی تازه‌ای منتشر شده")
     }
 
@@ -86,7 +86,7 @@ class AlefProofTest {
     @Config(sdk = [34], qualifiers = PHONE)
     fun `nothing is drawn when the check never answered`() {
         render { SafetyScreen(update = AppUpdateStatus.Unknown) }
-        assertOnce("ایمنی و انتشار")
+        assertOnce("ایمنی و نسخه")
         assertAbsent("نسخه‌ی تازه‌ای منتشر شده")
     }
 
@@ -97,7 +97,7 @@ class AlefProofTest {
         assertOnce("این یکی را همین حالا نصب کنید.")
         // The doors are all still there: the card is one more row on a screen that scrolls, not a
         // wall. `AppUpdate`'s note is the argument; this is the pixels agreeing with it.
-        assertOnce("ایمنی و انتشار")
+        assertOnce("ایمنی و نسخه")
         capture("alef-update-mandatory-fa")
     }
 
@@ -124,7 +124,7 @@ class AlefProofTest {
     fun `the safety page carries no signing certificate card`() {
         // Removed at the owner's word (5.26.0).
         render { SafetyScreen(update = AppUpdateStatus.Unknown) }
-        assertOnce("ایمنی و انتشار")
+        assertOnce("ایمنی و نسخه")
         assertAbsent("گواهی این نصب")
     }
 

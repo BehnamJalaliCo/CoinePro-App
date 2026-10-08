@@ -148,9 +148,9 @@ class HeatmapControllerTest {
     }
 
     @Test
-    fun `a market whose bars come back empty is still counted as read, not as pending`() = runTest {
-        // Otherwise the coverage line above the map counts it as arriving forever, and a reader
-        // waits for a figure that is never coming.
+    fun `a market whose bars come back empty and that nothing else colours is dropped, not left pending`() = runTest {
+        // Neither counted as arriving for ever, nor drawn as a grey tile that never fills (5.26.1):
+        // a market with no bars, no ticker and no quoted change has nothing to show.
         val scope = TestScope(UnconfinedTestDispatcher(testScheduler))
         val search = MarketSearchController(catalogue(), scope)
         val controller = HeatmapController(search, scope, HeatmapBarSource { emptyList() })
@@ -158,8 +158,10 @@ class HeatmapControllerTest {
         advanceUntilIdle()
 
         val state = controller.state.value
-        assertEquals(symbols.size, state.resolved)
-        state.assets.forEach { assertNull(HeatmapMetrics.valueOf(it, HeatmapColour.CHANGE)) }
+        assertFalse(state.resolving)
+        state.assets.forEach { asset ->
+            assertNotNull("«${asset.symbol}» has no figure but is still drawn", HeatmapMetrics.valueOf(asset, HeatmapColour.CHANGE))
+        }
     }
 
     @Test
