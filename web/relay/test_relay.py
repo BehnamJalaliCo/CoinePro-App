@@ -2,12 +2,19 @@
 from __future__ import annotations
 
 import json
+import os
 import unittest
 
 from aiohttp import WSMsgType, web
 from aiohttp.test_utils import AioHTTPTestCase, TestServer
 
-import relay
+# The deployed container sets RELAY_*_CONNECT to the backends' private addresses, and `Config` reads
+# its defaults from the environment — some when `relay` is imported. Run there, the tests reached
+# the real backends instead of the fakes and failed with 502. They describe the relay, not the host.
+for _name in [name for name in os.environ if name.startswith("RELAY_")]:
+    del os.environ[_name]
+
+import relay  # noqa: E402
 
 REAL_ACCESS = "real-access-token"
 REAL_REFRESH = "real-refresh-token"
