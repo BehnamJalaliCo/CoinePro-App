@@ -25,6 +25,8 @@ on:
       - 'docs/**'
       - 'design/**'
       - 'site/**'
+      # The site's relay is deployed on its own and is not in the APK.
+      - 'web/relay/**'
       - '.gitignore'
   workflow_dispatch: {}
 

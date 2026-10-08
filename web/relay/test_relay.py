@@ -122,6 +122,14 @@ class RelayTest(AioHTTPTestCase):
         seen = await (await self.client.get("/up/tradeyar/api/echo", headers={"Authorization": "Bearer " + fresh["access_token"]})).json()
         self.assertEqual(seen["headers"]["Authorization"], "Bearer " + REAL_ACCESS + "-2")
 
+    async def test_the_reader_address_reaches_the_backend(self) -> None:
+        # Our nginx appends the reader on the right; the left-most entry is the browser's own claim.
+        seen = await (await self.client.get(
+            "/up/tradeyar/api/echo", headers={"X-Forwarded-For": "6.6.6.6, 203.0.113.9"},
+        )).json()
+        self.assertEqual(seen["headers"]["X-Forwarded-For"], "203.0.113.9")
+        self.assertEqual(seen["headers"]["X-Real-IP"], "203.0.113.9")
+
     async def test_post_body_and_method_pass_unchanged(self) -> None:
         seen = await (await self.client.patch("/up/coineprofx/api/echo", data=b'{"x":1}', headers={"Content-Type": "application/json"})).json()
         self.assertEqual(seen["method"], "PATCH")

@@ -179,6 +179,19 @@ class Buckets:
         return True
 
 
+def reader_address(request: web.Request) -> str:
+    """The reader's own address, as our nginx appended it: the right-most `X-Forwarded-For` entry.
+
+    Never the left-most, which is whatever the browser chose to send. Handed to the backends as
+    `X-Forwarded-For` and `X-Real-IP` (5.25.2): without it every reader of the site reached TradeYar
+    and CoinePro-FX from this relay's one address, so their per-address limits were one bucket for
+    the whole site and a busy minute answered everybody 429.
+    """
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    last = forwarded.split(",")[-1].strip() if forwarded else ""
+    return last or (request.remote or "")
+
+
 def client_key(request: web.Request) -> tuple[str, str]:
     forwarded = request.headers.get("X-Forwarded-For", "")
     address = forwarded.split(",")[0].strip() if forwarded else (request.remote or "")
@@ -309,6 +322,10 @@ async def passthrough(request: web.Request) -> web.StreamResponse:
 
     headers = {name: request.headers[name] for name in FORWARDED_REQUEST_HEADERS if name in request.headers}
     headers.update(route_headers)
+    reader = reader_address(request)
+    if reader:
+        headers["X-Forwarded-For"] = reader
+        headers["X-Real-IP"] = reader
     bearer = headers.get("Authorization", "")
     if bearer.startswith("Bearer " + HANDLE_PREFIX):
         real = session.tokens.get(bearer[len("Bearer "):]) if session else None
