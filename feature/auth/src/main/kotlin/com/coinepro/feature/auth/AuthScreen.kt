@@ -123,7 +123,8 @@ fun AuthScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                is LoginConfigState.Ready -> TelegramSignInNote()
+                // The note points at the web version, so the web version does not show it (5.25.1).
+                is LoginConfigState.Ready -> if (!com.coinepro.core.common.FeatureFlags.webBuild) TelegramSignInNote()
             }
             is SessionState.RevalidationRequired -> {
                 Text(

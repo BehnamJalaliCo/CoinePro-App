@@ -113,6 +113,13 @@ object FeatureFlags {
     var desktopShellLtr: Boolean = false
 
     /**
+     * Whether this is the browser build (5.25.1). Set by the web entry only. For copy that is true
+     * of an app and false of the site — «Telegram sign-in works on the web version» was being shown
+     * on the web version itself.
+     */
+    var webBuild: Boolean = false
+
+    /**
      * Whether Pro can be bought (5.24.0; on since 5.25.0 — Cafe Bazaar on the phone, USDT on the
      * site). Off: the Pro page shows «به‌زودی» on every plan.
      *

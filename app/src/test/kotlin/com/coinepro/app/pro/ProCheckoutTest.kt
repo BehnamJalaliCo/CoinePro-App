@@ -4,6 +4,10 @@ import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -118,6 +122,66 @@ class ProCheckoutTest {
         composeRule.waitForIdle()
 
         assertEquals(listOf("yearly"), bought)
+        assertTrue(composeRule.onAllNodesWithTag(USDT_SHEET_TAG).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun `a forex-only reader's buy links the crypto account and goes on to the checkout`() {
+        var links = 0
+        composeRule.setContent {
+            var account by remember { mutableStateOf(false) }
+            CompositionLocalProvider(LocalTeachingDismissals provides AllTeachingDismissed) {
+                CoineProTheme(darkTheme = true) {
+                    Surface(modifier = Modifier.fillMaxSize()) {
+                        ProRoute(
+                            payments = FakePayments(),
+                            onBuyInStore = null,
+                            account = account,
+                            onSignIn = null,
+                            onLinkAccount = {
+                                links++
+                                account = true
+                                null
+                            },
+                        )
+                    }
+                }
+            }
+        }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText(
+            "Pro is held on a crypto account. Buying opens the crypto account with this same email — or creates it — and then continues.",
+        ).assertIsDisplayed()
+
+        composeRule.onNodeWithTag("pro-buy-monthly").performClick()
+        composeRule.waitForIdle()
+
+        assertEquals(1, links)
+        composeRule.onNodeWithTag(USDT_SHEET_TAG).assertIsDisplayed()
+    }
+
+    @Test
+    fun `a refused link says the server's sentence and opens nothing`() {
+        composeRule.setContent {
+            CompositionLocalProvider(LocalTeachingDismissals provides AllTeachingDismissed) {
+                CoineProTheme(darkTheme = true) {
+                    Surface(modifier = Modifier.fillMaxSize()) {
+                        ProRoute(
+                            payments = FakePayments(),
+                            onBuyInStore = null,
+                            account = false,
+                            onSignIn = null,
+                            onLinkAccount = { "Verify your email first." },
+                        )
+                    }
+                }
+            }
+        }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("pro-buy-yearly").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Verify your email first.").assertIsDisplayed()
         assertTrue(composeRule.onAllNodesWithTag(USDT_SHEET_TAG).fetchSemanticsNodes().isEmpty())
     }
 

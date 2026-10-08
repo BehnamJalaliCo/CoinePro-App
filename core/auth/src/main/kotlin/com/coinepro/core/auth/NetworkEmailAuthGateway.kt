@@ -27,7 +27,7 @@ class NetworkEmailAuthGateway internal constructor(
     private val paths: AuthPaths,
     /** Stamped onto every session this gateway returns. See [EmailAuthSession.platform]. */
     private val platform: MarketPlatform,
-) : EmailAuthGateway {
+) : EmailAuthGateway, AccountLink {
 
     override suspend fun methods(): AppResult<AuthMethods> = call {
         api.methods(paths.methods).let {
@@ -87,6 +87,14 @@ class NetworkEmailAuthGateway internal constructor(
     ): AppResult<Unit> = call {
         api.resetPassword(paths.resetPassword, ResetPasswordRequest(normalizeResetCode(resetToken), newPassword))
     }
+
+    /**
+     * A TradeYar session for the reader [coineproAccessToken] belongs to (5.25.1). TradeYar asks
+     * CoinePro-FX who that is and opens — or creates — the account with the same verified email,
+     * so a reader who signed up on the forex side can hold Pro, which lives on this side.
+     */
+    override suspend fun fromCoinePro(coineproAccessToken: String): AppResult<EmailAuthSession> =
+        call { api.linkCoinePro(CoineProLinkRequest(coineproAccessToken)).toSession() }
 
     override suspend fun refresh(refreshToken: String): AppResult<AuthTokens> =
         call { api.refresh(paths.refresh, RefreshRequest(refreshToken)).toTokens() }

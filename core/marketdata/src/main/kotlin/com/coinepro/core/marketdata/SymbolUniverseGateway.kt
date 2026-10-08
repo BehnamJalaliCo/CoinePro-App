@@ -89,8 +89,10 @@ internal interface SymbolUniverseApi {
  * The same shape as [snapshotPath] and for the same reason: TradeYar's mobile surface sits under a
  * prefix its nginx owns, and one hard-coded path means the universe on one platform never fills.
  */
-internal fun MarketPlatform.universePath(): String = when (this) {
-    MarketPlatform.COINEPRO_FX -> "v1/symbols"
+internal fun MarketPlatform.universePath(): String? = when (this) {
+    // Nothing on CoinePro-FX serves a universe (5.25.1): `v1/symbols` was a 404 on every refresh
+    // after sign-in. The catalogue below is its list; asking first only cost a request.
+    MarketPlatform.COINEPRO_FX -> null
     MarketPlatform.TRADEYAR -> "api/mobile/v1/symbols"
 }
 
@@ -98,7 +100,7 @@ class NetworkSymbolUniverseGateway private constructor(
     private val api: SymbolUniverseApi,
     private val catalogue: MarketCatalogGateway,
     private val platform: MarketPlatform,
-    private val path: String,
+    private val path: String?,
 ) : SymbolUniverseGateway {
 
     /**
@@ -109,7 +111,7 @@ class NetworkSymbolUniverseGateway private constructor(
      * an error because a path 404s is not, and the reader cannot act on either fact.
      */
     override suspend fun load(): List<UniverseSymbol> {
-        val listed = runCatching { api.symbols(path).symbols }.getOrNull().orEmpty()
+        val listed = path?.let { route -> runCatching { api.symbols(route).symbols }.getOrNull() }.orEmpty()
         val live = listed.mapNotNull(::toDomain)
         if (live.isNotEmpty()) return SymbolUniverse.merge(live)
 

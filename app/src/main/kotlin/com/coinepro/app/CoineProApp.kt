@@ -53,6 +53,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import com.coinepro.core.common.AppResult
 import com.coinepro.core.common.ArchiveMerge
 import com.coinepro.core.common.ArchivedRecord
 import com.coinepro.core.common.ArchivedStreak
@@ -1157,6 +1158,8 @@ fun CoineProApp(
     onBuyPro: ((String) -> Unit)? = null,
     /** Pro's plans, period and the site's USDT claim (5.25.0). Null in previews and tests. */
     payments: com.coinepro.core.account.PaymentsGateway? = null,
+    /** Opens the TradeYar account for a forex-only reader, on the Pro page (5.25.1). */
+    accountLink: com.coinepro.core.auth.AccountLink? = null,
     platformSessions: PlatformSessions,
     platformCapabilities: PlatformCapabilities,
     marketDataCache: MarketDataCache,
@@ -1223,6 +1226,7 @@ fun CoineProApp(
     // reader signed out of the app while a perfectly good session sat in storage.
     LaunchedEffect(platformSessions) { platformSessions.start() }
     val sessionStates by platformSessions.states.collectAsStateWithLifecycle(initialValue = emptyMap())
+    val cryptoSignedIn = sessionStates[MarketPlatform.TRADEYAR] is SessionState.SignedIn
     val emailAuthState by emailAuthController.state.collectAsStateWithLifecycle()
     val loginConfigState by sessionController.loginConfigState.collectAsStateWithLifecycle()
     // Exactly one feed runs at a time. Switching platform stops the old controller before the new
@@ -1284,6 +1288,10 @@ fun CoineProApp(
     val briefingReadAt = remember(briefingState) { System.currentTimeMillis() / 1_000 }
     val scope = rememberCoroutineScope()
     val signedIn = session is SessionState.SignedIn
+    // Signed in on the platform on screen, not merely somewhere (5.25.1). The account, push and
+    // preference reads go to `activePlatform`'s server with that server's token; a reader whose one
+    // session is on the other platform has none to send, and every one of them came back 401.
+    val platformSignedIn = sessionStates[activePlatform] is SessionState.SignedIn
     val watchlist by watchlistStore.symbols.collectAsStateWithLifecycle(initialValue = emptyList())
     // The periodic check exists only while there is something to check. A worker that wakes every
     // quarter of an hour to read an empty list is a battery cost with no possible benefit — and it
@@ -1384,14 +1392,16 @@ fun CoineProApp(
         NotificationPermissionUiState.NOT_CONFIGURED
     }
 
-    LaunchedEffect(signedIn, activePlatform) {
+    LaunchedEffect(signedIn, activePlatform, platformSignedIn) {
         marketDataControllers.forEach { (platform, controller) ->
             if (platform != activePlatform) controller.stop()
         }
         if (signedIn) {
             marketDataController.start()
-            accountController.refresh()
-            pushCoordinator.registerCurrentToken()
+            if (platformSignedIn) {
+                accountController.refresh()
+                pushCoordinator.registerCurrentToken()
+            }
             backgroundSyncScheduler.enableForAuthenticatedSession()
         } else {
             backgroundSyncScheduler.disable()
@@ -1422,8 +1432,8 @@ fun CoineProApp(
     // Keyed on the derived value, not the settings: flipping a switch the server has never heard of
     // must not spend a request telling it something it already knows.
     val serverPushPreferences = remember(notificationSettings) { notificationSettings.serverPreferences() }
-    LaunchedEffect(signedIn, notificationController, serverPushPreferences) {
-        if (signedIn) notificationController.updatePreferences(serverPushPreferences)
+    LaunchedEffect(platformSignedIn, notificationController, serverPushPreferences) {
+        if (platformSignedIn) notificationController.updatePreferences(serverPushPreferences)
     }
 
     // Refreshed here rather than in onResume, so a platform switch reads that platform's news
@@ -1683,10 +1693,16 @@ fun CoineProApp(
                 companionSearchController = MarketPlatform.entries.firstOrNull { it != activePlatform }
                     ?.let(marketSearchControllers::get),
                 screenerController = screenerController,
-                // By the symbol, not the tab (5.24.3): the watchlist spans both platforms.
-                candleGateway = remember(candleGateways, activePlatform) {
+                // By the symbol, not the tab (5.24.3): the watchlist spans both platforms. A reader
+                // with no TradeYar session reads crypto bars from the public route (5.25.1); the
+                // signed-in one answered every coin with 401 and the watchlist read «–».
+                candleGateway = remember(candleGateways, activePlatform, cryptoSignedIn, guestGateway) {
                     SymbolRoutedCandleGateway(
-                        crypto = candleGateways.getValue(MarketPlatform.TRADEYAR),
+                        crypto = if (cryptoSignedIn) {
+                            candleGateways.getValue(MarketPlatform.TRADEYAR)
+                        } else {
+                            GuestCandleGateway(guestGateway)
+                        },
                         forex = candleGateways.getValue(MarketPlatform.COINEPRO_FX),
                         primary = candleGateways.getValue(activePlatform),
                     )
@@ -1723,7 +1739,25 @@ fun CoineProApp(
                 appUpdateGateway = appUpdateGateway,
                 onBuyPro = onBuyPro,
                 payments = payments,
-                proAccount = sessionStates[MarketPlatform.TRADEYAR] is SessionState.SignedIn,
+                proAccount = cryptoSignedIn,
+                linkCryptoAccount = accountLink
+                    ?.takeIf { !cryptoSignedIn && sessionStates[MarketPlatform.COINEPRO_FX] is SessionState.SignedIn }
+                    ?.let { link ->
+                        suspend {
+                            val forexToken = platformSessions.controller(MarketPlatform.COINEPRO_FX).storedAccessToken()
+                            if (forexToken == null) {
+                                ""
+                            } else {
+                                when (val linked = link.fromCoinePro(forexToken)) {
+                                    is AppResult.Success -> {
+                                        platformSessions.controller(MarketPlatform.TRADEYAR).adoptSession(linked.value)
+                                        null
+                                    }
+                                    is AppResult.Failure -> linked.message.orEmpty()
+                                }
+                            }
+                        }
+                    },
                 hub = hub,
                 hubActions = hubActions,
                 briefing = briefingState.toHomeBriefing(briefingReadAt),
@@ -2323,6 +2357,11 @@ private fun MainShell(
     payments: com.coinepro.core.account.PaymentsGateway? = null,
     /** Whether the reader holds the TradeYar session Pro is bought on (5.25.0). */
     proAccount: Boolean = false,
+    /**
+     * Links the forex reader's TradeYar account (5.25.1): null when it worked, otherwise the
+     * server's sentence or an empty string. Null itself where there is nothing to link.
+     */
+    linkCryptoAccount: (suspend () -> String?)? = null,
     hub: ControlHub,
     hubActions: HubActions,
     briefing: HomeBriefing,
@@ -5464,6 +5503,7 @@ private fun MainShell(
                     onBuyInStore = onBuyPro,
                     account = proAccount,
                     onSignIn = onSignIn.takeIf { guest },
+                    onLinkAccount = linkCryptoAccount,
                 )
             }
             composable(FULL_SITE_ROUTE) {

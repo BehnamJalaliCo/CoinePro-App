@@ -61,6 +61,9 @@
     <string name="usdt_failed">This payment could not be checked. Please try again in a minute.</string>
     <string name="usdt_hash_invalid">A BSC transaction hash is 0x followed by 64 characters.</string>
     <string name="usdt_sign_in">Pro is held on your crypto account. Sign in to it first, then buy.</string>
+    <string name="pro_link_explained">Pro is held on a crypto account. Buying opens the crypto account with this same email — or creates it — and then continues.</string>
+    <string name="pro_link_running">Connecting your crypto account…</string>
+    <string name="pro_link_failed">The crypto account could not be connected. Please try again in a minute.</string>
     <string name="hub_markets">Markets</string>
     <string name="hub_heatmap">Heat map</string>
     <string name="hub_screener">Screener</string>

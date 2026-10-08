@@ -134,6 +134,9 @@ class SessionController(
      * Both tokens are written before the state changes: a screen that reacts to [SignedIn] by
      * making a request must not find storage half-populated.
      */
+    /** The stored access token, for a server that vouches for this session to another (5.25.1). */
+    suspend fun storedAccessToken(): String? = storage.readToken()
+
     suspend fun adoptSession(session: EmailAuthSession) {
         storage.writeToken(session.tokens.accessToken)
         storage.writeRefreshToken(session.tokens.refreshToken)

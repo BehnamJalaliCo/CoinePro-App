@@ -206,7 +206,8 @@ private fun SignInStep(
     // an app — see `TelegramSignInNote` in AuthScreen.kt for exactly why the widget could not.
     // Said in one line rather than offered as a button, because the server advertising the method
     // is not the same as this client being able to use it.
-    if (state.methods.telegram) {
+    // Not on the site itself (5.25.1): the line sends the reader to the web version.
+    if (state.methods.telegram && !com.coinepro.core.common.FeatureFlags.webBuild) {
         Spacer(Modifier.height(CoineProSpacing.One))
         Text(
             text = stringResource(R.string.auth_telegram_unavailable),

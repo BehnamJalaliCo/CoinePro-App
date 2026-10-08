@@ -211,6 +211,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var appLog: AppLog
     @Inject lateinit var appUpdateGateway: AppUpdateGateway
     @Inject lateinit var paymentsGateway: com.coinepro.core.account.PaymentsGateway
+    @Inject lateinit var accountLink: com.coinepro.core.auth.AccountLink
     @Inject lateinit var entitlementStartUp: EntitlementStartUp
 
     /** Pro through Cafe Bazaar (5.24.0); on since 5.25.0, null only if `FeatureFlags.billingLive` is off. */
@@ -469,6 +470,7 @@ class MainActivity : FragmentActivity() {
                 appUpdateGateway = appUpdateGateway,
                 onBuyPro = bazaarBilling?.let { billing -> billing::buy },
                 payments = paymentsGateway,
+                accountLink = accountLink,
                 platformSessions = platformSessions,
                 platformCapabilities = platformCapabilities,
                 marketDataCache = marketDataCache,
@@ -610,6 +612,9 @@ class MainActivity : FragmentActivity() {
         lifecycleScope.launch {
             val platform = activePlatformStore.active.first()
             marketDataControllers.getValue(platform).syncOnResume()
+            // The platform's own reads only with the platform's own session (5.25.1); the other
+            // platform's token is not one this server accepts, and each read would come back 401.
+            if (platform !in platformSessions.signedIn.value) return@launch
             signalControllers[platform]?.apply {
                 refresh()
                 refreshHistory()

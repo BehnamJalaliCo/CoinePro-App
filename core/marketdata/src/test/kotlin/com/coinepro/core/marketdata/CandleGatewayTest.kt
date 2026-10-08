@@ -175,6 +175,13 @@ class CandleGatewayTest {
     }
 
     @Test
+    fun `a bar length the EA does not write is folded from one it does, not asked by name`() = runTest {
+        // 5.25.1: the spark lines ask for M30 by name, and CoinePro-FX answers 404 for it.
+        CoineProFxCandleGateway(retrofit(academyBody), FixedToken()).load("XAUUSD", Timeframe.M30)
+        assertEquals("M15", stub.request.url.queryParameter("tf") ?: stub.request.url.queryParameter("timeframe"))
+    }
+
+    @Test
     fun `the forex limit is clamped to the server's stated ceiling`() = runTest {
         CoineProFxCandleGateway(retrofit(academyBody), FixedToken())
             .load("XAUUSD", Timeframe.D1, limit = 9_000)

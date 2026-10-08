@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.25.1
+
+**fa**
+
+> اگر فقط حساب فارکس دارید، با زدن «خرید» حساب کریپتو با همان ایمیل وصل یا ساخته می‌شود و خرید پرو ادامه پیدا می‌کند. قیمت‌ها و نمودارهای کوچک کریپتو برای حساب فارکس و نمودار طلا و فارکس در فهرست‌ها درست شد. چند درخواست بی‌نتیجه هم حذف شد.
+
+**en**
+
+> With only a forex account, Buy now connects or creates the crypto account with the same email and the Pro purchase goes on. Crypto prices and spark lines for forex accounts, and gold and forex spark lines in the lists, are fixed, and several requests that could not succeed are gone.
+
+---
+
 ## 5.25.0
 
 **fa**

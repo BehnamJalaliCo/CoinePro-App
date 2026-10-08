@@ -1044,6 +1044,12 @@ object AppModule {
     fun cryptoEmailAuthGateway(@CryptoPlatform retrofit: Retrofit): EmailAuthGateway =
         NetworkEmailAuthGateway.create(retrofit, MarketPlatform.TRADEYAR)
 
+    /** A TradeYar session for a reader CoinePro-FX vouches for (5.25.1). See `AccountLink`. */
+    @Provides
+    @Singleton
+    fun accountLink(@CryptoPlatform retrofit: Retrofit): com.coinepro.core.auth.AccountLink =
+        NetworkEmailAuthGateway.create(retrofit, MarketPlatform.TRADEYAR)
+
     @Provides
     @Singleton
     @CryptoPlatform

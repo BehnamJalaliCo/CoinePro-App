@@ -50,6 +50,10 @@ internal interface MobileAuthApi {
 
     @POST
     suspend fun logout(@Url path: String, @Body body: RefreshRequest): LogoutDto
+
+    /** TradeYar only: a session for the reader a CoinePro-FX bearer belongs to (5.25.1). */
+    @POST("api/mobile/v1/auth/link/coinepro")
+    suspend fun linkCoinePro(@Body body: CoineProLinkRequest): TokenResponseDto
 }
 
 /**
@@ -97,6 +101,8 @@ internal data class ForgotPasswordRequest(val email: String)
 internal data class ResetPasswordRequest(val resetToken: String, val newPassword: String)
 
 internal data class RefreshRequest(val refreshToken: String)
+
+internal data class CoineProLinkRequest(val coineproToken: String)
 
 /* --------------------------------------------------------------- responses */
 

@@ -139,6 +139,9 @@ object WebLaunch {
         kotlinx.coroutines.MainScope().launch {
             val platform = WebGraph.activePlatformStore.active.first()
             WebGraph.marketDataControllers.getValue(platform).syncOnResume()
+            // The platform's own reads only with the platform's own session (5.25.1); the other
+            // platform's token is not one this server accepts, and each read would come back 401.
+            if (platform !in WebGraph.platformSessions.signedIn.value) return@launch
             WebGraph.signalControllers[platform]?.apply {
                 refresh()
                 refreshHistory()
@@ -265,6 +268,7 @@ fun WebApp() {
                         appUpdateGateway = WebGraph.appUpdateGateway,
                         // The site sells Pro for USDT (5.25.0); there is no store in a browser.
                         payments = WebGraph.paymentsGateway,
+                        accountLink = WebGraph.accountLink,
                         platformSessions = WebGraph.platformSessions,
                         platformCapabilities = WebGraph.platformCapabilities,
                         marketDataCache = WebGraph.marketDataCache,

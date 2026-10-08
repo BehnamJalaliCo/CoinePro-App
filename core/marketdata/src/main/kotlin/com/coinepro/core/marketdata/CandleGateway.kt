@@ -290,6 +290,12 @@ class CoineProFxCandleGateway(
         limit: Int,
         before: Long?,
     ): CandlePage {
+        // A bar length the EA does not write — `M30`, `M1`, `W1` — is folded from one it does
+        // (5.25.1). The spark lines and the market list ask for `M30` by name, and every forex row
+        // came back `404 داده‌ی این نماد نیست` and drew nothing; the chart had always folded.
+        if (timeframe !in nativeTimeframes) {
+            return load(symbol, ChartInterval.Preset(timeframe), limit, before, CHART_TIME_ZONE)
+        }
         val token = tokens.token()
         val response = api.candles(
             authorization = "Bearer $token",
