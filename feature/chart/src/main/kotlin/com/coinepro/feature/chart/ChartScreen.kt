@@ -1651,11 +1651,10 @@ fun ChartScreen(
                     zoomNudge = zoomNudge,
                     // Item 108. The window's move, and the market's state, on the legend itself —
                     // which is the only place the two-pane layout has, since it draws no header.
+                    // Both halves from the same bar, a day back (5.27.3): the absolute was still
+                    // measured from the first loaded bar and read −139.5 beside +1.42 %.
                     change = state.changePercent?.let { percent ->
-                        val bars = state.visibleSeries.bars
-                        val first = bars.firstOrNull()?.c ?: return@let null
-                        val last = bars.lastOrNull()?.c ?: return@let null
-                        ChartLegendChange(absolute = last - first, percent = percent)
+                        ChartLegendChange(absolute = state.changeAbsolute ?: return@let null, percent = percent)
                     },
                     marketStatus = MarketHours.statusOf(state.symbol).let { status ->
                         when {

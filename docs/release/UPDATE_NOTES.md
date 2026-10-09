@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.27.4
+
+**fa**
+
+> در عنوان چارت، تغییر قیمت به دلار هم حالا از همان مبنای یک روز اخیر حساب می‌شود و با درصد کنارش هم‌جهت است.
+
+**en**
+
+> In the chart's title the change in price is now measured from the same point a day back as the percentage beside it, so the two agree.
+
+---
+
 ## 5.27.3
 
 **fa**

@@ -591,10 +591,7 @@ private fun ChartPane(
                     // header at all, so before this the move and the market's state were nowhere
                     // on screen.
                     change = state.changePercent?.let { percent ->
-                        val bars = state.visibleSeries.bars
-                        val first = bars.firstOrNull()?.c ?: return@let null
-                        val last = bars.lastOrNull()?.c ?: return@let null
-                        ChartLegendChange(absolute = last - first, percent = percent)
+                        ChartLegendChange(absolute = state.changeAbsolute ?: return@let null, percent = percent)
                     },
                     marketStatus = MarketHours.statusOf(state.symbol).let { status ->
                         when {
