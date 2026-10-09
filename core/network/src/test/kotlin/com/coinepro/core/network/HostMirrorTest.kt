@@ -37,7 +37,11 @@ class HostMirrorTest {
     }
 
     /** Answers for the mirror's host without a network; everything else goes out for real. */
-    private class FakeMirror(private val host: String, private val code: Int = 200) : Interceptor {
+    private class FakeMirror(
+        private val host: String,
+        private val code: Int = 200,
+        private val type: String = "application/json",
+    ) : Interceptor {
         val paths = mutableListOf<String>()
         override fun intercept(chain: Interceptor.Chain): Response {
             val request = chain.request()
@@ -48,6 +52,7 @@ class HostMirrorTest {
                 .protocol(Protocol.HTTP_1_1)
                 .code(code)
                 .message("x")
+                .header("Content-Type", type)
                 .body("ok".toResponseBody())
                 .build()
         }
@@ -78,9 +83,57 @@ class HostMirrorTest {
         val memory = MirrorMemory.InProcess().apply { useMirror("coineprofx.com", Long.MAX_VALUE) }
         val client = OkHttpClient.Builder()
             .addInterceptor(HostMirror(mapOf("coineprofx.com" to "https://mirror.test/fx/".toHttpUrl()), memory))
-            .addInterceptor(FakeMirror("mirror.test", code = 404))
+            .addInterceptor(FakeMirror("mirror.test", code = 404, type = "text/html"))
+            .addInterceptor(FakeMirror("coineprofx.com"))
             .build()
-        client.newCall(Request.Builder().url("https://coineprofx.com/api/x").build()).execute().close()
+        client.newCall(Request.Builder().url("https://coineprofx.com/api/x").build()).execute().use { assertEquals(200, it.code) }
         assertEquals(0L, memory.mirrorUntil("coineprofx.com"))
+    }
+
+    @Test
+    fun `CoinePro-FX's own 404 through the mirror is an answer, not a reason to switch roads`() {
+        // 5.27.0 dropped the mirror on any 404 and flapped back to the filtered primary.
+        val memory = MirrorMemory.InProcess().apply { useMirror("coineprofx.com", Long.MAX_VALUE) }
+        val fake = FakeMirror("mirror.test", code = 404)
+        val client = OkHttpClient.Builder()
+            .addInterceptor(HostMirror(mapOf("coineprofx.com" to "https://mirror.test/fx/".toHttpUrl()), memory))
+            .addInterceptor(fake)
+            .build()
+        client.newCall(Request.Builder().url("https://coineprofx.com/api/academy/chart/NOPE").build()).execute().use {
+            assertEquals(404, it.code)
+        }
+        assertEquals(1, fake.paths.size)
+        assertTrue(memory.mirrorUntil("coineprofx.com") > 0L)
+    }
+
+    @Test
+    fun `in Iran the mirror goes first, with no probe of the primary`() {
+        val fake = FakeMirror("mirror.test")
+        val client = OkHttpClient.Builder()
+            .addInterceptor(
+                HostMirror(
+                    mapOf("coineprofx.com" to "https://mirror.test/fx/".toHttpUrl()),
+                    MirrorMemory.InProcess(),
+                    preferMirror = { true },
+                ),
+            )
+            .addInterceptor(fake)
+            .build()
+        client.newCall(Request.Builder().url("https://coineprofx.com/api/user/markets").build()).execute().use {
+            assertEquals(200, it.code)
+        }
+        assertEquals(listOf("/fx/api/user/markets"), fake.paths)
+    }
+
+    @Test
+    fun `a Cloudflare block page is a wall, a JSON refusal is an answer`() {
+        fun response(code: Int, type: String) = Response.Builder()
+            .request(Request.Builder().url("https://coineprofx.com/api/x").build())
+            .protocol(Protocol.HTTP_1_1).code(code).message("x").header("Content-Type", type)
+            .body("".toResponseBody()).build()
+        assertTrue(HostMirror.refused(response(403, "text/html; charset=UTF-8"), "GET"))
+        assertTrue(HostMirror.refused(response(522, "text/html"), "POST"))
+        assertTrue(!HostMirror.refused(response(403, "application/json"), "GET"))
+        assertTrue(!HostMirror.refused(response(502, "text/html"), "POST"))
     }
 }

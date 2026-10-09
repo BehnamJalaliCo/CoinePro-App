@@ -24,20 +24,19 @@ import okhttp3.Response
  *
  * ### How it chooses
  *
- * The primary is tried first, with a short connect timeout, because it is the shorter road when it
- * works. A failure *before the request left the phone* — no address, no route, a refused or reset
- * handshake, a connect that timed out — sends the same request down the mirror, and the mirror is
- * then used straight away for [stickyMillis], so one slow probe is paid once and not on every call.
- * [MirrorMemory] keeps that choice across launches.
+ * On a phone in Iran's time zone the mirror goes first (5.27.2): 5.27.0 tried the primary first and
+ * still drew dashes, because a filtered Cloudflare address there tends to take the connection and
+ * then stall the handshake until the call's own ceiling cancels it — and a cancelled call has no
+ * time left for a second road. Elsewhere the primary goes first. Either way the first road runs on
+ * short clocks, and a failure *before the request left the phone*, or an HTML wall in place of an
+ * answer (Cloudflare's block page, the mirror's server with nothing behind it), sends the same
+ * request down the other road. Whichever road worked is remembered for [stickyMillis] in
+ * [MirrorMemory], across launches.
  *
  * A request that may have reached the server is never sent twice unless it is a `GET`: a payment
- * claim that timed out reading its answer is not retried down another road.
- *
- * ### When the mirror is not there
- *
- * A 404 or a 5xx from the mirror is a mirror that is not set up or not working. The preference is
- * dropped, so the next call tries the primary again rather than six hours of answers from a road
- * that leads nowhere.
+ * claim that timed out reading its answer is not retried down another road. CoinePro-FX's own
+ * answers — JSON, a 404 for a market with no data among them — are answers, and never switch roads;
+ * 5.27.0 dropped the mirror on any 404 and so flapped back to the closed road every few requests.
  */
 class HostMirror(
     /** `host` to the mirror's base, e.g. `coineprofx.com` → `https://tradeyar.trade-future.ir/fx/`. */
@@ -46,31 +45,55 @@ class HostMirror(
     private val now: () -> Long = System::currentTimeMillis,
     private val probeConnectMillis: Int = PROBE_CONNECT_MILLIS,
     private val stickyMillis: Long = STICKY_MILLIS,
+    /**
+     * Whether to take the mirror first (5.27.2) — true on a phone set to Iran's time zone, where the
+     * primary is the road that is usually closed. The primary is then the fallback, so a reader on a
+     * VPN, or one whose network lets Cloudflare through, loses nothing.
+     */
+    private val preferMirror: () -> Boolean = { false },
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         val host = request.url.host
         val mirror = mirrors[host] ?: return chain.proceed(request)
-        if (memory.mirrorUntil(host) > now()) return throughMirror(chain, request, mirror, host)
-        return try {
-            chain.withConnectTimeout(probeConnectMillis, TimeUnit.MILLISECONDS).proceed(request)
+        val viaMirror = request.newBuilder().url(rewrite(request.url, mirror)).build()
+        val mirrorFirst = preferMirror() || memory.mirrorUntil(host) > now()
+        val (first, second) = if (mirrorFirst) viaMirror to request else request to viaMirror
+        val response = try {
+            // Short clocks on the first road, so a filtered address — one that takes the connection
+            // and then never finishes the handshake — fails here rather than at the call's own
+            // thirty-second ceiling, which cancels the call and leaves no time for the second road.
+            chain.withConnectTimeout(probeConnectMillis, TimeUnit.MILLISECONDS)
+                .withReadTimeout(PROBE_READ_MILLIS, TimeUnit.MILLISECONDS)
+                .withWriteTimeout(PROBE_READ_MILLIS, TimeUnit.MILLISECONDS)
+                .proceed(first)
         } catch (error: IOException) {
             if (chain.call().isCanceled() || !beforeSend(error, request)) throw error
-            memory.useMirror(host, now() + stickyMillis)
-            throughMirror(chain, request, mirror, host)
+            remember(host, wentToMirror = !mirrorFirst)
+            return chain.proceed(second)
         }
+        if (!refused(response, request.method)) {
+            // The road that answered is the one to keep: a reader whose primary answered is not
+            // held on the mirror, and one whose mirror answered stays there.
+            if (mirrorFirst && !preferMirror()) memory.useMirror(host, now() + stickyMillis)
+            return response
+        }
+        response.close()
+        remember(host, wentToMirror = !mirrorFirst)
+        return chain.proceed(second)
     }
 
-    private fun throughMirror(chain: Interceptor.Chain, request: Request, mirror: HttpUrl, host: String): Response {
-        val response = chain.proceed(request.newBuilder().url(rewrite(request.url, mirror)).build())
-        if (response.code == 404 || response.code >= 500) memory.useMirror(host, 0L)
-        return response
+    private fun remember(host: String, wentToMirror: Boolean) {
+        memory.useMirror(host, if (wentToMirror) now() + stickyMillis else 0L)
     }
 
     companion object {
         /** Long enough to fail fast on a filtered address, short enough for a slow honest link. */
         const val PROBE_CONNECT_MILLIS = 6_000
+
+        /** The first road's read and write clocks; see [intercept]. */
+        const val PROBE_READ_MILLIS = 10_000
 
         /** How long a working mirror is used before the primary is tried again. */
         const val STICKY_MILLIS = 6L * 60 * 60 * 1000
@@ -99,6 +122,22 @@ class HostMirror(
                     "A host mirror must read host=https://…, not '$entry'."
                 }
                 host to url
+            }
+        }
+
+        /**
+         * A response that came from the road rather than from CoinePro-FX: Cloudflare's own block or
+         * error page on the primary, or the mirror's web server with nothing behind it. Both are HTML;
+         * CoinePro-FX answers JSON, so its own 404 for a market with no data is an answer, not a wall.
+         * A 5xx is retried down the other road only for a `GET`, which the origin may have seen.
+         */
+        internal fun refused(response: Response, method: String): Boolean {
+            val html = response.header("Content-Type").orEmpty().contains("text/html", ignoreCase = true)
+            if (!html) return false
+            return when (response.code) {
+                403, 404, 451 -> true
+                in 500..599 -> method == "GET" || response.code in 520..530
+                else -> false
             }
         }
 

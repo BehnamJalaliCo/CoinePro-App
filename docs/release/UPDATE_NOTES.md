@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.27.2
+
+**fa**
+
+> نمادهای فارکس و طلا در ایران بدون فیلترشکن هم پر می‌شوند: برنامه در ایران از اول از مسیری که باز است وصل می‌شود و دیگر به مسیر بسته برنمی‌گردد.
+
+**en**
+
+> Forex and gold symbols now fill in Iran without a VPN: the app goes straight to the route that is open there and no longer falls back to the closed one.
+
+---
+
 ## 5.27.1
 
 **fa**

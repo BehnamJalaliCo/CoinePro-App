@@ -12,6 +12,7 @@ import okhttp3.Response
 class HostMirror(
     @Suppress("UNUSED_PARAMETER") mirrors: Map<String, HttpUrl>,
     @Suppress("UNUSED_PARAMETER") memory: MirrorMemory = MirrorMemory.InProcess(),
+    @Suppress("UNUSED_PARAMETER") preferMirror: () -> Boolean = { false },
 ) : Interceptor {
     override suspend fun intercept(chain: Interceptor.Chain): Response = chain.proceed(chain.request())
 

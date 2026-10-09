@@ -375,7 +375,14 @@ object AppModule {
     @Provides
     @Singleton
     fun hostMirror(@ApplicationContext context: Context): HostMirror =
-        HostMirror(HostMirror.parse(BuildConfig.HOST_MIRRORS), com.coinepro.app.PreferencesMirrorMemory(context))
+        HostMirror(
+            mirrors = HostMirror.parse(BuildConfig.HOST_MIRRORS),
+            memory = com.coinepro.app.PreferencesMirrorMemory(context),
+            // A phone on Iran's clock takes TradeYar's road first (5.27.2); see `HostMirror`.
+            preferMirror = { java.time.ZoneId.systemDefault().id in IRAN_TIME_ZONES },
+        )
+
+    private val IRAN_TIME_ZONES = setOf("Asia/Tehran", "Iran")
 
     // ── CoinePro-FX (Forex) ────────────────────────────────────────────────────────────────────
     // The unqualified bindings stay pointed at CoinePro-FX so every existing gateway keeps working
