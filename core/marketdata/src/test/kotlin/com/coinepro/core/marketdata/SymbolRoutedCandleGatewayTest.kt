@@ -54,7 +54,7 @@ class SymbolRoutedCandleGatewayTest {
         var now = 0L
         val session = Tokens(fail = IllegalStateException("401"), value = "session")
         val guest = Tokens(value = "guest")
-        val tokens = FallbackAcademyTokens(session, guest) { now }
+        val tokens = FallbackAcademyTokens(session, guest, nowMillis = { now })
 
         assertEquals("guest", tokens.token())
         now += 30_000
@@ -64,6 +64,15 @@ class SymbolRoutedCandleGatewayTest {
         session.fail = null
         now += 60_000
         assertEquals("session", tokens.token())
+    }
+
+    @Test
+    fun `a guest goes straight to the guest token, with no session mint the server must refuse`() = runTest {
+        // 5.27.0's browser check: `academy-token` answered 401 on every guest opening.
+        val session = Tokens(value = "session")
+        val tokens = FallbackAcademyTokens(session, Tokens(value = "guest"), hasSession = { false })
+        assertEquals("guest", tokens.token())
+        assertEquals(0, session.calls)
     }
 
     @Test

@@ -193,7 +193,7 @@
     <string name="notification_offer_watchlist">نوسان غیرعادی بازارهایی که ستاره زده‌اید</string>
     <string name="notification_offer_digest">خلاصه‌ی صبحگاهی بازار با پررشدترین‌های اسکرینر</string>
     <string name="notification_offer_calendar">یادآوری پیش از اخبار اقتصادی پراهمیت</string>
-    <string name="notification_offer_limits">حداکثر شش اعلان در روز، و از ساعت ۲۳ تا ۸ هیچ اعلانی نمی‌آید. هر نوع در تنظیمات کلید جدا دارد.</string>
+    <string name="notification_offer_limits">حداکثر شش اعلان در روز، و از 23:00 تا 08:00 هیچ اعلانی نمی‌آید. هر نوع در تنظیمات کلید جدا دارد.</string>
     <string name="notification_offer_enable">فعال کردن اعلان‌ها</string>
     <string name="notification_offer_later">بعداً</string>
     <string name="notification_offer_never">دیگر پرسیده نشود</string>

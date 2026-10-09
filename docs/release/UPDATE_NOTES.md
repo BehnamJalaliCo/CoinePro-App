@@ -47,15 +47,27 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.27.1
+
+**fa**
+
+> نسخه‌ی وب برای کاربر مهمان دیگر درخواست بی‌نتیجه‌ی ورود به آکادمی فارکس نمی‌فرستد و چارت طلا و ارزها مستقیم با دسترسی مهمان باز می‌شود. ساعت‌های سکوت اعلان‌ها با رقم لاتین نوشته شد.
+
+**en**
+
+> A guest no longer sends a forex academy sign-in request that can only be refused; gold and currency charts open straight on the guest access. The notification quiet hours are written in Latin digits.
+
+---
+
 ## 5.27.0
 
 **fa**
 
-> اعلان‌های تازه‌ی بازار: حرکت تند بیت‌کوین، طلا و ارزها، نوسان نمادهای دیده‌بان، خلاصه‌ی صبحگاهی با پررشدترین‌های اسکرینر و یادآوری پیش از اخبار مهم اقتصادی؛ حداکثر شش اعلان در روز و از ساعت ۲۳ تا ۸ ساکت. ویجت اخبار اضافه شد و ویجت‌های دیده‌بان و تک‌نماد لوگو، تازه‌سازی و تنظیمات دارند. نمادهای فارکس بدون فیلترشکن هم پر می‌شوند.
+> اعلان‌های تازه‌ی بازار: حرکت تند بیت‌کوین، طلا و ارزها، نوسان نمادهای دیده‌بان، خلاصه‌ی صبحگاهی با پررشدترین‌های اسکرینر و یادآوری پیش از اخبار مهم اقتصادی؛ حداکثر شش اعلان در روز و از 23:00 تا 08:00 ساکت. ویجت اخبار اضافه شد و ویجت‌های دیده‌بان و تک‌نماد لوگو، تازه‌سازی و تنظیمات دارند. نمادهای فارکس بدون فیلترشکن هم پر می‌شوند.
 
 **en**
 
-> New market notifications: sharp moves in bitcoin, gold and currencies, starred-market moves, a morning summary with the screener's top risers, and a reminder before major economic releases, at most six a day and none from 23:00 to 08:00. A news widget joins the watchlist and one-market widgets, which now carry logos, refresh and settings.
+> New market notifications: sharp moves in bitcoin, gold and currencies, starred-market moves, a morning summary with the screener's top risers, and a reminder before major economic releases, at most six a day and none from 23:00 to 08:00. A news widget joins the watchlist and one-market widgets, which now carry logos, refresh and settings. Forex symbols fill in without a VPN.
 
 ---
 

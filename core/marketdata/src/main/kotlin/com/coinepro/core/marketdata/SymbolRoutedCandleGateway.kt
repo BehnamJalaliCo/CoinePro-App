@@ -52,13 +52,19 @@ class FallbackAcademyTokens(
     private val session: AcademyTokenStore,
     private val guest: GuestTokenStore,
     private val nowMillis: () -> Long = System::currentTimeMillis,
+    /**
+     * Whether there is a forex session to ask with (5.27.0). Without one the session store's mint is
+     * a 401 on every opening — the pro-chart.com check's `academy-token` 401 for a guest — so the
+     * guest credential is used straight away.
+     */
+    private val hasSession: () -> Boolean = { true },
 ) : AcademyTokenStore {
 
     @Volatile
     private var guestUntil: Long = 0
 
     override suspend fun token(): String {
-        if (nowMillis() < guestUntil) return guest.token()
+        if (!hasSession() || nowMillis() < guestUntil) return guest.token()
         return try {
             session.token()
         } catch (error: AcademyDisabledException) {

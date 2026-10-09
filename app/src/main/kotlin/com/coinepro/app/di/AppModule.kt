@@ -1546,13 +1546,16 @@ object AppModule {
     fun forexCandleGateway(
         @ForexPlatform retrofit: Retrofit,
         tokens: AcademyTokenStore,
+        @ForexPlatform memory: SessionMemory,
     ): CandleGateway = CoineProFxCandleGateway(
         retrofit,
         // A reader with no forex session — a guest, or the crypto platform only — still gets gold
-        // and the majors' candles, on the guest credential (5.24.3).
+        // and the majors' candles, on the guest credential (5.24.3), and without first asking for a
+        // session token the server can only refuse (5.27.1).
         com.coinepro.core.marketdata.FallbackAcademyTokens(
             session = tokens,
             guest = com.coinepro.core.marketdata.NetworkGuestTokenStore(retrofit),
+            hasSession = { !memory.token().isNullOrBlank() },
         ),
     )
 
