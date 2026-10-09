@@ -1200,40 +1200,52 @@ data class ChartUiState(
     val lastPrice: Double? get() = visibleSeries.bars.lastOrNull()?.c
 
     /**
-     * The move across the loaded window, as a percentage.
+     * The day's move, as a percentage (5.27.3).
      *
-     * Measured from the first loaded bar rather than from a session open, because a session open is
-     * something only the server knows and neither feed sends one. Naming it after the window is the
-     * honest version: it describes the picture, and the picture is what the reader is looking at.
+     * Measured from the last bar that closed at least a day before the newest one — the bar a day
+     * ago on an intraday chart, the previous bar on a daily or weekly one — which is the move the
+     * watchlist, the widgets and TradingView's header all quote. Until 5.27.2 this was measured from
+     * the first *loaded* bar, so the same market read −1.27 % above the chart and +0.83 % in the
+     * list beside it, and the figure changed with how far back the reader had scrolled. A window
+     * shorter than a day still falls back to its first bar, which is the most it can say.
      */
     val changePercent: Double?
         get() {
-            val bars = visibleSeries.bars
-            val first = bars.firstOrNull()?.c ?: return null
-            val last = bars.lastOrNull()?.c ?: return null
+            val first = changeAnchor()?.c ?: return null
+            val last = visibleSeries.bars.lastOrNull()?.c ?: return null
             return if (first == 0.0) null else (last - first) / first * 100.0
         }
+
+    /** The bar [changePercent] and [changeAbsolute] measure from. */
+    private fun changeAnchor(): Candle? {
+        val bars = visibleSeries.bars
+        val last = bars.lastOrNull() ?: return null
+        val dayAgo = last.t - DAY_SECONDS
+        return bars.lastOrNull { it.t <= dayAgo } ?: bars.firstOrNull()
+    }
 
     /**
      * The same move in the instrument's own units.
      *
-     * Beside [changePercent] rather than derived from it at the call site, and measured over the
-     * same window from the same two bars, because the two figures are printed next to each other
-     * and a reader who could reconstruct one from the other and get a different answer would be
-     * right to distrust both. A ratio on its own is the one figure that cannot be checked — see
-     * `ChartHeadline` for why the heading now leads with this one.
+     * Beside [changePercent] rather than derived from it at the call site, and measured from the
+     * same bar, because the two figures are printed next to each other and a reader who could
+     * reconstruct one from the other and get a different answer would be right to distrust both.
+     * A ratio on its own is the one figure that cannot be checked — see `ChartHeadline` for why the
+     * heading leads with this one.
      *
      * Null on an empty window, and never on a zero first bar: unlike a percentage, a difference is
      * perfectly well defined when the price started at nothing.
      */
     val changeAbsolute: Double?
         get() {
-            val bars = visibleSeries.bars
-            val first = bars.firstOrNull()?.c ?: return null
-            val last = bars.lastOrNull()?.c ?: return null
+            val first = changeAnchor()?.c ?: return null
+            val last = visibleSeries.bars.lastOrNull()?.c ?: return null
             return last - first
         }
 }
+
+/** A day, in the bar clock's seconds. */
+private const val DAY_SECONDS = 86_400L
 
 /**
  * The six bar lengths chart vision reads, by wire spelling.

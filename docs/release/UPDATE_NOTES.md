@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.27.3
+
+**fa**
+
+> درصد تغییر بالای چارت حالا تغییر یک روز اخیر است، همان عددی که دیده‌بان نشان می‌دهد. در عنوان چارت نسخه‌ی وب، بازه‌ی زمانی و منبع داده دیگر جابه‌جا نمی‌شوند.
+
+**en**
+
+> The change at the top of the chart is now the day's move, the same figure the watchlist shows. In the web chart's title the interval and the data source no longer swap places.
+
+---
+
 ## 5.27.2
 
 **fa**

@@ -1165,8 +1165,7 @@ fun ChartScreen(
     // control-like line, and the app reserves Persian numerals for prose.
     val shareSubtitle = state.interval.tvCode
     val shareLast = state.lastPrice
-    // The move across the loaded window, which is what the picture on the card shows — see
-    // `ChartState.changePercent` for why it is named after the window rather than the session.
+    // The day's move, as the heading and the watchlist quote it — see `ChartState.changePercent`.
     val shareChange = state.changePercent
     val shareHeadline = when {
         shareChange != null -> BidiText.isolateLtr(MarketNumberFormatter.signedPercent(shareChange))
@@ -1395,8 +1394,11 @@ fun ChartScreen(
                     // On a desktop, TradingView's desktop title — `Bitcoin / TetherUS · 4h · LBank`.
                     seriesLabel = SymbolClassifier.classify(state.symbol).description(inEnglish()).let { name ->
                         if (deskWindow && name.isNotBlank()) {
-                            listOf(name, state.interval.tvCode, controller.sourceName)
-                                .filter(String::isNotBlank)
+                            // Each Latin part in its own isolate (5.27.3): in a Persian line
+                            // «۱h» and «MetaTrader 5» ran together into one left-to-right run,
+                            // and the gold chart's title read «طلا/دلار · 1» with the «h» moved.
+                            (listOf(name) + listOf(state.interval.tvCode, controller.sourceName).map(BidiText::isolateLtr))
+                                .filter { it.isNotBlank() && it.any(Char::isLetterOrDigit) }
                                 .joinToString(LEGEND_TITLE_JOIN)
                         } else {
                             name

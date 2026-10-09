@@ -119,6 +119,16 @@ class ChartHeadlineTest {
     }
 
     @Test
+    fun `the heading quotes the day's move, not the whole loaded window's`() {
+        // 5.27.3: BTC read −1.27 % above the chart and +0.83 % in the watchlist beside it.
+        val closes = List(48) { 100.0 } + 110.0
+        val state = ChartUiState(symbol = "BTCUSDT", series = series(closes.mapIndexed { i, c -> if (i == 0) 50.0 else c }))
+        // Hourly bars: a day before the last one closed at 100, not the window's first 50.
+        assertEquals(10.0, state.changePercent!!, 1e-9)
+        assertEquals(10.0, state.changeAbsolute!!, 1e-9)
+    }
+
+    @Test
     fun `a series that opened at zero has a move even though it has no ratio`() {
         // A percentage divides and a difference does not, so the two are allowed to disagree about
         // whether there is an answer — and the heading then prints the half that exists.
