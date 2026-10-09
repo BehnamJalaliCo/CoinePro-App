@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TradingView's Android app, ic_price_alert, converted from the compiled vector. Do not hand-edit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="18dp"
+    android:width="18dp"
+    android:viewportWidth="18"
+    android:viewportHeight="18">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M5 3H3v12h2v3h1v-3h2V3H6V0H5v3zM4 4v10h3V4H4zm9 1h-2v7h2v3h1v-3h2V5h-2V2h-1v3zm-1 1v5h3V6h-3z"
+        android:fillType="evenOdd" />
+</vector>

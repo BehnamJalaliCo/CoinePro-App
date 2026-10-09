@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TradingView's Android app, ic_multi_layout_28_eight_with_two_rows, converted from the compiled vector. Do not hand-edit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="28dp"
+    android:width="28dp"
+    android:viewportWidth="28"
+    android:viewportHeight="28">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M5 8.5C5 7.119 6.119 6 7.5 6h14C22.881 6 24 7.119 24 8.5v12c0 1.381-1.119 2.5-2.5 2.5h-14C6.119 23 5 21.881 5 20.5v-12zm15-1h1.5c0.552 0 1 0.448 1 1V14H20V7.5zm-1.5 0h-3.25V14h3.25V7.5zm-4.75 0H10.5V14h3.25V7.5zM9 7.5H7.5c-0.552 0-1 0.448-1 1V14H9V7.5zm-2.5 8v5c0 0.552 0.448 1 1 1H9v-6H6.5zm4 6h3.25v-6H10.5v6zm4.75 0h3.25v-6h-3.25v6zm4.75 0h1.5c0.552 0 1-0.448 1-1v-5H20v6z"
+        android:fillType="evenOdd" />
+</vector>

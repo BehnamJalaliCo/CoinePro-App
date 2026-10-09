@@ -79,11 +79,20 @@
             android:contentDescription="@string/widget_settings" />
     </LinearLayout>
 
+    <!-- The skeleton until the first snapshot; the renderer hides it (5.28.0). -->
+    <include
+        android:id="@+id/news_skeleton"
+        layout="@layout/widget_skeleton"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
     <LinearLayout
         android:id="@+id/news_story"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
+        android:visibility="gone"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingStart="12dp"

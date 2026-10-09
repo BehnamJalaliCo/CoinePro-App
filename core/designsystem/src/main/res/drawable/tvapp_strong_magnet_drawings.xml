@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TradingView's Android app, ic_strong_magnet_drawings, converted from the compiled vector. Do not hand-edit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:viewportWidth="28"
+    android:viewportHeight="28">
+    <group>
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M14 5.5c-3.59 0-6.5 2.91-6.5 6.5v2.5h3V12c0-1.933 1.567-3.5 3.5-3.5s3.5 1.567 3.5 3.5v2.5h3V12c0-3.59-2.91-6.5-6.5-6.5zM20.5 16h-3v2.5h3V16zm-13 2.5V16h3v2.5h-3zM14 4c-4.418 0-8 3.582-8 8v8h6v-8c0-1.105 0.895-2 2-2s2 0.895 2 2v8h6v-8c0-4.418-3.582-8-8-8zM9.276 20.999l1.725 2.736-1.883 1.039L10 26.185 8.727 27 7 24.225l1.884-1.035L8 21.799l1.276-0.8zM20 21.776l-0.88 1.427 1.882 1.033L19.279 27 18 26.206l0.89-1.418L17 23.755 18.738 21 20 21.776z"
+            android:fillType="evenOdd" />
+    </group>
+</vector>

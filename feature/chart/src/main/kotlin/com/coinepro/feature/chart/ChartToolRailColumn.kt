@@ -161,7 +161,11 @@ internal fun ChartToolRailColumn(
         // TradingView's rail switches, where the hand already is rather than inside a sheet.
         RailSeparator()
         RailCell(
-            icon = DesignR.drawable.tv_magnet,
+            icon = when (drawing.magnetMode) {
+                MagnetMode.OFF -> DesignR.drawable.tv_magnet
+                MagnetMode.WEAK -> DesignR.drawable.tvapp_weak_magnet_drawings
+                MagnetMode.STRONG -> DesignR.drawable.tvapp_strong_magnet_drawings
+            },
             description = stringResource(R.string.keys_magnet),
             active = drawing.magnetMode != MagnetMode.OFF,
             lit = drawing.magnetMode != MagnetMode.OFF,

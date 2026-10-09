@@ -416,7 +416,12 @@ private fun modeTiles(
     }
     onCycleMagnet?.let { cycle ->
         tiles += ModeTile(
-            icon = DesignR.drawable.tv_magnet,
+            // TradingView's own pair (5.28.0): a magnet with one field line is weak, with two strong.
+            icon = when (magnet) {
+                MagnetMode.OFF -> DesignR.drawable.tv_magnet
+                MagnetMode.WEAK -> DesignR.drawable.tvapp_weak_magnet_drawings
+                MagnetMode.STRONG -> DesignR.drawable.tvapp_strong_magnet_drawings
+            },
             label = when (magnet) {
                 MagnetMode.OFF -> tr("آهنربا خاموش", "Magnet off")
                 MagnetMode.WEAK -> tr("آهنربای ضعیف", "Weak magnet")
@@ -887,13 +892,15 @@ fun DrawingIconPicker(
     selected: String?,
     onPick: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /** The marks offered; the emoji tool hands its own row (5.28.0). */
+    glyphs: List<String> = DrawingActions.ICON_GLYPHS,
 ) {
     CoineProLazyRow(
         modifier = modifier.fillMaxWidth().padding(horizontal = CoineProSpacing.Half),
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
-        items(DrawingActions.ICON_GLYPHS.size, key = { "glyph-$it" }) { index ->
-            val glyph = DrawingActions.ICON_GLYPHS[index]
+        items(glyphs.size, key = { "glyph-$it" }) { index ->
+            val glyph = glyphs[index]
             val chosen = glyph == selected
             Box(
                 modifier = Modifier

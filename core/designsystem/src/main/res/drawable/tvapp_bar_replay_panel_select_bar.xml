@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TradingView's Android app, ic_bar_replay_panel_select_bar, converted from the compiled vector. Do not hand-edit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="40dp"
+    android:width="40dp"
+    android:viewportWidth="40"
+    android:viewportHeight="40">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12 12c0-0.967 0.783-1.75 1.75-1.75h2c0.966 0 1.75 0.783 1.75 1.75v16c0 0.966-0.784 1.75-1.75 1.75h-2C12.783 29.75 12 28.966 12 28V12zm1.75-0.25c-0.138 0-0.25 0.112-0.25 0.25v16c0 0.138 0.112 0.25 0.25 0.25h2c0.138 0 0.25-0.112 0.25-0.25V12c0-0.138-0.112-0.25-0.25-0.25h-2zm9.25 7.5v-4.561L17.689 20 23 25.311V20.75h5.75v-1.5H23zm-1.5 2.439L19.811 20l1.689-1.689v3.378z"
+        android:fillType="evenOdd" />
+</vector>

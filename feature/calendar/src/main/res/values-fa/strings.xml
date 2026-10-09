@@ -24,6 +24,7 @@
     <string name="calendar_refreshing">در حال به‌روزرسانی زمان رویدادها…</string>
     <string name="calendar_timezone_note">زمان‌ها بر اساس منطقه‌ی زمانی دستگاه.</string>
     <string name="calendar_stale">قدیمی</string>
+    <string name="calendar_add">افزودن به تقویم</string>
     <string name="calendar_global">جهانی</string>
     <string name="calendar_actual">واقعی</string>
     <string name="calendar_forecast">پیش‌بینی</string>

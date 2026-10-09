@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TradingView's Android app, ic_bar_replay_panel_jump_to_realtime_chart, converted from the compiled vector. Do not hand-edit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="40dp"
+    android:width="40dp"
+    android:viewportWidth="40"
+    android:viewportHeight="40">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M23.75 12h1.5v16h-1.5V12z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M22.174 19.257c0.441 0.397 0.441 1.089 0 1.486l-7.505 6.755C14.025 28.077 13 27.62 13 26.755v-13.51c0-0.865 1.025-1.322 1.669-0.743l7.505 6.755zM20.758 20L14.5 25.632V14.368L20.758 20z"
+        android:fillType="evenOdd" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M28.25 12h-1.5v16h1.5V12z" />
+</vector>

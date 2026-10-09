@@ -816,13 +816,20 @@ private fun ColumnHeadings(
         if (starRail) Spacer(modifier = Modifier.width(if (density.singleLine) 28.dp else 48.dp))
         if (ranked) Spacer(modifier = Modifier.width(RankColumn))
         Spacer(modifier = Modifier.width(density.logo))
-        Text(
-            text = stringResource(R.string.markets_column_symbol),
-            style = style,
-            color = CoineProColors.TextMuted,
-            maxLines = 1,
-            modifier = Modifier.width(SymbolColumn),
-        )
+        Box(
+            modifier = Modifier
+                .width(SymbolColumn)
+                .then(onSort?.let { Modifier.clickable { it(MarketSortKey.SYMBOL) } } ?: Modifier),
+            contentAlignment = androidx.compose.ui.AbsoluteAlignment.CenterRight,
+        ) {
+            SortableLabel(
+                label = stringResource(R.string.markets_column_symbol),
+                sorted = sort?.key == MarketSortKey.SYMBOL,
+                descending = sort?.descending == true,
+                color = headingInk(sort, MarketSortKey.SYMBOL, onSort),
+                alphabetical = true,
+            )
+        }
         val turnoverColumn = sort?.key == MarketSortKey.TURNOVER
         // Centred over the sparkline, which is centred in the same weighted box (LISTS-13).
         Box(

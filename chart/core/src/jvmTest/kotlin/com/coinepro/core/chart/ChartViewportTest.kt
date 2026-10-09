@@ -231,39 +231,31 @@ class ChartEdgeMarginTest {
     }
 
     @Test
-    fun `the resting margin is a tenth of the plot, measured`() {
-        // The owner measured the shipped 4.70.0 frame at «حاشیه‌ی راست ~۵٪» and asked for ten, so
-        // this is the number rather than the constant: the distance from the newest bar's right
-        // edge to the price axis, as a share of the plot the chart is drawn in.
-        //
-        // The bar's *edge*, not its centre — the centre is half a slot short of it and half a slot
-        // at seventy bars is 0.7 % of the plot, which is most of the difference between a
-        // measurement that reads five and one that reads ten.
+    fun `the resting margin is TradingView's ten bars`() {
+        // TradingView's `rightOffset` is ten bar slots after the newest bar, phone and browser alike
+        // (5.28.0). Measured on the picture rather than read off the constant: the distance from the
+        // newest bar's centre to the price axis is ten and a half slots.
         val rested = viewport().atRest()
-        val edge = rested.xOf(rested.lastVisible) + rested.bodyWidth / 2
-        val share = (360f - edge) / 360f
-        assertTrue(
-            "the margin must be about a tenth of the plot, measured $share",
-            share > 0.085f && share < 0.115f,
-        )
-        // And it is the share the constant claims, at the zoom the chart opens on.
-        assertEquals(
-            ChartViewport.RIGHT_MARGIN_SHARE,
-            rested.blankSlots.toFloat() / ChartViewport.DEFAULT_BARS_PER_VIEW,
-            0.005f,
-        )
+        assertEquals(ChartViewport.RIGHT_OFFSET_BARS, rested.blankSlots)
+        val clearance = 360f - rested.xOf(rested.lastVisible)
+        assertEquals(10.5f * rested.barWidth, clearance, 1e-3f)
     }
 
     @Test
-    fun `the margin is a share of the window rather than a fixed count of bars`() {
-        // Six bars is a comfortable margin at eighty a screen and a third of the plot at fourteen.
-        // What has to stay the same across zooms is the *picture*, so the share is what is pinned.
+    fun `the margin is ten bars at every zoom, never more than half the window`() {
         val wide = viewport().copy(barsPerView = 400).atRest()
         val tight = viewport().copy(barsPerView = ChartViewport.MIN_BARS_PER_VIEW).atRest()
-        val wideShare = (360f - wide.xOf(wide.lastVisible)) / 360f
-        val tightShare = (360f - tight.xOf(tight.lastVisible)) / 360f
-        assertTrue("the wide chart keeps a visible margin", wideShare > 0.02f)
-        assertTrue("and the tight one does not give away a third of the plot", tightShare < 0.25f)
+        assertEquals(ChartViewport.RIGHT_OFFSET_BARS, wide.blankSlots)
+        assertEquals("half of fourteen", ChartViewport.MIN_BARS_PER_VIEW / 2, tight.blankSlots)
+    }
+
+    @Test
+    fun `a plot opens on TradingView's six-point spacing`() {
+        // 330 points of phone plot is fifty-five bars; 1,500 of browser plot is two hundred and fifty.
+        assertEquals(55, ChartViewport.barsForWidth(330f, ChartViewport.DEFAULT_BAR_SPACING_DP))
+        assertEquals(250, ChartViewport.barsForWidth(1_500f, ChartViewport.DEFAULT_BAR_SPACING_DP))
+        assertEquals(ChartViewport.MIN_BARS_PER_VIEW, ChartViewport.barsForWidth(30f, 6f))
+        assertEquals(ChartViewport.DEFAULT_BARS_PER_VIEW, ChartViewport.barsForWidth(0f, 6f))
     }
 
     @Test

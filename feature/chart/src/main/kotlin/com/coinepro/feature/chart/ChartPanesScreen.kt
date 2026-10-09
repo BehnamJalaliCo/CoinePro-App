@@ -65,6 +65,7 @@ import com.coinepro.core.datastore.ChartLayoutStore
 import com.coinepro.core.datastore.SymbolChartStateStore
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProColors
+import com.coinepro.core.designsystem.coineProHorizontalScroll
 import com.coinepro.core.designsystem.CoineProSwitch
 import com.coinepro.core.designsystem.CoineProNote
 import com.coinepro.core.designsystem.CoineProGoldRule
@@ -311,6 +312,7 @@ fun ChartPanesScreen(
         ChartPaneGrid(
             count = symbols.size,
             preferredColumns = shownLayout.columns,
+            rowSpec = shownLayout.rowSpec,
             modifier = Modifier.fillMaxWidth().weight(1f),
         ) { index, paneModifier ->
             ChartPane(
@@ -361,11 +363,32 @@ private fun ChartPaneGrid(
     count: Int,
     /** What the layout asks for; the width has the last word — see [gridColumns]. */
     preferredColumns: Int,
+    /** A mixed grid's charts per row, or null for a plain one. See `ChartLayoutPreset.rowSpec`. */
+    rowSpec: List<Int>? = null,
     modifier: Modifier = Modifier,
     pane: @Composable (index: Int, modifier: Modifier) -> Unit,
 ) {
     BoxWithConstraints(modifier = modifier) {
         val columns = gridColumns(maxWidth, count, preferredColumns)
+        // A mixed grid is drawn as asked only where its widest row fits; anywhere narrower it is
+        // the plain grid the width can afford, which is what every other layout does.
+        val mixed = rowSpec?.takeIf { spec -> spec.sum() == count && columns >= (spec.maxOrNull() ?: 0) }
+        if (mixed != null) {
+            val rowHeight = maxOf(maxHeight / mixed.size, PANE_MIN_HEIGHT)
+            Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                var index = 0
+                mixed.forEachIndexed { row, across ->
+                    if (row > 0) HorizontalDivider(color = CoineProColors.Border)
+                    Row(modifier = Modifier.fillMaxWidth().height(rowHeight)) {
+                        for (column in 0 until across) {
+                            if (column > 0) VerticalDivider(color = CoineProColors.Border)
+                            pane(index++, Modifier.weight(1f).fillMaxHeight())
+                        }
+                    }
+                }
+            }
+            return@BoxWithConstraints
+        }
         val rows = (count + columns - 1) / columns
         // At least the floor, and otherwise an equal share of the room. `maxOf` rather than
         // `coerceAtLeast` on a division, because the division is what decides whether this layout
@@ -877,7 +900,9 @@ private fun LayoutPresetRow(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        // Scrolls since TradingView's mixed grids joined the plain ones (5.28.0): eighteen shapes on
+        // a tablet and twenty-one on a desktop are wider than any window they are offered on.
+        modifier = modifier.fillMaxWidth().coineProHorizontalScroll(rememberScrollState()),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
     ) {
@@ -911,6 +936,20 @@ private fun LayoutPresetRow(
 internal fun LayoutGlyph(preset: ChartLayoutPreset, ink: Color) {
     val gap = with(LocalDensity.current) { LAYOUT_GLYPH_GAP.toPx() }
     Canvas(modifier = Modifier.size(LAYOUT_GLYPH)) {
+        preset.rowSpec?.let { spec ->
+            val cellHeight = (size.height - gap * (spec.size - 1)) / spec.size
+            spec.forEachIndexed { row, across ->
+                val cellWidth = (size.width - gap * (across - 1)) / across
+                for (column in 0 until across) {
+                    drawRect(
+                        color = ink,
+                        topLeft = Offset(column * (cellWidth + gap), row * (cellHeight + gap)),
+                        size = Size(cellWidth, cellHeight),
+                    )
+                }
+            }
+            return@Canvas
+        }
         val columns = preset.columns
         val rows = preset.rows
         val cellWidth = (size.width - gap * (columns - 1)) / columns

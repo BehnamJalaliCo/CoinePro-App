@@ -2508,7 +2508,8 @@ class ScreenshotRenderTest {
         val covered = SHEET_GROUPS.flatMap { DrawingTools.inGroup(it) }.map { it.id }.toSet()
         val expected = DrawingTools.ALL.filterNot { it.group == ToolGroup.MODES }.map { it.id }.toSet()
         assertEquals(expected, covered)
-        assertEquals(85, expected.size)
+        // Eighty-six since TradingView's emoji tool joined the annotations (5.28.0).
+        assertEquals(86, expected.size)
     }
 
     private fun sheet(name: String, vararg groups: ToolGroup) {

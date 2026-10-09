@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.PersianDateTime
+import com.coinepro.core.designsystem.R as DesignR
 import com.coinepro.core.designsystem.proseDigits
 import com.coinepro.core.designsystem.CoineProAssetLogo
 import com.coinepro.core.designsystem.CoineProCard
@@ -55,6 +56,7 @@ import com.coinepro.core.designsystem.TeachingSurface
 import com.coinepro.core.designsystem.rowMotion
 import com.coinepro.core.notifications.AlertFrequency
 import com.coinepro.core.notifications.AlertScope
+import com.coinepro.core.notifications.AlertTrigger
 import com.coinepro.core.symbols.SymbolArtwork
 import java.time.Instant
 
@@ -364,6 +366,14 @@ private fun AlertListRow(row: AlertRow, onOpen: () -> Unit, onActions: () -> Uni
             row.drawing?.takeIf { !it.missing }?.let { drawing ->
                 AlertDrawingSketch(points = drawing.points)
             }
+            // TradingView's alert-type mark (5.28.0): price, study, script, line or several at once,
+            // told apart at a glance in a list that is otherwise one sentence after another.
+            Icon(
+                painter = painterResource(alertKindIcon(row.alert.trigger)),
+                contentDescription = null,
+                tint = CoineProColors.TextMuted,
+                modifier = Modifier.size(20.dp),
+            )
             if (row.venue == AlertVenue.SERVER) {
                 VenuePill()
             }
@@ -381,6 +391,15 @@ private fun AlertListRow(row: AlertRow, onOpen: () -> Unit, onActions: () -> Uni
             }
         }
     }
+}
+
+/** TradingView's icon for what an alert watches. A legacy alert with no trigger is a price alert. */
+internal fun alertKindIcon(trigger: AlertTrigger?): Int = when (trigger) {
+    is AlertTrigger.Indicator -> DesignR.drawable.tvapp_indicator_alert
+    is AlertTrigger.ScriptCondition -> DesignR.drawable.tvapp_strategy_alert
+    is AlertTrigger.DrawingTouch -> DesignR.drawable.tvapp_drawing_alert
+    is AlertTrigger.MultiCondition -> DesignR.drawable.tvapp_multicondition_alert
+    is AlertTrigger.Price, is AlertTrigger.Channel, is AlertTrigger.Move, null -> DesignR.drawable.tvapp_price_alert
 }
 
 /**

@@ -10,7 +10,7 @@
   <title>Pro Chart</title>
   <!-- Installable as an app, with the phone's launcher icon (scripts/design/build-web-icons.py). -->
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#0B0E11">
+  <meta name="theme-color" content="#0F0F0F">
   <script>
     // The browser's own bar follows the theme the reader chose in the app (kept by the web
     // DataStore shim under datastore:coinepro_preferences → theme_mode), else the system's.
@@ -23,7 +23,7 @@
       if (mode === 'system') {
         mode = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
       }
-      var bar = { light: '#F7F8FA', midnight: '#000000' }[mode] || '#0B0E11';
+      var bar = { light: '#F7F8FA', midnight: '#000000' }[mode] || '#0F0F0F';
       document.querySelector('meta[name="theme-color"]').setAttribute('content', bar);
     })();
   </script>

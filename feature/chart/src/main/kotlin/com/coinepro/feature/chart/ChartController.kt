@@ -3,6 +3,7 @@ package com.coinepro.feature.chart
 import com.coinepro.core.script.ScriptTable
 import com.coinepro.core.chart.ChartCandles
 import kotlin.math.roundToInt
+import kotlin.random.Random
 
 import com.coinepro.core.chart.ArrowDirection
 import com.coinepro.core.chart.BarField
@@ -1837,7 +1838,13 @@ class ChartController(
                 separated = saved.separatedIndicators.filter { id ->
                     ChartScript.owns(id) || ChartCatalog.INDICATORS.any { it.id == id && it.pane == IndicatorPane.PRICE }
                 }.toSet(),
-                zoom = saved.zoom.filterValues { it in ChartViewport.MIN_BARS_PER_VIEW..ChartViewport.MAX_BARS_PER_VIEW },
+                // The old opening zoom is dropped (5.28.0): every chart opened before this build wrote
+                // the default seventy back without anybody pinching, and kept, it would hold every
+                // chart the reader ever looked at off the new width-fitted spacing for good.
+                zoom = saved.zoom.filterValues {
+                    it in ChartViewport.MIN_BARS_PER_VIEW..ChartViewport.MAX_BARS_PER_VIEW &&
+                        it != ChartViewport.DEFAULT_BARS_PER_VIEW
+                },
                 readingsOpen = saved.readingsOpen,
                 indicatorColours = saved.indicatorColours.filterKeys(::arrangeable),
                 indicatorWidths = saved.indicatorWidths.filterKeys(::arrangeable),
@@ -2913,6 +2920,34 @@ class ChartController(
         persistDrawings()
     }
 
+    /**
+     * TradingView's «Draw horizontal line at …» from the chart's menu (5.28.0): one horizontal line
+     * at [price], placed the way a tap with the tool would place it, and the reader's armed tool and
+     * mode left exactly as they were.
+     */
+    fun drawHorizontalLineAt(time: Long, price: Double) {
+        val tool = DrawingTools.ALL.firstOrNull { it.id == DrawingTools.HORIZONTAL_LINE } ?: return
+        val current = _state.value.drawing
+        val placed = DrawingActions.tap(DrawingActions.arm(current, tool), ChartPoint(time, price))
+        if (placed.drawings.size == current.drawings.size) return
+        onDrawing(
+            placed.copy(
+                tool = current.tool,
+                mode = current.mode,
+                pending = current.pending,
+                pendingChannels = current.pendingChannels,
+                lastUsed = current.lastUsed,
+            ),
+        )
+    }
+
+    /** TradingView's «Remove indicators» (5.28.0): every study off the chart. */
+    fun removeAllIndicators() {
+        val active = _state.value.activeIndicators
+        if (active.isEmpty()) return
+        active.forEach(::toggleIndicator)
+    }
+
     // ── the rail's modes ─────────────────────────────────────────────────────────────
 
     /**
@@ -3719,6 +3754,21 @@ class ChartController(
 
     /** Back to the first readable bar; see `Replay.toStart`. */
     fun replayToStart() = withReplay(Replay::toStart)
+
+    /**
+     * TradingView's «Select random bar» (5.28.0): the cursor to a bar somewhere in the snapshot the
+     * reader did not choose — the practice of reading a chart without knowing what came next. Never
+     * closer to the start than [Replay.MINIMUM_BARS], where there is nothing to read against, and
+     * never the last bar, where there is nothing left to replay. Enters replay first if it is off.
+     */
+    fun replayRandomBar(random: Random = Random.Default) {
+        if (!_state.value.replay.isOn) enterReplay()
+        withReplay { current ->
+            val last = current.bars.size - 2
+            val first = minOf(Replay.MINIMUM_BARS, last)
+            if (last <= first) current else Replay.goTo(current, random.nextInt(first, last + 1))
+        }
+    }
 
     fun replaySeek(fraction: Float) = withReplay { current ->
         Replay.seek(current, index = ((current.bars.size - 1) * fraction).toInt())

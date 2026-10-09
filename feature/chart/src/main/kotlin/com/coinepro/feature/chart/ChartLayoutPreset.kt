@@ -21,6 +21,12 @@ enum class ChartLayoutPreset(
     val count: Int,
     /** How many across, when the glass allows it. */
     val columns: Int,
+    /**
+     * TradingView's mixed grids (5.28.0): how many charts each row holds, top to bottom, where the
+     * rows are not all the same — one wide chart over two, three over one. Null for a plain grid.
+     * A window too narrow for the widest row falls back to the plain grid of [columns].
+     */
+    val rowSpec: List<Int>? = null,
 ) {
     /** One chart: the ordinary chart screen, which the panes screen hands back to. */
     ONE("1", 1, 1),
@@ -58,10 +64,37 @@ enum class ChartLayoutPreset(
     TWELVE("12", 12, 4),
 
     SIXTEEN("16", 16, 4),
+
+    /** One wide chart over two (5.28.0). */
+    ONE_OVER_TWO("1+2", 3, 2, listOf(1, 2)),
+
+    /** Two over one wide chart. */
+    TWO_OVER_ONE("2+1", 3, 2, listOf(2, 1)),
+
+    /** One wide chart over three. */
+    ONE_OVER_THREE("1+3", 4, 3, listOf(1, 3)),
+
+    /** Three over one wide chart. */
+    THREE_OVER_ONE("3+1", 4, 3, listOf(3, 1)),
+
+    /** Two over three. */
+    TWO_OVER_THREE("2+3", 5, 3, listOf(2, 3)),
+
+    /** Three over two. */
+    THREE_OVER_TWO("3+2", 5, 3, listOf(3, 2)),
+
+    /** One wide chart over four. */
+    ONE_OVER_FOUR("1+4", 5, 4, listOf(1, 4)),
+
+    /** Four over two. */
+    FOUR_OVER_TWO("4+2", 6, 4, listOf(4, 2)),
+
+    /** Four over three. */
+    FOUR_OVER_THREE("4+3", 7, 4, listOf(4, 3)),
     ;
 
     /** The rows this layout takes at its asked-for width. */
-    val rows: Int get() = (count + columns - 1) / columns
+    val rows: Int get() = rowSpec?.size ?: ((count + columns - 1) / columns)
 
     companion object {
         /** The layouts a window that can hold [maxPanes] charts may offer, past the single chart. */
@@ -76,15 +109,17 @@ enum class ChartLayoutPreset(
          * is side by side — what the width-decided grid gave a landscape tablet.
          */
         fun forCount(count: Int): ChartLayoutPreset {
-            entries.firstOrNull { it.count == count }?.let { return it }
+            // Plain grids only: a bare count never meant a mixed one, which a reader picks by shape.
+            val plain = entries.filter { it.rowSpec == null }
+            plain.firstOrNull { it.count == count }?.let { return it }
             // The largest count under it, and of the layouts with that count the first — the
             // grid, not a stacked variant added later (5.12.0).
-            val nearest = entries.filter { it.count <= count.coerceAtLeast(1) }.maxOf { it.count }
-            return entries.first { it.count == nearest }
+            val nearest = plain.filter { it.count <= count.coerceAtLeast(1) }.maxOf { it.count }
+            return plain.first { it.count == nearest }
         }
 
         /** The largest layout that fits [maxPanes], for a stored one the window cannot hold. */
         fun largestWithin(maxPanes: Int): ChartLayoutPreset =
-            forCount(entries.filter { it.count <= maxPanes.coerceAtLeast(1) }.maxOf { it.count })
+            forCount(entries.filter { it.rowSpec == null && it.count <= maxPanes.coerceAtLeast(1) }.maxOf { it.count })
     }
 }

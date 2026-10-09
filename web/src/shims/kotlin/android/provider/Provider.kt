@@ -29,3 +29,14 @@ object Settings {
     const val ACTION_APP_NOTIFICATION_SETTINGS = "android.settings.APP_NOTIFICATION_SETTINGS"
     const val ACTION_APPLICATION_DETAILS_SETTINGS = "android.settings.APPLICATION_DETAILS_SETTINGS"
 }
+
+/** The calendar provider's names, enough for «add to calendar» (5.28.0). See `Context.startActivity`. */
+object CalendarContract {
+    const val EXTRA_EVENT_BEGIN_TIME = "beginTime"
+    const val EXTRA_EVENT_END_TIME = "endTime"
+    object Events {
+        val CONTENT_URI: android.net.Uri get() = android.net.Uri.parse("content://com.android.calendar/events")
+        const val TITLE = "title"
+        const val DESCRIPTION = "description"
+    }
+}

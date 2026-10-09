@@ -373,3 +373,44 @@ internal actual object ChartMarks {
     actual val captionJoin: String = " • "
     actual val noValue: String = "…"
 }
+
+// ---------------------------------------------------------------------------- emoji (5.28.0)
+
+/** The browser's emoji font, painted into a 2D canvas and read back as RGBA, size × size. */
+private fun emojiRasterJs(emoji: String, size: Int): JsAny? = js(
+    """(function () {
+        try {
+            var c = (typeof OffscreenCanvas !== 'undefined') ? new OffscreenCanvas(size, size) : document.createElement('canvas');
+            c.width = size; c.height = size;
+            var g = c.getContext('2d');
+            g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.font = Math.round(size * 0.84) + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+            g.fillText(emoji, size / 2, size / 2 + size * 0.04);
+            return g.getImageData(0, 0, size, size).data;
+        } catch (e) { return null; }
+    })()""",
+)
+
+private fun emojiByteJs(data: JsAny, index: Int): Int = js("data[index]")
+
+private val emojiBitmaps = HashMap<String, ImageBitmap?>()
+
+internal actual fun chartEmojiBitmap(emoji: String): ImageBitmap? = emojiBitmaps.getOrPut(emoji) {
+    val data = emojiRasterJs(emoji, EMOJI_RASTER) ?: return@getOrPut null
+    val bytes = ByteArray(EMOJI_RASTER * EMOJI_RASTER * 4) { emojiByteJs(data, it).toByte() }
+    runCatching {
+        SkiaImage.makeRaster(
+            org.jetbrains.skia.ImageInfo(
+                EMOJI_RASTER,
+                EMOJI_RASTER,
+                org.jetbrains.skia.ColorType.RGBA_8888,
+                org.jetbrains.skia.ColorAlphaType.UNPREMUL,
+            ),
+            bytes,
+            EMOJI_RASTER * 4,
+        ).toComposeImageBitmap()
+    }.getOrNull()
+}
+
+/** The emoji bitmap's side in pixels: sharp at the chart's 28 points on a 3× screen. */
+private const val EMOJI_RASTER = 96

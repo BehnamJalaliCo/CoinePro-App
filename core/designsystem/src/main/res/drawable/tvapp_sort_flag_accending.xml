@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TradingView's Android app, ic_sort_flag_accending, converted from the compiled vector. Do not hand-edit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="24dp"
+    android:width="24dp"
+    android:autoMirrored="true"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M5.47 4.47c0.293-0.293 0.767-0.293 1.06 0l4 4c0.293 0.293 0.293 0.767 0 1.06-0.293 0.293-0.767 0.293-1.06 0L6 6.06 2.53 9.53c-0.293 0.293-0.767 0.293-1.06 0-0.293-0.293-0.293-0.767 0-1.06l4-4z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M6 5.25c0.414 0 0.75 0.336 0.75 0.75v13c0 0.414-0.336 0.75-0.75 0.75S5.25 19.414 5.25 19V6c0-0.414 0.336-0.75 0.75-0.75zM16 19c-0.552 0-1-0.448-1-1v-3c0-0.552 0.448-1 1-1h4.777c0.448 0 0.67 0.543 0.35 0.857L19.456 16.5l1.673 1.643c0.32 0.314 0.097 0.857-0.35 0.857H16z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M16 19.75c-0.966 0-1.75-0.784-1.75-1.75v-3c0-0.966 0.784-1.75 1.75-1.75h4.777c1.12 0 1.675 1.358 0.876 2.142L20.525 16.5l1.128 1.108c0.799 0.784 0.243 2.142-0.876 2.142H16zM15.75 18c0 0.138 0.112 0.25 0.25 0.25h4.166l-1.782-1.75 1.782-1.75H16c-0.138 0-0.25 0.112-0.25 0.25v3zM16 10.75c-0.966 0-1.75-0.784-1.75-1.75V6c0-0.966 0.784-1.75 1.75-1.75h4.777c1.12 0 1.675 1.358 0.876 2.142L20.525 7.5l1.128 1.108c0.799 0.784 0.243 2.142-0.876 2.142H16zM15.75 9c0 0.138 0.112 0.25 0.25 0.25h4.166L18.384 7.5l1.782-1.75H16c-0.138 0-0.25 0.112-0.25 0.25v3z" />
+</vector>

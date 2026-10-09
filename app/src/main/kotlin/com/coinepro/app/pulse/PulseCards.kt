@@ -30,7 +30,7 @@ object PulseCards {
     private const val WIDTH = 1024
     private const val HEIGHT = 512
 
-    private const val STAGE = 0xFF0B0E11.toInt()
+    private const val STAGE = 0xFF0F0F0F.toInt()
     private const val SURFACE = 0xFF161A21.toInt()
     private const val BORDER = 0xFF2B3139.toInt()
     private const val TEXT = 0xFFF0F1F2.toInt()

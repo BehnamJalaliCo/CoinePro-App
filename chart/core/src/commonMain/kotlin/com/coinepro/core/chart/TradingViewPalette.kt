@@ -28,11 +28,19 @@ object TradingViewPalette {
     /** The dotted grid, opaque: measured as the on-pixels of the dots. */
     const val DARK_GRID = 0xFF282828
 
-    /** Axis labels. The brightest pixel of a 12 px label measured `#A6A6A6`–`#B5B5B5`. */
-    const val DARK_TEXT = 0xFFB2B2B2
+    /**
+     * Axis labels: `scalesProperties.textColor`, the reference's `color-cold-gray-300` (5.28.0). It
+     * was `#B2B2B2`, the brightest pixel measured off an anti-aliased label; read from the chart's
+     * own theme it is `#B8B8B8`.
+     */
+    const val DARK_TEXT = 0xFFB8B8B8
 
-    /** The crosshair and its axis tags. */
-    const val DARK_CROSSHAIR = 0xFF787878
+    /**
+     * The crosshair: `crossHairProperties.color`, `color-cold-gray-400`, the same in both themes
+     * (5.28.0). The dashes read darker than the value off a screenshot — half of every dash is
+     * anti-aliased — which is where the measured `#787878` came from.
+     */
+    const val DARK_CROSSHAIR = 0xFF9C9C9C
 
     /** Hairlines between the chrome and the chart. */
     const val DARK_SEPARATOR = 0xFF2E2E2E
@@ -54,32 +62,23 @@ object TradingViewPalette {
     const val LIGHT_BACKGROUND = 0xFFFFFFFF
     const val LIGHT_GRID = 0xFFD5D5D5
     const val LIGHT_TEXT = 0xFF0F0F0F
-    const val LIGHT_CROSSHAIR = 0xFF8C8C8C
-    const val LIGHT_SEPARATOR = 0xFFE0E0E0
+    const val LIGHT_CROSSHAIR = 0xFF9C9C9C
+
+    /** `paneProperties.separatorColor` on light: `color-cold-gray-150` (5.28.0). */
+    const val LIGHT_SEPARATOR = 0xFFEBEBEB
     const val LIGHT_CHIP = 0xFFEFEFEF
     const val LIGHT_TEXT_PRIMARY = 0xFF0F0F0F
 
     /**
-     * The candles on a **white** pane — the same two hues, taken down until they are candles (run Ω2).
+     * The candles on a **white** pane: the reference's own pair, unchanged (5.28.0).
      *
-     * ### Why the reference's own values are not kept here
-     *
-     * [UP] and [DOWN] were measured on `#0F0F0F` and are right there: on near-black, `#089981` is a
-     * solid green body and `#F23645` is a solid red one. On `#FFFFFFFF` the same green measures
-     * **3.3:1** and a five-pixel-wide body of it reads as a grey-green tint rather than as a candle —
-     * which is the owner's reading of the light theme beside the dark one, and it is correct. A chart
-     * whose bodies you have to look for is not a lighter version of the same chart.
-     *
-     * So the light pane keeps the hue and takes the lightness down to the values the app's own light
-     * palette already arrived at for exactly this reason — `CoineProLightPalette.marketUp` /
-     * `marketDown`, 4.62:1 and 5.02:1 on white. That has a second consequence worth having: in the
-     * light theme a rising candle, a rising sparkline and a green percentage are finally one colour,
-     * which is the «one green, one red» rule the palette file argues for and the dark theme already
-     * keeps.
-     *
-     * The dark theme is untouched. It is the terminal look the parity work is measured against, and
-     * it carries the published values exactly — see `docs/design/TRADINGVIEW_PARITY.md`.
+     * From run Ω2 to 5.27 the light pane took these down to `#057A66` / `#D01427`, the light
+     * palette's text greens, on the argument that `#089981` measures 3.3:1 on white. TradingView's
+     * light theme ships `candleStyle.upColor` and `downColor` as `color-minty-green-500` and
+     * `color-ripe-red-500` — the very values of [UP] and [DOWN] — and the owner asked for the chart
+     * to match it. A candle is a filled shape, not a line of text, so the text-contrast floor does
+     * not bind it; the darker pair stays where it does, on the figures in the lists.
      */
-    const val LIGHT_UP = 0xFF057A66
-    const val LIGHT_DOWN = 0xFFD01427
+    const val LIGHT_UP = UP
+    const val LIGHT_DOWN = DOWN
 }

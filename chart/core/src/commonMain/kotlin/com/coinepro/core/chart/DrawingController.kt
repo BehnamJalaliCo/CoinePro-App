@@ -778,6 +778,7 @@ object DrawingActions {
         "comment",
         "signpost",
         ICON_TOOL,
+        EMOJI_TOOL,
         IMAGE_TOOL,
     )
 
@@ -803,6 +804,25 @@ object DrawingActions {
 
     /** The glyph an icon carries before the reader picks one. */
     const val DEFAULT_ICON_GLYPH = "★"
+
+    /** Whether this tool's text is one emoji out of [EMOJI_GLYPHS] — TradingView's emoji tool. */
+    fun holdsEmoji(toolId: String): Boolean = toolId == EMOJI_TOOL
+
+    /**
+     * The emoji the emoji tool offers in its row: the ones a trader marks a chart with. A reader who
+     * wants another types it — the text field stays under the row, as it does for the icon tool.
+     */
+    val EMOJI_GLYPHS: List<String> = listOf(
+        "🚀", "📈", "📉", "🔥", "💰", "💎", "🎯", "⚠️", "✅", "❌",
+        "🐂", "🐻", "👀", "⏰", "💡", "🛑", "👍", "👎", "⭐", "⚡",
+        "🔔", "📌", "🏁", "💥", "🌙", "🤑", "😱", "🙏", "❤️", "🤔",
+    )
+
+    /** The emoji an emoji drawing carries before the reader picks one. */
+    const val DEFAULT_EMOJI = "🚀"
+
+    /** TradingView's emoji tool. See [holdsEmoji]. */
+    const val EMOJI_TOOL = "emoji"
 
     /**
      * A plain sentence about what a tool actually does, or null where the label is the whole truth.

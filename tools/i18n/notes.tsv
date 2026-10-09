@@ -241,6 +241,7 @@ repaint_live_bar_note	tip	feature/chart
 repaint_repaints_note	tip	feature/chart
 repaint_settled_note	tip	feature/chart
 replay_ledger_note	tip	feature/chart
+replay_pick_hint	label	feature/chart
 replay_report_note	tip	feature/chart
 replay_report_open_note	state	feature/chart
 safety_camera_body	visible	app

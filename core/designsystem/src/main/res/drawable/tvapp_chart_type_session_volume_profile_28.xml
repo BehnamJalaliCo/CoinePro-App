@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TradingView's Android app, ic_chart_type_session_volume_profile_28, converted from the compiled vector. Do not hand-edit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="29dp"
+    android:width="29dp"
+    android:viewportWidth="29"
+    android:viewportHeight="29">
+    <group>
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M4.333 5.167h8v4.5h4v4.5h8v6h-5v4.5h-15v-19.5zm1.5 1.5h5v3h-5v-3zm0 4.5v3h9v-3h-9zm17 4.5v3h-17v-3h17zm-5 4.5h-12v3h12v-3z"
+            android:fillType="evenOdd" />
+    </group>
+</vector>

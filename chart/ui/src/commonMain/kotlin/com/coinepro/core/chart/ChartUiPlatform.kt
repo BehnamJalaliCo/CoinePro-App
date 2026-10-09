@@ -63,6 +63,15 @@ internal expect fun persianTimeTick(tick: TimeTick, at: Long, spanSeconds: Long,
 /** IRANYekanX, for the axis and every price the canvas prints. */
 internal expect val ChartLatinFontFamily: FontFamily
 
+/**
+ * [emoji] as a picture, where the platform cannot draw it as text (5.28.0).
+ *
+ * Null on a phone, whose system colour-emoji font draws any emoji the text path is handed. A page
+ * draws text in IRANYekanX alone, which has none, so there the browser's own emoji font paints it
+ * into a bitmap once and the chart draws the bitmap.
+ */
+internal expect fun chartEmojiBitmap(emoji: String): ImageBitmap?
+
 /** The window's width, in dp — the phone/tablet split some drawing decisions take. */
 @Composable
 internal expect fun screenWidthDp(): Int

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TradingView's Android app, ic_post_market, converted from the compiled vector. Do not hand-edit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="17dp"
+    android:width="11dp"
+    android:viewportWidth="11"
+    android:viewportHeight="17">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M8.666 6.018C7.166 6.184 6 7.456 6 9c0 1.544 1.167 2.816 2.666 2.982C7.96 12.615 7.024 13 6 13c-2.21 0-4-1.79-4-4s1.79-4 4-4c1.024 0 1.959 0.385 2.666 1.018z"
+        android:fillType="evenOdd" />
+</vector>

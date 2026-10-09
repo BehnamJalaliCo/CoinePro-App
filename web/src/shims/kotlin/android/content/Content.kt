@@ -7,6 +7,43 @@ import android.net.Uri
 import android.os.Bundle
 
 private fun openJs(url: String): Unit = js("(function () { try { window.open(url, '_blank', 'noopener'); } catch (e) {} })()")
+
+private fun downloadTextJs(name: String, body: String, type: String): Unit = js(
+    "(function () { try { var b = new Blob([body], { type: type }); var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000); } catch (e) {} })()",
+)
+
+/** An `ACTION_INSERT` into the calendar as an .ics file name and body, or null for anything else. */
+private fun calendarFileFor(intent: Intent): Pair<String, String>? {
+    val begin = intent.extras[android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME] as? Long ?: return null
+    val end = intent.extras[android.provider.CalendarContract.EXTRA_EVENT_END_TIME] as? Long ?: begin
+    val title = intent.extras[android.provider.CalendarContract.Events.TITLE]?.toString().orEmpty()
+    val notes = intent.extras[android.provider.CalendarContract.Events.DESCRIPTION]?.toString().orEmpty()
+    // UTC as `yyyyMMddTHHmmssZ`, by the civil-from-days arithmetic: no date library on this side.
+    fun stamp(ms: Long): String {
+        val secs = ms.floorDiv(1000L)
+        val days = secs.floorDiv(86_400L)
+        val rem = secs - days * 86_400L
+        val z = days + 719_468L
+        val era = z.floorDiv(146_097L)
+        val doe = z - era * 146_097L
+        val yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365
+        val doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
+        val mp = (5 * doy + 2) / 153
+        val d = doy - (153 * mp + 2) / 5 + 1
+        val m = if (mp < 10) mp + 3 else mp - 9
+        val y = yoe + era * 400 + if (m <= 2) 1 else 0
+        fun two(v: Long) = v.toString().padStart(2, '0')
+        return "$y${two(m)}${two(d)}T${two(rem / 3600)}${two(rem % 3600 / 60)}${two(rem % 60)}Z"
+    }
+    fun escape(v: String) = v.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
+    val body = listOf(
+        "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//CoinePro//Pro Chart//FA",
+        "BEGIN:VEVENT", "UID:$begin-${title.hashCode()}@pro-chart.com", "DTSTAMP:${stamp(begin)}",
+        "DTSTART:${stamp(begin)}", "DTEND:${stamp(end)}", "SUMMARY:${escape(title)}", "DESCRIPTION:${escape(notes)}",
+        "END:VEVENT", "END:VCALENDAR",
+    ).joinToString("\r\n")
+    return "event.ics" to body
+}
 private fun shareTextJs(text: String, title: String): Unit = js(
     "(function () { try { if (navigator.share) { navigator.share({ title: title, text: text }).catch(function () {}); } else if (navigator.clipboard) { navigator.clipboard.writeText(text); } } catch (e) {} })()",
 )
@@ -34,6 +71,9 @@ open class Context {
             Intent.ACTION_VIEW, Intent.ACTION_DIAL, Intent.ACTION_SENDTO -> intent.data?.toString()?.let(::openJs)
             Intent.ACTION_SEND -> shareTextJs(intent.extras[Intent.EXTRA_TEXT]?.toString() ?: "", intent.extras[Intent.EXTRA_SUBJECT]?.toString() ?: "")
             Intent.ACTION_CHOOSER -> (intent.extras[Intent.EXTRA_INTENT] as? Intent)?.let(::startActivity)
+            // «Add to calendar» (5.28.0): a page has no calendar provider, so the event goes out as
+            // an .ics file, which every desktop calendar and the phone's own open.
+            Intent.ACTION_INSERT -> calendarFileFor(intent)?.let { (name, body) -> downloadTextJs(name, body, "text/calendar") }
         }
     }
     fun startActivity(intent: Intent, options: Bundle?) = startActivity(intent)
@@ -148,6 +188,7 @@ class Intent(var action: String? = null, var data: Uri? = null) {
         const val ACTION_SEND = "android.intent.action.SEND"
         const val ACTION_SENDTO = "android.intent.action.SENDTO"
         const val ACTION_DIAL = "android.intent.action.DIAL"
+        const val ACTION_INSERT = "android.intent.action.INSERT"
         const val ACTION_CHOOSER = "android.intent.action.CHOOSER"
         const val ACTION_MAIN = "android.intent.action.MAIN"
         const val ACTION_CREATE_DOCUMENT = "android.intent.action.CREATE_DOCUMENT"

@@ -166,6 +166,31 @@ class ChartPanRestoreTest {
         assertEquals(0, opened.offset)
     }
 
+    // ── the window follows the width (5.28.0) ───────────────────────────────────────────────
+
+    @Test
+    fun `an unzoomed chart opens on six points a bar, at rest`() {
+        val view = ChartViewport(series).atRest()
+        val fitted = fitZoomToWidth(view, plotWidth = 1_500f, spacingPx = 6f, auto = true, lastWidth = 0f)
+        assertEquals(250, fitted.barsPerView)
+        assertEquals(fitted.restingOffset, fitted.offset)
+    }
+
+    @Test
+    fun `a resize keeps the bar width and shows more bars`() {
+        val view = ChartViewport(series).copy(barsPerView = 100).atRest()
+        val wider = fitZoomToWidth(view, plotWidth = 1_200f, spacingPx = 6f, auto = false, lastWidth = 600f)
+        assertEquals(200, wider.barsPerView)
+        assertEquals("a resting chart goes on resting", wider.restingOffset, wider.offset)
+    }
+
+    @Test
+    fun `a gutter a digit wider does not move the zoom`() {
+        val view = ChartViewport(series).copy(barsPerView = 100).atRest()
+        val same = fitZoomToWidth(view, plotWidth = 610f, spacingPx = 6f, auto = false, lastWidth = 600f)
+        assertTrue(same === view)
+    }
+
     private companion object {
         const val START = 1_700_000_000L
         const val HOUR = 3_600L

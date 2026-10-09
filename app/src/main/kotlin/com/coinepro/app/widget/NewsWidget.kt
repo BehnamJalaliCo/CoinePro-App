@@ -322,6 +322,7 @@ object NewsWidgetRenderer {
 
     fun render(context: Context, store: NewsWidgetStore, widgetId: Int): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_news)
+        views.setViewVisibility(R.id.news_skeleton, View.GONE)
         val feed = store.feedFor(widgetId)
         val stories = store.stories(feed)
         views.setTextViewText(

@@ -129,6 +129,8 @@ object ChartIcons {
         "tv_tool_vline" -> DesignR.drawable.tv_tool_vline
         "tv_tool_volumeprofile" -> DesignR.drawable.tv_tool_volumeprofile
         "tv_tool_xabcd" -> DesignR.drawable.tv_tool_xabcd
+        "tvapp_drawing_emojis" -> DesignR.drawable.tvapp_drawing_emojis
+        "tvapp_chart_type_session_volume_profile_28" -> DesignR.drawable.tvapp_chart_type_session_volume_profile_28
         else -> DesignR.drawable.tv_chart_candles
     }
 
@@ -246,6 +248,8 @@ object ChartIcons {
         "tv_tool_vline",
         "tv_tool_volumeprofile",
         "tv_tool_xabcd",
+        "tvapp_drawing_emojis",
+        "tvapp_chart_type_session_volume_profile_28",
     )
 }
 

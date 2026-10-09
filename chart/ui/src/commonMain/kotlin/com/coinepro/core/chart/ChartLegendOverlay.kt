@@ -498,6 +498,42 @@ private fun isolateLtr(value: String): String =
  * first ends on Sunday evening and the second is a holiday, a halt or an outage, and a reader told
  * only «بسته» cannot tell which they are looking at.
  */
+/** TradingView's market-state glyph for [status], or null for the plain open dot. */
+private fun statusGlyph(status: ChartMarketStatus): ImageVector? = when (status) {
+    ChartMarketStatus.OPEN -> null
+    ChartMarketStatus.CLOSED -> STATUS_CLOSED_GLYPH
+    ChartMarketStatus.WEEKEND -> STATUS_HOLIDAY_GLYPH
+}
+
+private fun statusVector(name: String, vararg paths: String): ImageVector {
+    val builder = ImageVector.Builder(
+        name = name,
+        defaultWidth = STATUS_DISC_DP,
+        defaultHeight = STATUS_DISC_DP,
+        viewportWidth = STATUS_GLYPH_GRID,
+        viewportHeight = STATUS_GLYPH_GRID,
+    )
+    paths.forEach { builder.addPath(pathData = addPathNodes(it), fill = SolidColor(Color.Black)) }
+    return builder.build()
+}
+
+/** TradingView's `ic_market_closed`, on its 18-point grid. */
+private val STATUS_CLOSED_GLYPH by lazy {
+    statusVector("status-closed", "M6 7h6a2 2 0 0 1 2 2 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 1 2-2z")
+}
+
+/** TradingView's `ic_holiday_market`. */
+private val STATUS_HOLIDAY_GLYPH by lazy {
+    statusVector(
+        "status-holiday",
+        "M9.3 9l0.906-4.53C10.358 3.71 9.776 3 9 3S7.642 3.71 7.794 4.47L8.7 9l-0.906 4.53C7.642 14.29 8.224 15 9 15s1.358-0.71 1.206-1.47L9.3 9z",
+        "M9.15 9.26l4.375-1.48c0.736-0.249 1.06-1.108 0.671-1.78-0.388-0.672-1.293-0.821-1.876-0.309l-3.47 3.05-4.375 1.48C3.74 10.468 3.416 11.327 3.804 12c0.388 0.671 1.294 0.82 1.877 0.308l3.47-3.05z",
+        "M9.15 8.74L5.68 5.691C5.098 5.179 4.192 5.328 3.804 6 3.416 6.672 3.74 7.53 4.474 7.78L8.85 9.26l3.47 3.049c0.582 0.512 1.488 0.363 1.876-0.31 0.388-0.671 0.064-1.53-0.67-1.779L9.15 8.74z",
+    )
+}
+
+private const val STATUS_GLYPH_GRID = 18f
+
 private fun statusNote(status: ChartMarketStatus): String? = when (status) {
     ChartMarketStatus.OPEN -> null
     ChartMarketStatus.CLOSED -> "بسته"
@@ -615,7 +651,7 @@ internal fun ChartLegendOverlay(
     // Under a crosshair the row is O H L C with the change under it; at rest it is TradingView's
     // phone legend — the price and its change on one line, `77,414.00 −17.01 (−0.02%)` — because a
     // reader glancing at the chart wants the day's move, not four numbers about the newest bar.
-    val move = legendChangeRow(bar = bar, decimals = decimalsFor(bar.c), change = session)
+    val rawMove = legendChangeRow(bar = bar, decimals = decimalsFor(bar.c), change = session)
         .takeIf { tracking && decoration.legendChange }
     // The Status line tab (5.16.0): with OHLC switched off the head stays the resting price line
     // under a crosshair too, and with the change switched off that line is the price alone.
@@ -623,7 +659,23 @@ internal fun ChartLegendOverlay(
     // Any crosshair, not only a held one: a mouse crosshair is a reader asking what this bar read,
     // and TradingView's legend answers it with O H L C under the pointer (CHART-07).
     val reading = tracking || pointed != null
-    val restingHead = if (reading && decoration.legendOhlc) {
+    // **At rest on a desktop-wide plot, O H L C and the change** (5.28.0). TradingView's browser
+    // legend prints the bar's four prices and its move on one line whether or not a pointer is on
+    // the plot — `showSeriesOHLC` and `showBarChange` are both on by default there; only its phone
+    // legend collapses to the close (`showSeriesLegendCloseOnMobile`). Decided inside the layout
+    // below, where the width is known.
+    val desktopHead = if (decoration.legendOhlc) {
+        val ohlc = rows.first()
+        val delta = legendChangeRow(bar = bar, decimals = decimalsFor(bar.c), change = session).alternatives
+        if (decoration.legendChange) {
+            ohlc.copy(alternatives = ohlc.alternatives.dropLast(1).map { "$it   ${delta.first()}" } + ohlc.alternatives)
+        } else {
+            ohlc
+        }
+    } else {
+        null
+    }
+    val phoneHead = if (reading && decoration.legendOhlc) {
         rows.first()
     } else {
         val decimals = decimalsFor(bar.c)
@@ -648,6 +700,9 @@ internal fun ChartLegendOverlay(
             // A desktop-wide plot: TradingView's desktop legend — the title and the values on one
             // line, 16 over 13, the title in regular weight (CHART-07). The phone keeps its own.
             val wide = maxWidth >= LEGEND_WIDE_DP
+            val restingHead = if (wide && desktopHead != null) desktopHead else phoneHead
+            // The desktop head already carries the move on its own line, so the row under it goes.
+            val move = rawMove.takeUnless { wide && desktopHead != null && decoration.legendChange }
             /**
              * Whether the per-row controls are on screen.
              *
@@ -1417,7 +1472,19 @@ private fun LegendHead(
                     .background(tone.copy(alpha = STATUS_DISC_ALPHA)),
                 contentAlignment = Alignment.Center,
             ) {
-                Box(modifier = Modifier.size(STATUS_DOT_DP).clip(CircleShape).background(tone))
+                // TradingView's status glyphs inside the disc (5.28.0): a bar for «closed», its
+                // pinwheel for a holiday. Open keeps the plain dot it has always had.
+                val glyph = statusGlyph(state)
+                if (glyph == null) {
+                    Box(modifier = Modifier.size(STATUS_DOT_DP).clip(CircleShape).background(tone))
+                } else {
+                    Image(
+                        painter = rememberVectorPainter(glyph),
+                        contentDescription = null,
+                        colorFilter = ColorFilter.tint(tone),
+                        modifier = Modifier.size(STATUS_DISC_DP),
+                    )
+                }
             }
         }
         values?.let { line -> Box(modifier = Modifier.weight(1f, fill = false)) { line() } }

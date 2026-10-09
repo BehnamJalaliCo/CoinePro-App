@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.28.0
+
+**fa**
+
+> چارت مثل تریدینگ‌ویو باز می‌شود: هر کندل شش نقطه پهنا دارد، فضای راست ده کندل است و رنگ‌ها همان رنگ‌های تریدینگ‌ویو است. منوی چارت بازنشانی نما، رسم خط افقی، اندیکاتورها و درخت اشیا را دارد. بازپخش کندل تصادفی و انتخاب کندل دارد، چیدمان‌های ترکیبی چند چارت، ابزار ایموجی، مرتب‌سازی الفبایی و افزودن رویداد تقویم اقتصادی به تقویم هم اضافه شد.
+
+**en**
+
+> The chart opens like TradingView's: six points a bar, ten bars of room on the right and TradingView's colours. The chart menu adds reset view, a horizontal line, indicators and the object tree. Replay gains a random bar and select bar, and there are mixed multi-chart layouts, an emoji tool, A–Z sorting and «add to calendar» for releases.
+
+---
+
 ## 5.27.4
 
 **fa**

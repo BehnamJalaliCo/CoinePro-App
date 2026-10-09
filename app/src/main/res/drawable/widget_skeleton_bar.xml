@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TradingView's widget skeleton block (5.28.0): a rounded plate in the widget's hairline colour,
+     standing where a figure will be until the first snapshot arrives. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/widget_border" />
+    <corners android:radius="4dp" />
+</shape>

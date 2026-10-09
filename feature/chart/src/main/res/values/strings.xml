@@ -628,6 +628,16 @@
     <string name="chart_menu_alert_here">Alert at %1$s</string>
     <string name="chart_menu_copy_price">Copy price</string>
     <string name="chart_menu_scale">Price scale…</string>
+    <string name="chart_menu_reset_view">Reset chart view</string>
+    <string name="chart_menu_hline_here">Draw horizontal line at %1$s</string>
+    <string name="chart_menu_add_indicator">Add indicator…</string>
+    <string name="chart_menu_object_tree">Object tree…</string>
+    <string name="chart_menu_hide_drawings">Hide drawings</string>
+    <string name="chart_menu_show_drawings">Show drawings</string>
+    <string name="chart_menu_hide_indicators">Hide indicators</string>
+    <string name="chart_menu_show_indicators">Show indicators</string>
+    <string name="chart_menu_remove_drawings">Remove drawings</string>
+    <string name="chart_menu_remove_indicators">Remove indicators</string>
     <string name="chart_menu_search">Search symbol</string>
     <string name="chart_script_kind">NamaScript indicator</string>
     <string name="chart_script_paused">Paused — this script is too slow to run on every bar (line %1$s).</string>
@@ -689,6 +699,9 @@
     <string name="chart_picture_copied">Picture copied</string>
     <string name="chart_menu_shortcuts">Keyboard shortcuts</string>
     <string name="replay_to_start">Back to the start</string>
+    <string name="replay_select_bar">Select bar</string>
+    <string name="replay_random_bar">Select random bar</string>
+    <string name="replay_pick_hint">Tap the bar to replay from</string>
     <string name="replay_back_ten">Ten bars back</string>
     <string name="replay_forward_ten">Ten bars forward</string>
     <string name="keys_title">Keyboard shortcuts</string>

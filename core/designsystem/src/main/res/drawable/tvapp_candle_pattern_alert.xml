@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TradingView's Android app, ic_candle_pattern_alert, converted from the compiled vector. Do not hand-edit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="18dp"
+    android:width="18dp"
+    android:viewportWidth="18"
+    android:viewportHeight="18">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M7 3H5v10h2v3h1v-3h2V3H8V0H7v3zM6 4v8h3V4H6zm8-1h-2v6h2v3h1V9h2V3h-2V0h-1v3zM2 7h1v11H2V7z"
+        android:fillType="evenOdd" />
+</vector>

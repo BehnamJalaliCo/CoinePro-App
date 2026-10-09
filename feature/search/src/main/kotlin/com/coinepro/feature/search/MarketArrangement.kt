@@ -69,7 +69,13 @@ internal enum class MarketLens(val labelRes: Int) {
  * is in the quote currency and is the only one of the two that means "most traded" across markets
  * priced in different things. The server's own relay has this exact bug elsewhere and told us so.
  */
-internal enum class MarketSortKey { CHANGE, TURNOVER }
+internal enum class MarketSortKey {
+    CHANGE,
+    TURNOVER,
+
+    /** By ticker, A to Z first — TradingView's «Sort by symbol» (5.28.0). */
+    SYMBOL,
+}
 
 internal data class MarketSort(val key: MarketSortKey, val descending: Boolean)
 
@@ -80,10 +86,14 @@ internal data class MarketSort(val key: MarketSortKey, val descending: Boolean)
  * one that matters. The lens below already has an order of its own, and a sort with no way back to
  * it would take «داغ» away from a reader who only wanted to glance down the change column.
  */
-internal fun nextMarketSort(current: MarketSort?, key: MarketSortKey): MarketSort? = when {
-    current?.key != key -> MarketSort(key, descending = true)
-    current.descending -> MarketSort(key, descending = false)
-    else -> null
+internal fun nextMarketSort(current: MarketSort?, key: MarketSortKey): MarketSort? {
+    // Names start A to Z, the way a reader looks one up; figures start largest first.
+    val first = key != MarketSortKey.SYMBOL
+    return when {
+        current?.key != key -> MarketSort(key, descending = first)
+        current.descending == first -> MarketSort(key, descending = !first)
+        else -> null
+    }
 }
 
 /**
@@ -167,10 +177,15 @@ internal fun arrangeMarkets(
             .map { it.first }
     }
     if (sort == null) return lensed
+    if (sort.key == MarketSortKey.SYMBOL) {
+        val byName = lensed.sortedBy { it.meta.symbol.uppercase() }
+        return if (sort.descending) byName.reversed() else byName
+    }
 
     val figure: (MarketTicker) -> Double? = when (sort.key) {
         MarketSortKey.CHANGE -> MarketTicker::changePercent24h
         MarketSortKey.TURNOVER -> MarketTicker::turnover24h
+        MarketSortKey.SYMBOL -> return lensed
     }
     val keyed = lensed.map { row -> row to tickers[row.meta.symbol]?.let(figure) }
     val present = keyed.mapNotNull { (row, value) -> value?.let { row to it } }

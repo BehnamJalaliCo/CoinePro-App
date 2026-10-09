@@ -148,12 +148,14 @@ data class CoineProPalette(
  * selection, not for dividing lists.
  */
 val CoineProDarkPalette = CoineProPalette(
-    stage = Color(0xFF0B0E11),
+    // TradingView's `color-cold-gray-900` since 5.28.0: the neutral near-black its chart and its
+    // pages share, where `#0B0E11` leaned navy beside it.
+    stage = Color(0xFF0F0F0F),
     // **The same ground as the stage since 4.70.0.** The chart used to sit four units darker, and
     // the argument for it was that a chart wants a ground of its own. Held against the app — Home
     // at `#0B0E11`, the chart at `#070A0F`, one tap apart — it read as two different apps, which
     // is the owner's own reading of the two screenshots side by side (run F). One `surface0`.
-    terminal = Color(0xFF0B0E11),
+    terminal = Color(0xFF0F0F0F),
     surface = Color(0xFF10141B),
     surfaceElevated = Color(0xFF171C24),
     surfaceRaised = Color(0xFF222831),

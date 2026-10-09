@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What a widget shows before its first snapshot (5.28.0): TradingView's skeleton — grey blocks
+     where the ticker, its name and its figures will be — rather than an empty plate that reads as
+     broken. Every widget's renderer hides it on its first pass. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
+    android:orientation="vertical"
+    android:paddingTop="6dp">
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="12dp">
+        <ImageView android:layout_width="46dp" android:layout_height="14dp" android:src="@drawable/widget_skeleton_bar" android:importantForAccessibility="no" />
+        <FrameLayout android:layout_width="0dp" android:layout_height="14dp" android:layout_weight="1" />
+        <ImageView android:layout_width="56dp" android:layout_height="14dp" android:src="@drawable/widget_skeleton_bar" android:importantForAccessibility="no" />
+    </LinearLayout>
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="12dp">
+        <ImageView android:layout_width="46dp" android:layout_height="14dp" android:src="@drawable/widget_skeleton_bar" android:importantForAccessibility="no" />
+        <FrameLayout android:layout_width="0dp" android:layout_height="14dp" android:layout_weight="1" />
+        <ImageView android:layout_width="56dp" android:layout_height="14dp" android:src="@drawable/widget_skeleton_bar" android:importantForAccessibility="no" />
+    </LinearLayout>
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+        <ImageView android:layout_width="46dp" android:layout_height="14dp" android:src="@drawable/widget_skeleton_bar" android:importantForAccessibility="no" />
+        <FrameLayout android:layout_width="0dp" android:layout_height="14dp" android:layout_weight="1" />
+        <ImageView android:layout_width="56dp" android:layout_height="14dp" android:src="@drawable/widget_skeleton_bar" android:importantForAccessibility="no" />
+    </LinearLayout>
+</LinearLayout>

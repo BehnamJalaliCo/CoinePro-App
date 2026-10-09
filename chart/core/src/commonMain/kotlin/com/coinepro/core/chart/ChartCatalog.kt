@@ -276,7 +276,7 @@ object ChartCatalog {
         // The two Pro-Chart's terminal drew and this app did not, until 5.11.0.
         ChartTypeOption(ChartType.COLUMNS, "ستونی", "columns", ChartIcon("tv_chart_columns")),
         ChartTypeOption(ChartType.HIGH_LOW, "سقف و کف", "highlow", ChartIcon("tv_chart_highlow")),
-        ChartTypeOption(ChartType.SESSION_VOLUME_PROFILE, "پروفایل حجم جلسه", "svp", ChartIcon("tv_tool_volumeprofile")),
+        ChartTypeOption(ChartType.SESSION_VOLUME_PROFILE, "پروفایل حجم جلسه", "svp", ChartIcon("tvapp_chart_type_session_volume_profile_28")),
     )
 
     /**

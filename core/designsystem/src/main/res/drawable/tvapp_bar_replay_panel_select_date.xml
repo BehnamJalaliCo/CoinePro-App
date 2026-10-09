@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TradingView's Android app, ic_bar_replay_panel_select_date, converted from the compiled vector. Do not hand-edit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="40dp"
+    android:width="40dp"
+    android:viewportWidth="40"
+    android:viewportHeight="40">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M19.746 17.436l-5.616 5.059 5.616 5.07V23.25H26.5v-1.5h-6.754v-4.314zm-1.5 6.754l-1.876-1.694 1.876-1.69v3.384z"
+        android:fillType="evenOdd" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M15.5 11V9h-1v2h-2c-1.657 0-3 1.343-3 3v13c0 1.657 1.343 3 3 3h15c1.657 0 3-1.343 3-3V14c0-1.657-1.343-3-3-3h-2V9h-1v2h-9zm9 3v-1.5h-9V14h-1v-1.5h-2c-0.828 0-1.5 0.672-1.5 1.5v1.75h18V14c0-0.828-0.672-1.5-1.5-1.5h-2V14h-1zM11 27v-9.75h18V27c0 0.828-0.672 1.5-1.5 1.5h-15c-0.828 0-1.5-0.672-1.5-1.5z"
+        android:fillType="evenOdd" />
+</vector>

@@ -358,6 +358,8 @@ internal fun ChartDrawingBand(
     toolLabel: String,
     toolArmed: Boolean,
     magnetOn: Boolean,
+    /** Which magnet, for its icon: TradingView draws the weak and the strong one differently. */
+    magnetStrong: Boolean = false,
     lockedAll: Boolean,
     allHidden: Boolean,
     drawings: Int,
@@ -391,7 +393,11 @@ internal fun ChartDrawingBand(
             ToolbarDivider()
             ToolbarButton(icon = toolIcon, label = toolLabel, active = toolArmed, onClick = onTools)
             ToolbarButton(
-                icon = DesignR.drawable.tv_magnet,
+                icon = when {
+                    !magnetOn -> DesignR.drawable.tv_magnet
+                    magnetStrong -> DesignR.drawable.tvapp_strong_magnet_drawings
+                    else -> DesignR.drawable.tvapp_weak_magnet_drawings
+                },
                 label = stringResource(R.string.keys_magnet),
                 active = magnetOn,
                 onClick = onMagnet,

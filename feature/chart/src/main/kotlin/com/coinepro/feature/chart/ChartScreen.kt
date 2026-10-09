@@ -936,6 +936,10 @@ fun ChartScreen(
      * marking up cannot be rebuilt, and the store is written the moment the transform runs.
      */
     var confirmClear by remember { mutableStateOf(false) }
+    /** «Reset chart view» from the menu, counted — see `CoineProChart`'s `resetRequests`. */
+    var resetRequests by remember { mutableIntStateOf(0) }
+    /** Whether the next tap on the chart picks the replay's bar — TradingView's «Select bar». */
+    var pickingReplayBar by remember { mutableStateOf(false) }
     /**
      * Whether the chart has the whole screen.
      *
@@ -1614,6 +1618,12 @@ fun ChartScreen(
                     // study that ignores the visible range.
                     // The reader's own zoom on this symbol and this timeframe, restored and kept.
                     savedBarsPerView = state.barsPerView,
+                    resetRequests = resetRequests,
+                    onPickBar = if (pickingReplayBar) {
+                        { time -> controller.enterReplayAt(time); pickingReplayBar = false }
+                    } else {
+                        null
+                    },
                     onViewportChange = { view ->
                         controller.setZoom(view.barsPerView)
                         // The plot's width, for the overlays placed against the chart's frame.
@@ -1845,6 +1855,13 @@ fun ChartScreen(
                                 offset = with(density) { DpOffset(menu.at.x.toDp(), menu.at.y.toDp()) },
                             ) {
                                 CompositionLocalProvider(LocalLayoutDirection provides direction) {
+                                    // TradingView's menu opens on the view itself (5.28.0).
+                                    CoineProMenuItem(
+                                        text = stringResource(R.string.chart_menu_reset_view),
+                                        onClick = { resetRequests++; contextMenu = null },
+                                        modifier = Modifier.semantics { contentDescription = "chart-menu-reset-view" },
+                                    )
+                                    HorizontalDivider(color = CoineProColors.BorderSubtle)
                                     if (onCreateAlert != null) {
                                         CoineProMenuItem(
                                             text = stringResource(R.string.chart_menu_alert_here, MarketNumberFormatter.priceAuto(menu.price)),
@@ -1857,8 +1874,60 @@ fun ChartScreen(
                                         onClick = { clipboard.setText(AnnotatedString(MarketNumberFormatter.priceAuto(menu.price))); contextMenu = null },
                                         modifier = Modifier.semantics { contentDescription = "chart-menu-copy" },
                                     )
+                                    crosshairIndex?.let { state.visibleSeries.time.getOrNull(it) }?.let { time ->
+                                        CoineProMenuItem(
+                                            text = stringResource(R.string.chart_menu_hline_here, MarketNumberFormatter.priceAuto(menu.price)),
+                                            onClick = { controller.drawHorizontalLineAt(time, menu.price); contextMenu = null },
+                                            modifier = Modifier.semantics { contentDescription = "chart-menu-hline" },
+                                        )
+                                    }
                                     // TradingView's groups: price, then the chart's own apparatus,
                                     // then pictures, then help (DIALOGS-21).
+                                    HorizontalDivider(color = CoineProColors.BorderSubtle)
+                                    CoineProMenuItem(
+                                        text = stringResource(R.string.chart_menu_add_indicator),
+                                        onClick = { sheet = ChartSheet.INDICATORS; contextMenu = null },
+                                        modifier = Modifier.semantics { contentDescription = "chart-menu-add-indicator" },
+                                    )
+                                    CoineProMenuItem(
+                                        text = stringResource(R.string.chart_menu_object_tree),
+                                        onClick = { sheet = ChartSheet.DRAWINGS; contextMenu = null },
+                                        modifier = Modifier.semantics { contentDescription = "chart-menu-object-tree" },
+                                    )
+                                    val drawingsHidden = DrawingLayer.DRAWINGS in state.drawing.hidden
+                                    val studiesHidden = DrawingLayer.INDICATORS in state.drawing.hidden
+                                    if (state.drawing.drawings.isNotEmpty()) {
+                                        CoineProMenuItem(
+                                            text = stringResource(
+                                                if (drawingsHidden) R.string.chart_menu_show_drawings else R.string.chart_menu_hide_drawings,
+                                            ),
+                                            onClick = { controller.setLayerHidden(DrawingLayer.DRAWINGS, !drawingsHidden); contextMenu = null },
+                                            modifier = Modifier.semantics { contentDescription = "chart-menu-hide-drawings" },
+                                        )
+                                    }
+                                    if (state.activeIndicators.isNotEmpty()) {
+                                        CoineProMenuItem(
+                                            text = stringResource(
+                                                if (studiesHidden) R.string.chart_menu_show_indicators else R.string.chart_menu_hide_indicators,
+                                            ),
+                                            onClick = { controller.setLayerHidden(DrawingLayer.INDICATORS, !studiesHidden); contextMenu = null },
+                                            modifier = Modifier.semantics { contentDescription = "chart-menu-hide-indicators" },
+                                        )
+                                    }
+                                    if (state.drawing.drawings.isNotEmpty()) {
+                                        CoineProMenuItem(
+                                            text = stringResource(R.string.chart_menu_remove_drawings),
+                                            onClick = { confirmClear = true; contextMenu = null },
+                                            modifier = Modifier.semantics { contentDescription = "chart-menu-remove-drawings" },
+                                        )
+                                    }
+                                    if (state.activeIndicators.isNotEmpty()) {
+                                        CoineProMenuItem(
+                                            text = stringResource(R.string.chart_menu_remove_indicators),
+                                            onClick = { controller.removeAllIndicators(); contextMenu = null },
+                                            modifier = Modifier.semantics { contentDescription = "chart-menu-remove-indicators" },
+                                        )
+                                    }
                                     HorizontalDivider(color = CoineProColors.BorderSubtle)
                                     CoineProMenuItem(
                                         text = stringResource(R.string.chart_menu_scale),
@@ -2684,7 +2753,10 @@ fun ChartScreen(
                 onSpeed = { step -> controller.replaySetSpeed(step) },
                 onJumpToLive = controller::replayJumpToLive,
                 onGoTo = controller::replayGoTo,
-                onExit = controller::exitReplay,
+                onExit = { pickingReplayBar = false; controller.exitReplay() },
+                onRandomBar = { pickingReplayBar = false; controller.replayRandomBar() },
+                picking = pickingReplayBar,
+                onSelectBar = { pickingReplayBar = !pickingReplayBar },
                 // Cleared by the bar itself on dispose, so leaving replay takes the drawing with it.
                 onSetupOverlay = { replaySetup = it },
             )
@@ -2764,6 +2836,7 @@ fun ChartScreen(
                 toolLabel = shownTool?.label(inEnglish()) ?: stringResource(R.string.chart_band_draw),
                 toolArmed = armedTool != null,
                 magnetOn = state.drawing.magnetMode != MagnetMode.OFF,
+                magnetStrong = state.drawing.magnetMode == MagnetMode.STRONG,
                 lockedAll = state.drawing.lockedAll,
                 allHidden = state.drawing.hidden.size == DrawingLayer.entries.size,
                 drawings = state.drawing.drawings.size,
@@ -3799,7 +3872,8 @@ fun ChartScreen(
                 // The icon tool keeps its glyph in the same field a note keeps its words, so the
                 // row of marks is offered *above* the keyboard rather than instead of it — a reader
                 // who wants a mark the row does not carry can still type one.
-                icons = DrawingActions.holdsIcon(drawing.toolId),
+                icons = DrawingActions.holdsIcon(drawing.toolId) || DrawingActions.holdsEmoji(drawing.toolId),
+                glyphs = if (DrawingActions.holdsEmoji(drawing.toolId)) DrawingActions.EMOJI_GLYPHS else DrawingActions.ICON_GLYPHS,
                 onSave = { text ->
                     val kept = DrawingImages.idIn(drawing.text)
                     val value = if (kept != null) DrawingImages.textFor(kept, text) else text
@@ -3889,6 +3963,8 @@ private fun DrawingTextSheet(
     icons: Boolean,
     onSave: (String) -> Unit,
     onDismiss: () -> Unit,
+    /** The row the picker offers: the icon tool's marks, or the emoji tool's emoji (5.28.0). */
+    glyphs: List<String> = DrawingActions.ICON_GLYPHS,
 ) {
     var text by rememberSaveable { mutableStateOf(initial) }
     CoineProSheet(
@@ -3904,6 +3980,7 @@ private fun DrawingTextSheet(
         ) {
             if (icons) {
                 DrawingIconPicker(
+                    glyphs = glyphs,
                     selected = text.takeIf { it.isNotEmpty() },
                     // Picked and saved in one gesture. An icon is one mark, so a picker that only
                     // filled the box and left the reader to press «ثبت» would be two taps for a

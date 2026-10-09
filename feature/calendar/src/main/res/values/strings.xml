@@ -21,6 +21,7 @@
     <string name="calendar_refreshing">Refreshing event times…</string>
     <string name="calendar_timezone_note">Times shown in the device timezone.</string>
     <string name="calendar_stale">Stale</string>
+    <string name="calendar_add">Add to calendar</string>
     <string name="calendar_global">Global</string>
     <string name="calendar_actual">Actual</string>
     <string name="calendar_forecast">Forecast</string>

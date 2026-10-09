@@ -79,6 +79,9 @@ internal actual fun persianTimeTick(tick: TimeTick, at: Long, spanSeconds: Long,
 
 internal actual val ChartLatinFontFamily: FontFamily = CoineProLatinFontFamily
 
+/** The system's colour-emoji font draws an emoji through the text path; nothing to rasterise. */
+internal actual fun chartEmojiBitmap(emoji: String): ImageBitmap? = null
+
 @Composable
 internal actual fun screenWidthDp(): Int = LocalConfiguration.current.screenWidthDp
 

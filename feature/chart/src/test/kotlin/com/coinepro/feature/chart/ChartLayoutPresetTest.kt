@@ -13,7 +13,14 @@ class ChartLayoutPresetTest {
         val ids = ChartLayoutPreset.entries.map { it.id }
         assertEquals(ids.size, ids.toSet().size)
         // What is on readers' tablets. Renaming an entry is fine; changing an id is a migration.
-        assertEquals(listOf("1", "2h", "2v", "3", "3v", "4", "4h", "4v", "6", "8", "9", "12", "16"), ids)
+        assertEquals(
+            listOf(
+                "1", "2h", "2v", "3", "3v", "4", "4h", "4v", "6", "8", "9", "12", "16",
+                // TradingView's mixed grids (5.28.0).
+                "1+2", "2+1", "1+3", "3+1", "2+3", "3+2", "1+4", "4+2", "4+3",
+            ),
+            ids,
+        )
         ChartLayoutPreset.entries.forEach { assertEquals(it, ChartLayoutPreset.byId(it.id)) }
     }
 
@@ -38,7 +45,8 @@ class ChartLayoutPresetTest {
     @Test
     fun `a phone offers only the pair and a tablet offers everything past one`() {
         assertEquals(listOf(ChartLayoutPreset.TWO_ACROSS, ChartLayoutPreset.TWO_DOWN), ChartLayoutPreset.offered(2))
-        assertEquals(9, ChartLayoutPreset.offered(8).size)
+        // Nine plain grids and TradingView's nine mixed ones (5.28.0).
+        assertEquals(18, ChartLayoutPreset.offered(8).size)
         assertTrue(ChartLayoutPreset.ONE !in ChartLayoutPreset.offered(8))
     }
 

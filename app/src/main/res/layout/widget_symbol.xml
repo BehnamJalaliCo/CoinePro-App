@@ -25,6 +25,14 @@
     android:paddingBottom="8dp"
     tools:ignore="UseAppTint">
 
+    <!-- The skeleton until the first snapshot; the renderer hides it (5.28.0). -->
+    <include
+        android:id="@+id/symbol_skeleton"
+        layout="@layout/widget_skeleton"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
     <LinearLayout
         android:id="@+id/symbol_head"
         android:layout_width="match_parent"

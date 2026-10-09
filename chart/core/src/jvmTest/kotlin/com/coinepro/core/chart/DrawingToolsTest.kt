@@ -197,7 +197,7 @@ class DrawingToolsTest {
         assertEquals(
             setOf(
                 "text", "callout", "pricelabel", "note",
-                "pricenote", "pin", "tabledraw", "comment", "signpost", "icon", "image",
+                "pricenote", "pin", "tabledraw", "comment", "signpost", "icon", "emoji", "image",
             ),
             holds,
         )

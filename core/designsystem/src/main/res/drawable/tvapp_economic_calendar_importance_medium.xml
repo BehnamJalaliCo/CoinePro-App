@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TradingView's Android app, ic_economic_calendar_importance_medium, converted from the compiled vector. Do not hand-edit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="18dp"
+    android:width="18dp"
+    android:viewportWidth="18"
+    android:viewportHeight="18">
+    <group>
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M9,6H8C7.448,6 7,6.448 7,7V14C7,14.552 7.448,15 8,15H9C9.552,15 10,14.552 10,14V7C10,6.448 9.552,6 9,6ZM4,9H5C5.552,9 6,9.448 6,10V14C6,14.552 5.552,15 5,15H4C3.448,15 3,14.552 3,14V10C3,9.448 3.448,9 4,9Z"
+            android:fillType="evenOdd" />
+        <path
+            android:fillColor="#4D000000"
+            android:pathData="M13,3H12C11.448,3 11,3.413 11,3.923V14.077C11,14.587 11.448,15 12,15H13C13.552,15 14,14.587 14,14.077V3.923C14,3.413 13.552,3 13,3Z" />
+    </group>
+</vector>

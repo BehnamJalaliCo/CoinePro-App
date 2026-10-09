@@ -144,6 +144,7 @@ object WidgetRenderer {
         widgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID,
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_markets)
+        views.setViewVisibility(R.id.widget_skeleton, View.GONE)
 
         views.setViewVisibility(R.id.widget_header, layout.header.visibility())
         views.setViewVisibility(R.id.widget_footer, layout.footer.visibility())

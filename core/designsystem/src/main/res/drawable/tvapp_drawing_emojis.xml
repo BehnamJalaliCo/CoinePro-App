@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TradingView's Android app, ic_drawing_emojis, converted from the compiled vector. Do not hand-edit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:viewportWidth="24"
+    android:viewportHeight="25">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12,3a9.5,9.5 0,1 0,0 19,9.5 9.5,0 0,0 0,-19ZM1,12.5c0,-6.075 4.925,-11 11,-11s11,4.925 11,11 -4.925,11 -11,11 -11,-4.925 -11,-11ZM8.921,14.293a0.75,0.75 0,0 1,0.957 0.457,2.251 2.251,0 0,0 4.244,0 0.75,0.75 0,1 1,1.415 0.5,3.751 3.751,0 0,1 -7.073,0 0.75,0.75 0,0 1,0.457 -0.957ZM8.25,11a1.25,1.25 0,1 0,2.5 0,1.25 1.25,0 0,0 -2.5,0ZM13.25,11a1.25,1.25 0,1 0,2.5 0,1.25 1.25,0 0,0 -2.5,0Z"
+        android:fillType="evenOdd" />
+</vector>

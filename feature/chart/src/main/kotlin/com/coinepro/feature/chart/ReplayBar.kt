@@ -101,6 +101,14 @@ internal fun ReplayBar(
     /** Moves the cursor to a bar the reader named. See `Replay.goTo`. */
     onGoTo: (Int) -> Unit,
     onExit: () -> Unit,
+    /** TradingView's «Select random bar». See `ChartController.replayRandomBar`. */
+    onRandomBar: () -> Unit = {},
+    /**
+     * TradingView's «Select bar»: the next tap on the chart chooses where the replay is. [picking]
+     * is whether that tap is being waited for, and the counter says so while it is.
+     */
+    picking: Boolean = false,
+    onSelectBar: () -> Unit = {},
     /**
      * The open rehearsal position, as the chart should draw it, or null when there is none.
      *
@@ -133,9 +141,13 @@ internal fun ReplayBar(
             Text(
                 // Which bar of how many. The count is a prose figure, so Persian numerals, and it
                 // is isolated as one run so the slash does not migrate across the pair in RTL.
-                text = BidiText.isolateLtr(
-                    "${(state.cursor + 1).proseDigits()} / ${state.bars.size.proseDigits()}",
-                ),
+                text = if (picking) {
+                    stringResource(R.string.replay_pick_hint)
+                } else {
+                    BidiText.isolateLtr(
+                        "${(state.cursor + 1).proseDigits()} / ${state.bars.size.proseDigits()}",
+                    )
+                },
                 style = MaterialTheme.typography.labelSmall,
                 color = CoineProColors.TextMuted,
                 modifier = Modifier.weight(1f),
@@ -151,7 +163,7 @@ internal fun ReplayBar(
             // To the end of the snapshot, still inside replay. Distinct from the exit beside it,
             // and the reason both are here: a reader finishing a practice run wants to see how it
             // turned out before they throw the run away.
-            TransportButton(DesignR.drawable.tv_maximize2, stringResource(R.string.replay_jump_live), onJumpToLive)
+            TransportButton(DesignR.drawable.tvapp_bar_replay_panel_jump_to_realtime_chart, stringResource(R.string.replay_jump_live), onJumpToLive)
             TransportButton(DesignR.drawable.icon_x, stringResource(R.string.replay_exit), onExit)
         }
 
@@ -163,7 +175,16 @@ internal fun ReplayBar(
             horizontalArrangement = Arrangement.spacedBy(CoineProSpacing.Half),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TransportButton(CoineProIcons.StepBack, stringResource(R.string.replay_to_start), onToStart)
+            // TradingView's three ways of choosing where to be (5.28.0): a bar picked on the chart,
+            // a bar nobody picked, and the first bar there is.
+            TransportButton(
+                DesignR.drawable.tvapp_bar_replay_panel_select_bar,
+                stringResource(R.string.replay_select_bar),
+                onSelectBar,
+                tint = if (picking) CoineProColors.Accent else CoineProColors.TextSecondary,
+            )
+            TransportButton(DesignR.drawable.tvapp_bar_replay_panel_select_random_bar, stringResource(R.string.replay_random_bar), onRandomBar)
+            TransportButton(DesignR.drawable.tvapp_bar_replay_panel_select_first_available_bar, stringResource(R.string.replay_to_start), onToStart)
             TransportButton(DesignR.drawable.icon_rewind, stringResource(R.string.replay_back_ten), onClick = { onStepBy(-REPLAY_LARGE_STEP) })
             Slider(
                 value = state.progress,

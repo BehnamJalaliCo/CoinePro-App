@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TradingView's Android app, ic_multi_layout_28_single, converted from the compiled vector. Do not hand-edit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="28dp"
+    android:width="28dp"
+    android:viewportWidth="28"
+    android:viewportHeight="28">
+    <group>
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M21.5 7.5h-14c-0.552 0-1 0.448-1 1v12c0 0.552 0.448 1 1 1h14c0.552 0 1-0.448 1-1v-12c0-0.552-0.448-1-1-1zM7.5 6C6.119 6 5 7.119 5 8.5v12C5 21.881 6.119 23 7.5 23h14c1.381 0 2.5-1.119 2.5-2.5v-12C24 7.119 22.881 6 21.5 6h-14z"
+            android:fillType="evenOdd" />
+    </group>
+</vector>

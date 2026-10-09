@@ -17,6 +17,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -391,12 +394,32 @@ private fun TimelineEventCard(
                         if (event.isStale) MetaBadge(stringResource(R.string.calendar_stale), CoineProColors.Warning)
                         if (next) NextCountdown(event.scheduledAt)
                     }
-                    Text(
-                        listOfNotNull(event.country, event.currency).joinToString(" · ")
-                            .ifBlank { stringResource(R.string.calendar_global) },
-                        color = CoineProColors.TextMuted,
-                        style = MaterialTheme.typography.labelMedium,
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            listOfNotNull(event.country, event.currency).joinToString(" · ")
+                                .ifBlank { stringResource(R.string.calendar_global) },
+                            color = CoineProColors.TextMuted,
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                        // Only a release still to come can be put in a calendar.
+                        if (event.scheduledAt.isAfter(java.time.Instant.now())) {
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            val label = stringResource(R.string.calendar_add)
+                            androidx.compose.material3.Icon(
+                                painter = androidx.compose.ui.res.painterResource(DesignR.drawable.tvapp_add_event_to_calendar),
+                                contentDescription = label,
+                                tint = CoineProColors.TextSecondary,
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable { addToCalendar(context, event) }
+                                    .padding(4.dp),
+                            )
+                        }
+                    }
                 }
                 Text(event.title, style = MaterialTheme.typography.titleSmall, color = CoineProColors.TextPrimary)
                 Row(
@@ -504,19 +527,64 @@ private fun ImpactBadge(impact: MarketImpact) {
         MarketImpact.LOW -> CoineProColors.Buy
         MarketImpact.UNKNOWN -> CoineProColors.TextMuted
     }
-    MetaBadge(stringResource(impact.labelRes()), color)
+    // TradingView's importance bars before the word (5.28.0): three bars, as many lit as it matters.
+    val bars = when (impact) {
+        MarketImpact.HIGH -> DesignR.drawable.tvapp_economic_calendar_importance_high
+        MarketImpact.MEDIUM -> DesignR.drawable.tvapp_economic_calendar_importance_medium
+        MarketImpact.LOW -> DesignR.drawable.tvapp_economic_calendar_importance_low
+        MarketImpact.UNKNOWN -> null
+    }
+    MetaBadge(stringResource(impact.labelRes()), color, leading = bars)
 }
 
 @Composable
-private fun MetaBadge(text: String, color: androidx.compose.ui.graphics.Color) {
+private fun MetaBadge(
+    text: String,
+    color: androidx.compose.ui.graphics.Color,
+    /** A drawable before the word, tinted with it. */
+    leading: Int? = null,
+) {
     Surface(
         shape = RoundedCornerShape(999.dp),
         color = color.copy(alpha = 0.12f),
         border = BorderStroke(1.dp, color.copy(alpha = 0.32f)),
     ) {
-        Text(text, color = color, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            leading?.let {
+                androidx.compose.material3.Icon(
+                    painter = androidx.compose.ui.res.painterResource(it),
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+            Text(text, color = color, style = MaterialTheme.typography.labelSmall)
+        }
     }
 }
+
+/**
+ * TradingView's «Add to calendar» (5.28.0): the release as an event in the reader's own calendar —
+ * the phone's calendar app through the system's insert screen, or an .ics file on a page. Half an
+ * hour long, which is the window a release actually moves a market in.
+ */
+private fun addToCalendar(context: android.content.Context, event: EconomicEvent) {
+    val begin = event.scheduledAt.toEpochMilli()
+    val notes = listOfNotNull(event.country, event.currency).joinToString(" · ")
+    val intent = android.content.Intent(android.content.Intent.ACTION_INSERT)
+        .setData(android.provider.CalendarContract.Events.CONTENT_URI)
+        .putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, begin)
+        .putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME, begin + CALENDAR_EVENT_MILLIS)
+        .putExtra(android.provider.CalendarContract.Events.TITLE, event.title)
+        .putExtra(android.provider.CalendarContract.Events.DESCRIPTION, notes)
+    runCatching { context.startActivity(intent) }
+}
+
+private const val CALENDAR_EVENT_MILLIS = 30L * 60L * 1000L
 
 @Composable
 private fun CenterState(

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TradingView's Android app, ic_delayed_data, converted from the compiled vector. Do not hand-edit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="12dp"
+    android:width="9dp"
+    android:viewportWidth="9"
+    android:viewportHeight="12">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M2.57 11.8H0.031V0.362c1.62-0.057 2.638-0.085 3.055-0.085 1.667 0 2.987 0.49 3.96 1.468 0.98 0.974 1.47 2.268 1.47 3.883 0 4.115-1.982 6.172-5.946 6.172zM2.063 2.136v7.812C2.39 9.98 2.744 9.995 3.125 9.995c1.026 0 1.828-0.372 2.406-1.117 0.584-0.745 0.875-1.786 0.875-3.125 0-2.448-1.138-3.672-3.414-3.672-0.219 0-0.529 0.018-0.93 0.055z" />
+</vector>

@@ -648,6 +648,16 @@
     <string name="chart_menu_alert_here">هشدار در %1$s</string>
     <string name="chart_menu_copy_price">کپی قیمت</string>
     <string name="chart_menu_scale">مقیاس قیمت…</string>
+    <string name="chart_menu_reset_view">بازنشانی نمای چارت</string>
+    <string name="chart_menu_hline_here">رسم خط افقی در %1$s</string>
+    <string name="chart_menu_add_indicator">افزودن اندیکاتور…</string>
+    <string name="chart_menu_object_tree">درخت ترسیم‌ها…</string>
+    <string name="chart_menu_hide_drawings">پنهان‌کردن ترسیم‌ها</string>
+    <string name="chart_menu_show_drawings">نمایش ترسیم‌ها</string>
+    <string name="chart_menu_hide_indicators">پنهان‌کردن اندیکاتورها</string>
+    <string name="chart_menu_show_indicators">نمایش اندیکاتورها</string>
+    <string name="chart_menu_remove_drawings">حذف ترسیم‌ها</string>
+    <string name="chart_menu_remove_indicators">حذف اندیکاتورها</string>
     <string name="chart_menu_search">جست‌وجوی نماد</string>
     <string name="chart_script_kind">اندیکاتور نمااسکریپت</string>
     <string name="chart_script_paused">متوقف شد — این اسکریپت برای اجرا روی هر کندل کند است (خط %1$s).</string>
@@ -709,6 +719,9 @@
     <string name="chart_picture_copied">تصویر کپی شد</string>
     <string name="chart_menu_shortcuts">میان‌برهای صفحه‌کلید</string>
     <string name="replay_to_start">پرش به ابتدا</string>
+    <string name="replay_select_bar">انتخاب کندل</string>
+    <string name="replay_random_bar">کندل تصادفی</string>
+    <string name="replay_pick_hint">روی کندل شروع بازپخش بزنید</string>
     <string name="replay_back_ten">۱۰ کندل عقب</string>
     <string name="replay_forward_ten">۱۰ کندل جلو</string>
     <string name="keys_title">میان‌برهای صفحه‌کلید</string>

@@ -291,6 +291,15 @@ class MarketArrangementTest {
     }
 
     @Test
+    fun `the symbol heading sorts A to Z first, then Z to A, then off`() {
+        val first = nextMarketSort(null, MarketSortKey.SYMBOL)
+        assertEquals(MarketSort(MarketSortKey.SYMBOL, descending = false), first)
+        val second = nextMarketSort(first, MarketSortKey.SYMBOL)
+        assertEquals(MarketSort(MarketSortKey.SYMBOL, descending = true), second)
+        assertNull(nextMarketSort(second, MarketSortKey.SYMBOL))
+    }
+
+    @Test
     fun `moving to the other column starts that one over rather than inheriting a direction`() {
         val ascending = MarketSort(MarketSortKey.CHANGE, descending = false)
 

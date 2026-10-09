@@ -19,6 +19,8 @@ import androidx.compose.ui.text.TextStyle
 import com.coinepro.core.designsystem.TABULAR_FIGURES
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import kotlin.math.PI
 import kotlin.math.abs
@@ -1818,6 +1820,31 @@ private fun DrawScope.drawExtendedDrawing(
             )
             true
         }
+        "emoji" -> {
+            // The emoji itself, at a size a picture reads at, centred on its anchor. On a page the
+            // browser's own emoji font draws it — see `chartEmojiBitmap`; on a phone the system's
+            // colour-emoji font takes it through the ordinary text path.
+            val emoji = drawing.text?.takeIf { it.isNotBlank() } ?: DrawingActions.DEFAULT_EMOJI
+            val side = EMOJI_SIZE.toPx()
+            val bitmap = chartEmojiBitmap(emoji)
+            if (bitmap != null) {
+                drawImage(
+                    image = bitmap,
+                    dstOffset = IntOffset((a.x - side / 2f).roundToInt(), (a.y - side / 2f).roundToInt()),
+                    dstSize = IntSize(side.roundToInt(), side.roundToInt()),
+                )
+            } else {
+                val measured = measurer.measure(
+                    emoji,
+                    TextStyle(fontSize = (side / density / fontScale * EMOJI_TEXT_SHARE).sp),
+                )
+                drawText(
+                    measured,
+                    topLeft = Offset(a.x - measured.size.width / 2f, a.y - measured.size.height / 2f),
+                )
+            }
+            true
+        }
         "image" -> {
             // The reader's own picture, anchored in chart space so it pans and zooms with the bars
             // like every other mark. What this tool drew for the life of the app was a frame, a
@@ -2512,6 +2539,12 @@ private val POST_FOOT = 3.dp
 private val COMMENT_LIFT = 16.dp
 private val COMMENT_TAIL = 7.dp
 private val ICON_SIZE = 7.dp
+
+/** An emoji drawing's side: TradingView draws its emoji at about this size at rest. */
+private val EMOJI_SIZE = 28.dp
+
+/** How much of [EMOJI_SIZE] the glyph's em takes when it is drawn as text. */
+private const val EMOJI_TEXT_SHARE = 0.8f
 private val IMAGE_WIDTH = 76.dp
 private val IMAGE_HEIGHT = 52.dp
 private const val IMAGE_HORIZON = 0.74f

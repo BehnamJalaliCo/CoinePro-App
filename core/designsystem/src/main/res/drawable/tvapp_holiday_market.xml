@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TradingView's Android app, ic_holiday_market, converted from the compiled vector. Do not hand-edit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="18dp"
+    android:width="18dp"
+    android:viewportWidth="18"
+    android:viewportHeight="18">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M9.3 9l0.906-4.53C10.358 3.71 9.776 3 9 3S7.642 3.71 7.794 4.47L8.7 9l-0.906 4.53C7.642 14.29 8.224 15 9 15s1.358-0.71 1.206-1.47L9.3 9z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M9.15 9.26l4.375-1.48c0.736-0.249 1.06-1.108 0.671-1.78-0.388-0.672-1.293-0.821-1.876-0.309l-3.47 3.05-4.375 1.48C3.74 10.468 3.416 11.327 3.804 12c0.388 0.671 1.294 0.82 1.877 0.308l3.47-3.05z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M9.15 8.74L5.68 5.691C5.098 5.179 4.192 5.328 3.804 6 3.416 6.672 3.74 7.53 4.474 7.78L8.85 9.26l3.47 3.049c0.582 0.512 1.488 0.363 1.876-0.31 0.388-0.671 0.064-1.53-0.67-1.779L9.15 8.74z" />
+</vector>

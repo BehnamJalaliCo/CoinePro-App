@@ -194,10 +194,10 @@ class RunHProofTest {
      * The two phone frames the owner asked run H for: **the air on the right**, and **the gutter
      * with a crowd in it**.
      *
-     * The margin is [ChartViewport.RIGHT_MARGIN_SHARE] — a tenth of the plot between the newest
-     * bar's right edge and the price axis — and it is asserted as arithmetic in `ChartViewportTest`
-     * rather than guessed from pixels here. What these frames add is the picture: a reader can hold
-     * a rule to the PNG and see the tenth, and see that the gridline numbers are all still legible
+     * The margin is [ChartViewport.RIGHT_OFFSET_BARS] — TradingView's ten empty bar slots after the
+     * newest bar — and it is asserted as arithmetic in `ChartViewportTest` rather than guessed from
+     * pixels here. What these frames add is the picture: a reader can hold a rule to the PNG and see
+     * the margin, and see that the gridline numbers are all still legible
      * with six levels' tags in the same gutter.
      */
     @Test

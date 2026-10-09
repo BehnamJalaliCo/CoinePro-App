@@ -526,13 +526,15 @@ internal fun SortableLabel(
     modifier: Modifier = Modifier,
     /** Muted until sorted; a heading that cannot sort passes its own. */
     color: Color = if (sorted) CoineProColors.TextPrimary else CoineProColors.TextMuted,
+    /** Whether this column sorts letters rather than figures — TradingView marks the two apart. */
+    alphabetical: Boolean = false,
 ) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.Absolute.spacedBy(CoineProSpacing.Half, Alignment.End),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (sorted) SortArrow(descending = descending, tint = color)
+        if (sorted) SortArrow(descending = descending, tint = color, alphabetical = alphabetical)
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
@@ -551,13 +553,26 @@ internal fun SortableLabel(
  * (MOBILE-01). The app's own left arrow, turned, laid out left-to-right so it is not mirrored first.
  */
 @Composable
-internal fun SortArrow(descending: Boolean, tint: Color, modifier: Modifier = Modifier) {
+internal fun SortArrow(
+    descending: Boolean,
+    tint: Color,
+    modifier: Modifier = Modifier,
+    alphabetical: Boolean = false,
+) {
+    // TradingView's own sort marks (5.28.0): «A→Z» for a column of names, «1→9» for a column of
+    // figures, each in both directions — a drawing, so IRANYekanX's missing arrows never matter.
+    val icon = when {
+        alphabetical && descending -> DesignR.drawable.tvapp_sort_char_descending
+        alphabetical -> DesignR.drawable.tvapp_sort_char_ascending
+        descending -> DesignR.drawable.tvapp_sort_num_descending
+        else -> DesignR.drawable.tvapp_sort_num_ascending
+    }
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Icon(
-            painter = painterResource(DesignR.drawable.icon_arrow_left),
+            painter = painterResource(icon),
             contentDescription = null,
             tint = tint,
-            modifier = modifier.size(12.dp).rotate(if (descending) -90f else 90f),
+            modifier = modifier.size(16.dp),
         )
     }
 }

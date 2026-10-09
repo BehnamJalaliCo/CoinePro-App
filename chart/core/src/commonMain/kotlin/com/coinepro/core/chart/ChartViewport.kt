@@ -337,21 +337,18 @@ data class ChartViewport(
     /**
      * Where the chart sits when it is following the market: the newest bar, with air after it.
      *
-     * A share of the window rather than a fixed number of bars, and that is the part worth stating.
-     * TradingView stores its own right offset in bars, which is right on a desktop where the window
-     * is wide and rarely re-zoomed, and wrong on a phone: six bars is a comfortable margin at eighty
-     * bars a screen, more than a third of the plot at [MIN_BARS_PER_VIEW], and an invisible sliver
-     * at six hundred. A share is the same *picture* at every zoom, which is what the reader is
-     * actually judging.
+     * **Ten bars, TradingView's own `rightOffset` (5.28.0).** It used to be a tenth of the window,
+     * on the argument that a share is the same picture at every zoom. Read side by side with the
+     * reference that was the wrong thing to keep the same: TradingView opens every chart — phone and
+     * browser alike, it is one web engine in both — with exactly ten empty slots after the newest
+     * bar, and since the chart now opens on TradingView's bar spacing too (see
+     * [DEFAULT_BAR_SPACING_DP]) ten bars is also the same sixty points of air it has.
      *
-     * Clamped at both ends so the share cannot round to nothing when zoomed right in, and cannot
-     * eat a screenful when zoomed right out.
+     * Still never more than half the window, so a hard pinch inward cannot make the margin the
+     * whole plot.
      */
     val restingOffset: Int
-        get() = -(effectiveBarsPerView * RIGHT_MARGIN_SHARE)
-            .roundToInt()
-            .coerceIn(MIN_RIGHT_SLOTS, MAX_RIGHT_SLOTS)
-            .coerceAtMost(maxBlankSlots)
+        get() = -RIGHT_OFFSET_BARS.coerceAtMost(maxBlankSlots)
 
     /** Whether the right edge is at the newest bar, and so should follow new data. */
     val isAtLiveEdge: Boolean get() = offset <= 0
@@ -698,10 +695,14 @@ data class ChartViewport(
         if (focal != null && !series.isEmpty && bars != before) {
             // The bar under the focal point, then the offset that keeps it there once the window
             // is `bars` wide: the slots to its right are the same share of the new window.
+            //
+            // In fractions of a slot, rounded once at the end (5.28.0). Truncating the bar under the
+            // finger and rounding the slots right of it separately lost up to a slot on every frame
+            // of a pinch, always the same way, and at TradingView's wider bars that walked the
+            // anchor a tenth of the window over one gesture.
             val share = focal.coerceIn(0f, 1f)
-            val underFinger = firstVisible + (share * (visibleCount + blankSlots)).toInt()
-            val rightOfFinger = ((1f - share) * bars).roundToInt()
-            val newLast = underFinger + rightOfFinger - 1
+            val underFinger = firstVisible + share * (visibleCount + blankSlots)
+            val newLast = (underFinger + (1f - share) * bars - 1f).roundToInt()
             return copy(barsPerView = bars).let { zoomed ->
                 zoomed.atOffset(series.size - 1 - newLast)
             }
@@ -886,6 +887,9 @@ data class ChartViewport(
          *
          * The reader can still see more — [MAX_BARS_PER_VIEW] is 2400 — and their zoom is saved per
          * symbol and timeframe. This is only where a chart *starts*.
+         *
+         * **Since 5.28.0 only the fallback.** A full chart opens on [DEFAULT_BAR_SPACING_DP] once it
+         * knows its width; this is what a thumbnail, a sparkline and the first measurement use.
          */
         const val DEFAULT_BARS_PER_VIEW = 70
 
@@ -898,26 +902,29 @@ data class ChartViewport(
         /** The share of a bar's slot the body occupies; the rest is the gap. */
         const val BODY_RATIO = 0.72f
 
+        /** TradingView's `rightOffset`: the empty bar slots after the newest bar at rest. */
+        const val RIGHT_OFFSET_BARS = 10
+
         /**
-         * How much of the window is air between the newest bar and the price axis, at rest.
+         * TradingView's `DEFAULT_BAR_SPACING`: six points from one bar's centre to the next.
          *
-         * **Ten percent**, which is the reference's own and the owner's instruction (run F). On the
-         * 393dp phone that is about thirty-three points of plot: seven slots at the default zoom.
-         *
-         * Six was tried first and the note here argued for it — that ten "reads as a gap". Held
-         * against TradingView's phone chart side by side it does not: what reads as a gap is ten
-         * per cent of a *chart that opens on eighty bars*, where the margin is eight slots of
-         * hairline-thin candles. With the default at seventy the same share is the room the
-         * live-price tag, the countdown and a projection actually need, and the newest candle stops
-         * sitting under the tag that describes it.
+         * **Why the chart now opens on a spacing rather than a count (5.28.0).** A fixed seventy bars
+         * was tuned on a 393dp phone and was right there. In a browser the same seventy bars spread
+         * over a plot four times as wide, and every candle came out three times fatter than the one
+         * beside it on TradingView — the single loudest difference between the two web charts. The
+         * reference stores a spacing and lets the window decide the count: about fifty-five bars on
+         * that phone, two hundred and more on a desktop. So does this now. See [barsForWidth].
          */
-        const val RIGHT_MARGIN_SHARE = 0.10f
+        const val DEFAULT_BAR_SPACING_DP = 6f
 
-        /** Below two slots the margin rounds away entirely at the tightest zoom. */
-        const val MIN_RIGHT_SLOTS = 2
-
-        /** And above this it stops growing, so a zoomed-out chart is bars rather than air. */
-        const val MAX_RIGHT_SLOTS = 24
+        /**
+         * How many bars fill a plot [plotWidthPx] wide at [spacingPx] a bar — the window that
+         * spacing opens on, clamped into the zoom range.
+         */
+        fun barsForWidth(plotWidthPx: Float, spacingPx: Float): Int {
+            if (plotWidthPx <= 0f || spacingPx <= 0f || !plotWidthPx.isFinite()) return DEFAULT_BARS_PER_VIEW
+            return (plotWidthPx / spacingPx).roundToInt().coerceIn(MIN_BARS_PER_VIEW, MAX_BARS_PER_VIEW)
+        }
 
         /** TradingView's default top margin: 10 % of the plot's height above the highest price. */
         const val TOP_MARGIN = 0.10

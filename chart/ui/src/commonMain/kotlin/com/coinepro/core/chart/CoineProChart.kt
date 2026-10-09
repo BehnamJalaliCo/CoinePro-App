@@ -85,6 +85,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import androidx.compose.ui.unit.sp
 import com.coinepro.core.designsystem.TABULAR_FIGURES
 import com.coinepro.core.designsystem.CoineProColors
@@ -444,6 +445,13 @@ fun CoineProChart(
      */
     savedBarsPerView: Int? = null,
     /**
+     * TradingView's «Reset chart view» (5.28.0): every increment puts the chart back where a fresh
+     * one opens — the price axis fitted, the zoom fitted to the width at the reference's spacing,
+     * the newest bar at rest. A counter rather than a callback so a caller can ask from a menu
+     * without holding the viewport.
+     */
+    resetRequests: Int = 0,
+    /**
      * A window donated by another pane: how far zoomed in, how far panned back, how stretched.
      *
      * Those three numbers and not the whole viewport, because the other pane is a different
@@ -472,6 +480,11 @@ fun CoineProChart(
      * event glyphs have had their chance, so nothing on the plot changes meaning.
      */
     onNotableBar: ((Int) -> Unit)? = null,
+    /**
+     * TradingView's «Select bar» (5.28.0): while non-null, a tap on the plot picks the bar under it
+     * — reported by its time — and does nothing else. The replay bar sets it for one tap.
+     */
+    onPickBar: ((time: Long) -> Unit)? = null,
     /**
      * The purple ring under the live bar — TradingView's trade button.
      *
@@ -544,7 +557,7 @@ fun CoineProChart(
      * reclaims the process, and the chart comes back at the default hundred and twenty bars on the
      * live edge with the work thrown away.
      */
-    var savedZoom by rememberSaveable { mutableIntStateOf(savedBarsPerView ?: ChartViewport.DEFAULT_BARS_PER_VIEW) }
+    var savedZoom by rememberSaveable { mutableIntStateOf(savedBarsPerView ?: UNSET_ZOOM) }
     // A stored zoom that arrives after the first composition — the row is read off disk a beat
     // later, or the reader switched timeframe — is adopted for the *next* seeding rather than
     // applied to the view under their hands. `seeded` below is what decides which frame that is.
@@ -583,6 +596,26 @@ fun CoineProChart(
      */
     val seeded = remember { booleanArrayOf(false) }
 
+    /**
+     * Whether the first frame that knows the plot's width should pick the zoom (5.28.0).
+     *
+     * Raised on the seeding pass of a full chart nobody has zoomed — no stored zoom for this symbol
+     * and timeframe, nothing carried across a rotation — and spent by the draw pass, which is the
+     * first place the plot's width exists. It then opens on TradingView's spacing,
+     * [ChartViewport.DEFAULT_BAR_SPACING_DP], rather than on a fixed count of bars.
+     */
+    val autoZoom = remember { booleanArrayOf(false) }
+
+    /**
+     * The plot width the current zoom was last fitted to, so a resize keeps the bar spacing.
+     *
+     * A browser window dragged wider, a phone turned on its side, a tablet split: TradingView keeps
+     * each bar the same width and shows more of them. Holding the *count* instead stretched every
+     * candle with the window. Re-fitted only past [RESIZE_REFIT_SHARE] of change, so a price gutter
+     * that grows a digit wider does not nudge the zoom back and forth.
+     */
+    val fittedWidth = remember { floatArrayOf(0f) }
+
     // Follow the live edge as bars arrive, but never drag the view out from under a reader who has
     // panned back. ChartViewport.withSeries decides which of those applies.
     //
@@ -605,6 +638,9 @@ fun CoineProChart(
         // and a seed that re-fires when its own consequence is written back is a loop, not a
         // subscription worth having. A restore still works, because a fresh composition reads them
         // on its first pass, which is the only pass that spends them.
+        if (!seeded[0]) {
+            autoZoom[0] = decoration.showAxes && Snapshot.withoutReadObservation { savedZoom } == UNSET_ZOOM
+        }
         viewport = Snapshot.withoutReadObservation {
             seedViewport(
                 current = viewport,
@@ -621,6 +657,15 @@ fun CoineProChart(
             )
         }
         seeded[0] = true
+    }
+
+    // «Reset chart view». Skipped on the first composition, where the counter is whatever the
+    // caller has already counted to and nothing has been moved yet.
+    val lastReset = remember { intArrayOf(resetRequests) }
+    if (lastReset[0] != resetRequests) {
+        lastReset[0] = resetRequests
+        autoZoom[0] = decoration.showAxes
+        viewport = viewport.autoPriceScale().atRest()
     }
 
     // Applied separately from the series, because it changes on its own — a reader toggling the
@@ -1140,6 +1185,7 @@ fun CoineProChart(
     val currentEventMark = rememberUpdatedState(onEventMark)
     val currentNotable = rememberUpdatedState(decoration.notableBars)
     val currentNotableTap = rememberUpdatedState(onNotableBar)
+    val currentPickBar = rememberUpdatedState(onPickBar)
     val currentLevels = rememberUpdatedState(decoration.levels)
     val currentAlert = rememberUpdatedState(onRequestAlertAt)
     val currentAxisMenu = rememberUpdatedState(onPriceAxisMenu)
@@ -1330,14 +1376,15 @@ fun CoineProChart(
         )
     } else {
         ChartPalette(
-            // Saturated for white (run Ω2) — see `TradingViewPalette.LIGHT_UP`. The reference's own
-            // pair is measured on near-black and reads as a tint on a white pane.
+            // The reference's own pair in both themes since 5.28.0 — see `TradingViewPalette.LIGHT_UP`.
             up = Color(TradingViewPalette.LIGHT_UP),
             down = Color(TradingViewPalette.LIGHT_DOWN),
             grid = Color(TradingViewPalette.LIGHT_GRID),
             text = Color(TradingViewPalette.LIGHT_TEXT),
             crosshair = Color(TradingViewPalette.LIGHT_CROSSHAIR),
-            stage = CoineProColors.Stage,
+            // TradingView's light pane is white (5.28.0); the page around it keeps its own ladder,
+            // where a white card has to sit on something.
+            stage = Color(TradingViewPalette.LIGHT_BACKGROUND),
             crosshairTag = Color(CROSSHAIR_TAG_LIGHT),
         )
     }
@@ -1673,6 +1720,10 @@ fun CoineProChart(
     val emitViewport = rememberUpdatedState(onViewportChange)
     LaunchedEffect(Unit) {
         snapshotFlow { viewport }
+            // Not before the width has picked the opening zoom (5.28.0): the window the chart is
+            // seeded with is a placeholder until the first frame knows the plot, and reporting it
+            // would store a zoom nobody chose.
+            .filter { !autoZoom[0] }
             .distinctUntilChanged { a, b ->
                 a.barsPerView == b.barsPerView && a.offset == b.offset && a.priceZoom == b.priceZoom
             }
@@ -2793,6 +2844,18 @@ fun CoineProChart(
                                             invalidate(Invalidation.CURSOR)
                                             return@detectTapGestures
                                         }
+                                        // Picking a bar takes the tap whole: the reader was asked
+                                        // for one bar and anything else this tap could mean would
+                                        // be a second answer to a question nobody asked.
+                                        currentPickBar.value?.let { pick ->
+                                            val frame = frameOf(size.width.toFloat())
+                                            val seen = lastView[0]
+                                            if (seen != null && frame.onPlot(position.x)) {
+                                                val index = seen.indexAt(frame.toPlot(position).x)
+                                                seen.series.time.getOrNull(index)?.let(pick)
+                                            }
+                                            return@detectTapGestures
+                                        }
                                         // The trade ring, before anything on the plot: it is a
                                         // button drawn over the bars, and a tap on it must not also
                                         // place a point or select the drawing under it.
@@ -3038,7 +3101,22 @@ fun CoineProChart(
             val dirtyLevel = dirty[0]
             dirty[0] = Invalidation.NONE
 
-            val candidate = viewport
+            // The window follows the width (5.28.0): picked from TradingView's spacing on the first
+            // frame of an unzoomed chart, and kept at the same spacing through a resize. Written back
+            // so the gestures and the saved zoom see the same window this frame draws.
+            val widthFitted = fitZoomToWidth(
+                current = viewport,
+                plotWidth = plotWidth,
+                spacingPx = ChartViewport.DEFAULT_BAR_SPACING_DP * density.density,
+                auto = autoZoom[0],
+                lastWidth = fittedWidth[0],
+            )
+            if (plotWidth > 0f) {
+                autoZoom[0] = false
+                if (widthFitted !== viewport || fittedWidth[0] <= 0f) fittedWidth[0] = plotWidth
+            }
+            if (widthFitted !== viewport) viewport = widthFitted
+            val candidate = widthFitted
                 .sized(plotWidth, plotHeight)
                 .copy(includedPrices = signalLevels)
             // The whole of what [Invalidation] buys. On a cursor-level change the previous
@@ -6956,12 +7034,47 @@ internal fun seedViewport(
 ): ChartViewport {
     val followed = current.withSeries(series)
     if (seeded) return followed
-    val restored = followed.copy(barsPerView = savedZoom, priceZoom = savedPriceZoom)
+    val zoom = if (savedZoom == UNSET_ZOOM) followed.barsPerView else savedZoom
+    val restored = followed.copy(barsPerView = zoom, priceZoom = savedPriceZoom)
     return when {
         savedOffset != UNSET_OFFSET -> restored.atOffset(savedOffset)
         restAtEdge -> restored.atRest()
         else -> restored.atOffset(0)
     }
+}
+
+/**
+ * The zoom a plot [plotWidth] wide should be drawn at — [current] itself when nothing changes.
+ *
+ * Two cases. [auto] is the first frame of a chart nobody has zoomed: it opens on [spacingPx] a bar,
+ * at rest. Otherwise, a plot that has grown or shrunk by more than [RESIZE_REFIT_SHARE] since
+ * [lastWidth] keeps its bar width and shows more or fewer bars, and a chart resting at the live edge
+ * goes on resting there. Returns the same instance when neither applies, which is how the caller
+ * knows there is nothing to write back.
+ */
+internal fun fitZoomToWidth(
+    current: ChartViewport,
+    plotWidth: Float,
+    spacingPx: Float,
+    auto: Boolean,
+    lastWidth: Float,
+): ChartViewport {
+    if (plotWidth <= 0f) return current
+    val resting = current.offset == current.restingOffset
+    if (auto) {
+        val bars = ChartViewport.barsForWidth(plotWidth, spacingPx)
+        if (bars == current.barsPerView) return current
+        val zoomed = current.copy(barsPerView = bars)
+        return if (resting || current.offset <= 0) zoomed.atRest() else zoomed.atOffset(current.offset)
+    }
+    if (lastWidth <= 0f) return current
+    val ratio = plotWidth / lastWidth
+    if (abs(ratio - 1f) < RESIZE_REFIT_SHARE) return current
+    val bars = (current.barsPerView * ratio).roundToInt()
+        .coerceIn(ChartViewport.MIN_BARS_PER_VIEW, ChartViewport.MAX_BARS_PER_VIEW)
+    if (bars == current.barsPerView) return current
+    val zoomed = current.copy(barsPerView = bars)
+    return if (resting) zoomed.atRest() else zoomed.atOffset(zoomed.offset)
 }
 
 internal fun dashEffect(style: LineStyleKind, lineWidth: Float): PathEffect? {
@@ -7211,6 +7324,12 @@ private val TAG_RADIUS_DP = 2.dp
  * `-barsPerView / 2` upward is somewhere a reader can legitimately be.
  */
 internal const val UNSET_OFFSET = Int.MIN_VALUE
+
+/** A zoom nobody has chosen: the chart picks one from its width. See `autoZoom`. */
+internal const val UNSET_ZOOM = 0
+
+/** How far the plot's width must move before the zoom is re-fitted to keep the bar spacing. */
+internal const val RESIZE_REFIT_SHARE = 0.05f
 
 /**
  * How close to the oldest loaded bar a reader has to get before more history is fetched.

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TradingView's Android app, ic_drawing_alert, converted from the compiled vector. Do not hand-edit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="18dp"
+    android:width="18dp"
+    android:viewportWidth="18"
+    android:viewportHeight="18">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12.707 1.5a1 1 0 0 0-1.414 0L9.647 3.146l-4.5 4.5L4.293 8.5A1 1 0 0 0 4 9.207V12h2.793A1 1 0 0 0 7.5 11.707l0.854-0.854 4.5-4.5L14.5 4.707a1 1 0 0 0 0-1.414L12.707 1.5zM12.5 5.293L10.707 3.5 12 2.207 13.793 4 12.5 5.293zM10 4.207L11.793 6 8 9.793 6.207 8 10 4.207zm-4.5 4.5L7.293 10.5l-0.5 0.5H5V9.207l0.5-0.5zm5.1 4.994a1.5 1.5 0 0 1 1.732 0.048L15.2 15.9l0.6-0.8-2.868-2.151a2.5 2.5 0 0 0-2.887-0.08l-3.458 2.306a1.5 1.5 0 0 1-1.893-0.188l-1.84-1.84-0.708 0.707 1.841 1.84a2.5 2.5 0 0 0 3.155 0.312l3.458-2.305z"
+        android:fillType="evenOdd" />
+</vector>

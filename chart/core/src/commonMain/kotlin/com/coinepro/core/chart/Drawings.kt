@@ -408,6 +408,8 @@ object DrawingTools {
         tool("comment", "دیدگاه", "Comment", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_callout")),
         tool("signpost", "تابلو", "Signpost", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_signpost")),
         tool("icon", "آیکن", "Icon", 1, ToolGroup.ANNOTATION, ChartIcon("tv_tool_icon")),
+        // TradingView's emoji tool (5.28.0): one emoji, anchored like the icon it sits beside.
+        tool("emoji", "ایموجی", "Emoji", 1, ToolGroup.ANNOTATION, ChartIcon("tvapp_drawing_emojis")),
         // Two anchors, not one. It was one while the tool drew a fixed frame with nothing in it;
         // now that a picture goes inside, the reader drags the box they want it in — which is the
         // difference between placing an image and being handed one at a size somebody guessed.

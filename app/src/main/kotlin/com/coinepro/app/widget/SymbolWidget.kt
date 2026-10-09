@@ -157,6 +157,8 @@ object SymbolWidgetRenderer {
         colours: MarketColorScheme,
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_symbol)
+        // Rendered means a snapshot was read, found or not: the skeleton has said all it can.
+        views.setViewVisibility(R.id.symbol_skeleton, View.GONE)
         // The tile opens this market's chart, or the app where there is no market to open. The
         // data URI is what makes the intent distinct — see `WidgetRenderer.openSymbol` for the
         // classic bug it avoids.

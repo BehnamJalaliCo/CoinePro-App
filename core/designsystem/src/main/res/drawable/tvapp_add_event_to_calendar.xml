@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TradingView's Android app, ic_add_event_to_calendar, converted from the compiled vector. Do not hand-edit. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="28dp"
+    android:width="28dp"
+    android:viewportWidth="28"
+    android:viewportHeight="28">
+    <group>
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M10.5 6h7V4H19v2h1.5C21.881 6 23 7.119 23 8.5v11c0 1.381-1.119 2.5-2.5 2.5H14v-1.5h6.5c0.552 0 1-0.448 1-1v-7h-15V15H5V8.5C5 7.119 6.119 6 7.5 6H9V4h1.5v2zm2.501 12.25l-3.852 3.5-1.008-1.11L9.945 19H4v-1.5h5.945l-1.804-1.64 1.008-1.11 3.852 3.5zM7.5 7.5c-0.552 0-1 0.448-1 1V11h15V8.5c0-0.552-0.448-1-1-1H19V9h-1.5V7.5h-7V9H9V7.5H7.5z" />
+    </group>
+</vector>
