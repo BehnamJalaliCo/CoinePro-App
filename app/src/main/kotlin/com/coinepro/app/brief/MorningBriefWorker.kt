@@ -9,6 +9,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.coinepro.app.pulse.ReaderClock
 import com.coinepro.core.datastore.NotificationSettingsStore
 import com.coinepro.core.notifications.MorningBriefSchedule
 import dagger.assisted.Assisted
@@ -52,7 +53,8 @@ class MorningBriefWorker @AssistedInject constructor(
         scheduler.sync()
         val result = engine.run(
             nowEpochMillis = System.currentTimeMillis(),
-            todayLocalDay = LocalDate.now().toEpochDay(),
+            // The reader's day, not the phone's (5.29.0) — see `ReaderClock`.
+            todayLocalDay = LocalDate.now(ReaderClock.zone(applicationContext)).toEpochDay(),
         )
         return when (result) {
             // Retry, not failure: an unreachable price route says nothing about whether there was
@@ -73,7 +75,7 @@ class MorningBriefWorker @AssistedInject constructor(
  */
 @Singleton
 class MorningBriefScheduler @Inject constructor(
-    @ApplicationContext context: Context,
+    @ApplicationContext private val context: Context,
     private val settings: NotificationSettingsStore,
 ) {
     private val workManager = WorkManager.getInstance(context)
@@ -84,7 +86,9 @@ class MorningBriefScheduler @Inject constructor(
             workManager.cancelUniqueWork(WORK_NAME)
             return
         }
-        val now = LocalTime.now()
+        // On the reader's clock (5.29.0): a brief booked for 08:00 on a phone set to Los Angeles in
+        // Tehran arrived at 18:30. See `ReaderClock`.
+        val now = LocalTime.now(ReaderClock.zone(context))
         val delay = MorningBriefSchedule.delayMillis(
             nowMinuteOfDay = now.hour * 60 + now.minute,
             targetMinuteOfDay = current.briefMinuteOfDay,

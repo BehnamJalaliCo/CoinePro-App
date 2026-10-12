@@ -70,7 +70,8 @@ class MarketPulseEngine @Inject constructor(
 
     // `canPost` checks POST_NOTIFICATIONS before anything is posted; lint cannot follow the helper.
     @android.annotation.SuppressLint("MissingPermission")
-    suspend fun run(nowMillis: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()) {
+    suspend fun run(nowMillis: Long = System.currentTimeMillis(), zone: ZoneId = ReaderClock.zone(base)) {
+        MarketPulseStore(base).setLastRun(nowMillis)
         if (!canPost()) return
         val settings = settingsStore.settings.first()
         if (!settings.enabled || settings.mutedUntilEpochMillis?.let { nowMillis < it } == true) return
@@ -116,7 +117,12 @@ class MarketPulseEngine @Inject constructor(
                 budget--
             }
 
-        if (digestDue && budget > 0 && read != null) {
+        // Not while the app is open (5.29.0). A run that lands as the reader opens the app — the
+        // usual case on a phone that defers background work until then — would drop a summary of
+        // the prices on the screen in front of them. The day counts as summarised: they have seen it.
+        if (digestDue && appInForeground()) {
+            store.setDigestDay(today)
+        } else if (digestDue && budget > 0 && read != null) {
             if (postDigest(context, read, english, colours)) {
                 store.setDigestDay(today)
                 store.countOne(today)
@@ -138,6 +144,13 @@ class MarketPulseEngine @Inject constructor(
             .distinct()
             .take(MAX_STARRED)
     }.getOrDefault(emptyList())
+
+    /** Whether one of the app's screens is in front of the reader right now. */
+    private fun appInForeground(): Boolean = runCatching {
+        val state = android.app.ActivityManager.RunningAppProcessInfo()
+        android.app.ActivityManager.getMyMemoryState(state)
+        state.importance <= android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+    }.getOrDefault(false)
 
     private fun canPost(): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&

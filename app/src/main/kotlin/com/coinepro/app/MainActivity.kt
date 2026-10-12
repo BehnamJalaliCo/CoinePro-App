@@ -270,6 +270,9 @@ class MainActivity : FragmentActivity() {
     ) {
         launchPreferences().edit().putBoolean(KEY_NOTIFICATION_PERMISSION_REQUESTED, true).apply()
         updateNotificationPermissionState()
+        // Straight after the yes: notifications that only arrive when the app is open are the
+        // complaint this exists for, and this is the moment the reader has just asked for them.
+        maybeAskBackground()
     }
 
     override fun attachBaseContext(newBase: Context) {
@@ -771,7 +774,27 @@ class MainActivity : FragmentActivity() {
         return granted && androidx.core.app.NotificationManagerCompat.from(this).areNotificationsEnabled()
     }
 
+    /**
+     * Android's «let Pro Chart run in the background?» (5.29.0), once notifications are on and the
+     * app is still held to battery optimisation — the reason the market notifications arrived only
+     * when the app was opened. At most once a week and three times in all: a reader who declined
+     * three times has the settings card, not a question every Monday.
+     */
+    private fun maybeAskBackground() {
+        // Not under Robolectric, whose battery optimiser always says «restricted».
+        if (Build.FINGERPRINT == "robolectric" || !notificationsEnabled()) return
+        if (com.coinepro.app.notifications.BackgroundDelivery.restricted(this) != true) return
+        val preferences = launchPreferences()
+        val today = java.time.LocalDate.now().toEpochDay()
+        val asked = preferences.getInt(KEY_BACKGROUND_ASKS, 0)
+        val lastDay = preferences.getLong(KEY_BACKGROUND_ASK_DAY, -BACKGROUND_ASK_GAP_DAYS)
+        if (asked >= BACKGROUND_ASK_LIMIT || today - lastDay < BACKGROUND_ASK_GAP_DAYS) return
+        preferences.edit().putInt(KEY_BACKGROUND_ASKS, asked + 1).putLong(KEY_BACKGROUND_ASK_DAY, today).apply()
+        com.coinepro.app.notifications.BackgroundDelivery.openFix(this)
+    }
+
     private fun evaluateNotificationOffer() {
+        maybeAskBackground()
         val preferences = launchPreferences()
         notificationOfferVisible = NotificationOfferPolicy.shouldOffer(
             enabled = notificationsEnabled(),
@@ -842,6 +865,10 @@ class MainActivity : FragmentActivity() {
         private const val KEY_NOTIFICATION_PERMISSION_REQUESTED = "notification_permission_requested"
         private const val KEY_NOTIFICATION_OFFER_DAY = "notification_offer_day"
         private const val KEY_NOTIFICATION_OFFER_NEVER = "notification_offer_never"
+        private const val KEY_BACKGROUND_ASKS = "background_asks"
+        private const val KEY_BACKGROUND_ASK_DAY = "background_ask_day"
+        private const val BACKGROUND_ASK_LIMIT = 3
+        private const val BACKGROUND_ASK_GAP_DAYS = 7L
 
         /**
          * The denominator the aspect ratio is expressed over.

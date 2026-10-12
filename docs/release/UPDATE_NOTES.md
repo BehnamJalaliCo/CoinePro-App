@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.29.0
+
+**fa**
+
+> اعلان‌های بازار درست شد: اگر گوشی در ایران است، ساعت سکوت و خلاصه‌ی صبح با وقت تهران حساب می‌شود، حتی وقتی ساعت گوشی روی منطقه‌ی دیگری است. خلاصه‌ی صبح فقط صبح می‌آید و دیگر با باز کردن برنامه نمی‌آید. اگر اندروید برنامه را در پس‌زمینه محدود کرده باشد، برنامه یک بار اجازه‌ی کار در پس‌زمینه را می‌خواهد و در تنظیمات اعلان‌ها زمان آخرین بررسی خودکار دیده می‌شود.
+
+**en**
+
+> Market notifications fixed: on a phone in Iran the quiet hours and the morning summary follow Tehran time, even when the phone's clock is set to another zone. The morning summary comes only in the morning and no longer pops up when you open the app. If Android restricts the app in the background, it asks once to be allowed, and the notification settings show when the automatic check last ran.
+
+---
+
 ## 5.28.0
 
 **fa**

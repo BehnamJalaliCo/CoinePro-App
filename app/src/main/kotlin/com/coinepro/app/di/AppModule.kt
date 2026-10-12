@@ -378,11 +378,11 @@ object AppModule {
         HostMirror(
             mirrors = HostMirror.parse(BuildConfig.HOST_MIRRORS),
             memory = com.coinepro.app.PreferencesMirrorMemory(context),
-            // A phone on Iran's clock takes TradeYar's road first (5.27.2); see `HostMirror`.
-            preferMirror = { java.time.ZoneId.systemDefault().id in IRAN_TIME_ZONES },
+            // A phone in Iran takes TradeYar's road first (5.27.2) — by its clock, or since 5.29.0
+            // by its mobile network or SIM, so a phone in Tehran set to another zone is not sent
+            // down the closed road first. See `HostMirror` and `ReaderClock`.
+            preferMirror = { com.coinepro.app.pulse.ReaderClock.inIran(context) },
         )
-
-    private val IRAN_TIME_ZONES = setOf("Asia/Tehran", "Iran")
 
     // ── CoinePro-FX (Forex) ────────────────────────────────────────────────────────────────────
     // The unqualified bindings stay pointed at CoinePro-FX so every existing gateway keeps working

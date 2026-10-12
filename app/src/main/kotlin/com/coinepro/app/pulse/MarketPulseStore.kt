@@ -52,6 +52,11 @@ class MarketPulseStore(context: Context) {
         edit { putLong(COUNT_DAY, today).putInt(COUNT, next) }
     }
 
+    /** When the check last ran, whatever it found — the notification settings show it (5.29.0). */
+    fun lastRunAt(): Long? = runCatching { preferences.getLong(LAST_RUN, 0L).takeIf { it > 0L } }.getOrNull()
+
+    fun setLastRun(atMillis: Long) = edit { putLong(LAST_RUN, atMillis) }
+
     fun lastDigestDay(): Long? = runCatching { preferences.getLong(DIGEST_DAY, -1L).takeIf { it >= 0 } }.getOrNull()
 
     fun setDigestDay(day: Long) = edit { putLong(DIGEST_DAY, day) }
@@ -106,6 +111,7 @@ class MarketPulseStore(context: Context) {
         const val COUNT = "count"
         const val COUNT_DAY = "count_day"
         const val DIGEST_DAY = "digest_day"
+        const val LAST_RUN = "last_run"
         const val CALENDAR_AT = "calendar_at"
         const val EVENTS = "events"
         const val ANNOUNCED = "announced"

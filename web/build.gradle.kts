@@ -530,6 +530,11 @@ val replacedFiles = listOf(
     "com/coinepro/app/pulse/MarketPulseStore.kt",
     "com/coinepro/app/pulse/MarketPulseWorker.kt",
     "com/coinepro/app/pulse/PulseCards.kt",
+    // 5.29.0: the reader's clock asks the SIM and the mobile network, and the background card asks
+    // the battery optimiser — none of which a page has. Twins: web/src/wasmJsMain/.../app/pulse/ and
+    // .../app/notifications/.
+    "com/coinepro/app/pulse/ReaderClock.kt",
+    "com/coinepro/app/notifications/BackgroundDelivery.kt",
     // The second road to a filtered host is the phone's; the page already goes through the
     // pro-chart.com relay. Twin: web/src/wasmJsMain/.../core/network/HostMirror.web.kt
     "com/coinepro/core/network/HostMirror.kt",

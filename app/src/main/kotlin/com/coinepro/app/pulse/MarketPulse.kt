@@ -42,6 +42,14 @@ object MarketPulse {
     /** The summary goes out at the first run after this, local. */
     const val DIGEST_MINUTE: Int = 9 * 60
 
+    /**
+     * And not after this (5.29.0). A morning summary that reaches the phone in the evening — the
+     * quarter-hour check deferred all day by a battery optimiser and run only when the app opened —
+     * is yesterday's news on top of the prices the reader is already looking at, so a day whose
+     * check missed the morning has none.
+     */
+    const val DIGEST_LAST_MINUTE: Int = 12 * 60
+
     /** A calendar release is announced when it is at most this far off. */
     const val CALENDAR_LEAD_MILLIS: Long = 20L * 60 * 1000
 
@@ -95,9 +103,9 @@ object MarketPulse {
     /** Whether [minuteOfDay] falls in the night the owner asked to keep quiet. */
     fun quiet(minuteOfDay: Int): Boolean = minuteOfDay >= QUIET_FROM_MINUTE || minuteOfDay < QUIET_TO_MINUTE
 
-    /** Whether the summary is due: past its hour, not yet sent today, and not in the quiet night. */
+    /** Whether the summary is due: in the morning's window, not yet sent today, not in the quiet night. */
     fun digestDue(minuteOfDay: Int, today: Long, lastDigestDay: Long?): Boolean =
-        minuteOfDay >= DIGEST_MINUTE && !quiet(minuteOfDay) && lastDigestDay != today
+        minuteOfDay in DIGEST_MINUTE until DIGEST_LAST_MINUTE && !quiet(minuteOfDay) && lastDigestDay != today
 
     /** Fifteen-minute runs over four hours, and a little more. */
     private const val MAX_SAMPLES = 24

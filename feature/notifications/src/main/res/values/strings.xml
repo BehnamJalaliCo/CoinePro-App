@@ -7,6 +7,11 @@
     <string name="notifications_permission_title">Notification permission not granted</string>
     <string name="notifications_permission_body">Android has not yet allowed Pro Chart to show notifications. Until it does, none of the settings below can do anything.</string>
     <string name="notifications_permission_open">Open Android settings</string>
+    <string name="notifications_background_title">Notifications only arrive when the app is open</string>
+    <string name="notifications_background_body">Android is holding Pro Chart to battery optimisation, so the market check every quarter of an hour waits until you open the app. Allow it in the background. If your VPN blocks the internet while it is off, the check cannot reach the prices either.</string>
+    <string name="notifications_background_fix">Allow in the background</string>
+    <string name="notifications_background_checked">Last automatic market check: %1$s</string>
+    <string name="notifications_background_never">The automatic market check has not run yet.</string>
 
     <string name="notifications_master">Pro Chart notifications</string>
     <string name="notifications_master_note">The master switch. Off, only security notifications arrive.</string>

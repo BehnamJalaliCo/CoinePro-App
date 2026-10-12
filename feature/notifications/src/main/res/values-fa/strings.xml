@@ -7,6 +7,11 @@
     <string name="notifications_permission_title">اجازه‌ی اعلان داده نشده</string>
     <string name="notifications_permission_body">اندروید هنوز اجازه‌ی نمایش اعلان به پرو چارت نداده است. تا وقتی این اجازه داده نشود، هیچ‌کدام از تنظیم‌های زیر کاری نمی‌کند.</string>
     <string name="notifications_permission_open">باز کردن تنظیمات اندروید</string>
+    <string name="notifications_background_title">اعلان‌ها فقط وقتی برنامه باز است می‌رسند</string>
+    <string name="notifications_background_body">اندروید پرو چارت را زیر بهینه‌سازی باتری نگه داشته است، برای همین بررسی بازار که هر ربع ساعت انجام می‌شود تا باز شدن برنامه منتظر می‌ماند. اجازه‌ی کار در پس‌زمینه را بدهید. اگر فیلترشکن شما وقتی خاموش است اینترنت را می‌بندد، بررسی هم به قیمت‌ها نمی‌رسد.</string>
+    <string name="notifications_background_fix">اجازه‌ی کار در پس‌زمینه</string>
+    <string name="notifications_background_checked">آخرین بررسی خودکار بازار: %1$s</string>
+    <string name="notifications_background_never">بررسی خودکار بازار هنوز اجرا نشده است.</string>
 
     <string name="notifications_master">اعلان‌های پرو چارت</string>
     <string name="notifications_master_note">کلید اصلی. خاموش که باشد، فقط اعلان‌های امنیتی می‌آیند.</string>

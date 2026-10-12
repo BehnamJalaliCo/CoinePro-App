@@ -113,6 +113,7 @@ object NotePolicy {
         "notifications_master_note",
         // Permissions.
         "notifications_permission_body",
+        "notifications_background_body",
         "vision_permission_note",
     )
 

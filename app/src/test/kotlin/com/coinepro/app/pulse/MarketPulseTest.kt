@@ -63,10 +63,26 @@ class MarketPulseTest {
     }
 
     @Test
-    fun `the summary goes once a day, from nine`() {
+    fun `the summary goes once a day, in the morning`() {
         assertFalse(MarketPulse.digestDue(8 * 60 + 59, today = 10, lastDigestDay = 9))
         assertTrue(MarketPulse.digestDue(9 * 60, today = 10, lastDigestDay = 9))
-        assertFalse(MarketPulse.digestDue(13 * 60, today = 10, lastDigestDay = 10))
-        assertTrue(MarketPulse.digestDue(13 * 60, today = 10, lastDigestDay = null))
+        assertTrue(MarketPulse.digestDue(11 * 60 + 59, today = 10, lastDigestDay = null))
+        assertFalse(MarketPulse.digestDue(11 * 60, today = 10, lastDigestDay = 10))
+        // 5.29.0: a check that missed the morning — deferred until the app opened in the evening —
+        // sends no summary that day.
+        assertFalse(MarketPulse.digestDue(12 * 60, today = 10, lastDigestDay = null))
+        assertFalse(MarketPulse.digestDue(19 * 60 + 30, today = 10, lastDigestDay = 9))
+    }
+
+    @Test
+    fun `a phone in Iran keeps Tehran's clock whatever zone it is set to`() {
+        val angeles = java.time.ZoneId.of("America/Los_Angeles")
+        // 5.29.0: the owner's phone — set to Los Angeles, on an Iranian network behind a US VPN.
+        assertEquals(ReaderClock.TEHRAN, ReaderClock.pick(angeles, listOf("ir", "ir")))
+        assertEquals(ReaderClock.TEHRAN, ReaderClock.pick(angeles, listOf("", "IR")))
+        assertEquals(ReaderClock.TEHRAN, ReaderClock.pick(java.time.ZoneId.of("Asia/Tehran"), emptyList()))
+        // Abroad, or with nothing to ask, the phone's own zone stands.
+        assertEquals(angeles, ReaderClock.pick(angeles, listOf("us", "ir".takeIf { false })))
+        assertEquals(angeles, ReaderClock.pick(angeles, emptyList()))
     }
 }

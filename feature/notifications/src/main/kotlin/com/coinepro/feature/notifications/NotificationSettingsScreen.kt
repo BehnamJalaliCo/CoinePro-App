@@ -99,6 +99,14 @@ fun NotificationSettingsScreen(
     onDeleteAlert: (LocalPriceAlert) -> Unit = {},
     labelFor: (NotificationCategory) -> String,
     noteFor: (NotificationCategory) -> String,
+    /**
+     * Whether Android holds the app to battery optimisation (5.29.0): true shows the card that
+     * lifts it, false and null show none. Null where the question does not apply — a page.
+     */
+    backgroundRestricted: Boolean? = null,
+    /** When the market check last ran on its own, already written for the reader, or null. */
+    backgroundCheckedAt: String? = null,
+    onFixBackground: () -> Unit = {},
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize().background(CoineProColors.Stage),
@@ -122,6 +130,18 @@ fun NotificationSettingsScreen(
         }
 
         item { MasterCard(settings = settings, onSetEnabled = onSetEnabled) }
+
+        // Second only to the permission (5.29.0): with the app held to battery optimisation nothing
+        // below arrives until the app is opened, which reads as «the notifications do not work».
+        if (settings.enabled && (backgroundRestricted == true || backgroundCheckedAt != null)) {
+            item {
+                BackgroundCard(
+                    restricted = backgroundRestricted == true,
+                    checkedAt = backgroundCheckedAt,
+                    onFix = onFixBackground,
+                )
+            }
+        }
 
         item {
             QuietHoursCard(
@@ -275,6 +295,47 @@ private fun PermissionCard(onOpen: () -> Unit) {
                 text = stringRes(R.string.notifications_permission_open),
                 onClick = onOpen,
                 modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+/**
+ * Whether the market notifications can reach the reader with the app closed, and the fix.
+ *
+ * Restricted, it is a warning with Android's own «allow in the background» button and the one line
+ * about a VPN that blocks the internet while it is off; allowed, it is a single quiet line saying
+ * when the check last ran, which is how a reader tells «nothing moved» from «nothing is running».
+ */
+@Composable
+private fun BackgroundCard(restricted: Boolean, checkedAt: String?, onFix: () -> Unit) {
+    CoineProCard(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = CoineProSpacing.Gutter),
+        accent = if (restricted) CoineProColors.Warning else null,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(CoineProSpacing.One)) {
+            if (restricted) {
+                Text(
+                    text = stringRes(R.string.notifications_background_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = CoineProColors.TextPrimary,
+                )
+                Text(
+                    text = stringRes(R.string.notifications_background_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = CoineProColors.TextSecondary,
+                )
+                CoineProPrimaryButton(
+                    text = stringRes(R.string.notifications_background_fix),
+                    onClick = onFix,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            Text(
+                text = checkedAt?.let { stringRes(R.string.notifications_background_checked, it) }
+                    ?: stringRes(R.string.notifications_background_never),
+                style = MaterialTheme.typography.bodySmall,
+                color = CoineProColors.TextMuted,
             )
         }
     }

@@ -4865,9 +4865,34 @@ private fun MainShell(
                 // happen to them, which makes the whole screen read as decoration.
                 val sections = notificationSections(guest = guest)
 
+                // Read again whenever the screen comes back — the reader returns here from
+                // Android's own dialog, and the card must go the moment the restriction does.
+                var backgroundRestricted by remember { mutableStateOf<Boolean?>(null) }
+                var backgroundCheckedAt by remember { mutableStateOf<Long?>(null) }
+                androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+                    backgroundRestricted = com.coinepro.app.notifications.BackgroundDelivery.restricted(context)
+                    backgroundCheckedAt = com.coinepro.app.notifications.BackgroundDelivery.lastCheck(context)
+                    onPauseOrDispose { }
+                }
+                val checkedLabel = backgroundCheckedAt?.let { at ->
+                    val zone = com.coinepro.app.pulse.ReaderClock.zone(context)
+                    val local = java.time.Instant.ofEpochMilli(at).atZone(zone)
+                    val today = java.time.LocalDate.now(zone)
+                    val instant = java.time.Instant.ofEpochMilli(at)
+                    val clock = com.coinepro.core.common.PersianDateTime.clock(instant, zone)
+                    if (local.toLocalDate() == today) {
+                        clock
+                    } else {
+                        "${com.coinepro.core.common.PersianDateTime.weekdayAndDay(instant, zone)} $clock"
+                    }
+                }
+
                 NotificationSettingsScreen(
                     settings = current,
                     sections = sections,
+                    backgroundRestricted = backgroundRestricted,
+                    backgroundCheckedAt = checkedLabel,
+                    onFixBackground = { com.coinepro.app.notifications.BackgroundDelivery.openFix(context) },
                     alerts = localAlerts,
                     systemPermissionGranted =
                         notificationPermissionState != NotificationPermissionUiState.DENIED,
