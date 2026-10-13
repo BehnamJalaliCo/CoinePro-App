@@ -159,8 +159,6 @@ import com.coinepro.feature.academy.AcademyScreen
 import com.coinepro.feature.academy.LessonScreen
 import com.coinepro.feature.account.DeleteAccountScreen
 import com.coinepro.feature.activity.ActivityScreen
-import com.coinepro.core.diagnostics.AdminGateState
-import com.coinepro.feature.admin.AdminScreen
 import com.coinepro.feature.ai.AiStudioScreen
 import com.coinepro.feature.alerts.AlertCenterScreen
 import com.coinepro.feature.alerts.AlertsController
@@ -1187,24 +1185,6 @@ class ScreenshotRenderTest {
             onRequestNotificationPermission = {},
             onOpenNotificationSettings = {},
             onSendFeedback = {},
-        )
-    }
-
-    /** The panel five taps behind the version number, with a dead route among the live ones. */
-    @Test
-    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1800dp-xxhdpi")
-    fun adminPanel() = capture("23-admin-fa") {
-        AdminScreen(state = ScreenshotFixtures.adminState, hub = ScreenshotFixtures.controlHub)
-    }
-
-    /** The door in front of it, which is the first thing anybody now sees. */
-    @Test
-    @Config(sdk = [34], qualifiers = "fa-rIR-ldrtl-w411dp-h1800dp-xxhdpi")
-    fun adminLocked() = capture("23-admin-locked-fa") {
-        AdminScreen(
-            state = ScreenshotFixtures.adminState.copy(
-                gate = AdminGateState(provisioned = true),
-            ),
         )
     }
 

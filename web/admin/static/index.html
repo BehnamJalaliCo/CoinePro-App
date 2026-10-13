@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="fa" dir="rtl" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="color-scheme" content="dark light">
+  <title>Pro Chart Console</title>
+  <link rel="icon" href="/admin/static/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/admin/static/app.css">
+  <script src="/admin/static/app.js" defer></script>
+</head>
+<body>
+  <!-- Sign in -->
+  <section id="login" class="login" hidden>
+    <div class="login-aura" aria-hidden="true"></div>
+    <form class="login-card" id="login-form" autocomplete="on" novalidate>
+      <div class="brand brand-lg">
+        <img src="/admin/static/mark.svg" alt="" width="44" height="44">
+        <div>
+          <strong>Pro Chart</strong>
+          <span>کنسول مالک پروژه</span>
+        </div>
+      </div>
+      <div class="login-step" id="step-credentials">
+        <label class="field">
+          <span>نام کاربری</span>
+          <input name="username" autocomplete="username" dir="ltr" required autofocus spellcheck="false">
+        </label>
+        <label class="field">
+          <span>رمز عبور</span>
+          <div class="input-wrap">
+            <input name="password" type="password" autocomplete="current-password" dir="ltr" required>
+            <button type="button" class="icon-btn ghost" data-toggle-password aria-label="نمایش رمز">
+              <svg viewBox="0 0 24 24"><use href="#i-eye"/></svg>
+            </button>
+          </div>
+        </label>
+      </div>
+      <div class="login-step" id="step-code" hidden>
+        <p class="muted">کد شش‌رقمی برنامهٔ احراز هویت را وارد کنید.</p>
+        <label class="field">
+          <span>کد تأیید</span>
+          <input name="code" inputmode="numeric" autocomplete="one-time-code" dir="ltr" maxlength="7" class="code-input">
+        </label>
+      </div>
+      <p class="form-error" id="login-error" role="alert"></p>
+      <button class="btn primary block" type="submit" id="login-submit">
+        <span>ورود به کنسول</span>
+        <svg viewBox="0 0 24 24"><use href="#i-arrow"/></svg>
+      </button>
+      <p class="login-foot">
+        <svg viewBox="0 0 24 24"><use href="#i-shield"/></svg>
+        اتصال رمزگذاری‌شده · نشست HttpOnly · ثبت همهٔ ورودها
+      </p>
+    </form>
+  </section>
+
+  <!-- The console -->
+  <div id="shell" class="shell" hidden>
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <img src="/admin/static/mark.svg" alt="" width="34" height="34">
+        <div>
+          <strong>Pro Chart</strong>
+          <span>Owner Console</span>
+        </div>
+      </div>
+      <nav class="nav" id="nav">
+        <p class="nav-group">نمای کلی</p>
+        <a href="#/overview" data-view="overview"><svg viewBox="0 0 24 24"><use href="#i-grid"/></svg><span>داشبورد</span></a>
+        <a href="#/downloads" data-view="downloads"><svg viewBox="0 0 24 24"><use href="#i-download"/></svg><span>دانلودها و بازدید</span></a>
+        <a href="#/audience" data-view="audience"><svg viewBox="0 0 24 24"><use href="#i-users"/></svg><span>مخاطبان و ماندگاری</span></a>
+        <a href="#/installs" data-view="installs"><svg viewBox="0 0 24 24"><use href="#i-phone"/></svg><span>نصب‌ها</span></a>
+        <p class="nav-group">ارتباط با کاربران</p>
+        <a href="#/messages" data-view="messages"><svg viewBox="0 0 24 24"><use href="#i-bell"/></svg><span>پیام‌ها و اعلان‌ها</span><em class="nav-badge" id="badge-live" hidden></em></a>
+        <a href="#/coupons" data-view="coupons"><svg viewBox="0 0 24 24"><use href="#i-ticket"/></svg><span>کدهای تخفیف</span></a>
+        <p class="nav-group">محصول</p>
+        <a href="#/config" data-view="config"><svg viewBox="0 0 24 24"><use href="#i-sliders"/></svg><span>تنظیمات از راه دور</span></a>
+        <a href="#/release" data-view="release"><svg viewBox="0 0 24 24"><use href="#i-rocket"/></svg><span>انتشار نسخه</span></a>
+        <a href="#/health" data-view="health"><svg viewBox="0 0 24 24"><use href="#i-pulse"/></svg><span>سلامت سرویس‌ها</span><em class="nav-dot" id="badge-health" hidden></em></a>
+        <p class="nav-group">امنیت</p>
+        <a href="#/audit" data-view="audit"><svg viewBox="0 0 24 24"><use href="#i-list"/></svg><span>گزارش فعالیت</span></a>
+        <a href="#/account" data-view="account"><svg viewBox="0 0 24 24"><use href="#i-lock"/></svg><span>حساب و امنیت</span></a>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="me">
+          <div class="avatar" id="me-avatar">B</div>
+          <div>
+            <strong id="me-name">—</strong>
+            <span id="me-meta">مالک</span>
+          </div>
+        </div>
+        <button class="icon-btn" id="logout" title="خروج" aria-label="خروج">
+          <svg viewBox="0 0 24 24"><use href="#i-logout"/></svg>
+        </button>
+      </div>
+    </aside>
+    <div class="scrim" id="scrim"></div>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="icon-btn only-mobile" id="menu" aria-label="منو"><svg viewBox="0 0 24 24"><use href="#i-menu"/></svg></button>
+        <div class="topbar-title">
+          <h1 id="view-title">داشبورد</h1>
+          <p id="view-sub" class="muted"></p>
+        </div>
+        <div class="topbar-actions">
+          <span class="clock" id="clock" title="ساعت تهران"></span>
+          <button class="icon-btn" id="refresh" title="به‌روزرسانی (R)" aria-label="به‌روزرسانی"><svg viewBox="0 0 24 24"><use href="#i-refresh"/></svg></button>
+          <button class="icon-btn" id="theme" title="روشن / تیره" aria-label="تغییر پوسته"><svg viewBox="0 0 24 24"><use href="#i-moon"/></svg></button>
+          <button class="btn primary" id="quick-compose"><svg viewBox="0 0 24 24"><use href="#i-plus"/></svg><span>پیام جدید</span></button>
+        </div>
+      </header>
+      <div id="view" class="view" aria-live="polite"></div>
+    </main>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <div id="tooltip" class="tooltip" hidden></div>
+
+  <!-- Icons: one sprite, stroke-only, currentColor. -->
+  <svg class="sprite" width="0" height="0" aria-hidden="true">
+    <defs>
+      <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></symbol>
+      <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/></symbol>
+      <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></symbol>
+      <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 1 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9Z"/><path d="M10 20a2.2 2.2 0 0 0 4 0"/></symbol>
+      <symbol id="i-ticket" viewBox="0 0 24 24"><path d="M3 8a2 2 0 0 0 0 4v0a2 2 0 0 1 0 4v1.5A1.5 1.5 0 0 0 4.5 19h15a1.5 1.5 0 0 0 1.5-1.5V16a2 2 0 0 1 0-4 2 2 0 0 0 0-4V6.5A1.5 1.5 0 0 0 19.5 5h-15A1.5 1.5 0 0 0 3 6.5Z"/><path d="m9.5 14.5 5-5M9.5 9.5h.01M14.5 14.5h.01"/></symbol>
+      <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+      <symbol id="i-rocket" viewBox="0 0 24 24"><path d="M5 15c-1.5 1.3-2 4-2 6 2 0 4.7-.5 6-2"/><path d="M9 18 6 15c1.5-5 5-11 14-12-1 9-7 12.5-12 14Z"/><circle cx="14.5" cy="9.5" r="1.8"/></symbol>
+      <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 4 12 2.5-6H21"/></symbol>
+      <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></symbol>
+      <symbol id="i-logout" viewBox="0 0 24 24"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M9 16l-4-4 4-4M5 12h11"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.6-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.6 4.5L20 16M20 20v-4h-4"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M19 12H5m0 0 6-6m-6 6 6 6"/></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.3 7.5 9.5 4.4-1.2 7.5-4.9 7.5-9.5V6Z"/><path d="m9 12 2 2 4-4"/></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></symbol>
+      <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z"/></symbol>
+      <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4.5 13.5H12L11 22l8.5-11.5H12Z"/></symbol>
+      <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/></symbol>
+      <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/></symbol>
+      <symbol id="i-stop" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9h6v6H9z"/></symbol>
+      <symbol id="i-gift" viewBox="0 0 24 24"><rect x="3.5" y="8" width="17" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12M12 8S10.5 3.5 8 4.5 9 8 12 8Zm0 0s1.5-4.5 4-3.5S15 8 12 8Z"/></symbol>
+      <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.5 6.5a4 4 0 0 0 5 5L21 13l-8 8-3-3 8-8-1.5-1.5a4 4 0 0 1-5-5L13 2l1.5 1.5Z"/></symbol>
+      <symbol id="i-megaphone" viewBox="0 0 24 24"><path d="M4 10v4a1 1 0 0 0 1 1h3l7 4V5L8 9H5a1 1 0 0 0-1 1Z"/><path d="M18.5 9a4 4 0 0 1 0 6M8 15l1 5h2.5l-1-5"/></symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/></symbol>
+      <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M14.5 8.5l2 2"/></symbol>
+      <symbol id="i-csv" viewBox="0 0 24 24"><path d="M12 3v11m0 0-4-4m4 4 4-4M5 21h14"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    </defs>
+  </svg>
+</body>
+</html>

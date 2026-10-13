@@ -16,14 +16,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.Composable
 import com.coinepro.core.common.BidiText
 import com.coinepro.core.common.AppLanguage
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -76,12 +73,10 @@ fun LaunchReadinessScreen(
      */
     onOpenSupportChat: (() -> Unit)? = null,
     versionLabel: String = "",
-    /** The way into the diagnostics panel, or null on a build that has none. */
-    onOpenDiagnostics: (() -> Unit)? = null,
     /**
      * The last crash, if the app has had one since it was cleared.
      *
-     * On this screen and not behind the five-tap gate. A reader who has just been thrown back to
+     * On this screen, where a reader can reach it. A reader who has just been thrown back to
      * the first screen needs to be able to say *what* broke without a cable and without knowing
      * there is an admin panel — and the sentence that names the fault is the whole of what anybody
      * fixing it needs.
@@ -109,11 +104,6 @@ fun LaunchReadinessScreen(
     siteNote: String? = null,
     onOpenSite: () -> Unit = {},
 ) {
-    // Five taps, and they have to be consecutive: the counter resets whenever the gap between two
-    // taps grows past a deliberate rhythm, so an ordinary stray tap on a scrolling screen never
-    // accumulates toward opening the panel.
-    var taps by remember { mutableIntStateOf(0) }
-    var lastTapAt by remember { mutableLongStateOf(0L) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -242,32 +232,15 @@ fun LaunchReadinessScreen(
         if (versionLabel.isNotBlank()) {
             Text(
                 text = BidiText.isolateLtr(versionLabel),
-                modifier = Modifier
-                    .padding(horizontal = CoineProSpacing.Half)
-                    .clickable(
-                        // No ripple and no content description hinting at what five taps do: this is
-                        // a version label to every reader, and a diagnostic entry point only to
-                        // someone who was told about it.
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() },
-                    ) {
-                        val now = System.currentTimeMillis()
-                        taps = if (now - lastTapAt <= TAP_WINDOW_MILLIS) taps + 1 else 1
-                        lastTapAt = now
-                        if (taps >= TAPS_TO_OPEN) {
-                            taps = 0
-                            onOpenDiagnostics?.invoke()
-                        }
-                    },
+                // A version label and nothing else (5.30.0): the five-tap door to the on-phone
+                // diagnostics panel is gone with the panel — the owner's console is on the server.
+                modifier = Modifier.padding(horizontal = CoineProSpacing.Half),
                 style = MaterialTheme.typography.bodySmall,
                 color = CoineProColors.TextMuted,
             )
         }
     }
 }
-
-private const val TAPS_TO_OPEN = 5
-private const val TAP_WINDOW_MILLIS = 1_200L
 
 /**
  * The newest published build, when there is one.

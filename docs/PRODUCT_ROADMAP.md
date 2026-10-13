@@ -318,7 +318,6 @@ core:database
 core:export
 core:watchlistsync
 core:update
-feature:admin
 feature:auth
 feature:home
 feature:script

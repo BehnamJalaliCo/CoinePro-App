@@ -351,4 +351,11 @@
     <string name="starter_done">بزن بریم</string>
     <string name="scan_watch_title">نمادهای تازه وارد اسکن رشد شما شدند</string>
     <string name="scan_watch_body_more">%1$s و %2$d نماد دیگر</string>
+    <!-- 5.30.0: what the owner's console sends — banners and campaign cards (app/owner). -->
+    <string name="owner_banner_close">بستن</string>
+    <string name="owner_update_action">به‌روزرسانی</string>
+    <string name="owner_update_default">نسخه‌ی تازه‌ی پرو چارت آماده است.</string>
+    <string name="owner_maintenance_default">سرورها در حال به‌روزرسانی‌اند؛ ممکن است قیمت‌ها مدتی با تأخیر برسند.</string>
+    <string name="owner_coupon_label">کد %1$s</string>
+    <string name="owner_card_open">باز کردن</string>
 </resources>

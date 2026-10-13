@@ -351,4 +351,11 @@
     <string name="starter_done">Let’s go</string>
     <string name="scan_watch_title">New markets entered your growth scan</string>
     <string name="scan_watch_body_more">%1$s and %2$d more</string>
+    <!-- 5.30.0: what the owner's console sends — banners and campaign cards (app/owner). -->
+    <string name="owner_banner_close">Close</string>
+    <string name="owner_update_action">Update</string>
+    <string name="owner_update_default">A newer Pro Chart is ready.</string>
+    <string name="owner_maintenance_default">The servers are being updated; prices may arrive late for a while.</string>
+    <string name="owner_coupon_label">Code %1$s</string>
+    <string name="owner_card_open">Open</string>
 </resources>

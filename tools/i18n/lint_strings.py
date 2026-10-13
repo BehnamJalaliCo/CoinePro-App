@@ -165,7 +165,6 @@ NOTE_CLASSES = {
     "catalogue",  # a destination's one-line description in the menu, tools and search catalogues
     "system",  # an Android notification channel description or a notification body
     "label",  # a misnamed key that is really a field label or placeholder
-    "admin",  # the internal panel, out of the store build
 }
 NOTE_BUDGET = 60
 # A tip-class key resolved to a string in feature code bypasses the policy. These are the calls
@@ -434,8 +433,6 @@ class Lint:
             print("lint_strings: no strings.xml found", file=sys.stderr)
             return 1
         for fa_path in fa_files:
-            # The admin panel is internal-only and keeps its engineering vocabulary.
-            internal = "feature/admin/" in fa_path.as_posix()
             en_path = fa_path.parent.parent / "values" / "strings.xml"
             fa = parse_strings(fa_path)
             en = parse_strings(en_path) if en_path.exists() else {}
@@ -444,8 +441,6 @@ class Lint:
             self.check_parity(fa_path, fa, en_path, en)
             self.check_orthography(fa_path, fa)
             self.check_note_registry(fa_path, fa, registry, seen_notes)
-            if internal:
-                continue
             self.check_vocabulary(fa_path, fa, "fa")
             self.check_register(fa_path, fa)
             self.check_feature_bodies(fa_path, fa, "fa")

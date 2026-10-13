@@ -382,9 +382,6 @@ def check_brand_spelling() -> None:
 def check_ui_vocabulary() -> None:
     offenders: list[str] = []
     for path in string_files():
-        # The admin panel is internal-only and is allowed its engineering vocabulary.
-        if "feature/admin/" in str(path):
-            continue
         text = path.read_text(encoding="utf-8")
         for suffix, words in FORBIDDEN_UI_WORDS.items():
             if not str(path).endswith(suffix):
@@ -738,8 +735,6 @@ def check_grid() -> None:
     inset, not a padding."""
     offenders: list[str] = []
     for path in list(ROOT.glob("app/src/main/**/*.kt")) + list(ROOT.glob("feature/*/src/main/**/*.kt")) + list(ROOT.glob("core/*/src/main/**/*.kt")):
-        if "feature/admin/" in path.as_posix():
-            continue
         for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
             for match in OFF_GRID_PADDING.finditer(line):
                 value = int(match.group(1))

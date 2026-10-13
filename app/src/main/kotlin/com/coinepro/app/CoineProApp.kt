@@ -221,21 +221,9 @@ import com.coinepro.core.designsystem.PageAccent
 import com.coinepro.core.designsystem.ProvidePageAccent
 import com.coinepro.core.designsystem.continuousMotionAllowed
 import com.coinepro.core.diagnostics.AdminController
-import com.coinepro.core.diagnostics.DiagnosticExport
 import com.coinepro.core.diagnostics.AppLog
 import com.coinepro.core.diagnostics.LogTag
-import com.coinepro.core.diagnostics.ControlHub
 import com.coinepro.core.diagnostics.CrashReport
-import com.coinepro.core.diagnostics.FeedStatus
-import com.coinepro.core.diagnostics.HubActions
-import com.coinepro.core.diagnostics.HubTone
-import com.coinepro.core.diagnostics.PushPermission
-import com.coinepro.core.diagnostics.PushPreferenceKey
-import com.coinepro.core.diagnostics.PushStatus
-import com.coinepro.core.diagnostics.RelayStatus
-import com.coinepro.core.diagnostics.ServerCapabilities
-import com.coinepro.core.diagnostics.SessionRow
-import com.coinepro.core.diagnostics.VenueStatus
 import com.coinepro.core.execution.LiveOrderType
 import com.coinepro.core.execution.LiveSide
 import com.coinepro.core.execution.LiveTradeController
@@ -323,7 +311,6 @@ import com.coinepro.feature.legal.LegalDocument
 import com.coinepro.feature.legal.LegalScreen
 import com.coinepro.feature.legal.R as LegalR
 import com.coinepro.feature.activity.ActivityScreen
-import com.coinepro.feature.admin.AdminScreen
 import com.coinepro.feature.ai.AiStudioScreen
 import com.coinepro.feature.aiassistant.AiAssistantScreen
 import com.coinepro.feature.aivision.AiVisionScreen
@@ -537,7 +524,6 @@ private const val PRO_ROUTE = "pro"
 
 /** The store build's pointer to pro-chart.com: opens the browser and steps back. */
 private const val FULL_SITE_ROUTE = "full-site"
-private const val ADMIN_ROUTE = "diagnostics"
 internal const val PROFILE_ROUTE = "profile"
 private const val NOTIFICATIONS_ROUTE = "notifications"
 private const val MEMBERSHIP_ROUTE = "membership"
@@ -1504,7 +1490,6 @@ fun CoineProApp(
     }
 
     val notificationState by notificationController.state.collectAsStateWithLifecycle()
-    val venueState by executionController.connections.collectAsStateWithLifecycle()
     // A cold start opens on the platform the reader's account is actually on.
     //
     // Narrower than it was, because the reason it was written for is gone. It used to be the guard
@@ -1529,116 +1514,7 @@ fun CoineProApp(
     val context = LocalContext.current
     val googleSignIn = remember(context) { GoogleSignInClient(context) }
 
-    // Assembled here rather than inside the diagnostics module: every controller the hub reaches is
-    // already in this scope, and giving core:diagnostics a dependency on all of them would make the
-    // module that observes the app depend on nearly the whole app.
-    // Only the relay's own status, not the whole table: the table is replaced on every five-second
-    // poll and the hub would be rebuilt with it. The shell's bar collects the same store further
-    // down, mapped the same way and for the same reason.
-    val relayStatus by remember(marketTickerStore) {
-        marketTickerStore.state.map { it.table.priceFeed }
-    }.collectAsStateWithLifecycle(null)
-    val hub = ControlHub(
-        sessions = activePlatformStore.available.map { platform ->
-            SessionRow(
-                platform = platform,
-                signedIn = sessionStates[platform] is SessionState.SignedIn,
-                detail = (sessionStates[platform] as? SessionState.RevalidationRequired)?.message?.resolve(),
-            )
-        },
-        feed = FeedStatus(
-            tone = marketState.connection.tone(),
-            label = stringResource(marketState.connection.labelRes()),
-            subscribedSymbols = marketState.quotes.size,
-            // **«۲ دقیقه پیش», not «1758592800000».** This field was `it.toString()` on the raw
-            // epoch millis, so the diagnostics page had been printing a thirteen-digit number
-            // where a sentence belongs since the field was added — one of the shapes run Τ2 keeps
-            // finding: a surface nobody reads until the day it matters. See `SavedAge`.
-            cacheAgeLabel = savedAgeSentenceOrNull(marketState.cacheStoredAtEpochMillis),
-        ),
-        push = PushStatus(
-            permission = notificationPermissionState.toHubPermission(),
-            // Null rather than false: the app has not asked the server yet, and reporting an
-            // unasked capability as off would put words in the server's mouth.
-            serverEnabled = null,
-            newSignals = notificationState.preferences.newSignals,
-            signalUpdates = notificationState.preferences.signalUpdates,
-            priceAlerts = notificationState.preferences.priceAlerts,
-        ),
-        venue = venueState.forPlatform(activePlatform),
-        // The exchange's own relay, as the server reports it on the ticker envelope. Absent — not
-        // green — where the server does not send the field, which is every deployment older than
-        // 2026-08-29 and is a state an operator has to be able to tell from health.
-        relay = relayStatus?.let { feed ->
-            RelayStatus(
-                tier = feed.tier.name.lowercase(),
-                socketsUp = feed.socketsUp,
-                socketsTotal = feed.socketsTotal,
-                tickAgeMillis = feed.tickAgeMillis,
-                degraded = feed.degraded,
-                fullOutage = feed.fullOutage,
-            )
-        },
-        // What each server said about itself, per platform. Null inside a row means that server
-        // has not answered yet, which the panel draws differently from a capability reported off —
-        // the whole point of asking is to tell those two apart.
-        capabilities = capabilities.mapValues { (_, methods) ->
-            ServerCapabilities(
-                emailPassword = methods.emailPassword,
-                google = methods.google,
-                telegram = methods.telegram,
-                push = methods.push,
-                chartVision = methods.chartVision,
-            )
-        },
-    )
 
-    val hubActions = HubActions(
-        onSelectPlatform = { platform ->
-            adminController.select(platform)
-            platformChosen = true
-            scope.launch { activePlatformStore.setActive(platform) }
-        },
-        onSignOut = { platform -> scope.launch { platformSessions.logout(platform) } },
-        onSignOutEverywhere = { scope.launch { platformSessions.logoutAll() } },
-        onRestartFeed = marketDataController::retry,
-        onSyncNow = backgroundSyncScheduler::requestImmediate,
-        onClearMarketCache = { scope.launch { marketDataCache.clear() } },
-        onRequestPushPermission = onRequestNotificationPermission,
-        onOpenPushSettings = onOpenNotificationSettings,
-        onReRegisterPushToken = { scope.launch { pushCoordinator.registerCurrentToken() } },
-        onSetPushPreference = { key, value ->
-            val current = notificationState.preferences
-            notificationController.updatePreferences(
-                when (key) {
-                    PushPreferenceKey.NEW_SIGNALS -> current.copy(newSignals = value)
-                    PushPreferenceKey.SIGNAL_UPDATES -> current.copy(signalUpdates = value)
-                    PushPreferenceKey.PRICE_ALERTS -> current.copy(priceAlerts = value)
-                },
-            )
-        },
-        onProbe = adminController::probe,
-        onToggleFailuresOnly = adminController::toggleFailuresOnly,
-        onClearRequests = adminController::clearRequests,
-        // The panel's own levers. The clipboard and the file are done inside `feature:admin`,
-        // which owns the FileProvider write and the document picker — this side only names the
-        // controller calls, so the shell has no opinion about how a report leaves the device.
-        onUnlock = adminController::unlock,
-        onCredentialEdited = adminController::editingCredentials,
-        onLock = adminController::lock,
-        onShowSection = adminController::show,
-        onSetMinimumLevel = adminController::setMinimumLevel,
-        onToggleTag = adminController::toggleTag,
-        onSetQuery = adminController::setQuery,
-        onSetWindow = adminController::setWindow,
-        onClearFilter = adminController::clearFilter,
-        onExpandEntry = adminController::expand,
-        onClearLog = adminController::clearLog,
-        onSetVerbosity = adminController::setVerbosity,
-        onClearCrash = adminController::clearCrash,
-        onExported = adminController::exported,
-        onObserveInstall = adminController::observe,
-    )
 
     // Collected here rather than inside the theme so the whole tree — including the sign-in and
     // guest branches below — reads one value. `SYSTEM` is the initial, which is also what an
@@ -1806,8 +1682,6 @@ fun CoineProApp(
                 linkCryptoAccount = remember(accountLink, platformSessions) {
                     accountLink?.let { link -> linkCryptoAccountWith(link, platformSessions) }
                 }?.takeIf { !cryptoSignedIn && sessionStates[MarketPlatform.COINEPRO_FX] is SessionState.SignedIn },
-                hub = hub,
-                hubActions = hubActions,
                 briefing = briefingState.toHomeBriefing(briefingReadAt),
                 portfolio = portfolioState.toHomePortfolio(),
                 subscription = current.entitlement.toHomeSubscription(),
@@ -2087,8 +1961,6 @@ fun CoineProApp(
                         onBuyPro = onBuyPro,
                         payments = payments,
                         heatmapUniverse = backendUniverse,
-                        hub = hub,
-                        hubActions = hubActions,
                         briefing = HomeBriefing.Resting,
                         portfolio = null,
                         subscription = null,
@@ -2434,8 +2306,6 @@ private fun MainShell(
      * server's sentence or an empty string. Null itself where there is nothing to link.
      */
     linkCryptoAccount: (suspend () -> String?)? = null,
-    hub: ControlHub,
-    hubActions: HubActions,
     briefing: HomeBriefing,
     portfolio: HomePortfolio?,
     subscription: HomeSubscription?,
@@ -2929,7 +2799,6 @@ private fun MainShell(
         LAUNCH_READINESS_ROUTE,
         TUTORIALS_ROUTE,
         PRO_ROUTE,
-        ADMIN_ROUTE,
     )
     // How much glass there is, read once for the whole shell. `CoineProTheme` provides it, so this
     // is the same answer every screen underneath gets — which is what stops a rail and a bottom bar
@@ -2937,7 +2806,6 @@ private fun MainShell(
     val window = coineProWindowClass()
 
     val subTitleRes = when (currentRoute) {
-        ADMIN_ROUTE -> R.string.screen_diagnostics
         MARKETS_ROUTE -> R.string.nav_markets_title
         COMMUNITY_ROUTE -> R.string.screen_community
         COMMUNITY_THREAD_PATTERN -> R.string.screen_community_thread
@@ -3465,6 +3333,15 @@ private fun MainShell(
             marketTickerStore.state.map { it.table.priceFeed?.reading() }
         }.collectAsStateWithLifecycle(null)
         CoineProPriceFeedBar(status = feedReading)
+        // What the owner's console has to say (5.30.0): a maintenance or update banner and the first
+        // campaign waiting as a card. On the main screens only — not over a chart or a lesson.
+        if (!isSubScreen) {
+            val ownerBoard by com.coinepro.app.owner.OwnerInbox.board.collectAsStateWithLifecycle()
+            com.coinepro.app.owner.OwnerBanners(
+                board = ownerBoard,
+                onUpdate = { navController.navigate(LAUNCH_READINESS_ROUTE) },
+            )
+        }
         // And into the exportable log, because the bar is only the half a reader sees. The outage
         // this field exists for lasted forty-five hours precisely because nothing wrote it down;
         // an operator handed the log now finds the transition in it with the counts attached.
@@ -4532,28 +4409,6 @@ private fun MainShell(
                     balanceHidden = profile.balanceHidden,
                     onToggleBalanceHidden = onToggleBalanceHidden,
                     onOpenPortfolio = { navController.navigate(PORTFOLIO_ROUTE) },
-                )
-            }
-            // A compile-time constant, not a runtime check: R8 folds `BuildConfig.ADMIN_PANEL` and
-            // drops this whole destination from the store build, and the resource shrinker then
-            // drops the hundred and seventy-five `admin_*` strings nothing references any more.
-            // `scripts/quality/check-release-surface.py` reads the built APK to prove it.
-            if (BuildConfig.ADMIN_PANEL) composable(ADMIN_ROUTE) {
-                val adminState by adminController.state.collectAsStateWithLifecycle()
-                AdminScreen(
-                    state = adminState,
-                    hub = hub,
-                    actions = hubActions,
-                    // Lambdas rather than values: building the report walks the whole ring and
-                    // every recorded request, and doing that on each recomposition of a screen
-                    // that has a search field on it would cost the panel its own responsiveness.
-                    report = {
-                        DiagnosticExport.render(
-                            adminController.exportContext(hub, marketState.connection.name),
-                            System.currentTimeMillis(),
-                        )
-                    },
-                    logText = adminController::logText,
                 )
             }
             composable(SIGNALS_ROUTE) {
@@ -5670,14 +5525,6 @@ private fun MainShell(
                     versionLabel = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                     siteNote = siteNote,
                     onOpenSite = openFullSite,
-                    // Null on the store build: the five taps on the version then do nothing, which
-                    // is the honest behaviour for a door that leads to a room the build does not
-                    // contain.
-                    onOpenDiagnostics = if (BuildConfig.ADMIN_PANEL) {
-                        { navController.navigate(ADMIN_ROUTE) }
-                    } else {
-                        null
-                    },
                     lastCrash = lastCrash,
                     onShareCrash = { trace ->
                         // The system sheet, not a hard-wired destination: the reader chooses the
@@ -5910,60 +5757,11 @@ private fun notificationSections(guest: Boolean): List<NotificationSection> {
 
 /* -------------------------------------------------------------- hub glue */
 
-/**
- * The feed's own state, in the hub's four grades.
- *
- * Degraded is a warning rather than a failure on purpose: the socket is down but the HTTP snapshot
- * is carrying quotes, so the screen is still telling the truth — just less often.
- */
-private fun MarketConnectionState.tone(): HubTone = when (this) {
-    MarketConnectionState.LIVE -> HubTone.GOOD
-    MarketConnectionState.CONNECTING, MarketConnectionState.DEGRADED -> HubTone.WARN
-    MarketConnectionState.OFFLINE -> HubTone.BAD
-    MarketConnectionState.IDLE -> HubTone.IDLE
-}
-
 /** The platform's own short name, for the badge on the profile hero. */
 @StringRes
 private fun MarketPlatform.labelRes(): Int = when (this) {
     MarketPlatform.TRADEYAR -> R.string.platform_crypto
     MarketPlatform.COINEPRO_FX -> R.string.platform_forex
-}
-
-@StringRes
-private fun MarketConnectionState.labelRes(): Int = when (this) {
-    MarketConnectionState.LIVE -> R.string.hub_feed_live
-    MarketConnectionState.CONNECTING -> R.string.hub_feed_connecting
-    MarketConnectionState.DEGRADED -> R.string.hub_feed_degraded
-    MarketConnectionState.OFFLINE -> R.string.hub_feed_offline
-    MarketConnectionState.IDLE -> R.string.hub_feed_idle
-}
-
-private fun NotificationPermissionUiState.toHubPermission(): PushPermission = when (this) {
-    NotificationPermissionUiState.NOT_CONFIGURED -> PushPermission.NOT_CONFIGURED
-    NotificationPermissionUiState.NOT_REQUIRED -> PushPermission.NOT_REQUIRED
-    NotificationPermissionUiState.AVAILABLE_TO_REQUEST -> PushPermission.AVAILABLE
-    NotificationPermissionUiState.DENIED -> PushPermission.DENIED
-    NotificationPermissionUiState.GRANTED -> PushPermission.GRANTED
-}
-
-/**
- * The venue that executes for one platform — MetaTrader 5 for forex, LBank for crypto.
- *
- * Never both. Showing a reader the other platform's broker is the same mixing bug as showing its
- * symbols, and here it would invite someone to judge their execution readiness from an account
- * this session is not even signed in to.
- */
-private fun ConnectionsState.forPlatform(platform: MarketPlatform): VenueStatus {
-    val connection = when (platform) {
-        MarketPlatform.COINEPRO_FX -> mt5
-        MarketPlatform.TRADEYAR -> lbank
-    }
-    return VenueStatus(
-        name = if (platform == MarketPlatform.COINEPRO_FX) "MetaTrader 5" else "LBank",
-        configured = connection != null,
-        connected = connection?.connected == true,
-    )
 }
 
 /**

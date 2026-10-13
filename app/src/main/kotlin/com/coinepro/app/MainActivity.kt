@@ -235,6 +235,10 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var chartEventControllers: Map<MarketPlatform, @JvmSuppressWildcards ChartEventController>
     @Inject lateinit var pushCoordinator: PushCoordinator
     @Inject lateinit var backgroundSyncScheduler: BackgroundSyncScheduler
+    // The owner's console on pro-chart.com: the check-in, its notifications and banners (5.30.0).
+    // Through an entry point rather than a field: the browser's graph is read from these fields,
+    // and the page has no check-in to give it.
+    private val ownerChannel by lazy { com.coinepro.app.owner.OwnerChannel.from(applicationContext) }
 
     private var launchSignalId by mutableStateOf<Long?>(null)
     private var launchActivity by mutableStateOf(false)
@@ -629,6 +633,8 @@ class MainActivity : FragmentActivity() {
         updateNotificationPermissionState()
         evaluateNotificationOffer()
         refreshWidgets()
+        // At most every few hours; before the signed-in check, because it is for every reader.
+        lifecycleScope.launch { ownerChannel.run() }
         // The reader's session, not TradeYar's. The unqualified controller is bound to the
         // crypto platform, so a reader whose only account is on CoinePro-FX got no refresh on
         // resume at all — the same class of mistake as the shell's own gate. See
@@ -721,6 +727,8 @@ class MainActivity : FragmentActivity() {
             ?.let { id ->
                 lifecycleScope.launch { localAlertStore.acknowledge(id, System.currentTimeMillis()) }
             }
+        // A tap on one of the owner's campaigns: counted, and a web address handed to the browser.
+        ownerChannel.consume(intent, this)
         val uri = intent?.data ?: return
         // A malformed query throws rather than returning null, and a link the app cannot read is
         // not a reason to fail to open.

@@ -195,9 +195,6 @@ class NavigationDepthTest {
                 "asked to agree to it. A menu row for the terms would be the app inviting somebody " +
                 "to go and read them, which nobody does and which would push a real surface down.",
             "PRIVACY_ROUTE" to "The other legal document, reached the same way and for the same reason.",
-            "ADMIN_ROUTE" to
-                "Diagnostics, which is not in the store build's menu at all — see the admin-panel " +
-                "exclusion. A reader cannot reach it because it is not for them.",
         )
 
         val DEEPER_ON_PURPOSE: Set<String> = REASONS.keys

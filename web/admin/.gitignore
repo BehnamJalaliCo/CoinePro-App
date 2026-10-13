@@ -1,0 +1,4 @@
+# Copied in from core/designsystem at build time (see Dockerfile); never a second copy in git.
+fonts/
+__pycache__/
+*.sqlite3*

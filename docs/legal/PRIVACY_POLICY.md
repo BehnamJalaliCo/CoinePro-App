@@ -1,6 +1,6 @@
 # سیاست حریم خصوصی — پرو چارت
 
-**آخرین بازنگری:** ۱۴۰۵/۰۶/۰۴
+**آخرین بازنگری:** ۱۴۰۵/۰۷/۲۱
 
 ---
 
@@ -46,6 +46,8 @@
 | شناسهٔ کاربری صرافی (UID) | فقط اگر برای عضویت آن را وارد کنید | تریدیار |
 | تصویر نمودار | فقط وقتی خودتان عکس را برای تحلیل می‌فرستید | همان پلتفرم |
 | نمادهایی که روی صفحه‌اند | هنگام اتصال به فید قیمت | همان پلتفرم |
+| شناسهٔ تصادفی نصب، نسخهٔ اپ، فروشگاه، زبان، نسخهٔ اندروید و نام منطقهٔ زمانی | حداکثر هر چند ساعت یک‌بار | pro-chart.com |
+| اینکه پیام پرو چارت رسید، باز شد یا بسته شد | وقتی یکی از پیام‌های پرو چارت را می‌بینید | pro-chart.com |
 
 **UID صرافی چرا فرستاده می‌شود.** عضویت پرو چارت رایگان است و شرطش داشتن حساب فعال در یکی از
 صرافی‌های همکار است (شرایط استفاده، بند ۶). برای احراز این موضوع، UID شما به صرافی داده می‌شود تا
@@ -58,6 +60,12 @@
 که محدودکنندهٔ نرخ سرور بتواند دو نصب پشت یک IP مشترک را از هم تشخیص دهد — بدون آن، یک کاربر پرمصرف
 روی شبکهٔ اپراتور، بقیهٔ کاربران همان IP را هم محدود می‌کرد. پاک‌کردن دادهٔ اپ، یک شناسهٔ تازه
 می‌سازد.
+
+**اعلام حضور به pro-chart.com.** اپ هر چند ساعت یک‌بار خود را با یک شناسهٔ تصادفی جداگانه (نه
+شناسهٔ بالا، نه حساب شما) به pro-chart.com معرفی می‌کند و در پاسخ، اطلاعیه‌ها و پیشنهادهای پرو چارت
+را می‌گیرد. سرور از این شناسه فقط یک چکیدهٔ نمک‌زده نگه می‌دارد و نشانی IP را ذخیره نمی‌کند؛ کاربردش
+شمردن نصب‌های فعال و رساندن پیام درست به نسخه و زبان درست است. هیچ چیزی از حساب، نمادها یا فعالیت شما
+با آن فرستاده نمی‌شود. پاک‌کردن دادهٔ اپ، شناسهٔ تازه می‌سازد.
 
 ### ۲-۳ آنچه اصلاً جمع نمی‌شود
 
@@ -159,7 +167,7 @@
 
 # Privacy Policy — Pro Chart
 
-**Last reviewed:** 2026-08-26
+**Last reviewed:** 2026-10-13
 
 Every claim below was written from this repository's code rather than from a template. If the app's
 behaviour changes, this file changes with it.
@@ -183,7 +191,14 @@ every request; the install id in an `X-Install-Id` header; a Firebase notificati
 notifications on; your name, national id, date of birth and phone number *only* if you complete the
 identity form; an exchange API key *only* if you connect an exchange account; a chart image *only*
 when you send one for analysis; and the list of symbols currently on screen, so the price feed sends
-those and not all 441.
+those and not all 441. And, every few hours, a separate random install id with the app's version,
+its store, your language, the Android version and the time zone's name to pro-chart.com — plus
+whether one of Pro Chart's own messages arrived, was opened or was closed.
+
+**The check-in with pro-chart.com** is how Pro Chart counts active installs and sends its
+announcements and offers to the right version and language. Its id is not the one above and not your
+account; the server keeps a salted hash of it and never the address. Nothing about your account,
+markets or activity goes with it. Clearing app data generates a new one.
 
 **The install id** is a random string generated on first launch. It is not derived from any hardware
 identifier and is not linked to an account or a device. Its only job is letting the server's rate

@@ -22,12 +22,15 @@ class MarketPulseWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted parameters: WorkerParameters,
     private val engine: MarketPulseEngine,
+    private val owner: com.coinepro.app.owner.OwnerChannel,
 ) : CoroutineWorker(context, parameters) {
 
     override suspend fun doWork(): Result {
         // Success either way: a missed quarter-hour is made up by the next, and a retry backoff
         // would only bunch the runs together.
         runCatching { engine.run() }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
+        // The owner's check-in rides the same quarter-hour (5.30.0); it waits its own hours inside.
+        runCatching { owner.run() }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
         return Result.success()
     }
 

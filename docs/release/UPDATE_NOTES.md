@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.30.0
+
+**fa**
+
+> اطلاعیه‌ها و پیشنهادهای پرو چارت حالا مستقیم به برنامه می‌رسند: خبر قابلیت‌های تازه، کد تخفیف پرمیوم و اطلاع از به‌روزرسانی یا تعمیرات سرور، به‌صورت اعلان یا کارتی بالای صفحه‌ی اصلی. پیشنهادها فقط اگر در تنظیمات اعلان روشن باشند اعلان می‌شوند. صفحه‌ی مخفی عیب‌یابی که با چند بار زدن روی شماره‌ی نسخه باز می‌شد حذف شد.
+
+**en**
+
+> Pro Chart's announcements and offers now reach the app directly: news of new features, Premium discount codes and notice of an update or server maintenance, as a notification or a card at the top of the main screen. Offers are notified only if you switch them on in the notification settings. The hidden diagnostics page behind repeated taps on the version number is gone.
+
+---
+
 ## 5.29.0
 
 **fa**

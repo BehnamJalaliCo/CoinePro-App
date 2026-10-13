@@ -319,7 +319,6 @@ val generateWebBuildConfig by tasks.registering {
             |    const val API_BASE_URL: String = "https://coineprofx.com/api/"
             |    const val TRADEYAR_API_BASE_URL: String = "https://tradeyar.trade-future.ir/"
             |    const val TERMINAL_URL: String = ""
-            |    const val ADMIN_PANEL: Boolean = false
             |    const val ADMIN_USERNAME: String = ""
             |    const val ADMIN_SALT: String = ""
             |    const val ADMIN_HASH: String = ""
@@ -465,7 +464,6 @@ val sharedSources = listOf(
     "core/export",
     "core/watchlistsync",
     "core/update",
-    "feature/admin",
     "feature/auth",
     "feature/home",
     "feature/script",
@@ -535,6 +533,9 @@ val replacedFiles = listOf(
     // .../app/notifications/.
     "com/coinepro/app/pulse/ReaderClock.kt",
     "com/coinepro/app/notifications/BackgroundDelivery.kt",
+    // 5.30.0: the owner console's check-in posts notifications and keeps SharedPreferences; the page
+    // never checks in, so it has no twin — `OwnerInbox` (shared) simply stays empty in the browser.
+    "com/coinepro/app/owner/OwnerChannel.kt",
     // The second road to a filtered host is the phone's; the page already goes through the
     // pro-chart.com relay. Twin: web/src/wasmJsMain/.../core/network/HostMirror.web.kt
     "com/coinepro/core/network/HostMirror.kt",

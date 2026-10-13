@@ -7,9 +7,9 @@ Run after `:app:assembleRelease`:
 
 Three things are read off the actual artefact rather than trusted from the build script:
 
-* **No admin panel.** `BuildConfig.ADMIN_PANEL` is false in release, R8 drops the destination and
-  the resource shrinker drops the `admin_*` strings behind it. A hundred and seventy-five strings
-  naming base URLs, log levels and crash traces have no business in the APK a reader installs.
+* **No admin panel.** The in-app panel was removed in 5.30.0 — the owner's console lives on
+  pro-chart.com (`web/admin`) — so no `admin_*` string should be left in the APK at all. A hundred
+  and seventy-five strings naming base URLs, log levels and crash traces had no business in it.
 * **Phone ABIs only.** `lib/x86` and `lib/x86_64` are for emulators, which the debug and benchmark
   variants serve; a store build carrying them is two ABIs no phone has.
 * **No editor droppings.** `content.json.orig` shipped for nine releases as 847 KB of a file nobody

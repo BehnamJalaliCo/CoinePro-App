@@ -434,7 +434,6 @@ val expectedSigners = (releaseSignerFingerprints() + extraExpectedSigners.split(
 
     buildTypes {
         debug {
-            buildConfigField("boolean", "ADMIN_PANEL", "true")
             buildConfigField("String", "BUILD_ENVIRONMENT", escapedBuildConfig("debug"))
             buildConfigField("String", "API_BASE_URL", escapedBuildConfig(debugApiBaseUrl))
             buildConfigField("String", "TRADEYAR_API_BASE_URL", escapedBuildConfig(debugTradeYarBaseUrl))
@@ -468,11 +467,6 @@ val expectedSigners = (releaseSignerFingerprints() + extraExpectedSigners.split(
             )
             isMinifyEnabled = true
             isShrinkResources = true
-            // **The store build ships no admin panel.** `BuildConfig.ADMIN_PANEL` is a compile-time
-            // constant, so R8 removes the route, the screen and — through resource shrinking —
-            // every `admin_*` string behind it; `scripts/quality/check-release-surface.py` reads
-            // the built APK and fails if any of them survived. Debug, staging and benchmark keep it.
-            buildConfigField("boolean", "ADMIN_PANEL", "false")
             // Phones only. x86 and x86_64 existed in the APK for emulators, which is what the
             // debug and benchmark variants are for; a store build carried two ABIs no phone has.
             ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
@@ -507,7 +501,6 @@ val expectedSigners = (releaseSignerFingerprints() + extraExpectedSigners.split(
             } else {
                 signingConfigs.getByName("debug")
             }
-            buildConfigField("boolean", "ADMIN_PANEL", "true")
             buildConfigField("String", "BUILD_ENVIRONMENT", escapedBuildConfig("staging"))
             buildConfigField("String", "API_BASE_URL", escapedBuildConfig(stagingApiBaseUrl))
             buildConfigField("String", "TRADEYAR_API_BASE_URL", escapedBuildConfig(stagingTradeYarBaseUrl))
@@ -527,7 +520,6 @@ val expectedSigners = (releaseSignerFingerprints() + extraExpectedSigners.split(
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
             isDebuggable = false
-            buildConfigField("boolean", "ADMIN_PANEL", "true")
             // The benchmark runs on an x86_64 emulator in CI, so the release ABI filter it would
             // otherwise inherit is cleared: an APK whose `lib/` has no matching ABI does not install.
             ndk { abiFilters.clear() }
@@ -648,7 +640,6 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":core:navigation"))
     implementation(project(":core:symbols"))
-    implementation(project(":feature:admin"))
     implementation(project(":feature:auth"))
     implementation(project(":feature:home"))
     implementation(project(":core:orderbook"))
