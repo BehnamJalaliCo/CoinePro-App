@@ -813,12 +813,16 @@ suspend fun CandleGateway.loadFolded(
     )
 }
 
-/** True for a refusal no other feed of the same venue would answer differently. */
+/**
+ * True for a refusal no other feed of the same venue would answer differently: the reader's (401,
+ * 403, 429), or the host's own gateway with nothing behind it (502, 503, 504 — 5.33.1, seen as
+ * nginx's HTML page for the second a CoinePro-FX container restarted, and asked again at M15 and M5).
+ */
 internal fun Throwable.refusesTheReader(): Boolean =
     this is CandleRateLimitedException ||
-        (this is retrofit2.HttpException && code() in READER_REFUSALS)
+        (this is retrofit2.HttpException && code() in WHOLE_VENUE_REFUSALS)
 
-private val READER_REFUSALS = setOf(401, 403, 429)
+private val WHOLE_VENUE_REFUSALS = setOf(401, 403, 429, 502, 503, 504)
 
 /**
  * The venue's feeds that could fold into [interval], finer than [source], coarsest first.

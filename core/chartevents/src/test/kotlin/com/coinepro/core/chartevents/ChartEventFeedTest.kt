@@ -115,6 +115,20 @@ class ChartEventFeedTest {
     }
 
     @Test
+    fun `a currency pair reads the forex newsroom's macro stories and not one metal's analysis`() {
+        val document = snapshot(
+            news = listOf(
+                news("macro", "2026-08-23T09:00:00Z", setOf(MarketRelevance.GOLD, MarketRelevance.SILVER)),
+                news("gold", "2026-08-23T10:00:00Z", setOf(MarketRelevance.GOLD)),
+                news("coin", "2026-08-23T11:00:00Z", setOf(MarketRelevance.CRYPTO)),
+            ),
+        )
+
+        assertEquals(listOf("تیتر macro"), document.chartEventsFor("EURUSD").filter { it.kind == EventKind.NEWS }.map(ChartEvent::title))
+        assertTrue(document.chartEventsFor("BTCUSDT").none { it.title == "تیتر macro" })
+    }
+
+    @Test
     fun `news the server tagged with no market at all belongs to every chart`() {
         val document = snapshot(news = listOf(news("general", "2026-08-23T10:00:00Z", emptySet())))
 

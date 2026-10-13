@@ -690,6 +690,28 @@ private const val PANES_PATTERN = "chart/{symbol}/panes?compare={compare}"
  * named market rather than a spinner about nothing.
  */
 private const val DOM_PATTERN = "chart/{symbol}/dom"
+/**
+ * The axis events for [symbol]'s own market (5.33.1), not the shell's.
+ *
+ * The web page opens on the crypto platform, so EURUSD's axis was read from TradeYar's newsroom —
+ * every story of which is about crypto and is filtered out for a currency pair — and the forex
+ * newsroom's lightning never reached a forex chart. A pair, a metal or an index reads CoinePro-FX's
+ * events; a coin reads TradeYar's. The shell's own controller is the fallback where a platform is
+ * not configured.
+ */
+private fun eventsFor(
+    symbol: String,
+    controllers: Map<MarketPlatform, ChartEventController>,
+    fallback: ChartEventController?,
+): ChartEventController? {
+    val market = if (SymbolClassifier.classify(symbol).category == SymbolCategory.CRYPTO) {
+        MarketPlatform.TRADEYAR
+    } else {
+        MarketPlatform.COINEPRO_FX
+    }
+    return controllers[market] ?: fallback
+}
+
 private fun signalDetailRoute(signalId: Long) = "signal/$signalId"
 private fun executionRoute(signalId: Long) = "execution/$signalId"
 
@@ -1706,6 +1728,7 @@ fun CoineProApp(
                 marketTickerStore = marketTickerStore,
                 watchlistSyncController = watchlistSyncController,
                 chartEventController = chartEventController,
+                chartEventControllers = chartEventControllers,
                 accountController = accountController,
                 launchSignalId = launchSignalId,
                 launchActivity = launchActivity,
@@ -1985,6 +2008,7 @@ fun CoineProApp(
                         marketTickerStore = marketTickerStore,
                         watchlistSyncController = watchlistSyncController,
                         chartEventController = chartEventController,
+                        chartEventControllers = chartEventControllers,
                         accountController = accountController,
                         launchSignalId = null,
                         launchActivity = false,
@@ -2284,6 +2308,8 @@ private fun MainShell(
     watchlistSyncController: WatchlistSyncController,
     /** This platform's chart-axis events, or null when the platform is not configured. */
     chartEventController: ChartEventController?,
+    /** Both platforms' chart-axis events, so a chart reads its own symbol's market. See [eventsFor]. */
+    chartEventControllers: Map<MarketPlatform, ChartEventController> = emptyMap(),
     accountController: AccountController,
     adminController: AdminController,
     appLog: AppLog,
@@ -3984,7 +4010,7 @@ private fun MainShell(
                 intervalFavourites = intervalFavouritesStore,
                 indicatorFavourites = indicatorFavouritesStore,
                 drawingSync = drawingSyncStore,
-                events = chartEventController,
+                events = eventsFor(activeChartSymbol, chartEventControllers, chartEventController),
                 chartEventPrefs = chartEventPrefsStore,
                 timeZones = timeZonePrefStore,
                 onOpenStudio = { navController.navigate(studioRoute(activeChartSymbol)) },
@@ -5096,7 +5122,7 @@ private fun MainShell(
                     chartLayoutStore = chartLayoutStore,
                     indicatorTemplates = indicatorTemplateStore,
                     drawingSync = drawingSyncStore,
-                    events = chartEventController,
+                    events = eventsFor(symbol, chartEventControllers, chartEventController),
                     chartEventPrefs = chartEventPrefsStore,
                     layouts = chartLayouts,
                     onSaveLayout = onSaveLayoutAnnounced,

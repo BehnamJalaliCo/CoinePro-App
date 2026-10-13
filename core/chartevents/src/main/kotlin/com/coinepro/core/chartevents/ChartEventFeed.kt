@@ -8,6 +8,7 @@ import com.coinepro.core.marketintel.MarketImpact
 import com.coinepro.core.marketintel.MarketIntelGateway
 import com.coinepro.core.marketintel.MarketIntelSnapshot
 import com.coinepro.core.marketintel.MarketNewsItem
+import com.coinepro.core.marketintel.MarketRelevance
 import com.coinepro.core.marketintel.relevanceForSymbol
 
 /**
@@ -99,12 +100,22 @@ class MarketIntelChartEventFeed(private val gateway: MarketIntelGateway) : Chart
 fun MarketIntelSnapshot.chartEventsFor(symbol: String): List<ChartEvent> {
     val relevance = relevanceForSymbol(symbol)
     val headlines = news
-        .filter { item -> item.relevance.isEmpty() || (relevance != null && relevance in item.relevance) }
+        .filter { item ->
+            item.relevance.isEmpty() ||
+                (relevance != null && relevance in item.relevance) ||
+                // A currency pair or an index has no tag of its own (5.33.1). The forex newsroom
+                // tags a story naming neither metal with both — that is its word for «macro»: a
+                // rate decision, the dollar — and those are exactly a pair's news. A gold or a
+                // silver analysis alone is not, and a coin's story never is.
+                (relevance == null && item.relevance.containsAll(MACRO_RELEVANCE))
+        }
         .map(MarketNewsItem::toChartEvent)
     return (headlines + calendar.map(EconomicEvent::toChartEvent)).sortedBy(ChartEvent::at)
 }
 
 /** A headline, at the second it was published. The summary is the body a tapped mark opens. */
+private val MACRO_RELEVANCE = setOf(MarketRelevance.GOLD, MarketRelevance.SILVER)
+
 internal fun MarketNewsItem.toChartEvent(): ChartEvent = ChartEvent(
     at = publishedAt.epochSecond,
     kind = EventKind.NEWS,

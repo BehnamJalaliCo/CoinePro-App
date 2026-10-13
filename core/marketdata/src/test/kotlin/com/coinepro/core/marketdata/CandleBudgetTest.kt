@@ -152,6 +152,14 @@ class CandleBudgetTest {
     }
 
     @Test
+    fun `a gateway with nothing behind it is not asked again one feed finer`() = runTest {
+        val refusing = Refusing(502, "<html><head><title>502 Bad Gateway</title></head></html>")
+        val gateway = gateway(refusing, budget(Clock()))
+        runCatching { gateway.load("EURUSD", ChartInterval.Preset(Timeframe.H1), limit = 3) }
+        assertEquals(listOf("H1"), refusing.asked)
+    }
+
+    @Test
     fun `a feed that is out is still covered one feed finer`() = runTest {
         val refusing = Refusing(404, """{"detail":"داده‌ی این نماد نیست."}""")
         val gateway = gateway(refusing, budget(Clock()))

@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.33.1
+
+**fa**
+
+> نمودار جفت‌ارزها، طلا و نقره حالا خبرهای فارکس را با علامت صاعقه زیر نمودار نشان می‌دهد. قبلاً خبرهای کریپتو برای آن‌ها خوانده می‌شد و هیچ‌کدام به نماد ربطی نداشت. وقتی سرور فارکس لحظه‌ای در دسترس نیست، برنامه همان درخواست را در بازه‌های کوچک‌تر تکرار نمی‌کند.
+
+**en**
+
+> Charts of currency pairs, gold and silver now show forex news as lightning marks under the chart. They used to read the crypto newsroom, none of which was about the symbol. When the forex server is briefly unreachable, the app no longer repeats the same request at finer timeframes.
+
+---
+
 ## 5.33.0
 
 **fa**
