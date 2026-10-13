@@ -778,9 +778,9 @@ fun CoineProChart(
     // four pixels, the tag is drawn a fixed inset from the gutter's edge, and the result is the
     // live price tag running off the right-hand edge of the glass: «قیمت از کادر زده بیرون». A
     // price over a million loses two commas' worth and clips two characters.
-    val sampleLabel = remember(display) {
+    val sampleLabel = remember(display, decimals) {
         val price = display.bars.lastOrNull()?.c ?: 0.0
-        groupThousands(formatPrice(price, decimalsFor(price)))
+        groupThousands(formatPrice(price, decimals ?: decimalsFor(price)))
     }
     /**
      * Whether this chart is on a phone, which is the only place the gutter is rationed.
@@ -6749,7 +6749,7 @@ internal fun ChartViewport.axisText(price: Double): String = axisText(
     price = price,
     places = when (scaleMode) {
         PriceScaleMode.PERCENT, PriceScaleMode.INDEXED_100 -> SCALE_VALUE_DECIMALS
-        PriceScaleMode.REGULAR, PriceScaleMode.LOGARITHMIC -> decimalsFor(price)
+        PriceScaleMode.REGULAR, PriceScaleMode.LOGARITHMIC -> decimals ?: decimalsFor(price)
     },
 )
 

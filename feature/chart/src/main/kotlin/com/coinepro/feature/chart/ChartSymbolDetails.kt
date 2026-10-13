@@ -55,6 +55,9 @@ fun ChartSymbolDetails(
 ) {
     val english = inEnglish()
     val meta = remember(state.symbol) { SymbolClassifier.classify(state.symbol) }
+    // The chart's own precision: the reader's choice, else the instrument's — a pair's five places.
+    val places = state.decimals ?: remember(state.symbol) { com.coinepro.core.symbols.SymbolPrecision.of(state.symbol) }
+    fun figure(value: Double): String = places?.let { MarketNumberFormatter.price(value, it) } ?: MarketNumberFormatter.priceAuto(value)
     val bars = state.visibleSeries.bars
     val last = bars.lastOrNull()
     val day = remember(bars) { detailsDay(bars) }
@@ -103,7 +106,7 @@ fun ChartSymbolDetails(
             // A figure: Latin digits, left to right, whatever the page's language.
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
-                    text = BidiText.isolateLtr(MarketNumberFormatter.priceAuto(price)),
+                    text = BidiText.isolateLtr(figure(price)),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = CoineProColors.TextPrimary,
@@ -121,7 +124,7 @@ fun ChartSymbolDetails(
                     Spacer(Modifier.width(CoineProSpacing.One))
                     Text(
                         text = BidiText.isolateLtr(
-                            listOfNotNull(absolute?.let(::signedFigure), MarketNumberFormatter.signedPercent(percent)).joinToString("  "),
+                            listOfNotNull(absolute?.let { (if (it < 0) "−" else "+") + figure(kotlin.math.abs(it)) }, MarketNumberFormatter.signedPercent(percent)).joinToString("  "),
                         ),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
@@ -146,17 +149,17 @@ fun ChartSymbolDetails(
                 style = MaterialTheme.typography.titleSmall,
                 color = CoineProColors.TextPrimary,
             )
-            bid?.let { DetailRow(stringResource(R.string.chart_details_bid), MarketNumberFormatter.priceAuto(it)) }
-            ask?.let { DetailRow(stringResource(R.string.chart_details_ask), MarketNumberFormatter.priceAuto(it)) }
+            bid?.let { DetailRow(stringResource(R.string.chart_details_bid), figure(it)) }
+            ask?.let { DetailRow(stringResource(R.string.chart_details_ask), figure(it)) }
             if (bid != null && ask != null && ask >= bid) {
-                DetailRow(stringResource(R.string.chart_details_spread), MarketNumberFormatter.priceAuto(ask - bid))
+                DetailRow(stringResource(R.string.chart_details_spread), figure(ask - bid))
             }
             day?.let { window ->
                 DetailRow(
                     stringResource(R.string.chart_details_day_range),
-                    MarketNumberFormatter.priceAuto(window.low) + " — " + MarketNumberFormatter.priceAuto(window.high),
+                    figure(window.low) + " — " + figure(window.high),
                 )
-                DetailRow(stringResource(R.string.chart_details_day_open), MarketNumberFormatter.priceAuto(window.open))
+                DetailRow(stringResource(R.string.chart_details_day_open), figure(window.open))
                 window.volume?.let { DetailRow(stringResource(R.string.chart_details_volume), detailsVolume(it)) }
             }
         }
@@ -207,9 +210,6 @@ internal fun detailsVolume(value: Double): String {
         else -> MarketNumberFormatter.price(value, if (magnitude >= 10) 0 else 2)
     }
 }
-
-private fun signedFigure(value: Double): String =
-    (if (value < 0) "−" else "+") + MarketNumberFormatter.priceAuto(abs(value))
 
 private fun SymbolCategory.labelRes(): Int = when (this) {
     SymbolCategory.CRYPTO -> R.string.chart_details_crypto

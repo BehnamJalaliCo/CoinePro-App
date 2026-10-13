@@ -209,9 +209,11 @@ internal fun legendRows(
     rebased: List<DoubleArray>,
     seriesLabel: String?,
     warnings: Set<ChartLegendTarget> = emptySet(),
+    /** The instrument's own precision — a pair's five places — or null for the magnitude's (5.32.0). */
+    pinnedDecimals: Int? = null,
 ): List<ChartLegendRow> {
     val bar = series.bars.getOrNull(index) ?: return emptyList()
-    val decimals = decimalsFor(bar.c)
+    val decimals = pinnedDecimals ?: decimalsFor(bar.c)
     val rows = mutableListOf<ChartLegendRow>()
     // O H L C, in TradingView's order and with TradingView's grouping — `O 77,004.19 H 77,182.00
     // L 76,748.01 C 77,058.57`. The close used to lead so an ellipsis would take the open first;
@@ -636,6 +638,7 @@ internal fun ChartLegendOverlay(
         .coerceIn(viewport.firstVisible, viewport.lastVisible)
     val bar = series.bars.getOrNull(index) ?: return
     val rows = legendRows(
+        pinnedDecimals = viewport.decimals,
         decoration = decoration,
         series = series,
         index = index,
@@ -651,7 +654,7 @@ internal fun ChartLegendOverlay(
     // Under a crosshair the row is O H L C with the change under it; at rest it is TradingView's
     // phone legend — the price and its change on one line, `77,414.00 −17.01 (−0.02%)` — because a
     // reader glancing at the chart wants the day's move, not four numbers about the newest bar.
-    val rawMove = legendChangeRow(bar = bar, decimals = decimalsFor(bar.c), change = session)
+    val rawMove = legendChangeRow(bar = bar, decimals = viewport.decimals ?: decimalsFor(bar.c), change = session)
         .takeIf { tracking && decoration.legendChange }
     // The Status line tab (5.16.0): with OHLC switched off the head stays the resting price line
     // under a crosshair too, and with the change switched off that line is the price alone.
@@ -666,7 +669,7 @@ internal fun ChartLegendOverlay(
     // below, where the width is known.
     val desktopHead = if (decoration.legendOhlc) {
         val ohlc = rows.first()
-        val delta = legendChangeRow(bar = bar, decimals = decimalsFor(bar.c), change = session).alternatives
+        val delta = legendChangeRow(bar = bar, decimals = viewport.decimals ?: decimalsFor(bar.c), change = session).alternatives
         if (decoration.legendChange) {
             ohlc.copy(alternatives = ohlc.alternatives.dropLast(1).map { "$it   ${delta.first()}" } + ohlc.alternatives)
         } else {
@@ -678,7 +681,7 @@ internal fun ChartLegendOverlay(
     val phoneHead = if (reading && decoration.legendOhlc) {
         rows.first()
     } else {
-        val decimals = decimalsFor(bar.c)
+        val decimals = viewport.decimals ?: decimalsFor(bar.c)
         val price = groupThousands(formatPrice(bar.c, decimals))
         val delta = legendChangeRow(bar = bar, decimals = decimals, change = session).alternatives
         val options = if (decoration.legendChange) {

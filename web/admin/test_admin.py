@@ -166,6 +166,24 @@ class ConsoleTest(AioHTTPTestCase):
         self.assertEqual(self.store.one("SELECT COUNT(*) FROM installs"), 0)
         self.assertEqual(self.store.one("SELECT COUNT(*) FROM downloads"), 0)
         self.assertEqual(self.store.one("SELECT COUNT(*) FROM visits"), 0)
+        self.assertEqual(self.store.one("SELECT COUNT(*) FROM download_hits"), 0)
+        self.assertEqual(self.store.one("SELECT COUNT(*) FROM active_hours"), 0)
+
+    async def test_the_consoles_own_probes_are_not_traffic(self):
+        line = json.loads(self.access("/terminal/"))
+        line["request"]["headers"]["User-Agent"] = [admin.PROBE_AGENT_PREFIX + "1 (health probe)"]
+        update = json.loads(self.access("/api/app/latest"))
+        update["request"]["headers"]["User-Agent"] = [admin.PROBE_AGENT_PREFIX + "1 (health probe)"]
+        self.log.write_text(json.dumps(line) + "\n" + json.dumps(update) + "\n")
+        admin.ingest_logs(self.app)
+        self.assertEqual(self.store.one("SELECT COUNT(*) FROM visits"), 0)
+        self.assertEqual(self.store.one("SELECT COUNT(*) FROM update_checks"), 0)
+
+    def test_forget_hour(self):
+        self.store.x("INSERT INTO active_hours(day, hour, weekday, count) VALUES ('2026-10-13', 14, 0, 1)")
+        with mock.patch.object(admin, "Store", lambda _path: self.store):
+            self.assertEqual(admin.forget_cli(["forget-hour", "2026-10-13", "14"]), 0)
+        self.assertEqual(self.store.one("SELECT COUNT(*) FROM active_hours"), 0)
 
     async def test_console_page_has_no_inline_styles_or_scripts(self):
         static = Path(admin.HERE) / "static"

@@ -808,6 +808,8 @@ fun ChartScreen(
     LaunchedEffect(state.symbol, titlePrice, titleMove) {
         titlePrice?.let { price -> WindowTitle.set(tabTitle(state.symbol, price, titleMove)) }
     }
+    // And the address bar, in a browser (5.32.0): `/terminal/EURUSD/H1` for the chart on screen.
+    LaunchedEffect(state.symbol, state.interval) { WindowTitle.chart(state.symbol, state.interval.wire) }
     DisposableEffect(Unit) { onDispose { WindowTitle.reset() } }
     /**
      * Which study the Explain sheet is about, or null for the chart as a whole (run Ω1).
@@ -1497,7 +1499,8 @@ fun ChartScreen(
                     scaleMode = state.scaleMode,
                     inverted = state.inverted,
                     priceBarLock = state.priceBarLock,
-                    decimals = state.decimals,
+                    // The reader's own choice, else the instrument's: a pair to the pipette (5.32.0).
+                    decimals = state.decimals ?: com.coinepro.core.symbols.SymbolPrecision.of(state.symbol),
                     scaleSide = state.scaleSide,
                     topMargin = state.appearance.topMargin,
                     bottomMargin = state.appearance.bottomMargin,
@@ -6454,7 +6457,8 @@ private const val EM_DASH = "\u2014"
 internal fun tabTitle(symbol: String, price: Double, movePercent: Double?): String {
     // The chart's own precision, except between one and fifty — a currency pair's range — where a
     // tab is read for the pip: five places, as a pair is quoted. Grouped like the axis.
-    val places = if (price >= 1.0 && price < 50.0) 5 else decimalsFor(price)
+    val places = com.coinepro.core.symbols.SymbolPrecision.of(symbol)
+        ?: if (price >= 1.0 && price < 50.0) 5 else decimalsFor(price)
     val plain = formatPrice(price, places)
     val whole = plain.substringBefore('.')
     val grouped = whole.reversed().chunked(3).joinToString(",").reversed().replace("-,", "-")

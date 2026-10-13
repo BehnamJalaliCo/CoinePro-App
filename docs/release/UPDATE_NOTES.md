@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.32.0
+
+**fa**
+
+> قیمت جفت‌ارزهای فارکس حالا با دقت کامل نمایش داده می‌شود، مثلاً یورو/دلار 1.11876 به‌جای 1.12؛ در دیده‌بان، نمودار، محور قیمت و جزئیات نماد. ین ژاپن با سه رقم و نقره با سه رقم اعشار نمایش داده می‌شود. در نسخه‌ی وب، نشانی صفحه نماد و بازه‌ی باز را نشان می‌دهد و می‌شود آن را نشانه‌گذاری یا برای کسی فرستاد.
+
+**en**
+
+> Forex pairs now show their full precision — EUR/USD reads 1.11876 rather than 1.12 — in the watchlist, on the chart, on the price axis and in the symbol details. Yen pairs and silver show three decimals. On the web, the page address names the open symbol and interval, so it can be bookmarked or shared.
+
+---
+
 ## 5.31.0
 
 **fa**

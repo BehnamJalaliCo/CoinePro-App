@@ -12,6 +12,14 @@ object WindowTitle {
     @Suppress("UNUSED_PARAMETER")
     fun set(title: String) = Unit
 
+    /**
+     * The page's address, where the platform has one (5.32.0): `/terminal/EURUSD/H1` in a browser,
+     * so the address bar names the chart on screen and can be copied, bookmarked or reloaded into
+     * it. Nothing on a phone.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    fun chart(symbol: String, interval: String) = Unit
+
     /** Back to the product's name, when the chart that set a title goes away. */
     fun reset() = Unit
 }

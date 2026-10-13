@@ -93,6 +93,7 @@ class Config:
 
 
 SESSION_COOKIE = "pca_session"
+PROBE_AGENT_PREFIX = "ProChart-Admin/"
 MESSAGE_KINDS = ("announcement", "offer", "update", "maintenance", "alert")
 EVENT_KINDS = ("delivered", "opened", "dismissed")
 PLATFORMS = ("android", "web")
@@ -199,6 +200,8 @@ CREATE TABLE IF NOT EXISTS installs (
 CREATE TABLE IF NOT EXISTS active_days (day TEXT NOT NULL, id_hash TEXT NOT NULL, PRIMARY KEY (day, id_hash));
 CREATE TABLE IF NOT EXISTS active_hours (day TEXT NOT NULL, hour INTEGER NOT NULL, weekday INTEGER NOT NULL,
     count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, hour));
+CREATE TABLE IF NOT EXISTS install_hours (id_hash TEXT NOT NULL, day TEXT NOT NULL, hour INTEGER NOT NULL,
+    count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (id_hash, day, hour));
 CREATE TABLE IF NOT EXISTS downloads (day TEXT NOT NULL, file TEXT NOT NULL, ip_hash TEXT NOT NULL, country TEXT,
     PRIMARY KEY (day, file, ip_hash));
 CREATE TABLE IF NOT EXISTS download_hits (day TEXT NOT NULL, file TEXT NOT NULL, hits INTEGER NOT NULL DEFAULT 0,
@@ -338,7 +341,7 @@ def build_app(config: Config | None = None) -> web.Application:
 
 async def _start(app: web.Application) -> None:
     app["state"]["http"] = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=12),
-                                                 headers={"User-Agent": "ProChart-Admin/1 (health probe)"})
+                                                 headers={"User-Agent": PROBE_AGENT_PREFIX + "1 (health probe)"})
     app["state"]["tasks"] = []
     if app["config"].background:
         app["state"]["tasks"].append(asyncio.create_task(_every(app["config"].ingest_every_seconds, lambda: ingest_logs(app))))
@@ -621,6 +624,9 @@ async def hello(request: web.Request) -> web.Response:
     store.x("INSERT OR IGNORE INTO active_days(day, id_hash) VALUES (?, ?)", (day, record["id_hash"]))
     store.x("INSERT INTO active_hours(day, hour, weekday, count) VALUES (?, ?, ?, 1) "
             "ON CONFLICT(day, hour) DO UPDATE SET count=count+1", (day, local.hour, local.weekday()))
+    # Which install the hour's count came from, so `forget-install` can take its share back out.
+    store.x("INSERT INTO install_hours(id_hash, day, hour, count) VALUES (?, ?, ?, 1) "
+            "ON CONFLICT(id_hash, day, hour) DO UPDATE SET count=count+1", (record["id_hash"], day, local.hour))
     messages = []
     for row in live_messages(store, stamp):
         try:
@@ -702,6 +708,10 @@ def ingest_line(app: web.Application, line: str) -> None:
     if request.get("method") not in ("GET", None) or status not in (200, 206, 304):
         return
     headers = request.get("headers") or {}
+    # The console's own health probes (5.32.0): every five minutes it fetches the terminal and the
+    # update channel, and those are not a reader visiting or an install checking for an update.
+    if _header(headers, "User-Agent").startswith(PROBE_AGENT_PREFIX):
+        return
     ip = _header(headers, "Cf-Connecting-Ip") or request.get("client_ip") or request.get("remote_ip") or ""
     country = _header(headers, "Cf-Ipcountry").upper() or None
     if country and not re.fullmatch(r"[A-Z]{2}", country):
@@ -1455,14 +1465,28 @@ def forget_cli(args: list[str]) -> int:
     `python admin.py forget-ip <address> [YYYY-MM-DD]` — that address's downloads, visits and update
     checks, on one day or on every day. Both are written to the audit log.
     """
-    if len(args) < 2 or args[0] not in ("forget-install", "forget-ip"):
-        print("usage: python admin.py forget-install <install_id> | forget-ip <address> [YYYY-MM-DD]", file=sys.stderr)
+    if len(args) < 2 or args[0] not in ("forget-install", "forget-ip", "forget-hour"):
+        print("usage: python admin.py forget-install <install_id> | forget-ip <address> [YYYY-MM-DD] | "
+              "forget-hour <YYYY-MM-DD> <hour>", file=sys.stderr)
         return 2
     store = Store(Config().db_path)
     removed = 0
-    if args[0] == "forget-install":
+    if args[0] == "forget-hour":
+        # One check-in's unit in the hours heat map, for traffic from before install_hours existed.
+        try:
+            day, hour = args[1], int(args[2])
+        except (IndexError, ValueError):
+            print("usage: python admin.py forget-hour <YYYY-MM-DD> <hour>", file=sys.stderr)
+            return 2
+        removed = store.x("UPDATE active_hours SET count=count-1 WHERE day=? AND hour=? AND count>0", (day, hour)).rowcount
+        store.x("DELETE FROM active_hours WHERE count<=0")
+        store.audit("console", "console", "data.forget_hour", {"day": day, "hour": hour, "rows": removed})
+    elif args[0] == "forget-install":
         id_hash = store.anon(args[1].strip())
-        for table in ("installs", "active_days", "message_events"):
+        for row in store.q("SELECT day, hour, count FROM install_hours WHERE id_hash=?", (id_hash,)):
+            store.x("UPDATE active_hours SET count=MAX(0, count-?) WHERE day=? AND hour=?", (row["count"], row["day"], row["hour"]))
+        store.x("DELETE FROM active_hours WHERE count<=0")
+        for table in ("installs", "active_days", "message_events", "install_hours"):
             removed += store.x(f"DELETE FROM {table} WHERE id_hash=?", (id_hash,)).rowcount
         store.audit("console", "console", "data.forget_install", {"rows": removed})
     else:
@@ -1471,6 +1495,13 @@ def forget_cli(args: list[str]) -> int:
         if day is not None and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
             print("the day is YYYY-MM-DD", file=sys.stderr)
             return 2
+        # The raw request counts are kept per file and day, not per address: take one request back
+        # for each download of this address being forgotten, and drop a day's row it leaves empty.
+        downloads = store.q("SELECT day, file FROM downloads WHERE ip_hash=?" + (" AND day=?" if day else ""),
+                            (ip_hash, day) if day else (ip_hash,))
+        for row in downloads:
+            store.x("UPDATE download_hits SET hits=MAX(0, hits-1) WHERE day=? AND file=?", (row["day"], row["file"]))
+        store.x("DELETE FROM download_hits WHERE hits<=0")
         for table in ("downloads", "visits", "update_checks"):
             if day:
                 removed += store.x(f"DELETE FROM {table} WHERE ip_hash=? AND day=?", (ip_hash, day)).rowcount
@@ -1484,7 +1515,7 @@ def forget_cli(args: list[str]) -> int:
 def main() -> None:
     if len(sys.argv) > 1 and sys.argv[1] == "set-password":
         raise SystemExit(set_password_cli(sys.argv[2:]))
-    if len(sys.argv) > 1 and sys.argv[1] in ("forget-install", "forget-ip"):
+    if len(sys.argv) > 1 and sys.argv[1] in ("forget-install", "forget-ip", "forget-hour"):
         raise SystemExit(forget_cli(sys.argv[1:]))
     if len(sys.argv) > 1 and sys.argv[1] == "ingest":
         app = build_app(Config(background=False))

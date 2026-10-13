@@ -349,6 +349,8 @@ internal data class WatchlistFigures(
     val line: List<Double> = emptyList(),
     /** True while [line] has been asked for and has not arrived — drawn dashed, not flat. */
     val linePending: Boolean = false,
+    /** The instrument's own decimals — a pair's five — or null for the magnitude's (5.32.0). */
+    val decimals: Int? = null,
 )
 
 /**
@@ -384,6 +386,7 @@ internal fun figuresFor(row: MarketSearchRow, line: List<Double>): WatchlistFigu
         null
     }
     return WatchlistFigures(
+        decimals = com.coinepro.core.symbols.SymbolPrecision.of(row.meta.symbol),
         line = line,
         price = price,
         change = if (price != null && open != null) price - open else null,
@@ -453,7 +456,7 @@ internal fun WatchlistFigureCell(
         return
     }
     Text(
-        text = value?.let { formatFigure(column.unit, it) } ?: EmDash,
+        text = value?.let { formatFigure(column.unit, it, figures.decimals) } ?: EmDash,
         style = density.figure.numeric(),
         color = when {
             value == null -> CoineProColors.TextDisabled
@@ -696,12 +699,13 @@ internal fun widthOf(column: WatchlistColumn): Dp = when (column) {
  * [Locale.US]. The device locale is Persian: a `String.format` left to follow it emits Persian
  * digits into a price column, which has already caused one bug in this repository.
  */
-private fun formatFigure(unit: WatchlistColumnUnit, value: Double): String = when (unit) {
-    WatchlistColumnUnit.PRICE -> MarketNumberFormatter.priceAuto(value)
+private fun formatFigure(unit: WatchlistColumnUnit, value: Double, decimals: Int? = null): String = when (unit) {
+    WatchlistColumnUnit.PRICE -> decimals?.let { MarketNumberFormatter.price(value, it) } ?: MarketNumberFormatter.priceAuto(value)
     // The sign is the whole point of this column, so it is written even for a rise, where
     // `priceAuto` would give a bare number indistinguishable from a price.
     WatchlistColumnUnit.SIGNED_PRICE ->
-        (if (value > 0) "+" else if (value < 0) "−" else "") + MarketNumberFormatter.priceAuto(abs(value))
+        (if (value > 0) "+" else if (value < 0) "−" else "") +
+            (decimals?.let { MarketNumberFormatter.price(abs(value), it) } ?: MarketNumberFormatter.priceAuto(abs(value)))
     WatchlistColumnUnit.PERCENT -> MarketNumberFormatter.signedPercent(value)
     WatchlistColumnUnit.BASE_AMOUNT, WatchlistColumnUnit.QUOTE_AMOUNT -> compactAmount(value)
     WatchlistColumnUnit.NONE -> EmDash

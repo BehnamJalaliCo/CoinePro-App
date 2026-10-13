@@ -947,7 +947,10 @@ private fun RowScope.MarketFigures(
         // One line on a desktop (LISTS-05): the price and the move side by side, each in its own
         // fixed, right-aligned column, as the reference's table sets them.
         Text(
-            text = row.quote?.let { MarketNumberFormatter.priceAuto(it.price) }
+            text = row.quote?.let { quote ->
+                com.coinepro.core.symbols.SymbolPrecision.of(row.meta.symbol)?.let { MarketNumberFormatter.price(quote.price, it) }
+                    ?: MarketNumberFormatter.priceAuto(quote.price)
+            }
                 ?: stringResource(R.string.search_no_price),
             style = density.figure.copy(textDirection = TextDirection.Ltr),
             color = if (row.quote == null) CoineProColors.TextDisabled else CoineProColors.TextPrimary,
@@ -970,7 +973,10 @@ private fun RowScope.MarketFigures(
         horizontalAlignment = Alignment.End,
     ) {
         Text(
-            text = row.quote?.let { MarketNumberFormatter.priceAuto(it.price) }
+            text = row.quote?.let { quote ->
+                com.coinepro.core.symbols.SymbolPrecision.of(row.meta.symbol)?.let { MarketNumberFormatter.price(quote.price, it) }
+                    ?: MarketNumberFormatter.priceAuto(quote.price)
+            }
                 ?: stringResource(R.string.search_no_price),
             style = MaterialTheme.typography.labelMedium.copy(textDirection = TextDirection.Ltr),
             color = CoineProColors.TextPrimary,
