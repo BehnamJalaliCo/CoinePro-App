@@ -58,7 +58,7 @@ class PacedCandleGateway(private val gateway: CandleGateway) : CandleGateway {
 
     override suspend fun load(symbol: String, timeframe: Timeframe, limit: Int, before: Long?): CandlePage {
         pacerFor(symbol).awaitTurn()
-        return gateway.load(symbol, timeframe, limit, before)
+        return withCandleUrgency(CandleUrgency.BULK) { gateway.load(symbol, timeframe, limit, before) }
     }
 
     override suspend fun load(
@@ -69,6 +69,6 @@ class PacedCandleGateway(private val gateway: CandleGateway) : CandleGateway {
         zone: ZoneId,
     ): CandlePage {
         pacerFor(symbol).awaitTurn()
-        return gateway.load(symbol, interval, limit, before, zone)
+        return withCandleUrgency(CandleUrgency.BULK) { gateway.load(symbol, interval, limit, before, zone) }
     }
 }

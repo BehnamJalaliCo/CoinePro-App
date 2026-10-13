@@ -31,6 +31,12 @@ interface AcademyTokenStore {
 
     /** Forget the held token — on sign-out, or after a 401 says the server disagrees about it. */
     fun clear()
+
+    /**
+     * Whether [token] is the guest credential (5.33.0), whose chart allowance is 120 requests per
+     * address per ten minutes and is metered by [CandleRequestBudget]. A student's is not.
+     */
+    fun isGuest(token: String): Boolean = false
 }
 
 internal interface AcademyTokenApi {

@@ -142,6 +142,7 @@ import com.coinepro.core.chart.ChartReading
 import com.coinepro.core.chart.ChartTransforms
 import com.coinepro.core.chart.ChartZoomNudge
 import com.coinepro.core.chart.ChartTypePicker
+import com.coinepro.core.chart.ChartViewport
 import com.coinepro.core.chart.CoineProChart
 import com.coinepro.core.chart.DrawingImages
 import com.coinepro.core.chart.DrawingTools
@@ -914,6 +915,23 @@ fun ChartScreen(
     val eventSeries = remember(state.visibleSeries, state.chartType) {
         ChartTransforms.apply(state.visibleSeries, state.chartType)
     }
+    /**
+     * The canvas's last reported window, so the events can follow a series that changed under it
+     * (5.33.0).
+     *
+     * The canvas reports its window only when the zoom or the offset moves, and the offset counts
+     * from the right edge — so history paged in on the left, a bar opening on the right or a reload
+     * that lands the archive's deeper series all shift every index without a report. The marks were
+     * left indexed into the series they were placed against, fell outside the visible range, and
+     * the economic calendar's squares were gone after every refresh while the week had loaded.
+     * An array rather than state: writing it must not recompose the screen on every frame of a drag.
+     */
+    val lastEventView = remember { arrayOfNulls<ChartViewport>(1) }
+    LaunchedEffect(eventSeries, events) {
+        val view = lastEventView[0] ?: return@LaunchedEffect
+        val moved = view.copy(series = eventSeries)
+        events?.onVisibleBars(state.symbol, eventSeries, moved.firstVisible, moved.lastVisible)
+    }
 
     var picturing by remember { mutableStateOf<Long?>(null) }
     val pickerContext = LocalContext.current
@@ -1643,6 +1661,7 @@ fun ChartScreen(
                         // Point-and-figure re-grid the bars before they are drawn. Handing the raw
                         // series over would put a headline on a different day on five of the
                         // sixteen chart types.
+                        lastEventView[0] = view
                         events?.onVisibleBars(
                             state.symbol,
                             eventSeries,

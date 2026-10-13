@@ -21,11 +21,11 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -49,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -359,7 +360,7 @@ internal fun CoineProCoachLayer(host: CoachHost) {
                         (!tip.touchOnly || touch) &&
                         bounds.width >= MIN_TARGET_PX && bounds.height >= MIN_TARGET_PX &&
                         bounds.bottom > 0f && bounds.top < windowHeight &&
-                        (tip.urgent || (!host.cooling && host.shownThisSession < SESSION_CAP))
+                        (tip.urgent || (!host.cooling && host.shownThisSession < if (touch) SESSION_CAP else MOUSE_SESSION_CAP))
                 }
             }
         }
@@ -439,6 +440,13 @@ private fun CoachSpotlight(
     onDone: () -> Unit,
     onNever: (() -> Unit)?,
 ) {
+    // **A mouse is not stopped (5.33.0).** On a desktop browser the dark glass and the card in the
+    // middle of the chart read as a modal the reader had to answer before they could trade — the
+    // server check found the wheel-zoom card standing over the chart until «فهمیدم» and a second
+    // one arriving eighty seconds after a refresh. So there, a tip is a small card in the corner,
+    // without the scene, with the light ring round its control and nothing dimmed, and every click
+    // outside the card reaches the chart as if it were not there.
+    val quiet = !touchFirst && target != null
     val motion = continuousMotionAllowed()
     val fade = remember(tip) { Animatable(if (motion) 0f else 1f) }
     val iris = remember(tip) { Animatable(if (motion) 0f else 1f) }
@@ -454,7 +462,7 @@ private fun CoachSpotlight(
     // Put away by itself after a few loops of the animation: long enough to watch it twice, short
     // enough that a reader who looked away is not still stopped by it when they look back.
     LaunchedEffect(tip) {
-        delay(if (tip.scene != null) AUTO_CLOSE_SCENE_MS else AUTO_CLOSE_LINE_MS)
+        delay(if (tip.scene != null && !quiet) AUTO_CLOSE_SCENE_MS else AUTO_CLOSE_LINE_MS)
         onDone()
     }
     val breathe = if (motion) {
@@ -473,7 +481,7 @@ private fun CoachSpotlight(
         modifier = Modifier
             .fillMaxSize()
             // Everything under the dark is out of reach for the moment; a tap anywhere is «got it».
-            .pointerInput(tip) { detectTapGestures { onDone() } }
+            .then(if (quiet) Modifier else Modifier.pointerInput(tip) { detectTapGestures { onDone() } })
             .semantics { contentDescription = "coach-overlay" },
     ) {
         val density = LocalDensity.current
@@ -487,8 +495,8 @@ private fun CoachSpotlight(
                 .onGloballyPositioned { origin = it.positionInRoot() }
                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen },
         ) {
-            drawRect(SCRIM.copy(alpha = SCRIM_ALPHA * fade.value))
-            if (local != null) {
+            if (!quiet) drawRect(SCRIM.copy(alpha = SCRIM_ALPHA * fade.value))
+            if (local != null && !quiet) {
                 val far = (1f - iris.value) * size.maxDimension
                 val hole = local.inflate(HOLE_PAD.toPx() + far)
                 val corner = HOLE_RADIUS.toPx() + far * 0.5f
@@ -549,7 +557,7 @@ private fun CoachSpotlight(
         }
         // The card: under the light when there is room, over it when not, in the middle of the glass
         // for a tip played from the library.
-        val cardWidth = with(density) { minOf(maxWidth - CoineProSpacing.Gutter * 2, CARD_MAX_WIDTH).toPx() }
+        val cardWidth = with(density) { minOf(maxWidth - CoineProSpacing.Gutter * 2, if (quiet) QUIET_CARD_WIDTH else CARD_MAX_WIDTH).toPx() }
         val gap = with(density) { CARD_GAP.toPx() }
         var measured by remember(tip) { mutableIntStateOf(0) }
         val estimate = if (measured > 0) {
@@ -559,6 +567,7 @@ private fun CoachSpotlight(
         }
         val hole = local?.inflate(with(density) { HOLE_PAD.toPx() })
         val top = when {
+            quiet -> height - estimate - gap
             hole == null -> (height - estimate) / 2f
             height - hole.bottom - gap >= estimate -> hole.bottom + gap
             hole.top - gap >= estimate -> hole.top - gap - estimate
@@ -574,8 +583,16 @@ private fun CoachSpotlight(
                 onDone()
             },
             onNever = onNever,
+            compact = quiet,
             modifier = Modifier
-                .offset { IntOffset(((width - cardWidth) / 2f).roundToInt(), (top + rise.value * lift).roundToInt()) }
+                // The quiet card sits in the bottom-left corner, past the drawing rail, whatever the
+                // page's direction: on the desktop page that is the chart's least-read corner. Laid
+                // from the absolute left, because the box's start is the right edge on a Persian page.
+                .align(AbsoluteAlignment.TopLeft)
+                .absoluteOffset {
+                    val left = if (quiet) with(density) { QUIET_CARD_INSET.toPx() } else (width - cardWidth) / 2f
+                    IntOffset(left.roundToInt(), (top + rise.value * lift).roundToInt())
+                }
                 .width(with(density) { cardWidth.toDp() })
                 .onSizeChanged { measured = it.height }
                 .graphicsLayer {
@@ -602,6 +619,8 @@ fun CoachCard(
     onNever: (() -> Unit)?,
     modifier: Modifier = Modifier,
     elevated: Boolean = true,
+    /** Without the scene: a line and two buttons, for the quiet desktop card. */
+    compact: Boolean = false,
 ) {
     val shape = RoundedCornerShape(CARD_RADIUS)
     val interaction = remember { MutableInteractionSource() }
@@ -614,7 +633,7 @@ fun CoachCard(
             .clickable(interaction, null) {}
             .padding(CARD_PADDING),
     ) {
-        tip.scene?.let { scene ->
+        tip.scene?.takeIf { !compact }?.let { scene ->
             CoachStage(
                 scene = scene,
                 touch = touchFirst || tip.mouseText == null,
@@ -836,6 +855,9 @@ private fun CoachLibraryRow(tip: CoachTip, onPlay: () -> Unit) {
 /** At most this many tips a launch, the urgent ones aside. */
 private const val SESSION_CAP = 3
 
+/** A mouse gets one tip a visit (5.33.0): a desktop page is reloaded far more often than an app is opened. */
+private const val MOUSE_SESSION_CAP = 1
+
 /** The quiet after a tip before the next may come. */
 private const val COOLDOWN_MS = 25_000L
 
@@ -867,6 +889,8 @@ private val FEATHER_STEP = 0.6.dp
 private val RING_HALO = 5.dp
 private val RING_LINE = 1.5.dp
 private val CARD_MAX_WIDTH = 380.dp
+private val QUIET_CARD_WIDTH = 320.dp
+private val QUIET_CARD_INSET = 64.dp
 private val CARD_GAP = 16.dp
 private val CARD_RISE = 36.dp
 private val CARD_FOOT = 96.dp

@@ -80,7 +80,7 @@ class SparklineStore(
     private suspend fun loadLine(ticker: String) {
         gate.withPermit {
             val closes = runCatching {
-                gateway.load(ticker, timeframe, limit = bars).candles.map(OhlcBar::c)
+                withCandleUrgency(CandleUrgency.BACKGROUND) { gateway.load(ticker, timeframe, limit = bars) }.candles.map(OhlcBar::c)
             }.getOrNull()
             // A one-point answer is dropped rather than stored: the renderer would have to decide
             // what a single price looks like as a line, and every answer to that is a shape the

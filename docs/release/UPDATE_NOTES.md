@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.33.0
+
+**fa**
+
+> نمودار فارکس دیگر با باز شدن یا تازه شدن صفحه درخواست‌های پشت‌سرهم نمی‌فرستد، پس سرور آن را رد نمی‌کند و نمودار کامل بار می‌شود. نشانگرهای تقویم اقتصادی و اخبار بعد از تازه کردن صفحه سر جایشان برمی‌گردند. در وب، کارت‌های راهنما کوچک و گوشه‌ی صفحه‌اند و جلوی نمودار را نمی‌گیرند.
+
+**en**
+
+> Forex charts no longer send a burst of requests when the page opens or reloads, so the server stops refusing them and the chart loads whole. Economic-calendar and news markers come back after a reload. On the web, tips are now a small card in the corner that never blocks the chart.
+
+---
+
 ## 5.32.2
 
 **fa**

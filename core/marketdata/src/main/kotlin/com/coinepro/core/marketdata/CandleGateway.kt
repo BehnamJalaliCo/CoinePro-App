@@ -274,6 +274,8 @@ class CoineProFxCandleGateway(
     retrofit: Retrofit,
     private val tokens: AcademyTokenStore,
     private val nowSeconds: () -> Long = { System.currentTimeMillis() / 1000 },
+    /** The guest scope's allowance, shared by every request this gateway sends. See [CandleRequestBudget]. */
+    private val budget: CandleRequestBudget = CandleRequestBudget(),
 ) : CandleGateway {
 
     private val api = retrofit.create(AcademyChartApi::class.java)
@@ -300,13 +302,26 @@ class CoineProFxCandleGateway(
             return load(symbol, ChartInterval.Preset(timeframe), limit, before, CHART_TIME_ZONE)
         }
         val token = tokens.token()
-        val response = api.candles(
-            authorization = "Bearer $token",
-            symbol = symbol.uppercase(),
-            timeframe = timeframe.wire,
-            limit = limit.coerceAtMost(FX_LIMIT_MAX),
-            before = before,
-        )
+        budget.admit(currentCandleUrgency(), metered = tokens.isGuest(token))
+        val response = try {
+            api.candles(
+                authorization = "Bearer $token",
+                symbol = symbol.uppercase(),
+                timeframe = timeframe.wire,
+                limit = limit.coerceAtMost(FX_LIMIT_MAX),
+                before = before,
+            )
+        } catch (refused: retrofit2.HttpException) {
+            if (refused.code() != 429) throw refused
+            // Nothing more goes out until the venue's own wait is over (5.33.0): every request sent
+            // into a lock-out is refused too, and the guest scope lengthens the lock-out each time.
+            val wait = CandleRequestBudget.retryAfterSeconds(
+                refused.response()?.headers()?.get("Retry-After"),
+                runCatching { refused.response()?.errorBody()?.string() }.getOrNull(),
+            )
+            budget.penalise(wait)
+            throw CandleRateLimitedException(wait)
+        }
         // CoinePro-FX sends no `closed` flag, so it is derived: a bar whose period has not elapsed
         // against the clock is still forming. Deriving it here rather than assuming every bar is
         // closed matters because the last one usually is not.
@@ -760,6 +775,10 @@ suspend fun CandleGateway.loadFolded(
             throw cancellation
         } catch (error: Throwable) {
             failure = failure ?: error
+            // A refusal of the *reader* rather than of the feed ends the walk (5.33.0). A 429, a
+            // 401 or a 403 is the same answer one feed finer, and asking for it there cost the
+            // guest scope three requests per refusal — M15 × 1200 and M5 × 3000 behind every H1.
+            if (error.refusesTheReader()) break
             continue
         }
         page = answer
@@ -793,6 +812,13 @@ suspend fun CandleGateway.loadFolded(
         interval = interval,
     )
 }
+
+/** True for a refusal no other feed of the same venue would answer differently. */
+internal fun Throwable.refusesTheReader(): Boolean =
+    this is CandleRateLimitedException ||
+        (this is retrofit2.HttpException && code() in READER_REFUSALS)
+
+private val READER_REFUSALS = setOf(401, 403, 429)
 
 /**
  * The venue's feeds that could fold into [interval], finer than [source], coarsest first.

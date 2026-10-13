@@ -63,8 +63,12 @@ class FallbackAcademyTokens(
     @Volatile
     private var guestUntil: Long = 0
 
+    /** The last guest credential handed out, so [isGuest] can tell it from a student's. */
+    @Volatile
+    private var lastGuest: String? = null
+
     override suspend fun token(): String {
-        if (!hasSession() || nowMillis() < guestUntil) return guest.token()
+        if (!hasSession() || nowMillis() < guestUntil) return guestToken()
         return try {
             session.token()
         } catch (error: AcademyDisabledException) {
@@ -72,12 +76,17 @@ class FallbackAcademyTokens(
         } catch (error: Exception) {
             if (error is kotlinx.coroutines.CancellationException) throw error
             guestUntil = nowMillis() + RETRY_MS
-            guest.token()
+            guestToken()
         }
     }
 
+    private suspend fun guestToken(): String = guest.token().also { lastGuest = it }
+
+    override fun isGuest(token: String): Boolean = token == lastGuest
+
     override fun clear() {
         guestUntil = 0
+        lastGuest = null
         session.clear()
         guest.clear()
     }

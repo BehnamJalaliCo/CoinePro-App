@@ -85,6 +85,9 @@ import com.coinepro.core.marketdata.TickBars
 import com.coinepro.core.marketdata.TickHistory
 import com.coinepro.core.marketdata.CandleCache
 import com.coinepro.core.marketdata.CandleGateway
+import com.coinepro.core.marketdata.CandleRateLimitedException
+import com.coinepro.core.marketdata.CandleUrgency
+import com.coinepro.core.marketdata.withCandleUrgency
 import com.coinepro.core.marketdata.CandlePage
 import com.coinepro.core.marketdata.ChartInterval
 import com.coinepro.core.marketdata.ChartTickSource
@@ -4370,6 +4373,12 @@ class ChartController(
             // The reader's own cancellation — a second switch, or the screen leaving. Handed
             // straight back, because retrying it would fetch a timeframe nobody is looking at.
             if (failure is CancellationException) return outcome
+            // A rate limit (5.33.0) is asked again only once its wait is over, and only when that
+            // wait is short: asking inside the lock-out is refused too and lengthens it.
+            if (failure is CandleRateLimitedException) {
+                if (failure.retryAfterSeconds > RATE_LIMIT_WAIT_MAX_S || attempt == LOAD_ATTEMPTS - 1) return outcome
+                delay(failure.retryAfterSeconds * 1_000L)
+            }
             last = failure
         }
         return Result.failure(last ?: IllegalStateException("no attempt was made for $interval"))
@@ -4413,14 +4422,18 @@ class ChartController(
             // is a few days that the reader will page through by hand if they want them, and
             // twenty thousand Room rows a session that nobody asked for.
             val fine = interval.seconds < Timeframe.M15.seconds
+            // Bulk (5.33.0): forty pages is a third of CoinePro-FX's guest allowance, so the walk
+            // takes what the chart and the watchlist leave and waits for the rest.
             val depth = runCatching {
-                gateway.fillHistory(
-                    symbol,
-                    interval,
-                    archive,
-                    maxPages = if (fine) FINE_FILL_PAGES else HISTORY_PAGE_BUDGET,
-                    pageDelayMillis = FILL_PAGE_PAUSE_MS,
-                )
+                withCandleUrgency(CandleUrgency.BULK) {
+                    gateway.fillHistory(
+                        symbol,
+                        interval,
+                        archive,
+                        maxPages = if (fine) FINE_FILL_PAGES else HISTORY_PAGE_BUDGET,
+                        pageDelayMillis = FILL_PAGE_PAUSE_MS,
+                    )
+                }
             }.getOrNull() ?: return@launch
             _state.update { old ->
                 if (old.symbol != symbol || old.interval != interval) {
@@ -4691,8 +4704,9 @@ class ChartController(
         val current = _state.value
         if (current.symbol != symbol || current.interval != interval) return false
         if (current.replay.isOn || current.loading || current.series.isEmpty) return true
+        // Background: the price feed already moves the candle, and this read is the slower truth.
         val fresh = runCatching {
-            gateway.load(symbol, interval, limit = LIVE_TAIL_BARS)
+            withCandleUrgency(CandleUrgency.BACKGROUND) { gateway.load(symbol, interval, limit = LIVE_TAIL_BARS) }
         }.getOrNull()?.candles.orEmpty()
         if (fresh.isEmpty()) return true
         mergeLive(symbol, interval, fresh)
@@ -4981,6 +4995,9 @@ class ChartController(
 
         /** How many times a page is asked for before the reader is told: two. See [loadPage]. */
         const val LOAD_ATTEMPTS = 2
+
+        /** The longest rate-limit wait the chart sits through before saying it could not load. */
+        const val RATE_LIMIT_WAIT_MAX_S = 15L
 
         /** The pause between the two. See [loadPage]. */
         const val LOAD_RETRY_PAUSE_MS = 1_200L
