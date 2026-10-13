@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
@@ -3599,7 +3600,11 @@ private fun MainShell(
 
             val gridScope = rememberCoroutineScope()
             val sidePanels = listOf(
-                ChartSidePanel("watchlist", ChartR.string.chart_panel_watchlist, DesignR.drawable.tv_star) {
+                ChartSidePanel("watchlist", ChartR.string.chart_panel_watchlist, DesignR.drawable.tv_star, titled = false) {
+                    // The web's desktop page splits the panel as TradingView does (5.31.0): the list
+                    // above, the details of the market on the chart below.
+                    Column(Modifier.fillMaxSize()) {
+                    Box(Modifier.fillMaxWidth().weight(1f)) {
                     WatchlistScreen(
                         controller = marketSearchController,
                         store = watchlistStore,
@@ -3617,6 +3622,21 @@ private fun MainShell(
                         savedAtMillis = marketState.cacheStoredAtEpochMillis
                             ?.takeIf { marketState.origin == MarketDataOrigin.CACHE },
                     )
+                    }
+                    if (FeatureFlags.desktopShellLtr) {
+                        HorizontalDivider(color = CoineProColors.Border)
+                        val quote = marketState.quotes[activeChartSymbol]
+                        com.coinepro.feature.chart.ChartSymbolDetails(
+                            state = chartState,
+                            zone = com.coinepro.app.pulse.ReaderClock.zone(LocalContext.current),
+                            venue = chartController.sourceName.takeIf(String::isNotBlank),
+                            bid = quote?.bid,
+                            ask = quote?.ask,
+                            updatedAtMillis = quote?.timestampEpochMillis,
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 340.dp),
+                        )
+                    }
+                    }
                 },
                 ChartSidePanel("depth", ChartR.string.chart_panel_depth, DesignR.drawable.tv_chart_columns) {
                     // The same construction as the depth route: a controller per gateway, started

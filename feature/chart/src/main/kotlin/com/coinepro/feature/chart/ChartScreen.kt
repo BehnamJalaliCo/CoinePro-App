@@ -2365,11 +2365,15 @@ fun ChartScreen(
     ChartWorkbench(
         modifier = Modifier.fillMaxSize(),
         sidePanels = listOfNotNull(objectTreePanel, explainPanel, rasadPanel, arenaPanel) + sidePanels,
-        initialSidePanel = initialSidePanel,
+        // TradingView's desktop opens on its watchlist (5.31.0); a tablet keeps the plot to itself.
+        initialSidePanel = initialSidePanel
+            ?: "watchlist".takeIf { com.coinepro.core.common.FeatureFlags.desktopShellLtr },
         // The rail is the drawing tools as a column beside the plot on a roomy window. In Simple
         // mode there is no column, for the same reason the band loses its pencil: fifty drawing
         // tools is the answer to a question a first chart has not asked.
-        tools = if (readerMode.showsAdvancedChrome) {
+        // The web's desktop page keeps TradingView's left toolbar in every mode (5.31.0): there the
+        // rail *is* the page's left edge, and a desktop chart without it read as half a terminal.
+        tools = if (readerMode.showsAdvancedChrome || com.coinepro.core.common.FeatureFlags.desktopShellLtr) {
             { railModifier ->
                 ChartToolRailColumn(
                     state = state,
@@ -6456,6 +6460,8 @@ internal fun tabTitle(symbol: String, price: Double, movePercent: Double?): Stri
     val grouped = whole.reversed().chunked(3).joinToString(",").reversed().replace("-,", "-")
     val figure = if ('.' in plain) grouped + "." + plain.substringAfter('.') else grouped
     val move = movePercent?.let { percent ->
+        // The browser build writes these two as «^» and «v» for the typeface (web/tools/glyphs.json);
+        // a tab title is drawn by the browser, not by it, so `WindowTitle`'s web twin puts them back.
         val arrow = if (percent >= 0) "▲" else "▼"
         val sign = if (percent >= 0) "+" else "−"
         " $arrow $sign" + formatPrice(kotlin.math.abs(percent), 2) + "%"

@@ -79,6 +79,8 @@ data class ChartSidePanel(
      * reader works from at the top and help and the like at the bottom (CHART-17).
      */
     val trailing: Boolean = false,
+    /** False for a panel whose content opens with its own header — the watchlist's list picker. */
+    val titled: Boolean = true,
     val content: @Composable () -> Unit,
 )
 
@@ -213,7 +215,7 @@ internal fun ChartSidePanelHost(
                             )
                             CompositionLocalProvider(LocalLayoutDirection provides reader) {
                                 Column(modifier = Modifier.fillMaxSize().background(CoineProColors.Stage)) {
-                                    Text(
+                                    if (open.titled) Text(
                                         text = stringResource(open.labelRes),
                                         style = MaterialTheme.typography.titleSmall,
                                         color = CoineProColors.TextPrimary,

@@ -52,6 +52,17 @@ printf '%s' "$PASSWORD" | docker compose exec -T admin python admin.py set-passw
 The same command resets a forgotten password (and signs every browser out). After the first sign-in,
 turn on two-step verification under «حساب و امنیت».
 
+## Removing test traffic
+
+A check-in or a download sent by hand to test the service counts like any other. Take it out with:
+
+```sh
+docker compose exec -T admin python admin.py forget-install <the install_id that was sent>
+docker compose exec -T admin python admin.py forget-ip <address> [YYYY-MM-DD]
+```
+
+Both are written to the audit log.
+
 ## Caddy
 
 ```caddy
@@ -80,6 +91,10 @@ pro-chart.com {
     # … /api/app/latest stays the static file; everything else unchanged …
 }
 ```
+
+Keep the four routes in the `pro-chart.com` site block itself, not in a snippet shared with other
+hosts. And set the site's own security headers with `?` (only when absent), so the console's stricter
+ones survive: `header ?X-Frame-Options SAMEORIGIN`, `header ?Referrer-Policy strict-origin-when-cross-origin`.
 
 `/admin*` must never be cached at the edge: the console already answers `Cache-Control: no-store`;
 add a Cloudflare cache rule «bypass» for `/admin*` and `/api/app/hello` if the zone caches HTML.

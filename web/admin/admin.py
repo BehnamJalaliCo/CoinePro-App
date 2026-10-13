@@ -366,7 +366,19 @@ async def _every(seconds: int, job) -> None:
 
 @web.middleware
 async def security_headers(request: web.Request, handler):
-    response = await handler(request)
+    try:
+        response = await handler(request)
+    except web.HTTPException as error:
+        # A 404 for a missing console file went out without these, and Cloudflare kept it (5.31.0).
+        _harden(request, error)
+        raise
+    _harden(request, response)
+    return response
+
+
+def _harden(request: web.Request, response: web.StreamResponse) -> None:
+    if request.path.startswith("/api/app/"):
+        response.headers.setdefault("Cache-Control", "no-store")
     if request.path.startswith("/admin"):
         response.headers.setdefault(
             "Content-Security-Policy",
@@ -378,7 +390,6 @@ async def security_headers(request: web.Request, handler):
         response.headers.setdefault("Referrer-Policy", "no-referrer")
         response.headers.setdefault("Cache-Control", "no-store")
         response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-    return response
 
 
 def client_ip(request: web.Request) -> str:
@@ -594,7 +605,7 @@ async def hello(request: web.Request) -> web.Response:
         return fail(400, "version_code")
     record = {
         "id_hash": store.anon(install_id), "platform": platform, "flavour": flavour,
-        "version": clean_text(body.get("version"), 32), "version_code": version_code, "lang": lang,
+        "version": clean_text(body.get("version"), 32) or None, "version_code": version_code, "lang": lang,
         "country": country_of(request), "sdk": sdk, "tz": clean_text(body.get("tz"), 64),
     }
     stamp = now()
@@ -892,7 +903,7 @@ async def overview(request: web.Request) -> web.Response:
         },
         "series": {"downloads": downloads, "dau": dau, "visits": visits, "new_installs": new_installs},
         "versions": [dict(row) for row in store.q(
-            "SELECT COALESCE(version, '?') AS label, COUNT(*) AS value FROM installs WHERE last_seen>=? "
+            "SELECT COALESCE(NULLIF(version, ''), '?') AS label, COUNT(*) AS value FROM installs WHERE last_seen>=? "
             "GROUP BY version ORDER BY MAX(version_code) DESC LIMIT 8", (now() - active,))],
         "platforms": [dict(row) for row in store.q(
             "SELECT platform || CASE WHEN platform='android' THEN ' · ' || flavour ELSE '' END AS label, COUNT(*) AS value "
@@ -963,7 +974,7 @@ async def audience_report(request: web.Request) -> web.Response:
 
     def split(column: str, limit: int = 10) -> list[dict]:
         return [dict(row) for row in store.q(
-            f"SELECT COALESCE(CAST({column} AS TEXT), '?') AS label, COUNT(*) AS value FROM installs WHERE last_seen>=? "
+            f"SELECT COALESCE(NULLIF(CAST({column} AS TEXT), ''), '?') AS label, COUNT(*) AS value FROM installs WHERE last_seen>=? "
             f"GROUP BY {column} ORDER BY value DESC LIMIT {limit}", (now() - active,))]
 
     return web.json_response({
@@ -1275,7 +1286,7 @@ async def release_info(request: web.Request) -> web.Response:
     latest = _latest(request.app["config"])
     active = now() - request.app["config"].active_window_days * 86400
     versions = [dict(row) for row in store.q(
-        "SELECT version AS label, version_code AS code, COUNT(*) AS value FROM installs "
+        "SELECT COALESCE(NULLIF(version, ''), '?') AS label, version_code AS code, COUNT(*) AS value FROM installs "
         "WHERE platform='android' AND last_seen>=? GROUP BY version, version_code ORDER BY version_code DESC LIMIT 15",
         (active,))]
     files = [dict(row) for row in store.q(
@@ -1437,9 +1448,44 @@ def set_password_cli(args: list[str]) -> int:
     return 0
 
 
+def forget_cli(args: list[str]) -> int:
+    """Removes test traffic from the figures (5.31.0).
+
+    `python admin.py forget-install <install_id>` — an install's check-ins and campaign events.
+    `python admin.py forget-ip <address> [YYYY-MM-DD]` — that address's downloads, visits and update
+    checks, on one day or on every day. Both are written to the audit log.
+    """
+    if len(args) < 2 or args[0] not in ("forget-install", "forget-ip"):
+        print("usage: python admin.py forget-install <install_id> | forget-ip <address> [YYYY-MM-DD]", file=sys.stderr)
+        return 2
+    store = Store(Config().db_path)
+    removed = 0
+    if args[0] == "forget-install":
+        id_hash = store.anon(args[1].strip())
+        for table in ("installs", "active_days", "message_events"):
+            removed += store.x(f"DELETE FROM {table} WHERE id_hash=?", (id_hash,)).rowcount
+        store.audit("console", "console", "data.forget_install", {"rows": removed})
+    else:
+        ip_hash = store.anon("ip|" + args[1].strip())
+        day = args[2] if len(args) > 2 else None
+        if day is not None and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
+            print("the day is YYYY-MM-DD", file=sys.stderr)
+            return 2
+        for table in ("downloads", "visits", "update_checks"):
+            if day:
+                removed += store.x(f"DELETE FROM {table} WHERE ip_hash=? AND day=?", (ip_hash, day)).rowcount
+            else:
+                removed += store.x(f"DELETE FROM {table} WHERE ip_hash=?", (ip_hash,)).rowcount
+        store.audit("console", "console", "data.forget_ip", {"rows": removed, "day": day})
+    print(f"{removed} rows removed")
+    return 0
+
+
 def main() -> None:
     if len(sys.argv) > 1 and sys.argv[1] == "set-password":
         raise SystemExit(set_password_cli(sys.argv[2:]))
+    if len(sys.argv) > 1 and sys.argv[1] in ("forget-install", "forget-ip"):
+        raise SystemExit(forget_cli(sys.argv[1:]))
     if len(sys.argv) > 1 and sys.argv[1] == "ingest":
         app = build_app(Config(background=False))
         print(f"{ingest_logs(app)} lines read")

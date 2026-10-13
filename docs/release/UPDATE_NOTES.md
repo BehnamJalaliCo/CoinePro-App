@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.31.0
+
+**fa**
+
+> نسخه‌ی وب پرو چارت حالا مثل تریدینگ‌ویو چیده شده: نوار ابزار ترسیم همیشه در سمت چپ نمودار است، و در سمت راست دیده‌بان باز است و زیرش جزئیات نماد دیده می‌شود (قیمت، تغییر روز، دامنه‌ی روز و حجم). فلش بالا و پایین در عنوان زبانه‌ی مرورگر هم درست نمایش داده می‌شود.
+
+**en**
+
+> Pro Chart on the web is now laid out like TradingView: the drawing toolbar is always on the left of the chart, and on the right the watchlist is open with the symbol's details under it — price, the day's move, the day's range and volume. The up and down arrows in the browser tab's title now show correctly.
+
+---
+
 ## 5.30.0
 
 **fa**

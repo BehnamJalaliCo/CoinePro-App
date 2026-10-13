@@ -895,4 +895,19 @@
     <string name="chart_toolbar_auto">Auto (fits data to screen)</string>
     <string name="chart_rail_lock_all">Lock all drawings</string>
     <string name="chart_compare_search">Search a symbol</string>
+    <!-- 5.31.0: TradingView's symbol details under the watchlist, on the web's desktop page. -->
+    <string name="chart_details_updated">Last update %1$s</string>
+    <string name="chart_details_key_stats">Key stats</string>
+    <string name="chart_details_bid">Bid</string>
+    <string name="chart_details_ask">Ask</string>
+    <string name="chart_details_spread">Spread</string>
+    <string name="chart_details_day_range">Day\'s range</string>
+    <string name="chart_details_day_open">Open 24h ago</string>
+    <string name="chart_details_volume">Volume, 24h</string>
+    <string name="chart_details_crypto">Crypto · Spot</string>
+    <string name="chart_details_forex">Forex</string>
+    <string name="chart_details_metal">Metals</string>
+    <string name="chart_details_index">Index</string>
+    <string name="chart_details_energy">Energy</string>
+    <string name="chart_details_other">Market</string>
 </resources>

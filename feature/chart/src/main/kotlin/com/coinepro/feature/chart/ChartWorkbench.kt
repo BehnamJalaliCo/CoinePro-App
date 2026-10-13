@@ -141,7 +141,15 @@ internal fun ChartWorkbench(
             content = it,
         )
     }
-    val panels = listOfNotNull(readingsPanel) + sidePanels
+    val panels = (listOfNotNull(readingsPanel) + sidePanels).let { all ->
+        // On the web's desktop page, TradingView's widget-bar order (5.31.0): the watchlist and the
+        // alerts first, the object tree after them. Anything not named keeps its own place behind.
+        if (com.coinepro.core.common.FeatureFlags.desktopShellLtr) {
+            all.sortedBy { panel -> DESKTOP_PANEL_ORDER.indexOf(panel.id).let { if (it < 0) Int.MAX_VALUE else it } }
+        } else {
+            all
+        }
+    }
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         if (panels.isNotEmpty() && sidePanelsFit(maxWidth.value)) {
             ChartSidePanelHost(panels = panels, modifier = Modifier.fillMaxSize(), initialOpenId = initialSidePanel) { hostModifier ->
@@ -420,3 +428,6 @@ internal val CHART_MIN_PLOT_WIDTH = 440.dp
  * simply open nothing with no error anywhere.
  */
 internal const val READINGS_PANEL_ID = "readings"
+
+/** TradingView's desktop widget bar, top to bottom, by panel id (5.31.0). */
+private val DESKTOP_PANEL_ORDER = listOf("watchlist", "alerts", "objects", READINGS_PANEL_ID, "depth", "news", "calendar", "script")

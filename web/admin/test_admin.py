@@ -143,6 +143,30 @@ class ConsoleTest(AioHTTPTestCase):
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
         self.assertIn("app.js", await response.text())
 
+    async def test_missing_console_file_is_not_cached(self):
+        response = await self.client.get("/admin/static/nope.js")
+        self.assertEqual(response.status, 404)
+        self.assertEqual(response.headers.get("Cache-Control"), "no-store")
+        hello = await self.client.post("/api/app/hello", json={"install_id": "install-0009"})
+        self.assertEqual(hello.headers.get("Cache-Control"), "no-store")
+
+    async def test_an_install_without_a_version_is_labelled(self):
+        await self.client.post("/api/app/hello", json={"install_id": "install-0009", "version_code": 1})
+        await self.sign_in()
+        overview = await (await self.client.get("/admin/api/overview")).json()
+        self.assertEqual(overview["versions"], [{"label": "?", "value": 1}])
+
+    async def test_test_traffic_can_be_forgotten(self):
+        await self.hello("test-install-0001")
+        self.log.write_text(self.access("/download/pro-chart-5.30.0.apk", ip="9.9.9.9") + self.access("/terminal/", ip="9.9.9.9"))
+        admin.ingest_logs(self.app)
+        with mock.patch.object(admin, "Store", lambda _path: self.store):
+            self.assertEqual(admin.forget_cli(["forget-install", "test-install-0001"]), 0)
+            self.assertEqual(admin.forget_cli(["forget-ip", "9.9.9.9"]), 0)
+        self.assertEqual(self.store.one("SELECT COUNT(*) FROM installs"), 0)
+        self.assertEqual(self.store.one("SELECT COUNT(*) FROM downloads"), 0)
+        self.assertEqual(self.store.one("SELECT COUNT(*) FROM visits"), 0)
+
     async def test_console_page_has_no_inline_styles_or_scripts(self):
         static = Path(admin.HERE) / "static"
         html = (static / "index.html").read_text(encoding="utf-8")

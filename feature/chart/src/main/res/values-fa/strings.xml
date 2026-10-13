@@ -915,4 +915,19 @@
     <string name="chart_toolbar_auto">خودکار (بازه‌ی قیمت به اندازه‌ی چارت)</string>
     <string name="chart_rail_lock_all">قفل همه‌ی ترسیم‌ها</string>
     <string name="chart_compare_search">جست‌وجوی نماد</string>
+    <!-- 5.31.0: TradingView's symbol details under the watchlist, on the web's desktop page. -->
+    <string name="chart_details_updated">آخرین به‌روزرسانی %1$s</string>
+    <string name="chart_details_key_stats">آمار کلیدی</string>
+    <string name="chart_details_bid">قیمت خرید</string>
+    <string name="chart_details_ask">قیمت فروش</string>
+    <string name="chart_details_spread">اسپرد</string>
+    <string name="chart_details_day_range">دامنه‌ی روز</string>
+    <string name="chart_details_day_open">قیمت ۲۴ ساعت پیش</string>
+    <string name="chart_details_volume">حجم ۲۴ ساعت</string>
+    <string name="chart_details_crypto">رمزارز · اسپات</string>
+    <string name="chart_details_forex">فارکس</string>
+    <string name="chart_details_metal">فلزات</string>
+    <string name="chart_details_index">شاخص</string>
+    <string name="chart_details_energy">انرژی</string>
+    <string name="chart_details_other">بازار</string>
 </resources>
