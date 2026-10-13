@@ -430,7 +430,28 @@ internal fun chromeInk(hovered: Boolean, enabled: Boolean = true): Color = when 
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun ChromeTooltip(label: String, content: @Composable () -> Unit) {
+internal fun ChromeTooltip(
+    label: String,
+    /** The control's own hover, which decides on the web's desktop page (5.32.1). */
+    hovered: Boolean? = null,
+    content: @Composable () -> Unit,
+) {
+    // On the web the tooltip follows the control's hover and nothing else. Left to its own input
+    // handling it opened as the page laid itself out — «حالت», the rail's first group, stood over
+    // the cell beneath it, even over the first-run screens, until the pointer passed over it.
+    // Persistent there, as TradingView's is: it stays while the pointer does and goes when it leaves.
+    val pointerOnly = hovered != null && com.coinepro.core.common.FeatureFlags.desktopShellLtr
+    val state = rememberTooltipState(isPersistent = pointerOnly)
+    if (pointerOnly) {
+        androidx.compose.runtime.LaunchedEffect(hovered) {
+            if (hovered == true) {
+                kotlinx.coroutines.delay(TOOLTIP_DELAY_MILLIS)
+                state.show()
+            } else {
+                state.dismiss()
+            }
+        }
+    }
     TooltipBox(
         positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
         tooltip = {
@@ -442,12 +463,14 @@ internal fun ChromeTooltip(label: String, content: @Composable () -> Unit) {
                 Text(text = label, style = MaterialTheme.typography.bodySmall)
             }
         },
-        state = rememberTooltipState(),
-        // Hover only (5.32.1). Focusable, the anchor that took the page's first focus showed its
-        // name for good — «حالت» stood under the rail's first cell from the moment the page opened.
+        state = state,
         focusable = false,
+        enableUserInput = !pointerOnly,
     ) { content() }
 }
+
+/** TradingView's pause before a control names itself. */
+private const val TOOLTIP_DELAY_MILLIS = 500L
 
 @Composable
 private fun ToolbarChip(
@@ -471,7 +494,7 @@ private fun ToolbarChip(
             horizontalArrangement = Arrangement.Center,
         ) { content(chromeInk(hovered, onClick != null)) }
     }
-    if (tooltip != null) ChromeTooltip(tooltip, chip) else chip()
+    if (tooltip != null) ChromeTooltip(tooltip, hovered, chip) else chip()
 }
 
 /**
@@ -490,7 +513,7 @@ private fun GlyphButton(
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
     val flip = mirrored && LocalLayoutDirection.current == LayoutDirection.Rtl
-    ChromeTooltip(label) {
+    ChromeTooltip(label, hovered) {
         Box(
             modifier = Modifier
                 .size(DESKTOP_CONTROL)

@@ -285,7 +285,7 @@ private fun SideRailCell(panel: ChartSidePanel, selected: Boolean, onToggle: (St
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
     val label = stringResource(panel.labelRes)
-    ChromeTooltip(label) {
+    ChromeTooltip(label, hovered) {
         Box(
             modifier = Modifier
                 .size(SIDE_RAIL_CELL)

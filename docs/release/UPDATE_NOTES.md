@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.32.2
+
+**fa**
+
+> در نسخه‌ی وب، برچسب کوچک «حالت» که از لحظه‌ی باز شدن صفحه در گوشه‌ی بالا سمت چپ می‌ماند این بار واقعاً حذف شد. نام هر ابزار فقط وقتی نشانگر موس روی آن است نمایش داده می‌شود و با کنار رفتن موس پنهان می‌شود.
+
+**en**
+
+> On the web, the small «Modes» label that stayed in the top-left corner from the moment the page opened is now really gone. A tool's name shows only while the mouse pointer is over it, and goes when the pointer leaves.
+
+---
+
 ## 5.32.1
 
 **fa**

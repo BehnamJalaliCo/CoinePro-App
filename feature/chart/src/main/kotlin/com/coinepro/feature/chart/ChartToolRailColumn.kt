@@ -338,7 +338,7 @@ private fun RailCell(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
-    ChromeTooltip(description) {
+    ChromeTooltip(description, hovered) {
         Box(
             modifier = Modifier
                 .size(width = CHART_TOOL_RAIL, height = RAIL_CELL)
