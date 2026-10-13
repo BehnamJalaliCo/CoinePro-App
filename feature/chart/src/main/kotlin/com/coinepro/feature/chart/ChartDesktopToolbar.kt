@@ -443,6 +443,9 @@ internal fun ChromeTooltip(label: String, content: @Composable () -> Unit) {
             }
         },
         state = rememberTooltipState(),
+        // Hover only (5.32.1). Focusable, the anchor that took the page's first focus showed its
+        // name for good — «حالت» stood under the rail's first cell from the moment the page opened.
+        focusable = false,
     ) { content() }
 }
 
