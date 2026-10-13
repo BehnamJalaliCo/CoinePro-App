@@ -4167,6 +4167,14 @@ private fun DrawScope.drawEventMarks(
             drawLightning(Offset(x, centreY), side)
             continue
         }
+        // **A release does not hide the news beside it (5.33.2).** Over the last two days of a
+        // forex chart nearly every bar has a calendar release, and the square won every group it
+        // shared with a headline — the pair's lightning was nowhere near the bars the reader was
+        // looking at. So the bolt stands directly above the square, one glyph up, in the same
+        // column the tap already opens.
+        if (group.any { (inGroup, _) -> inGroup.events.any { it.kind == EventKind.NEWS } }) {
+            drawLightning(Offset(x, centreY - reach), side)
+        }
         val colour = colours.of(mark.importance)
         if (stacked) {
             drawRoundRect(
@@ -4192,7 +4200,7 @@ private fun Density.eventLaneCentre(axisTop: Float): Float =
 
 /** How far above the axis a tap still reaches the lane: the glyph, its gap, and a little over. */
 private fun Density.eventLaneReach(): Float =
-    (EventGlyphs.AXIS_GAP_DP + EventGlyphs.SIZE_DP).dp.toPx() + EVENT_CLUSTER_GAP_DP.toPx() * 2
+    (EventGlyphs.AXIS_GAP_DP + EventGlyphs.SIZE_DP * 2).dp.toPx() + EVENT_CLUSTER_GAP_DP.toPx() * 3
 
 /** The space two marks need between them to be drawn as two. */
 private val EVENT_CLUSTER_GAP_DP = 2.dp

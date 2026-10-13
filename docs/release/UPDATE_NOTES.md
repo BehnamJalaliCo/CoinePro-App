@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.33.2
+
+**fa**
+
+> در نمودار فارکس، روی بارهایی که هم خبر دارند و هم رویداد تقویم اقتصادی، علامت صاعقه‌ی خبر حالا بالای مربع رویداد دیده می‌شود و دیگر زیر آن پنهان نمی‌ماند. برای کاربر مهمان هم درخواست بی‌فایده‌ای که هر بار با خطا رد می‌شد دیگر فرستاده نمی‌شود.
+
+**en**
+
+> On forex charts, a bar with both news and an economic-calendar release now shows the news lightning above the release's square instead of hiding it. A guest no longer sends a needless request that was refused every time.
+
+---
+
 ## 5.33.1
 
 **fa**

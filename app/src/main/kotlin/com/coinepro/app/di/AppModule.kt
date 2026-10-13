@@ -1320,7 +1320,14 @@ object AppModule {
     fun academyCalendarSource(
         @ForexPlatform retrofit: Retrofit,
         tokens: AcademyTokenStore,
-    ): AcademyCalendarSource = NetworkAcademyCalendarSource(retrofit) { tokens.token() }
+        @ForexPlatform memory: SessionMemory,
+    ): AcademyCalendarSource = NetworkAcademyCalendarSource(retrofit) {
+        // No forex session, no mint (5.33.2): the route is public, and asking `user/academy-token`
+        // for a guest is a 401 on every forex chart the web page opens — now that a pair reads the
+        // forex events — for a token the calendar does not need.
+        check(!memory.token().isNullOrBlank()) { "no forex session" }
+        tokens.token()
+    }
 
     /**
      * The public newswires and the published economic calendar.
