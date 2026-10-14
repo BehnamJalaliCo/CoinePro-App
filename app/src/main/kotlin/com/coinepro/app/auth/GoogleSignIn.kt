@@ -1,6 +1,9 @@
 package com.coinepro.app.auth
 
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
 import androidx.credentials.CredentialOption
@@ -14,6 +17,9 @@ import com.coinepro.core.auth.googleSignInRefusal
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import java.security.SecureRandom
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
 
 /**
  * What came back from asking Google who this is.
@@ -77,7 +83,23 @@ class GoogleSignInClient(private val context: Context) {
     suspend fun requestIdToken(serverClientId: String): GoogleSignInOutcome {
         val audience = serverClientId.trim()
         if (audience.isEmpty()) return GoogleSignInOutcome.Failed(null)
+        val onPhone = askPlayServices(audience)
+        // **The browser when Play services cannot answer (5.35.0).** In Iran, without a VPN, the
+        // account sheet is refused by Google's side of Play services — the Bazaar build reported it —
+        // while Google's own sign-in page opens in a browser like any other. So anything but a token
+        // or the reader's own «cancel» is asked again there, with the same audience, and the answer
+        // comes back through pro-chart.com's callback page. Only when that fails too is the phone's
+        // answer the one the reader is shown.
+        return when (onPhone) {
+            is GoogleSignInOutcome.Token, GoogleSignInOutcome.Cancelled -> onPhone
+            else -> when (val inBrowser = GoogleBrowserSignIn.request(context, audience)) {
+                is GoogleSignInOutcome.Token, GoogleSignInOutcome.Cancelled -> inBrowser
+                else -> onPhone
+            }
+        }
+    }
 
+    private suspend fun askPlayServices(audience: String): GoogleSignInOutcome {
         var attempt = GoogleSignInAttempt.ONE_TAP
         while (true) {
             when (val round = ask(attempt, audience)) {
@@ -163,6 +185,115 @@ class GoogleSignInClient(private val context: Context) {
         data class Done(val outcome: GoogleSignInOutcome) : Round
 
         data class Refused(val type: String, val message: String?) : Round
+    }
+}
+
+/**
+ * Google's sign-in page in the browser, answered through `pro-chart.com/terminal/google-callback.html`
+ * (5.35.0) — the page the web build already uses, registered as a redirect for the same web client.
+ *
+ * ### How the token gets back, and why nothing else can take it
+ *
+ * The callback page cannot `postMessage` to an app, so it hands the token back as an `intent://`
+ * link pinned to this package: Chrome resolves it to this app only, and the token rides in an
+ * extra, never in a URI another app could register for. The page is told the package and a one-off
+ * [state] through Google's own `state` parameter, and an answer is accepted only when it carries the
+ * state this attempt made — so a link crafted elsewhere cannot sign a reader into somebody else's
+ * account.
+ *
+ * ### When the reader simply comes back
+ *
+ * Returning to the app without an answer — the back button, a closed tab — is a cancel, decided a
+ * moment after the app is resumed so an answer arriving with that very resume still wins.
+ */
+object GoogleBrowserSignIn {
+    /** The callback the web build registered for the web client; the app reuses it. */
+    private const val REDIRECT = "https://pro-chart.com/terminal/google-callback.html"
+    private const val AUTH = "https://accounts.google.com/o/oauth2/v2/auth"
+
+    /** The host the callback page's intent carries. Declared in the manifest. */
+    const val RETURN_HOST = "google-signin"
+    private const val EXTRA_TOKEN = "id_token"
+    private const val EXTRA_STATE = "state"
+    private const val EXTRA_ERROR = "error"
+    private const val RESUME_GRACE_MS = 1_500L
+
+    private class Pending(val state: String, val answer: CompletableDeferred<GoogleSignInOutcome>) {
+        @Volatile var left = false
+    }
+
+    @Volatile private var pending: Pending? = null
+    private val random = SecureRandom()
+
+    suspend fun request(context: Context, audience: String): GoogleSignInOutcome {
+        val state = ByteArray(18).also(random::nextBytes).joinToString("") { "%02x".format(it) }
+        val nonce = ByteArray(12).also(random::nextBytes).joinToString("") { "%02x".format(it) }
+        val attempt = Pending(state, CompletableDeferred())
+        pending?.answer?.complete(GoogleSignInOutcome.Cancelled)
+        pending = attempt
+        val url = Uri.parse(AUTH).buildUpon()
+            .appendQueryParameter("response_type", "id_token")
+            .appendQueryParameter("prompt", "select_account")
+            .appendQueryParameter("scope", "openid email profile")
+            .appendQueryParameter("client_id", audience)
+            .appendQueryParameter("redirect_uri", REDIRECT)
+            .appendQueryParameter("nonce", nonce)
+            .appendQueryParameter("state", "app:${context.packageName}:$state")
+            .build()
+        val opened = try {
+            context.startActivity(
+                // Its own task, always: the callback's intent then brings this app's task forward and
+                // reaches the activity already waiting (singleTop) instead of a second copy of it
+                // stacked over the browser.
+                Intent(Intent.ACTION_VIEW, url).addCategory(Intent.CATEGORY_BROWSABLE)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+            true
+        } catch (_: ActivityNotFoundException) {
+            false
+        }
+        if (!opened) {
+            pending = null
+            return GoogleSignInOutcome.Failed(null)
+        }
+        return try {
+            attempt.answer.await()
+        } finally {
+            if (pending === attempt) pending = null
+        }
+    }
+
+    /** The app went to the browser. Called from the activity's `onPause`. */
+    fun onLeft() {
+        pending?.left = true
+    }
+
+    /** The app is back. A pending attempt with no answer by then is the reader's cancel. */
+    suspend fun onReturned() {
+        val attempt = pending?.takeIf { it.left } ?: return
+        delay(RESUME_GRACE_MS)
+        attempt.answer.complete(GoogleSignInOutcome.Cancelled)
+    }
+
+    /**
+     * The callback page's answer, if [intent] is one. True when it was — the caller reads nothing
+     * else from it. An answer whose state is not this attempt's is dropped, not reported.
+     */
+    fun consume(intent: Intent?): Boolean {
+        val uri = intent?.data ?: return false
+        if (uri.scheme != "coinepro" || uri.host != RETURN_HOST) return false
+        val attempt = pending ?: return true
+        if (intent.getStringExtra(EXTRA_STATE) != attempt.state) return true
+        val token = intent.getStringExtra(EXTRA_TOKEN)?.takeIf { it.isNotBlank() }
+        val error = intent.getStringExtra(EXTRA_ERROR)
+        attempt.answer.complete(
+            when {
+                token != null -> GoogleSignInOutcome.Token(token)
+                error == "access_denied" -> GoogleSignInOutcome.Cancelled
+                else -> GoogleSignInOutcome.Failed(error)
+            },
+        )
+        return true
     }
 }
 

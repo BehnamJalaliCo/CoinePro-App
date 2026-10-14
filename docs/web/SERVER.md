@@ -804,8 +804,8 @@ every URL the phone builds (`WebRoutes.kt`):
 
 The same path and query, the same body, byte for byte. Forward these request headers and no
 others: `Authorization`, `Content-Type`, `Accept`, `X-Install-Id`, `X-App-Platform`,
-`X-App-Version`, `X-Play-Integrity` (never sent by a page, harmless), and `X-Client-Id` for §6's
-buckets. Never forward the reader's `Cookie`. Return the upstream status, `Content-Type` and body
+`X-App-Version`, `X-Client-Platform`, `X-Client-Flavor`, `X-Play-Integrity` (never sent by a page,
+harmless), and `X-Client-Id` for §6's buckets. Never forward the reader's `Cookie`. Return the upstream status, `Content-Type` and body
 unchanged; add no CORS headers (the page is same-origin). No caching on this prefix.
 
 **The one thing it must do rather than merely pass: keep the bearer out of the page.** §4.4 says the

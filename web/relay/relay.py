@@ -71,6 +71,8 @@ class Config:
 FORWARDED_REQUEST_HEADERS = (
     "Authorization", "Content-Type", "Accept", "Accept-Language", "X-Install-Id", "X-App-Platform",
     "X-App-Version", "X-Play-Integrity", "X-Play-Integrity-Nonce", "X-Community-Key", "X-Client-Id",
+    # Where a sign-in came from, for the owner console's user list (5.35.0).
+    "X-Client-Platform", "X-Client-Flavor",
 )
 RETURNED_RESPONSE_HEADERS = ("Content-Type", "Retry-After", "X-Request-Id")
 

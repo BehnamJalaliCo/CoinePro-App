@@ -90,6 +90,23 @@ class Config:
     hello_per_minute: int = int(os.environ.get("ADMIN_HELLO_PER_MINUTE", "60"))
     # The app checks in at most every few hours; an install not seen for this long is gone.
     active_window_days: int = 30
+    # The two servers that hold the readers' accounts (5.35.0). Each answers its admin bridge only
+    # with the shared secret its own `PROCHART_ADMIN_BRIDGE_TOKEN` holds; the token stays on this
+    # server and never reaches the browser. An empty token hides that server from «کاربران».
+    bridges: dict = field(default_factory=lambda: {
+        "tradeyar": {
+            "label": "TradeYar — کریپتو",
+            "url": os.environ.get("ADMIN_TRADEYAR_BRIDGE_URL",
+                                  "https://tradeyar.trade-future.ir/api/mobile/v1/admin-bridge").rstrip("/"),
+            "token": os.environ.get("ADMIN_TRADEYAR_BRIDGE_TOKEN", ""),
+        },
+        "coineprofx": {
+            "label": "CoinePro-FX — فارکس",
+            "url": os.environ.get("ADMIN_COINEPROFX_BRIDGE_URL",
+                                  "https://coineprofx.com/api/user/admin-bridge").rstrip("/"),
+            "token": os.environ.get("ADMIN_COINEPROFX_BRIDGE_TOKEN", ""),
+        },
+    })
 
 
 SESSION_COOKIE = "pca_session"
@@ -333,6 +350,15 @@ def build_app(config: Config | None = None) -> web.Application:
     app.router.add_post(f"{api}/account/totp/disable", totp_disable)
     app.router.add_get(f"{api}/account/sessions", sessions_list)
     app.router.add_post(f"{api}/account/sessions/revoke-others", sessions_revoke_others)
+    # The readers' accounts, on the two servers that hold them (5.35.0).
+    app.router.add_get(f"{api}/users/backends", users_backends)
+    app.router.add_get(r"/admin/api/users/{backend:[a-z]+}/stats", users_stats)
+    app.router.add_get(r"/admin/api/users/{backend:[a-z]+}/list", users_list)
+    app.router.add_get(r"/admin/api/users/{backend:[a-z]+}/list.csv", users_csv)
+    app.router.add_get(r"/admin/api/users/{backend:[a-z]+}/{id:\d+}", users_detail)
+    app.router.add_post(r"/admin/api/users/{backend:[a-z]+}/{id:\d+}/{action:[a-z-]+}", users_action)
+    app.router.add_put(r"/admin/api/users/{backend:[a-z]+}/{id:\d+}/note", users_note)
+    app.router.add_delete(r"/admin/api/users/{backend:[a-z]+}/{id:\d+}", users_delete)
 
     app.on_startup.append(_start)
     app.on_cleanup.append(_stop)
@@ -1337,6 +1363,194 @@ async def audit_csv(request: web.Request) -> web.Response:
     require(request)
     rows = request.app["store"].q("SELECT at, username, ip, action, detail FROM audit ORDER BY id DESC")
     return _csv(rows, ["at", "username", "ip", "action", "detail"], "pro-chart-audit.csv")
+
+
+# ── Readers' accounts (5.35.0) ─────────────────────────────────────────────────────────────────
+#
+# The accounts themselves live on TradeYar and CoinePro-FX. Each exposes the same admin bridge
+# (`/admin-bridge/…`), opened by a shared secret; this console is its only caller. The browser
+# talks to this server, never to the bridges: the secret stays here, every action is checked
+# against the console's own session and CSRF token, and every action is written to the audit log.
+
+USER_ACTIONS = ("ban", "unban", "sign-out", "verify-email", "password-reset", "push", "grant", "revoke-pro")
+USER_LIST_PARAMS = ("q", "status", "platform", "scope", "sort", "page", "size")
+
+
+def _bridge(request: web.Request) -> tuple[str, dict]:
+    name = request.match_info["backend"]
+    bridge = request.app["config"].bridges.get(name)
+    if not bridge:
+        raise web.HTTPNotFound(text=json.dumps({"error": "unknown_backend"}), content_type="application/json")
+    if not bridge.get("token") or not bridge.get("url"):
+        raise web.HTTPServiceUnavailable(text=json.dumps({"error": "bridge_not_configured"}),
+                                         content_type="application/json")
+    return name, bridge
+
+
+async def bridge_call(request: web.Request, bridge: dict, method: str, path: str, *,
+                      params: dict | None = None, body: dict | None = None, operator: str = "console"):
+    """One call to a bridge. (status, decoded body); 502 when the server cannot be reached."""
+    http: aiohttp.ClientSession = request.app["state"]["http"]
+    headers = {"X-ProChart-Admin": bridge["token"], "X-ProChart-Operator": operator[:64],
+               "Accept": "application/json"}
+    try:
+        async with http.request(method, bridge["url"] + path, params=params, json=body, headers=headers,
+                                timeout=aiohttp.ClientTimeout(total=25), allow_redirects=False) as response:
+            text = await response.text()
+            try:
+                data = json.loads(text) if text else {}
+            except ValueError:
+                data = {"error": "bad_upstream_body"}
+            return response.status, data
+    except (aiohttp.ClientError, asyncio.TimeoutError) as error:
+        return 502, {"error": "backend_unreachable", "detail": type(error).__name__}
+
+
+def _relay(status: int, data) -> web.Response:
+    if status == 404 and isinstance(data, dict) and data.get("detail") in (None, "", "Not Found"):
+        # A bridge with no token answers 404 for everything: say so rather than «not found».
+        return fail(503, "bridge_disabled_on_server")
+    if status == 401:
+        return fail(502, "bridge_token_mismatch")
+    return web.json_response(data, status=status if status < 500 or status == 502 else 502)
+
+
+async def users_backends(request: web.Request) -> web.Response:
+    require(request)
+    return web.json_response({"backends": [
+        {"key": key, "label": value["label"], "configured": bool(value.get("token") and value.get("url"))}
+        for key, value in request.app["config"].bridges.items()
+    ]})
+
+
+async def users_stats(request: web.Request) -> web.Response:
+    require(request)
+    _, bridge = _bridge(request)
+    status, data = await bridge_call(request, bridge, "GET", "/stats", params={"tz": request.app["config"].timezone})
+    return _relay(status, data)
+
+
+def _list_params(request: web.Request) -> dict:
+    params = {}
+    for name in USER_LIST_PARAMS:
+        value = clean_text(request.query.get(name), 120)
+        if value:
+            params[name] = value
+    return params
+
+
+async def users_list(request: web.Request) -> web.Response:
+    require(request)
+    _, bridge = _bridge(request)
+    status, data = await bridge_call(request, bridge, "GET", "/users", params=_list_params(request))
+    return _relay(status, data)
+
+
+USER_CSV_COLUMNS = ["id", "email", "full_name", "phone", "email_verified", "has_password", "google", "telegram",
+                    "created_at", "signup_platform", "signup_flavor", "signup_method", "signup_app_version",
+                    "last_seen_at", "last_platform", "last_app_version", "sign_ins", "banned", "ban_reason", "note"]
+
+
+async def users_csv(request: web.Request) -> web.Response:
+    session = require(request)
+    name, bridge = _bridge(request)
+    params = {**_list_params(request), "size": "500"}
+    rows: list[dict] = []
+    for page in range(1, 41):  # 20,000 accounts at most in one file
+        status, data = await bridge_call(request, bridge, "GET", "/users", params={**params, "page": str(page)})
+        if status != 200:
+            return _relay(status, data)
+        batch = data.get("users") or []
+        rows.extend(batch)
+        if len(batch) < 500:
+            break
+    request.app["store"].audit(session["username"], client_ip(request), "users.export",
+                               {"backend": name, "rows": len(rows), "filters": params})
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(USER_CSV_COLUMNS)
+    for row in rows:
+        writer.writerow(["" if row.get(column) is None else row.get(column) for column in USER_CSV_COLUMNS])
+    return web.Response(body=("﻿" + out.getvalue()).encode(), content_type="text/csv", charset="utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="pro-chart-users-{name}.csv"'})
+
+
+async def users_detail(request: web.Request) -> web.Response:
+    require(request)
+    _, bridge = _bridge(request)
+    status, data = await bridge_call(request, bridge, "GET", f"/users/{int(request.match_info['id'])}")
+    return _relay(status, data)
+
+
+async def users_action(request: web.Request) -> web.Response:
+    session = require(request, mutating=True)
+    name, bridge = _bridge(request)
+    action = request.match_info["action"]
+    if action not in USER_ACTIONS:
+        return fail(404, "unknown_action")
+    user_id = int(request.match_info["id"])
+    body: dict | None = None
+    if action == "ban":
+        raw = await read_json(request)
+        body = {"reason": clean_text(raw.get("reason"), 500)}
+    elif action == "push":
+        raw = await read_json(request)
+        title, text = clean_text(raw.get("title"), 120), clean_text(raw.get("body"), 600)
+        if not title or not text:
+            return fail(400, "title_and_body_required")
+        body = {"title": title, "body": text}
+    elif action == "grant":
+        raw = await read_json(request)
+        plan = raw.get("plan") if raw.get("plan") in ("monthly", "quarterly", "yearly") else "monthly"
+        try:
+            days = max(1, min(3660, int(raw.get("days") or 30)))
+        except (TypeError, ValueError):
+            return fail(400, "days")
+        body = {"plan": plan, "days": days}
+    status, data = await bridge_call(request, bridge, "POST", f"/users/{user_id}/{action}", body=body,
+                                     operator=session["username"])
+    if status < 300:
+        detail = {"backend": name, "user": user_id}
+        if body and action != "push":
+            detail.update(body)
+        elif action == "push":
+            detail["title"] = body["title"]
+        request.app["store"].audit(session["username"], client_ip(request), f"users.{action}", detail)
+    return _relay(status, data)
+
+
+async def users_note(request: web.Request) -> web.Response:
+    session = require(request, mutating=True)
+    name, bridge = _bridge(request)
+    raw = await read_json(request)
+    user_id = int(request.match_info["id"])
+    note = clean_text(raw.get("note"), 2000)
+    status, data = await bridge_call(request, bridge, "PUT", f"/users/{user_id}/note", body={"note": note},
+                                     operator=session["username"])
+    if status < 300:
+        request.app["store"].audit(session["username"], client_ip(request), "users.note",
+                                   {"backend": name, "user": user_id})
+    return _relay(status, data)
+
+
+async def users_delete(request: web.Request) -> web.Response:
+    """Deleting an account cannot be undone: the owner types its email address to confirm it."""
+    session = require(request, mutating=True)
+    name, bridge = _bridge(request)
+    raw = await read_json(request)
+    user_id = int(request.match_info["id"])
+    status, account = await bridge_call(request, bridge, "GET", f"/users/{user_id}")
+    if status != 200:
+        return _relay(status, account)
+    typed = clean_text(raw.get("confirm"), 255).lower()
+    expected = (account.get("email") or str(user_id)).strip().lower()
+    if not typed or not hmac.compare_digest(typed, expected):
+        return fail(400, "confirm_mismatch")
+    status, data = await bridge_call(request, bridge, "DELETE", f"/users/{user_id}", operator=session["username"])
+    if status < 300:
+        request.app["store"].audit(session["username"], client_ip(request), "users.delete",
+                                   {"backend": name, "user": user_id})
+    return _relay(status, data)
 
 
 # ── The owner's account ─────────────────────────────────────────────────────────────────────────

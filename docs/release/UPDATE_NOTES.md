@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.35.0
+
+**fa**
+
+> ورود با گوگل حالا بدون فیلترشکن هم کار می‌کند: اگر سرویس‌های گوگل روی گوشی پاسخ ندهند، صفحه‌ی ورود گوگل در مرورگر باز می‌شود و بعد از انتخاب حساب به برنامه برمی‌گردید. ایمیل کد تأیید و بازیابی رمز با نام پرو چارت فرستاده می‌شود و کد در یک خط کامل دیده می‌شود.
+
+**en**
+
+> Google sign-in now works without a VPN: when Google services on the phone do not answer, Google's sign-in page opens in the browser and brings you back to the app once you pick an account. Verification and password-reset emails now come from Pro Chart, with the whole code on one line.
+
+---
+
 ## 5.34.3
 
 **fa**

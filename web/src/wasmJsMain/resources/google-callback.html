@@ -1,14 +1,57 @@
 <!doctype html>
+<html lang="fa" dir="rtl">
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Google</title>
+<style>
+  @font-face { font-family: 'IRANYekanX'; src: url('fonts/iranyekanx_regular.ttf') format('truetype'); font-weight: 400; }
+  @font-face { font-family: 'IRANYekanX'; src: url('fonts/iranyekanx_bold.ttf') format('truetype'); font-weight: 700; }
+  :root { color-scheme: light dark; }
+  body { margin: 0; min-height: 100vh; display: none; align-items: center; justify-content: center;
+         font-family: 'IRANYekanX', sans-serif; background: #F7F8FA; color: #131722; }
+  @media (prefers-color-scheme: dark) { body { background: #131722; color: #D1D4DC; } }
+  main { max-width: 360px; padding: 24px 16px; text-align: center; }
+  h1 { font-size: 18px; font-weight: 700; margin: 0 0 8px; }
+  p { font-size: 14px; line-height: 1.9; margin: 0 0 20px; }
+  a { display: inline-block; padding: 12px 28px; border-radius: 999px; background: #D4A64A; color: #131722;
+      font-weight: 700; text-decoration: none; }
+</style>
+<main>
+  <h1 id="title">ورود با گوگل انجام شد</h1>
+  <p id="note">برای ادامه به برنامه‌ی پرو چارت برگردید.</p>
+  <a id="back" href="#">بازگشت به پرو چارت</a>
+</main>
 <script>
-  // Google's account chooser returns here with the ID token in the fragment. The token goes to the
-  // page that opened this window — same origin only — and this window closes. Nothing is stored.
+  // Google's account chooser returns here with the ID token in the fragment.
+  //
+  // * Opened by the web page (a popup): the token goes to the page that opened this window — same
+  //   origin only — and this window closes. Nothing is stored.
+  // * Opened by the Android app (5.35.0), whose Play services Google refuses in Iran: `state` is
+  //   `app:<package>:<nonce>`, and the token goes back as an intent pinned to that package, in an
+  //   extra — never in a URI another app could claim. The app accepts it only with its own nonce.
   (function () {
     var p = new URLSearchParams(window.location.hash.slice(1));
-    if (window.opener) {
-      window.opener.postMessage({ kind: 'google-id-token', idToken: p.get('id_token'), error: p.get('error') }, window.location.origin);
+    var token = p.get('id_token'), error = p.get('error'), state = p.get('state') || '';
+    var app = /^app:([a-z][a-z0-9_]*(?:\.[a-z0-9_]+)+):([0-9a-f]{16,64})$/.exec(state);
+    if (window.opener && !app) {
+      window.opener.postMessage({ kind: 'google-id-token', idToken: token, error: error }, window.location.origin);
+      window.close();
+      return;
     }
-    window.close();
+    if (!app) { window.close(); return; }
+    var extras = 'S.state=' + encodeURIComponent(app[2]);
+    if (token) extras += ';S.id_token=' + encodeURIComponent(token);
+    if (error) extras += ';S.error=' + encodeURIComponent(error);
+    var intent = 'intent://google-signin#Intent;scheme=coinepro;package=' + app[1] + ';' + extras + ';end';
+    // The address bar must not keep the token once it has been handed over.
+    history.replaceState(null, '', window.location.pathname);
+    if (!token) {
+      document.getElementById('title').textContent = 'ورود با گوگل انجام نشد';
+      document.getElementById('note').textContent = 'به برنامه برگردید و دوباره امتحان کنید، یا با ایمیل وارد شوید.';
+    }
+    document.getElementById('back').href = intent;
+    document.body.style.display = 'flex';
+    window.location.replace(intent);
   })();
 </script>
+</html>

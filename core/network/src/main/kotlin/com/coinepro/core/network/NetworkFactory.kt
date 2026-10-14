@@ -1,5 +1,6 @@
 package com.coinepro.core.network
 
+import com.coinepro.core.common.FeatureFlags
 import com.google.gson.FieldNamingPolicy
 import com.google.gson.GsonBuilder
 import java.util.concurrent.TimeUnit
@@ -95,7 +96,20 @@ object NetworkFactory {
             // Recorded against the session server-side. Sent on every request rather than at
             // sign-in because a session outlives an update, and the version that matters when
             // diagnosing a report is the one that made the call.
-            builder.header("X-App-Platform", "android")
+            // The browser build compiles this same file, so the platform is read, not assumed — the
+            // owner console counts its Android and web readers apart by this header (5.35.0), and the
+            // flavour tells the Cafe Bazaar build from the site's own download.
+            val platform = if (FeatureFlags.webBuild) "web" else "android"
+            builder.header("X-App-Platform", platform)
+            builder.header("X-Client-Platform", platform)
+            builder.header(
+                "X-Client-Flavor",
+                when {
+                    FeatureFlags.webBuild -> "web"
+                    FeatureFlags.storeRestricted -> "bazaar"
+                    else -> "direct"
+                },
+            )
             appVersion?.takeIf { it.isNotBlank() }?.let { builder.header("X-App-Version", it) }
             val request = builder.build()
             val response = chain.proceed(request)

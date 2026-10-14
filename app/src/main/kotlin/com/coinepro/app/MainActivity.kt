@@ -628,8 +628,15 @@ class MainActivity : FragmentActivity() {
         super.onDestroy()
     }
 
+    override fun onPause() {
+        super.onPause()
+        com.coinepro.app.auth.GoogleBrowserSignIn.onLeft()
+    }
+
     override fun onResume() {
         super.onResume()
+        // Back from Google's page in the browser without an answer is a cancel (5.35.0).
+        lifecycleScope.launch { com.coinepro.app.auth.GoogleBrowserSignIn.onReturned() }
         updateNotificationPermissionState()
         evaluateNotificationOffer()
         refreshWidgets()
@@ -727,6 +734,8 @@ class MainActivity : FragmentActivity() {
             ?.let { id ->
                 lifecycleScope.launch { localAlertStore.acknowledge(id, System.currentTimeMillis()) }
             }
+        // Google's answer from the browser (5.35.0). Read and nothing else: it carries a token.
+        if (com.coinepro.app.auth.GoogleBrowserSignIn.consume(intent)) return
         // A tap on one of the owner's campaigns: counted, and a web address handed to the browser.
         ownerChannel.consume(intent, this)
         val uri = intent?.data ?: return

@@ -40,6 +40,27 @@ volumes:
 Before building: `mkdir -p fonts && cp ../../core/designsystem/src/main/res/font/iranyekanx_*.ttf fonts/`
 (or from wherever the repository is checked out). The copies are ignored by git.
 
+## «کاربران» — the readers' accounts (5.35.0)
+
+The accounts readers create in the app (Android, Bazaar and direct builds, and the web terminal)
+live on the two backends: TradeYar (crypto, Premium subscriptions) and CoinePro-FX (forex). Each
+exposes the same admin bridge, and this console is its only caller, server to server:
+
+| variable (this service) | default | must equal |
+| --- | --- | --- |
+| `ADMIN_TRADEYAR_BRIDGE_URL` | `https://tradeyar.trade-future.ir/api/mobile/v1/admin-bridge` | — |
+| `ADMIN_TRADEYAR_BRIDGE_TOKEN` | empty (section off) | TradeYar's `PROCHART_ADMIN_BRIDGE_TOKEN` |
+| `ADMIN_COINEPROFX_BRIDGE_URL` | `https://coineprofx.com/api/user/admin-bridge` | — |
+| `ADMIN_COINEPROFX_BRIDGE_TOKEN` | empty (section off) | CoinePro-FX's `PROCHART_ADMIN_BRIDGE_TOKEN` |
+
+Each token is at least 32 random characters (`openssl rand -hex 32`); a backend without one answers
+404 on every bridge route. The token never reaches the browser. What the section does: totals,
+daily sign-ups, origin (Android / web, Bazaar / direct), sign-up method and app version; a searchable,
+filterable, paged list with CSV export; and per account the profile, sessions, notification devices,
+Premium periods and the owner's note, with ban / unban (every session ends at once), sign out
+everywhere, mark email verified, send a password-reset mail, send a notification, grant or end
+Premium (TradeYar) and delete (the email typed to confirm). Every action is in the audit log.
+
 ## The account
 
 No password is ever in the repository or the image. Create the owner's account on the server, once,

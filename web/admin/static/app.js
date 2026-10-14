@@ -118,8 +118,18 @@ const ERRORS = {
   min_version_code: 'کد نسخه عدد صحیح است.',
   hello_every_hours: 'فاصلهٔ بررسی بین ۱ تا ۲۴ ساعت است.',
   network: 'ارتباط با سرور برقرار نشد.',
+  bridge_not_configured: 'اتصال به این سرور هنوز تنظیم نشده است.',
+  bridge_disabled_on_server: 'این سرور هنوز بخش مدیریت کاربران را روشن نکرده (PROCHART_ADMIN_BRIDGE_TOKEN).',
+  bridge_token_mismatch: 'رمز اتصال این کنسول با سرور یکی نیست.',
+  backend_unreachable: 'سرور کاربران در دسترس نیست.',
+  unknown_backend: 'سرور ناشناخته.',
+  confirm_mismatch: 'متن تأیید با ایمیل حساب یکی نیست.',
+  title_and_body_required: 'عنوان و متن اعلان لازم است.',
+  days: 'مدت را به روز وارد کنید.',
+  '404': 'این حساب پیدا نشد.',
+  '409': 'این کار روی این سرور ممکن نیست.',
 };
-const errorText = (error) => ERRORS[error?.code] || ERRORS[error?.message] || `خطا (${esc(error?.code || error?.message || '?')})`;
+const errorText = (error) => (error?.status === 409 && typeof error?.data?.detail === 'string' ? esc(error.data.detail) : null) || ERRORS[error?.code] || ERRORS[error?.message] || `خطا (${esc(error?.code || error?.message || '?')})`;
 
 class ApiError extends Error {
   constructor(code, status, data) { super(code); this.code = code; this.status = status; this.data = data; }
@@ -439,6 +449,7 @@ const VIEWS = {
   overview: { title: 'داشبورد', sub: 'نمای کلی پرو چارت در یک نگاه', render: renderOverview, refresh: 60 },
   downloads: { title: 'دانلودها و بازدید', sub: 'از گزارش دسترسی Caddy؛ هر نشانی در هر روز یک‌بار', render: renderDownloads },
   audience: { title: 'مخاطبان و ماندگاری', sub: 'کاربران فعال، بازگشت و ساعت‌های حضور', render: renderAudience },
+  users: { title: 'کاربران', sub: 'حساب‌های ثبت‌نام‌شده در اندروید و وب — مدیریت کامل', render: renderUsers },
   installs: { title: 'نصب‌ها', sub: 'هر نصب با شناسهٔ ناشناس؛ هیچ اطلاعات شخصی نگه داشته نمی‌شود', render: renderInstalls },
   messages: { title: 'پیام‌ها و اعلان‌ها', sub: 'اعلان همگانی، پیشنهاد تخفیف، اطلاعیه و هشدار', render: renderMessages },
   coupons: { title: 'کدهای تخفیف', sub: 'ساخت، محدودیت و پیگیری استفاده', render: renderCoupons },
@@ -770,6 +781,285 @@ async function renderInstalls(host) {
   $('#in-reset').addEventListener('click', () => save({}));
   $('#in-prev').addEventListener('click', () => save({ ...filters, offset: Math.max(0, offset - 50) }));
   $('#in-next').addEventListener('click', () => save({ ...filters, offset: offset + 50 }));
+}
+
+// ── Readers' accounts (5.35.0) ─────────────────────────────────────────────────────────────────
+//
+// The accounts live on TradeYar (crypto, Pro subscriptions) and CoinePro-FX (forex). This server
+// asks each through its admin bridge; the browser never sees a bridge or its secret.
+
+const SIGNUP = { email: 'ایمیل و رمز', google: 'گوگل', coinepro_link: 'پیوند حساب', telegram: 'تلگرام', unknown: 'نامشخص' };
+const USER_STATUS = [['', 'همهٔ وضعیت‌ها'], ['active7', 'فعال ۷ روز اخیر'], ['active30', 'فعال ۳۰ روز اخیر'], ['dormant', 'غیرفعال (۳۰+ روز)'],
+  ['new7', 'ثبت‌نام ۷ روز اخیر'], ['unverified', 'ایمیل تأییدنشده'], ['google', 'ورود با گوگل'], ['password', 'دارای رمز'], ['banned', 'مسدود']];
+const USER_PLATFORM = [['', 'همهٔ مبدأها'], ['android', 'اندروید'], ['web', 'وب'], ['bazaar', 'نسخهٔ بازار'], ['direct', 'دانلود مستقیم'], ['unknown', 'نامشخص (پیش از 5.35.0)']];
+const isoEpoch = (iso) => (iso ? Math.floor(Date.parse(iso) / 1000) : null);
+const userBackend = () => sessionStorage.getItem('us-backend') || 'tradeyar';
+
+function originPill(platform, flavor) {
+  if (!platform) return '<span class="pill plain">نامشخص</span>';
+  const cls = platform === 'android' ? 'good' : platform === 'web' ? 'info' : 'plain';
+  const store = platform === 'android' && flavor ? ` · ${platformLabel(flavor)}` : '';
+  return `<span class="pill ${cls} plain">${platformLabel(platform)}${store}</span>`;
+}
+
+function userBadges(u) {
+  const out = [];
+  if (u.banned) out.push('<span class="pill bad">مسدود</span>');
+  out.push(u.email_verified ? '<span class="pill good plain">تأییدشده</span>' : '<span class="pill warn plain">تأییدنشده</span>');
+  if (u.google) out.push('<span class="pill info plain">Google</span>');
+  if (u.telegram) out.push('<span class="pill accent plain">Telegram</span>');
+  return out.join(' ');
+}
+
+function initials(u) {
+  const source = (u.full_name || u.email || '?').trim();
+  return esc(source.slice(0, 1).toUpperCase());
+}
+
+async function renderUsers(host) {
+  const { backends } = await api('users/backends');
+  let backend = userBackend();
+  if (!backends.some((b) => b.key === backend)) backend = backends[0]?.key;
+  const current = backends.find((b) => b.key === backend);
+  const switcher = `<div class="segmented" id="us-backend">${backends.map((b) => `<button data-b="${b.key}" class="${b.key === backend ? 'on' : ''}">${esc(b.label)}${b.configured ? '' : ' ·  خاموش'}</button>`).join('')}</div>`;
+  if (!current?.configured) {
+    host.innerHTML = `<div class="card"><div class="card-head">${switcher}</div>
+      ${empty('اتصال به این سرور تنظیم نشده', 'روی سرور پرو چارت ADMIN_' + esc(backend.toUpperCase()) + '_BRIDGE_TOKEN را با همان مقدار PROCHART_ADMIN_BRIDGE_TOKEN آن سرور تنظیم کنید.', 'server')}</div>`;
+    bindBackend(host);
+    return;
+  }
+  const filters = JSON.parse(sessionStorage.getItem(`us-filters-${backend}`) || '{}');
+  const page = +(filters.page || 1);
+  const params = new URLSearchParams({ page, size: 50 });
+  ['q', 'status', 'platform', 'scope', 'sort'].forEach((k) => filters[k] && params.set(k, filters[k]));
+  const [stats, list] = await Promise.all([api(`users/${backend}/stats`), api(`users/${backend}/list?${params}`)]);
+  const t = stats.totals;
+  const select = (name, options) => `<select class="input" name="${name}">${options.map(([v, l]) => `<option value="${v}" ${(filters[name] || '') === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+  const csv = new URLSearchParams(params); csv.delete('page'); csv.delete('size');
+  host.innerHTML = `
+    <div class="card"><div class="card-head">${switcher}
+      <span class="faint">حساب‌های برنامه: اندروید (بازار و مستقیم) و وب</span></div></div>
+    <div class="grid g-4">
+      ${kpi({ label: 'همهٔ حساب‌ها', value: fmt.n(t.total), iconName: 'users', color: '#8b7bff', foot: `${fmt.fa(t.verified)} تأییدشده` })}
+      ${kpi({ label: 'ثبت‌نام تازه', value: fmt.n(t.new_7d), iconName: 'plus', color: '#2ad4c4', foot: `امروز ${fmt.fa(t.new_today)} · ۳۰ روز ${fmt.fa(t.new_30d)}`, spark: stats.daily_signups.map((d) => d.n) })}
+      ${kpi({ label: 'فعال ۷ روز اخیر', value: fmt.n(t.active_7d), iconName: 'pulse', color: '#f5a524', foot: `امروز ${fmt.fa(t.active_1d)} · ۳۰ روز ${fmt.fa(t.active_30d)}` })}
+      ${kpi({ label: 'مسدود', value: fmt.n(t.banned), iconName: 'stop', color: '#f0506e', foot: `گوگل ${fmt.fa(t.google)} · رمز ${fmt.fa(t.password)}` })}
+    </div>
+    <div class="grid g-main">
+      <div class="card"><div class="card-head"><div><h3>ثبت‌نام روزانه</h3><p>۳۰ روز اخیر، به وقت تهران</p></div></div><div id="us-chart"></div></div>
+      <div class="card"><div class="card-head"><h3>مبدأ ثبت‌نام</h3></div>${donut(stats.platforms.map((p) => ({ label: p.key, value: p.n })), { labelOf: (l) => (l === 'unknown' ? 'نامشخص' : platformLabel(l)) })}</div>
+    </div>
+    <div class="grid g-3">
+      <div class="card"><div class="card-head"><h3>روش ثبت‌نام</h3></div>${barList(stats.methods.map((m) => ({ label: m.key, value: m.n })), { labelOf: (l) => esc(SIGNUP[l] || l) })}</div>
+      <div class="card"><div class="card-head"><h3>فروشگاه</h3></div>${barList(stats.flavors.map((m) => ({ label: m.key, value: m.n })), { labelOf: (l) => esc(l === 'unknown' ? 'نامشخص' : platformLabel(l)) })}</div>
+      <div class="card"><div class="card-head"><h3>نسخهٔ برنامه (فعال‌ها)</h3></div>${barList(stats.versions.map((m) => ({ label: m.key, value: m.n })), { labelOf: (l) => `<span class="num">${esc(l)}</span>` })}</div>
+    </div>
+    <div class="card flush">
+      <div class="card-head"><div><h3>${fmt.fa(list.total)} حساب</h3><p>روی هر ردیف بزنید تا جزئیات و اقدام‌ها باز شود</p></div>
+        <a class="btn sm" href="/admin/api/users/${backend}/list.csv?${csv}" download>${icon('csv')}خروجی CSV</a></div>
+      <form class="toolbar" id="us-filter" autocomplete="off">
+        <label class="search grow">${icon('search')}<input class="input" name="q" placeholder="ایمیل، نام، تلفن یا شناسه" value="${esc(filters.q || '')}"></label>
+        ${select('status', USER_STATUS)}
+        ${select('platform', USER_PLATFORM)}
+        ${select('scope', [['', 'فقط حساب‌های برنامه'], ['all', 'همهٔ کاربران سرور']])}
+        ${select('sort', [['', 'جدیدترین ثبت‌نام'], ['seen', 'آخرین فعالیت'], ['email', 'ایمیل (الفبایی)']])}
+        <button class="btn sm primary">فیلتر</button>
+        <button class="btn sm ghost" type="button" id="us-reset">پاک کردن</button>
+      </form>
+      <div class="table-wrap"><table class="users">
+        <thead><tr><th>کاربر</th><th>وضعیت</th><th>مبدأ ثبت‌نام</th><th>روش</th><th>نسخه</th><th>ثبت‌نام</th><th>آخرین فعالیت</th><th>ورودها</th></tr></thead>
+        <tbody>${list.users.map((u) => `<tr class="clickable" data-user="${u.id}">
+          <td><div class="who"><span class="avatar sm">${initials(u)}</span><div><strong>${esc(u.full_name || '—')}</strong><span class="mono faint">${esc(u.email || '—')}</span></div></div></td>
+          <td>${userBadges(u)}</td>
+          <td>${originPill(u.signup_platform, u.signup_flavor)}</td>
+          <td>${esc(SIGNUP[u.signup_method] || u.signup_method || '—')}</td>
+          <td class="num">${esc(u.last_app_version || u.signup_app_version || '—')}</td>
+          <td>${when(isoEpoch(u.created_at))}</td>
+          <td>${ago(isoEpoch(u.last_seen_at))}</td>
+          <td class="num">${fmt.n(u.sign_ins)}</td></tr>`).join('')}</tbody></table>
+        ${list.users.length ? '' : empty('حسابی پیدا نشد', 'فیلترها را تغییر دهید', 'users')}
+      </div>
+      <div class="pager"><span>${fmt.fa(Math.min(list.total, (page - 1) * 50 + 1))}–${fmt.fa(Math.min(list.total, (page - 1) * 50 + list.users.length))} از ${fmt.fa(list.total)}</span>
+        <span><button class="btn sm" id="us-prev" ${page > 1 ? '' : 'disabled'}>قبلی</button> <button class="btn sm" id="us-next" ${page * 50 < list.total ? '' : 'disabled'}>بعدی</button></span></div>
+    </div>`;
+  hydrate(host);
+  timeChart($('#us-chart'), { labels: stats.daily_signups.map((d) => d.day), height: 240, series: [
+    { name: 'ثبت‌نام', color: '#2ad4c4', values: stats.daily_signups.map((d) => d.n) },
+  ] });
+  bindBackend(host);
+  const save = (next) => { sessionStorage.setItem(`us-filters-${backend}`, JSON.stringify(next)); route(); };
+  $('#us-filter').addEventListener('submit', (e) => { e.preventDefault(); save({ ...Object.fromEntries(new FormData(e.target)), page: 1 }); });
+  $('#us-reset').addEventListener('click', () => save({}));
+  $('#us-prev').addEventListener('click', () => save({ ...filters, page: page - 1 }));
+  $('#us-next').addEventListener('click', () => save({ ...filters, page: page + 1 }));
+  $$('tr[data-user]', host).forEach((row) => row.addEventListener('click', () => openUser(backend, +row.dataset.user)));
+}
+
+function bindBackend(host) {
+  $('#us-backend', host)?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-b]');
+    if (!b) return;
+    sessionStorage.setItem('us-backend', b.dataset.b);
+    route();
+  });
+}
+
+async function openUser(backend, id) {
+  let u;
+  try { u = await api(`users/${backend}/${id}`); } catch (error) { toast(errorText(error), 'bad'); return; }
+  const live = (u.sessions || []).filter((s) => s.live).length;
+  const pro = backend === 'tradeyar';
+  const runningPro = (u.subscriptions || []).find((s) => s.live);
+  const kv = (rows) => `<dl class="kv mixed">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+  const m = modal(`
+    <div class="modal-head"><div class="who lg"><span class="avatar">${initials(u)}</span><div><h3>${esc(u.full_name || u.email || '#' + u.id)}</h3><span class="mono faint">${esc(u.email || '')}</span></div></div>
+      <button class="icon-btn ghost" data-close>${icon('x')}</button></div>
+    <div class="modal-body">
+      <div class="chips">${userBadges(u)} ${originPill(u.signup_platform, u.signup_flavor)}${runningPro ? ' <span class="pill accent">پریمیوم</span>' : ''}</div>
+      ${u.banned ? `<div class="notice bad">${icon('stop')}<span>مسدود از ${when(isoEpoch(u.banned_at))}${u.ban_reason ? ' — ' + esc(u.ban_reason) : ''}</span></div>` : ''}
+      <div class="grid g-2">
+        <div class="card inset"><div class="card-head"><h3>حساب</h3></div>${kv([
+          ['شناسه', `<span class="num">${u.id}</span>`], ['ایمیل', `<span dir="ltr">${esc(u.email || '—')}</span>`], ['تلفن', `<span dir="ltr">${esc(u.phone || '—')}</span>`],
+          ['ثبت‌نام', when(isoEpoch(u.created_at))], ['رمز عبور', u.has_password ? 'دارد' : 'ندارد'], ['گوگل', u.google ? 'متصل' : '—'],
+          ['تلگرام', u.telegram ? 'متصل' : '—'], ...(u.plan !== undefined ? [['پلن سرور', esc(u.plan || '—')]] : []), ...(u.kyc ? [['احراز هویت', esc(u.kyc)]] : []),
+        ])}</div>
+        <div class="card inset"><div class="card-head"><h3>مبدأ و فعالیت</h3></div>${kv([
+          ['مبدأ ثبت‌نام', originPill(u.signup_platform, u.signup_flavor)], ['روش ثبت‌نام', esc(SIGNUP[u.signup_method] || u.signup_method || '—')],
+          ['نسخه هنگام ثبت‌نام', `<span class="num">${esc(u.signup_app_version || '—')}</span>`], ['آخرین فعالیت', ago(isoEpoch(u.last_seen_at))],
+          ['آخرین پلتفرم', u.last_platform ? originPill(u.last_platform, u.last_flavor) : '—'], ['آخرین نسخه', `<span class="num">${esc(u.last_app_version || '—')}</span>`],
+          ['تعداد ورود', fmt.n(u.sign_ins)], ['نشست‌های فعال', fmt.n(live)],
+        ])}</div>
+      </div>
+      <div class="card inset"><div class="card-head"><h3>اقدام‌ها</h3></div><div class="toolbar">
+        ${u.banned ? `<button class="btn sm primary" data-act="unban">${icon('check')}رفع مسدودی</button>` : `<button class="btn sm danger" data-act="ban">${icon('stop')}مسدود کردن</button>`}
+        <button class="btn sm" data-act="sign-out" ${live ? '' : 'disabled'}>${icon('logout')}خروج از همهٔ دستگاه‌ها</button>
+        ${u.email_verified ? '' : `<button class="btn sm" data-act="verify-email">${icon('check')}تأیید دستی ایمیل</button>`}
+        <button class="btn sm" data-act="password-reset" ${u.email ? '' : 'disabled'}>${icon('key')}ارسال ایمیل بازیابی رمز</button>
+        <button class="btn sm" data-act="push">${icon('bell')}ارسال اعلان</button>
+        ${pro ? `<button class="btn sm" data-act="grant">${icon('gift')}اعطای پریمیوم</button>` : ''}
+        ${pro && runningPro ? `<button class="btn sm" data-act="revoke-pro">${icon('x')}پایان پریمیوم</button>` : ''}
+        <button class="btn sm danger ghost" data-act="delete">${icon('trash')}حذف حساب</button>
+      </div></div>
+      <div class="card inset"><div class="card-head"><h3>یادداشت مالک</h3><span class="faint">فقط در همین کنسول دیده می‌شود</span></div>
+        <label class="field"><textarea id="us-note" maxlength="2000" placeholder="مثلاً: از کانال تلگرام آمده، پیگیری خرید">${esc(u.note || '')}</textarea></label>
+        <div><button class="btn sm primary" id="us-note-save">${icon('check')}ذخیرهٔ یادداشت</button></div></div>
+      <div class="card inset flush"><div class="card-head"><h3>نشست‌ها</h3><span class="faint">${fmt.fa((u.sessions || []).length)} نشست · ${fmt.fa(live)} فعال</span></div>
+        <div class="table-wrap"><table><thead><tr><th>دستگاه</th><th>نسخه</th><th>شروع</th><th>آخرین استفاده</th><th>وضعیت</th></tr></thead>
+        <tbody>${(u.sessions || []).map((s) => `<tr><td>${esc(s.device || '—')}</td><td class="num">${esc(s.app_version || '—')}</td><td>${when(isoEpoch(s.first_at))}</td><td>${ago(isoEpoch(s.last_at))}</td>
+          <td>${s.live ? '<span class="pill good">فعال</span>' : `<span class="pill plain">${esc({ admin: 'بسته‌شده توسط مالک', logout: 'خروج', rotated: 'نوسازی', reuse: 'استفادهٔ تکراری', password_change: 'تغییر رمز' }[s.ended] || s.ended || 'منقضی')}</span>`}</td></tr>`).join('')}</tbody></table>
+        ${(u.sessions || []).length ? '' : empty('نشستی ثبت نشده')}</div></div>
+      ${(u.devices || []).length ? `<div class="card inset flush"><div class="card-head"><h3>دستگاه‌های اعلان</h3></div><div class="table-wrap"><table><thead><tr><th>پلتفرم</th><th>نسخه</th><th>زبان</th><th>ثبت</th><th>آخرین بار</th><th>وضعیت</th></tr></thead>
+        <tbody>${u.devices.map((d) => `<tr><td>${platformLabel(d.platform || '—')}</td><td class="num">${esc(d.app_version || '—')}</td><td>${esc(d.locale || '—')}</td><td>${when(isoEpoch(d.created_at))}</td><td>${ago(isoEpoch(d.last_seen_at))}</td><td>${d.live ? '<span class="pill good">فعال</span>' : '<span class="pill plain">غیرفعال</span>'}</td></tr>`).join('')}</tbody></table></div></div>` : ''}
+      ${pro ? `<div class="card inset flush"><div class="card-head"><h3>اشتراک پریمیوم</h3></div><div class="table-wrap"><table><thead><tr><th>پلن</th><th>منبع</th><th>شروع</th><th>پایان</th><th>وضعیت</th></tr></thead>
+        <tbody>${(u.subscriptions || []).map((s) => `<tr><td>${esc(PLANS[s.plan] || s.plan)}</td><td>${esc({ bazaar: 'کافه‌بازار', usdt: 'تتر', manual: 'اعطای مالک' }[s.source] || s.source)}</td><td>${when(isoEpoch(s.starts_at))}</td><td>${when(isoEpoch(s.ends_at))}</td><td>${s.live ? '<span class="pill good">جاری</span>' : '<span class="pill plain">پایان‌یافته</span>'}</td></tr>`).join('')}</tbody></table>
+        ${(u.subscriptions || []).length ? '' : empty('اشتراکی ثبت نشده')}</div></div>` : ''}
+    </div>`, { size: 'lg' });
+  const reopen = () => { m.close(); openUser(backend, id); };
+  const act = async (button, action, body) => {
+    try {
+      const r = await busy(button, () => api(`users/${backend}/${id}/${action}`, { method: 'POST', body }));
+      return r;
+    } catch (error) { toast(errorText(error), 'bad'); return null; }
+  };
+  $('#us-note-save', m.el).addEventListener('click', async (e) => {
+    try {
+      await busy(e.currentTarget, () => api(`users/${backend}/${id}/note`, { method: 'PUT', body: { note: $('#us-note', m.el).value } }));
+      toast('یادداشت ذخیره شد');
+    } catch (error) { toast(errorText(error), 'bad'); }
+  });
+  $$('[data-act]', m.el).forEach((button) => button.addEventListener('click', async () => {
+    const action = button.dataset.act;
+    if (action === 'ban') {
+      const reason = await promptBox('مسدود کردن حساب', 'همهٔ نشست‌های این کاربر بسته می‌شود و تا رفع مسدودی نمی‌تواند وارد برنامه شود.', { label: 'علت (اختیاری، فقط برای شما)', danger: true, ok: 'مسدود کن' });
+      if (reason === null) return;
+      const r = await act(button, 'ban', { reason });
+      if (r) { toast(`حساب مسدود شد · ${fmt.fa(r.sessions_ended || 0)} نشست بسته شد`); reopen(); }
+    } else if (action === 'unban') {
+      if (await act(button, 'unban')) { toast('مسدودی برداشته شد'); reopen(); }
+    } else if (action === 'sign-out') {
+      if (!(await confirmBox('خروج از همهٔ دستگاه‌ها', 'کاربر در همهٔ دستگاه‌ها از حساب خارج می‌شود و باید دوباره وارد شود.', { ok: 'خارج کن' }))) return;
+      const r = await act(button, 'sign-out');
+      if (r) { toast(`${fmt.fa(r.sessions_ended || 0)} نشست بسته شد`); reopen(); }
+    } else if (action === 'verify-email') {
+      if (await act(button, 'verify-email')) { toast('ایمیل تأیید شد'); reopen(); }
+    } else if (action === 'password-reset') {
+      if (!(await confirmBox('ارسال ایمیل بازیابی رمز', `کد بازیابی رمز به ${esc(u.email)} فرستاده می‌شود.`, { ok: 'بفرست' }))) return;
+      const r = await act(button, 'password-reset');
+      if (r) toast(r.sent ? 'ایمیل بازیابی فرستاده شد' : 'ایمیل فرستاده نشد', r.sent ? 'good' : 'bad');
+    } else if (action === 'push') {
+      openUserPush(backend, id);
+    } else if (action === 'grant') {
+      openUserGrant(backend, id, reopen);
+    } else if (action === 'revoke-pro') {
+      if (!(await confirmBox('پایان پریمیوم', 'اشتراک جاری و اشتراک‌های در صف همین حالا تمام می‌شوند.', { danger: true, ok: 'پایان بده' }))) return;
+      if (await act(button, 'revoke-pro')) { toast('پریمیوم پایان یافت'); reopen(); }
+    } else if (action === 'delete') {
+      const expected = u.email || String(u.id);
+      const typed = await promptBox('حذف همیشگی حساب', `همهٔ داده‌های این حساب پاک می‌شود و برگشت‌پذیر نیست. برای تأیید، <strong class="mono">${esc(expected)}</strong> را بنویسید.`, { label: 'تأیید', danger: true, ok: 'حذف همیشگی', ltr: true });
+      if (typed === null) return;
+      try {
+        await busy(button, () => api(`users/${backend}/${id}`, { method: 'DELETE', body: { confirm: typed } }));
+        toast('حساب حذف شد');
+        m.close();
+        route();
+      } catch (error) { toast(errorText(error), 'bad'); }
+    }
+  }));
+}
+
+function promptBox(title, text, { label = '', danger = false, ok = 'تأیید', ltr = false } = {}) {
+  return new Promise((resolve) => {
+    const m = modal(`
+      <div class="modal-head"><h3>${title}</h3><button class="icon-btn ghost" data-close>${icon('x')}</button></div>
+      <div class="modal-body"><p class="muted">${text}</p><label class="field"><span>${label}</span><input name="value" maxlength="500" ${ltr ? 'dir="ltr"' : ''}></label></div>
+      <div class="modal-foot"><button class="btn" data-close>انصراف</button><button class="btn ${danger ? 'danger' : 'primary'}" data-ok>${ok}</button></div>`, { size: 'sm' });
+    let done = false;
+    const finish = (value) => { if (done) return; done = true; m.close(); resolve(value); };
+    $('[data-ok]', m.el).addEventListener('click', () => finish($('[name=value]', m.el).value.trim()));
+    $('[name=value]', m.el).addEventListener('keydown', (e) => { if (e.key === 'Enter') finish(e.target.value.trim()); });
+    $$('[data-close]', m.el).forEach((b) => b.addEventListener('click', () => finish(null)));
+    setTimeout(() => $('[name=value]', m.el).focus(), 30);
+  });
+}
+
+function openUserPush(backend, id) {
+  const m = modal(`
+    <div class="modal-head"><h3>ارسال اعلان به این کاربر</h3><button class="icon-btn ghost" data-close>${icon('x')}</button></div>
+    <form class="modal-body" id="up-form">
+      <label class="field"><span>عنوان</span><input name="title" maxlength="120" required></label>
+      <label class="field"><span>متن</span><textarea name="body" maxlength="600" required></textarea></label>
+      <p class="form-error" id="up-error"></p>
+    </form>
+    <div class="modal-foot"><button class="btn" data-close>انصراف</button><button class="btn primary" id="up-send">${icon('bell')}ارسال</button></div>`, { size: 'sm' });
+  $('#up-send', m.el).addEventListener('click', async (e) => {
+    const body = Object.fromEntries(new FormData($('#up-form', m.el)));
+    try {
+      const r = await busy(e.currentTarget, () => api(`users/${backend}/${id}/push`, { method: 'POST', body }));
+      if (r.sent) { toast(`اعلان به ${fmt.fa(r.sent)} دستگاه رسید`); m.close(); } else { $('#up-error', m.el).textContent = ERRORS[`push_${r.reason}`] || 'این کاربر دستگاه فعالی برای اعلان ندارد یا اعلان‌ها را خاموش کرده است.'; }
+    } catch (error) { $('#up-error', m.el).textContent = errorText(error); }
+  });
+}
+
+function openUserGrant(backend, id, after) {
+  const m = modal(`
+    <div class="modal-head"><h3>اعطای پریمیوم</h3><button class="icon-btn ghost" data-close>${icon('x')}</button></div>
+    <form class="modal-body" id="ug-form">
+      <label class="field"><span>پلن</span><select name="plan"><option value="monthly">ماهانه</option><option value="quarterly">سه‌ماهه</option><option value="yearly">سالانه</option></select></label>
+      <label class="field"><span>مدت (روز)</span><input name="days" type="number" min="1" max="3660" value="30" dir="ltr"><small>اگر اشتراک جاری داشته باشد، بعد از آن اضافه می‌شود.</small></label>
+      <p class="form-error" id="ug-error"></p>
+    </form>
+    <div class="modal-foot"><button class="btn" data-close>انصراف</button><button class="btn primary" id="ug-ok">${icon('gift')}اعطا کن</button></div>`, { size: 'sm' });
+  const form = $('#ug-form', m.el);
+  form.plan.addEventListener('change', () => { form.days.value = { monthly: 30, quarterly: 90, yearly: 365 }[form.plan.value]; });
+  $('#ug-ok', m.el).addEventListener('click', async (e) => {
+    const body = { plan: form.plan.value, days: +form.days.value };
+    try {
+      const r = await busy(e.currentTarget, () => api(`users/${backend}/${id}/grant`, { method: 'POST', body }));
+      toast(`پریمیوم تا ${when(isoEpoch(r.ends_at))} فعال شد`);
+      m.close();
+      after();
+    } catch (error) { $('#ug-error', m.el).textContent = errorText(error); }
+  });
 }
 
 // ── Messages ───────────────────────────────────────────────────────────────────────────────────
@@ -1378,6 +1668,10 @@ const ACTIONS = {
   logout: ['plain', 'خروج'], 'message.create': ['accent', 'ساخت پیام'], 'message.update': ['accent', 'ویرایش پیام'], 'message.cancel': ['warn', 'لغو پیام'],
   'message.duplicate': ['accent', 'تکثیر پیام'], 'coupon.create': ['info', 'ساخت کد تخفیف'], 'coupon.toggle': ['info', 'تغییر وضعیت کد'], 'coupon.delete': ['warn', 'حذف کد'],
   'config.update': ['info', 'تغییر تنظیمات'], 'password.change': ['warn', 'تغییر رمز'], 'password.bad_current': ['bad', 'رمز فعلی نادرست'], 'password.set_from_cli': ['warn', 'تنظیم رمز از سرور'],
+  'users.ban': ['bad', 'مسدود کردن کاربر'], 'users.unban': ['good', 'رفع مسدودی'], 'users.sign-out': ['warn', 'خروج کاربر از همهٔ دستگاه‌ها'],
+  'users.verify-email': ['info', 'تأیید ایمیل کاربر'], 'users.password-reset': ['info', 'ارسال بازیابی رمز'], 'users.push': ['accent', 'اعلان به کاربر'],
+  'users.grant': ['good', 'اعطای پریمیوم'], 'users.revoke-pro': ['warn', 'پایان پریمیوم'], 'users.note': ['plain', 'یادداشت کاربر'],
+  'users.delete': ['bad', 'حذف حساب کاربر'], 'users.export': ['info', 'خروجی کاربران'],
   'totp.enable': ['good', 'فعال‌سازی تأیید دومرحله‌ای'], 'totp.disable': ['warn', 'غیرفعال‌سازی تأیید دومرحله‌ای'], 'sessions.revoke_others': ['warn', 'خروج دیگر دستگاه‌ها'],
 };
 const actionLabel = (a) => { const [cls, label] = ACTIONS[a] || ['plain', a]; return `<span class="pill ${cls}">${esc(label)}</span>`; };
@@ -1387,7 +1681,7 @@ async function renderAudit(host) {
   const d = await api(`audit?action=${encodeURIComponent(filter)}`);
   host.innerHTML = `
     <div class="card flush">
-      <div class="card-head"><div class="segmented" id="audit-filter">${[['', 'همه'], ['login', 'ورودها'], ['message', 'پیام‌ها'], ['coupon', 'کدها'], ['config', 'تنظیمات'], ['password', 'رمز'], ['totp', 'دومرحله‌ای']]
+      <div class="card-head"><div class="segmented" id="audit-filter">${[['', 'همه'], ['login', 'ورودها'], ['message', 'پیام‌ها'], ['coupon', 'کدها'], ['users', 'کاربران'], ['config', 'تنظیمات'], ['password', 'رمز'], ['totp', 'دومرحله‌ای']]
         .map(([k, l]) => `<button data-f="${k}" class="${k === filter ? 'on' : ''}">${l}</button>`).join('')}</div>
         <a class="btn sm" href="/admin/api/audit.csv" download>${icon('csv')}خروجی CSV</a></div>
       <div class="table-wrap"><table><thead><tr><th>زمان</th><th>کاربر</th><th>نشانی IP</th><th>رویداد</th><th>جزئیات</th></tr></thead>

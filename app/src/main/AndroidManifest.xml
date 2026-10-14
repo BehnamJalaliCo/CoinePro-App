@@ -102,6 +102,13 @@
                     here in a way it would not be for a token.
                 -->
                 <data android:scheme="coinepro" android:host="market" />
+                <!--
+                    Google sign-in's answer from the browser (5.35.0), for a phone whose Play
+                    services Google refuses — see GoogleBrowserSignIn. The URI carries nothing: the
+                    callback page sends an intent pinned to this package, the token rides in an
+                    extra, and it is accepted only with the state the attempt made.
+                -->
+                <data android:scheme="coinepro" android:host="google-signin" />
             </intent-filter>
 
             <!--

@@ -383,6 +383,139 @@ class ConsoleTest(AioHTTPTestCase):
         self.assertEqual(health["uptime_7d"], {"console": 1.0})
 
 
+class UsersConsoleTest(AioHTTPTestCase):
+    """«کاربران»: the console relays to a bridge and keeps the bridge's secret to itself."""
+
+    BRIDGE_TOKEN = "b" * 40
+
+    async def get_application(self):
+        from aiohttp import web
+        from aiohttp.test_utils import TestServer
+
+        self.calls: list[tuple[str, str, dict, dict | None, dict]] = []
+        accounts = {7: {"id": 7, "email": "sara@example.com", "full_name": "سارا", "banned": False,
+                        "signup_platform": "android", "signup_flavor": "bazaar", "sessions": []}}
+
+        async def handler(request: web.Request) -> web.Response:
+            body = await request.json() if request.can_read_body else None
+            self.calls.append((request.method, request.path, dict(request.query), body, dict(request.headers)))
+            if request.headers.get("X-ProChart-Admin") != self.BRIDGE_TOKEN:
+                return web.json_response({"detail": "unauthorised"}, status=401)
+            tail = request.path.split("/admin-bridge", 1)[1]
+            if tail == "/stats":
+                return web.json_response({"totals": {"total": 1}, "platforms": [], "flavors": [], "methods": [],
+                                          "versions": [], "daily_signups": []})
+            if tail == "/users":
+                return web.json_response({"total": 1, "page": 1, "size": 50, "users": [accounts[7]]})
+            parts = tail.strip("/").split("/")
+            user = accounts.get(int(parts[1])) if len(parts) > 1 and parts[1].isdigit() else None
+            if user is None:
+                return web.json_response({"detail": "no such account"}, status=404)
+            if len(parts) == 2 and request.method == "GET":
+                return web.json_response(user)
+            return web.json_response({"ok": True, "sessions_ended": 2})
+
+        bridge = web.Application()
+        bridge.router.add_route("*", "/{tail:.*}", handler)
+        self.bridge_server = TestServer(bridge)
+        await self.bridge_server.start_server()
+        base = str(self.bridge_server.make_url("/api/mobile/v1/admin-bridge"))
+
+        self.tmp = tempfile.TemporaryDirectory()
+        config = admin.Config(db_path=":memory:", access_logs=[], latest_json=str(Path(self.tmp.name) / "none.json"),
+                              cookie_secure=False, background=False, probes=[])
+        config.bridges = {
+            "tradeyar": {"label": "TradeYar", "url": base, "token": self.BRIDGE_TOKEN},
+            "coineprofx": {"label": "CoinePro-FX", "url": base, "token": ""},
+        }
+        app = admin.build_app(config)
+        app["store"].x("INSERT INTO users(username, pw_hash, created_at) VALUES (?,?,?)",
+                       (USER, admin.hash_password(PASSWORD), admin.now()))
+        return app
+
+    async def tearDownAsync(self):
+        await self.bridge_server.close()
+        await super().tearDownAsync()
+        self.tmp.cleanup()
+
+    async def sign_in(self) -> str:
+        await self.client.post("/admin/api/login", json={"username": USER, "password": PASSWORD})
+        return (await (await self.client.get("/admin/api/session")).json())["csrf"]
+
+    async def test_closed_until_signed_in(self):
+        for path in ("users/backends", "users/tradeyar/stats", "users/tradeyar/list", "users/tradeyar/7",
+                     "users/tradeyar/list.csv"):
+            self.assertEqual((await self.client.get(f"/admin/api/{path}")).status, 401, path)
+        self.assertEqual(self.calls, [])
+
+    async def test_backends_say_which_are_configured_and_never_the_token(self):
+        await self.sign_in()
+        body = await (await self.client.get("/admin/api/users/backends")).text()
+        self.assertNotIn(self.BRIDGE_TOKEN, body)
+        backends = {b["key"]: b["configured"] for b in json.loads(body)["backends"]}
+        self.assertEqual(backends, {"tradeyar": True, "coineprofx": False})
+        unconfigured = await self.client.get("/admin/api/users/coineprofx/stats")
+        self.assertEqual(unconfigured.status, 503)
+
+    async def test_list_relays_only_known_filters_with_the_secret(self):
+        await self.sign_in()
+        response = await self.client.get("/admin/api/users/tradeyar/list?q=sara&platform=android&evil=1&page=2")
+        self.assertEqual(response.status, 200)
+        self.assertEqual((await response.json())["users"][0]["email"], "sara@example.com")
+        method, path, query, _, headers = self.calls[-1]
+        self.assertEqual((method, path), ("GET", "/api/mobile/v1/admin-bridge/users"))
+        self.assertEqual(query, {"q": "sara", "platform": "android", "page": "2"})
+        self.assertEqual(headers["X-ProChart-Admin"], self.BRIDGE_TOKEN)
+
+    async def test_actions_need_csrf_and_are_audited_with_the_operator(self):
+        csrf = await self.sign_in()
+        refused = await self.client.post("/admin/api/users/tradeyar/7/ban", json={"reason": "spam"})
+        self.assertEqual(refused.status, 403)
+        done = await self.client.post("/admin/api/users/tradeyar/7/ban", json={"reason": "spam"},
+                                      headers={"X-CSRF-Token": csrf})
+        self.assertEqual((await done.json())["sessions_ended"], 2)
+        method, path, _, body, headers = self.calls[-1]
+        self.assertEqual((method, path, body), ("POST", "/api/mobile/v1/admin-bridge/users/7/ban", {"reason": "spam"}))
+        self.assertEqual(headers["X-ProChart-Operator"], USER)
+        audit = self.app["store"].q("SELECT action, detail FROM audit WHERE action LIKE 'users.%'")
+        self.assertEqual(audit[-1]["action"], "users.ban")
+        self.assertIn('"backend": "tradeyar"', audit[-1]["detail"])
+        unknown = await self.client.post("/admin/api/users/tradeyar/7/drop-tables", headers={"X-CSRF-Token": csrf})
+        self.assertEqual(unknown.status, 404)
+
+    async def test_push_needs_a_title_and_a_body(self):
+        csrf = await self.sign_in()
+        response = await self.client.post("/admin/api/users/tradeyar/7/push", json={"title": "سلام"},
+                                          headers={"X-CSRF-Token": csrf})
+        self.assertEqual(response.status, 400)
+
+    async def test_delete_needs_the_typed_email(self):
+        csrf = await self.sign_in()
+        wrong = await self.client.delete("/admin/api/users/tradeyar/7", json={"confirm": "someone@else.com"},
+                                         headers={"X-CSRF-Token": csrf})
+        self.assertEqual((wrong.status, (await wrong.json())["error"]), (400, "confirm_mismatch"))
+        self.assertFalse(any(c[0] == "DELETE" for c in self.calls))
+        right = await self.client.delete("/admin/api/users/tradeyar/7", json={"confirm": "Sara@Example.com"},
+                                         headers={"X-CSRF-Token": csrf})
+        self.assertEqual(right.status, 200)
+        self.assertEqual(self.calls[-1][0], "DELETE")
+
+    async def test_a_missing_account_and_a_wrong_secret_are_told_apart(self):
+        await self.sign_in()
+        self.assertEqual((await self.client.get("/admin/api/users/tradeyar/99")).status, 404)
+        self.app["config"].bridges["tradeyar"]["token"] = "x" * 40
+        mismatch = await self.client.get("/admin/api/users/tradeyar/stats")
+        self.assertEqual((mismatch.status, (await mismatch.json())["error"]), (502, "bridge_token_mismatch"))
+
+    async def test_csv_export(self):
+        await self.sign_in()
+        response = await self.client.get("/admin/api/users/tradeyar/list.csv")
+        self.assertEqual(response.status, 200)
+        text = (await response.read()).decode("utf-8-sig")
+        self.assertIn("sara@example.com", text)
+        self.assertTrue(text.startswith("id,email"))
+
+
 class CommandLineTest(unittest.TestCase):
     def test_set_password_creates_the_account_from_stdin(self):
         with tempfile.TemporaryDirectory() as folder:
