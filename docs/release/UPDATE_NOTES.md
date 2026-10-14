@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.34.3
+
+**fa**
+
+> رنگ رویدادهای تقویم با اهمیت متوسط حالا نارنجیِ واقعی است، نه زردِ طلایی. دو علامت رویداد دیگر چسبیده به هم کشیده نمی‌شوند؛ رویدادهای نزدیک به هم یک علامت می‌شوند و زدن روی آن همه را نشان می‌دهد.
+
+**en**
+
+> Medium-importance calendar events are now a true orange instead of golden yellow. Two event marks are no longer drawn touching each other: events that close together become one mark, and tapping it lists them all.
+
+---
+
 ## 5.34.2
 
 **fa**

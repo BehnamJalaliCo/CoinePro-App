@@ -4234,10 +4234,21 @@ private fun eventGroups(view: ChartViewport, marks: List<EventMark>, reach: Floa
     val groups = mutableListOf<MutableList<Pair<EventMark, Float>>>()
     for (entry in placed) {
         val group = groups.lastOrNull()
-        if (group != null && entry.second - group.first().second < reach) group += entry else groups += mutableListOf(entry)
+        // Measured from the group's first bar *and* from where its glyph is drawn (5.34.3): the glyph
+        // stands on the group's first release, which can be a bar or two in, and a new group starting
+        // within a glyph's width of it was drawn touching it — two discs that read as one, where a tap
+        // on the left half opened only the left one's events.
+        val joins = group != null && (
+            entry.second - group.first().second < reach || entry.second - group.drawnAt() < reach
+            )
+        if (joins) group!! += entry else groups += mutableListOf(entry)
     }
     return groups
 }
+
+/** Where a group's glyph stands: its first non-news mark, else its first. As [drawEventMarks] draws it. */
+private fun List<Pair<EventMark, Float>>.drawnAt(): Float =
+    (firstOrNull { it.first.kind != EventKind.NEWS } ?: first()).second
 
 /**
  * The one mark a tap on [hit] opens: every event of the glyph group it is drawn in, earliest first,
@@ -4318,6 +4329,9 @@ private fun DrawScope.drawLightning(centre: Offset, side: Float) {
     drawPath(bolt, color = Color.White)
 }
 
+/** Medium importance: Material's orange 600, legible on the light stage and the dark one alike. */
+private val IMPORTANCE_MEDIUM_ORANGE = Color(0xFFFB8C00)
+
 /** TradingView's palette purple, `#9C27B0` — the news bolt. */
 private val NEWS_PURPLE = Color(0xFF9C27B0)
 
@@ -4355,7 +4369,9 @@ internal data class EventMarkColours(val high: Color, val medium: Color, val low
 @ReadOnlyComposable
 fun importanceColour(importance: Importance): Color = when (importance) {
     Importance.HIGH -> CoineProColors.Sell
-    Importance.MEDIUM -> CoineProColors.Warning
+    // A true orange (5.34.3), not the app's warning gold `#F0B90B`, which read as yellow beside the
+    // red and the blue.
+    Importance.MEDIUM -> IMPORTANCE_MEDIUM_ORANGE
     // Blue rather than the buy green (5.34.0): a green mark under a bar read as «price up», and a
     // quiet release says nothing about direction.
     Importance.LOW -> CoineProColors.Analysis
