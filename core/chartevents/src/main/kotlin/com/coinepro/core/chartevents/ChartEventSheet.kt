@@ -63,8 +63,15 @@ fun ChartEventSheet(
     zone: ZoneId = ZoneId.systemDefault(),
 ) {
     CoineProSheet(
-        title = stringResource(R.string.chart_events_sheet_title),
-        subtitle = if (mark.isCluster) {
+        title = stringResource(if (mark.bars > 1) R.string.chart_events_sheet_title_span else R.string.chart_events_sheet_title),
+        subtitle = if (mark.bars > 1) {
+            // Neighbouring candles drawn as one glyph (5.34.2): said as such, never «this candle».
+            stringResource(
+                R.string.chart_events_sheet_span,
+                mark.events.size.proseDigits(),
+                mark.bars.proseDigits(),
+            )
+        } else if (mark.isCluster) {
             // A prose count, so Persian digits — «۱۰ رویداد», never «10 رویداد».
             stringResource(R.string.chart_events_sheet_many, mark.events.size.proseDigits())
         } else {

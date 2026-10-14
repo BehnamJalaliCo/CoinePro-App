@@ -187,6 +187,12 @@ data class EventMark(
     val events: List<ChartEvent>,
     val kind: EventKind,
     val importance: Importance,
+    /**
+     * How many candles this mark gathers (5.34.2). One for a bar's own mark; more when a tap opens
+     * the glyph's whole group — neighbouring bars drawn as one — so the sheet does not say «this
+     * candle» over events an hour and three-quarters apart.
+     */
+    val bars: Int = 1,
 ) {
     /** Whether this mark stands for more than one event, and so opens a list rather than a card. */
     val isCluster: Boolean get() = events.size > 1

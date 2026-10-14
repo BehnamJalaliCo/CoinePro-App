@@ -9,6 +9,8 @@
     <string name="chart_notable_move_down">%1$s%% down</string>
     <string name="chart_notable_within">On the calendar and the wire, inside this bar</string>
     <string name="chart_notable_nothing">The bar is unusually large and nothing this app carries fell inside it — no release, no headline. Markets move for reasons that are not always published, and naming the nearest one would be a guess rather than an answer.</string>
+    <string name="chart_events_sheet_title_span">Events at this point of the chart</string>
+    <string name="chart_events_sheet_span">%1$s events across %2$s neighbouring bars, in order</string>
     <string name="chart_events_sheet_one">One event inside this bar</string>
     <string name="chart_events_sheet_many">%1$s events inside this bar, in order</string>
     <string name="chart_events_settings_title">Events on the chart</string>

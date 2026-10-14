@@ -4250,7 +4250,10 @@ private fun Density.groupedMark(view: ChartViewport, marks: List<EventMark>, hit
         ?: return hit
     if (group.size < 2) return hit
     val shown = group.firstOrNull { it.first.kind != EventKind.NEWS }?.first ?: group.first().first
-    return shown.copy(events = group.flatMap { it.first.events }.distinct().sortedBy(ChartEvent::at))
+    return shown.copy(
+        events = group.flatMap { it.first.events }.distinct().sortedBy(ChartEvent::at),
+        bars = group.map { it.first.barIndex }.distinct().size,
+    )
 }
 
 /** Where the event lane's glyphs are centred: inside the plot, [EventGlyphs.AXIS_GAP_DP] above the dates. */

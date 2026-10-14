@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.34.2
+
+**fa**
+
+> وقتی یک علامت زیر چارت رویدادهای چند کندلِ کنار هم را نشان می‌دهد، برگه‌ی رویدادها حالا همین را می‌گوید، مثلاً «۳ رویداد در ۲ کندل کنار هم»، و دیگر به‌اشتباه نمی‌نویسد «در بازه‌ی این کندل».
+
+**en**
+
+> When one mark under the chart stands for events on several neighbouring bars, the events sheet now says so, for example «3 events across 2 neighbouring bars», instead of wrongly saying they were inside this bar.
+
+---
+
 ## 5.34.1
 
 **fa**
