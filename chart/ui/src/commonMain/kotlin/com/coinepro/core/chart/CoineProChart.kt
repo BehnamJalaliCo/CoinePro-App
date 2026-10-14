@@ -2887,8 +2887,8 @@ fun CoineProChart(
                                                     xOf = seen::xOf,
                                                 )
                                             }
-                                            if (hit != null) {
-                                                onEvents(hit)
+                                            if (hit != null && placed != null) {
+                                                onEvents(groupedMark(placed, currentEvents.value, hit))
                                                 return@detectTapGestures
                                             }
                                         }
@@ -4146,18 +4146,8 @@ private fun DrawScope.drawEventMarks(
     val centreY = eventLaneCentre(axisTop)
     // Marks closer than their own width are one mark with a stack behind it, the way TradingView
     // folds a run of headlines — twelve bolts side by side read as one purple smear (MOBILE-10).
-    val placed = marks
-        .filter { it.barIndex in view.firstVisible..view.lastVisible }
-        .map { it to view.xOf(it.barIndex) }
-        .filter { (_, x) -> x in 0f..view.plotWidth }
-        .sortedBy { it.second }
     val reach = side + EVENT_CLUSTER_GAP_DP.toPx()
-    val groups = mutableListOf<MutableList<Pair<EventMark, Float>>>()
-    for (entry in placed) {
-        val group = groups.lastOrNull()
-        if (group != null && entry.second - group.first().second < reach) group += entry else groups += mutableListOf(entry)
-    }
-    for (group in groups) {
+    for (group in eventGroups(view, marks, reach)) {
         val (mark, x) = group.firstOrNull { it.first.kind != EventKind.NEWS } ?: group.first()
         val stacked = group.size > 1 || mark.isCluster
         // **News is TradingView's purple lightning** (5.16.0): the latest story on a bar is a bolt in
@@ -4228,6 +4218,39 @@ private fun DrawScope.drawCalendarGlyph(centre: Offset, side: Float, colour: Col
             cap = StrokeCap.Round,
         )
     }
+}
+
+/**
+ * The marks as the lane draws them: visible, left to right, and folded into one group wherever they
+ * stand closer than [reach]. Shared by the drawing and the tap (5.34.1), so a tap opens exactly
+ * what one glyph stands for — the bolt above a release included.
+ */
+private fun eventGroups(view: ChartViewport, marks: List<EventMark>, reach: Float): List<List<Pair<EventMark, Float>>> {
+    val placed = marks
+        .filter { it.barIndex in view.firstVisible..view.lastVisible }
+        .map { it to view.xOf(it.barIndex) }
+        .filter { (_, x) -> x in 0f..view.plotWidth }
+        .sortedBy { it.second }
+    val groups = mutableListOf<MutableList<Pair<EventMark, Float>>>()
+    for (entry in placed) {
+        val group = groups.lastOrNull()
+        if (group != null && entry.second - group.first().second < reach) group += entry else groups += mutableListOf(entry)
+    }
+    return groups
+}
+
+/**
+ * The one mark a tap on [hit] opens: every event of the glyph group it is drawn in, earliest first,
+ * under the mark the glyph shows. A release and the headline beside it were one glyph and a bolt on
+ * screen, and the sheet listed the release alone (5.34.1).
+ */
+private fun Density.groupedMark(view: ChartViewport, marks: List<EventMark>, hit: EventMark): EventMark {
+    val reach = (EventGlyphs.SIZE_DP.dp + EVENT_CLUSTER_GAP_DP).toPx()
+    val group = eventGroups(view, marks, reach).firstOrNull { members -> members.any { it.first == hit } }
+        ?: return hit
+    if (group.size < 2) return hit
+    val shown = group.firstOrNull { it.first.kind != EventKind.NEWS }?.first ?: group.first().first
+    return shown.copy(events = group.flatMap { it.first.events }.distinct().sortedBy(ChartEvent::at))
 }
 
 /** Where the event lane's glyphs are centred: inside the plot, [EventGlyphs.AXIS_GAP_DP] above the dates. */

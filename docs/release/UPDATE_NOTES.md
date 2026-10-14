@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.34.1
+
+**fa**
+
+> رویدادهای تقویم اقتصادی زیر نمودار حالا به‌جای مربع ساده، یک دایره‌ی رنگی با آیکون تقویم دارند: قرمز مهم، نارنجی متوسط و آبی کم‌اهمیت. با زدن روی علامتی که صاعقه‌ی خبر بالای آن است، برگه‌ی رویدادها حالا خبر را هم کنار رویداد تقویم نشان می‌دهد.
+
+**en**
+
+> Economic-calendar events under the chart are now a coloured disc with a calendar icon instead of a plain square: red for high, amber for medium, blue for low. Tapping a mark with a news lightning above it now lists that news in the sheet too, beside the calendar release.
+
+---
+
 ## 5.34.0
 
 **fa**
