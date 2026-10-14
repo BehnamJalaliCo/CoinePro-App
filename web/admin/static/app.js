@@ -795,6 +795,18 @@ const USER_PLATFORM = [['', 'همهٔ مبدأها'], ['android', 'اندروی�
 const isoEpoch = (iso) => (iso ? Math.floor(Date.parse(iso) / 1000) : null);
 const userBackend = () => sessionStorage.getItem('us-backend') || 'tradeyar';
 
+/** The bridges send only the days that had a sign-up; the chart wants every one of the last 30, zeros included. */
+function signupDays(rows, count = 30) {
+  const byDay = Object.fromEntries((rows || []).map((r) => [r.day, r.n]));
+  const days = [];
+  const today = Date.now() / 1000;
+  for (let i = count - 1; i >= 0; i -= 1) {
+    const p = tehranParts(today - i * 86400);
+    days.push(`${p.year}-${p.month}-${p.day}`);
+  }
+  return { days, values: days.map((d) => byDay[d] || 0) };
+}
+
 function originPill(platform, flavor) {
   if (!platform) return '<span class="pill plain">نامشخص</span>';
   const cls = platform === 'android' ? 'good' : platform === 'web' ? 'info' : 'plain';
@@ -834,6 +846,7 @@ async function renderUsers(host) {
   ['q', 'status', 'platform', 'scope', 'sort'].forEach((k) => filters[k] && params.set(k, filters[k]));
   const [stats, list] = await Promise.all([api(`users/${backend}/stats`), api(`users/${backend}/list?${params}`)]);
   const t = stats.totals;
+  const daily = signupDays(stats.daily_signups);
   const select = (name, options) => `<select class="input" name="${name}">${options.map(([v, l]) => `<option value="${v}" ${(filters[name] || '') === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
   const csv = new URLSearchParams(params); csv.delete('page'); csv.delete('size');
   host.innerHTML = `
@@ -841,7 +854,7 @@ async function renderUsers(host) {
       <span class="faint">حساب‌های برنامه: اندروید (بازار و مستقیم) و وب</span></div></div>
     <div class="grid g-4">
       ${kpi({ label: 'همهٔ حساب‌ها', value: fmt.n(t.total), iconName: 'users', color: '#8b7bff', foot: `${fmt.fa(t.verified)} تأییدشده` })}
-      ${kpi({ label: 'ثبت‌نام تازه', value: fmt.n(t.new_7d), iconName: 'plus', color: '#2ad4c4', foot: `امروز ${fmt.fa(t.new_today)} · ۳۰ روز ${fmt.fa(t.new_30d)}`, spark: stats.daily_signups.map((d) => d.n) })}
+      ${kpi({ label: 'ثبت‌نام تازه', value: fmt.n(t.new_7d), iconName: 'plus', color: '#2ad4c4', foot: `امروز ${fmt.fa(t.new_today)} · ۳۰ روز ${fmt.fa(t.new_30d)}`, spark: daily.values })}
       ${kpi({ label: 'فعال ۷ روز اخیر', value: fmt.n(t.active_7d), iconName: 'pulse', color: '#f5a524', foot: `امروز ${fmt.fa(t.active_1d)} · ۳۰ روز ${fmt.fa(t.active_30d)}` })}
       ${kpi({ label: 'مسدود', value: fmt.n(t.banned), iconName: 'stop', color: '#f0506e', foot: `گوگل ${fmt.fa(t.google)} · رمز ${fmt.fa(t.password)}` })}
     </div>
@@ -883,8 +896,8 @@ async function renderUsers(host) {
         <span><button class="btn sm" id="us-prev" ${page > 1 ? '' : 'disabled'}>قبلی</button> <button class="btn sm" id="us-next" ${page * 50 < list.total ? '' : 'disabled'}>بعدی</button></span></div>
     </div>`;
   hydrate(host);
-  timeChart($('#us-chart'), { labels: stats.daily_signups.map((d) => d.day), height: 240, series: [
-    { name: 'ثبت‌نام', color: '#2ad4c4', values: stats.daily_signups.map((d) => d.n) },
+  timeChart($('#us-chart'), { labels: daily.days, height: 240, series: [
+    { name: 'ثبت‌نام', color: '#2ad4c4', values: daily.values },
   ] });
   bindBackend(host);
   const save = (next) => { sessionStorage.setItem(`us-filters-${backend}`, JSON.stringify(next)); route(); };
@@ -900,6 +913,8 @@ function bindBackend(host) {
     const b = e.target.closest('[data-b]');
     if (!b) return;
     sessionStorage.setItem('us-backend', b.dataset.b);
+    // Nothing on the old server's page may be clicked while the other one loads.
+    host.inert = true;
     route();
   });
 }
@@ -911,8 +926,9 @@ async function openUser(backend, id) {
   const pro = backend === 'tradeyar';
   const runningPro = (u.subscriptions || []).find((s) => s.live);
   const kv = (rows) => `<dl class="kv mixed">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+  const server = { tradeyar: 'TradeYar — کریپتو', coineprofx: 'CoinePro-FX — فارکس' }[backend] || backend;
   const m = modal(`
-    <div class="modal-head"><div class="who lg"><span class="avatar">${initials(u)}</span><div><h3>${esc(u.full_name || u.email || '#' + u.id)}</h3><span class="mono faint">${esc(u.email || '')}</span></div></div>
+    <div class="modal-head"><div class="who lg"><span class="avatar">${initials(u)}</span><div><h3>${esc(u.full_name || u.email || '#' + u.id)}</h3><span class="mono faint">${esc(u.email || '')}</span></div><span class="pill info plain">${esc(server)}</span></div>
       <button class="icon-btn ghost" data-close>${icon('x')}</button></div>
     <div class="modal-body">
       <div class="chips">${userBadges(u)} ${originPill(u.signup_platform, u.signup_flavor)}${runningPro ? ' <span class="pill accent">پریمیوم</span>' : ''}</div>
