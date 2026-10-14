@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.34.0
+
+**fa**
+
+> رویدادهای تقویم اقتصادی زیر نمودار حالا به‌جای مربع ساده، یک دایره‌ی رنگی با آیکون کوچک تقویم دارند، هم‌خانواده‌ی علامت صاعقه‌ی اخبار. رنگ‌ها اهمیت رویداد را نشان می‌دهند: قرمز مهم، نارنجی متوسط و آبی کم‌اهمیت. سبز کنار گذاشته شد تا با رشد قیمت اشتباه گرفته نشود.
+
+**en**
+
+> Economic-calendar events under the chart are now a coloured disc with a small calendar icon instead of a plain square, a sibling of the news lightning. The colour shows importance: red for high, amber for medium, blue for low. Green is gone, so it is never mistaken for a rising price.
+
+---
+
 ## 5.33.2
 
 **fa**

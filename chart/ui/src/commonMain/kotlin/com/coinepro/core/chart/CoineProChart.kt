@@ -52,6 +52,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.PathEffect
@@ -4143,7 +4144,6 @@ private fun DrawScope.drawEventMarks(
     // In a lane at the foot of the plot, just above the dates — never on them (CHART-05). Centred
     // on the axis they covered, a square hid «21 Sep» and the crosshair's time tag landed on it.
     val centreY = eventLaneCentre(axisTop)
-    val radius = CornerRadius(EVENT_RADIUS_DP.toPx(), EVENT_RADIUS_DP.toPx())
     // Marks closer than their own width are one mark with a stack behind it, the way TradingView
     // folds a run of headlines — twelve bolts side by side read as one purple smear (MOBILE-10).
     val placed = marks
@@ -4177,19 +4177,55 @@ private fun DrawScope.drawEventMarks(
         }
         val colour = colours.of(mark.importance)
         if (stacked) {
-            drawRoundRect(
+            drawCircle(
                 color = colour,
-                topLeft = Offset(x - side / 2 + EVENT_STACK_PX, centreY - side / 2 - EVENT_STACK_PX),
-                size = Size(side, side),
-                cornerRadius = radius,
+                radius = side / 2,
+                center = Offset(x + EVENT_STACK_PX, centreY - EVENT_STACK_PX),
                 style = Stroke(width = HAIRLINE_DP.toPx()),
             )
         }
-        drawRoundRect(
-            color = colour,
-            topLeft = Offset(x - side / 2, centreY - side / 2),
-            size = Size(side, side),
-            cornerRadius = radius,
+        drawCalendarGlyph(Offset(x, centreY), side, colour)
+    }
+}
+
+/**
+ * A calendar release (5.34.0): a disc in its importance colour behind a small white calendar — the
+ * news bolt's sibling, so the lane reads as one family of marks rather than a row of bare squares.
+ * The page, its header band and the two rings it hangs from, drawn rather than loaded, because a
+ * vector at twelve points through a draw pass is a cache and a lookup per glyph per frame.
+ */
+private fun DrawScope.drawCalendarGlyph(centre: Offset, side: Float, colour: Color) {
+    drawCircle(color = colour, radius = side / 2, center = centre)
+    val w = side * 0.52f
+    val h = side * 0.46f
+    val left = centre.x - w / 2
+    val top = centre.y - h / 2 + side * 0.04f
+    val corner = CornerRadius(side * 0.08f, side * 0.08f)
+    val line = (side * 0.075f).coerceAtLeast(1f)
+    // The page.
+    drawRoundRect(
+        color = Color.White,
+        topLeft = Offset(left, top),
+        size = Size(w, h),
+        cornerRadius = corner,
+        style = Stroke(width = line),
+    )
+    // Its header band.
+    drawRoundRect(
+        color = Color.White,
+        topLeft = Offset(left, top),
+        size = Size(w, h * 0.34f),
+        cornerRadius = corner,
+    )
+    // The two rings.
+    val ring = side * 0.12f
+    for (at in listOf(left + w * 0.28f, left + w * 0.72f)) {
+        drawLine(
+            color = Color.White,
+            start = Offset(at, top - ring * 0.7f),
+            end = Offset(at, top + ring * 0.5f),
+            strokeWidth = line,
+            cap = StrokeCap.Round,
         )
     }
 }
@@ -4294,7 +4330,9 @@ internal data class EventMarkColours(val high: Color, val medium: Color, val low
 fun importanceColour(importance: Importance): Color = when (importance) {
     Importance.HIGH -> CoineProColors.Sell
     Importance.MEDIUM -> CoineProColors.Warning
-    Importance.LOW -> CoineProColors.Buy
+    // Blue rather than the buy green (5.34.0): a green mark under a bar read as «price up», and a
+    // quiet release says nothing about direction.
+    Importance.LOW -> CoineProColors.Analysis
 }
 
 /**
