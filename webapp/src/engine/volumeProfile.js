@@ -2,13 +2,14 @@
 //   قیمتی بازه‌ی high-low توزیع می‌شود (نه فقط میانه)، سپس POC و ناحیه‌ی ارزش ۷۰٪.
 //   خالص و بدون import خارجی ⇒ مستقیماً در Node قابل تست (test/volumeProfile.test.mjs).
 //   فارکس بدون حجم ⇒ w=1 (نیم‌رخ تعداد کندل، معادل TPO).
-export function computeProfile(candles, B = 48) {
+// هر باکت حجم خرید (کندل صعودی، c ≥ o) و فروش را هم جدا نگه می‌دارد؛ ناحیه‌ی ارزش به‌جای ۷۰٪ می‌تواند va (۰ تا ۱) باشد.
+export function computeProfile(candles, B = 48, va = 0.7) {
   if (!candles || !candles.length) return null;
   let lo = Infinity, hi = -Infinity;
   for (const c of candles) { const l = Math.min(c.l, c.h), h = Math.max(c.l, c.h); if (l < lo) lo = l; if (h > hi) hi = h; }
   if (!Number.isFinite(lo) || !Number.isFinite(hi)) return null;
   const step = (hi - lo) / B || 1;
-  const buckets = Array.from({ length: B }, (_, i) => ({ lo: lo + i * step, hi: lo + (i + 1) * step, vol: 0, poc: false, va: false }));
+  const buckets = Array.from({ length: B }, (_, i) => ({ lo: lo + i * step, hi: lo + (i + 1) * step, vol: 0, up: 0, down: 0, poc: false, va: false }));
   // توزیع یکنواخت حجم هر کندل روی باکت‌هایی که بازه‌ی high-low آن را می‌پوشانند (سبک TV، نه فقط میانه).
   for (const c of candles) {
     const w = (c.v || 1);
@@ -17,7 +18,8 @@ export function computeProfile(candles, B = 48) {
     const hiB = Math.max(0, Math.min(B - 1, Math.floor((ch - lo) / step)));
     const nB = (hiB - loB + 1) || 1;
     const per = w / nB;
-    for (let i = loB; i <= hiB; i++) buckets[i].vol += per;
+    const rising = c.c == null || c.o == null || c.c >= c.o;
+    for (let i = loB; i <= hiB; i++) { buckets[i].vol += per; if (rising) buckets[i].up += per; else buckets[i].down += per; }
   }
   // POC = باکت پرحجم‌ترین
   let pocI = 0; for (let i = 1; i < B; i++) if (buckets[i].vol > buckets[pocI].vol) pocI = i;
@@ -25,7 +27,7 @@ export function computeProfile(candles, B = 48) {
   // ناحیه‌ی ارزش: گسترش دوطرفه از POC تا پوشش ۷۰٪ حجم (همسایه‌ی پرحجم‌تر اول).
   const total = buckets.reduce((s, b) => s + b.vol, 0);
   let loI = pocI, hiI = pocI, acc = buckets[pocI].vol;
-  while (acc < total * 0.7 && (loI > 0 || hiI < B - 1)) {
+  while (acc < total * va && (loI > 0 || hiI < B - 1)) {
     const below = loI > 0 ? buckets[loI - 1].vol : -1;
     const above = hiI < B - 1 ? buckets[hiI + 1].vol : -1;
     if (above >= below) { hiI++; acc += buckets[hiI].vol; } else { loI--; acc += buckets[loI].vol; }

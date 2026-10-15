@@ -181,8 +181,8 @@ async function test(name, fn) {
     results.push({ name, ok: true, ms: Date.now() - t });
     console.log(`  ✓ ${name} (${Date.now() - t} ms)`);
   } catch (e) {
-    results.push({ name, ok: false, ms: Date.now() - t, error: String(e.message ?? e).slice(0, 400) });
-    console.log(`  ✗ ${name}\n      ${String(e.message ?? e).slice(0, 400)}`);
+    results.push({ name, ok: false, ms: Date.now() - t, error: String(e.message ?? e).slice(0, process.env.E2E_VERBOSE ? 4000 : 400) });
+    console.log(`  ✗ ${name}\n      ${String(e.message ?? e).slice(0, process.env.E2E_VERBOSE ? 4000 : 400)}`);
     if (env?.page) await env.page.screenshot({ path: join(SHOTS, `${name.replace(/\W+/g, '_')}.png`) }).catch(() => {});
   } finally {
     await env?.ctx?.close().catch(() => {});
@@ -742,16 +742,17 @@ await test('context menu: invert, indexed, prev close, CSV; Alt+I', async () => 
   await ready(env.page);
   const box = await env.page.locator('.chart-host').boundingBox();
   await env.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
-  await env.page.click('.ctx >> text=Invert scale');
+  await env.page.click('.ctx [data-act=invert]');
   expect(await pc(env.page, () => window.__pc.useChartBus.getState().invert), 'not inverted');
   await env.page.keyboard.press('Alt+i');
   expect(!(await pc(env.page, () => window.__pc.useChartBus.getState().invert)), 'Alt+I did not toggle');
   await env.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
-  await env.page.click('.ctx >> text=Indexed to 100');
+  await env.page.click('.ctx [data-act=indexed]');
   expect(await pc(env.page, () => window.__pc.useChartBus.getState().scale) === 'indexed', 'indexed');
   await env.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
   const dl = env.page.waitForEvent('download', { timeout: 5000 });
-  await env.page.click('.ctx >> text=Export chart data');
+  await env.page.hover('.ctx [data-act=more-tools]');
+  await env.page.click('.ctx [data-act=csv]');
   const file = await dl;
   expect(/ETHUSDT_1h\.csv/.test(file.suggestedFilename()), file.suggestedFilename());
   return env;

@@ -12,6 +12,7 @@ import { takeSnapshot } from '../chart/snapshot';
 import { useReplay } from '../state/replay';
 import { LayoutMenu, TemplateMenu } from './SaveMenus';
 import { cellCount, useGrid, type GridId } from '../state/grid';
+import { ChartTypeParamsButton } from '../chart/ChartTypeParams';
 
 const FAVOURITE_INTERVALS = ['1', '5', '15', '60', '240', '1D'];
 const INTERVAL_GROUPS: { fa: string; en: string; ids: string[] }[] = [
@@ -74,6 +75,7 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
       <button ref={typeBtn} className={`ib${menu === 'type' ? ' open' : ''}`} title={t('chartType')} onClick={() => setMenu(menu === 'type' ? null : 'type')}>
         <Icon name={chartTypeDef(chartType).icon} />
       </button>
+      <ChartTypeParamsButton />
       <span className="sep" />
       <button className="ib" onClick={onIndicators} title={t('indicators')}>
         <Icon name="ph-chart-line-up" size="md" /><span className="label fa">{t('indicators')}</span>

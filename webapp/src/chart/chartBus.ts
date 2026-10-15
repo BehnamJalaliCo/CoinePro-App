@@ -4,8 +4,26 @@ import { create } from 'zustand';
 import type { IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts';
 import type { Candle } from '../data/types';
 import type { DrawingLayer } from '../engine/drawings.js';
+import type { StudyLegendRow } from './studies';
 
 export type ScaleMode = 'normal' | 'log' | 'percent' | 'indexed';
+
+/** A compared symbol's line, as the legend and the data window show it. */
+export interface CompareRow { symbol: string; color: string; value: number | null; change: number | null; hidden: boolean }
+
+// The price scale's mode, auto-scale and inversion are kept across reloads, as TradingView keeps them.
+const SCALE_KEY = 'pc.chartscale.v1';
+const readScale = (): { scale: ScaleMode; autoScale: boolean; invert: boolean } => {
+  const d = { scale: 'normal' as ScaleMode, autoScale: true, invert: false };
+  try {
+    const v = JSON.parse(localStorage.getItem(SCALE_KEY) ?? '{}') as Partial<typeof d>;
+    return {
+      scale: ['normal', 'log', 'percent', 'indexed'].includes(String(v.scale)) ? v.scale! : d.scale,
+      autoScale: typeof v.autoScale === 'boolean' ? v.autoScale : d.autoScale,
+      invert: typeof v.invert === 'boolean' ? v.invert : d.invert,
+    };
+  } catch { return d; }
+};
 
 interface ChartBusState {
   api: IChartApi | null;
@@ -14,6 +32,12 @@ interface ChartBusState {
   bars: Candle[];
   /** Bar under the crosshair, or null for the last bar. */
   hover: Candle | null;
+  /** The bars the price series draws: the loaded bars, or the bricks of Renko, Range, Line break. */
+  shown: Candle[];
+  /** The indicators' values under the crosshair (the legend's rows), for the data window. */
+  studyRows: StudyLegendRow[];
+  /** The compared symbols' values under the crosshair. */
+  compareRows: CompareRow[];
   scale: ScaleMode;
   autoScale: boolean;
   /** The price scale upside down (TradingView's Alt+I). */
@@ -37,6 +61,9 @@ interface ChartBusState {
   setSeries(series: ISeriesApi<SeriesType> | null): void;
   setBars(bars: Candle[]): void;
   setHover(bar: Candle | null): void;
+  setShown(bars: Candle[]): void;
+  setStudyRows(rows: StudyLegendRow[]): void;
+  setCompareRows(rows: CompareRow[]): void;
   setScale(mode: ScaleMode): void;
   setAutoScale(on: boolean): void;
   setInvert(on: boolean): void;
@@ -44,14 +71,22 @@ interface ChartBusState {
   setPendingSpan(seconds: number | null): void;
 }
 
-export const useChartBus = create<ChartBusState>((set) => ({
+const scale0 = readScale();
+const saveScale = (s: Pick<ChartBusState, 'scale' | 'autoScale' | 'invert'>) => {
+  try { localStorage.setItem(SCALE_KEY, JSON.stringify({ scale: s.scale, autoScale: s.autoScale, invert: s.invert })); } catch { /* storage blocked */ }
+};
+
+export const useChartBus = create<ChartBusState>((set, get) => ({
   api: null,
   series: null,
   bars: [],
   hover: null,
-  scale: 'normal',
-  autoScale: true,
-  invert: false,
+  shown: [],
+  studyRows: [],
+  compareRows: [],
+  scale: scale0.scale,
+  autoScale: scale0.autoScale,
+  invert: scale0.invert,
   selectedDrawing: -1,
   pendingSpan: null,
   drawingLayer: null,
@@ -67,9 +102,12 @@ export const useChartBus = create<ChartBusState>((set) => ({
   setSeries: (series) => set({ series }),
   setBars: (bars) => set({ bars }),
   setHover: (hover) => set({ hover }),
-  setScale: (scale) => set({ scale }),
-  setAutoScale: (autoScale) => set({ autoScale }),
-  setInvert: (invert) => set({ invert }),
+  setShown: (shown) => set({ shown }),
+  setStudyRows: (studyRows) => set({ studyRows }),
+  setCompareRows: (compareRows) => set({ compareRows }),
+  setScale: (scale) => { set({ scale }); saveScale(get()); },
+  setAutoScale: (autoScale) => { set({ autoScale }); saveScale(get()); },
+  setInvert: (invert) => { set({ invert }); saveScale(get()); },
   setSelectedDrawing: (selectedDrawing) => set({ selectedDrawing }),
   setPendingSpan: (pendingSpan) => set({ pendingSpan }),
 }));

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef } from 'react';
 import type { IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts';
 import type { Candle } from '../data/types';
 import { detectDivergences } from '../engine/divergence.js';
@@ -40,7 +40,7 @@ function openGaps(bars: Candle[], gaps: { t: number; dir: 'up' | 'down'; pct: nu
 
 const english = (s: string) => EN.reduce((x, [re, to]) => x.replace(re, to), s);
 
-export function AutoOverlay({ api, series, bars, version, flags, fa }: { api: IChartApi | null; series: ISeriesApi<SeriesType> | null; bars: Candle[]; version: number; flags: AutoFlags; fa: boolean }) {
+export const AutoOverlay = memo(function AutoOverlay({ api, series, bars, version, flags, fa }: { api: IChartApi | null; series: ISeriesApi<SeriesType> | null; bars: Candle[]; version: number; flags: AutoFlags; fa: boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const found = useMemo(() => ({
     div: flags.divergence ? detectDivergences(bars) : [],
@@ -117,4 +117,4 @@ export function AutoOverlay({ api, series, bars, version, flags, fa }: { api: IC
   }, [api, series, bars, found, fa]);
 
   return <canvas ref={canvas} className="auto-overlay" aria-hidden data-found={found.div.length + found.harm.length + found.gaps.length} />;
-}
+});

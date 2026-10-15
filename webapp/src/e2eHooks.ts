@@ -23,10 +23,11 @@ import { REGISTRY } from './engine/indicators.js';
 import { EXAMPLES } from './engine/scriptlib.js';
 import { TOOL_GROUPS } from './chart/tools';
 import { CHART_TYPES } from './chart/chartTypes';
+import { usePlacement } from './chart/studyPlacement';
 
 export function expose(): void {
   (window as unknown as { __pc: unknown }).__pc = {
-    usePrefs, useStudies, useDrawing, useScript, useChartBus, useReplay, useAlerts, usePanels, useGrid, useMarket, useCompare, usePage, usePaper, useJournal, useWatchlist, useChartSettings, useWatchView, useOverlay,
+    usePrefs, useStudies, useDrawing, useScript, useChartBus, useReplay, useAlerts, usePanels, useGrid, useMarket, useCompare, usePage, usePaper, useJournal, useWatchlist, useChartSettings, useWatchView, usePlacement, useOverlay,
     pages: PAGES.map((p) => ({ id: p.id, path: p.path, member: Boolean(p.member) })),
     panel: { flush: () => flushPanelEvents(), waiting: () => panelEvents.size }, useLayouts,
     indicators: Object.keys(REGISTRY), examples: EXAMPLES.map((e) => e.name), exampleCode: EXAMPLES.map((e) => e.code),

@@ -142,3 +142,14 @@ device-mobile
 device-tablet
 desktop
 paperclip
+arrows-in-line-vertical
+arrows-out-line-vertical
+arrows-vertical
+clipboard
+corners-in
+corners-out
+minus
+paint-brush
+ruler
+scales
+tree-structure

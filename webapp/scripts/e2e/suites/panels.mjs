@@ -172,6 +172,11 @@ export default async function ({ test, open, ready, pc, expect }) {
     await page.evaluate(() => { window.__settingsTab = null; window.addEventListener('pc:settings', (e) => { window.__settingsTab = e.detail.tab; }); });
     await page.click('.details-head .lt >> nth=2');
     expect(await page.evaluate(() => window.__settingsTab) === 'symbol', 'settings on the symbol tab');
+    // The chart area answers pc:settings with its dialog; close it before going on.
+    if (await page.waitForSelector('.cs-scrim', { timeout: 3000 }).catch(() => null)) {
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.cs-scrim', { state: 'detached', timeout: 3000 });
+    }
     await page.waitForSelector('.details .perf-grid .perf', { timeout: 15000 });
     expect((await page.textContent('.details .perf-grid .perf >> nth=0')).includes('1D'), '1D tile');
     await page.waitForSelector('.details-more', { timeout: 15000 });

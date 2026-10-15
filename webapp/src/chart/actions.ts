@@ -57,3 +57,90 @@ export async function copyChartImage(): Promise<boolean> {
   if (!blob || typeof ClipboardItem === 'undefined' || !navigator.clipboard?.write) return false;
   try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); return true; } catch { return false; }
 }
+
+// ── Drawing from the menus (the chart's right-click menu, the axis «+», the legend) ─────────────────
+type Addable = { addDrawing?(d: Record<string, unknown>): void; addHLine(price: number, color?: string): number; getDrawings(): unknown[]; canUndo(): boolean; canRedo(): boolean };
+
+function layerOf(): Addable | null {
+  return useChartBus.getState().drawingLayer as unknown as Addable | null;
+}
+function bump(l: Addable) { useChartBus.getState().bumpDrawings(l.canUndo(), l.canRedo(), l.getDrawings().length); }
+
+/** A time on the chart for a click, or the last bar's when the click fell beyond the bars. */
+export function timeOr(t: number | null | undefined): number {
+  const { bars } = useChartBus.getState();
+  return typeof t === 'number' ? t : bars[bars.length - 1]?.t ?? Math.floor(Date.now() / 1000);
+}
+
+/** TradingView's «Draw horizontal line at …», undoable. */
+export function addHorizontalLine(price: number): void {
+  const l = layerOf();
+  if (!l || !Number.isFinite(price)) return;
+  l.addHLine(price, '#2962FF');
+  bump(l);
+}
+
+/** «Add vertical line at …»: on the bar under the pointer. */
+export function addVerticalLine(time: number | null): void {
+  const l = layerOf();
+  if (!l?.addDrawing) return;
+  l.addDrawing({ type: 'vline', t: timeOr(time), color: '#2962FF', width: 2 });
+  bump(l);
+}
+
+/** «Add text note»: a text drawing at the price and time, opened in the text editor. */
+export function addTextNote(price: number, time: number | null): void {
+  const l = layerOf();
+  if (!l?.addDrawing || !Number.isFinite(price)) return;
+  l.addDrawing({ type: 'text', t: timeOr(time), p: price, text: '', color: '#2962FF' });
+  bump(l);
+  useChartBus.getState().setTextEdit({ index: l.getDrawings().length - 1, fresh: true });
+}
+
+/** A long or short position drawn forward from the point: entry there, a stop half a percent away,
+ *  the target at twice the risk (the drawing layer works the target out), over a quarter of the view. */
+export function addPosition(side: 'long' | 'short', price: number, time: number | null): void {
+  const l = layerOf();
+  const api = useChartBus.getState().api;
+  if (!l?.addDrawing || !Number.isFinite(price)) return;
+  const t0 = timeOr(time);
+  const vr = api?.timeScale().getVisibleRange();
+  const span = vr && typeof vr.to === 'number' && typeof vr.from === 'number' ? vr.to - vr.from : 86400;
+  const t1 = t0 + Math.round(span * 0.28);
+  const risk = price * 0.005;
+  l.addDrawing(side === 'long'
+    ? { type: 'longshort', p0: { t: t0, p: price }, p1: { t: t1, p: price - risk }, color: '#089981', width: 1.5 }
+    : { type: 'short', p0: { t: t0, p: price }, p1: { t: t1, p: price + risk }, color: '#F23645', width: 1.5 });
+  bump(l);
+}
+
+export interface AlertDialogDetail { symbol?: string; price?: number; line?: { t1: number; p1: number; t2: number; p2: number }; study?: { uid: string; key: string; plot?: number } }
+
+/** Opens the alert dialog prefilled (contract 1; the alerts area listens). */
+export function openAlertDialog(detail: AlertDialogDetail): void {
+  window.dispatchEvent(new CustomEvent('pc:alert-dialog', { detail }));
+}
+
+/** Resets the view as TradingView's «Reset chart view»: spacing, right margin, the latest bars, auto-scale. */
+export function resetChartView(rightOffset = 10): void {
+  const { api } = useChartBus.getState();
+  if (!api) return;
+  api.timeScale().applyOptions({ barSpacing: 6, rightOffset });
+  api.timeScale().scrollToRealTime();
+  useChartBus.getState().setAutoScale(true);
+}
+
+/** Opens the indicators dialog, as the «/» key does. */
+export function openIndicators(): void {
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: '/', bubbles: true }));
+}
+
+export interface OrderTicketDetail { symbol: string; side: 'buy' | 'sell'; price: number; source: 'legend' | 'axis-plus' | 'context-menu'; type?: 'limit' }
+
+/** Offers an order to whoever trades from the chart (`pc:order-ticket`, cancelable). True when
+ *  someone took it (called preventDefault); otherwise the caller falls back to paper trading. */
+export function offerOrderTicket(detail: OrderTicketDetail): boolean {
+  const ev = new CustomEvent('pc:order-ticket', { cancelable: true, detail });
+  window.dispatchEvent(ev);
+  return ev.defaultPrevented;
+}
