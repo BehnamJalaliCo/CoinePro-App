@@ -10,6 +10,7 @@ import { loadLogoMap } from './ui/SymbolLogo';
 import { loadNames } from './data/names';
 import { startPrices } from './data/prices';
 import { startWatchlistSync } from './data/watchlistSync';
+import { startAlertWatch } from './state/alerts';
 import { applyAddress } from './route';
 import { applyTheme, usePrefs } from './state/prefs';
 
@@ -18,6 +19,7 @@ applyTheme(usePrefs.getState().theme);
 applyAddress();
 startPrices();
 startWatchlistSync();
+startAlertWatch();
 
 // The sprite, the logo map and the names are small and needed by the first frame; wait for them
 // (never longer than 1.5 s) so the screen does not paint twice.

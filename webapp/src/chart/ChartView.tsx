@@ -21,6 +21,9 @@ import { useStudies, VOLUME } from '../state/studies';
 import { COMPARE_COLORS, useCompare } from '../state/compare';
 import { LineSeries } from 'lightweight-charts';
 import { onPrice } from '../data/prices';
+import { ScriptRenderer } from './scriptRenderer';
+import { useScript } from '../state/script';
+import { runScript } from '../engine/namascript.js';
 
 export interface HistoryResult { bars: Candle[]; more: boolean }
 
@@ -57,6 +60,7 @@ export function ChartView({ feed, digits, displayName, onStudySettings }: { feed
   const price = useRef<ISeriesApi<SeriesType> | null>(null);
   const volume = useRef<ISeriesApi<'Histogram'> | null>(null);
   const renderer = useRef<StudyRenderer | null>(null);
+  const script = useRef<ScriptRenderer | null>(null);
   const bars = useRef<Candle[]>([]);
   const more = useRef(false);
   const loadingOlder = useRef(false);
@@ -92,6 +96,7 @@ export function ChartView({ feed, digits, displayName, onStudySettings }: { feed
   }
   function rebuildStudies() {
     renderer.current?.rebuild(timeless() ? [] : studiesRef.current.filter((s) => s.key !== VOLUME), bars.current);
+    script.current?.draw(useScript.getState().applied ? useScript.getState().result : null, bars.current);
     setLegendRows(renderer.current?.legend(null) ?? []);
     measurePanes();
   }
@@ -137,6 +142,7 @@ export function ChartView({ feed, digits, displayName, onStudySettings }: { feed
     volume.current = c.addSeries(HistogramSeries, { priceScaleId: 'vol', priceFormat: { type: 'volume' }, lastValueVisible: false, priceLineVisible: false });
     c.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
     renderer.current = new StudyRenderer(c, () => price.current, () => digitsRef.current);
+    script.current = new ScriptRenderer(c, () => price.current, () => drawing.current?.layer ?? null, () => renderer.current?.freePane ?? 1);
 
     c.subscribeCrosshairMove((param: MouseEventParams<Time>) => {
       if (!param.time) { setHoverIdx(null); useChartBus.getState().setHover(null); return; }
@@ -158,6 +164,7 @@ export function ChartView({ feed, digits, displayName, onStudySettings }: { feed
     return () => {
       ro.disconnect();
       drawing.current?.dispose(); drawing.current = null;
+      script.current?.clear(); script.current = null;
       renderer.current?.dispose(); renderer.current = null;
       useChartBus.getState().setApi(null); c.remove(); chart.current = null; price.current = null; volume.current = null;
     };
@@ -200,6 +207,27 @@ export function ChartView({ feed, digits, displayName, onStudySettings }: { feed
     if (bars.current.length) rebuildStudies();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studies]);
+
+  // NamaScript: run on the chart's bars when applied, re-run when asked or when the bars change.
+  const scriptApplied = useScript((s) => s.applied);
+  const scriptRun = useScript((s) => s.runSeq);
+  const [barsVersion, setBarsVersion] = useState(0);
+  useEffect(() => {
+    if (!scriptApplied) { script.current?.clear(); measurePanes(); return; }
+    if (!bars.current.length) return;
+    let alive = true;
+    const st = useScript.getState();
+    st.setRunning(true);
+    void runScript(st.source, bars.current, st.inputs).then((r) => {
+      if (!alive) return;
+      useScript.getState().setResult(r);
+      useScript.getState().setRunning(false);
+      script.current?.draw(r.ok ? r : null, bars.current);
+      measurePanes();
+    });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scriptApplied, scriptRun, barsVersion]);
 
   // The time bar's scale switches; comparing forces percent, as on TradingView.
   const scale = useChartBus((b) => b.scale);
@@ -287,6 +315,7 @@ export function ChartView({ feed, digits, displayName, onStudySettings }: { feed
       drawing.current?.layer.setDigits(digitsRef.current);
       drawing.current?.setSymbol(symbol);
       rebuildStudies();
+      setBarsVersion((v) => v + 1);
       if (bus.pendingSpan && c) { showSpan(c, data, bus.pendingSpan); bus.setPendingSpan(null); }
       setLast(data[data.length - 1] ?? null);
       setState(data.length ? 'ready' : 'error');

@@ -54,6 +54,8 @@ export class StudyRenderer {
   private rendered: Rendered[] = [];
   private markersApi: ISeriesMarkersPluginApi<Time> | null = null;
   private bars: Candle[] = [];
+  /** The first pane index no study uses (a NamaScript oscillator goes there). */
+  freePane = 1;
 
   constructor(private chart: IChartApi, private price: () => ISeriesApi<SeriesType> | null, private digits: () => number) {}
 
@@ -73,6 +75,7 @@ export class StudyRenderer {
       try { out = def.calc(columns(bars), { ...def.inputs, ...st.inputs }); } catch { continue; }
       this.draw(r, out, TV_COLOR[st.key] ?? def.color);
     }
+    this.freePane = nextPane;
     // Panes left over from studies that were removed go with them.
     const panes = this.chart.panes();
     for (let i = panes.length - 1; i >= nextPane; i--) {

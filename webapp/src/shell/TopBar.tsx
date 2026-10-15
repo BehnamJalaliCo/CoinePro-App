@@ -20,7 +20,7 @@ const INTERVAL_GROUPS: { fa: string; en: string; ids: string[] }[] = [
 // TradingView's top toolbar, left to right: symbol, compare, intervals, chart type, indicators,
 // templates, alert, replay, undo/redo — then layout, save, quick search, settings, fullscreen,
 // snapshot, and ours: the premium button and the account.
-export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare }: { onSymbolSearch(): void; onIndicators(): void; onSignIn(): void; onCompare(): void }) {
+export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAlert }: { onSymbolSearch(): void; onIndicators(): void; onSignIn(): void; onCompare(): void; onAlert(): void }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
   const symbol = usePrefs((s) => s.symbol);
@@ -71,7 +71,7 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare }: { 
       </button>
       <button className="ib" title={t('indicatorTemplates')}><Icon name="layout_grid" size="md" /></button>
       <span className="sep" />
-      <button className="ib" title={t('alert')}><Icon name="ph-bell" size="md" /><span className="label fa">{t('alert')}</span></button>
+      <button className="ib" title={t('alert')} onClick={onAlert}><Icon name="ph-bell" size="md" /><span className="label fa">{t('alert')}</span></button>
       <button className="ib" title={t('replay')}><Icon name="ph-rewind" size="md" /><span className="label fa">{t('replay')}</span></button>
       <span className="sep" />
       <button className="ib" title={t('undo')} disabled={!canUndo} onClick={() => { layer?.undo(); bump(); }}><Icon name="ph-arrow-counter-clockwise" size="md" /></button>

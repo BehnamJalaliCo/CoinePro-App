@@ -20,6 +20,8 @@ interface ChartBusState {
   canUndo: boolean;
   canRedo: boolean;
   drawingCount: number;
+  /** Bumped on every drawing change, for lists that show the drawings. */
+  drawingVersion: number;
   setDrawingLayer(layer: DrawingLayer | null): void;
   bumpDrawings(canUndo: boolean, canRedo: boolean, count: number): void;
   setApi(api: IChartApi | null): void;
@@ -41,8 +43,9 @@ export const useChartBus = create<ChartBusState>((set) => ({
   canUndo: false,
   canRedo: false,
   drawingCount: 0,
+  drawingVersion: 0,
   setDrawingLayer: (drawingLayer) => set({ drawingLayer }),
-  bumpDrawings: (canUndo, canRedo, drawingCount) => set({ canUndo, canRedo, drawingCount }),
+  bumpDrawings: (canUndo, canRedo, drawingCount) => set((s) => ({ canUndo, canRedo, drawingCount, drawingVersion: s.drawingVersion + 1 })),
   setApi: (api) => set({ api }),
   setBars: (bars) => set({ bars }),
   setHover: (hover) => set({ hover }),

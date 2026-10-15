@@ -30,4 +30,5 @@ export class DrawingLayer {
   canUndo(): boolean;
   canRedo(): boolean;
   render(): void;
+  setScriptPaint(result: unknown): void;
 }

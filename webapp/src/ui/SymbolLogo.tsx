@@ -65,3 +65,13 @@ export function SymbolLogo({ symbol, size = 20 }: { symbol: string; size?: numbe
   }
   return <img className="logo" src={`${BASE}generated/logos/${primary}`} width={size} height={size} alt="" />;
 }
+
+/** A currency's flag (the euro's for EUR), for the calendar and other per-currency rows. */
+export function CurrencyFlag({ code, size = 16 }: { code: string; size?: number }) {
+  const [, setReady] = useState(map !== null);
+  useEffect(() => { if (!map) loadLogoMap().then(() => setReady(true)); }, []);
+  const country = CURRENCY_COUNTRY[code.toUpperCase()];
+  const file = country ? map?.[`country:${country}`] : undefined;
+  if (!file) return <span className="cal-cur num">{code}</span>;
+  return <img className="logo" src={`${BASE}generated/logos/${file}`} width={size} height={size} alt={code} title={code} />;
+}

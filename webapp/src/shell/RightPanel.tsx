@@ -3,6 +3,11 @@ import { useT } from '../state/prefs';
 import { Watchlist } from './Watchlist';
 import { SymbolDetails } from './SymbolDetails';
 import { DataWindow } from './DataWindow';
+import { NewsPanel } from './NewsPanel';
+import { CalendarPanel } from './CalendarPanel';
+import { AlertsPanel } from './AlertsPanel';
+import { ObjectTree } from './ObjectTree';
+import { Screener } from './Screener';
 import type { StringKey } from '../i18n/strings';
 
 const TITLES: Record<PanelId, StringKey> = {
@@ -12,7 +17,7 @@ const TITLES: Record<PanelId, StringKey> = {
 
 // The right panel: whichever widget is open in the widget bar. The watchlist carries the symbol's
 // details under it, split by a draggable line in TradingView; here a fixed split for now.
-export function RightPanel() {
+export function RightPanel({ onNewAlert }: { onNewAlert(): void }) {
   const t = useT();
   const open = usePanels((s) => s.open);
   if (!open) return <aside className="ws-panel" hidden />;
@@ -23,14 +28,17 @@ export function RightPanel() {
           <Watchlist />
           <SymbolDetails />
         </>
-      ) : open === 'data' ? (
-        <DataWindow />
-      ) : (
-        <section className="panel-generic">
-          <header className="panel-head"><span className="fa">{t(TITLES[open])}</span></header>
-          <div className="panel-body empty fa">{t('loading')}…</div>
-        </section>
-      )}
+      ) : open === 'data' ? <DataWindow />
+        : open === 'news' ? <NewsPanel />
+        : open === 'calendar' ? <CalendarPanel />
+        : open === 'alerts' ? <AlertsPanel onNew={onNewAlert} />
+        : open === 'objects' ? <ObjectTree />
+        : (
+          <section className="panel-generic">
+            <header className="panel-head"><span className="fa">{t(TITLES[open])}</span></header>
+            <Screener compact />
+          </section>
+        )}
     </aside>
   );
 }
