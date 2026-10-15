@@ -1,7 +1,7 @@
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
 /**
- * تاریخچهٔ snapshot برای ترسیم‌ها؛ مستقل از DOM و قابل‌آزمون.
+ * تاریخچه‌ی snapshot برای ترسیم‌ها؛ مستقل از DOM و قابل‌آزمون.
  * آرایه‌ها عمداً درجا خالی می‌شوند تا aliasهای تشخیصی DrawingLayer پایدار بمانند.
  */
 export class DrawingHistory {

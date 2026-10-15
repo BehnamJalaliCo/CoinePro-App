@@ -20,7 +20,7 @@ const closes = [
   101, 102, 101, 103,
 ];
 const res = detectDivergences(build(closes));
-const bull = res.find((r) => r.dir === 'bull' && r.label.includes('واگراییِ صعودی'));
+const bull = res.find((r) => r.dir === 'bull' && r.label.includes('واگرایی صعودی'));
 
 ok('regular bullish divergence detected (lower price low + higher RSI low)', !!bull, res.map((r) => r.label));
 ok('divergence dir=bull', bull ? bull.dir === 'bull' : false, bull && bull.dir);
@@ -28,7 +28,7 @@ ok('divergence anchored at the 2nd (lower) low (t=34)', bull ? bull.t === 34 : f
 
 // A steadily-rising series must NOT produce a bullish divergence (no false positive).
 const rising = build(Array.from({ length: 44 }, (_, i) => 100 + i));
-ok('no divergence on a monotonic uptrend', detectDivergences(rising).every((r) => !r.label.includes('واگراییِ صعودی')), detectDivergences(rising).map((r) => r.label));
+ok('no divergence on a monotonic uptrend', detectDivergences(rising).every((r) => !r.label.includes('واگرایی صعودی')), detectDivergences(rising).map((r) => r.label));
 
 ok('empty/short input → []', detectDivergences([]).length === 0 && detectDivergences(build([1, 2, 3])).length === 0);
 

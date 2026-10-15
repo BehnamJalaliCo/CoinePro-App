@@ -64,8 +64,8 @@ const refUlcer = (close, p) => {
   ck('chandelier flips to red-above on crash', r2.lines[1].data[lz] != null && r2.lines[1].data[lz] > c2[lz], r2.lines[1].data[lz], '>' + c2[lz]);
 }
 
-// ═════════ اندیکاتورهای غایبِ TradingView — batch ۱ ═════════
-// reference helperهای مستقل (منطبق با کنوانسیونِ ext_b: _ema از اولین مقدار seed، خروجی از p-1).
+// ═════════ اندیکاتورهای غایب TradingView — batch ۱ ═════════
+// reference helperهای مستقل (منطبق با کنوانسیون ext_b: _ema از اولین مقدار seed، خروجی از p-1).
 const _refEma = (src, p) => { const out = new Array(src.length).fill(null); const k = 2 / (p + 1); let prev = null; for (let i = 0; i < src.length; i++) { const v = src[i]; if (v == null) { out[i] = prev; continue; } prev = prev == null ? v : v * k + prev * (1 - k); if (i >= p - 1) out[i] = prev; } return out; };
 const _refSma = (src, p) => { const out = new Array(src.length).fill(null); let s = 0; for (let i = 0; i < src.length; i++) { const v = src[i] == null ? 0 : src[i]; s += v; if (i >= p) s -= (src[i - p] == null ? 0 : src[i - p]); if (i >= p - 1) out[i] = s / p; } return out; };
 const elem = (name, got, ref) => { let ok = true, bad = -1; for (let k = 0; k < ref.length; k++) { const a = got[k], b = ref[k]; if ((a == null) !== (b == null) || (a != null && !near(a, b))) { ok = false; bad = k; break; } } ck(name, ok, bad < 0 ? 'ok' : { k: bad, got: got[bad], ref: ref[bad] }, 'match'); };
@@ -129,7 +129,7 @@ const elem = (name, got, ref) => { let ok = true, bad = -1; for (let k = 0; k < 
   ck('median(4) of [4,8,2,6] = (4+6)/2 = 5', near(g4[3], 5), g4[3], 5);
 }
 
-// ═════════ اندیکاتورهای غایبِ TradingView — batch ۲ ═════════
+// ═════════ اندیکاتورهای غایب TradingView — batch ۲ ═════════
 const _refEmaAlpha = (src, period) => { const out = new Array(src.length).fill(null), a = 2 / period; let prev = null; for (let k = 0; k < src.length; k++) { const v = src[k]; if (v == null) { out[k] = prev; continue; } prev = prev == null ? v : prev + a * (v - prev); out[k] = prev; } return out; };
 const _refStdev = (src, p) => { const out = new Array(src.length).fill(null); for (let i = p - 1; i < src.length; i++) { let m = 0; for (let j = 0; j < p; j++) m += src[i - j]; m /= p; let s = 0; for (let j = 0; j < p; j++) { const d = src[i - j] - m; s += d * d; } out[i] = Math.sqrt(s / p); } return out; };
 const _refCci = (high, low, close, p) => { const n = close.length, tp = new Array(n); for (let k = 0; k < n; k++) tp[k] = (high[k] + low[k] + close[k]) / 3; const ma = _refSma(tp, p), out = new Array(n).fill(null); for (let k = p - 1; k < n; k++) { let md = 0; for (let j = 0; j < p; j++) md += Math.abs(tp[k - j] - ma[k]); md /= p; out[k] = md ? (tp[k] - ma[k]) / (0.015 * md) : 0; } return out; };

@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────
-// تشخیصِ خودکارِ واگراییِ RSI (Regular + Hidden) — مثلِ اندیکاتورِ Divergence تریدینگ‌ویو
-// الگوریتمِ استانداردِ تحلیلِ تکنیکال (دامنهٔ عمومی)، پیاده‌سازیِ اورجینال.
+// تشخیص خودکار واگرایی RSI (Regular + Hidden) — مثل اندیکاتور Divergence تریدینگ‌ویو
+// الگوریتم استاندارد تحلیل تکنیکال (دامنه‌ی عمومی)، پیاده‌سازی اورجینال.
 // ورودی: [{t,o,h,l,c,v}] — خروجی: [{t, dir:'bull'|'bear', label}]
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -22,7 +22,7 @@ function rsi(closes, period = 14) {
   return out;
 }
 
-// نقاطِ چرخشِ تأییدشده (pivot) با پنجرهٔ چپ/راست
+// نقاط چرخش تأییدشده (pivot) با پنجره‌ی چپ/راست
 function pivots(cs, rsiArr, L, R) {
   const lows = [], highs = [];
   for (let i = L; i < cs.length - R; i++) {
@@ -46,24 +46,24 @@ export function detectDivergences(cs, { period = 14, left = 5, right = 5 } = {})
   const { lows, highs } = pivots(cs, r, left, right);
   const raw = [];
 
-  // واگرایی روی کف‌ها → سیگنالِ صعودی
+  // واگرایی روی کف‌ها → سیگنال صعودی
   for (let k = 1; k < lows.length; k++) {
     const a = lows[k - 1], b = lows[k];
     if (r[a] == null || r[b] == null) continue;
     const pts = [{ t: cs[a].t, price: cs[a].l }, { t: cs[b].t, price: cs[b].l }];
-    if (cs[b].l < cs[a].l && r[b] > r[a]) raw.push({ t: cs[b].t, dir: 'bull', label: 'واگراییِ صعودی', points: pts });
-    else if (cs[b].l > cs[a].l && r[b] < r[a]) raw.push({ t: cs[b].t, dir: 'bull', label: 'واگراییِ صعودیِ مخفی', points: pts });
+    if (cs[b].l < cs[a].l && r[b] > r[a]) raw.push({ t: cs[b].t, dir: 'bull', label: 'واگرایی صعودی', points: pts });
+    else if (cs[b].l > cs[a].l && r[b] < r[a]) raw.push({ t: cs[b].t, dir: 'bull', label: 'واگرایی صعودی مخفی', points: pts });
   }
-  // واگرایی روی سقف‌ها → سیگنالِ نزولی
+  // واگرایی روی سقف‌ها → سیگنال نزولی
   for (let k = 1; k < highs.length; k++) {
     const a = highs[k - 1], b = highs[k];
     if (r[a] == null || r[b] == null) continue;
     const pts = [{ t: cs[a].t, price: cs[a].h }, { t: cs[b].t, price: cs[b].h }];
-    if (cs[b].h > cs[a].h && r[b] < r[a]) raw.push({ t: cs[b].t, dir: 'bear', label: 'واگراییِ نزولی', points: pts });
-    else if (cs[b].h < cs[a].h && r[b] > r[a]) raw.push({ t: cs[b].t, dir: 'bear', label: 'واگراییِ نزولیِ مخفی', points: pts });
+    if (cs[b].h > cs[a].h && r[b] < r[a]) raw.push({ t: cs[b].t, dir: 'bear', label: 'واگرایی نزولی', points: pts });
+    else if (cs[b].h < cs[a].h && r[b] > r[a]) raw.push({ t: cs[b].t, dir: 'bear', label: 'واگرایی نزولی مخفی', points: pts });
   }
 
-  // ادغام بر اساسِ زمان
+  // ادغام بر اساس زمان
   const byTime = new Map();
   raw.forEach((o) => {
     const e = byTime.get(o.t);

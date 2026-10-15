@@ -1,13 +1,13 @@
-// گاردِ رگرسیون — تصادمِ کلیدهای رجیستری باید صریح باشد، نه «آخرین نویسنده برنده».
+// گارد رگرسیون — تصادم کلیدهای رجیستری باید صریح باشد، نه «آخرین نویسنده برنده».
 //
 // باگ: `Object.assign(REGISTRY, EXT_A, EXT_B)` بی‌صدا کلیدهای تکراری را بازنویسی
-// می‌کرد. کامنتش می‌گفت «۳ کلیدِ مشترک» ولی واقعاً ۶ تا بود — و در موردِ trix
-// **برندهٔ غلط** انتخاب می‌شد:
+// می‌کرد. کامنتش می‌گفت «۳ کلید مشترک» ولی واقعاً ۶ تا بود — و در مورد trix
+// **برنده‌ی غلط** انتخاب می‌شد:
 //
-//   `_ema` در indicators_ext_b.js روی null مقدارِ قبلی را جلو می‌برد و warmup را
-//   ایندکس‌محور می‌سنجد. برای TRIX که سه EMAِ تودرتوست، یعنی TRIX(18) از کندلِ ۱۸
-//   مقدار می‌داد در حالی که ~۵۴ کندل لازم دارد → ۳۴ کندلِ ابتدایی از مقادیرِ جعلی.
-//   نسخهٔ extA nullها را رد می‌کند و مقادیرِ واقعی را می‌شمارد.
+//   `_ema` در indicators_ext_b.js روی null مقدار قبلی را جلو می‌برد و warmup را
+//   ایندکس‌محور می‌سنجد. برای TRIX که سه EMA تودرتوست، یعنی TRIX(18) از کندل ۱۸
+//   مقدار می‌داد در حالی که ~۵۴ کندل لازم دارد → ۳۴ کندل ابتدایی از مقادیر جعلی.
+//   نسخه‌ی extA nullها را رد می‌کند و مقادیر واقعی را می‌شمارد.
 //
 // اجرا:
 //   npx esbuild src/bazaarnama/indicators.js --bundle --format=esm --outfile=test/.ind.bundle.mjs
@@ -30,11 +30,11 @@ const C = { open: [], high: [], low: [], close: [], volume: [], time: [] };
 }
 const lineOf = (r) => r.line ?? r.hist ?? r.lines?.[0]?.data ?? Object.values(r).find(Array.isArray);
 
-test('رجیستریِ ادغام‌شده ۱۰۸ کلیدِ متمایز دارد', () => {
+test('رجیستری ادغام‌شده ۱۰۸ کلید متمایز دارد', () => {
   assert.equal(Object.keys(REGISTRY).length, 108);
 });
 
-test('هر کلیدِ تصادمی دقیقاً یک تعریفِ زنده دارد', () => {
+test('هر کلید تصادمی دقیقاً یک تعریف زنده دارد', () => {
   // اگر گارد بشکند، یکی از این‌ها undefined یا شکل‌خراب می‌شود
   for (const k of ['trix', 'bbpercent', 'bbw', 'chaikinVol', 'bop', 'eom']) {
     const d = REGISTRY[k];
@@ -44,35 +44,35 @@ test('هر کلیدِ تصادمی دقیقاً یک تعریفِ زنده دا�
   }
 });
 
-test('trix نسخهٔ extA است — warmupِ درست، نه ایندکس‌محور', () => {
+test('trix نسخه‌ی extA است — warmup درست، نه ایندکس‌محور', () => {
   const d = REGISTRY.trix;
   const line = lineOf(d.calc(C, { ...d.inputs }));
   const first = line.findIndex((v) => v != null);
 
-  // TRIX = سه EMAِ تودرتوی period → حداقل ~۳×period کندلِ واقعی لازم است.
-  // نسخهٔ غلط (extB) از کندلِ period-1 = ۱۷/۱۸ مقدار می‌داد.
-  assert.ok(first > 40, `trix از کندلِ ${first} شروع می‌شود — نسخهٔ ایندکس‌محورِ غلط برگشته (باید >۴۰ باشد)`);
-  assert.ok(first < 70, `trix از کندلِ ${first} شروع می‌شود — بیش از حد دیر`);
+  // TRIX = سه EMA تودرتوی period → حداقل ~۳×period کندل واقعی لازم است.
+  // نسخه‌ی غلط (extB) از کندل period-1 = ۱۷/۱۸ مقدار می‌داد.
+  assert.ok(first > 40, `trix از کندل ${first} شروع می‌شود — نسخه‌ی ایندکس‌محور غلط برگشته (باید >۴۰ باشد)`);
+  assert.ok(first < 70, `trix از کندل ${first} شروع می‌شود — بیش از حد دیر`);
 });
 
-test('trix هنوز دادهٔ واقعی می‌دهد', () => {
+test('trix هنوز داده‌ی واقعی می‌دهد', () => {
   const d = REGISTRY.trix;
   const line = lineOf(d.calc(C, { ...d.inputs })).filter((v) => v != null);
   assert.ok(line.length > N / 2, `فقط ${line.length} مقدار`);
   assert.ok(new Set(line).size > 1, 'خروجی ثابت است');
 });
 
-test('هر تصادم به تغییرِ منبع واکنش می‌دهد (source زنده است)', () => {
+test('هر تصادم به تغییر منبع واکنش می‌دهد (source زنده است)', () => {
   for (const k of ['trix', 'bbpercent', 'bbw']) {
     const d = REGISTRY[k];
     if (!('source' in (d.inputs || {}))) continue;
     const a = JSON.stringify(d.calc(C, { ...d.inputs, source: 'close' }));
     const b = JSON.stringify(d.calc(C, { ...d.inputs, source: 'high' }));
-    assert.notEqual(a, b, `${k}: دراپ‌داونِ منبع no-op است`);
+    assert.notEqual(a, b, `${k}: دراپ‌داون منبع no-op است`);
   }
 });
 
-test('هیچ کلیدِ رجیستری calc یا label گم‌شده ندارد', () => {
+test('هیچ کلید رجیستری calc یا label گم‌شده ندارد', () => {
   const bad = [];
   for (const [k, d] of Object.entries(REGISTRY)) {
     if (typeof d?.calc !== 'function') bad.push(`${k}: calc نیست`);

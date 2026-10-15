@@ -23,11 +23,11 @@ const cs = [
 const res = detectCandlePatterns(cs);
 const labels = res.map((r) => r.label);
 
-ok('bullish engulfing detected (پوششیِ صعودی)', labels.includes('پوششیِ صعودی'), labels);
+ok('bullish engulfing detected (پوششی صعودی)', labels.includes('پوششی صعودی'), labels);
 ok('doji detected (دوجی)', labels.some((l) => l.includes('دوجی')), labels);
 ok('bullish marubozu detected (ماروبوزوی صعودی)', labels.includes('ماروبوزوی صعودی'), labels);
 // engulfing must be bull-directional
-const eng = res.find((r) => r.label === 'پوششیِ صعودی');
+const eng = res.find((r) => r.label === 'پوششی صعودی');
 ok('engulfing dir=bull', eng ? eng.dir === 'bull' : false, eng && eng.dir);
 ok('empty/short input → []', detectCandlePatterns([]).length === 0 && detectCandlePatterns([K(0, 1, 1, 1, 1)]).length === 0);
 

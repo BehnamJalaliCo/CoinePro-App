@@ -1,16 +1,16 @@
-// بازارنما — افزونهٔ اندیکاتورها، بستهٔ A: روند/میانگین‌متحرک (§5.1) + نوسان (§5.3).
-// این فایل کاملاً مستقل و افزایشی است؛ هیچ فایلِ مشترکی را تغییر نمی‌دهد.
+// بازارنما — افزونه‌ی اندیکاتورها، بسته‌ی A: روند/میانگین‌متحرک (§5.1) + نوسان (§5.3).
+// این فایل کاملاً مستقل و افزایشی است؛ هیچ فایل مشترکی را تغییر نمی‌دهد.
 // EXT_REGISTRY_A را با یک خط در REGISTRY اصلی (indicators.js) ادغام کنید.
 //
 // قراردادها (دقیقاً مثل indicators.js):
-//   - آرایه‌ها هم‌طولِ کندل‌ها؛ دورهٔ گرم‌شدن → null.
-//   - c = { open, high, low, close, volume, time } هر کدام آرایهٔ عدد.
+//   - آرایه‌ها هم‌طول کندل‌ها؛ دوره‌ی گرم‌شدن → null.
+//   - c = { open, high, low, close, volume, time } هر کدام آرایه‌ی عدد.
 //   - i = ورودی‌های resolve‌شده (پیش‌فرض‌ها + override کاربر + i.source آرایه).
 //   - شکل‌های خروجی: { line }, { upper, basis, lower, multi:true },
 //     { line, signal, guides, range }, { lines:[{data,color,dashed?}] }.
-//   - منبع: هر اندیکاتورِ تک‌خطی از i.source ?? c.close می‌خواند (سازگار با §5.7).
+//   - منبع: هر اندیکاتور تک‌خطی از i.source ?? c.close می‌خواند (سازگار با §5.7).
 
-// ───────────────────────── کمک‌تابع‌های محلیِ مستقل ─────────────────────────
+// ───────────────────────── کمک‌تابع‌های محلی مستقل ─────────────────────────
 // (این‌ها در اینجا کپی/تعریف می‌شوند تا فایل drop-in بماند و به export‌های
 //  indicators.js وابسته نباشد؛ نام‌ها prefix داخلی دارند تا تداخل نکنند.)
 
@@ -20,9 +20,9 @@ const _sma = (src, p) => {
   let sum = 0, cnt = 0;
   for (let i = 0; i < src.length; i++) {
     const v = src[i];
-    if (v == null) { // در صورت ورودیِ دارای null، پنجره را امن نگه می‌داریم
+    if (v == null) { // در صورت ورودی دارای null، پنجره را امن نگه می‌داریم
       out[i] = null;
-      // بازسازیِ مجموع از صفر برای سادگی و ایمنی عددی
+      // بازسازی مجموع از صفر برای سادگی و ایمنی عددی
       sum = 0; cnt = 0;
       continue;
     }
@@ -33,7 +33,7 @@ const _sma = (src, p) => {
   return out;
 };
 
-// میانگین متحرک نمایی (seed = اولین مقدارِ معتبر، خروجی از i>=p-1)
+// میانگین متحرک نمایی (seed = اولین مقدار معتبر، خروجی از i>=p-1)
 const _ema = (src, p) => {
   const out = new Array(src.length).fill(null);
   const k = 2 / (p + 1);
@@ -77,7 +77,7 @@ const _smma = (src, p) => {
   return out;
 };
 
-// انحراف معیارِ جمعیتی روی پنجرهٔ p
+// انحراف معیار جمعیتی روی پنجره‌ی p
 const _stdev = (src, p) => {
   const out = new Array(src.length).fill(null);
   for (let i = p - 1; i < src.length; i++) {
@@ -92,7 +92,7 @@ const _stdev = (src, p) => {
   return out;
 };
 
-// رگرسیون خطی: نقطهٔ انتهای پنجره (a + b·(p-1+offset))
+// رگرسیون خطی: نقطه‌ی انتهای پنجره (a + b·(p-1+offset))
 const _linreg = (src, p, offset = 0) => {
   const out = new Array(src.length).fill(null);
   // مجموع‌های x ثابت‌اند (x = 0..p-1)
@@ -110,7 +110,7 @@ const _linreg = (src, p, offset = 0) => {
     if (!ok || !denom) { out[i] = null; continue; }
     const b = (p * sumXY - sumX * sumY) / denom;   // شیب
     const a = (sumY - b * sumX) / p;               // عرض از مبدأ
-    out[i] = a + b * (p - 1 + offset);             // مقدار در نقطهٔ انتها (+ آفست)
+    out[i] = a + b * (p - 1 + offset);             // مقدار در نقطه‌ی انتها (+ آفست)
   }
   return out;
 };
@@ -131,13 +131,13 @@ const _atr = (highs, lows, closes, p) => {
   return out;
 };
 
-// بیشینه/کمینهٔ پنجره
+// بیشینه/کمینه‌ی پنجره
 const _highest = (src, p) => { const o = new Array(src.length).fill(null); for (let i = p - 1; i < src.length; i++) { let h = -Infinity; for (let j = 0; j < p; j++) h = Math.max(h, src[i - j]); o[i] = h; } return o; };
 const _lowest = (src, p) => { const o = new Array(src.length).fill(null); for (let i = p - 1; i < src.length; i++) { let l = Infinity; for (let j = 0; j < p; j++) l = Math.min(l, src[i - j]); o[i] = l; } return o; };
 
 // ───────────────────────── فرمول‌های اختصاصی ─────────────────────────
 
-// ZLEMA — میانگین نمایی با تأخیرِ صفر: EMA(src + (src - src_{t-lag}))، lag=(p-1)/2
+// ZLEMA — میانگین نمایی با تأخیر صفر: EMA(src + (src - src_{t-lag}))، lag=(p-1)/2
 const _zlema = (src, p) => {
   const lag = Math.floor((p - 1) / 2);
   const de = src.map((v, i) => (v == null || src[i - lag] == null || i < lag ? null : v + (v - src[i - lag])));
@@ -145,7 +145,7 @@ const _zlema = (src, p) => {
   return _ema(de, p);
 };
 
-// KAMA (Kaufman) — میانگینِ تطبیقی
+// KAMA (Kaufman) — میانگین تطبیقی
 //   ER = |Δ(p)| / Σ|Δ(1)| ؛ SC = (ER·(fast-slow)+slow)^2 با fast=2/(2+1), slow=2/(30+1)
 const _kama = (src, p = 10, fastN = 2, slowN = 30) => {
   const out = new Array(src.length).fill(null);
@@ -163,7 +163,7 @@ const _kama = (src, p = 10, fastN = 2, slowN = 30) => {
   return out;
 };
 
-// T3 (Tillson) — شش‌بار EMA با ضریب حجمِ a
+// T3 (Tillson) — شش‌بار EMA با ضریب حجم a
 const _t3 = (src, p = 10, a = 0.7) => {
   const e1 = _ema(src, p);
   const e2 = _ema(e1.map((v) => (v == null ? null : v)), p);
@@ -202,7 +202,7 @@ const _mcginley = (src, p = 14) => {
   return out;
 };
 
-// TRIX — نرخ تغییرِ سه‌بار EMA (×10000، درصدِ ممیزی)
+// TRIX — نرخ تغییر سه‌بار EMA (×10000، درصد ممیزی)
 const _trix = (src, p = 18, sig = 9) => {
   const e1 = _ema(src, p);
   const e2 = _ema(e1, p);
@@ -221,7 +221,7 @@ const _bb = (src, p, mult) => {
   return { basis, upper, lower, sd };
 };
 
-// نوسانِ تاریخی (Historical Volatility) — ٪ سالانه‌شدهٔ انحرافِ لگاریتمِ بازده
+// نوسان تاریخی (Historical Volatility) — ٪ سالانه‌شده‌ی انحراف لگاریتم بازده
 const _hv = (closes, p = 10, annual = 365) => {
   const n = closes.length, lr = new Array(n).fill(null);
   for (let i = 1; i < n; i++) lr[i] = closes[i] > 0 && closes[i - 1] > 0 ? Math.log(closes[i] / closes[i - 1]) : null;
@@ -229,14 +229,14 @@ const _hv = (closes, p = 10, annual = 365) => {
   return sd.map((v) => (v == null ? null : 100 * v * Math.sqrt(annual)));
 };
 
-// نوسانِ چایکین — درصدِ تغییرِ EMA(H−L) نسبت به roc دوره قبل
+// نوسان چایکین — درصد تغییر EMA(H−L) نسبت به roc دوره قبل
 const _chaikinVol = (highs, lows, p = 10, roc = 10) => {
   const hl = highs.map((h, i) => h - lows[i]);
   const e = _ema(hl, p);
   return e.map((v, i) => (v != null && e[i - roc] != null && e[i - roc] ? 100 * (v - e[i - roc]) / e[i - roc] : null));
 };
 
-// PPO — نوسان‌سازِ درصدیِ قیمت: 100·(EMA_fast−EMA_slow)/EMA_slow ؛ سیگنال = EMA(PPO, sig)
+// PPO — نوسان‌ساز درصدی قیمت: 100·(EMA_fast−EMA_slow)/EMA_slow ؛ سیگنال = EMA(PPO, sig)
 const _ppo = (src, fast = 12, slow = 26, sig = 9) => {
   const ef = _ema(src, fast), es = _ema(src, slow);
   const line = src.map((_, i) => (ef[i] != null && es[i] != null && es[i] ? 100 * (ef[i] - es[i]) / es[i] : null));
@@ -245,7 +245,7 @@ const _ppo = (src, fast = 12, slow = 26, sig = 9) => {
   return { line, signal, hist };
 };
 
-// DMI — حرکتِ جهت‌دارِ وایلدر: +DI / −DI (+ ADX)؛ مکملِ مدخلِ adx (§5.1)
+// DMI — حرکت جهت‌دار وایلدر: +DI / −DI (+ ADX)؛ مکمل مدخل adx (§5.1)
 const _dmi = (highs, lows, closes, p = 14) => {
   const n = closes.length, tr = new Array(n).fill(0), pdm = new Array(n).fill(0), ndm = new Array(n).fill(0);
   for (let i = 1; i < n; i++) {
@@ -269,17 +269,17 @@ const _dmi = (highs, lows, closes, p = 14) => {
   return { plus, minus, adx: adxOut };
 };
 
-// منبع (§5.7). رجیستری `source: 'close'` را به‌صورتِ **رشته** می‌فرستد، ولی این تابع
+// منبع (§5.7). رجیستری `source: 'close'` را به‌صورت **رشته** می‌فرستد، ولی این تابع
 // پیش‌تر فقط آرایه را می‌پذیرفت — یعنی `Array.isArray('high') === false` و هر ۱۳
-// اندیکاتورِ این فایل بی‌صدا روی close می‌افتادند. دراپ‌داونِ منبع در رابط بود و
-// کار نمی‌کرد. حالا مثلِ `_srcOf` در indicators_ext_b.js نامِ رشته‌ای را هم resolve می‌کند.
+// اندیکاتور این فایل بی‌صدا روی close می‌افتادند. دراپ‌داون منبع در رابط بود و
+// کار نمی‌کرد. حالا مثل `_srcOf` در indicators_ext_b.js نام رشته‌ای را هم resolve می‌کند.
 const _hl2 = (c) => c.close.map((_, k) => (c.high[k] + c.low[k]) / 2);
 const _hlc3 = (c) => c.close.map((v, k) => (c.high[k] + c.low[k] + v) / 3);
 const _ohlc4 = (c) => c.close.map((v, k) => (c.open[k] + c.high[k] + c.low[k] + v) / 4);
 const _hlcc4 = (c) => c.close.map((v, k) => (c.high[k] + c.low[k] + v + v) / 4);
 const _src = (c, i) => {
   const s = i && i.source;
-  if (Array.isArray(s)) return s;                 // سازگاریِ عقب‌رو: آرایهٔ از پیش resolve‌شده
+  if (Array.isArray(s)) return s;                 // سازگاری عقب‌رو: آرایه‌ی از پیش resolve‌شده
   switch (s) {
     case 'open': return c.open;
     case 'high': return c.high;
@@ -292,7 +292,7 @@ const _src = (c, i) => {
   }
 };
 
-// ───────────────────────── رجیستریِ افزونه ─────────────────────────
+// ───────────────────────── رجیستری افزونه ─────────────────────────
 export const EXT_REGISTRY_A = {
   // ===== §5.1 روند / میانگین‌های متحرک =====
   smma: {
@@ -300,7 +300,7 @@ export const EXT_REGISTRY_A = {
     calc: (c, i) => ({ line: _smma(_src(c, i), i.period) }),
   },
   zlema: {
-    label: 'ZLEMA (تأخیرِ صفر)', pane: 'main', inputs: { source: 'close', period: 21 }, color: '#2dd4bf',
+    label: 'ZLEMA (تأخیر صفر)', pane: 'main', inputs: { source: 'close', period: 21 }, color: '#2dd4bf',
     calc: (c, i) => ({ line: _zlema(_src(c, i), i.period) }),
   },
   kama: {
@@ -316,7 +316,7 @@ export const EXT_REGISTRY_A = {
     calc: (c, i) => ({ line: _mcginley(_src(c, i), i.period) }),
   },
   linreg: {
-    label: 'منحنیِ رگرسیون خطی', pane: 'main', inputs: { source: 'close', period: 100 }, color: '#38bdf8',
+    label: 'منحنی رگرسیون خطی', pane: 'main', inputs: { source: 'close', period: 100 }, color: '#38bdf8',
     calc: (c, i) => ({ line: _linreg(_src(c, i), i.period, 0) }),
   },
   lsma: {
@@ -362,21 +362,21 @@ export const EXT_REGISTRY_A = {
     },
   },
   hv: {
-    label: 'نوسانِ تاریخی (HV)', pane: 'sub', inputs: { period: 10, annual: 365 }, color: '#f59e0b',
+    label: 'نوسان تاریخی (HV)', pane: 'sub', inputs: { period: 10, annual: 365 }, color: '#f59e0b',
     calc: (c, i) => ({ line: _hv(c.close, i.period, i.annual) }),
   },
   chaikinVol: {
-    label: 'نوسانِ چایکین', pane: 'sub', inputs: { period: 10, roc: 10 }, color: '#0ea5e9',
+    label: 'نوسان چایکین', pane: 'sub', inputs: { period: 10, roc: 10 }, color: '#0ea5e9',
     calc: (c, i) => ({ line: _chaikinVol(c.high, c.low, i.period, i.roc), guides: [0] }),
   },
 
   // ===== §5.2 مومنتوم / اسیلاتور =====
   dmi: {
-    label: 'DMI (جهت‌دارِ +DI/−DI)', pane: 'sub', inputs: { period: 14 }, color: '#22c55e',
-    calc: (c, i) => { const r = _dmi(c.high, c.low, c.close, i.period); return { line: r.plus, signal: r.minus, signal2: r.adx, signal2Color: '#64748b', guides: [25], range: [0, 100] }; }, // +DI سبز / −DI نارنجی / ADX خاکستریِ متوسط (روی هر دو تمِ روشن/تیره دیده شود) — مثلِ DMIِ TradingView
+    label: 'DMI (جهت‌دار +DI/−DI)', pane: 'sub', inputs: { period: 14 }, color: '#22c55e',
+    calc: (c, i) => { const r = _dmi(c.high, c.low, c.close, i.period); return { line: r.plus, signal: r.minus, signal2: r.adx, signal2Color: '#64748b', guides: [25], range: [0, 100] }; }, // +DI سبز / −DI نارنجی / ADX خاکستری متوسط (روی هر دو تم روشن/تیره دیده شود) — مثل DMI TradingView
   },
   ppo: {
-    label: 'PPO (درصدیِ قیمت)', pane: 'sub', inputs: { source: 'close', fast: 12, slow: 26, sig: 9 }, color: '#60a5fa',
+    label: 'PPO (درصدی قیمت)', pane: 'sub', inputs: { source: 'close', fast: 12, slow: 26, sig: 9 }, color: '#60a5fa',
     calc: (c, i) => { const p = _ppo(_src(c, i), i.fast, i.slow, i.sig); return { line: p.line, signal: p.signal, hist: p.hist, macd: true }; },
   },
 };

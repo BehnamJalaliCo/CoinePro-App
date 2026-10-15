@@ -1,13 +1,13 @@
-// بازارنما — سازندهٔ انواعِ چارتِ «غیراستاندارد» که داده را از OHLC بازنویسی می‌کنند.
-// خروجی: آرایهٔ کندل {t,o,h,l,c} (برای Renko/Range/LineBreak) یا نقاطِ خط {t,value} (Kagi/PnF).
-// زمان‌ها به‌صورتِ صعودیِ یکتا تخصیص می‌یابند (این چارت‌ها مستقل از زمان‌اند).
+// بازارنما — سازنده‌ی انواع چارت «غیراستاندارد» که داده را از OHLC بازنویسی می‌کنند.
+// خروجی: آرایه‌ی کندل {t,o,h,l,c} (برای Renko/Range/LineBreak) یا نقاط خط {t,value} (Kagi/PnF).
+// زمان‌ها به‌صورت صعودی یکتا تخصیص می‌یابند (این چارت‌ها مستقل از زمان‌اند).
 
-// میانگینِ بازهٔ واقعی برای اندازهٔ پیش‌فرضِ آجر/بازه
+// میانگین بازه‌ی واقعی برای اندازه‌ی پیش‌فرض آجر/بازه
 export function avgRange(cs, p = 14) {
   if (!cs.length) return 1;
-  // ATRِ اخیر (میانگینِ True Rangeِ p بارِ آخر) — مثلِ TV؛ نه p بارِ قدیمی‌ترین.
-  //   قبلاً از ایندکسِ ۰ می‌شمرد و زود break می‌زد ⇒ اندازهٔ خودکارِ آجرِ Renko/Range/Kagi
-  //   بر پایهٔ نوسانِ ~۸۰۰ کندلِ پیش بود، نه نوسانِ فعلی. #481
+  // ATR اخیر (میانگین True Range p بار آخر) — مثل TV؛ نه p بار قدیمی‌ترین.
+  //   قبلاً از ایندکس ۰ می‌شمرد و زود break می‌زد ⇒ اندازه‌ی خودکار آجر Renko/Range/Kagi
+  //   بر پایه‌ی نوسان ~۸۰۰ کندل پیش بود، نه نوسان فعلی. #481
   const start = Math.max(1, cs.length - p);
   let sum = 0, n = 0;
   for (let i = start; i < cs.length; i++) {
@@ -17,16 +17,16 @@ export function avgRange(cs, p = 14) {
   return n ? sum / n : (cs[cs.length - 1].h - cs[cs.length - 1].l) || 1;
 }
 
-// تخصیصِ زمانِ صعودیِ یکتا
+// تخصیص زمان صعودی یکتا
 function timer() { let last = 0; return (t) => { const v = Math.max(t || 0, last + 1); last = v; return v; }; }
 
-// ── Renko ── (آجرها بر پایهٔ close)
+// ── Renko ── (آجرها بر پایه‌ی close)
 export function renko(cs, brick, atrLen) {
   if (!cs.length) return [];
   brick = brick || avgRange(cs, atrLen || 14) || 1;
   const out = []; const nt = timer();
-  // دو دیوارِ top/bot: ادامهٔ روند فقط ۱ آجر می‌خواهد ولی بازگشت باید ۲ آجر حرکت کند (قانونِ استانداردِ Renko/TV).
-  // قبلاً یک baseِ تکی بود که بعد از فقط ۱ آجرِ برگشت آجرِ معکوس می‌زد ⇒ بازگشت‌های جعلیِ اضافی (نمای «نازک/پرنویز»).
+  // دو دیوار top/bot: ادامه‌ی روند فقط ۱ آجر می‌خواهد ولی بازگشت باید ۲ آجر حرکت کند (قانون استاندارد Renko/TV).
+  // قبلاً یک base تکی بود که بعد از فقط ۱ آجر برگشت آجر معکوس می‌زد ⇒ بازگشت‌های جعلی اضافی (نمای «نازک/پرنویز»).
   let top = cs[0].c, bot = cs[0].c;
   for (const c of cs) {
     const price = c.c;
@@ -36,7 +36,7 @@ export function renko(cs, brick, atrLen) {
   return out;
 }
 
-// ── Range bars ── (هر بار وقتی قیمت به اندازهٔ rng حرکت کند)
+// ── Range bars ── (هر بار وقتی قیمت به اندازه‌ی rng حرکت کند)
 export function rangeBars(cs, rng) {
   if (!cs.length) return [];
   rng = rng || avgRange(cs) || 1;
@@ -51,7 +51,7 @@ export function rangeBars(cs, rng) {
   return out;
 }
 
-// ── Line Break ── (شکستِ n خط)
+// ── Line Break ── (شکست n خط)
 export function lineBreak(cs, n = 3) {
   if (!cs.length) return [];
   const out = []; const nt = timer();
@@ -72,7 +72,7 @@ export function lineBreak(cs, n = 3) {
   return out;
 }
 
-// ── Kagi ── (خطِ پیوسته که با برگشتِ ≥reversal جهت عوض می‌کند) → نقاطِ خط
+// ── Kagi ── (خط پیوسته که با برگشت ≥reversal جهت عوض می‌کند) → نقاط خط
 export function kagi(cs, reversal, atrLen) {
   if (!cs.length) return [];
   reversal = reversal || avgRange(cs, atrLen || 14) || 1;
@@ -89,7 +89,7 @@ export function kagi(cs, reversal, atrLen) {
   return pts;
 }
 
-// ── Point & Figure ── (سادهٔ ستونی) → نقاطِ خطِ سقف/کفِ ستون‌ها
+// ── Point & Figure ── (ساده‌ی ستونی) → نقاط خط سقف/کف ستون‌ها
 export function pnf(cs, box, reversal = 3, atrLen) {
   if (!cs.length) return [];
   box = box || avgRange(cs, atrLen || 14) || 1;
@@ -105,26 +105,26 @@ export function pnf(cs, box, reversal = 3, atrLen) {
   return pts;
 }
 
-// ── Volume (هیستوگرامِ حجم، سبک TradingView) ──
-// overlay روی مقیاسِ قیمتِ مستقل ('' → جدا از مقیاسِ اصلی) و چسبیده به کفِ چارت،
-// نیمه‌شفاف، رنگِ هر میله سبز/قرمز بر پایهٔ جهتِ کندل (close≥open). پیش‌فرض روشن.
-export const VOL_UP = 'rgba(8,153,129,.5)';   // سبزِ up مثلِ پالتِ فعلیِ TV (#089981، نیمه‌شفاف) — هم‌تراز با کندل‌ها
-export const VOL_DOWN = 'rgba(242,54,69,.5)';  // قرمزِ down مثلِ پالتِ فعلیِ TV (#f23645، نیمه‌شفاف) — هم‌تراز با کندل‌ها
+// ── Volume (هیستوگرام حجم، سبک TradingView) ──
+// overlay روی مقیاس قیمت مستقل ('' → جدا از مقیاس اصلی) و چسبیده به کف چارت،
+// نیمه‌شفاف، رنگ هر میله سبز/قرمز بر پایه‌ی جهت کندل (close≥open). پیش‌فرض روشن.
+export const VOL_UP = 'rgba(8,153,129,.5)';   // سبز up مثل پالت فعلی TV (#089981، نیمه‌شفاف) — هم‌تراز با کندل‌ها
+export const VOL_DOWN = 'rgba(242,54,69,.5)';  // قرمز down مثل پالت فعلی TV (#f23645، نیمه‌شفاف) — هم‌تراز با کندل‌ها
 
-// دادهٔ هیستوگرامِ حجم: هر نقطه {time,value,color} — رنگ بر پایهٔ up/down.
+// داده‌ی هیستوگرام حجم: هر نقطه {time,value,color} — رنگ بر پایه‌ی up/down.
 export function volumeData(cs, opts = {}) {
   if (!cs || !cs.length) return [];
   const up = opts.up || VOL_UP, down = opts.down || VOL_DOWN;
   return cs.map((c) => ({ time: c.t, value: c.v || 0, color: (c.c >= c.o) ? up : down }));
 }
 
-// یک نقطهٔ حجم برای live-update (HistogramSeries.update).
+// یک نقطه‌ی حجم برای live-update (HistogramSeries.update).
 export function volumePoint(c, opts = {}) {
   const up = opts.up || VOL_UP, down = opts.down || VOL_DOWN;
   return { time: c.t, value: (c && c.v) || 0, color: ((c && c.c >= c.o) ? up : down) };
 }
 
-// گزینه‌های سریِ هیستوگرامِ حجم (priceScaleId جدا، فرمتِ حجم، بدونِ خط/برچسبِ قیمت).
+// گزینه‌های سری هیستوگرام حجم (priceScaleId جدا، فرمت حجم، بدون خط/برچسب قیمت).
 export function volumeOptions(opts = {}) {
   return {
     priceScaleId: opts.priceScaleId != null ? opts.priceScaleId : '',
@@ -134,8 +134,8 @@ export function volumeOptions(opts = {}) {
   };
 }
 
-// حاشیهٔ مقیاس تا حجم فقط ~۱۵٪ پایینِ چارت را بگیرد و مقیاسِ اصلی را فشرده نکند.
-// top بزرگ‌تر ⇒ نوارِ حجمِ کوتاه‌تر (0.85 ≈ ۱۵٪ پایین).
+// حاشیه‌ی مقیاس تا حجم فقط ~۱۵٪ پایین چارت را بگیرد و مقیاس اصلی را فشرده نکند.
+// top بزرگ‌تر ⇒ نوار حجم کوتاه‌تر (0.85 ≈ ۱۵٪ پایین).
 export function volumeScaleMargins(opts = {}) {
   return { top: opts.top != null ? opts.top : 0.85, bottom: opts.bottom != null ? opts.bottom : 0 };
 }
@@ -148,12 +148,12 @@ export function buildVolume(cs, opts = {}) {
     options: volumeOptions(opts),
     scaleMargins: volumeScaleMargins(opts),
     data: volumeData(cs, opts),
-    on: true, // پیش‌فرض روشن (مثلِ TradingView)
+    on: true, // پیش‌فرض روشن (مثل TradingView)
   };
 }
 
 export const NONSTANDARD = ['renko', 'range', 'linebreak', 'kagi', 'pnf'];
-// عددِ مثبتِ معتبر یا undefined (تا سازنده به پیش‌فرضِ avgRange برگردد). ورودیِ خالی/۰/نامعتبر ⇒ undefined.
+// عدد مثبت معتبر یا undefined (تا سازنده به پیش‌فرض avgRange برگردد). ورودی خالی/۰/نامعتبر ⇒ undefined.
 function posOr(v) { const n = Number(v); return (v != null && v !== '' && Number.isFinite(n) && n > 0) ? n : undefined; }
 export function buildNonStandard(type, cs, p = {}) {
   if (type === 'renko') return { kind: 'candle', data: renko(cs, posOr(p.renkoBrick), posOr(p.atrLen)) };

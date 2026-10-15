@@ -1,9 +1,9 @@
-// گاردِ رگرسیون — اندیکاتورهای حجمی روی ابزارِ بدونِ حجم (فارکس/فلز/شاخص).
+// گارد رگرسیون — اندیکاتورهای حجمی روی ابزار بدون حجم (فارکس/فلز/شاخص).
 //
 // باگی که این تست جلویش را می‌گیرد: پیش‌تر mfi روی فارکس **ثابت ۱۰۰** برمی‌گرداند
-// (اشباعِ خریدِ همیشگی) و vwap بی‌صدا به close تنزل می‌کرد و همچنان «VWAP» برچسب
-// می‌خورد. هر دو عددِ با‌اطمینان‌غلط تولید می‌کردند که یک تریدر روی آن معامله می‌کند.
-// قرارداد: بدونِ حجم → null، نه عدد.
+// (اشباع خرید همیشگی) و vwap بی‌صدا به close تنزل می‌کرد و همچنان «VWAP» برچسب
+// می‌خورد. هر دو عدد با‌اطمینان‌غلط تولید می‌کردند که یک تریدر روی آن معامله می‌کند.
+// قرارداد: بدون حجم → null، نه عدد.
 //
 // اجرا:
 //   npx esbuild src/bazaarnama/indicators.js --bundle --format=esm --outfile=test/.ind.bundle.mjs
@@ -38,32 +38,32 @@ test('hasVolume تشخیص می‌دهد', () => {
   assert.equal(hasVolume([0, 0, 5]), true);
 });
 
-test('mfi روی فارکس null است — نه ثابتِ ۱۰۰', () => {
+test('mfi روی فارکس null است — نه ثابت ۱۰۰', () => {
   const out = mfi(FX.high, FX.low, FX.close, FX.volume, 14);
   assert.equal(out.length, N);
-  assert.ok(out.every((v) => v === null), 'همهٔ مقادیر باید null باشند');
-  // گاردِ صریحِ باگِ اصلی:
-  assert.ok(!out.some((v) => v === 100), 'mfi هرگز نباید روی ابزارِ بدونِ حجم ۱۰۰ بدهد');
+  assert.ok(out.every((v) => v === null), 'همه‌ی مقادیر باید null باشند');
+  // گارد صریح باگ اصلی:
+  assert.ok(!out.some((v) => v === 100), 'mfi هرگز نباید روی ابزار بدون حجم ۱۰۰ بدهد');
 });
 
 test('mfi روی کریپتو هنوز کار می‌کند', () => {
   const out = mfi(CRYPTO.high, CRYPTO.low, CRYPTO.close, CRYPTO.volume, 14);
   const real = out.filter((v) => v != null);
-  assert.ok(real.length > 0, 'باید مقدارِ واقعی بدهد');
-  assert.ok(real.every((v) => v >= 0 && v <= 100), 'در بازهٔ ۰..۱۰۰');
+  assert.ok(real.length > 0, 'باید مقدار واقعی بدهد');
+  assert.ok(real.every((v) => v >= 0 && v <= 100), 'در بازه‌ی ۰..۱۰۰');
   assert.ok(new Set(real).size > 1, 'نباید ثابت باشد');
 });
 
 test('vwap روی فارکس null است — نه close', () => {
   const out = vwap(FX.high, FX.low, FX.close, FX.volume, FX.time);
-  assert.ok(out.every((v) => v === null), 'همهٔ مقادیر باید null باشند');
-  // گاردِ صریح: نباید بی‌صدا close را برگرداند
+  assert.ok(out.every((v) => v === null), 'همه‌ی مقادیر باید null باشند');
+  // گارد صریح: نباید بی‌صدا close را برگرداند
   assert.ok(!out.some((v, i) => v === FX.close[i]), 'vwap هرگز نباید به close تنزل کند');
 });
 
 test('vwap روی کریپتو هنوز کار می‌کند', () => {
   const out = vwap(CRYPTO.high, CRYPTO.low, CRYPTO.close, CRYPTO.volume, CRYPTO.time);
-  assert.ok(out.every((v) => v != null), 'VWAP دورهٔ گرم‌شدن ندارد');
+  assert.ok(out.every((v) => v != null), 'VWAP دوره‌ی گرم‌شدن ندارد');
   assert.ok(new Set(out).size > 1);
 });
 
@@ -72,20 +72,20 @@ test('obv / cmf روی فارکس null‌اند', () => {
   assert.ok(cmf(FX.high, FX.low, FX.close, FX.volume, 20).every((v) => v === null));
 });
 
-test('avwap روی فارکس شکلِ درست با null برمی‌گرداند', () => {
+test('avwap روی فارکس شکل درست با null برمی‌گرداند', () => {
   const r = avwap(FX.high, FX.low, FX.close, FX.volume, 100, 1);
   // رجیستری r.vwap / r.upper / r.lower می‌خواند — شکل باید حفظ شود وگرنه چارت کرش می‌کند
   assert.ok(Array.isArray(r.vwap) && Array.isArray(r.upper) && Array.isArray(r.lower));
   assert.ok(r.vwap.every((v) => v === null));
 });
 
-// ── قراردادِ رجیستری: هیچ اندیکاتورِ حجمی نباید روی فارکس عددِ غیرnull بدهد ──
+// ── قرارداد رجیستری: هیچ اندیکاتور حجمی نباید روی فارکس عدد غیرnull بدهد ──
 const VOLUME_KEYS = [
   'mfi', 'cmf', 'obv', 'vwap', 'avwap', 'netVolume', 'eom',
   'volume', 'adline', 'chaikinOsc', 'forceIndex', 'klinger', 'pvt', 'volumeOsc', 'pvo', 'pvi', 'nvi',
 ];
 
-test('کلِ رجیستریِ حجمی روی فارکس عددِ جعلی نمی‌دهد', () => {
+test('کل رجیستری حجمی روی فارکس عدد جعلی نمی‌دهد', () => {
   const failures = [];
   for (const key of VOLUME_KEYS) {
     const def = REGISTRY[key];
@@ -97,16 +97,16 @@ test('کلِ رجیستریِ حجمی روی فارکس عددِ جعلی نم�
       // فیلدهای سبک/پیکربندی — داده نیستند
       if (['guides', 'range', 'zone', 'cloud', 'cloudColors', 'histMode', 'colors'].includes(field)) continue;
       if (field === 'lines') {
-        for (const l of val) if (Array.isArray(l?.data) && l.data.some((v) => v != null)) failures.push(`${key}.lines: مقدارِ غیرnull`);
+        for (const l of val) if (Array.isArray(l?.data) && l.data.some((v) => v != null)) failures.push(`${key}.lines: مقدار غیرnull`);
         continue;
       }
-      if (val.some((v) => v != null)) failures.push(`${key}.${field}: مقدارِ غیرnull روی ابزارِ بدونِ حجم`);
+      if (val.some((v) => v != null)) failures.push(`${key}.${field}: مقدار غیرnull روی ابزار بدون حجم`);
     }
   }
   assert.deepEqual(failures, [], `اندیکاتورهای حجمی روی فارکس باید null بدهند:\n${failures.join('\n')}`);
 });
 
-test('همان رجیستری روی کریپتو دادهٔ واقعی می‌دهد', () => {
+test('همان رجیستری روی کریپتو داده‌ی واقعی می‌دهد', () => {
   const dead = [];
   for (const key of VOLUME_KEYS) {
     const def = REGISTRY[key];

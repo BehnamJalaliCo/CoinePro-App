@@ -28,6 +28,7 @@ export default defineConfig({
     outDir: 'dist',
     target: 'es2022',
     sourcemap: true,
+    minify: process.env.E2E_NOMINIFY ? false : 'esbuild',
     chunkSizeWarningLimit: 900,
   },
   server: {

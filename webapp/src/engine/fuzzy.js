@@ -1,19 +1,19 @@
-// بازارنما — fuzzy matcher سبک (بدونِ وابستگی). خروجی: امتیاز (هرچه بیشتر بهتر) یا -1.
-// رتبه‌بندی: تطبیقِ دقیق > startsWith > زیررشتهٔ پیوسته > subsequence (حروفِ پراکنده با ترتیب).
+// بازارنما — fuzzy matcher سبک (بدون وابستگی). خروجی: امتیاز (هرچه بیشتر بهتر) یا -1.
+// رتبه‌بندی: تطبیق دقیق > startsWith > زیررشته‌ی پیوسته > subsequence (حروف پراکنده با ترتیب).
 function scoreOne(hay, needle) {
   if (!needle) return 0;
   const H = hay.toLowerCase(), N = needle.toLowerCase();
   if (H === N) return 1000;
   if (H.startsWith(N)) return 800 - (H.length - N.length); // پیشوند، کوتاه‌تر بهتر
   const idx = H.indexOf(N);
-  if (idx >= 0) return 600 - idx - (H.length - N.length) * 0.2; // زیررشتهٔ پیوسته
-  // subsequence: همهٔ حروفِ N به ترتیب داخلِ H باشند
+  if (idx >= 0) return 600 - idx - (H.length - N.length) * 0.2; // زیررشته‌ی پیوسته
+  // subsequence: همه‌ی حروف N به ترتیب داخل H باشند
   let i = 0, j = 0, gaps = 0, last = -1;
   while (i < H.length && j < N.length) {
     if (H[i] === N[j]) { if (last >= 0) gaps += i - last - 1; last = i; j++; }
     i++;
   }
-  if (j === N.length) return 300 - gaps; // تطبیقِ پراکنده، فاصلهٔ کمتر بهتر
+  if (j === N.length) return 300 - gaps; // تطبیق پراکنده، فاصله‌ی کمتر بهتر
   return -1;
 }
 
@@ -25,13 +25,13 @@ export function matchSymbol(meta, q) {
   const c = meta.base ? scoreOne(meta.base, q) : -1;
   let s = Math.max(a, b, c);
   if (s < 0) return -1;
-  if (meta.popular) s += 25; // بوستِ محبوب‌ها
+  if (meta.popular) s += 25; // بوست محبوب‌ها
   return s;
 }
 
-// موقعیتِ حروفِ منطبقِ کوئری درونِ متن — برای های‌لایتِ TradingView-style.
-// همان رتبه‌بندیِ scoreOne: زیررشتهٔ پیوسته (exact/prefix شاملِ آن) وگرنه subsequence.
-// خروجی: آرایهٔ ایندکس‌های منطبق در `text` (خالی اگر تطبیق نبود).
+// موقعیت حروف منطبق کوئری درون متن — برای های‌لایت TradingView-style.
+// همان رتبه‌بندی scoreOne: زیررشته‌ی پیوسته (exact/prefix شامل آن) وگرنه subsequence.
+// خروجی: آرایه‌ی ایندکس‌های منطبق در `text` (خالی اگر تطبیق نبود).
 export function highlightPositions(text, q) {
   const H = String(text || ''), N = String(q || '').trim();
   if (!N) return [];
@@ -49,8 +49,8 @@ export function highlightPositions(text, q) {
 export function searchSymbols(metaList, q, cat) {
   const filtered = cat && cat !== 'all' ? metaList.filter((m) => m.cat === cat) : metaList;
   if (!q) {
-    // #۷ بدونِ کوئری: محبوب‌ها اول، سپس ترتیبِ ورودی حفظ می‌شود (کریپتو از بک‌اند بر اساسِ ارزشِ بازار
-    // مرتب می‌آید؛ sortِ پایدارِ JS آن را نگه می‌دارد). tiebreakِ الفبایی حذف شد چون ترتیبِ mcap را می‌شکست.
+    // #۷ بدون کوئری: محبوب‌ها اول، سپس ترتیب ورودی حفظ می‌شود (کریپتو از بک‌اند بر اساس ارزش بازار
+    // مرتب می‌آید؛ sort پایدار JS آن را نگه می‌دارد). tiebreak الفبایی حذف شد چون ترتیب mcap را می‌شکست.
     return [...filtered].sort((x, y) => (Number(y.popular) - Number(x.popular)));
   }
   const scored = [];

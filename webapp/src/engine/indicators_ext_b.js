@@ -1,11 +1,11 @@
-// بازارنما — افزونهٔ اندیکاتورها، بسته‌ی B:
+// بازارنما — افزونه‌ی اندیکاتورها، بسته‌ی B:
 //   مومنتوم/اسیلاتورها (§5.2) + حجم (§5.4) + پیووت/ساختار (§5.5).
-// این فایل کاملاً افزایشی است: هیچ‌کدام از خروجی‌های موجودِ indicators.js را
-// بازنویسی نمی‌کند و فقط ورودی‌های جدیدِ رجیستری (EXT_REGISTRY_B) را اضافه می‌کند.
+// این فایل کاملاً افزایشی است: هیچ‌کدام از خروجی‌های موجود indicators.js را
+// بازنویسی نمی‌کند و فقط ورودی‌های جدید رجیستری (EXT_REGISTRY_B) را اضافه می‌کند.
 //
-// قرارداد (دقیقاً مثلِ indicators.js):
-//   - آرایه‌ها هم‌طولِ کندل‌ها؛ دورهٔ گرم‌شدن → null.
-//   - c = { open, high, low, close, volume, time }؛ هر کدام آرایهٔ عدد.
+// قرارداد (دقیقاً مثل indicators.js):
+//   - آرایه‌ها هم‌طول کندل‌ها؛ دوره‌ی گرم‌شدن → null.
+//   - c = { open, high, low, close, volume, time }؛ هر کدام آرایه‌ی عدد.
 //   - i = ورودی‌های resolve‌شده (پیش‌فرض‌ها + override کاربر + i.source آرایه‌ای، §5.7).
 //   - شکل‌های render همان‌هایی‌اند که رندرر می‌فهمد:
 //       { line, guides?, range? } | { line, signal, guides, range } |
@@ -13,14 +13,14 @@
 //       { hist, line?, palette:(v,k)=>color } | { markers:[{time,position,shape,color,text}] } |
 //       { levels:[{price,color,label,extendRight}] }
 //
-// همهٔ مخرج‌ها در برابرِ صفر محافظت شده‌اند (||1e-9 یا fallbackِ خنثی) تا NaN/Infinity
-// به نمودار نرسد. اندیکاتورهای حجمی، در نبودِ حجمِ واقعی، روی tick-volume کار می‌کنند.
+// همه‌ی مخرج‌ها در برابر صفر محافظت شده‌اند (||1e-9 یا fallback خنثی) تا NaN/Infinity
+// به چارت نرسد. اندیکاتورهای حجمی، در نبود حجم واقعی، روی tick-volume کار می‌کنند.
 
 import { detectCandlePatterns } from './candlePatterns.js';
 
 // ───────────────────────────── کمک‌تابع‌های محلی ─────────────────────────────
-// برای جلوگیری از وابستگی به indicators.js (که اجازهٔ ویرایش‌اش را نداریم)،
-// نسخه‌های مستقلِ کمک‌تابع‌های لازم این‌جا تعریف می‌شوند. هم‌نام ولی محلی.
+// برای جلوگیری از وابستگی به indicators.js (که اجازه‌ی ویرایش‌اش را نداریم)،
+// نسخه‌های مستقل کمک‌تابع‌های لازم این‌جا تعریف می‌شوند. هم‌نام ولی محلی.
 
 const _sma = (src, p) => {
   const out = new Array(src.length).fill(null);
@@ -47,7 +47,7 @@ const _ema = (src, p) => {
   return out;
 };
 
-// میانگینِ متحرکِ وایلدر (SMMA/RMA): seed=SMA(p)
+// میانگین متحرک وایلدر (SMMA/RMA): seed=SMA(p)
 const _rma = (src, p) => {
   const out = new Array(src.length).fill(null);
   let prev = null, sum = 0;
@@ -59,7 +59,7 @@ const _rma = (src, p) => {
   return out;
 };
 
-// انحرافِ معیارِ نمونه‌ایِ (population) روی پنجرهٔ p
+// انحراف معیار نمونه‌ای (population) روی پنجره‌ی p
 const _stdev = (src, p) => {
   const out = new Array(src.length).fill(null);
   for (let i = p - 1; i < src.length; i++) {
@@ -88,14 +88,14 @@ const _hl2 = (c) => c.high.map((h, i) => (h + c.low[i]) / 2);
 const _hlc3 = (c) => c.high.map((h, i) => (h + c.low[i] + c.close[i]) / 3);
 const _ohlc4 = (c) => c.high.map((h, i) => (c.open[i] + h + c.low[i] + c.close[i]) / 4);
 const _hlcc4 = (c) => c.high.map((h, i) => (h + c.low[i] + 2 * c.close[i]) / 4); // HLCC4 = (H+L+2C)/4 (#262)
-// حلِ منبعِ قیمت از نامِ رشته‌ای (هم‌ترازِ resolveSrcِ indicators.js) — پیش‌فرض/نامعلوم ⇒ close (بدونِ رگرسیون).
+// حل منبع قیمت از نام رشته‌ای (هم‌تراز resolveSrc indicators.js) — پیش‌فرض/نامعلوم ⇒ close (بدون رگرسیون).
 const _srcOf = (c, name) => name === 'open' ? c.open : name === 'high' ? c.high : name === 'low' ? c.low
   : name === 'hl2' ? _hl2(c) : name === 'hlc3' ? _hlc3(c) : name === 'ohlc4' ? _ohlc4(c) : name === 'hlcc4' ? _hlcc4(c) : c.close;
 
-// ضریبِ جریانِ پول (Money-Flow-Multiplier)
+// ضریب جریان پول (Money-Flow-Multiplier)
 const _mfm = (h, l, c) => { const r = h - l; return r ? ((c - l) - (h - c)) / r : 0; };
 
-// رتبهٔ درصدیِ مقدارِ جاری در پنجرهٔ p (برای Connors RSI)
+// رتبه‌ی درصدی مقدار جاری در پنجره‌ی p (برای Connors RSI)
 const _percentRank = (src, p) => {
   const out = new Array(src.length).fill(null);
   for (let i = p; i < src.length; i++) {
@@ -107,7 +107,7 @@ const _percentRank = (src, p) => {
   return out;
 };
 
-// طولِ رشتهٔ متوالیِ صعود/نزول (برای Connors RSI)
+// طول رشته‌ی متوالی صعود/نزول (برای Connors RSI)
 const _streak = (closes) => {
   const out = new Array(closes.length).fill(0);
   for (let i = 1; i < closes.length; i++) {
@@ -118,7 +118,7 @@ const _streak = (closes) => {
   return out;
 };
 
-// RSI روی هر سری دلخواه (دورهٔ گرم‌شدن → null)
+// RSI روی هر سری دلخواه (دوره‌ی گرم‌شدن → null)
 const _rsiSeries = (src, p) => {
   const out = new Array(src.length).fill(null);
   let ag = 0, al = 0;
@@ -132,7 +132,7 @@ const _rsiSeries = (src, p) => {
   return out;
 };
 
-// بیشینه/کمینهٔ پنجره روی یک سری (با null-tolerant)
+// بیشینه/کمینه‌ی پنجره روی یک سری (با null-tolerant)
 const _highest = (src, p) => {
   const out = new Array(src.length).fill(null);
   for (let i = p - 1; i < src.length; i++) { let hh = -Infinity, ok = 0; for (let j = 0; j < p; j++) { const v = src[i - j]; if (v == null) continue; ok = 1; if (v > hh) hh = v; } out[i] = ok ? hh : null; }
@@ -144,12 +144,12 @@ const _lowest = (src, p) => {
   return out;
 };
 
-// آیا حجمِ معناداری وجود دارد؟ (در نبودش، اندیکاتورهای حجمی null برمی‌گردانند)
+// آیا حجم معناداری وجود دارد؟ (در نبودش، اندیکاتورهای حجمی null برمی‌گردانند)
 const _hasVol = (vols) => Array.isArray(vols) && vols.some((v) => v && v > 0);
 const _nullLine = (n) => ({ line: new Array(n).fill(null) });
 
-// پالتِ هیستوگرامِ سبز/قرمز بر مبنای مقایسه با کندلِ قبل
-const _UP = '#089981', _DN = '#f23645'; // هم‌ترازِ رنگِ up/downِ کندل‌های تم (پالتِ فعلیِ TV) — قبلاً #26a69a/#ef5350ِ قدیمی بود و با کندل‌ها نمی‌خوانْد
+// پالت هیستوگرام سبز/قرمز بر مبنای مقایسه با کندل قبل
+const _UP = '#089981', _DN = '#f23645'; // هم‌تراز رنگ up/down کندل‌های تم (پالت فعلی TV) — قبلاً #26a69a/#ef5350 قدیمی بود و با کندل‌ها نمی‌خوانْد
 
 // ───────────────────────── §5.2 مومنتوم / اسیلاتورها ─────────────────────────
 
@@ -170,17 +170,17 @@ const accelerator = (c) => {
   const mp = _hl2(c);
   const f = _sma(mp, 5), sl = _sma(mp, 34);
   const aoArr = mp.map((_, k) => (f[k] != null && sl[k] != null ? f[k] - sl[k] : null));
-  // _sma مقادیرِ null را ۰ می‌گیرد؛ پس خروجی را فقط روی پنجرهٔ کاملِ ۵-تاییِ واقعیِ AO نگه می‌داریم تا آلودگیِ warmup (صفرهای جعلی) وارد نشود.
+  // _sma مقادیر null را ۰ می‌گیرد؛ پس خروجی را فقط روی پنجره‌ی کامل ۵-تایی واقعی AO نگه می‌داریم تا آلودگی warmup (صفرهای جعلی) وارد نشود.
   const aoSma = _sma(aoArr.map((v) => (v == null ? 0 : v)), 5).map((v, k) => {
     for (let j = 0; j < 5; j++) if (k - j < 0 || aoArr[k - j] == null) return null;
     return v;
   });
   const ac = aoArr.map((v, k) => (v != null && aoSma[k] != null ? v - aoSma[k] : null));
-  // پالت: سبز اگر نسبت به بارِ قبل صعودی، قرمز اگر نزولی
+  // پالت: سبز اگر نسبت به بار قبل صعودی، قرمز اگر نزولی
   return { hist: ac, palette: (v, k) => (k > 0 && ac[k - 1] != null && ac[k] != null ? (ac[k] >= ac[k - 1] ? _UP : _DN) : _UP), guides: [0] };
 };
 
-// 29) اسیلاتورِ غایی (Ultimate Oscillator):
+// 29) اسیلاتور غایی (Ultimate Oscillator):
 // BP=C−min(L,C_{-1}); TR=max(H,C_{-1})−min(L,C_{-1}); avg_n=ΣBP_n/ΣTR_n;
 // UO=100·(4·avg(s) + 2·avg(m) + avg(l)) / 7
 export const ultimateOsc = (c, i) => {
@@ -205,9 +205,9 @@ export const ultimateOsc = (c, i) => {
   return { line: out, guides: [30, 70], range: [0, 100], zone: [30, 70] };
 };
 
-// 33) تبدیلِ فیشر (Fisher Transform):
-// hl2 را روی پنجرهٔ p به [−1,1] نگاشت می‌کنیم (با هموارسازیِ 0.5)، بعد
-// Fish=0.5·ln((1+x)/(1−x)) با هموارسازیِ بازگشتی؛ signal=Fish_{t-1}
+// 33) تبدیل فیشر (Fisher Transform):
+// hl2 را روی پنجره‌ی p به [−1,1] نگاشت می‌کنیم (با هموارسازی 0.5)، بعد
+// Fish=0.5·ln((1+x)/(1−x)) با هموارسازی بازگشتی؛ signal=Fish_{t-1}
 const fisher = (c, i) => {
   const mp = _hl2(c), n = mp.length;
   const hh = _highest(mp, i.period), ll = _lowest(mp, i.period);
@@ -251,12 +251,12 @@ const smiErgodic = (c, i) => {
   const smi = close.map((_, k) => (dbl[k] != null && adbl[k] ? (100 * dbl[k]) / adbl[k] : null));
   const sig = _ema(smi, i.sig).map((v, k) => (smi[k] == null ? null : v));
   const hist = smi.map((v, k) => (v != null && sig[k] != null ? v - sig[k] : null));
-  // سبکِ MACD: خطِ ارگودیک + سیگنال + هیستوگرامِ اختلاف + خطِ صفر (مثلِ SMI Ergodic Indicatorِ TV) —
-  // قبلاً فقط hist رندر می‌شد و خطِ smi/signal دور ریخته می‌شد (مثلِ باگِ ADXِ #۲۶۶).
+  // سبک MACD: خط ارگودیک + سیگنال + هیستوگرام اختلاف + خط صفر (مثل SMI Ergodic Indicator TV) —
+  // قبلاً فقط hist رندر می‌شد و خط smi/signal دور ریخته می‌شد (مثل باگ ADX #۲۶۶).
   return { line: smi, signal: sig, hist, macd: true, guides: [0] };
 };
 
-// 35) شاخصِ مومنتومِ استوکاستیک (SMI — Stochastic Momentum Index):
+// 35) شاخص مومنتوم استوکاستیک (SMI — Stochastic Momentum Index):
 // mid=(HH+LL)/2 ؛ SMI=100·EMA(EMA(C−mid,a),b) / (½·EMA(EMA(HH−LL,a),b))
 const smi = (c, i) => {
   const n = c.close.length;
@@ -278,7 +278,7 @@ const smi = (c, i) => {
   return { line: out, guides: [-40, 40], range: [-100, 100], zone: [-40, 40] };
 };
 
-// 36) توازنِ قدرت (Balance of Power): BOP=(C−O)/(H−L) ، با هموارسازیِ اختیاری SMA
+// 36) توازن قدرت (Balance of Power): BOP=(C−O)/(H−L) ، با هموارسازی اختیاری SMA
 const bop = (c, i) => {
   const raw = c.close.map((cl, k) => { const r = c.high[k] - c.low[k]; return r ? (cl - c.open[k]) / r : 0; });
   const line = i.smooth > 1 ? _sma(raw, i.smooth) : raw;
@@ -296,7 +296,7 @@ const trix = (c, i) => {
 
 // ───────────────────────────── §5.4 حجم ─────────────────────────────
 
-// 47/48) حجم + میانگینِ حجم (هیستوگرامِ رنگی + خطِ MA)
+// 47/48) حجم + میانگین حجم (هیستوگرام رنگی + خط MA)
 const volume = (c, i) => {
   if (!_hasVol(c.volume)) return { hist: new Array(c.close.length).fill(null) };
   return {
@@ -306,7 +306,7 @@ const volume = (c, i) => {
   };
 };
 
-// 50) خطِ تجمع/توزیع (A/D): A/D += MFM·vol  (تجمعی)
+// 50) خط تجمع/توزیع (A/D): A/D += MFM·vol  (تجمعی)
 const adline = (c) => {
   if (!_hasVol(c.volume)) return _nullLine(c.close.length);
   const out = new Array(c.close.length).fill(null);
@@ -315,7 +315,7 @@ const adline = (c) => {
   return { line: out };
 };
 
-// 51) اسیلاتورِ چایکین: EMA(A/D,fast) − EMA(A/D,slow)
+// 51) اسیلاتور چایکین: EMA(A/D,fast) − EMA(A/D,slow)
 const chaikinOsc = (c, i) => {
   if (!_hasVol(c.volume)) return { ..._nullLine(c.close.length), guides: [0] };
   const ad = new Array(c.close.length).fill(0); let acc = 0;
@@ -324,12 +324,12 @@ const chaikinOsc = (c, i) => {
   return { line: ad.map((_, k) => (ef[k] != null && es[k] != null ? ef[k] - es[k] : null)), guides: [0] };
 };
 
-// 54) سهولتِ حرکت (Ease of Movement):
+// 54) سهولت حرکت (Ease of Movement):
 // DM=((H+L)/2 − (H_{-1}+L_{-1})/2) ؛ BR=(vol/scale)/(H−L) ؛ EMV=DM/BR ؛ EoM=SMA(EMV,p)
 const eom = (c, i) => {
   if (!_hasVol(c.volume)) return { ..._nullLine(c.close.length), guides: [0] };
   const n = c.close.length, emv = new Array(n).fill(null);
-  const scale = i.scale || 100000000; // مقیاسِ مرسوم برای خوانایی
+  const scale = i.scale || 100000000; // مقیاس مرسوم برای خوانایی
   for (let k = 1; k < n; k++) {
     const dm = (c.high[k] + c.low[k]) / 2 - (c.high[k - 1] + c.low[k - 1]) / 2;
     const rng = c.high[k] - c.low[k];
@@ -341,7 +341,7 @@ const eom = (c, i) => {
   return { line, guides: [0] };
 };
 
-// (افزودنی) شاخصِ نیرو (Force Index): FI=(C_t−C_{t-1})·vol ؛ هموار با EMA(p)
+// (افزودنی) شاخص نیرو (Force Index): FI=(C_t−C_{t-1})·vol ؛ هموار با EMA(p)
 const forceIndex = (c, i) => {
   if (!_hasVol(c.volume)) return { ..._nullLine(c.close.length), guides: [0] };
   const n = c.close.length, raw = new Array(n).fill(null);
@@ -350,8 +350,8 @@ const forceIndex = (c, i) => {
   return { line, guides: [0] };
 };
 
-// (افزودنی) اسیلاتورِ کلینگر (Klinger Volume Oscillator):
-// trend بر مبنای جهتِ hlc3 ؛ VF=vol·|2·(dm/cm−1)|·trend·100 ؛ KVO=EMA(VF,fast)−EMA(VF,slow) ؛ signal=EMA(KVO,sig)
+// (افزودنی) اسیلاتور کلینگر (Klinger Volume Oscillator):
+// trend بر مبنای جهت hlc3 ؛ VF=vol·|2·(dm/cm−1)|·trend·100 ؛ KVO=EMA(VF,fast)−EMA(VF,slow) ؛ signal=EMA(KVO,sig)
 const klinger = (c, i) => {
   if (!_hasVol(c.volume)) return { ..._nullLine(c.close.length), guides: [0] };
   const n = c.close.length, vf = new Array(n).fill(0);
@@ -384,7 +384,7 @@ const pvt = (c) => {
   return { line: out };
 };
 
-// 38/39) باندِ بولینگرِ مشتق — %B و پهنای باند (Bandwidth)
+// 38/39) باند بولینگر مشتق — %B و پهنای باند (Bandwidth)
 const _bollinger = (src, p, mult) => {
   const basis = _sma(src, p), sd = _stdev(src, p);
   const upper = src.map((_, k) => (basis[k] != null && sd[k] != null ? basis[k] + mult * sd[k] : null));
@@ -404,8 +404,8 @@ const bbw = (c, i) => {
 
 // ───────────────────────── §5.5 پیووت / ساختار ─────────────────────────
 
-// 59–62) پیووتِ چندنوعه (کلاسیک/فیبوناچی/وودی/کامارلا/DM) روی کندلِ قبل
-//   انواع از طریقِ ورودیِ pivotType انتخاب می‌شوند. خروجی: lines (پله‌ای).
+// 59–62) پیووت چندنوعه (کلاسیک/فیبوناچی/وودی/کامارلا/DM) روی کندل قبل
+//   انواع از طریق ورودی pivotType انتخاب می‌شوند. خروجی: lines (پله‌ای).
 const _pivotLevels = (h, l, cl, prevClose, type) => {
   const rng = h - l;
   let P, r1, r2, r3, s1, s2, s3;
@@ -423,7 +423,7 @@ const _pivotLevels = (h, l, cl, prevClose, type) => {
     r2 = P + rng; s2 = P - rng;
     r3 = h + 2 * (P - l); s3 = l - 2 * (h - P);
   } else if (type === 'DM') {
-    // DeMark: X بسته به رابطهٔ close و open(=prevClose به‌عنوان تقریب)
+    // DeMark: X بسته به رابطه‌ی close و open(=prevClose به‌عنوان تقریب)
     let X;
     if (cl < (prevClose ?? cl)) X = h + 2 * l + cl;
     else if (cl > (prevClose ?? cl)) X = 2 * h + l + cl;
@@ -446,10 +446,10 @@ const pivotsMulti = (c, i) => {
   const set = (k, pv) => { if (!pv) return; const lv = _pivotLevels(pv.H, pv.L, pv.C, pv.PC, type); P[k] = lv.P; R1[k] = lv.r1; R2[k] = lv.r2; R3[k] = lv.r3; S1[k] = lv.s1; S2[k] = lv.s2; S3[k] = lv.s3; };
   const times = c.time;
   if (!times || !times.length) {
-    // fallback: بارِ قبل (رفتارِ قدیمی اگر زمان نداریم)
+    // fallback: بار قبل (رفتار قدیمی اگر زمان نداریم)
     for (let k = 1; k < n; k++) set(k, { H: c.high[k - 1], L: c.low[k - 1], C: c.close[k - 1], PC: k > 1 ? c.close[k - 2] : null });
   } else {
-    // سطوحِ افقیِ صافِ روزانه از HLCِ روزِ قبل (مثلِ TradingView) — استپ در مرزِ روزِ UTC
+    // سطوح افقی صاف روزانه از HLC روز قبل (مثل TradingView) — استپ در مرز روز UTC
     const dayOf = (t) => Math.floor((t || 0) / 86400);
     let curDay = null, dH = -Infinity, dL = Infinity, dC = null, prev = null;
     for (let k = 0; k < n; k++) {
@@ -473,7 +473,7 @@ const pivotsMulti = (c, i) => {
   };
 };
 
-// 63) نقاطِ چرخشِ بالا/پایین (Pivot High/Low) → markers
+// 63) نقاط چرخش بالا/پایین (Pivot High/Low) → markers
 const pivotHL = (c, i) => {
   const m = [];
   for (let k = i.left; k < c.high.length - i.right; k++) {
@@ -486,7 +486,7 @@ const pivotHL = (c, i) => {
   return { markers: m };
 };
 
-// 68) فرکتالِ ویلیامز (n=2): up اگر H بیشینهٔ ±n، down اگر L کمینهٔ ±n
+// 68) فرکتال ویلیامز (n=2): up اگر H بیشینه‌ی ±n، down اگر L کمینه‌ی ±n
 const fractals = (c, i) => {
   const n2 = i.n || 2, m = [];
   for (let k = n2; k < c.high.length - n2; k++) {
@@ -501,8 +501,8 @@ const fractals = (c, i) => {
   return { markers: m };
 };
 
-// 68b) الگوهای شمعیِ ژاپنی (Candlestick Patterns) → markers روی کندل‌ها (چکش/دوجی/پوششی/ستارهٔ صبح‌گاهی و…).
-//   از detectCandlePatterns (۱۶ الگو) استفاده می‌کند؛ ستونی → آرایهٔ کندل تبدیل می‌شود. تحققِ «تشخیصِ خودکار»ِ تبِ الگوها.
+// 68b) الگوهای شمعی ژاپنی (Candlestick Patterns) → markers روی کندل‌ها (چکش/دوجی/پوششی/ستاره‌ی صبح‌گاهی و…).
+//   از detectCandlePatterns (۱۶ الگو) استفاده می‌کند؛ ستونی → آرایه‌ی کندل تبدیل می‌شود. تحقق «تشخیص خودکار» تب الگوها.
 const candlePatterns = (c, i) => {
   const T = c.time || [];
   const cs = T.map((t, k) => ({ t, o: c.open[k], h: c.high[k], l: c.low[k], c: c.close[k] }));
@@ -511,14 +511,14 @@ const candlePatterns = (c, i) => {
     position: d.dir === 'bear' ? 'aboveBar' : 'belowBar',
     shape: d.dir === 'bull' ? 'arrowUp' : d.dir === 'bear' ? 'arrowDown' : 'circle',
     color: d.dir === 'bull' ? _UP : d.dir === 'bear' ? _DN : '#9598a1',
-    text: (d.label || '').split('، ')[0], // فقط الگوی اصلی (برچسبِ کوتاه) تا شلوغ نشود
+    text: (d.label || '').split('، ')[0], // فقط الگوی اصلی (برچسب کوتاه) تا شلوغ نشود
   }));
-  // فقط N الگوی اخیر (دکلاتر مثلِ TV — نه صدها برچسبِ روی‌هم؛ کاربر count را تنظیم می‌کند).
+  // فقط N الگوی اخیر (دکلاتر مثل TV — نه صدها برچسب روی‌هم؛ کاربر count را تنظیم می‌کند).
   const n = i && i.count ? Math.max(1, i.count | 0) : 10;
   return { markers: m.slice(-n) };
 };
 
-// هستهٔ ZigZag: نقاطِ چرخش با حدِّ بازگشتِ dev٪ — خروجی: ایندکس‌های سوینگ
+// هسته‌ی ZigZag: نقاط چرخش با حدّ بازگشت dev٪ — خروجی: ایندکس‌های سوینگ
 const _zigzagPivots = (highs, lows, devPct) => {
   const n = highs.length;
   if (n < 2) return [];
@@ -527,7 +527,7 @@ const _zigzagPivots = (highs, lows, devPct) => {
   const th = devPct / 100;
   for (let k = 1; k < n; k++) {
     if (dir >= 0) {
-      // در جستجوی ادامهٔ قله یا چرخش به دره
+      // در جستجوی ادامه‌ی قله یا چرخش به دره
       if (highs[k] > lastHigh) { lastHigh = highs[k]; lastIdx = k; }
       if (lows[k] < lastHigh * (1 - th)) {
         piv.push({ idx: lastIdx, price: lastHigh, dir: 1 });
@@ -542,12 +542,12 @@ const _zigzagPivots = (highs, lows, devPct) => {
       }
     }
   }
-  // آخرین سوینگِ (تأییدنشده) را هم اضافه کن
+  // آخرین سوینگ (تأییدنشده) را هم اضافه کن
   piv.push({ idx: lastIdx, price: dir >= 0 ? lastHigh : lastLow, dir: dir >= 0 ? 1 : -1 });
   return piv;
 };
 
-// 64) ZigZag → خطِ شکسته (lines با نقاطِ سوینگ، بقیه null) + markers
+// 64) ZigZag → خط شکسته (lines با نقاط سوینگ، بقیه null) + markers
 const zigzag = (c, i) => {
   const piv = _zigzagPivots(c.high, c.low, i.dev);
   const line = new Array(c.close.length).fill(null);
@@ -559,7 +559,7 @@ const zigzag = (c, i) => {
   return { lines: [{ data: line, color: i.color || '#f59e0b', connectNulls: true, name: 'ZigZag' }], markers: m };
 };
 
-// 65) فیبوناچیِ خودکار — آخرین لگِ ZigZag (A→B) → سطوحِ افقی levels
+// 65) فیبوناچی خودکار — آخرین لگ ZigZag (A→B) → سطوح افقی levels
 const autoFib = (c, i) => {
   const piv = _zigzagPivots(c.high, c.low, i.dev);
   if (piv.length < 2) return { levels: [] };
@@ -567,7 +567,7 @@ const autoFib = (c, i) => {
   const lo = Math.min(a.price, b.price), hi = Math.max(a.price, b.price), rng = hi - lo;
   const ratios = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
   const palette = ['#94a3b8', '#f87171', '#fb923c', '#facc15', '#4ade80', '#22d3ee', '#94a3b8'];
-  const up = b.price >= a.price; // جهتِ لگ
+  const up = b.price >= a.price; // جهت لگ
   const levels = ratios.map((r, idx) => ({
     price: up ? hi - rng * r : lo + rng * r,
     color: palette[idx],
@@ -577,7 +577,7 @@ const autoFib = (c, i) => {
   return { levels };
 };
 
-// 66) حمایت/مقاومت — خوشه‌بندیِ پیووت‌های H/L در باندهای قیمتی (قدرت=تعدادِ تماس)
+// 66) حمایت/مقاومت — خوشه‌بندی پیووت‌های H/L در باندهای قیمتی (قدرت=تعداد تماس)
 const srLevels = (c, i) => {
   const lb = i.lookback || 15, tolPct = (i.tol || 0.1) / 100;
   // ابتدا پیووت‌های فرکتالی را جمع کن
@@ -588,7 +588,7 @@ const srLevels = (c, i) => {
     if (ph) piv.push(c.high[k]);
     if (pl) piv.push(c.low[k]);
   }
-  // خوشه‌بندیِ سادهٔ مبتنی بر تلورانس
+  // خوشه‌بندی ساده‌ی مبتنی بر تلورانس
   piv.sort((a, b) => a - b);
   const clusters = [];
   for (const p of piv) {
@@ -604,7 +604,7 @@ const srLevels = (c, i) => {
   return { levels };
 };
 
-// 67) نواحیِ عرضه/تقاضا — کندلِ پایه پیش از حرکتِ پرشتاب (impulse×ATR) → levels (مستطیلی)
+// 67) نواحی عرضه/تقاضا — کندل پایه پیش از حرکت پرشتاب (impulse×ATR) → levels (مستطیلی)
 const supplyDemand = (c, i) => {
   const a = _atr(c.high, c.low, c.close, i.atrLen || 14);
   const mult = i.impulse || 2;
@@ -613,19 +613,19 @@ const supplyDemand = (c, i) => {
     if (a[k] == null) continue;
     const move = Math.abs(c.close[k + 1] - c.open[k + 1]);
     if (move >= mult * a[k]) {
-      // کندلِ پایه = کندلِ k (پیش از ایمپالس)
+      // کندل پایه = کندل k (پیش از ایمپالس)
       const up = c.close[k + 1] >= c.open[k + 1];
       levels.push({ price: c.high[k], color: up ? '#22c55e' : '#ef4444', label: up ? 'تقاضا' : 'عرضه', extendRight: true });
       levels.push({ price: c.low[k], color: up ? '#22c55e' : '#ef4444', label: '', extendRight: true });
     }
   }
-  // فقط چند ناحیهٔ اخیر را نگه دار (تازگی)
+  // فقط چند ناحیه‌ی اخیر را نگه دار (تازگی)
   return { levels: levels.slice(-Math.max(2, (i.maxZones || 5) * 2)) };
 };
 
-// Chandelier Exit — استاپِ دنباله‌دارِ مبتنی بر ATR (سبکِ TradingView، useClose=true).
-//   long = highest(close,p) − mult·ATR (رَچِت بالا)؛ short = lowest(close,p) + mult·ATR (رَچِت پایین)؛
-//   خطِ فعال بین این دو با چرخشِ dir؛ سبز وقتی long، قرمز وقتی short (شکست در چرخش با gaps).
+// Chandelier Exit — استاپ دنباله‌دار مبتنی بر ATR (سبک TradingView، useClose=true).
+//   long = highest(close,p) − mult·ATR (رَچت بالا)؛ short = lowest(close,p) + mult·ATR (رَچت پایین)؛
+//   خط فعال بین این دو با چرخش dir؛ سبز وقتی long، قرمز وقتی short (شکست در چرخش با gaps).
 const chandelierExit = (c, i) => {
   const p = i.period || 22, mult = i.mult || 3;
   const atrV = _atr(c.high, c.low, c.close, p);
@@ -647,8 +647,8 @@ const chandelierExit = (c, i) => {
   return { lines: [{ data: green, color: '#22c55e', gaps: true }, { data: red, color: '#ef4444', gaps: true }] };
 };
 
-// Ulcer Index — سنجهٔ ریسکِ نزولی: ریشهٔ میانگینِ مربعِ درصدِ افتِ قیمت از بیشینهٔ بستهٔ دورهٔ اخیر.
-//   بالاتر = فشارِ افتِ بیشتر (نه جهت). pane زیرین، همیشه ≥ ۰.
+// Ulcer Index — سنجه‌ی ریسک نزولی: ریشه‌ی میانگین مربع درصد افت قیمت از بیشینه‌ی بسته‌ی دوره‌ی اخیر.
+//   بالاتر = فشار افت بیشتر (نه جهت). pane زیرین، همیشه ≥ ۰.
 const ulcerIndex = (c, i) => {
   const p = i.period || 14, close = c.close, n = close.length;
   const hc = _highest(close, p);
@@ -662,13 +662,13 @@ const ulcerIndex = (c, i) => {
   for (let k = p - 1; k < n; k++) {
     let sum = 0, cnt = 0;
     for (let j = 0; j < p; j++) { const v = dd2[k - j]; if (v == null) { cnt = -1; break; } sum += v; cnt++; }
-    if (cnt === p) out[k] = Math.sqrt(sum / p); // فقط با پنجرهٔ کاملِ معتبر (na در warmup مثلِ TV)
+    if (cnt === p) out[k] = Math.sqrt(sum / p); // فقط با پنجره‌ی کامل معتبر (na در warmup مثل TV)
   }
   return { line: out, guides: [5] };
 };
 
-// ───── اندیکاتورهای غایبِ TradingView (batch ۱، تست‌شده در test/indicators.test.mjs) ─────
-// aroonUp/Down دقیقاً هم‌کنوانسیونِ aroonِ فعلیِ indicators.js (پنجرهٔ p+1، شمارشِ فاصله تا سقف/کف).
+// ───── اندیکاتورهای غایب TradingView (batch ۱، تست‌شده در test/indicators.test.mjs) ─────
+// aroonUp/Down دقیقاً هم‌کنوانسیون aroon فعلی indicators.js (پنجره‌ی p+1، شمارش فاصله تا سقف/کف).
 const _aroonUpDown = (highs, lows, p) => {
   const up = new Array(highs.length).fill(null), down = new Array(highs.length).fill(null);
   for (let i = p; i < highs.length; i++) {
@@ -678,15 +678,15 @@ const _aroonUpDown = (highs, lows, p) => {
   }
   return { up, down };
 };
-// اسیلاتورِ آرون: AroonUp − AroonDown (بازهٔ −۱۰۰ تا +۱۰۰؛ عبور از صفر = چرخشِ روند).
+// اسیلاتور آرون: AroonUp − AroonDown (بازه‌ی −۱۰۰ تا +۱۰۰؛ عبور از صفر = چرخش روند).
 const aroonOsc = (c, i) => {
   const a = _aroonUpDown(c.high, c.low, i.period);
   const line = a.up.map((u, k) => (u == null || a.down[k] == null ? null : u - a.down[k]));
   return { line, guides: [0], range: [-100, 100] };
 };
-// نوسان‌گرِ حجمیِ درصدی (PVO): مثلِ MACD ولی روی حجم. اگر حجمِ واقعی نبود، روی tick-volume.
+// نوسان‌گر حجمی درصدی (PVO): مثل MACD ولی روی حجم. اگر حجم واقعی نبود، روی tick-volume.
 const pvo = (c, i) => {
-  // بدونِ حجم PVO خطِ صافِ صفر می‌شد — «واگراییِ حجمی وجود ندارد» می‌خواند، نه «داده نیست».
+  // بدون حجم PVO خط صاف صفر می‌شد — «واگرایی حجمی وجود ندارد» می‌خواند، نه «داده نیست».
   if (!_hasVol(c.volume)) return { ..._nullLine(c.close.length), signal: new Array(c.close.length).fill(null), hist: new Array(c.close.length).fill(null), macd: true, guides: [0] };
   const vol = c.volume;
   const fast = _ema(vol, i.fast), slow = _ema(vol, i.slow);
@@ -695,12 +695,12 @@ const pvo = (c, i) => {
   const hist = line.map((v, k) => (v == null || signal[k] == null ? null : v - signal[k]));
   return { line, signal, hist, macd: true, guides: [0] };
 };
-// میانگینِ محدودهٔ روزانه (ADR): میانگینِ سادهٔ (سقف − کف) در p دوره.
+// میانگین محدوده‌ی روزانه (ADR): میانگین ساده‌ی (سقف − کف) در p دوره.
 const adr = (c, i) => {
   const rng = c.high.map((h, k) => (h == null || c.low[k] == null ? null : h - c.low[k]));
   return { line: _sma(rng, i.period), guides: [] };
 };
-// قیمتِ میانه (Median): میانهٔ متحرکِ منبع در p دوره (زوج ⇒ میانگینِ دو مقدارِ وسط).
+// قیمت میانه (Median): میانه‌ی متحرک منبع در p دوره (زوج ⇒ میانگین دو مقدار وسط).
 const medianInd = (c, i) => {
   const src = _srcOf(c, i.source), n = src.length, out = new Array(n).fill(null), p = i.period;
   for (let k = p - 1; k < n; k++) {
@@ -713,8 +713,8 @@ const medianInd = (c, i) => {
   return { line: out };
 };
 
-// ───── اندیکاتورهای غایبِ TradingView (batch ۲، تست‌شده) ─────
-// CCI helper (برای Woodies): (TP − SMA(TP)) / (۰٫۰۱۵ × میانگینِ قدرمطلقِ انحراف).
+// ───── اندیکاتورهای غایب TradingView (batch ۲، تست‌شده) ─────
+// CCI helper (برای Woodies): (TP − SMA(TP)) / (۰٫۰۱۵ × میانگین قدرمطلق انحراف).
 const _cciSeries = (c, p) => {
   const n = c.close.length, tp = new Array(n);
   for (let k = 0; k < n; k++) tp[k] = (c.high[k] + c.low[k] + c.close[k]) / 3;
@@ -722,16 +722,16 @@ const _cciSeries = (c, p) => {
   for (let k = p - 1; k < n; k++) { let md = 0; for (let j = 0; j < p; j++) md += Math.abs(tp[k - j] - ma[k]); md /= p; out[k] = md ? (tp[k] - ma[k]) / (0.015 * md) : 0; }
   return out;
 };
-// CCIِ وودی: خطِ اصلی CCI(۱۴) + خطِ توربوی CCI(۶).
+// CCI وودی: خط اصلی CCI(۱۴) + خط توربوی CCI(۶).
 const woodiesCci = (c, i) => ({ line: _cciSeries(c, i.slow), signal: _cciSeries(c, i.fast), guides: [100, 0, -100] });
 
-// EMA با ضریبِ سفارشی (alpha=۲/period؛ سبکِ DecisionPoint برای PMO).
+// EMA با ضریب سفارشی (alpha=۲/period؛ سبک DecisionPoint برای PMO).
 const _emaAlpha = (src, period) => {
   const out = new Array(src.length).fill(null), a = 2 / period; let prev = null;
   for (let k = 0; k < src.length; k++) { const v = src[k]; if (v == null) { out[k] = prev; continue; } prev = prev == null ? v : prev + a * (v - prev); out[k] = prev; }
   return out;
 };
-// PMO (نوسان‌گرِ مومنتومِ قیمت): ROC×۱۰ ← هموارسازیِ ۳۵ ← هموارسازیِ ۲۰ ← سیگنالِ EMA(۱۰).
+// PMO (نوسان‌گر مومنتوم قیمت): ROC×۱۰ ← هموارسازی ۳۵ ← هموارسازی ۲۰ ← سیگنال EMA(۱۰).
 const pmo = (c, i) => {
   const cl = c.close, n = cl.length, roc = new Array(n).fill(null);
   for (let k = 1; k < n; k++) if (cl[k - 1]) roc[k] = (cl[k] / cl[k - 1] - 1) * 100 * 10;
@@ -739,10 +739,10 @@ const pmo = (c, i) => {
   return { line, signal, guides: [0] };
 };
 
-// PVI/NVI (شاخصِ حجمِ مثبت/منفی): تجمعی، seed=۱۰۰۰؛ فقط در روزهای حجم‌بالا (PVI) یا حجم‌پایین (NVI) تغییر می‌کند.
+// PVI/NVI (شاخص حجم مثبت/منفی): تجمعی، seed=۱۰۰۰؛ فقط در روزهای حجم‌بالا (PVI) یا حجم‌پایین (NVI) تغییر می‌کند.
 const _volIndex = (c, positive) => {
   const cl = c.close, n = cl.length;
-  if (!_hasVol(c.volume)) return new Array(n).fill(null); // بدونِ حجم خطِ صافِ ۱۰۰۰ می‌داد
+  if (!_hasVol(c.volume)) return new Array(n).fill(null); // بدون حجم خط صاف ۱۰۰۰ می‌داد
   const vol = c.volume, out = new Array(n).fill(null);
   let idx = 1000; if (n) out[0] = 1000;
   for (let k = 1; k < n; k++) {
@@ -755,7 +755,7 @@ const _volIndex = (c, positive) => {
 const pvi = (c) => ({ line: _volIndex(c, true) });
 const nvi = (c) => ({ line: _volIndex(c, false) });
 
-// RVI (شاخصِ نوسان‌پذیریِ نسبیِ دورسی): مثلِ RSI ولی روی انحرافِ معیار به‌جای تغییرِ قیمت.
+// RVI (شاخص نوسان‌پذیری نسبی دورسی): مثل RSI ولی روی انحراف معیار به‌جای تغییر قیمت.
 const rviVol = (c, i) => {
   const src = _srcOf(c, i.source), n = src.length, sd = _stdev(src, i.stdevLen);
   const up = new Array(n).fill(null), dn = new Array(n).fill(null);
@@ -765,10 +765,10 @@ const rviVol = (c, i) => {
   return { line: out, guides: [20, 50, 80], range: [0, 100] };
 };
 
-// ───────────────────────────── رجیستریِ افزونه ─────────────────────────────
-// 63) کانالِ رگرسیونِ خطی (Linear Regression Channel) — پایه = خطِ رگرسیونِ کمترین‌مربعات (LSMA)
-//   روی پنجرهٔ length؛ باندها = basis ± mult × انحرافِ معیارِ باقی‌مانده‌ها (population). دورهٔ گرم‌شدن → null.
-//   x = ۰..len-۱ ثابت است، پس Σx و Σx² یک‌بار حساب می‌شوند. basis = مقدارِ خط در نقطهٔ انتهایی.
+// ───────────────────────────── رجیستری افزونه ─────────────────────────────
+// 63) کانال رگرسیون خطی (Linear Regression Channel) — پایه = خط رگرسیون کمترین‌مربعات (LSMA)
+//   روی پنجره‌ی length؛ باندها = basis ± mult × انحراف معیار باقی‌مانده‌ها (population). دوره‌ی گرم‌شدن → null.
+//   x = ۰..len-۱ ثابت است، پس Σx و Σx² یک‌بار حساب می‌شوند. basis = مقدار خط در نقطه‌ی انتهایی.
 const linRegChannel = (c, i) => {
   const src = _srcOf(c, i.source);
   const n = src.length, len = Math.max(2, Math.round(i.length || 100)), mult = i.mult || 2;
@@ -790,8 +790,8 @@ const linRegChannel = (c, i) => {
   return { upper, basis, lower, multi: true };
 };
 
-// 64) نوسان‌گرِ حجم (Volume Oscillator) — اختلافِ درصدیِ دو EMAِ حجم (کوتاه/بلند)؛ تک‌خط بدونِ سیگنال
-//   (متمایز از PVOِ MACD-مانندِ موجود که سیگنال+هیستوگرام دارد). بدونِ حجمِ معنادار → null.
+// 64) نوسان‌گر حجم (Volume Oscillator) — اختلاف درصدی دو EMA حجم (کوتاه/بلند)؛ تک‌خط بدون سیگنال
+//   (متمایز از PVO MACD-مانند موجود که سیگنال+هیستوگرام دارد). بدون حجم معنادار → null.
 const volumeOsc = (c, i) => {
   if (!_hasVol(c.volume)) return _nullLine(c.close.length);
   const vol = c.volume.map((v) => v || 0);
@@ -801,8 +801,8 @@ const volumeOsc = (c, i) => {
   return { line, guides: [0] };
 };
 
-// 65) استاپِ نوسانی (Volatility Stop) — استاپِ دنبال‌کنندهٔ ATRِ وایلدر با فلیپِ روند (کلاسیک، متمایز از
-//   Chandelier/Supertrend/PSAR). روندِ صعودی → خطِ سبزِ زیرِ قیمت؛ نزولی → خطِ قرمزِ بالای قیمت. عبورِ قیمت از استاپ = فلیپ.
+// 65) استاپ نوسانی (Volatility Stop) — استاپ دنبال‌کننده‌ی ATR وایلدر با فلیپ روند (کلاسیک، متمایز از
+//   Chandelier/Supertrend/PSAR). روند صعودی → خط سبز زیر قیمت؛ نزولی → خط قرمز بالای قیمت. عبور قیمت از استاپ = فلیپ.
 const volatilityStop = (c, i) => {
   const src = c.close, n = src.length;
   const period = Math.max(1, Math.round(i.period || 20)), mult = i.mult || 2;
@@ -822,67 +822,67 @@ const volatilityStop = (c, i) => {
   return { lines: [{ data: up, color: '#22c55e', gaps: true }, { data: dn, color: '#ef4444', gaps: true }] };
 };
 
-// 66) قیمتِ تیپیک (Typical Price = HLC3) و قیمتِ وزنیِ بسته (Weighted Close = HLCC4) —
-//   اورلی‌های price-transformِ استانداردِ TV؛ خطِ خامِ هر کندل، بدونِ هموارسازی (مثلِ TradingView).
+// 66) قیمت تیپیک (Typical Price = HLC3) و قیمت وزنی بسته (Weighted Close = HLCC4) —
+//   اورلی‌های price-transform استاندارد TV؛ خط خام هر کندل، بدون هموارسازی (مثل TradingView).
 const typicalPrice = (c) => ({ line: _hlc3(c) });
 const weightedClose = (c) => ({ line: _hlcc4(c) });
 
 export const EXT_REGISTRY_B = {
-  // — اندیکاتورهای غایبِ TV (batch ۱) —
-  aroonOsc:   { label: 'اسیلاتورِ آرون (Aroon Oscillator)', pane: 'sub', inputs: { period: 14 }, color: '#22c55e', calc: aroonOsc },
-  pvo:        { label: 'نوسان‌گرِ حجمیِ درصدی (PVO)', pane: 'sub', inputs: { fast: 12, slow: 26, sig: 9 }, color: '#60a5fa', calc: pvo },
-  adr:        { label: 'میانگینِ محدودهٔ روزانه (ADR)', pane: 'sub', inputs: { period: 14 }, color: '#f59e0b', calc: adr },
-  median:     { label: 'قیمتِ میانه (Median)', pane: 'main', inputs: { period: 3, source: 'hl2' }, color: '#a78bfa', calc: medianInd },
-  typicalPrice:  { label: 'قیمتِ تیپیک (Typical Price)', pane: 'main', inputs: {}, color: '#a78bfa', calc: typicalPrice },
-  weightedClose: { label: 'قیمتِ وزنیِ بسته (Weighted Close)', pane: 'main', inputs: {}, color: '#fb923c', calc: weightedClose },
-  // — اندیکاتورهای غایبِ TV (batch ۲) —
-  woodiesCci: { label: 'CCIِ وودی (Woodies CCI)', pane: 'sub', inputs: { slow: 14, fast: 6 }, color: '#f59e0b', calc: woodiesCci },
-  pmo:        { label: 'نوسان‌گرِ مومنتومِ قیمت (PMO)', pane: 'sub', inputs: { len1: 35, len2: 20, sig: 10 }, color: '#60a5fa', calc: pmo },
-  pvi:        { label: 'شاخصِ حجمِ مثبت (PVI)', pane: 'sub', inputs: {}, color: '#22c55e', calc: pvi },
-  nvi:        { label: 'شاخصِ حجمِ منفی (NVI)', pane: 'sub', inputs: {}, color: '#ef4444', calc: nvi },
-  rviVol:     { label: 'شاخصِ نوسان‌پذیریِ نسبی (RVI)', pane: 'sub', inputs: { length: 14, stdevLen: 10, source: 'close' }, color: '#a78bfa', calc: rviVol },
+  // — اندیکاتورهای غایب TV (batch ۱) —
+  aroonOsc:   { label: 'اسیلاتور آرون (Aroon Oscillator)', pane: 'sub', inputs: { period: 14 }, color: '#22c55e', calc: aroonOsc },
+  pvo:        { label: 'نوسان‌گر حجمی درصدی (PVO)', pane: 'sub', inputs: { fast: 12, slow: 26, sig: 9 }, color: '#60a5fa', calc: pvo },
+  adr:        { label: 'میانگین محدوده‌ی روزانه (ADR)', pane: 'sub', inputs: { period: 14 }, color: '#f59e0b', calc: adr },
+  median:     { label: 'قیمت میانه (Median)', pane: 'main', inputs: { period: 3, source: 'hl2' }, color: '#a78bfa', calc: medianInd },
+  typicalPrice:  { label: 'قیمت تیپیک (Typical Price)', pane: 'main', inputs: {}, color: '#a78bfa', calc: typicalPrice },
+  weightedClose: { label: 'قیمت وزنی بسته (Weighted Close)', pane: 'main', inputs: {}, color: '#fb923c', calc: weightedClose },
+  // — اندیکاتورهای غایب TV (batch ۲) —
+  woodiesCci: { label: 'CCI وودی (Woodies CCI)', pane: 'sub', inputs: { slow: 14, fast: 6 }, color: '#f59e0b', calc: woodiesCci },
+  pmo:        { label: 'نوسان‌گر مومنتوم قیمت (PMO)', pane: 'sub', inputs: { len1: 35, len2: 20, sig: 10 }, color: '#60a5fa', calc: pmo },
+  pvi:        { label: 'شاخص حجم مثبت (PVI)', pane: 'sub', inputs: {}, color: '#22c55e', calc: pvi },
+  nvi:        { label: 'شاخص حجم منفی (NVI)', pane: 'sub', inputs: {}, color: '#ef4444', calc: nvi },
+  rviVol:     { label: 'شاخص نوسان‌پذیری نسبی (RVI)', pane: 'sub', inputs: { length: 14, stdevLen: 10, source: 'close' }, color: '#a78bfa', calc: rviVol },
   // — §5.2 مومنتوم / اسیلاتورها —
   mom:        { label: 'مومنتوم', pane: 'sub', inputs: { period: 10, source: 'close' }, color: '#60a5fa', calc: mom },
-  // — استاپ‌های نوسانی / ریسک (افزودهٔ پانچ‌لیست #۴۶۱) —
-  chandelier: { label: 'خروجِ چاندلیر (Chandelier Exit)', pane: 'main', inputs: { period: 22, mult: 3 }, color: '#22c55e', calc: chandelierExit },
-  volatilityStop: { label: 'استاپِ نوسانی (Volatility Stop)', pane: 'main', inputs: { period: 20, mult: 2 }, color: '#f59e0b', calc: volatilityStop },
-  ulcer:      { label: 'شاخصِ آلسر (Ulcer Index)', pane: 'sub', inputs: { period: 14 }, color: '#f59e0b', calc: ulcerIndex },
-  roc:        { label: 'ROC (نرخِ تغییر)', pane: 'sub', inputs: { period: 9, source: 'close' }, color: '#f472b6', calc: roc },
+  // — استاپ‌های نوسانی / ریسک (افزوده‌ی پانچ‌لیست #۴۶۱) —
+  chandelier: { label: 'خروج چاندلیر (Chandelier Exit)', pane: 'main', inputs: { period: 22, mult: 3 }, color: '#22c55e', calc: chandelierExit },
+  volatilityStop: { label: 'استاپ نوسانی (Volatility Stop)', pane: 'main', inputs: { period: 20, mult: 2 }, color: '#f59e0b', calc: volatilityStop },
+  ulcer:      { label: 'شاخص آلسر (Ulcer Index)', pane: 'sub', inputs: { period: 14 }, color: '#f59e0b', calc: ulcerIndex },
+  roc:        { label: 'ROC (نرخ تغییر)', pane: 'sub', inputs: { period: 9, source: 'close' }, color: '#f472b6', calc: roc },
   trix:       { label: 'TRIX', pane: 'sub', inputs: { period: 18, sig: 9, source: 'close' }, color: '#34d399', calc: trix },
   ac:         { label: 'شتاب‌دهنده (AC)', pane: 'sub', inputs: {}, color: '#22d3ee', calc: accelerator },
-  uo:         { label: 'اسیلاتورِ غایی (UO)', pane: 'sub', inputs: { short: 7, mid: 14, long: 28 }, color: '#a78bfa', calc: ultimateOsc },
-  fisher:     { label: 'تبدیلِ فیشر', pane: 'sub', inputs: { period: 9 }, color: '#fb923c', calc: fisher },
+  uo:         { label: 'اسیلاتور غایی (UO)', pane: 'sub', inputs: { short: 7, mid: 14, long: 28 }, color: '#a78bfa', calc: ultimateOsc },
+  fisher:     { label: 'تبدیل فیشر', pane: 'sub', inputs: { period: 9 }, color: '#fb923c', calc: fisher },
   crsi:       { label: 'Connors RSI', pane: 'sub', inputs: { rsiLen: 3, streakLen: 2, rankLen: 100 }, color: '#e879f9', calc: connorsRsi },
   smiErgodic: { label: 'SMI ارگودیک', pane: 'sub', inputs: { long: 20, short: 5, sig: 5 }, color: '#38bdf8', calc: smiErgodic },
-  smi:        { label: 'شاخصِ مومنتومِ استوکاستیک', pane: 'sub', inputs: { period: 10, smoothK: 3, smoothD: 3 }, color: '#facc15', calc: smi },
-  bop:        { label: 'توازنِ قدرت (BOP)', pane: 'sub', inputs: { smooth: 1 }, color: '#c084fc', calc: bop },
+  smi:        { label: 'شاخص مومنتوم استوکاستیک', pane: 'sub', inputs: { period: 10, smoothK: 3, smoothD: 3 }, color: '#facc15', calc: smi },
+  bop:        { label: 'توازن قدرت (BOP)', pane: 'sub', inputs: { smooth: 1 }, color: '#c084fc', calc: bop },
 
-  // — §5.3 (مشتقاتِ بولینگر؛ بخشی از بستهٔ B) —
-  bbpercent:  { label: 'باندِ بولینگر ٪B', pane: 'sub', inputs: { period: 20, mult: 2, source: 'close' }, color: '#22d3ee', calc: bbpercent },
-  bbw:        { label: 'پهنای باندِ بولینگر', pane: 'sub', inputs: { period: 20, mult: 2, source: 'close' }, color: '#94a3b8', calc: bbw },
+  // — §5.3 (مشتقات بولینگر؛ بخشی از بسته‌ی B) —
+  bbpercent:  { label: 'باند بولینگر ٪B', pane: 'sub', inputs: { period: 20, mult: 2, source: 'close' }, color: '#22d3ee', calc: bbpercent },
+  bbw:        { label: 'پهنای باند بولینگر', pane: 'sub', inputs: { period: 20, mult: 2, source: 'close' }, color: '#94a3b8', calc: bbw },
 
   // — §5.4 حجم —
   volume:     { label: 'حجم', pane: 'sub', inputs: { maLen: 20 }, color: '#089981', calc: volume },
   adline:     { label: 'تجمع/توزیع (A/D)', pane: 'sub', inputs: {}, color: '#0ea5e9', calc: adline },
-  chaikinOsc: { label: 'اسیلاتورِ چایکین', pane: 'sub', inputs: { fast: 3, slow: 10 }, color: '#f97316', calc: chaikinOsc },
-  eom:        { label: 'سهولتِ حرکت (EoM)', pane: 'sub', inputs: { period: 14, scale: 100000000 }, color: '#84cc16', calc: eom },
-  forceIndex: { label: 'شاخصِ نیرو (Force Index)', pane: 'sub', inputs: { period: 13 }, color: '#fb7185', calc: forceIndex },
-  klinger:    { label: 'اسیلاتورِ کلینگر', pane: 'sub', inputs: { fast: 34, slow: 55, sig: 13 }, color: '#a855f7', calc: klinger },
-  pvt:        { label: 'روندِ قیمت-حجم (PVT)', pane: 'sub', inputs: {}, color: '#10b981', calc: pvt },
-  volumeOsc:  { label: 'نوسان‌گرِ حجم (Volume Oscillator)', pane: 'sub', inputs: { shortLen: 5, longLen: 10 }, color: '#22c55e', calc: volumeOsc },
+  chaikinOsc: { label: 'اسیلاتور چایکین', pane: 'sub', inputs: { fast: 3, slow: 10 }, color: '#f97316', calc: chaikinOsc },
+  eom:        { label: 'سهولت حرکت (EoM)', pane: 'sub', inputs: { period: 14, scale: 100000000 }, color: '#84cc16', calc: eom },
+  forceIndex: { label: 'شاخص نیرو (Force Index)', pane: 'sub', inputs: { period: 13 }, color: '#fb7185', calc: forceIndex },
+  klinger:    { label: 'اسیلاتور کلینگر', pane: 'sub', inputs: { fast: 34, slow: 55, sig: 13 }, color: '#a855f7', calc: klinger },
+  pvt:        { label: 'روند قیمت-حجم (PVT)', pane: 'sub', inputs: {}, color: '#10b981', calc: pvt },
+  volumeOsc:  { label: 'نوسان‌گر حجم (Volume Oscillator)', pane: 'sub', inputs: { shortLen: 5, longLen: 10 }, color: '#22c55e', calc: volumeOsc },
 
   // — §5.5 پیووت / ساختار —
   pivotsMulti: { label: 'پیووت (چندنوعه)', pane: 'main', inputs: { pivotType: 'Classic' }, color: '#94a3b8', calc: pivotsMulti },
-  pivotHL:     { label: 'نقاطِ چرخش بالا/پایین', pane: 'main', inputs: { left: 5, right: 5 }, color: '#f59e0b', calc: pivotHL },
-  fractals:    { label: 'فرکتالِ ویلیامز', pane: 'main', inputs: { n: 2 }, color: '#f59e0b', calc: fractals },
+  pivotHL:     { label: 'نقاط چرخش بالا/پایین', pane: 'main', inputs: { left: 5, right: 5 }, color: '#f59e0b', calc: pivotHL },
+  fractals:    { label: 'فرکتال ویلیامز', pane: 'main', inputs: { n: 2 }, color: '#f59e0b', calc: fractals },
   candlePatterns: { label: 'الگوهای شمعی (Candlestick)', pane: 'main', inputs: { count: 10 }, color: '#9598a1', calc: candlePatterns },
   zigzag:      { label: 'زیگزاگ (ZigZag)', pane: 'main', inputs: { dev: 5 }, color: '#f59e0b', calc: zigzag },
-  autoFib:     { label: 'فیبوناچیِ خودکار', pane: 'main', inputs: { dev: 5 }, color: '#22d3ee', calc: autoFib },
+  autoFib:     { label: 'فیبوناچی خودکار', pane: 'main', inputs: { dev: 5 }, color: '#22d3ee', calc: autoFib },
   srLevels:    { label: 'حمایت/مقاومت', pane: 'main', inputs: { lookback: 15, tol: 0.1 }, color: '#f59e0b', calc: srLevels },
-  supplyDemand:{ label: 'نواحیِ عرضه/تقاضا', pane: 'main', inputs: { impulse: 2, atrLen: 14, maxZones: 5 }, color: '#22c55e', calc: supplyDemand },
+  supplyDemand:{ label: 'نواحی عرضه/تقاضا', pane: 'main', inputs: { impulse: 2, atrLen: 14, maxZones: 5 }, color: '#22c55e', calc: supplyDemand },
 
-  // — کانالِ رگرسیونِ خطیِ TV (افزودهٔ Loop #39) —
-  linRegChannel: { label: 'کانالِ رگرسیونِ خطی (Linear Regression)', pane: 'main', inputs: { length: 100, mult: 2, source: 'close' }, color: '#22d3ee', calc: linRegChannel },
+  // — کانال رگرسیون خطی TV (افزوده‌ی Loop #39) —
+  linRegChannel: { label: 'کانال رگرسیون خطی (Linear Regression)', pane: 'main', inputs: { length: 100, mult: 2, source: 'close' }, color: '#22d3ee', calc: linRegChannel },
 };
 
 export default EXT_REGISTRY_B;

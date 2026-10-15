@@ -66,6 +66,13 @@ export function attachDrawings(canvas: HTMLCanvasElement, chart: IChartApi): Dra
   const bump = () => useChartBus.getState().bumpDrawings(layer.canUndo(), layer.canRedo(), layer.getDrawings().length);
   layer.onChange = (list) => { if (symbol) save(symbol, list); bump(); };
   layer.onToolReset = () => { useDrawing.getState().setTool('cursor', 'cursors'); };
+  // Text is written in the app's own editor, not the browser's prompt; a double click on any
+  // drawing that carries text opens it again.
+  layer.onTextRequest = (index) => useChartBus.getState().setTextEdit({ index, fresh: true });
+  layer.onDblEdit = (index) => {
+    const d = layer.getDrawings()[index];
+    if (d && typeof d.text === 'string') useChartBus.getState().setTextEdit({ index, fresh: false });
+  };
   layer.setTimeFmt((t: number) => {
     const d = new Date(t * 1000);
     return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;

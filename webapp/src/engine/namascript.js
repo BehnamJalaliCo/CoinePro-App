@@ -1,7 +1,7 @@
-// نمااسکریپت — موتورِ اجرای کدِ کاربر در Web Worker سندباکس (بدونِ DOM/شبکه، تایم‌اوت).
-// مدلِ سری‌محور (vectorized): هر سری آرایه است. توابعِ ta.* آرایه می‌دهند؛
-// کمک‌توابعِ عملگری (add/sub/...) عنصر-به-عنصر روی آرایه/عدد کار می‌کنند؛
-// input/plot/strategy/label/... خروجی جمع می‌کنند. سازگار با ویرایشگر + پنلِ مرجع.
+// نمااسکریپت — موتور اجرای کد کاربر در Web Worker سندباکس (بدون DOM/شبکه، تایم‌اوت).
+// مدل سری‌محور (vectorized): هر سری آرایه است. توابع ta.* آرایه می‌دهند؛
+// کمک‌توابع عملگری (add/sub/...) عنصر-به-عنصر روی آرایه/عدد کار می‌کنند؛
+// input/plot/strategy/label/... خروجی جمع می‌کنند. سازگار با ویرایشگر + پنل مرجع.
 
 const WORKER_SRC = `
 self.onmessage = function (e) {
@@ -23,7 +23,7 @@ self.onmessage = function (e) {
   function or(a,b){return bin(a,b,function(x,y){return !!x||!!y;});}
   function iff(c,a,b){ c=arr(c);a=arr(a);b=arr(b); var o=new Array(N); for(var i=0;i<N;i++)o[i]=c[i]?a[i]:b[i]; return o; }
   function nz(a,r){ a=arr(a); var o=new Array(N); for(var i=0;i<N;i++)o[i]=(a[i]==null)?(r||0):a[i]; return o; } // قبلاً از un می‌گذشت که روی nullها short-circuit می‌کرد ⇒ nz هرگز null را جایگزین نمی‌کرد (باگ).
-  // برای نمایش (جدول/برچسب/رشته): از یک سری، آخرین مقدارِ معتبر را با گردکردنِ هوشمند بده
+  // برای نمایش (جدول/برچسب/رشته): از یک سری، آخرین مقدار معتبر را با گردکردن هوشمند بده
   function lastv(x){ if(Array.isArray(x)){ for(var i=x.length-1;i>=0;i--)if(x[i]!=null&&isFinite(x[i]))return x[i]; return null; } return x; }
   function disp(x){ var v=lastv(x); if(typeof v==='number'){ var a=Math.abs(v),d=a>=100?2:a>=1?3:5,m=Math.pow(10,d); return Math.round(v*m)/m; } return v==null?'':v; }
 
@@ -47,7 +47,7 @@ self.onmessage = function (e) {
   function macd(s,f,sl,sg){f=f||12;sl=sl||26;sg=sg||9;var ml=sub(ema(s,f),ema(s,sl));var sig=ema(ml,sg).map(function(v,i){return ml[i]==null?null:v;});return {macd:ml,signal:sig,hist:sub(ml,sig)};}
   function bb(s,p,m){p=p||20;m=m||2;var b=sma(s,p),sd=stdev(s,p);return {mid:b,upper:add(b,mul(sd,m)),lower:sub(b,mul(sd,m))};}
   function stoch(p,dd){p=p||14;dd=dd||3;var hh=highest(H,p),ll=lowest(L,p),k=new Array(N).fill(null);for(var i=0;i<N;i++)if(hh[i]!=null)k[i]=(hh[i]===ll[i])?50:((C[i]-ll[i])/(hh[i]-ll[i]))*100;return {k:k,d:sma(k,dd).map(function(v,i){return k[i]==null?null:v;})};}
-  function supertrend(p,m){p=p||10;m=m||3;var a=atr(p),line=new Array(N).fill(null),dir=new Array(N).fill(null),up=null,dn=null,d=1;for(var i=0;i<N;i++){if(a[i]==null)continue;var mid=(H[i]+L[i])/2,ub=mid+m*a[i],lb=mid-m*a[i];if(up!=null)ub=(ub<up||C[i-1]>up)?ub:up;if(dn!=null)lb=(lb>dn||C[i-1]<dn)?lb:dn;/* رَچِتِ باندِ نهاییِ استانداردِ SuperTrend: باند فقط تا وقتی قیمت داخلش است سفت می‌ماند و فقط با شکست ریست می‌شود (قبلاً هر بار دوباره پهن می‌شد ⇒ خطِ اشتباه). */if(d===1&&C[i]<(dn==null?lb:dn))d=-1;else if(d===-1&&C[i]>(up==null?ub:up))d=1;up=ub;dn=lb;dir[i]=d;line[i]=d===1?lb:ub;}return {line:line,dir:dir};}
+  function supertrend(p,m){p=p||10;m=m||3;var a=atr(p),line=new Array(N).fill(null),dir=new Array(N).fill(null),up=null,dn=null,d=1;for(var i=0;i<N;i++){if(a[i]==null)continue;var mid=(H[i]+L[i])/2,ub=mid+m*a[i],lb=mid-m*a[i];if(up!=null)ub=(ub<up||C[i-1]>up)?ub:up;if(dn!=null)lb=(lb>dn||C[i-1]<dn)?lb:dn;/* رَچت باند نهایی استاندارد SuperTrend: باند فقط تا وقتی قیمت داخلش است سفت می‌ماند و فقط با شکست ریست می‌شود (قبلاً هر بار دوباره پهن می‌شد ⇒ خط اشتباه). */if(d===1&&C[i]<(dn==null?lb:dn))d=-1;else if(d===-1&&C[i]>(up==null?ub:up))d=1;up=ub;dn=lb;dir[i]=d;line[i]=d===1?lb:ub;}return {line:line,dir:dir};}
   function crossover(a,b){a=arr(a);b=arr(b);var o=new Array(N).fill(false);for(var i=1;i<N;i++){if(a[i]!=null&&b[i]!=null&&a[i-1]!=null&&b[i-1]!=null)o[i]=a[i-1]<=b[i-1]&&a[i]>b[i];}return o;}
   function crossunder(a,b){a=arr(a);b=arr(b);var o=new Array(N).fill(false);for(var i=1;i<N;i++){if(a[i]!=null&&b[i]!=null&&a[i-1]!=null&&b[i-1]!=null)o[i]=a[i-1]>=b[i-1]&&a[i]<b[i];}return o;}
   function cross(a,b){return or(crossover(a,b),crossunder(a,b));}
@@ -56,10 +56,10 @@ self.onmessage = function (e) {
   function barssince(c){c=arr(c);var o=new Array(N).fill(null),k=null;for(var i=0;i<N;i++){if(c[i]){k=0;}else if(k!=null)k++;o[i]=k;}return o;}
   function valuewhen(c,s,occ){c=arr(c);s=arr(s);occ=occ||0;var o=new Array(N).fill(null);for(var i=0;i<N;i++){var cnt=0;for(var j=i;j>=0;j--){if(c[j]){if(cnt===occ){o[i]=s[j];break;}cnt++;}}}return o;}
 
-  // ───────── سری/تاریخچه (معادلِ history operator) ─────────
+  // ───────── سری/تاریخچه (معادل history operator) ─────────
   function ref(s,n){ s=arr(s); n=(n==null?1:n)|0; var o=new Array(N).fill(null); for(var i=0;i<N;i++){ var j=i-n; o[i]=(j>=0&&j<N)?s[j]:null; } return o; } // ref(close,1) ≡ close[1]
-  // مولتی‌تایم‌فریم: تجمیعِ src به تایم‌فریمِ بالاتر (mult کندل) بدونِ look-ahead.
-  // agg: 'last'(پیش‌فرض/close) | 'max'(high) | 'min'(low) | 'sum'(volume). مقدارِ بستهٔ کاملِ قبل را برمی‌گرداند.
+  // مولتی‌تایم‌فریم: تجمیع src به تایم‌فریم بالاتر (mult کندل) بدون look-ahead.
+  // agg: 'last'(پیش‌فرض/close) | 'max'(high) | 'min'(low) | 'sum'(volume). مقدار بسته‌ی کامل قبل را برمی‌گرداند.
   function security(mult,s,agg){ mult=Math.max(1,Math.round(mult||1)); s=arr(s); agg=agg||'last'; var o=new Array(N).fill(null); for(var i=0;i<N;i++){ var k=Math.floor(i/mult); if(k<1){o[i]=null;continue;} var st=(k-1)*mult, en=k*mult-1, v=null; if(agg==='last'){v=s[en];} else if(agg==='max'){v=-Infinity;for(var j=st;j<=en;j++)if(s[j]!=null)v=Math.max(v,s[j]);v=isFinite(v)?v:null;} else if(agg==='min'){v=Infinity;for(var j=st;j<=en;j++)if(s[j]!=null)v=Math.min(v,s[j]);v=isFinite(v)?v:null;} else if(agg==='sum'){v=0;for(var j=st;j<=en;j++)if(s[j]!=null)v+=s[j];} o[i]=v; } return o; }
   var request={ security:function(mult,s,agg){ return security(mult,s,agg); } };
   function naf(x){ var a=arr(x); var o=new Array(N); for(var i=0;i<N;i++)o[i]=(a[i]==null); return o; }              // na(x) → بولین (قبلاً un روی null short-circuit می‌کرد ⇒ na هرگز true نمی‌شد)
@@ -105,12 +105,12 @@ self.onmessage = function (e) {
   function ad(){ var o=new Array(N).fill(null),r=0; for(var i=0;i<N;i++){ var rng=H[i]-L[i],mfm=rng?((C[i]-L[i])-(H[i]-C[i]))/rng:0; r+=mfm*(V[i]||0); o[i]=r; } return o; }
   function cmf(p){ p=p||20; var mfv=new Array(N); for(var i=0;i<N;i++){ var rng=H[i]-L[i]; mfv[i]=(rng?((C[i]-L[i])-(H[i]-C[i]))/rng:0)*(V[i]||0); } var sm=sumf(mfv,p),sv=sumf(arr(V),p),o=new Array(N).fill(null); for(var i=0;i<N;i++) if(sm[i]!=null&&sv[i]) o[i]=sm[i]/sv[i]; return o; }
   // ───────── آمار/رتبه/توزیع (Pine ta.* غایب‌ها) ─────────
-  function fixnanf(s){ s=arr(s); var o=new Array(N).fill(null),last=null; for(var i=0;i<N;i++){ if(s[i]!=null&&isFinite(s[i]))last=s[i]; o[i]=last; } return o; } // fixnan: پرکردنِ null با آخرین مقدارِ معتبر
-  function rangef(s,p){ return sub(highest(s,p),lowest(s,p)); }                                  // range: بیشینه−کمینهٔ p کندل
+  function fixnanf(s){ s=arr(s); var o=new Array(N).fill(null),last=null; for(var i=0;i<N;i++){ if(s[i]!=null&&isFinite(s[i]))last=s[i]; o[i]=last; } return o; } // fixnan: پرکردن null با آخرین مقدار معتبر
+  function rangef(s,p){ return sub(highest(s,p),lowest(s,p)); }                                  // range: بیشینه−کمینه‌ی p کندل
   function cogf(s,p){ s=arr(s); var o=new Array(N).fill(null); for(var i=p-1;i<N;i++){ var num=0,den=0,ok=1; for(var j=0;j<p;j++){ var x=s[i-j]; if(x==null){ok=0;break;} num+=x*(j+1); den+=x; } o[i]=(ok&&den)?-num/den:null; } return o; } // center of gravity
-  function runmax(s){ s=arr(s); var o=new Array(N).fill(null),m=-Infinity; for(var i=0;i<N;i++){ if(s[i]!=null&&isFinite(s[i]))m=Math.max(m,s[i]); o[i]=isFinite(m)?m:null; } return o; } // ta.max: بیشینهٔ تجمعی از ابتدای تاریخ
-  function runmin(s){ s=arr(s); var o=new Array(N).fill(null),m=Infinity; for(var i=0;i<N;i++){ if(s[i]!=null&&isFinite(s[i]))m=Math.min(m,s[i]); o[i]=isFinite(m)?m:null; } return o; } // ta.min: کمینهٔ تجمعی
-  function percentrankf(s,p){ s=arr(s); var o=new Array(N).fill(null); for(var i=p;i<N;i++){ var cur=s[i]; if(cur==null)continue; var cnt=0,tot=0,ok=1; for(var j=1;j<=p;j++){ var x=s[i-j]; if(x==null){ok=0;break;} tot++; if(x<=cur)cnt++; } o[i]=(ok&&tot)?100*cnt/tot:null; } return o; } // درصدِ p مقدارِ قبلی که ≤ فعلی‌اند
+  function runmax(s){ s=arr(s); var o=new Array(N).fill(null),m=-Infinity; for(var i=0;i<N;i++){ if(s[i]!=null&&isFinite(s[i]))m=Math.max(m,s[i]); o[i]=isFinite(m)?m:null; } return o; } // ta.max: بیشینه‌ی تجمعی از ابتدای تاریخ
+  function runmin(s){ s=arr(s); var o=new Array(N).fill(null),m=Infinity; for(var i=0;i<N;i++){ if(s[i]!=null&&isFinite(s[i]))m=Math.min(m,s[i]); o[i]=isFinite(m)?m:null; } return o; } // ta.min: کمینه‌ی تجمعی
+  function percentrankf(s,p){ s=arr(s); var o=new Array(N).fill(null); for(var i=p;i<N;i++){ var cur=s[i]; if(cur==null)continue; var cnt=0,tot=0,ok=1; for(var j=1;j<=p;j++){ var x=s[i-j]; if(x==null){ok=0;break;} tot++; if(x<=cur)cnt++; } o[i]=(ok&&tot)?100*cnt/tot:null; } return o; } // درصد p مقدار قبلی که ≤ فعلی‌اند
   function pctnrf(s,p,pct){ s=arr(s); pct=(pct==null?50:pct); var o=new Array(N).fill(null); for(var i=p-1;i<N;i++){ var w=[],ok=1; for(var j=0;j<p;j++){ var x=s[i-j]; if(x==null){ok=0;break;} w.push(x); } if(!ok)continue; w.sort(function(a,b){return a-b;}); var r=Math.ceil(pct/100*p); if(r<1)r=1; if(r>p)r=p; o[i]=w[r-1]; } return o; } // percentile (nearest rank)
   function pctlif(s,p,pct){ s=arr(s); pct=(pct==null?50:pct); var o=new Array(N).fill(null); for(var i=p-1;i<N;i++){ var w=[],ok=1; for(var j=0;j<p;j++){ var x=s[i-j]; if(x==null){ok=0;break;} w.push(x); } if(!ok)continue; w.sort(function(a,b){return a-b;}); var rk=pct/100*(p-1),lo=Math.floor(rk),hi=Math.ceil(rk); o[i]=w[lo]+(w[hi]-w[lo])*(rk-lo); } return o; } // percentile (linear interpolation)
   function modef(s,p){ s=arr(s); var o=new Array(N).fill(null); for(var i=p-1;i<N;i++){ var cnt={},best=null,bestc=0,ok=1; for(var j=0;j<p;j++){ var x=s[i-j]; if(x==null){ok=0;break;} cnt[x]=(cnt[x]||0)+1; if(cnt[x]>bestc||(cnt[x]===bestc&&x<best)){bestc=cnt[x];best=x;} } o[i]=ok?best:null; } return o; } // mode: پرتکرارترین (کوچک‌ترین در تساوی)
@@ -131,18 +131,18 @@ self.onmessage = function (e) {
   function plot(s,name,col,w,style){ s=arr(s); plots.push({name:name||('plot'+plots.length),color:col||'#3b82f6',width:w||2,style:style||0,data:s.map(function(v,i){return v==null?null:{time:T[i],value:v};}).filter(Boolean)}); }
   function plotshape(c,name,shp,col){ c=arr(c); var pts=[]; for(var i=0;i<N;i++){if(c[i])pts.push({time:T[i],price:(shp==='down'?H[i]:L[i]),shape:shp||'up'});} shapes.push({name:name||'shape',color:col||'#22c55e',shape:shp||'up',points:pts}); }
   function plotchar(c,name,col){ plotshape(c,name,'circle',col); }
-  // plotarrow(series) — فلشِ بالا برای مثبت، پایین برای منفی
+  // plotarrow(series) — فلش بالا برای مثبت، پایین برای منفی
   function plotarrow(s,name,cu,cd){ s=arr(s); var up=[],dn=[]; for(var i=0;i<N;i++){ if(s[i]>0)up.push({time:T[i],price:L[i],shape:'up'}); else if(s[i]<0)dn.push({time:T[i],price:H[i],shape:'down'}); } if(up.length)shapes.push({name:(name||'فلش')+'↑',color:cu||'#22c55e',shape:'up',points:up}); if(dn.length)shapes.push({name:(name||'فلش')+'↓',color:cd||'#ef4444',shape:'down',points:dn}); }
-  // plotcandle(o,h,l,c) — رسمِ کندلِ سفارشی (مثلِ هایکین/رنکو در اسکریپت)
+  // plotcandle(o,h,l,c) — رسم کندل سفارشی (مثل هایکین/رنکو در اسکریپت)
   function plotcandle(o,h,l,c,name,col){ o=arr(o);h=arr(h);l=arr(l);c=arr(c); var data=[]; for(var i=0;i<N;i++){ if(o[i]==null||h[i]==null||l[i]==null||c[i]==null)continue; data.push({time:T[i],open:o[i],high:h[i],low:l[i],close:c[i]}); } candleplots.push({name:name||'کندل',color:col||null,data:data}); }
-  // plotbar(o,h,l,c) — رسمِ میلهٔ OHLC سفارشی (معادلِ plotbar در Pine)؛ hint: bars=true برای رندرِ میله‌ای
+  // plotbar(o,h,l,c) — رسم میله‌ی OHLC سفارشی (معادل plotbar در Pine)؛ hint: bars=true برای رندر میله‌ای
   function plotbar(o,h,l,c,name,col){ o=arr(o);h=arr(h);l=arr(l);c=arr(c); var data=[]; for(var i=0;i<N;i++){ if(o[i]==null||h[i]==null||l[i]==null||c[i]==null)continue; data.push({time:T[i],open:o[i],high:h[i],low:l[i],close:c[i]}); } candleplots.push({name:name||'میله',color:col||null,bars:true,data:data}); }
   function hline(p,name,col){ hlines.push({price:p,title:name||'',color:col||'#94a3b8'}); }
   function bgcolor(c,col){ c=arr(c); var b=[]; for(var i=0;i<N;i++)if(c[i])b.push(T[i]); bgs.push({color:col||'rgba(59,130,246,.12)',bars:b}); }
   function xtime(x){ if(x==null)return T[N-1]; var i=Math.round(x); if(i>=0&&i<N)return T[i]; if(x>1e7)return x; return T[N-1]; }
-  // fill(a, b, color) — ناحیهٔ پرشده بینِ دو سری (رندر در چارت)
+  // fill(a, b, color) — ناحیه‌ی پرشده بین دو سری (رندر در چارت)
   function fill(a,b,col){ a=arr(a);b=arr(b); fills.push({color:col||'rgba(59,130,246,.12)',a:a.map(function(v,i){return v==null?null:{time:T[i],value:v};}).filter(Boolean),b:b.map(function(v,i){return v==null?null:{time:T[i],value:v};}).filter(Boolean)}); }
-  // line.new / box.new / table.new — آبجکت‌های رسمِ برنامه‌نویسی‌شده (x = ایندکسِ کندل یا زمان)
+  // line.new / box.new / table.new — آبجکت‌های رسم برنامه‌نویسی‌شده (x = ایندکس کندل یا زمان)
   var line={ new:function(x1,y1,x2,y2,col,w,style){ lines.push({x1:xtime(x1),y1:y1,x2:xtime(x2),y2:y2,color:col||'#3b82f6',width:w||1,style:style||0}); return lines.length-1; }, set_xy1:function(){}, set_xy2:function(){}, set_color:function(){}, set_width:function(){}, delete:function(id){ if(id!=null&&lines[id])lines[id]=null; } };
   var box={ new:function(l,t,r,bm,col,bg){ boxes.push({left:xtime(l),top:t,right:xtime(r),bottom:bm,color:col||'#3b82f6',bg:bg||'rgba(59,130,246,.08)'}); return boxes.length-1; }, set_top:function(){}, set_bottom:function(){}, delete:function(id){ if(id!=null&&boxes[id])boxes[id]=null; } };
   function table(){}
@@ -151,10 +151,10 @@ self.onmessage = function (e) {
   table.cell_set_text=function(t,c,r,txt){ if(t&&t.cells)t.cells.push({col:c|0,row:r|0,text:String(disp(txt))}); };
   // alert(message[, freq]) پویا — یا alert(condition, message)
   function alert(a,b){ if(Array.isArray(a)){ var bars=[]; for(var i=0;i<N;i++)if(a[i])bars.push(T[i]); alerts.push({msg:b||'هشدار',bars:bars,dynamic:true}); } else { alerts.push({msg:String(a==null?'هشدار':a),bars:[T[N-1]],dynamic:true}); } }
-  // ناحیهٔ ریسک/ریوارد: جعبهٔ سبزِ کم‌رنگ برای هدف‌ها (تا TP3) و جعبهٔ قرمزِ کم‌رنگ برای حد ضرر (SL)
+  // ناحیه‌ی ریسک/ریوارد: جعبه‌ی سبز کم‌رنگ برای هدف‌ها (تا TP3) و جعبه‌ی قرمز کم‌رنگ برای حد ضرر (SL)
   // riskreward(entry, sl, tp1[, tp2, tp3]) — TP2/TP3 اختیاری‌اند.
   function riskreward(entry,sl,tp1,tp2,tp3){ entry=arr(entry);sl=arr(sl);tp1=arr(tp1);tp2=arr(tp2);tp3=arr(tp3); var e=null,s=null,a=null,b=null,c=null; for(var i=N-1;i>=0;i--){ if(entry[i]!=null&&sl[i]!=null&&tp1[i]!=null){e=entry[i];s=sl[i];a=tp1[i];b=tp2[i];c=tp3[i];break;} } if(e!=null){ var tps=[a]; if(b!=null)tps.push(b); if(c!=null)tps.push(c); zones.push({entry:e,sl:s,tps:tps,tp:a,fromTime:T[Math.max(0,N-60)],toTime:T[N-1]}); } }
-  // barcolor(color[, condition]) — رنگِ کندل‌ها (همه یا شرطی)
+  // barcolor(color[, condition]) — رنگ کندل‌ها (همه یا شرطی)
   function barcolor(col,c){ if(c===undefined){ barcolors.push({color:col,all:true}); return; } c=arr(c); var b=[]; for(var i=0;i<N;i++)if(c[i])b.push(T[i]); barcolors.push({color:col,bars:b}); }
   var label={ new:function(c,s,txt,col){ c=arr(c);s=arr(s); for(var i=0;i<N;i++)if(c[i])labels.push({time:T[i],price:s[i],text:txt||'',color:col||'#e5e7eb'}); } };
   function alertcondition(c,msg){ c=arr(c); var b=[]; for(var i=0;i<N;i++)if(c[i])b.push(T[i]); alerts.push({msg:msg||'هشدار',bars:b}); }
@@ -167,22 +167,22 @@ self.onmessage = function (e) {
     new:function(c,t){ if(t==null)return c; var a=Math.max(0,Math.min(100,t)); return hexToRgba(c,((100-a)/100)); },
     rgb:function(r,g,b,t){ var a=(t==null?0:Math.max(0,Math.min(100,t))); return 'rgba('+(r|0)+','+(g|0)+','+(b|0)+','+((100-a)/100)+')'; }};
   var shape={up:'up',down:'down',circle:'circle',cross:'cross',flag:'flag',triangleup:'up',triangledown:'down',arrowup:'up',arrowdown:'down',labelup:'up',labeldown:'down'};
-  // str.* — توابعِ رشته
+  // str.* — توابع رشته
   var str={ tostring:function(a,fmt){ return String(disp(a)); }, tonumber:function(a){ return Array.isArray(a)?a.map(Number):Number(a); }, length:function(s){ return s==null?0:String(s).length; }, contains:function(s,t){ return String(s).indexOf(t)>=0; }, replace_all:function(s,t,r){ return String(s).split(t).join(r); }, split:function(s,d){ return String(s).split(d); }, upper:function(s){ return String(s).toUpperCase(); }, lower:function(s){ return String(s).toLowerCase(); }, startswith:function(s,t){ return String(s).indexOf(t)===0; }, endswith:function(s,t){ var x=String(s),y=String(t); return x.indexOf(y,x.length-y.length)!==-1; }, format:function(f){ var args=Array.prototype.slice.call(arguments,1),k=0; return String(f).replace(/\\{\\d+([^}]*)?\\}/g,function(){ var v=args[k++]; return String(disp(v)); }); } };
   var open=O,high=H,low=L,close=C,volume=V,time=T,hl2=[],hlc3=[],ohlc4=[],hlcc4=[],bar_index=[];
   for(var i=0;i<N;i++){hl2[i]=(H[i]+L[i])/2;hlc3[i]=(H[i]+L[i]+C[i])/3;ohlc4[i]=(O[i]+H[i]+L[i]+C[i])/4;hlcc4[i]=(H[i]+L[i]+C[i]+C[i])/4;bar_index[i]=i;}
   var last_bar_index=N-1;
-  // barstate.* — هر کدام یک سری بولین (مدلِ سری‌محور)
+  // barstate.* — هر کدام یک سری بولین (مدل سری‌محور)
   var barstate={isfirst:(function(){var o=new Array(N).fill(false);if(N)o[0]=true;return o;})(),islast:(function(){var o=new Array(N).fill(false);if(N)o[N-1]=true;return o;})(),isnew:arr(true),isconfirmed:(function(){var o=new Array(N).fill(true);if(N)o[N-1]=false;return o;})(),isrealtime:arr(false),ishistory:arr(true)};
 
   try {
-    // ── پیش‌پردازنده: سازگاریِ نحویِ Pine ──
-    // close[1] → ref(close,1) (عملگرِ تاریخچه) · var/varip حذف (در مدلِ vectorized یک‌بار اجرا) · := → =
+    // ── پیش‌پردازنده: سازگاری نحوی Pine ──
+    // close[1] → ref(close,1) (عملگر تاریخچه) · var/varip حذف (در مدل vectorized یک‌بار اجرا) · := → =
     function preprocess(src){
       src = String(src);
       src = src.replace(/\\bvarip\\b/g, '').replace(/\\bvar\\b/g, '');
       src = src.replace(/:=/g, '=');
-      // IDENT یا IDENT.prop به‌همراهِ [اندیس] → ref(IDENT, اندیس)  (اندیس: عدد یا شناسه)
+      // IDENT یا IDENT.prop به‌همراه [اندیس] → ref(IDENT, اندیس)  (اندیس: عدد یا شناسه)
       src = src.replace(/([A-Za-z_$][\\w$]*(?:\\.[A-Za-z_$][\\w$]*)*)\\s*\\[\\s*([0-9]+|[A-Za-z_$][\\w$]*)\\s*\\]/g, 'ref($1, $2)');
       return src;
     }
@@ -228,7 +228,7 @@ export function runScript(source, candles, inputs = {}, timeoutMs = 5000) {
   return new Promise((resolve) => {
     let done = false;
     const w = new Worker(workerUrl());
-    const to = setTimeout(() => { if (done) return; done = true; w.terminate(); resolve({ ok: false, error: 'اجرای اسکریپت بیش از حد طول کشید (حلقهٔ بی‌نهایت؟).' }); }, timeoutMs);
+    const to = setTimeout(() => { if (done) return; done = true; w.terminate(); resolve({ ok: false, error: 'اجرای اسکریپت بیش از حد طول کشید (حلقه‌ی بی‌نهایت؟).' }); }, timeoutMs);
     w.onmessage = (e) => { if (done) return; done = true; clearTimeout(to); w.terminate(); resolve(e.data); };
     w.onerror = (e) => { if (done) return; done = true; clearTimeout(to); w.terminate(); resolve({ ok: false, error: String(e.message || 'خطای اجرا') }); };
     w.postMessage({

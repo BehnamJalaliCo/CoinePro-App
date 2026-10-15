@@ -170,6 +170,22 @@ jobs:
           npm test
           WEB_BASE=/next/ npm run build
 
+      # Every chart type, all 108 indicators, every drawing tool, every NamaScript example, the
+      # panels, replay, layouts, phone and tablet widths — in a real Chromium against fixtures.
+      - name: The new web app passes its end-to-end suite
+        working-directory: webapp
+        run: |
+          npx playwright install --with-deps chromium
+          E2E_SHOTS=e2e-shots npm run e2e
+
+      - name: Keep the end-to-end failure pictures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webapp-e2e-shots
+          path: webapp/e2e-shots/
+          if-no-files-found: ignore
+
       - name: Keep the new web app bundle
         uses: actions/upload-artifact@v4
         with:

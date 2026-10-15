@@ -1,7 +1,7 @@
-// symbolExpr — تجزیه و ارزیابیِ عبارت‌های نمادِ ریاضی/اسپرد (سبکِ TradingView).
+// symbolExpr — تجزیه و ارزیابی عبارت‌های نماد ریاضی/اسپرد (سبک TradingView).
 //   مثال‌ها: "EURUSD/GBPUSD" (نسبت)، "XAUUSD*2"، "US30-US500"، "(BTCUSDT+ETHUSDT)/2".
-//   عملگرها: + − * / و پرانتز و منفیِ یک‌جمله‌ای؛ نمادها [A-Za-z][A-Za-z0-9]*، اعداد اعشاری.
-// خالص و بدونِ importِ خارجی ⇒ مستقیماً در Node قابلِ تست (test/symbolExpr.test.mjs).
+//   عملگرها: + − * / و پرانتز و منفی یک‌جمله‌ای؛ نمادها [A-Za-z][A-Za-z0-9]*، اعداد اعشاری.
+// خالص و بدون import خارجی ⇒ مستقیماً در Node قابل تست (test/symbolExpr.test.mjs).
 
 const tokenize = (s) => {
   const toks = []; let i = 0;
@@ -11,7 +11,7 @@ const tokenize = (s) => {
     if ('+-*/()'.includes(ch)) { toks.push({ t: ch }); i++; continue; }
     if (/[0-9.]/.test(ch)) { let j = i; while (j < s.length && /[0-9.]/.test(s[j])) j++; const v = parseFloat(s.slice(i, j)); if (!Number.isFinite(v)) return null; toks.push({ t: 'num', v }); i = j; continue; }
     if (/[A-Za-z]/.test(ch)) { let j = i; while (j < s.length && /[A-Za-z0-9]/.test(s[j])) j++; toks.push({ t: 'sym', v: s.slice(i, j).toUpperCase() }); i = j; continue; }
-    return null; // کاراکترِ نامعتبر
+    return null; // کاراکتر نامعتبر
   }
   return toks;
 };
@@ -39,7 +39,7 @@ const parse = (toks) => {
     return null;
   };
   const ast = parseExpr();
-  if (!ast || pos !== toks.length) return null; // توکنِ اضافی = نامعتبر
+  if (!ast || pos !== toks.length) return null; // توکن اضافی = نامعتبر
   return ast;
 };
 
@@ -53,7 +53,7 @@ const collectSyms = (node, set) => {
 };
 const hasOp = (node) => !!(node && (node.op || (node.left && hasOp(node.left)) || (node.right && hasOp(node.right))));
 
-// ارزیابیِ ASTِ با مقادیرِ عددیِ هر نماد؛ null اگر مقداری غایب/نامتناهی یا تقسیم‌بر‌صفر.
+// ارزیابی AST با مقادیر عددی هر نماد؛ null اگر مقداری غایب/نامتناهی یا تقسیم‌بر‌صفر.
 export const evalAst = (node, bySym) => {
   if (!node) return null;
   if (node.num != null) return node.num;
@@ -71,8 +71,8 @@ export const evalAst = (node, bySym) => {
   return Number.isFinite(out) ? out : null;
 };
 
-// تجزیهٔ رشته → { isExpr, symbols, ast, eval } یا null (نامعتبر).
-//   isExpr=false ⇒ نمادِ سادهٔ تک (اسپرد نیست؛ مسیرِ عادیِ نماد را برو).
+// تجزیه‌ی رشته → { isExpr, symbols, ast, eval } یا null (نامعتبر).
+//   isExpr=false ⇒ نماد ساده‌ی تک (اسپرد نیست؛ مسیر عادی نماد را برو).
 export const parseSymbolExpr = (str) => {
   if (!str || typeof str !== 'string') return null;
   const toks = tokenize(str.trim());
@@ -83,9 +83,9 @@ export const parseSymbolExpr = (str) => {
   return { isExpr: hasOp(ast), symbols, ast, eval: (bySym) => evalAst(ast, bySym) };
 };
 
-// محاسبهٔ کندل‌های اسپرد از کندل‌های هر نماد (هم‌ترازی بر اساسِ زمانِ مشترک).
+// محاسبه‌ی کندل‌های اسپرد از کندل‌های هر نماد (هم‌ترازی بر اساس زمان مشترک).
 //   candlesBySym: { SYM: [{t,o,h,l,c,v}] }. عبارت روی هر یک از o/h/l/c جدا ارزیابی می‌شود؛
-//   high/low = بیشینه/کمینهٔ چهار گوشهٔ محاسبه‌شده تا همواره high≥low (نسبت می‌تواند O/H/L/C را وارونه کند).
+//   high/low = بیشینه/کمینه‌ی چهار گوشه‌ی محاسبه‌شده تا همواره high≥low (نسبت می‌تواند O/H/L/C را وارونه کند).
 export const computeSpread = (candlesBySym, ast) => {
   const syms = [...collectSyms(ast)];
   if (!syms.length) return [];

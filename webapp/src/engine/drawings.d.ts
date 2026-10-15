@@ -10,6 +10,7 @@ export class DrawingLayer {
   onSelect: ((index: number) => void) | null;
   onToolReset: (() => void) | null;
   onDblEdit: ((index: number) => void) | null;
+  onTextRequest?: ((index: number) => void) | null;
   static label(type: string): string;
   setSeries(series: unknown): void;
   setCandles(candles: unknown[]): void;

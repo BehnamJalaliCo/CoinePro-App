@@ -1,10 +1,10 @@
-// تستِ آفلاینِ chartbuilders (avgRange/renko/rangeBars/lineBreak) — node test/chartbuilders.test.mjs
+// تست آفلاین chartbuilders (avgRange/renko/rangeBars/lineBreak) — node test/chartbuilders.test.mjs
 import { avgRange, renko, rangeBars, lineBreak, kagi, pnf } from '../../../src/engine/chartbuilders.js';
 
 let fails = 0;
 const ok = (n, c) => { if (!c) { fails++; console.log('FAIL ' + n); } else console.log('PASS ' + n); };
 
-// ── avgRange: باید ATRِ p بارِ آخر باشد (نه اولین‌ها) ──
+// ── avgRange: باید ATR p بار آخر باشد (نه اولین‌ها) ──
 // ۲۰ کندل: close=100، h=100+i، l=100 ⇒ TR[i>=1]=i. آخرین ۱۴ = i=6..19 ⇒ میانگین=12.5
 const cs = []; for (let i = 0; i < 20; i++) cs.push({ o: 100, h: 100 + i, l: 100, c: 100 });
 const ar = avgRange(cs, 14);
@@ -32,23 +32,23 @@ ok('lineBreak: produced lines', lb.length >= 1);
 ok('lineBreak: all h>=l', lb.every((b) => b.h >= b.l));
 ok('lineBreak: times strictly increasing', lb.every((b, i) => i === 0 || b.t > lb[i-1].t));
 
-// ── kagi: پولبکِ کوچک نادیده، برگشت روی حرکتِ >=reversal ──
+// ── kagi: پولبک کوچک نادیده، برگشت روی حرکت >=reversal ──
 const kg = kagi([{t:1,c:100,h:100,l:100},{t:2,c:105,h:105,l:105},{t:3,c:103,h:103,l:103},{t:4,c:98,h:98,l:98}], 3);
 ok(`kagi: 2 points (up-extreme then reversal) got ${kg.length}`, kg.length === 2);
 ok('kagi: up-extreme=105 (small pullback 103 ignored)', Math.abs(kg[0].value - 105) < 1e-9);
 ok('kagi: reversal point=98 (moved >=reversal down)', Math.abs(kg[1].value - 98) < 1e-9);
 ok('kagi: times strictly increasing', kg.every((q,i)=> i===0 || q.t > kg[i-1].t));
 
-// ── pnf (Point & Figure): ستون‌های X/O روی گریدِ box، برگشت با reversal*box (رگرسیون + ناوردا) ──
+// ── pnf (Point & Figure): ستون‌های X/O روی گرید box، برگشت با reversal*box (رگرسیون + ناوردا) ──
 {
   const mk = (arr) => arr.map((c, i) => ({ o: c, h: c, l: c, c, t: i }));
-  // box=1, reversal=3: 10→13 (سه Xِ box-گرید)، افتِ ۳ باکس تا 10 ⇒ برگشت، سپس 9.
+  // box=1, reversal=3: 10→13 (سه X box-گرید)، افت ۳ باکس تا 10 ⇒ برگشت، سپس 9.
   const pf = pnf(mk([10, 11, 12, 13, 10, 9]), 1, 3);
   ok(`pnf values == [11,12,13,10,9] (got ${pf.map((p) => p.value)})`, JSON.stringify(pf.map((p) => p.value)) === JSON.stringify([11, 12, 13, 10, 9]));
   ok('pnf: no consecutive-equal values', pf.every((p, i) => i === 0 || p.value !== pf[i - 1].value));
   ok('pnf: up-column strictly rising before reversal', pf[0].value < pf[1].value && pf[1].value < pf[2].value);
   ok('pnf: reversal at exactly reversal*box drop (13→10)', pf[3].value === 10);
-  // box خودکار (box=0 ⇒ avgRange) نباید بیندازد و باید روی روندِ قوی نقطه بدهد
+  // box خودکار (box=0 ⇒ avgRange) نباید بیندازد و باید روی روند قوی نقطه بدهد
   const auto = pnf(mk([100, 101, 103, 106, 110, 115]), 0, 3, 5);
   ok(`pnf: auto-box produces points on strong trend (got ${auto.length})`, Array.isArray(auto) && auto.length >= 1);
   ok('pnf: empty=[]', pnf([], 1, 3).length === 0);

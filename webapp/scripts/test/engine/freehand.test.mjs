@@ -1,8 +1,8 @@
-// گاردِ رگرسیون — ابزارهای freehand (قلم‌مو/های‌لایتر) باید در چرخهٔ ترسیم وصل باشند.
+// گارد رگرسیون — ابزارهای freehand (قلم‌مو/های‌لایتر) باید در چرخه‌ی ترسیم وصل باشند.
 //
 // باگ: `EXT_FREEHAND` در drawtools_ext.js ساخته می‌شد ولی **هرگز import نمی‌شد**.
 // و `EXT_NEED` فقط ابزارهای points>=3 را جمع می‌کند، پس brush/highlighter با
-// points:-1 در هیچ شاخه‌ای از منطقِ mousedown نمی‌افتادند. نتیجه: دو دکمه در ریل
+// points:-1 در هیچ شاخه‌ای از منطق mousedown نمی‌افتادند. نتیجه: دو دکمه در ریل
 // که تا ابد هیچ‌چیز نمی‌کشیدند.
 //
 // اجرا:
@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { EXT_FREEHAND, EXT_NEED, EXT_REGISTRY, EXT_TOOLS } from '../../../src/engine/drawtools_ext.js';
 
-test('EXT_FREEHAND هر دو ابزارِ freehand را می‌شناسد', () => {
+test('EXT_FREEHAND هر دو ابزار freehand را می‌شناسد', () => {
   assert.ok(EXT_FREEHAND.includes('brush'), 'قلم‌مو غایب است');
   assert.ok(EXT_FREEHAND.includes('highlighter'), 'های‌لایتر غایب است');
 });
@@ -23,11 +23,11 @@ test('ابزارهای freehand points:-1 دارند و در EXT_NEED نیستن
   // این دقیقاً چرا باگ رخ داد: EXT_NEED فقط points>=3 را می‌گیرد
   for (const id of EXT_FREEHAND) {
     assert.equal(EXT_REGISTRY[id].points, -1, `${id}: points باید -1 باشد`);
-    assert.ok(!(id in EXT_NEED), `${id} در EXT_NEED است — منطقِ کلیک-شمار آن را می‌بلعد`);
+    assert.ok(!(id in EXT_NEED), `${id} در EXT_NEED است — منطق کلیک-شمار آن را می‌بلعد`);
   }
 });
 
-test('هر ابزارِ freehand draw و hit واقعی دارد', () => {
+test('هر ابزار freehand draw و hit واقعی دارد', () => {
   for (const id of EXT_FREEHAND) {
     const d = EXT_REGISTRY[id];
     assert.equal(typeof d.draw, 'function', `${id}.draw`);
@@ -36,7 +36,7 @@ test('هر ابزارِ freehand draw و hit واقعی دارد', () => {
   }
 });
 
-// ── گاردِ اصلی: drawings.js باید واقعاً EXT_FREEHAND را import و استفاده کند ──
+// ── گارد اصلی: drawings.js باید واقعاً EXT_FREEHAND را import و استفاده کند ──
 const DRAWINGS = readFileSync(new URL('../../../src/engine/drawings.js', import.meta.url), 'utf8');
 
 test('drawings.js عملاً EXT_FREEHAND را import می‌کند', () => {
@@ -44,21 +44,21 @@ test('drawings.js عملاً EXT_FREEHAND را import می‌کند', () => {
     'EXT_FREEHAND import نشده — همان باگی که ابزارها را مرده کرده بود');
 });
 
-test('drawings.js چرخهٔ کاملِ freehand را دارد: شروع، نمونه‌برداری، ثبت', () => {
-  assert.match(DRAWINGS, /EXT_FREEHAND\.includes\(this\.tool\)/, 'mousedown شروعِ freehand را تشخیص نمی‌دهد');
-  assert.match(DRAWINGS, /this\.freehand\s*=\s*\{[^}]*pts:\s*\[pt\]/, 'شروع نقطهٔ اول را ذخیره نمی‌کند');
+test('drawings.js چرخه‌ی کامل freehand را دارد: شروع، نمونه‌برداری، ثبت', () => {
+  assert.match(DRAWINGS, /EXT_FREEHAND\.includes\(this\.tool\)/, 'mousedown شروع freehand را تشخیص نمی‌دهد');
+  assert.match(DRAWINGS, /this\.freehand\s*=\s*\{[^}]*pts:\s*\[pt\]/, 'شروع نقطه‌ی اول را ذخیره نمی‌کند');
   assert.match(DRAWINGS, /this\.freehand\.pts\.push/, 'mousemove نمونه‌برداری نمی‌کند');
   assert.match(DRAWINGS, /fh\.pts\.length\s*>=\s*2/, 'mouseup ترسیم را ثبت نمی‌کند');
 });
 
 test('freehand حین کشیدن پیش‌نمایش می‌شود', () => {
-  // بدونِ این، کاربر تا رهاکردنِ ماوس هیچ‌چیز نمی‌بیند و فکر می‌کند ابزار خراب است
-  assert.match(DRAWINGS, /this\.tmp\s*\|\|\s*this\.freehand/, 'render() ترسیمِ در حالِ کشیدن را نشان نمی‌دهد');
+  // بدون این، کاربر تا رهاکردن ماوس هیچ‌چیز نمی‌بیند و فکر می‌کند ابزار خراب است
+  assert.match(DRAWINGS, /this\.tmp\s*\|\|\s*this\.freehand/, 'render() ترسیم در حال کشیدن را نشان نمی‌دهد');
 });
 
-test('نمونه‌برداری آستانهٔ فاصله دارد', () => {
-  // بدونِ آستانه، هر پیکسلِ حرکت یک نقطه می‌شود → صدها نقطهٔ هم‌پوشان و رندرِ کند
-  assert.match(DRAWINGS, /Math\.hypot\([^)]*\)\s*>=\s*\d/, 'نمونه‌برداری بدونِ آستانهٔ فاصله');
+test('نمونه‌برداری آستانه‌ی فاصله دارد', () => {
+  // بدون آستانه، هر پیکسل حرکت یک نقطه می‌شود → صدها نقطه‌ی هم‌پوشان و رندر کند
+  assert.match(DRAWINGS, /Math\.hypot\([^)]*\)\s*>=\s*\d/, 'نمونه‌برداری بدون آستانه‌ی فاصله');
 });
 
 test('ابزارهای freehand در ریل ثبت شده‌اند', () => {
@@ -69,7 +69,7 @@ test('ابزارهای freehand در ریل ثبت شده‌اند', () => {
   }
 });
 
-test('draw روی مسیرِ نمونه‌برداری‌شده throw نمی‌کند', () => {
+test('draw روی مسیر نمونه‌برداری‌شده throw نمی‌کند', () => {
   const calls = [];
   const ctx = new Proxy({}, {
     get: (_, k) => (k === 'lineJoin' || k === 'lineCap' || k === 'strokeStyle' || k === 'lineWidth' || k === 'globalAlpha' || k === 'setLineDash')

@@ -31,6 +31,7 @@ import { useReplay } from '../state/replay';
 import { useOverlay } from '../state/overlay';
 import { ReplayBar } from '../shell/ReplayBar';
 import { ChartContextMenu } from './ChartContextMenu';
+import { TextEditor } from './TextEditor';
 
 export interface HistoryResult { bars: Candle[]; more: boolean }
 
@@ -503,6 +504,7 @@ export function ChartView({ feed, digits, displayName, onStudySettings, onAlertA
         <div key={r.uid} className="legend pane-legend" style={{ top: (paneTops[r.pane] ?? 0) + 4 }}>{studyRow(r)}</div>
       ))}
       <ReplayBar />
+      <TextEditor />
       {menuAt ? <ChartContextMenu at={menuAt} onClose={() => setMenuAt(null)} onAlertAt={onAlertAt} /> : null}
       {state === 'loading' ? <div className="chart-state fa">{t('loading')}…</div> : null}
       {state === 'error' ? (

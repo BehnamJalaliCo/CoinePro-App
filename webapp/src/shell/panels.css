@@ -405,3 +405,7 @@
 .grid-glyph.g-3 i:first-child { grid-row: 1 / span 2; }
 .grid-glyph.g-4 { grid-template: 1fr 1fr / 1fr 1fr; }
 @media (max-width: 760px) { .chart-grid { grid-template: minmax(0, 1fr) / minmax(0, 1fr) !important; } .chart-grid > .lite { display: none; } }
+.text-edit { width: 100%; border: 1px solid var(--line-strong); border-radius: 8px; padding: 8px 10px; background: var(--bg); color: var(--text); resize: vertical; line-height: 1.7; }
+.swatches { display: inline-flex; gap: 6px; }
+.swatch { width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
+.swatch.on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--gold); }

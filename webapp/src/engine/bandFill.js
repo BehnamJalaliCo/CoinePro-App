@@ -1,6 +1,6 @@
-// Custom lightweight-charts v5 primitive: پُرشدگیِ نیمه‌شفاف بینِ دو خط (باندِ بولینگر/کلتنر/ابرِ ایچیموکو).
-// همه‌چیز درونِ try/catch است تا در بدترین حالت فقط پُرشدگی رندر نشود (نه کرش).
-// دادهٔ باند: [{ time, upper, lower }]. اگر colorDown داده شود، هر بخش بر اساسِ upper≥lower رنگِ up/down می‌گیرد (ابرِ ایچیموکو).
+// Custom lightweight-charts v5 primitive: پُرشدگی نیمه‌شفاف بین دو خط (باند بولینگر/کلتنر/ابر ایچیموکو).
+// همه‌چیز درون try/catch است تا در بدترین حالت فقط پُرشدگی رندر نشود (نه کرش).
+// داده‌ی باند: [{ time, upper, lower }]. اگر colorDown داده شود، هر بخش بر اساس upper≥lower رنگ up/down می‌گیرد (ابر ایچیموکو).
 
 class BandFillRenderer {
   constructor(src) { this._src = src; }
@@ -24,7 +24,7 @@ class BandFillRenderer {
         const flush = () => {
           if (seg.length < 2) { seg = []; return; }
           if (src._colorDown) {
-            // ابرِ ایچیموکو: هر زیرْبخش بر اساسِ جهت رنگ می‌گیرد
+            // ابر ایچیموکو: هر زیرْبخش بر اساس جهت رنگ می‌گیرد
             let sub = [seg[0]];
             for (let i = 1; i < seg.length; i++) {
               if (seg[i].up === sub[sub.length - 1].up) { sub.push(seg[i]); }
@@ -39,7 +39,7 @@ class BandFillRenderer {
         for (const p of pts) { if (p == null) flush(); else seg.push(p); }
         flush();
       });
-    } catch (e) { /* noop — بدونِ پُرشدگی، بدونِ کرش */ }
+    } catch (e) { /* noop — بدون پُرشدگی، بدون کرش */ }
   }
 }
 
@@ -55,12 +55,12 @@ function paint(ctx, seg, color) {
 
 class BandFillPaneView {
   constructor(src) { this._renderer = new BandFillRenderer(src); }
-  zOrder() { return 'bottom'; } // زیرِ خطوط و کندل نباشد؛ 'bottom' = زیرِ سریِ خودش
+  zOrder() { return 'bottom'; } // زیر خطوط و کندل نباشد؛ 'bottom' = زیر سری خودش
   renderer() { return this._renderer; }
 }
 
 export class BandFillPrimitive {
-  // color: پُرشدگیِ اصلی (یا up در حالتِ ابر)؛ colorDown: پُرشدگیِ نزولی (اختیاری، برای ابرِ ایچیموکو)
+  // color: پُرشدگی اصلی (یا up در حالت ابر)؛ colorDown: پُرشدگی نزولی (اختیاری، برای ابر ایچیموکو)
   constructor(data, color, colorDown = null) {
     this._data = data || [];
     this._color = color;
@@ -70,7 +70,7 @@ export class BandFillPrimitive {
   }
   attached(param) { try { this._chart = param.chart; this._series = param.series; this._requestUpdate = param.requestUpdate; } catch (e) {} }
   detached() { this._chart = null; this._series = null; this._requestUpdate = null; }
-  updateAllViews() { /* دادهٔ ثابت پس از ساخت؛ نیازی به به‌روزرسانیِ view نیست */ }
+  updateAllViews() { /* داده‌ی ثابت پس از ساخت؛ نیازی به به‌روزرسانی view نیست */ }
   paneViews() { return this._paneViews; }
   setData(data) { this._data = data || []; if (this._requestUpdate) try { this._requestUpdate(); } catch (e) {} }
 }

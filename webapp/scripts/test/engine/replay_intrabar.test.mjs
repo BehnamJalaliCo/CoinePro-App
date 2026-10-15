@@ -1,8 +1,8 @@
-// گاردِ رگرسیون — ذره‌بینِ بار در replay (فاز ۶.۳).
+// گارد رگرسیون — ذره‌بین بار در replay (فاز ۶.۳).
 //
 // باگ: setIntrabarData/enableIntrabar/onIntrabar کاملاً نوشته بودند ولی هرگز از
-// BazaarNama صدا زده نمی‌شدند (صفر call site). حالا وصل شده‌اند: هنگامِ replay اگر
-// toggle روشن باشد، ریزکندل‌های TFِ پایین‌تر گرفته و map می‌شوند و کاربر داخلِ هر
+// BazaarNama صدا زده نمی‌شدند (صفر call site). حالا وصل شده‌اند: هنگام replay اگر
+// toggle روشن باشد، ریزکندل‌های TF پایین‌تر گرفته و map می‌شوند و کاربر داخل هر
 // بار ریزگام می‌بیند.
 //
 // اجرا:
@@ -29,7 +29,7 @@ test('setIntrabarData + enableIntrabar وضعیت را روشن می‌کند', 
   assert.equal(c.hasIntrabar, true);
 });
 
-test('onIntrabar در حالِ پخش، ریزکندل‌های داخلِ بار را emit می‌کند', () => {
+test('onIntrabar در حال پخش، ریزکندل‌های داخل بار را emit می‌کند', () => {
   const full = mkBars(40);
   const intrabarCalls = [];
   const stepCalls = [];
@@ -37,7 +37,7 @@ test('onIntrabar در حالِ پخش، ریزکندل‌های داخلِ با�
     onStep: (bar) => stepCalls.push(bar.t),
     onIntrabar: (sub, bar, j) => intrabarCalls.push({ subT: sub.t, barT: bar.t, j }),
   });
-  // برای بارِ index=2 (t=1120) سه ریزکندل تعریف کن
+  // برای بار index=2 (t=1120) سه ریزکندل تعریف کن
   const map = new Map([[1120, [
     { t: 1120, o: 102, h: 102.3, l: 101.8, c: 102.1 },
     { t: 1140, o: 102.1, h: 102.6, l: 102.0, c: 102.4 },
@@ -45,22 +45,22 @@ test('onIntrabar در حالِ پخش، ریزکندل‌های داخلِ با�
   ]]]);
   c.setIntrabarData(map);
   c.enableIntrabar(true);
-  c.enter(full, { startIndex: 1 }); // idx=1، بارِ بعدی index=2 دارد ریزکندل
+  c.enter(full, { startIndex: 1 }); // idx=1، بار بعدی index=2 دارد ریزکندل
 
-  // چند تیک بزن تا از میانِ ریزکندل‌های بارِ ۲ رد شود
-  c._tick(); // ریزکندلِ ۰
-  c._tick(); // ریزکندلِ ۱
-  c._tick(); // ریزکندلِ ۲
+  // چند تیک بزن تا از میان ریزکندل‌های بار ۲ رد شود
+  c._tick(); // ریزکندل ۰
+  c._tick(); // ریزکندل ۱
+  c._tick(); // ریزکندل ۲
   c._tick(); // آخرین ریزکندل → step() بار را commit می‌کند
 
   assert.ok(intrabarCalls.length >= 3, `باید ≥۳ ریزگام emit شود، شد ${intrabarCalls.length}`);
-  assert.equal(intrabarCalls[0].barT, 1120, 'ریزگام‌ها باید مربوط به بارِ ۱۱۲۰ باشند');
+  assert.equal(intrabarCalls[0].barT, 1120, 'ریزگام‌ها باید مربوط به بار ۱۱۲۰ باشند');
   assert.deepEqual(intrabarCalls.slice(0, 3).map((x) => x.j), [0, 1, 2], 'اندیس‌های ریزکندل به ترتیب');
-  // high/low ریزکندل‌ها متفاوت‌اند (نه ثابت) — یعنی واقعاً داخلِ بار حرکت می‌کند
+  // high/low ریزکندل‌ها متفاوت‌اند (نه ثابت) — یعنی واقعاً داخل بار حرکت می‌کند
   assert.ok(new Set(intrabarCalls.map((x) => x.subT)).size >= 3, 'ریزکندل‌های متمایز');
 });
 
-test('بدونِ داده برای یک بار، به step معمولی سقوط می‌کند (بدونِ کرش)', () => {
+test('بدون داده برای یک بار، به step معمولی سقوط می‌کند (بدون کرش)', () => {
   const full = mkBars(40);
   const steps = [];
   const c = new ReplayController({ onStep: (bar) => steps.push(bar.t), onIntrabar: () => {} });
@@ -71,7 +71,7 @@ test('بدونِ داده برای یک بار، به step معمولی سقوط
   assert.ok(steps.length >= 1, 'باید به step معمولی افتاده باشد');
 });
 
-test('خاموش‌بودنِ ذره‌بین، مسیرِ عادیِ step را عوض نمی‌کند', () => {
+test('خاموش‌بودن ذره‌بین، مسیر عادی step را عوض نمی‌کند', () => {
   const full = mkBars(40);
   const steps = [];
   const intr = [];

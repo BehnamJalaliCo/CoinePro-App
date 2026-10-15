@@ -15,6 +15,12 @@ import { applyAddress } from './route';
 import { applyTheme, usePrefs } from './state/prefs';
 
 const BASE = import.meta.env.BASE_URL;
+
+// The end-to-end suite (scripts/e2e) drives the stores directly when the page is opened with
+// ?e2e=1; nothing is exposed otherwise.
+if (new URLSearchParams(window.location.search).has('e2e')) {
+  void import('./e2eHooks').then((m) => m.expose());
+}
 applyTheme(usePrefs.getState().theme);
 applyAddress();
 startPrices();

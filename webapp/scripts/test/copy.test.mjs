@@ -11,8 +11,8 @@ const files = [];
 (function walk(d) {
   for (const f of readdirSync(d)) {
     const p = join(d, f);
-    if (statSync(p).isDirectory()) { if (f !== 'engine') walk(p); }
-    else if (/\.(tsx?|css|html)$/.test(f)) files.push(p);
+    if (statSync(p).isDirectory()) { if (f !== '__tests__') walk(p); }
+    else if (/\.(tsx?|css|html|js)$/.test(f)) files.push(p);
   }
 })(src);
 files.push(join(src, '../index.html'));
@@ -23,6 +23,10 @@ test('no «نمودار» in interface copy', () => {
 
 test('no «هٔ» (hamza ezafe) in interface copy', () => {
   for (const f of files) assert.ok(!/هٔ|ۀ/.test(readFileSync(f, 'utf8')), f);
+});
+
+test('no other typeface is named anywhere, engine included', () => {
+  for (const f of files) assert.ok(!/Vazirmatn|Ravagh|AnjomanMax|Roboto|Tahoma|'Inter'/.test(readFileSync(f, 'utf8')), f);
 });
 
 test('IRANYekanX is the only font family', () => {

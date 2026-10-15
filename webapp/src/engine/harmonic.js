@@ -1,10 +1,10 @@
 // ─────────────────────────────────────────────────────────────────────────
-// تشخیصِ خودکارِ الگوهای هارمونیک (Gartley / Bat / Butterfly / Crab)
-// بر پایهٔ نسبت‌های فیبوناچیِ کلاسیک روی نقاطِ چرخشِ XABCD (دامنهٔ عمومی).
+// تشخیص خودکار الگوهای هارمونیک (Gartley / Bat / Butterfly / Crab)
+// بر پایه‌ی نسبت‌های فیبوناچی کلاسیک روی نقاط چرخش XABCD (دامنه‌ی عمومی).
 // ورودی: [{t,o,h,l,c}] — خروجی: [{t, dir:'bull'|'bear', label}]
 // ─────────────────────────────────────────────────────────────────────────
 
-// نقاطِ چرخشِ متناوب (zigzag ساده بر پایهٔ pivotهای تأییدشده)
+// نقاط چرخش متناوب (zigzag ساده بر پایه‌ی pivotهای تأییدشده)
 function swings(cs, L = 3, R = 3) {
   const piv = [];
   for (let i = L; i < cs.length - R; i++) {
@@ -14,7 +14,7 @@ function swings(cs, L = 3, R = 3) {
     if (isLow) piv.push({ i, t: cs[i].t, price: cs[i].l, type: 'L' });
   }
   piv.sort((a, b) => a.i - b.i);
-  // متناوب‌سازی: بینِ دو چرخشِ هم‌نوعِ پشتِ‌سرهم، فقط افراطی‌تر را نگه دار
+  // متناوب‌سازی: بین دو چرخش هم‌نوع پشت‌سرهم، فقط افراطی‌تر را نگه دار
   const out = [];
   for (const p of piv) {
     const last = out[out.length - 1];
@@ -26,7 +26,7 @@ function swings(cs, L = 3, R = 3) {
 
 const inRange = (v, lo, hi) => v >= lo && v <= hi;
 
-// تعریفِ نسبت‌های هر الگو: [AB/XA, BC/AB, CD/BC, AD/XA] با تلورانس
+// تعریف نسبت‌های هر الگو: [AB/XA, BC/AB, CD/BC, AD/XA] با تلورانس
 const PATTERNS = [
   { name: 'گارتلی', ab: [0.55, 0.68], bc: [0.38, 0.90], cd: [1.10, 1.70], ad: [0.72, 0.84] },
   { name: 'خفاش (Bat)', ab: [0.35, 0.55], bc: [0.38, 0.90], cd: [1.55, 2.70], ad: [0.84, 0.92] },
@@ -39,7 +39,7 @@ export function detectHarmonics(cs) {
   const sw = swings(cs);
   if (sw.length < 5) return [];
   const out = [];
-  // روی چند دنبالهٔ ۵-نقطه‌ایِ آخر جست‌وجو کن (نه فقط آخری) تا الگوهای تازه دیده شوند
+  // روی چند دنباله‌ی ۵-نقطه‌ای آخر جست‌وجو کن (نه فقط آخری) تا الگوهای تازه دیده شوند
   for (let s = Math.max(0, sw.length - 8); s + 4 < sw.length; s++) {
     const [X, A, B, C, D] = sw.slice(s, s + 5);
     // باید متناوب باشند (H,L,H,L,H یا L,H,L,H,L)
@@ -49,14 +49,14 @@ export function detectHarmonics(cs) {
     const rAB = AB / XA, rBC = BC / AB, rCD = CD / BC, rAD = AD / XA;
     for (const p of PATTERNS) {
       if (inRange(rAB, ...p.ab) && inRange(rBC, ...p.bc) && inRange(rCD, ...p.cd) && inRange(rAD, ...p.ad)) {
-        // نقطهٔ D کف باشد → صعودی (خرید در تکمیل)، سقف باشد → نزولی
+        // نقطه‌ی D کف باشد → صعودی (خرید در تکمیل)، سقف باشد → نزولی
         const dir = D.type === 'L' ? 'bull' : 'bear';
         out.push({ t: D.t, dir, label: `${p.name} ${dir === 'bull' ? '▲' : '▼'}`, points: [X, A, B, C, D].map((q) => ({ t: q.t, price: q.price })) });
         break;
       }
     }
   }
-  // ادغام بر اساسِ زمان
+  // ادغام بر اساس زمان
   const byT = new Map();
   out.forEach((o) => { if (!byT.has(o.t)) byT.set(o.t, o); });
   return Array.from(byT.values()).sort((a, b) => a.t - b.t);

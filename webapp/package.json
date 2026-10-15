@@ -9,7 +9,8 @@
     "dev": "node scripts/prepare-assets.mjs && vite",
     "build": "node scripts/prepare-assets.mjs && tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "test": "node --test scripts/test/*.test.mjs scripts/test/engine/*.test.mjs"
+    "test": "node --test scripts/test/*.test.mjs scripts/test/engine/*.test.mjs && vitest run",
+    "e2e": "node scripts/e2e/run.mjs"
   },
   "dependencies": {
     "lightweight-charts": "5.2.0",
@@ -21,7 +22,10 @@
     "@types/react": "18.3.23",
     "@types/react-dom": "18.3.7",
     "@vitejs/plugin-react": "4.7.0",
+    "jsdom": "^26.1.0",
+    "playwright": "^1.56.1",
     "typescript": "5.9.3",
-    "vite": "6.4.3"
+    "vite": "6.4.3",
+    "vitest": "^3.2.4"
   }
 }

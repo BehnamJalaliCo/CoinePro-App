@@ -22,6 +22,9 @@ interface ChartBusState {
   drawingCount: number;
   /** Bumped on every drawing change, for lists that show the drawings. */
   drawingVersion: number;
+  /** The text drawing being written or edited (its index), or null. */
+  textEdit: { index: number; fresh: boolean } | null;
+  setTextEdit(e: { index: number; fresh: boolean } | null): void;
   setDrawingLayer(layer: DrawingLayer | null): void;
   bumpDrawings(canUndo: boolean, canRedo: boolean, count: number): void;
   setApi(api: IChartApi | null): void;
@@ -44,6 +47,8 @@ export const useChartBus = create<ChartBusState>((set) => ({
   canRedo: false,
   drawingCount: 0,
   drawingVersion: 0,
+  textEdit: null,
+  setTextEdit: (textEdit) => set({ textEdit }),
   setDrawingLayer: (drawingLayer) => set({ drawingLayer }),
   bumpDrawings: (canUndo, canRedo, drawingCount) => set((s) => ({ canUndo, canRedo, drawingCount, drawingVersion: s.drawingVersion + 1 })),
   setApi: (api) => set({ api }),

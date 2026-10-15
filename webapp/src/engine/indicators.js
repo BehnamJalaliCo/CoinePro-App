@@ -1,13 +1,13 @@
-// بازارنما — کتابخانهٔ اندیکاتورهای سمتِ کلاینت (سری‌محور، آرایه‌ها هم‌طولِ کندل‌ها).
-// ورودی: closes/highs/lows/... آرایهٔ عدد. خروجی: آرایهٔ عدد یا null (دورهٔ گرم‌شدن).
+// بازارنما — کتابخانه‌ی اندیکاتورهای سمت کلاینت (سری‌محور، آرایه‌ها هم‌طول کندل‌ها).
+// ورودی: closes/highs/lows/... آرایه‌ی عدد. خروجی: آرایه‌ی عدد یا null (دوره‌ی گرم‌شدن).
 
 // افزونه‌های فصل ۵ (PRO_CHART_BUILD_SPEC) — ماژول‌های drop-in، در انتهای فایل با REGISTRY ادغام می‌شوند.
 import { EXT_REGISTRY_A } from './indicators_ext_a.js';
 import { EXT_REGISTRY_B } from './indicators_ext_b.js';
 
-// فارکس/فلز/شاخص حجم ندارند. اندیکاتورِ حجمی روی چنین ابزاری باید null بدهد،
-// نه عددی که شبیهِ نتیجهٔ واقعی است — کاربر روی آن معامله می‌کند.
-// پیش‌تر mfi ثابت ۱۰۰ (اشباعِ خریدِ همیشگی) و vwap بی‌صدا close برمی‌گرداند.
+// فارکس/فلز/شاخص حجم ندارند. اندیکاتور حجمی روی چنین ابزاری باید null بدهد،
+// نه عددی که شبیه نتیجه‌ی واقعی است — کاربر روی آن معامله می‌کند.
+// پیش‌تر mfi ثابت ۱۰۰ (اشباع خرید همیشگی) و vwap بی‌صدا close برمی‌گرداند.
 export const hasVolume = (vols) => {
   if (!Array.isArray(vols)) return false;
   for (let i = 0; i < vols.length; i++) { const v = vols[i]; if (v != null && v > 0) return true; }
@@ -25,8 +25,8 @@ export const sma = (src, p) => {
   }
   return out;
 };
-// SMAِ آگاه به null — برای MAِ روی خروجیِ اندیکاتورِ دیگر که warmupِ null دارد (مثلِ RSI-based MAِ TV):
-// فقط مقادیرِ متناهیِ پنجره را میانگین می‌گیرد و تا پُرشدنِ کاملِ پنجره null می‌دهد. #330
+// SMA آگاه به null — برای MA روی خروجی اندیکاتور دیگر که warmup null دارد (مثل RSI-based MA TV):
+// فقط مقادیر متناهی پنجره را میانگین می‌گیرد و تا پُرشدن کامل پنجره null می‌دهد. #330
 export const smaNull = (arr, p) => { const out = new Array(arr.length).fill(null); let sum = 0, cnt = 0; for (let i = 0; i < arr.length; i++) { const v = arr[i]; if (v != null && Number.isFinite(v)) { sum += v; cnt++; } const j = i - p; if (j >= 0) { const w = arr[j]; if (w != null && Number.isFinite(w)) { sum -= w; cnt--; } } if (cnt === p) out[i] = sum / p; } return out; };
 
 export const ema = (src, p) => {
@@ -62,7 +62,7 @@ export const hma = (src, p) => {
   const diff = src.map((_, i) => (w1[i] != null && w2[i] != null ? 2 * w1[i] - w2[i] : null));
   const filled = diff.map((v) => (v == null ? 0 : v));
   const h = wma(filled, sq);
-  // فقط وقتی پنجرهٔ کاملِ sq از diff واقعی باشد خروجی بده — تا صفرهای جعلیِ warmup لبهٔ چپ را خراب نکنند (~√p بارِ اول).
+  // فقط وقتی پنجره‌ی کامل sq از diff واقعی باشد خروجی بده — تا صفرهای جعلی warmup لبه‌ی چپ را خراب نکنند (~√p بار اول).
   return h.map((v, i) => { for (let j = 0; j < sq; j++) if (i - j < 0 || diff[i - j] == null) return null; return v; });
 };
 
@@ -124,17 +124,17 @@ export const stoch = (highs, lows, closes, p = 14, d = 3) => {
   return { k, d: dd };
 };
 
-// VWAP — پیش‌فرضِ TradingView سشن‌محور است (هر سشنِ معاملاتی/روز ریست می‌شود).
-// اگر آرایهٔ times (یونیکس‌ثانیه) داده شود، با تغییرِ روزِ UTC انباشت ریست می‌گردد؛
-// بدونِ times رفتارِ تجمعیِ قبلی حفظ می‌شود (سازگاریِ عقب‌رو).
+// VWAP — پیش‌فرض TradingView سشن‌محور است (هر سشن معاملاتی/روز ریست می‌شود).
+// اگر آرایه‌ی times (یونیکس‌ثانیه) داده شود، با تغییر روز UTC انباشت ریست می‌گردد؛
+// بدون times رفتار تجمعی قبلی حفظ می‌شود (سازگاری عقب‌رو).
 export const vwap = (highs, lows, closes, vols, times) => {
-  if (!hasVolume(vols)) return nulls(closes.length); // VWAP بدونِ حجم وجود ندارد (پیش‌تر بی‌صدا close می‌داد)
+  if (!hasVolume(vols)) return nulls(closes.length); // VWAP بدون حجم وجود ندارد (پیش‌تر بی‌صدا close می‌داد)
   const out = new Array(closes.length).fill(null);
   let pv = 0, vv = 0, prevDay = null;
   for (let i = 0; i < closes.length; i++) {
     if (times && times[i] != null) {
-      const day = Math.floor(times[i] / 86400); // سطلِ روزِ UTC
-      if (prevDay !== null && day !== prevDay) { pv = 0; vv = 0; } // سشنِ جدید → ریست
+      const day = Math.floor(times[i] / 86400); // سطل روز UTC
+      if (prevDay !== null && day !== prevDay) { pv = 0; vv = 0; } // سشن جدید → ریست
       prevDay = day;
     }
     const tp = (highs[i] + lows[i] + closes[i]) / 3;
@@ -144,7 +144,7 @@ export const vwap = (highs, lows, closes, vols, times) => {
   return out;
 };
 
-// Anchored VWAP — VWAP از anchorِ N کندلِ پیش + باندهای انحرافِ معیار (±mult·σ) — نسخهٔ مؤسساتی
+// Anchored VWAP — VWAP از anchor N کندل پیش + باندهای انحراف معیار (±mult·σ) — نسخه‌ی مؤسساتی
 export const avwap = (highs, lows, closes, vols, anchorBars = 100, mult = 1) => {
   if (!hasVolume(vols)) return { vwap: nulls(closes.length), upper: nulls(closes.length), lower: nulls(closes.length) };
   const n = closes.length;
@@ -164,7 +164,7 @@ export const avwap = (highs, lows, closes, vols, anchorBars = 100, mult = 1) => 
   return { vwap: out, upper: up, lower: dn };
 };
 
-// ── اندیکاتورهای افزوده (پاریتیِ TradingView) ──
+// ── اندیکاتورهای افزوده (پاریتی TradingView) ──
 const _trueRange = (h, l, c) => { const n = c.length, tr = new Array(n).fill(null); for (let i = 0; i < n; i++) { if (i === 0) { tr[i] = h[i] - l[i]; continue; } tr[i] = Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1])); } return tr; };
 const _sma = (arr, p) => { const n = arr.length, out = new Array(n).fill(null); let s = 0; for (let i = 0; i < n; i++) { s += arr[i] || 0; if (i >= p) s -= arr[i - p] || 0; if (i >= p - 1) out[i] = s / p; } return out; };
 
@@ -221,9 +221,9 @@ export const netVolume = (o, c, v) => (hasVolume(v) ? c.map((cl, i) => (v[i] || 
 export const stdErrBands = (c, p = 21, mult = 2) => { const n = c.length, mid = new Array(n).fill(null), up = new Array(n).fill(null), dn = new Array(n).fill(null); for (let i = p - 1; i < n; i++) { let sx = 0, sy = 0, sxx = 0, sxy = 0; for (let j = 0; j < p; j++) { const x = j, y = c[i - p + 1 + j]; sx += x; sy += y; sxx += x * x; sxy += x * y; } const b = (p * sxy - sx * sy) / (p * sxx - sx * sx || 1); const a = (sy - b * sx) / p; const yhat = a + b * (p - 1); let se = 0; for (let j = 0; j < p; j++) { const x = j, y = c[i - p + 1 + j]; const e = y - (a + b * x); se += e * e; } const stderr = Math.sqrt(se / Math.max(1, p - 2)); mid[i] = yhat; up[i] = yhat + mult * stderr; dn[i] = yhat - mult * stderr; } return { mid, up, dn }; };
 // Accelerator Oscillator = AO − SMA(AO, 5)، که AO = SMA(median,5) − SMA(median,34).
 //
-// پیش‌تر O(n²) بود: `_sma(med, 34)` و `_sma(ao, 5)` **داخلِ** `.map()` صدا زده می‌شدند،
-// یعنی به‌ازای هر کندل کلِ سری از نو محاسبه می‌شد. ۵۰۰۰ کندل ≈ ۷۰۰ms و با
-// اسکرولِ بی‌کرانِ تاریخچه، فریزِ حتمی. حالا هر SMA یک‌بار حساب می‌شود → O(n).
+// پیش‌تر O(n²) بود: `_sma(med, 34)` و `_sma(ao, 5)` **داخل** `.map()` صدا زده می‌شدند،
+// یعنی به‌ازای هر کندل کل سری از نو محاسبه می‌شد. ۵۰۰۰ کندل ≈ ۷۰۰ms و با
+// اسکرول بی‌کران تاریخچه، فریز حتمی. حالا هر SMA یک‌بار حساب می‌شود → O(n).
 export const accelerator = (h, l) => {
   const med = h.map((x, i) => (x + l[i]) / 2);
   const s5 = _sma(med, 5), s34 = _sma(med, 34);
@@ -232,24 +232,24 @@ export const accelerator = (h, l) => {
   return ao.map((v, i) => (v != null && aoSig[i] != null ? v - aoSig[i] : null));
 };
 export const chaikinVol = (h, l, p = 10) => { const hl = h.map((x, i) => x - l[i]); const e = _ema2(hl, p); return e.map((v, i) => (v != null && e[i - p] != null && e[i - p] !== 0) ? (v - e[i - p]) / e[i - p] * 100 : null); };
-// MTF: resampleِ کندل‌های موجود به تایم‌فریمِ بالاتر (factor)، محاسبه، و گسترشِ مقادیر به طولِ اصلی
+// MTF: resample کندل‌های موجود به تایم‌فریم بالاتر (factor)، محاسبه، و گسترش مقادیر به طول اصلی
 const _resampleC = (c, f) => { f = Math.max(1, f | 0); const o = [], h = [], l = [], cl = [], v = []; for (let i = 0; i < c.close.length; i += f) { const end = Math.min(i + f, c.close.length); let mh = -Infinity, ml = Infinity, sv = 0; for (let j = i; j < end; j++) { if (c.high[j] > mh) mh = c.high[j]; if (c.low[j] < ml) ml = c.low[j]; sv += c.volume[j] || 0; } o.push(c.open[i]); h.push(mh); l.push(ml); cl.push(c.close[end - 1]); v.push(sv); } return { open: o, high: h, low: l, close: cl, volume: v }; };
-// گسترشِ سریِ HTF به طولِ تایم‌فریمِ پایه — **بدونِ سوگیریِ lookahead**.
+// گسترش سری HTF به طول تایم‌فریم پایه — **بدون سوگیری lookahead**.
 //
-// باگِ پیشین: سطلِ i (کندل‌های پایهٔ i*f .. i*f+f-1) مقدارش از close[end-1] یعنی
-// **آخرین** کندلِ سطل می‌آمد، ولی به **همهٔ** کندل‌های سطل نسبت داده می‌شد. یعنی در
-// کندلِ i*f، اندیکاتور کلوزی را می‌دانست که f-1 کندل بعد اتفاق می‌افتد. بک‌تست را
+// باگ پیشین: سطل i (کندل‌های پایه‌ی i*f .. i*f+f-1) مقدارش از close[end-1] یعنی
+// **آخرین** کندل سطل می‌آمد، ولی به **همه‌ی** کندل‌های سطل نسبت داده می‌شد. یعنی در
+// کندل i*f، اندیکاتور کلوزی را می‌دانست که f-1 کندل بعد اتفاق می‌افتد. بک‌تست را
 // غلط سودده نشان می‌داد.
 //
-// درست (مثلِ request.security با lookahead=off در TradingView): کندلِ HTF شمارهٔ i
-// در انتهای کندلِ پایهٔ i*f+f-1 بسته می‌شود، پس فقط از کندلِ (i+1)*f به بعد
-// در دسترس است. تا آن موقع کندلِ HTF در حالِ شکل‌گیری است و مقدارِ قبلی دیده می‌شود.
-// نتیجه: f کندلِ اولِ خروجی null‌اند — چون هنوز هیچ کندلِ HTFای بسته نشده.
+// درست (مثل request.security با lookahead=off در TradingView): کندل HTF شماره‌ی i
+// در انتهای کندل پایه‌ی i*f+f-1 بسته می‌شود، پس فقط از کندل (i+1)*f به بعد
+// در دسترس است. تا آن موقع کندل HTF در حال شکل‌گیری است و مقدار قبلی دیده می‌شود.
+// نتیجه: f کندل اول خروجی null‌اند — چون هنوز هیچ کندل HTFای بسته نشده.
 const _expandA = (arr, f, len) => {
   f = Math.max(1, f | 0);
   const out = new Array(len).fill(null);
   for (let i = 0; i < arr.length; i++) {
-    const from = (i + 1) * f;                    // اولین کندلِ پایه پس از بسته‌شدنِ سطلِ i
+    const from = (i + 1) * f;                    // اولین کندل پایه پس از بسته‌شدن سطل i
     const to = Math.min(from + f, len);
     for (let idx = from; idx < to; idx++) out[idx] = arr[i];
   }
@@ -266,8 +266,8 @@ export const supertrend = (highs, lows, closes, p = 10, mult = 3) => {
     if (a[i] == null) continue;
     const mid = (highs[i] + lows[i]) / 2;
     let ub = mid + mult * a[i], lb = mid - mult * a[i];
-    // رَچِتِ باندِ نهاییِ استانداردِ SuperTrend: باند تا وقتی قیمت داخلش است سفت می‌ماند، فقط با شکست ریست می‌شود.
-    // (قبلاً منطق معکوس بود ⇒ باند هر بار دوباره پهن می‌شد و خطِ SuperTrend به‌شدت غلط بود — هم‌کلاسِ باگِ نمااسکریپت #۵۸.)
+    // رَچت باند نهایی استاندارد SuperTrend: باند تا وقتی قیمت داخلش است سفت می‌ماند، فقط با شکست ریست می‌شود.
+    // (قبلاً منطق معکوس بود ⇒ باند هر بار دوباره پهن می‌شد و خط SuperTrend به‌شدت غلط بود — هم‌کلاس باگ نمااسکریپت #۵۸.)
     if (up != null) ub = (ub < up || closes[i - 1] > up) ? ub : up;
     if (dn != null) lb = (lb > dn || closes[i - 1] < dn) ? lb : dn;
     if (dir === 1 && closes[i] < (dn ?? lb)) dir = -1;
@@ -279,7 +279,7 @@ export const supertrend = (highs, lows, closes, p = 10, mult = 3) => {
 };
 
 // CCI
-// هستهٔ CCI روی هر سریِ منبع (پیش‌فرضِ TV: hlc3) — انحراف نسبت به SMA تقسیم بر ۰٫۰۱۵×میانگینِ‌انحراف.
+// هسته‌ی CCI روی هر سری منبع (پیش‌فرض TV: hlc3) — انحراف نسبت به SMA تقسیم بر ۰٫۰۱۵×میانگین‌انحراف.
 const _cciCore = (src, p) => {
   const m = sma(src, p);
   const out = new Array(src.length).fill(null);
@@ -312,25 +312,25 @@ export const obv = (closes, vols) => {
 };
 
 // Ichimoku → چند خط
-// ایچیموکو کینکو هیو — با جابه‌جاییِ درست.
+// ایچیموکو کینکو هیو — با جابه‌جایی درست.
 //
-// باگِ پیشین: Senkou A/B بدونِ جابه‌جایی و روی همان کندل رسم می‌شدند، و Chikou اصلاً
+// باگ پیشین: Senkou A/B بدون جابه‌جایی و روی همان کندل رسم می‌شدند، و Chikou اصلاً
 // وجود نداشت. یعنی ابر روی قیمت می‌نشست به‌جای اینکه جلوتر از آن برجسته شود — دقیقاً
-// وارونهٔ کارکردش. ابر (کومو) باید **۲۶ کندل جلوتر** باشد؛ کلِ فلسفهٔ ایچیموکو
-// پیش‌بینیِ حمایت/مقاومتِ آینده است.
+// وارونه‌ی کارکردش. ابر (کومو) باید **۲۶ کندل جلوتر** باشد؛ کل فلسفه‌ی ایچیموکو
+// پیش‌بینی حمایت/مقاومت آینده است.
 //
-// تعریفِ استاندارد:
-//   Tenkan  = (بیشینهٔ ۹ سقف + کمینهٔ ۹ کف) / 2      — روی کندلِ جاری
-//   Kijun   = (بیشینهٔ ۲۶ سقف + کمینهٔ ۲۶ کف) / 2     — روی کندلِ جاری
+// تعریف استاندارد:
+//   Tenkan  = (بیشینه‌ی ۹ سقف + کمینه‌ی ۹ کف) / 2      — روی کندل جاری
+//   Kijun   = (بیشینه‌ی ۲۶ سقف + کمینه‌ی ۲۶ کف) / 2     — روی کندل جاری
 //   Senkou A = (Tenkan + Kijun) / 2                  — **۲۶ کندل جلوتر**
-//   Senkou B = (بیشینهٔ ۵۲ سقف + کمینهٔ ۵۲ کف) / 2    — **۲۶ کندل جلوتر**
+//   Senkou B = (بیشینه‌ی ۵۲ سقف + کمینه‌ی ۵۲ کف) / 2    — **۲۶ کندل جلوتر**
 //   Chikou   = close                                 — **۲۶ کندل عقب‌تر**
 //
-// محدودیتِ شناخته‌شده: چارت فعلاً کندلِ آینده ندارد، پس آن ۲۶ کندلِ برجستهٔ فراتر از
-// آخرین کندل رسم نمی‌شوند. همهٔ کندل‌های تاریخی درست هم‌ترازند. برجستگیِ لبهٔ راست
-// نیازمندِ گسترشِ محورِ زمان است (کارِ سطحِ چارت، نه اندیکاتور).
+// محدودیت شناخته‌شده: چارت فعلاً کندل آینده ندارد، پس آن ۲۶ کندل برجسته‌ی فراتر از
+// آخرین کندل رسم نمی‌شوند. همه‌ی کندل‌های تاریخی درست هم‌ترازند. برجستگی لبه‌ی راست
+// نیازمند گسترش محور زمان است (کار سطح چارت، نه اندیکاتور).
 //
-// ⚠️ Chikou ذاتاً کلوزِ آینده را در موقعیتِ گذشته نشان می‌دهد (استاندارد است و TV هم
+// ⚠️ Chikou ذاتاً کلوز آینده را در موقعیت گذشته نشان می‌دهد (استاندارد است و TV هم
 // همین می‌کند). برای **نمایش** درست است؛ یک استراتژی هرگز نباید از آن سیگنال بگیرد.
 export const ichimoku = (highs, lows, closes, t = 9, k = 26, b = 52) => {
   const n = highs.length;
@@ -342,7 +342,7 @@ export const ichimoku = (highs, lows, closes, t = 9, k = 26, b = 52) => {
   });
   const tenkan = mid(t), kijun = mid(k), b52 = mid(b);
 
-  // Senkou A/B: مقدارِ محاسبه‌شده در کندلِ i، در کندلِ i+k ظاهر می‌شود
+  // Senkou A/B: مقدار محاسبه‌شده در کندل i، در کندل i+k ظاهر می‌شود
   const spanA = new Array(n).fill(null);
   const spanB = new Array(n).fill(null);
   for (let i = 0; i < n; i++) {
@@ -352,7 +352,7 @@ export const ichimoku = (highs, lows, closes, t = 9, k = 26, b = 52) => {
     if (b52[src] != null) spanB[i] = b52[src];
   }
 
-  // Chikou: کلوزِ کندلِ i+k در موقعیتِ i — یعنی ۲۶ کندلِ آخر خالی می‌مانند
+  // Chikou: کلوز کندل i+k در موقعیت i — یعنی ۲۶ کندل آخر خالی می‌مانند
   const chikou = new Array(n).fill(null);
   for (let i = 0; i < n - k; i++) chikou[i] = closes[i + k];
 
@@ -399,8 +399,8 @@ export const adx = (highs, lows, closes, p = 14) => {
 };
 
 // DEMA / TEMA
-// نسخهٔ ADX که +DI و −DI را هم برمی‌گرداند (برای قاعدهٔ crossover-محورِ Technical Rating). #265
-// دقیقاً همان محاسبهٔ adx بالا؛ فقط pdi/ndi را هم ذخیره می‌کند (تستِ elementwise تضمینِ یکسانیِ adx می‌دهد).
+// نسخه‌ی ADX که +DI و −DI را هم برمی‌گرداند (برای قاعده‌ی crossover-محور Technical Rating). #265
+// دقیقاً همان محاسبه‌ی adx بالا؛ فقط pdi/ndi را هم ذخیره می‌کند (تست elementwise تضمین یکسانی adx می‌دهد).
 export const adxDI = (highs, lows, closes, p = 14) => {
   const n = closes.length;
   if (n < p + 2) return null;
@@ -426,8 +426,8 @@ export const adxDI = (highs, lows, closes, p = 14) => {
   return { adx: adxArr, plusDI, minusDI };
 };
 
-export const dema = (closes, p = 20) => { const e = ema(closes, p), e2 = ema(e, p); return closes.map((_, i) => (e[i] != null && e2[i] != null ? 2 * e[i] - e2[i] : null)); }; // ema خودش null-skip/seed-on-first-real دارد؛ map(null→0) قبلی EMAِ تودرتو را با صفرِ جعلی seed می‌کرد ⇒ ~۹۰ بارِ اولِ خروجی به‌شدت غلط.
-export const tema = (closes, p = 20) => { const e1 = ema(closes, p), e2 = ema(e1, p), e3 = ema(e2, p); return closes.map((_, i) => (e1[i] != null && e2[i] != null && e3[i] != null ? 3 * e1[i] - 3 * e2[i] + e3[i] : null)); }; // مثلِ dema: EMAِ تودرتو بدونِ map(null→0) تا روی اولین مقدارِ واقعی seed شود.
+export const dema = (closes, p = 20) => { const e = ema(closes, p), e2 = ema(e, p); return closes.map((_, i) => (e[i] != null && e2[i] != null ? 2 * e[i] - e2[i] : null)); }; // ema خودش null-skip/seed-on-first-real دارد؛ map(null→0) قبلی EMA تودرتو را با صفر جعلی seed می‌کرد ⇒ ~۹۰ بار اول خروجی به‌شدت غلط.
+export const tema = (closes, p = 20) => { const e1 = ema(closes, p), e2 = ema(e1, p), e3 = ema(e2, p); return closes.map((_, i) => (e1[i] != null && e2[i] != null && e3[i] != null ? 3 * e1[i] - 3 * e2[i] + e3[i] : null)); }; // مثل dema: EMA تودرتو بدون map(null→0) تا روی اولین مقدار واقعی seed شود.
 
 // VWMA
 export const vwma = (closes, vols, p = 20) => { const pv = closes.map((c, i) => c * (vols[i] || 0)); const spv = sma(pv, p), sv = sma(vols.map((v) => v || 0), p); return closes.map((_, i) => (spv[i] != null && sv[i] ? spv[i] / sv[i] : null)); };
@@ -458,12 +458,12 @@ export const aroon = (highs, lows, p = 14) => {
 
 // MFI
 export const mfi = (highs, lows, closes, vols, p = 14) => {
-  if (!hasVolume(vols)) return nulls(closes.length); // بدونِ حجم MFI بی‌معناست (پیش‌تر ثابت ۱۰۰ می‌داد)
+  if (!hasVolume(vols)) return nulls(closes.length); // بدون حجم MFI بی‌معناست (پیش‌تر ثابت ۱۰۰ می‌داد)
   const n = closes.length, tp = new Array(n), pos = new Array(n).fill(0), neg = new Array(n).fill(0);
   for (let i = 0; i < n; i++) { tp[i] = (highs[i] + lows[i] + closes[i]) / 3; const rmf = tp[i] * (vols[i] || 0); if (i > 0) { if (tp[i] > tp[i - 1]) pos[i] = rmf; else if (tp[i] < tp[i - 1]) neg[i] = rmf; } }
   const sp = sma(pos, p).map((v) => (v == null ? null : v * p)), sn = sma(neg, p).map((v) => (v == null ? null : v * p));
   const out = new Array(n).fill(null);
-  // clamp: MFI طبقِ تعریف ۰..۱۰۰ است؛ بدونِ این، خطای ممیزِ شناور ۱۰۰.۰۰۰۰۰۰۰۰۰۰۰۰۰۱ می‌داد
+  // clamp: MFI طبق تعریف ۰..۱۰۰ است؛ بدون این، خطای ممیز شناور ۱۰۰.۰۰۰۰۰۰۰۰۰۰۰۰۰۱ می‌داد
   for (let i = 0; i < n; i++) if (sp[i] != null) out[i] = Math.min(100, Math.max(0, sn[i] ? 100 - 100 / (1 + sp[i] / sn[i]) : 100));
   return out;
 };
@@ -505,10 +505,10 @@ export const cmo = (closes, p = 9) => {
   return closes.map((_, i) => { if (su[i] == null) return null; const t = su[i] + sd[i]; return t ? 100 * (su[i] - sd[i]) / t : 0; });
 };
 
-// Pivot Points (کلاسیک، چرخشی روی کندلِ قبل) → P/R1/R2/S1/S2
-// نقاطِ پیووتِ کلاسیک — سطوحِ افقیِ ثابت که از HLCِ *دورهٔ قبل* (پیش‌فرض: روزِ قبل) محاسبه
-// و در سراسرِ دورهٔ جاری صاف نگه داشته می‌شوند (مثلِ TradingView). times=مُهرِ زمانیِ ثانیه‌ایِ هر بار.
-// بدونِ times به رفتارِ قدیمی (بارِ قبل) برمی‌گردد.
+// Pivot Points (کلاسیک، چرخشی روی کندل قبل) → P/R1/R2/S1/S2
+// نقاط پیووت کلاسیک — سطوح افقی ثابت که از HLC *دوره‌ی قبل* (پیش‌فرض: روز قبل) محاسبه
+// و در سراسر دوره‌ی جاری صاف نگه داشته می‌شوند (مثل TradingView). times=مُهر زمانی ثانیه‌ای هر بار.
+// بدون times به رفتار قدیمی (بار قبل) برمی‌گردد.
 export const pivots = (highs, lows, closes, times) => {
   const n = closes.length, p = new Array(n).fill(null), r1 = new Array(n).fill(null), r2 = new Array(n).fill(null), s1 = new Array(n).fill(null), s2 = new Array(n).fill(null);
   const setLevels = (i, pv) => { if (!pv) return; const pp = (pv.H + pv.L + pv.C) / 3; p[i] = pp; r1[i] = 2 * pp - pv.L; s1[i] = 2 * pp - pv.H; r2[i] = pp + (pv.H - pv.L); s2[i] = pp - (pv.H - pv.L); };
@@ -516,19 +516,19 @@ export const pivots = (highs, lows, closes, times) => {
     for (let i = 1; i < n; i++) setLevels(i, { H: highs[i - 1], L: lows[i - 1], C: closes[i - 1] });
     return { p, r1, r2, s1, s2 };
   }
-  const dayOf = (t) => Math.floor((t || 0) / 86400); // مرزِ روزِ UTC
+  const dayOf = (t) => Math.floor((t || 0) / 86400); // مرز روز UTC
   let curDay = null, dH = -Infinity, dL = Infinity, dC = null, prev = null;
   for (let i = 0; i < n; i++) {
     const d = dayOf(times[i]);
     if (curDay === null) { curDay = d; dH = highs[i]; dL = lows[i]; dC = closes[i]; }
     else if (d !== curDay) { prev = { H: dH, L: dL, C: dC }; curDay = d; dH = highs[i]; dL = lows[i]; dC = closes[i]; }
     else { dH = Math.max(dH, highs[i]); dL = Math.min(dL, lows[i]); dC = closes[i]; }
-    setLevels(i, prev); // سطوحِ دورهٔ جاری از HLCِ دورهٔ قبل ⇒ در طولِ دوره صاف می‌مانند
+    setLevels(i, prev); // سطوح دوره‌ی جاری از HLC دوره‌ی قبل ⇒ در طول دوره صاف می‌مانند
   }
   return { p, r1, r2, s1, s2 };
 };
 
-// ALMA — میانگینِ گاوسیِ آرنو لِگو (offset 0..1 محلِ قله، sigma هموارسازی)
+// ALMA — میانگین گاوسی آرنو لگو (offset 0..1 محل قله، sigma هموارسازی)
 export const alma = (src, p = 9, offset = 0.85, sigma = 6) => {
   const n = src.length, out = new Array(n).fill(null);
   const m = offset * (p - 1), s = p / sigma || 1e-9;
@@ -542,7 +542,7 @@ export const alma = (src, p = 9, offset = 0.85, sigma = 6) => {
   return out;
 };
 
-// MA Ribbon — نوارِ چند میانگینِ متحرک (base، گام step، تعداد count؛ SMA یا EMA)
+// MA Ribbon — نوار چند میانگین متحرک (base، گام step، تعداد count؛ SMA یا EMA)
 export const maRibbon = (src, base = 20, step = 10, count = 6, type = 'sma') => {
   const fn = type === 'ema' ? ema : sma;
   const out = [];
@@ -550,14 +550,14 @@ export const maRibbon = (src, base = 20, step = 10, count = 6, type = 'sma') => 
   return out;
 };
 
-// GMMA — گاپیِ چندمیانگینِ متحرک: گروهِ کوتاه‌مدت {3,5,8,10,12,15} + بلندمدت {30,35,40,45,50,60}
+// GMMA — گاپی چندمیانگین متحرک: گروه کوتاه‌مدت {3,5,8,10,12,15} + بلندمدت {30,35,40,45,50,60}
 export const gmma = (src) => {
   const shortL = [3, 5, 8, 10, 12, 15], longL = [30, 35, 40, 45, 50, 60];
   return { short: shortL.map((p) => ema(src, p)), long: longL.map((p) => ema(src, p)) };
 };
 
-// منبعِ قیمت (هم‌ترازِ input.sourceِ TV): close/open/high/low + قیمت‌های ترکیبی.
-// پیش‌فرض/نامعلوم ⇒ close ⇒ رفتارِ قبلی دست‌نخورده (بدونِ رگرسیون برای اندیکاتورهای ذخیره‌شده).
+// منبع قیمت (هم‌تراز input.source TV): close/open/high/low + قیمت‌های ترکیبی.
+// پیش‌فرض/نامعلوم ⇒ close ⇒ رفتار قبلی دست‌نخورده (بدون رگرسیون برای اندیکاتورهای ذخیره‌شده).
 export const SOURCE_OPTS = ['close', 'open', 'high', 'low', 'hl2', 'hlc3', 'ohlc4', 'hlcc4'];
 export const resolveSrc = (c, name) => {
   switch (name) {
@@ -567,43 +567,43 @@ export const resolveSrc = (c, name) => {
     case 'hl2': return c.high.map((h, i) => (h + c.low[i]) / 2);
     case 'hlc3': return c.high.map((h, i) => (h + c.low[i] + c.close[i]) / 3);
     case 'ohlc4': return c.high.map((h, i) => (c.open[i] + h + c.low[i] + c.close[i]) / 4);
-    // HLCC4 = (H + L + 2×C)/4 — منبعِ هشتمِ TV (وزنِ دوبرابرِ close). #262
+    // HLCC4 = (H + L + 2×C)/4 — منبع هشتم TV (وزن دوبرابر close). #262
     case 'hlcc4': return c.high.map((h, i) => (h + c.low[i] + 2 * c.close[i]) / 4);
     default: return c.close;
   }
 };
 
-// رجیستریِ اندیکاتورها (برای UI). pane: 'main' (اورلی) یا 'sub'.
+// رجیستری اندیکاتورها (برای UI). pane: 'main' (اورلی) یا 'sub'.
 export const REGISTRY = {
   ma:   { label: 'میانگین متحرک (MA)', pane: 'main', inputs: { period: 20, source: 'close' }, color: '#60a5fa', calc: (c, i) => ({ line: sma(resolveSrc(c, i.source), i.period) }) },
   ema:  { label: 'EMA', pane: 'main', inputs: { period: 20, source: 'close' }, color: '#f59e0b', calc: (c, i) => ({ line: ema(resolveSrc(c, i.source), i.period) }) },
   wma:  { label: 'WMA', pane: 'main', inputs: { period: 20, source: 'close' }, color: '#a78bfa', calc: (c, i) => ({ line: wma(resolveSrc(c, i.source), i.period) }) },
   hma:  { label: 'HMA (هال)', pane: 'main', inputs: { period: 21, source: 'close' }, color: '#22d3ee', calc: (c, i) => ({ line: hma(resolveSrc(c, i.source), i.period) }) },
   vwap: { label: 'VWAP (سشن‌محور)', pane: 'main', inputs: {}, color: '#e879f9', calc: (c) => ({ line: vwap(c.high, c.low, c.close, c.volume, c.time) }) },
-  avwap: { label: 'VWAP لنگرانداخته (±σ)', pane: 'main', inputs: { anchorBars: 100, mult: 1 }, color: '#e879f9', calc: (c, i) => { const r = avwap(c.high, c.low, c.close, c.volume, i.anchorBars, i.mult); return { lines: [{ data: r.vwap, color: '#e879f9' }, { data: r.upper, color: '#a855f7' }, { data: r.lower, color: '#a855f7' }], cloud: [1, 2], cloudColors: ['rgba(168,85,247,0.09)'] }; } }, // باندهای ±σ توپر + پُرشدگیِ بنفشِ کم‌رنگِ بینشان
-  choppiness: { label: 'شاخصِ چاپینس', pane: 'sub', inputs: { period: 14 }, color: '#94a3b8', calc: (c, i) => ({ line: choppiness(c.high, c.low, c.close, i.period), guides: [61.8, 38.2] }) },
+  avwap: { label: 'VWAP لنگرانداخته (±σ)', pane: 'main', inputs: { anchorBars: 100, mult: 1 }, color: '#e879f9', calc: (c, i) => { const r = avwap(c.high, c.low, c.close, c.volume, i.anchorBars, i.mult); return { lines: [{ data: r.vwap, color: '#e879f9' }, { data: r.upper, color: '#a855f7' }, { data: r.lower, color: '#a855f7' }], cloud: [1, 2], cloudColors: ['rgba(168,85,247,0.09)'] }; } }, // باندهای ±σ توپر + پُرشدگی بنفش کم‌رنگ بینشان
+  choppiness: { label: 'شاخص چاپینس', pane: 'sub', inputs: { period: 14 }, color: '#94a3b8', calc: (c, i) => ({ line: choppiness(c.high, c.low, c.close, i.period), guides: [61.8, 38.2] }) },
   vortex: { label: 'وُرتکس (VI±)', pane: 'sub', inputs: { period: 14 }, color: '#22c55e', calc: (c, i) => { const r = vortex(c.high, c.low, c.close, i.period); return { line: r.plus, signal: r.minus }; } },
   dpo: { label: 'DPO', pane: 'sub', inputs: { period: 20, source: 'close' }, color: '#f59e0b', calc: (c, i) => ({ line: dpo(resolveSrc(c, i.source), i.period), guides: [0] }) },
-  bop: { label: 'موازنهٔ قدرت (BOP)', pane: 'sub', inputs: {}, color: '#8b5cf6', calc: (c) => ({ line: bop(c.open, c.high, c.low, c.close), guides: [0] }) },
-  eom: { label: 'سهولتِ حرکت (EOM)', pane: 'sub', inputs: { period: 14 }, color: '#06b6d4', calc: (c, i) => ({ line: eom(c.high, c.low, c.volume, i.period), guides: [0] }) },
-  elderRay: { label: 'اِلدر ری (قدرتِ گاو/خرس)', pane: 'sub', inputs: { period: 13 }, color: '#22c55e', calc: (c, i) => { const r = elderRay(c.high, c.low, c.close, i.period); return { hists: [{ data: r.bull, color: '#22c55e' }, { data: r.bear, color: '#ef4444' }], guides: [0] }; } }, // دو هیستوگرام: قدرتِ گاو سبز + قدرتِ خرس قرمز مثلِ TV
-  chandeKroll: { label: 'استاپِ چاند کرول', pane: 'main', inputs: { p: 10, x: 1, q: 9 }, color: '#ef4444', calc: (c, i) => { const r = chandeKroll(c.high, c.low, c.close, i.p, i.x, i.q); return { lines: [{ data: r.high, color: '#ef4444' }, { data: r.low, color: '#22c55e' }] }; } },
-  massIndex: { label: 'شاخصِ توده', pane: 'sub', inputs: { period: 9, sum: 25 }, color: '#f59e0b', calc: (c, i) => ({ line: massIndex(c.high, c.low, i.period, i.sum), guides: [27, 26.5] }) },
-  coppock: { label: 'منحنیِ کاپاک', pane: 'sub', inputs: { source: 'close' }, color: '#8b5cf6', calc: (c, i) => ({ line: coppock(resolveSrc(c, i.source)), guides: [0] }) },
+  bop: { label: 'موازنه‌ی قدرت (BOP)', pane: 'sub', inputs: {}, color: '#8b5cf6', calc: (c) => ({ line: bop(c.open, c.high, c.low, c.close), guides: [0] }) },
+  eom: { label: 'سهولت حرکت (EOM)', pane: 'sub', inputs: { period: 14 }, color: '#06b6d4', calc: (c, i) => ({ line: eom(c.high, c.low, c.volume, i.period), guides: [0] }) },
+  elderRay: { label: 'الدر ری (قدرت گاو/خرس)', pane: 'sub', inputs: { period: 13 }, color: '#22c55e', calc: (c, i) => { const r = elderRay(c.high, c.low, c.close, i.period); return { hists: [{ data: r.bull, color: '#22c55e' }, { data: r.bear, color: '#ef4444' }], guides: [0] }; } }, // دو هیستوگرام: قدرت گاو سبز + قدرت خرس قرمز مثل TV
+  chandeKroll: { label: 'استاپ چاند کرول', pane: 'main', inputs: { p: 10, x: 1, q: 9 }, color: '#ef4444', calc: (c, i) => { const r = chandeKroll(c.high, c.low, c.close, i.p, i.x, i.q); return { lines: [{ data: r.high, color: '#ef4444' }, { data: r.low, color: '#22c55e' }] }; } },
+  massIndex: { label: 'شاخص توده', pane: 'sub', inputs: { period: 9, sum: 25 }, color: '#f59e0b', calc: (c, i) => ({ line: massIndex(c.high, c.low, i.period, i.sum), guides: [27, 26.5] }) },
+  coppock: { label: 'منحنی کاپاک', pane: 'sub', inputs: { source: 'close' }, color: '#8b5cf6', calc: (c, i) => ({ line: coppock(resolveSrc(c, i.source)), guides: [0] }) },
   kst: { label: 'KST', pane: 'sub', inputs: { source: 'close' }, color: '#06b6d4', calc: (c, i) => { const r = kst(resolveSrc(c, i.source)); return { line: r.line, signal: r.signal, guides: [0] }; } },
-  alligator: { label: 'تمساحِ ویلیامز', pane: 'main', inputs: {}, color: '#3b82f6', calc: (c) => { const r = alligator(c.high, c.low); return { lines: [{ data: r.jaw, color: '#3b82f6' }, { data: r.teeth, color: '#ef4444' }, { data: r.lips, color: '#22c55e' }] }; } },
-  rvi: { label: 'سرزندگیِ نسبی (RVI)', pane: 'sub', inputs: {}, color: '#22c55e', calc: (c) => { const r = rvi(c.open, c.high, c.low, c.close); return { line: r.line, signal: r.signal, guides: [0] }; } },
-  bbWidth: { label: 'پهنای باندِ بولینگر', pane: 'sub', inputs: { period: 20, mult: 2, source: 'close' }, color: '#f59e0b', calc: (c, i) => ({ line: bbWidth(resolveSrc(c, i.source), i.period, i.mult) }) },
-  stc: { label: 'چرخهٔ روندِ شاف (STC)', pane: 'sub', inputs: { fast: 23, slow: 50, cycle: 10, source: 'close' }, color: '#8b5cf6', calc: (c, i) => ({ line: stc(resolveSrc(c, i.source), i.fast, i.slow, i.cycle), guides: [75, 25] }) },
-  netVolume: { label: 'حجمِ خالص', pane: 'sub', inputs: {}, color: '#089981', calc: (c) => ({ hist: netVolume(c.open, c.close, c.volume), histMode: 'sign', guides: [0] }) }, // هیستوگرامِ سبز/قرمز بر اساسِ علامت مثلِ TV
-  stdErrBands: { label: 'باندهای خطای معیار', pane: 'main', inputs: { period: 21, mult: 2 }, color: '#3b82f6', calc: (c, i) => { const r = stdErrBands(c.close, i.period, i.mult); return { lines: [{ data: r.mid, color: '#3b82f6' }, { data: r.up, color: '#60a5fa' }, { data: r.dn, color: '#60a5fa' }], cloud: [1, 2], cloudColors: ['rgba(96,165,250,0.07)'] }; } }, // باندهای توپر + پُرشدگیِ آبیِ کم‌رنگ مثلِ TV
-  accelerator: { label: 'نوسان‌سازِ شتاب (AC)', pane: 'sub', inputs: {}, color: '#089981', calc: (c) => ({ hist: accelerator(c.high, c.low), guides: [0] }) }, // هیستوگرامِ دورنگِ مومنتوم مثلِ TV
-  chaikinVol: { label: 'نوسانِ چایکین', pane: 'sub', inputs: { period: 10 }, color: '#f59e0b', calc: (c, i) => ({ line: chaikinVol(c.high, c.low, i.period), guides: [0] }) },
+  alligator: { label: 'تمساح ویلیامز', pane: 'main', inputs: {}, color: '#3b82f6', calc: (c) => { const r = alligator(c.high, c.low); return { lines: [{ data: r.jaw, color: '#3b82f6' }, { data: r.teeth, color: '#ef4444' }, { data: r.lips, color: '#22c55e' }] }; } },
+  rvi: { label: 'سرزندگی نسبی (RVI)', pane: 'sub', inputs: {}, color: '#22c55e', calc: (c) => { const r = rvi(c.open, c.high, c.low, c.close); return { line: r.line, signal: r.signal, guides: [0] }; } },
+  bbWidth: { label: 'پهنای باند بولینگر', pane: 'sub', inputs: { period: 20, mult: 2, source: 'close' }, color: '#f59e0b', calc: (c, i) => ({ line: bbWidth(resolveSrc(c, i.source), i.period, i.mult) }) },
+  stc: { label: 'چرخه‌ی روند شاف (STC)', pane: 'sub', inputs: { fast: 23, slow: 50, cycle: 10, source: 'close' }, color: '#8b5cf6', calc: (c, i) => ({ line: stc(resolveSrc(c, i.source), i.fast, i.slow, i.cycle), guides: [75, 25] }) },
+  netVolume: { label: 'حجم خالص', pane: 'sub', inputs: {}, color: '#089981', calc: (c) => ({ hist: netVolume(c.open, c.close, c.volume), histMode: 'sign', guides: [0] }) }, // هیستوگرام سبز/قرمز بر اساس علامت مثل TV
+  stdErrBands: { label: 'باندهای خطای معیار', pane: 'main', inputs: { period: 21, mult: 2 }, color: '#3b82f6', calc: (c, i) => { const r = stdErrBands(c.close, i.period, i.mult); return { lines: [{ data: r.mid, color: '#3b82f6' }, { data: r.up, color: '#60a5fa' }, { data: r.dn, color: '#60a5fa' }], cloud: [1, 2], cloudColors: ['rgba(96,165,250,0.07)'] }; } }, // باندهای توپر + پُرشدگی آبی کم‌رنگ مثل TV
+  accelerator: { label: 'نوسان‌ساز شتاب (AC)', pane: 'sub', inputs: {}, color: '#089981', calc: (c) => ({ hist: accelerator(c.high, c.low), guides: [0] }) }, // هیستوگرام دورنگ مومنتوم مثل TV
+  chaikinVol: { label: 'نوسان چایکین', pane: 'sub', inputs: { period: 10 }, color: '#f59e0b', calc: (c, i) => ({ line: chaikinVol(c.high, c.low, i.period), guides: [0] }) },
   mtfEma: { label: 'EMA چندتایم‌فریمی (×factor)', pane: 'main', inputs: { period: 50, factor: 4 }, color: '#22d3ee', calc: (c, i) => ({ line: _expandA(ema(_resampleC(c, i.factor).close, i.period), i.factor, c.close.length) }) },
   mtfRsi: { label: 'RSI چندتایم‌فریمی (×factor)', pane: 'sub', inputs: { period: 14, factor: 4 }, color: '#f59e0b', calc: (c, i) => ({ line: _expandA(rsi(_resampleC(c, i.factor).close, i.period), i.factor, c.close.length), guides: [70, 30] }) },
   bb:   { label: 'باند بولینگر', pane: 'main', inputs: { period: 20, mult: 2, source: 'close' }, color: '#94a3b8', calc: (c, i) => { const b = bollinger(resolveSrc(c, i.source), i.period, i.mult); return { upper: b.upper, basis: b.basis, lower: b.lower, multi: true }; } },
-  supertrend: { label: 'سوپرترند', pane: 'main', inputs: { period: 10, mult: 3 }, color: '#10b981', calc: (c, i) => { const r = supertrend(c.high, c.low, c.close, i.period, i.mult); const up = r.line.map((v, k) => (r.trend[k] === 1 ? v : null)); const dn = r.line.map((v, k) => (r.trend[k] === -1 ? v : null)); return { lines: [{ data: up, color: '#10b981', gaps: true }, { data: dn, color: '#ef4444', gaps: true }] }; } }, // خطِ دورنگِ سوپرترند: سبز صعودی / قرمز نزولی (مثلِ TV)
-  rsi:  { label: 'RSI', pane: 'sub', inputs: { period: 14, source: 'close', maLength: 14 }, color: '#a78bfa', calc: (c, i) => { const r = rsi(resolveSrc(c, i.source), i.period); return { line: r, signal: (i.maLength > 0 ? smaNull(r, i.maLength) : null), guides: [30, 70], range: [0, 100], zone: [30, 70] }; } }, // «RSI-based MA»ِ پیش‌فرضِ TV (خطِ دومِ نارنجی؛ maLength=0 خاموشش می‌کند). #330
+  supertrend: { label: 'سوپرترند', pane: 'main', inputs: { period: 10, mult: 3 }, color: '#10b981', calc: (c, i) => { const r = supertrend(c.high, c.low, c.close, i.period, i.mult); const up = r.line.map((v, k) => (r.trend[k] === 1 ? v : null)); const dn = r.line.map((v, k) => (r.trend[k] === -1 ? v : null)); return { lines: [{ data: up, color: '#10b981', gaps: true }, { data: dn, color: '#ef4444', gaps: true }] }; } }, // خط دورنگ سوپرترند: سبز صعودی / قرمز نزولی (مثل TV)
+  rsi:  { label: 'RSI', pane: 'sub', inputs: { period: 14, source: 'close', maLength: 14 }, color: '#a78bfa', calc: (c, i) => { const r = rsi(resolveSrc(c, i.source), i.period); return { line: r, signal: (i.maLength > 0 ? smaNull(r, i.maLength) : null), guides: [30, 70], range: [0, 100], zone: [30, 70] }; } }, // «RSI-based MA» پیش‌فرض TV (خط دوم نارنجی؛ maLength=0 خاموشش می‌کند). #330
   macd: { label: 'MACD', pane: 'sub', inputs: { fast: 12, slow: 26, sig: 9, source: 'close' }, color: '#60a5fa', calc: (c, i) => { const m = macd(resolveSrc(c, i.source), i.fast, i.slow, i.sig); return { line: m.macd, signal: m.signal, hist: m.hist, macd: true }; } },
   stoch:{ label: 'استوکاستیک', pane: 'sub', inputs: { period: 14, d: 3 }, color: '#34d399', calc: (c, i) => { const s = stoch(c.high, c.low, c.close, i.period, i.d); return { line: s.k, signal: s.d, guides: [20, 80], range: [0, 100], zone: [20, 80] }; } },
   atr:  { label: 'ATR', pane: 'sub', inputs: { period: 14 }, color: '#fb7185', calc: (c, i) => ({ line: atr(c.high, c.low, c.close, i.period) }) },
@@ -611,46 +611,46 @@ export const REGISTRY = {
   willr:{ label: 'ویلیامز %R', pane: 'sub', inputs: { period: 14 }, color: '#facc15', calc: (c, i) => ({ line: williamsR(c.high, c.low, c.close, i.period), guides: [-20, -80], range: [-100, 0], zone: [-80, -20] }) },
   obv:  { label: 'OBV', pane: 'sub', inputs: {}, color: '#38bdf8', calc: (c) => ({ line: obv(c.close, c.volume) }) },
   adx:  { label: 'ADX', pane: 'sub', inputs: { period: 14 }, color: '#f97316', calc: (c, i) => ({ line: adx(c.high, c.low, c.close, i.period), guides: [25] }) },
-  donchian: { label: 'کانال دونچیان', pane: 'main', inputs: { period: 20 }, color: '#94a3b8', calc: (c, i) => { const d = donchian(c.high, c.low, i.period); return { lines: [{ data: d.upper, color: '#60a5fa' }, { data: d.basis, color: '#94a3b8' }, { data: d.lower, color: '#60a5fa' }], cloud: [0, 2], cloudColors: ['rgba(96,165,250,0.07)'] }; } }, // باندهای توپر + پُرشدگیِ آبیِ کم‌رنگ مثلِ دونچیانِ TV
-  keltner: { label: 'کانال کلتنر', pane: 'main', inputs: { period: 20, mult: 2 }, color: '#f472b6', calc: (c, i) => { const k = keltner(c.high, c.low, c.close, i.period, i.mult); return { lines: [{ data: k.upper, color: '#f472b6' }, { data: k.basis, color: '#f472b6' }, { data: k.lower, color: '#f472b6' }], cloud: [0, 2], cloudColors: ['rgba(244,114,182,0.08)'] }; } }, // باندهای توپر + پُرشدگیِ صورتیِ کم‌رنگ بینِ بالا/پایین مثلِ کلتنرِ TV
-  ichimoku: { label: 'ایچیموکو', pane: 'main', inputs: { tenkan: 9, kijun: 26, span: 52 }, color: '#22d3ee', calc: (c, i) => { const k = ichimoku(c.high, c.low, c.close, i.tenkan, i.kijun, i.span); return { lines: [{ data: k.tenkan, color: '#3b82f6' }, { data: k.kijun, color: '#ef4444' }, { data: k.spanA, color: '#22c55e' }, { data: k.spanB, color: '#f59e0b' }, { data: k.chikou, color: '#a855f7', dashed: true }], cloud: [2, 3] }; } }, // Tenkan/Kijun روی کندلِ جاری · Senkou A/B با جابه‌جاییِ +۲۶ و ابرِ بینشان (indexهای 2/3) · Chikou با جابه‌جاییِ −۲۶ (خط‌چین)
+  donchian: { label: 'کانال دونچیان', pane: 'main', inputs: { period: 20 }, color: '#94a3b8', calc: (c, i) => { const d = donchian(c.high, c.low, i.period); return { lines: [{ data: d.upper, color: '#60a5fa' }, { data: d.basis, color: '#94a3b8' }, { data: d.lower, color: '#60a5fa' }], cloud: [0, 2], cloudColors: ['rgba(96,165,250,0.07)'] }; } }, // باندهای توپر + پُرشدگی آبی کم‌رنگ مثل دونچیان TV
+  keltner: { label: 'کانال کلتنر', pane: 'main', inputs: { period: 20, mult: 2 }, color: '#f472b6', calc: (c, i) => { const k = keltner(c.high, c.low, c.close, i.period, i.mult); return { lines: [{ data: k.upper, color: '#f472b6' }, { data: k.basis, color: '#f472b6' }, { data: k.lower, color: '#f472b6' }], cloud: [0, 2], cloudColors: ['rgba(244,114,182,0.08)'] }; } }, // باندهای توپر + پُرشدگی صورتی کم‌رنگ بین بالا/پایین مثل کلتنر TV
+  ichimoku: { label: 'ایچیموکو', pane: 'main', inputs: { tenkan: 9, kijun: 26, span: 52 }, color: '#22d3ee', calc: (c, i) => { const k = ichimoku(c.high, c.low, c.close, i.tenkan, i.kijun, i.span); return { lines: [{ data: k.tenkan, color: '#3b82f6' }, { data: k.kijun, color: '#ef4444' }, { data: k.spanA, color: '#22c55e' }, { data: k.spanB, color: '#f59e0b' }, { data: k.chikou, color: '#a855f7', dashed: true }], cloud: [2, 3] }; } }, // Tenkan/Kijun روی کندل جاری · Senkou A/B با جابه‌جایی +۲۶ و ابر بینشان (indexهای 2/3) · Chikou با جابه‌جایی −۲۶ (خط‌چین)
   dema: { label: 'DEMA (نمایی دوگانه)', pane: 'main', inputs: { period: 20, source: 'close' }, color: '#38bdf8', calc: (c, i) => ({ line: dema(resolveSrc(c, i.source), i.period) }) },
   tema: { label: 'TEMA (نمایی سه‌گانه)', pane: 'main', inputs: { period: 20, source: 'close' }, color: '#fb923c', calc: (c, i) => ({ line: tema(resolveSrc(c, i.source), i.period) }) },
-  vwma: { label: 'VWMA (وزنیِ حجمی)', pane: 'main', inputs: { period: 20 }, color: '#c084fc', calc: (c, i) => ({ line: vwma(c.close, c.volume, i.period) }) },
-  psar: { label: 'پارابولیک SAR', pane: 'main', inputs: { start: 0.02, inc: 0.02, max: 0.2 }, color: '#a855f7', calc: (c, i) => { const s = psar(c.high, c.low, i.start, i.inc, i.max); const below = s.map((v, k) => (v == null ? null : (v <= c.close[k] ? v : null))); const above = s.map((v, k) => (v == null ? null : (v > c.close[k] ? v : null))); return { lines: [{ data: below, color: '#a855f7', dashed: true, gaps: true }, { data: above, color: '#a855f7', dashed: true, gaps: true }] }; } }, // شکستِ خط در چرخشِ SAR (بدونِ خطِ اتصالِ اریب از رویِ قیمت) مثلِ TV
-  pivots: { label: 'نقاطِ پیووت (کلاسیک)', pane: 'main', inputs: {}, color: '#94a3b8', calc: (c) => { const v = pivots(c.high, c.low, c.close, c.time); return { lines: [{ data: v.r2, color: '#ef4444', dashed: true, gaps: true }, { data: v.r1, color: '#f87171', dashed: true, gaps: true }, { data: v.p, color: '#94a3b8', gaps: true }, { data: v.s1, color: '#4ade80', dashed: true, gaps: true }, { data: v.s2, color: '#22c55e', dashed: true, gaps: true }] }; } },
+  vwma: { label: 'VWMA (وزنی حجمی)', pane: 'main', inputs: { period: 20 }, color: '#c084fc', calc: (c, i) => ({ line: vwma(c.close, c.volume, i.period) }) },
+  psar: { label: 'پارابولیک SAR', pane: 'main', inputs: { start: 0.02, inc: 0.02, max: 0.2 }, color: '#a855f7', calc: (c, i) => { const s = psar(c.high, c.low, i.start, i.inc, i.max); const below = s.map((v, k) => (v == null ? null : (v <= c.close[k] ? v : null))); const above = s.map((v, k) => (v == null ? null : (v > c.close[k] ? v : null))); return { lines: [{ data: below, color: '#a855f7', dashed: true, gaps: true }, { data: above, color: '#a855f7', dashed: true, gaps: true }] }; } }, // شکست خط در چرخش SAR (بدون خط اتصال اریب از روی قیمت) مثل TV
+  pivots: { label: 'نقاط پیووت (کلاسیک)', pane: 'main', inputs: {}, color: '#94a3b8', calc: (c) => { const v = pivots(c.high, c.low, c.close, c.time); return { lines: [{ data: v.r2, color: '#ef4444', dashed: true, gaps: true }, { data: v.r1, color: '#f87171', dashed: true, gaps: true }, { data: v.p, color: '#94a3b8', gaps: true }, { data: v.s1, color: '#4ade80', dashed: true, gaps: true }, { data: v.s2, color: '#22c55e', dashed: true, gaps: true }] }; } },
   aroon: { label: 'آرون (Aroon)', pane: 'sub', inputs: { period: 14 }, color: '#22c55e', calc: (c, i) => { const a = aroon(c.high, c.low, i.period); return { line: a.up, signal: a.down, guides: [30, 70], range: [0, 100] }; } },
-  mfi: { label: 'MFI (جریانِ نقدینگی)', pane: 'sub', inputs: { period: 14 }, color: '#10b981', calc: (c, i) => ({ line: mfi(c.high, c.low, c.close, c.volume, i.period), guides: [20, 80], range: [0, 100], zone: [20, 80] }) },
-  cmf: { label: 'CMF (پولِ چایکین)', pane: 'sub', inputs: { period: 20 }, color: '#0ea5e9', calc: (c, i) => ({ line: cmf(c.high, c.low, c.close, c.volume, i.period), guides: [0] }) },
+  mfi: { label: 'MFI (جریان نقدینگی)', pane: 'sub', inputs: { period: 14 }, color: '#10b981', calc: (c, i) => ({ line: mfi(c.high, c.low, c.close, c.volume, i.period), guides: [20, 80], range: [0, 100], zone: [20, 80] }) },
+  cmf: { label: 'CMF (پول چایکین)', pane: 'sub', inputs: { period: 20 }, color: '#0ea5e9', calc: (c, i) => ({ line: cmf(c.high, c.low, c.close, c.volume, i.period), guides: [0] }) },
   stochrsi: { label: 'استوکاستیک RSI', pane: 'sub', inputs: { period: 14, k: 3, d: 3, source: 'close' }, color: '#34d399', calc: (c, i) => { const s = stochRsi(resolveSrc(c, i.source), i.period, i.k, i.d); return { line: s.k, signal: s.d, guides: [20, 80], range: [0, 100], zone: [20, 80] }; } },
-  ao: { label: 'اسیلاتورِ شگفت‌انگیز (AO)', pane: 'sub', inputs: {}, color: '#60a5fa', calc: (c) => ({ hist: ao(c.high, c.low), guides: [0] }) }, // هیستوگرامِ دورنگِ مومنتوم مثلِ TV
-  tsi: { label: 'TSI (قدرتِ واقعی)', pane: 'sub', inputs: { short: 13, long: 25, source: 'close' }, color: '#f472b6', calc: (c, i) => ({ line: tsi(resolveSrc(c, i.source), i.short, i.long), guides: [0] }) },
-  cmo: { label: 'CMO (مومنتومِ چاند)', pane: 'sub', inputs: { period: 9, source: 'close' }, color: '#fbbf24', calc: (c, i) => ({ line: cmo(resolveSrc(c, i.source), i.period), guides: [-50, 50], zone: [-50, 50] }) },
-  alma: { label: 'ALMA (آرنو لِگو)', pane: 'main', inputs: { period: 9, offset: 0.85, sigma: 6, source: 'close' }, color: '#2dd4bf', calc: (c, i) => ({ line: alma(resolveSrc(c, i.source), i.period, i.offset, i.sigma) }) },
-  maRibbon: { label: 'نوارِ میانگین‌ها (MA Ribbon)', pane: 'main', inputs: { base: 20, step: 10, count: 6 }, color: '#60a5fa', calc: (c, i) => { const rs = maRibbon(c.close, i.base, i.step, i.count, 'sma'); const pal = ['#60a5fa', '#38bdf8', '#22d3ee', '#2dd4bf', '#34d399', '#4ade80', '#a3e635', '#facc15']; return { lines: rs.map((data, k) => ({ data, color: pal[k % pal.length] })) }; } },
+  ao: { label: 'اسیلاتور شگفت‌انگیز (AO)', pane: 'sub', inputs: {}, color: '#60a5fa', calc: (c) => ({ hist: ao(c.high, c.low), guides: [0] }) }, // هیستوگرام دورنگ مومنتوم مثل TV
+  tsi: { label: 'TSI (قدرت واقعی)', pane: 'sub', inputs: { short: 13, long: 25, source: 'close' }, color: '#f472b6', calc: (c, i) => ({ line: tsi(resolveSrc(c, i.source), i.short, i.long), guides: [0] }) },
+  cmo: { label: 'CMO (مومنتوم چاند)', pane: 'sub', inputs: { period: 9, source: 'close' }, color: '#fbbf24', calc: (c, i) => ({ line: cmo(resolveSrc(c, i.source), i.period), guides: [-50, 50], zone: [-50, 50] }) },
+  alma: { label: 'ALMA (آرنو لگو)', pane: 'main', inputs: { period: 9, offset: 0.85, sigma: 6, source: 'close' }, color: '#2dd4bf', calc: (c, i) => ({ line: alma(resolveSrc(c, i.source), i.period, i.offset, i.sigma) }) },
+  maRibbon: { label: 'نوار میانگین‌ها (MA Ribbon)', pane: 'main', inputs: { base: 20, step: 10, count: 6 }, color: '#60a5fa', calc: (c, i) => { const rs = maRibbon(c.close, i.base, i.step, i.count, 'sma'); const pal = ['#60a5fa', '#38bdf8', '#22d3ee', '#2dd4bf', '#34d399', '#4ade80', '#a3e635', '#facc15']; return { lines: rs.map((data, k) => ({ data, color: pal[k % pal.length] })) }; } },
   gmma: { label: 'گاپی (GMMA)', pane: 'main', inputs: {}, color: '#3b82f6', calc: (c) => { const g = gmma(c.close); return { lines: [...g.short.map((data) => ({ data, color: '#3b82f6' })), ...g.long.map((data) => ({ data, color: '#ef4444' }))] }; } },
-  maCross: { label: 'تقاطعِ میانگین‌ها (MA Cross)', pane: 'main', inputs: { fast: 10, slow: 30 }, color: '#22c55e', calc: (c, i) => ({ lines: [{ data: sma(c.close, i.fast), color: '#22c55e' }, { data: sma(c.close, i.slow), color: '#ef4444' }] }) },
+  maCross: { label: 'تقاطع میانگین‌ها (MA Cross)', pane: 'main', inputs: { fast: 10, slow: 30 }, color: '#22c55e', calc: (c, i) => ({ lines: [{ data: sma(c.close, i.fast), color: '#22c55e' }, { data: sma(c.close, i.slow), color: '#ef4444' }] }) },
 };
 
-// ── ادغامِ افزونه‌های فصل ۵ ────────────────────────────────────────────────
+// ── ادغام افزونه‌های فصل ۵ ────────────────────────────────────────────────
 //
-// پیش‌تر یک `Object.assign(REGISTRY, A, B)`ِ ساده بود و کامنتش می‌گفت «۳ کلیدِ مشترک».
-// واقعاً **۶** تاست، و «آخرین نویسنده بی‌صدا برنده» یک باگِ درست‌نمایی بود:
+// پیش‌تر یک `Object.assign(REGISTRY, A, B)` ساده بود و کامنتش می‌گفت «۳ کلید مشترک».
+// واقعاً **۶** تاست، و «آخرین نویسنده بی‌صدا برنده» یک باگ درست‌نمایی بود:
 //
-//   • trix        — extB برنده می‌شد و **غلط** بود. `_ema` در extB روی null مقدارِ
+//   • trix        — extB برنده می‌شد و **غلط** بود. `_ema` در extB روی null مقدار
 //                   قبلی را جلو می‌برد و warmup را ایندکس‌محور می‌سنجد، پس TRIX(18)
-//                   از کندلِ ۱۸ مقدار می‌داد در حالی که سه EMAِ تودرتو ~۵۴ کندل لازم
-//                   دارند — ۳۴ کندلِ ابتدایی از مقادیرِ جعلی ساخته می‌شد. همان کلاسِ
-//                   باگی که dema/tema داشتند (نگاه: کامنتِ dema/tema بالاتر).
-//                   → نسخهٔ extA (شمارشی، nullها را رد می‌کند) برنده شد.
-//   • bbpercent   — هر دو ریاضیِ یکسان می‌دهند؛ تکرارِ بی‌ضرر. extB نگه داشته شد.
+//                   از کندل ۱۸ مقدار می‌داد در حالی که سه EMA تودرتو ~۵۴ کندل لازم
+//                   دارند — ۳۴ کندل ابتدایی از مقادیر جعلی ساخته می‌شد. همان کلاس
+//                   باگی که dema/tema داشتند (نگاه: کامنت dema/tema بالاتر).
+//                   → نسخه‌ی extA (شمارشی، nullها را رد می‌کند) برنده شد.
+//   • bbpercent   — هر دو ریاضی یکسان می‌دهند؛ تکرار بی‌ضرر. extB نگه داشته شد.
 //   • bbw         — همان.
 //   • chaikinVol  — extA بر core.
 //   • bop, eom    — extB بر core.
 //
-// حالا مالکیت **صریح** است و گارد جلوی تصادمِ ناخواستهٔ آینده را می‌گیرد.
+// حالا مالکیت **صریح** است و گارد جلوی تصادم ناخواسته‌ی آینده را می‌گیرد.
 const REGISTRY_OWNER = {
-  trix: 'A',        // extA — warmupِ درست
+  trix: 'A',        // extA — warmup درست
   bbpercent: 'B',
   bbw: 'B',
   chaikinVol: 'A',
@@ -663,13 +663,13 @@ const _mergeExt = (target, ext, tag) => {
     if (key in target) {
       const owner = REGISTRY_OWNER[key];
       if (owner === undefined) {
-        // تصادمِ جدید و ثبت‌نشده — کسی کلیدی را دوباره تعریف کرده بدونِ اینکه بداند
-        const msg = `[indicators] تصادمِ ثبت‌نشدهٔ رجیستری: "${key}" (منبع: ${tag}). ` +
+        // تصادم جدید و ثبت‌نشده — کسی کلیدی را دوباره تعریف کرده بدون اینکه بداند
+        const msg = `[indicators] تصادم ثبت‌نشده‌ی رجیستری: "${key}" (منبع: ${tag}). ` +
           'یکی را حذف کنید یا مالکش را در REGISTRY_OWNER اعلام کنید.';
         if (import.meta.env?.DEV) throw new Error(msg);
         console.warn(msg);
       } else if (owner !== tag) {
-        continue; // مالکِ اعلام‌شده این نیست → نادیده بگیر
+        continue; // مالک اعلام‌شده این نیست → نادیده بگیر
       }
     }
     target[key] = def;
