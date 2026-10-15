@@ -182,10 +182,13 @@ describe('the trade routes\' answers', () => {
 
 describe('VIP ⇒ everything free', () => {
   it('premium when either platform says so, and VIP names the plan', () => {
-    expect(combine([readEntitlement({ all: true, premium: false, plan: null }), undefined])).toEqual({ premium: false, vip: false, plan: null, endsAt: null });
-    expect(combine([readEntitlement({ all: true, premium: true, plan: 'vip', ends_at: null })])).toEqual({ premium: true, vip: true, plan: 'vip', endsAt: null });
-    expect(combine([readEntitlement({ premium: true, plan: 'monthly', ends_at: '2026-11-01T00:00:00Z' }), readEntitlement({ premium: true, plan: 'vip' })]).vip).toBe(true);
-    expect(combine([undefined, readEntitlement({ premium: true, plan: 'yearly', ends_at: '2027-01-01T00:00:00Z' })])).toEqual({ premium: true, vip: false, plan: 'yearly', endsAt: '2027-01-01T00:00:00Z' });
+    expect(combine([readEntitlement({ all: true, premium: false, plan: null }), undefined])).toEqual({ premium: false, vip: false, forexVip: false, plan: null, endsAt: null });
+    expect(combine([readEntitlement({ all: true, premium: true, plan: 'vip', ends_at: null })])).toEqual({ premium: true, vip: true, forexVip: false, plan: 'vip', endsAt: null });
+    // CoinePro-FX's «vip» is its own forex VIP, not the TradeYar channel (server report, 2026-10-15).
+    expect(combine([readEntitlement({ premium: true, plan: 'monthly', ends_at: '2026-11-01T00:00:00Z' }), readEntitlement({ premium: true, plan: 'vip' })])).toEqual({ premium: true, vip: false, forexVip: true, plan: 'vip', endsAt: null });
+    expect(combine([undefined, readEntitlement({ premium: true, plan: 'vip', ends_at: '2027-02-01T00:00:00Z' })]).vip).toBe(false);
+    expect(combine([readEntitlement({ premium: true, plan: 'vip' }), readEntitlement({ premium: true, plan: 'vip' })])).toMatchObject({ vip: true, forexVip: true });
+    expect(combine([undefined, readEntitlement({ premium: true, plan: 'yearly', ends_at: '2027-01-01T00:00:00Z' })])).toEqual({ premium: true, vip: false, forexVip: false, plan: 'yearly', endsAt: '2027-01-01T00:00:00Z' });
     // A plan named vip is premium even if a field is missing.
     expect(readEntitlement({ plan: 'VIP' }).premium).toBe(true);
   });

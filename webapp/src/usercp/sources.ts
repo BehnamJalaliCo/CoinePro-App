@@ -14,6 +14,21 @@ const settle = async <T,>(b: Backend, job: () => Promise<T>): Promise<T | null> 
   if (!signedOn(b)) return null;
   try { return await job(); } catch { return null; }
 };
+/** Platforms that trade for the reader: TradeYar (LBank). CoinePro-FX is signals only and has no
+ *  trade, execution or exchange-link routes, so it is not asked (each ask was a 404 in the console). */
+export const TRADING: Backend[] = ['tradeyar'];
+const settleTrading = <T,>(b: Backend, job: () => Promise<T>): Promise<T | null> => (TRADING.includes(b) ? settle(b, job) : Promise.resolve(null));
+
+// The account, positions and orders need the reader's LBank key on the server (else 400 TYR-016), so
+// they are asked only once a key is saved; the answer is kept briefly for the sections that ask together.
+let linked: { at: number; ok: Promise<boolean> } | null = null;
+const keySaved = (b: Backend): Promise<boolean> => {
+  if (!linked || Date.now() - linked.at > 15_000) {
+    linked = { at: Date.now(), ok: call<Record<string, unknown>>(b, 'venues/lbank').then((x) => Boolean(x.configured || x.connected)).catch(() => true) };
+  }
+  return linked.ok;
+};
+const settleKeyed = <T,>(b: Backend, empty: T, job: () => Promise<T>): Promise<T | null> => settleTrading(b, async () => ((await keySaved(b)) ? job() : empty));
 
 export interface Entitlement { backend: Backend; premium: boolean; plan: string; endsAt: number | null; all: boolean }
 export const entitlement = (b: Backend) => settle(b, async (): Promise<Entitlement> => {
@@ -28,7 +43,7 @@ export const membership = () => settle('tradeyar', async (): Promise<Membership>
 });
 
 export interface Position { backend: Backend; symbol: string; side: string; quantity: number | null; entry: number | null; mark: number | null; pnl: number | null; leverage: number | null; liquidation: number | null }
-export const positions = (b: Backend) => settle(b, async (): Promise<Position[]> => {
+export const positions = (b: Backend) => settleKeyed<Position[]>(b, [], async (): Promise<Position[]> => {
   const r = await call<{ items?: Record<string, unknown>[] }>(b, 'trade/positions');
   return (r.items ?? []).map((x) => ({
     backend: b, symbol: str(x.symbol), side: str(x.side ?? x.direction).toLowerCase(), quantity: num(x.quantity ?? x.volume),
@@ -38,7 +53,7 @@ export const positions = (b: Backend) => settle(b, async (): Promise<Position[]>
 });
 
 export interface Order { backend: Backend; id: string; symbol: string; side: string; type: string; quantity: number | null; price: number | null; status: string; at: number | null }
-export const orders = (b: Backend) => settle(b, async (): Promise<Order[]> => {
+export const orders = (b: Backend) => settleKeyed<Order[]>(b, [], async (): Promise<Order[]> => {
   const r = await call<{ items?: Record<string, unknown>[] }>(b, 'trade/orders?limit=50');
   return (r.items ?? []).map((x) => ({
     backend: b, id: str(x.id), symbol: str(x.symbol), side: str(x.side).toLowerCase(), type: str(x.type), quantity: num(x.quantity),
@@ -47,7 +62,7 @@ export const orders = (b: Backend) => settle(b, async (): Promise<Order[]> => {
 });
 
 export interface TradeAccount { available: number | null; equity: number | null; margin: number | null; unrealized: number | null; enabled: boolean }
-export const tradeAccount = (b: Backend) => settle(b, async (): Promise<TradeAccount> => {
+export const tradeAccount = (b: Backend) => settleKeyed<TradeAccount | null>(b, null, async (): Promise<TradeAccount> => {
   const r = await call<Record<string, unknown>>(b, 'trade/account');
   return { available: num(r.available), equity: num(r.equity), margin: num(r.margin_used), unrealized: num(r.unrealized_pnl), enabled: Boolean(r.trading_enabled) };
 });
@@ -70,6 +85,8 @@ export const closedTrades = (b: Backend, days: number) => settle(b, async (): Pr
     }
     return out;
   }
+  // TradeYar reads its history from LBank: 502 without a key, so not asked then.
+  if (!(await keySaved(b))) return out;
   const to = Math.floor(Date.now() / 1000); const from = Math.floor(since / 1000);
   const r = await authed<{ trades?: Record<string, unknown>[] }>(b, `/up/tradeyar/api/mobile/v1/portfolio/history?from=${from}&to=${to}&page=1&per_page=100`);
   for (const x of r.trades ?? []) out.push({ backend: b, id: str(x.id), symbol: str(x.symbol), side: str(x.side).toLowerCase(), opened: ms(x.opened_at), closed: ms(x.closed_at), entry: num(x.entry), exit: num(x.exit), qty: num(x.quantity), pnl: num(x.pnl) ?? 0, fee: num(x.fee) ?? 0, currency: str(x.currency) || 'USDT' });
@@ -95,7 +112,7 @@ export const alertsCount = (b: Backend) => settle(b, async () => {
 });
 
 export interface Execution { backend: Backend; id: string; signalId: string; symbol: string; direction: string; timeframe: string; venue: string; status: string; quantity: string; at: number | null; error: string }
-export const executions = (b: Backend) => settle(b, async (): Promise<Execution[]> => {
+export const executions = (b: Backend) => settleTrading(b, async (): Promise<Execution[]> => {
   const r = await call<{ items?: Record<string, unknown>[] }>(b, 'executions?limit=100');
   return (r.items ?? []).map((x) => {
     const sig = (x.signal ?? {}) as Record<string, unknown>;
@@ -105,7 +122,7 @@ export const executions = (b: Backend) => settle(b, async (): Promise<Execution[
 export const closeExecution = (b: Backend, id: string) => call(b, `executions/${encodeURIComponent(id)}/close`);
 
 export interface Venue { backend: Backend; configured: boolean; connected: boolean; status: string; permission: string; keyHint: string }
-export const venue = (b: Backend) => settle(b, async (): Promise<Venue> => {
+export const venue = (b: Backend) => settleTrading(b, async (): Promise<Venue> => {
   const x = await call<Record<string, unknown>>(b, 'venues/lbank');
   return { backend: b, configured: Boolean(x.configured), connected: Boolean(x.connected), status: str(x.status), permission: str(x.permission), keyHint: str(x.key_hint) };
 });

@@ -694,6 +694,18 @@ class WebPanelTest(AioHTTPTestCase):
         activity = await (await self.panel("GET", "activity")).json()
         self.assertNotIn("ip_hash", activity["items"][0])
 
+    async def test_one_sign_in_on_both_platforms_is_one_sign_in(self):
+        both = self.relay_identity(SARA, SARA_FX)
+        at = admin.now()
+        await self.relay_events({"kind": "signin", "backend": "coineprofx", "method": "password", "at": at, **both},
+                                {"kind": "signin", "backend": "tradeyar", "method": "password", "at": at + 1, **both})
+        self.assertEqual(self.store.one("SELECT sign_ins FROM web_accounts WHERE account='tradeyar:7'"), 1)
+        self.assertEqual(self.store.one("SELECT COUNT(*) FROM web_events WHERE kind='signin'"), 1)
+        elsewhere = {**both, "sid": "s9"}
+        await self.relay_events({"kind": "signin", "backend": "tradeyar", "method": "password", "at": at + 2, **elsewhere},
+                                {"kind": "signin", "backend": "tradeyar", "method": "password", "at": at + 3600, **both})
+        self.assertEqual(self.store.one("SELECT sign_ins FROM web_accounts WHERE account='tradeyar:7'"), 3)
+
     async def test_client_events_are_small_batched_and_limited(self):
         events = [{"kind": "error", "name": "TypeError: x is undefined", "detail": {"stack": "at a.js:1", "version": "6.0", "big": "y" * 5000}},
                   {"kind": "feature", "name": "indicator.add.rsi"}, {"kind": "page", "name": "panel/security"},
@@ -859,6 +871,8 @@ class WebPanelTest(AioHTTPTestCase):
         overview = await (await self.client.get("/admin/api/web/overview")).json()
         self.assertTrue(overview["relay"]["ok"])
         self.assertEqual((overview["online_now"], overview["live_sessions"], overview["guests"]), (1, 2, 3))
+        # «Online now» names the console's account and its e-mail, not only the platform aliases.
+        self.assertEqual((overview["online"][0]["account"], overview["online"][0]["email"]), ("tradeyar:7", "sara@example.com"))
         self.assertEqual(overview["kpis"]["accounts"], 2)
         self.assertEqual(overview["series"]["signins"][-1], 2)
         self.assertEqual(overview["kpis"]["errors_24h"], 1)

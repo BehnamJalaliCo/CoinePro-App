@@ -25,13 +25,18 @@ export function readEntitlement(x: Record<string, unknown>): Entitlement {
   return { all: x.all !== false, premium: x.premium === true || plan === 'vip', plan, endsAt: x.ends_at ? String(x.ends_at) : null };
 }
 
-/** Premium, the plan that gives it (VIP first), and when it ends, across both platforms. */
-export function combine(list: (Entitlement | undefined)[]): { premium: boolean; vip: boolean; plan: string | null; endsAt: string | null } {
-  const got = list.filter((x): x is Entitlement => Boolean(x));
-  const vip = got.find((x) => x.plan === 'vip');
-  if (vip) return { premium: true, vip: true, plan: 'vip', endsAt: null };
-  const paid = got.filter((x) => x.premium).sort((a, b) => (b.endsAt ?? '').localeCompare(a.endsAt ?? ''))[0];
-  return paid ? { premium: true, vip: false, plan: paid.plan, endsAt: paid.endsAt } : { premium: false, vip: false, plan: null, endsAt: null };
+export interface Premium { premium: boolean; vip: boolean; forexVip: boolean; plan: string | null; endsAt: string | null }
+
+/**
+ * Premium, the plan that gives it and when it ends, from [TradeYar, CoinePro-FX] in that order.
+ * `vip` is the TradeYar VIP channel only; CoinePro-FX answers `plan: "vip"` for its own forex VIP
+ * (paid, gift or the broker's), which is `forexVip`. Either one opens everything.
+ */
+export function combine([ty, fx]: (Entitlement | undefined)[]): Premium {
+  if (ty?.plan === 'vip') return { premium: true, vip: true, forexVip: fx?.plan === 'vip', plan: 'vip', endsAt: null };
+  if (fx?.plan === 'vip') return { premium: true, vip: false, forexVip: true, plan: 'vip', endsAt: fx.endsAt };
+  const paid = [ty, fx].filter((x): x is Entitlement => Boolean(x?.premium)).sort((a, b) => (b.endsAt ?? '').localeCompare(a.endsAt ?? ''))[0];
+  return paid ? { premium: true, vip: false, forexVip: false, plan: paid.plan, endsAt: paid.endsAt } : { premium: false, vip: false, forexVip: false, plan: null, endsAt: null };
 }
 
 let inflight: Promise<void> | null = null;
@@ -53,7 +58,7 @@ export const useEntitlements = create<EntitlementState>((set) => ({
 }));
 
 /** The reader's premium state; re-read by the components that show it. */
-export function usePremium(): { premium: boolean; vip: boolean; plan: string | null; endsAt: string | null } {
+export function usePremium(): Premium {
   const by = useEntitlements((s) => s.byVenue);
   return combine([by.tradeyar, by.coineprofx]);
 }

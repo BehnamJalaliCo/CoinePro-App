@@ -58,6 +58,8 @@ browsers, and a restart signs every browser out, as clearing an app's data does 
 | `RELAY_PANEL_URL` | `http://admin:8791/internal/panel` | where the admin service's internal panel routes are, on the private network |
 | `RELAY_COUNTRY_HEADER` | `CF-IPCountry` | the request header that carries the reader's two-letter country, if the edge adds one |
 | `RELAY_HASH_SALT` | random per process | salts the hash kept of each session's address; set it to keep the hashes stable across restarts |
+| `RELAY_STATE_FILE` | unset (memory only) | where the sessions are kept across a restart, e.g. `/state/sessions.bin` on a named volume mounted at `/state`; unset, a rebuild signs every web reader out |
+| `RELAY_STATE_KEY` | unset | 32+ random characters; the file is encrypted with it (Fernet). Changing it, or losing the file, only means the readers sign in again |
 
 ## Rate limits: the relay's, not a second set at the edge
 

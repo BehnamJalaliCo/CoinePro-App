@@ -160,7 +160,7 @@ export function NewsPanel() {
       </nav>
       <div className="panel-body" ref={listRef}>
         {items === null ? <div className="empty fa">{t('loading')}…</div> : null}
-        {items !== null && !shown.length ? <div className="empty fa">{failed ? t('networkError') : t('noResults')}</div> : null}
+        {items !== null && !shown.length ? <div className="empty fa">{failed ? t('networkError') : t('nothingFound')}</div> : null}
         {shown.map((n) => {
           const hot = importanceOf(n) >= 7;
           const chips = tickersIn(n, universe, 3);

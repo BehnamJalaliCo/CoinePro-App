@@ -1915,8 +1915,13 @@ async def panel_events_in(request: web.Request) -> web.Response:
             backend = event.get("backend") if event.get("backend") in PANEL_BACKENDS else None
             account = panel_account(request.app, identity, client, at, touch=kind != "session_revoked") if identity else None
             if kind == "signin" and account:
-                store.x("UPDATE web_accounts SET sign_ins=sign_ins+1 WHERE account=?", (account,))
-                panel_log(store, account, "signin", clean_text(event.get("method"), 16), None, "relay", client, backend, at)
+                # One sign-in on the page reaches both platforms (CoinePro-FX, then TradeYar through the
+                # account link): the relay reports each, the console counts one per browser and minute.
+                if not (client.get("sid") and store.one(
+                        "SELECT 1 FROM web_events WHERE account=? AND kind='signin' AND sid=? AND at BETWEEN ? AND ?",
+                        (account, client["sid"], at - 60, at + 60))):
+                    store.x("UPDATE web_accounts SET sign_ins=sign_ins+1 WHERE account=?", (account,))
+                    panel_log(store, account, "signin", clean_text(event.get("method"), 16), None, "relay", client, backend, at)
             elif kind == "signin_failed":
                 key = clean_text(event.get("email_hash"), 64)
                 if key and backend:
@@ -2622,7 +2627,8 @@ async def web_overview(request: web.Request) -> web.Response:
         "relay": {"ok": status == 200, "status": status, "error": live.get("error") if status != 200 else None},
         "online_now": len({tuple(s.get("accounts") or [s.get("sid")]) for s in online}),
         "online_sessions": len(online), "live_sessions": len(sessions), "guests": live.get("guests", 0),
-        "online": [{**s, "accounts": s.get("accounts")} for s in sorted(online, key=lambda s: -int(s.get("last_seen") or 0))[:50]],
+        "online": [{**s, "accounts": s.get("accounts"), **_who(store, s.get("accounts"))}
+                   for s in sorted(online, key=lambda s: -int(s.get("last_seen") or 0))[:50]],
         "kpis": {
             "accounts": store.one("SELECT COUNT(*) FROM web_accounts") or 0,
             "active_1d": store.one("SELECT COUNT(*) FROM web_accounts WHERE last_seen>=?", (stamp - 86400,)) or 0,
@@ -2645,6 +2651,16 @@ async def web_overview(request: web.Request) -> web.Response:
             "SELECT name AS label, COUNT(*) AS value FROM web_events WHERE kind IN ('feature', 'page') AND at>=? "
             "GROUP BY name ORDER BY value DESC LIMIT 12", (stamp - 7 * 86400,))],
     })
+
+
+def _who(store: Store, aliases) -> dict:
+    """The console's own account for a live session's aliases: its id, e-mail and name."""
+    for alias in aliases or []:
+        rows = store.q("SELECT a.account, a.email, a.name FROM web_aliases x JOIN web_accounts a ON a.account = x.account "
+                       "WHERE x.alias=?", (clean_text(alias, 80),))
+        if rows:
+            return {"account": rows[0]["account"], "email": rows[0]["email"], "name": rows[0]["name"]}
+    return {"account": None, "email": None, "name": None}
 
 
 WEB_ACCOUNT_SORTS = {

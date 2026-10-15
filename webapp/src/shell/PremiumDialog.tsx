@@ -71,7 +71,7 @@ export function PremiumBody({ onSignIn }: { onSignIn(): void }) {
     {premium.premium ? <VipCard /> : ent?.premium ? (
       <p className="hint">{`${t('premiumActive')}${ent.ends_at ? ` ${t('premiumUntil')} ${new Intl.DateTimeFormat(lang === 'fa' ? 'fa-IR-u-ca-persian' : 'en-GB', { dateStyle: 'long' }).format(new Date(ent.ends_at))}` : ''}.`}</p>
     ) : null}
-    {premium.vip ? null : <>
+    {premium.vip || premium.forexVip ? null : <>
     {plans === null ? <p className="hint">{t('loading')}…</p> : null}
     <div className="plans">
       {(plans?.plans ?? []).map((p) => (

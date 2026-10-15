@@ -150,7 +150,7 @@ export function CalendarPanel() {
       </div>
       <div className="panel-body" ref={body}>
         {events === null ? <div className="empty fa">{t('loading')}…</div> : null}
-        {events !== null && !days.length ? <div className="empty fa">{failed ? t('networkError') : t('noResults')}</div> : null}
+        {events !== null && !days.length ? <div className="empty fa">{failed ? t('networkError') : t('nothingFound')}</div> : null}
         {days.map(([key, items]) => (
           <div key={key} className="cal-day" data-day={key}>
             <div className={`cal-day-title${key === today ? ' today' : ''}`}><span className={fa ? 'fa' : ''}>{dayTitle(items[0]!.time)}</span>{key === today ? <b className="cal-badge fa">{L('امروز', 'Today')}</b> : null}<span className="ws-spacer" /><span className="muted num">{num(items.length)}</span></div>

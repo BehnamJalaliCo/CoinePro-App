@@ -173,7 +173,7 @@ export function AlertsPanel({ onNew }: { onNew(): void }) {
                 <button className="btn btn-primary sm" onClick={onNew}><span className="fa">{L('ساخت هشدار', 'Create alert')}</span></button>
               </div>
             ) : null}
-            {st.list.length && !shown.length ? <div className="empty fa">{t('noResults')}</div> : null}
+            {st.list.length && !shown.length ? <div className="empty fa">{t('nothingFound')}</div> : null}
             {shown.map((a) => <AlertRow key={a.id} a={a} onEdit={() => setEdit(a)} />)}
             {remote.length ? <div className="alerts-sub fa">{L('هشدارهای حساب (گوشی و تلگرام)', 'On your account (phone and Telegram)')}</div> : null}
             {remote.map((a) => (

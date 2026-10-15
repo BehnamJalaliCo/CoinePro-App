@@ -101,8 +101,8 @@ async function webLive(host) {
     <div class="grid g-main">
       <div class="card"><div class="card-head"><div><h3>۳۰ روز اخیر</h3><p>ورود، معامله‌ی ثبت‌شده از وب و خطای صفحه</p></div></div><div id="web-chart"></div></div>
       <div class="card flush"><div class="card-head"><div><h3>آنلاین همین حالا</h3><p>از حافظه‌ی رله</p></div><span class="pill ${d.relay.ok ? 'good' : 'bad'}">${d.relay.ok ? 'رله وصل است' : 'رله در دسترس نیست'}</span></div>
-        <div class="web-online">${d.online.length ? d.online.map((s) => `<button class="web-online-row" data-account="${esc((s.accounts || [])[0] || '')}">
-          <span class="status-dot ok"></span><span><strong class="mono">${esc((s.accounts || []).join(' · '))}</strong><small class="faint">${esc(devLabel(s))}</small></span>
+        <div class="web-online">${d.online.length ? d.online.map((s) => `<button class="web-online-row" data-account="${esc(s.account || (s.accounts || [])[0] || '')}">
+          <span class="status-dot ok"></span><span><strong${s.email ? '' : ' class="mono"'}>${esc(s.email || s.name || (s.accounts || []).join(' · '))}</strong><small class="faint">${esc([s.email ? (s.accounts || []).join(' · ') : '', devLabel(s)].filter(Boolean).join(' · '))}</small></span>
           <span class="faint">${country(s.country)}</span><span class="faint">${ago(s.last_seen)}</span></button>`).join('') : empty('الان کسی آنلاین نیست', '', 'users')}</div></div>
     </div>
     <div class="grid g-3">

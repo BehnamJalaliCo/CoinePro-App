@@ -83,7 +83,7 @@
 
 | داده | چه وقت | کجا |
 | --- | --- | --- |
-| توکن نشست و توکن تازه‌سازی | هنگام ورود | روی سرور pro-chart.com پشت یک کوکی `HttpOnly`؛ مرورگر فقط یک شناسهٔ بی‌معنا نگه می‌دارد |
+| توکن نشست و توکن تازه‌سازی | هنگام ورود | روی سرور pro-chart.com پشت یک کوکی `HttpOnly` (رمزنگاری‌شده روی دیسک همان سرور تا با راه‌اندازی دوباره از حساب بیرون نروید)؛ مرورگر فقط یک شناسهٔ بی‌معنا نگه می‌دارد |
 | زمان ورود و خروج، خانوادهٔ مرورگر و دستگاه (مثلاً «Chrome · Android · گوشی»)، کشور، و چکیدهٔ نمک‌زدهٔ نشانی IP | هر ورود به وب | pro-chart.com — هرگز خود نشانی IP |
 | سفارش‌هایی که از چارت وب فرستاده می‌شود: نماد، جهت، مقدار، نوع، قیمت و پاسخ صرافی | هر سفارش، بستن پوزیشن، حد سود و ضرر، اهرم، اجرای سیگنال و اتصال صرافی | pro-chart.com — **هرگز کلید یا رمز API** |
 | گزارش خطای صفحه و نام قابلیت‌هایی که استفاده می‌کنید (مثلاً «افزودن اندیکاتور RSI») | فقط وقتی وارد شده‌اید، دسته‌ای و کوچک، بدون ایمیل و توکن | pro-chart.com |
@@ -231,8 +231,8 @@ stability data comes only from Android Vitals in the Play Console. The web versi
 errors only to Pro Chart's own server (below).
 
 **The web version (pro-chart.com) and its user panel.** In the browser, your session and refresh
-tokens stay on the pro-chart.com server behind an `HttpOnly` cookie; the page holds only a
-meaningless handle. Pro Chart's server keeps, for your own panel and for support: when you signed in
+tokens stay on the pro-chart.com server behind an `HttpOnly` cookie (encrypted on that server's disk,
+so a restart does not sign you out); the page holds only a meaningless handle. Pro Chart's server keeps, for your own panel and for support: when you signed in
 and out on the web, the browser and device family (such as "Chrome · Android · phone"), the country
 and a salted hash of the IP address (never the address itself); every order sent from the web chart —
 symbol, side, quantity, type, price and the exchange's answer, **never an API key or secret**; the

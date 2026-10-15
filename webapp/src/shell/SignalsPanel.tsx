@@ -95,7 +95,7 @@ export function SignalsPanel({ onSignIn }: { onSignIn(): void }) {
           <div className="empty fa">{t('signalsSignIn')} <button className="link" onClick={onSignIn}>{t('signIn')}</button></div>
         ) : null}
         {list === null && (tab === 'record' || signed) ? <div className="empty fa">{t('loading')}…</div> : null}
-        {list !== null && !shown.length && (tab === 'record' || signed) ? <div className="empty fa">{failed ? t('networkError') : t('noResults')}</div> : null}
+        {list !== null && !shown.length && (tab === 'record' || signed) ? <div className="empty fa">{failed ? t('networkError') : t('nothingFound')}</div> : null}
         {shown.map((s) => {
           const d = digitsOf(s.symbol);
           const state = signalState(s, tickers[s.symbol]?.last);

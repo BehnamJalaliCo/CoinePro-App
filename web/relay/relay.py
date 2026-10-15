@@ -44,7 +44,7 @@ import secrets
 import socket
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from urllib.parse import urlsplit
 
 import aiohttp
@@ -94,6 +94,15 @@ class Config:
     # this run apart, which is all they are for.
     hash_salt: str = field(default_factory=lambda: os.environ.get("RELAY_HASH_SALT", "") or secrets.token_hex(16))
     events_batch: int = 50
+    # Where the sessions are kept across a restart, encrypted with RELAY_STATE_KEY (any long random
+    # string). Either unset: memory only, and a rebuild signs every web reader out.
+    state_file: str = field(default_factory=lambda: os.environ.get("RELAY_STATE_FILE", ""))
+    state_key: str = field(default_factory=lambda: os.environ.get("RELAY_STATE_KEY", ""))
+    state_every: float = 60.0
+
+    @property
+    def persist(self) -> bool:
+        return bool(self.state_file) and len(self.state_key) >= 32
 
     @property
     def panel_enabled(self) -> bool:
@@ -210,6 +219,60 @@ class Sessions:
 
     def drop(self, key: str) -> None:
         self.by_id.pop(key, None)
+
+
+# ── Sessions across a restart: one encrypted file ──────────────────────────────────────────────
+# A session holds the platforms' real tokens, so the file is Fernet-encrypted (AES-128-CBC + HMAC)
+# with a key derived from RELAY_STATE_KEY, written to a temporary name with mode 600 and moved into
+# place. A file that does not open with the key (a new key, a damaged file) is ignored: the readers
+# sign in again, nothing else breaks.
+
+_SESSION_FIELDS = {f.name for f in fields(Session)}
+
+
+def _fernet(secret: str):
+    from cryptography.fernet import Fernet  # only where persistence is on
+
+    return Fernet(base64.urlsafe_b64encode(hashlib.sha256(secret.encode()).digest()))
+
+
+def save_sessions(sessions: Sessions, path: str, secret: str) -> int:
+    rows = [{"id": key, **asdict(s)} for key, s in sessions.by_id.items()]
+    blob = _fernet(secret).encrypt(json.dumps({"v": 1, "saved": time.time(), "sessions": rows}, separators=(",", ":")).encode())
+    tmp = f"{path}.tmp"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "wb") as out:
+        out.write(blob)
+        out.flush()
+        os.fsync(out.fileno())
+    os.replace(tmp, path)
+    return len(rows)
+
+
+def load_sessions(sessions: Sessions, path: str, secret: str) -> int:
+    try:
+        with open(path, "rb") as source:
+            blob = source.read()
+    except FileNotFoundError:
+        return 0
+    try:
+        data = json.loads(_fernet(secret).decrypt(blob))
+    except Exception as error:  # noqa: BLE001 — a key change or a damaged file: start empty
+        print(f"relay state not restored: {type(error).__name__}", file=sys.stderr)
+        return 0
+    now, restored = time.time(), 0
+    for row in data.get("sessions", []) if isinstance(data, dict) else []:
+        key = row.pop("id", None) if isinstance(row, dict) else None
+        if not isinstance(key, str) or not key:
+            continue
+        try:
+            session = Session(**{k: v for k, v in row.items() if k in _SESSION_FIELDS})
+        except TypeError:
+            continue
+        if now - float(session.touched) <= sessions.ttl:
+            sessions.by_id[key] = session
+            restored += 1
+    return restored
 
 
 def _new_handle() -> str:
@@ -366,18 +429,42 @@ async def _open_clients(app: web.Application) -> None:
         headers={"User-Agent": "ProChartImageRelay/1.0 (+https://pro-chart.com)"},
     )
 
+    if config.persist:
+        try:
+            restored = await asyncio.to_thread(load_sessions, app[SESSIONS], config.state_file, config.state_key)
+            print(f"relay sessions restored: {restored}", file=sys.stderr)
+        except Exception as error:  # noqa: BLE001 — never keep the relay from starting
+            print(f"relay state not restored: {type(error).__name__}", file=sys.stderr)
+    elif config.state_file:
+        print("RELAY_STATE_FILE is set without a RELAY_STATE_KEY of 32+ characters: sessions stay in memory", file=sys.stderr)
+
     async def sweep() -> None:
+        last_sweep = time.monotonic()
         while True:
-            await asyncio.sleep(600)
-            app[SESSIONS].sweep()
+            await asyncio.sleep(config.state_every if config.persist else 600)
+            if time.monotonic() - last_sweep >= 600:
+                app[SESSIONS].sweep()
+                last_sweep = time.monotonic()
+            if config.persist:
+                await _save_state(app)
 
     app[SWEEPER] = asyncio.create_task(sweep())
     app[EVENTS] = asyncio.Queue(maxsize=5000)
     app[SENDER] = asyncio.create_task(_send_events(app))
 
 
+async def _save_state(app: web.Application) -> None:
+    config: Config = app[CONFIG]
+    try:
+        await asyncio.to_thread(save_sessions, app[SESSIONS], config.state_file, config.state_key)
+    except Exception as error:  # noqa: BLE001 — the next round tries again
+        print(f"relay state not saved: {type(error).__name__}", file=sys.stderr)
+
+
 async def _close_clients(app: web.Application) -> None:
     app[SWEEPER].cancel()
+    if app[CONFIG].persist:
+        await _save_state(app)
     app[SENDER].cancel()
     for task in list(app[PENDING]):
         task.cancel()

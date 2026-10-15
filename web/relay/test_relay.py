@@ -579,5 +579,77 @@ class GuardTest(AioHTTPTestCase):
             self.assertTrue(relay.is_public(address), address)
 
 
+
+class StateTest(unittest.IsolatedAsyncioTestCase):
+    """The sessions survive a restart in one encrypted file, and nothing else changes."""
+
+    KEY = "k" * 40
+
+    def setUp(self) -> None:
+        import tempfile
+
+        self.dir = tempfile.TemporaryDirectory()
+        self.path = os.path.join(self.dir.name, "sessions.bin")
+
+    def tearDown(self) -> None:
+        self.dir.cleanup()
+
+    def filled(self) -> tuple[str, relay.Sessions]:
+        sessions = relay.Sessions(30 * 86400)
+        key, session = sessions.create()
+        session.tokens["pch_a"] = REAL_ACCESS
+        session.latest_bearer["tradeyar"] = REAL_ACCESS
+        session.identity["tradeyar"] = {"id": 7, "email": "a@b.c"}
+        session.browser = "Chrome"
+        return key, sessions
+
+    def test_round_trip_keeps_every_field_and_the_file_is_sealed(self) -> None:
+        key, sessions = self.filled()
+        self.assertEqual(relay.save_sessions(sessions, self.path, self.KEY), 1)
+        with open(self.path, "rb") as f:
+            blob = f.read()
+        self.assertNotIn(REAL_ACCESS.encode(), blob)
+        self.assertNotIn(b"a@b.c", blob)
+        self.assertEqual(os.stat(self.path).st_mode & 0o777, 0o600)
+        again = relay.Sessions(30 * 86400)
+        self.assertEqual(relay.load_sessions(again, self.path, self.KEY), 1)
+        self.assertEqual(again.by_id[key], sessions.by_id[key])
+
+    def test_another_key_or_a_damaged_file_restores_nothing(self) -> None:
+        _, sessions = self.filled()
+        relay.save_sessions(sessions, self.path, self.KEY)
+        self.assertEqual(relay.load_sessions(relay.Sessions(86400), self.path, "z" * 40), 0)
+        with open(self.path, "wb") as f:
+            f.write(b"not a sealed file")
+        self.assertEqual(relay.load_sessions(relay.Sessions(86400), self.path, self.KEY), 0)
+        self.assertEqual(relay.load_sessions(relay.Sessions(86400), self.path + ".missing", self.KEY), 0)
+
+    def test_expired_sessions_stay_behind(self) -> None:
+        key, sessions = self.filled()
+        sessions.by_id[key].touched -= 31 * 86400
+        relay.save_sessions(sessions, self.path, self.KEY)
+        self.assertEqual(relay.load_sessions(relay.Sessions(30 * 86400), self.path, self.KEY), 0)
+
+    def test_persistence_needs_both_the_file_and_a_long_key(self) -> None:
+        self.assertFalse(relay.Config().persist)
+        self.assertFalse(relay.Config(state_file=self.path, state_key="short").persist)
+        self.assertTrue(relay.Config(state_file=self.path, state_key=self.KEY).persist)
+
+    async def test_a_restarted_relay_knows_the_browser(self) -> None:
+        config = relay.Config(backends={"tradeyar": "http://127.0.0.1:9/", "coineprofx": "http://127.0.0.1:9/"},
+                              cookie_secure=False, state_file=self.path, state_key=self.KEY)
+        first = TestServer(relay.build_app(config))
+        await first.start_server()
+        key, session = first.app[relay.SESSIONS].create()
+        session.tokens["pch_b"] = REAL_REFRESH
+        await first.close()  # the cleanup writes the file
+        second = TestServer(relay.build_app(config))
+        await second.start_server()
+        try:
+            self.assertEqual(second.app[relay.SESSIONS].get(key).tokens, {"pch_b": REAL_REFRESH})
+        finally:
+            await second.close()
+
+
 if __name__ == "__main__":
     unittest.main()

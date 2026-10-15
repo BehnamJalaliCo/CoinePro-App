@@ -42,7 +42,9 @@ export function InstallPrompt() {
   useEffect(() => {
     // The pass-through worker only makes the page installable; it caches nothing.
     if (navigator.webdriver || !('serviceWorker' in navigator)) return;
-    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL }).catch(() => undefined);
+    // `updateViaCache: 'none'`: the update check never takes sw.js from the HTTP cache, whatever an edge
+    // (Cloudflare's browser TTL) puts on it.
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL, updateViaCache: 'none' }).catch(() => undefined);
   }, []);
 
   if (hidden || (!deferred && !ios)) return null;

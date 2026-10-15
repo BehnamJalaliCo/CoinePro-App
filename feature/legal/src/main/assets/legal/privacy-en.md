@@ -47,8 +47,8 @@ stability data comes only from Android Vitals in the Play Console. The web versi
 errors only to Pro Chart's own server (below).
 
 **The web version (pro-chart.com) and its user panel.** In the browser, your session and refresh
-tokens stay on the pro-chart.com server behind an `HttpOnly` cookie; the page holds only a
-meaningless handle. Pro Chart's server keeps, for your own panel and for support: when you signed in
+tokens stay on the pro-chart.com server behind an `HttpOnly` cookie (encrypted on that server's disk,
+so a restart does not sign you out); the page holds only a meaningless handle. Pro Chart's server keeps, for your own panel and for support: when you signed in
 and out on the web, the browser and device family (such as "Chrome · Android · phone"), the country
 and a salted hash of the IP address (never the address itself); every order sent from the web chart —
 symbol, side, quantity, type, price and the exchange's answer, **never an API key or secret**; the

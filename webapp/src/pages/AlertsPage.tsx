@@ -81,7 +81,7 @@ export default function AlertsPage() {
           <div className="row">
             {'Notification' in window && Notification.permission !== 'granted' ? <button className="btn btn-quiet sm" onClick={() => void Notification.requestPermission()}>{L('اجازه‌ی اعلان مرورگر', 'Allow browser notifications')}</button> : null}
           </div>
-          {!local.list.length ? <div className="empty fa">{t('noResults')}</div> : null}
+          {!local.list.length ? <div className="empty fa">{t('nothingFound')}</div> : null}
           <table className="table"><tbody>{local.list.map((a) => (
             <tr key={a.id} className={a.active ? '' : 'muted'}>
               <td><span className="row"><SymbolLogo symbol={a.symbol} size={18} /><b className="sym">{a.symbol}</b></span></td>

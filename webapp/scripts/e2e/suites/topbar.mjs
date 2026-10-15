@@ -466,4 +466,19 @@ export default async function ({ test, open, ready, pc, expect }) {
     await page.waitForURL(/\/next\/tutorials\/shortcuts$/, { timeout: 5000 });
     return env;
   });
+
+  await test('topbar: on a dark system theme the menu dark switch reads on, and one click makes it light', async () => {
+    const env = await open('BTCUSDT/1h?e2e=1', { scheme: 'dark' });
+    const { page } = env;
+    await ready(page);
+    expect(await pc(page, () => window.__pc.usePrefs.getState().theme) === 'system', 'starts on the system theme');
+    await page.click('.menu-btn');
+    await page.waitForSelector('.drawer-tv');
+    const sw = '.drawer-tv .drawer-row[role=switch] >> nth=0';
+    expect(await page.getAttribute(sw, 'aria-checked') === 'true', `switch reads ${await page.getAttribute(sw, 'aria-checked')} on a dark page`);
+    await page.click(sw);
+    expect(await pc(page, () => window.__pc.usePrefs.getState().theme) === 'light', 'one click: light');
+    expect(await page.getAttribute(sw, 'aria-checked') === 'false', 'then reads off');
+    return env;
+  });
 }

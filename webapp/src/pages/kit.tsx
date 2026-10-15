@@ -31,11 +31,11 @@ export function errorText(e: unknown, t: ReturnType<typeof useT>): string {
   return t('networkError');
 }
 
-export function State({ loading, error, empty, onRetry, children }: { loading: boolean; error: string | null; empty?: boolean; onRetry?(): void; children: ReactNode }) {
+export function State({ loading, error, empty, emptyText, onRetry, children }: { loading: boolean; error: string | null; empty?: boolean; emptyText?: string; onRetry?(): void; children: ReactNode }) {
   const t = useT();
   if (loading) return <div className="empty fa">{t('loading')}…</div>;
   if (error) return <div className="empty fa">{error} {onRetry ? <button className="link" onClick={onRetry}>{t('retry')}</button> : null}</div>;
-  if (empty) return <div className="empty fa">{t('noResults')}</div>;
+  if (empty) return <div className="empty fa">{emptyText ?? t('nothingFound')}</div>;
   return <>{children}</>;
 }
 
