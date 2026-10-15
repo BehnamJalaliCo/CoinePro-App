@@ -576,7 +576,7 @@ export function ChartView({ feed, digits, displayName, onStudySettings, onAlertA
             </span>
           ) : null}
         </div>
-        {shown && eventsAt.get(shown.t)?.length ? (
+        {hoverIdx != null && shown && eventsAt.get(shown.t)?.length ? (
           <div className="legend-events">
             {eventsAt.get(shown.t)!.map((e, i) => <span key={i} className="num"><i className="ev-dot" />{e.currency} · {e.title}{e.actual ? ` · ${e.actual}` : e.forecast ? ` · f ${e.forecast}` : ''}</span>)}
           </div>

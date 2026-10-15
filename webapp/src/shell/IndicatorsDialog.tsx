@@ -87,7 +87,7 @@ export function IndicatorsDialog({ onClose }: { onClose(): void }) {
                   <Icon name={favourites.includes(r.key) ? 'ph-star-fill' : 'ph-star'} size="sm" />
                 </button>
                 <span className="ind-name">{r.en}</span>
-                <span className="ind-fa fa">{r.fa}</span>
+                {lang === 'fa' ? <span className="ind-fa fa">{r.fa}</span> : /^[\x20-\x7e]+$/.test(r.abbr) && r.abbr !== r.en ? <span className="ind-fa num">{r.abbr}</span> : null}
                 {added === r.key ? <span className="ind-added"><Icon name="ph-check" size="sm" /></span> : null}
               </div>
             ))}

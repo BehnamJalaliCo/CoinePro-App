@@ -11,6 +11,13 @@ import { technicalRating, RATING_FA, type TechnicalRating, type RatingKey } from
 import { intervalLabel } from '../data/intervals';
 import { intervalsFor } from '../data/candles';
 import type { Candle, Market } from '../data/types';
+import { cryptoNews, forexNews, type NewsItem } from '../data/intel';
+import { usePage } from '../state/page';
+import { faAgo } from '../i18n/time';
+
+// The latest stories, fetched once a visit for the details card.
+let newsCache: Partial<Record<'crypto' | 'forex', Promise<NewsItem[]>>> = {};
+const newsFor = (kind: 'crypto' | 'forex') => (newsCache[kind] ??= (kind === 'crypto' ? cryptoNews(50) : forexNews()).catch(() => { newsCache = {}; return []; }));
 
 // Under the watchlist, as TradingView and the old Pro-Chart show it: the name, the price large with
 // the day's change and a day's sparkline, the live quote (bid, ask, spread), key facts, the
@@ -132,6 +139,20 @@ export function SymbolDetails() {
   }, [symbol, ratingTf, ratingTfs]);
 
   const stats = useMemo(() => dailyStats(daily, tk?.last ?? null), [daily, tk?.last]);
+  // The newest story that names this symbol: its code, its base asset or its Persian name.
+  const openPage = usePage((s) => s.open);
+  const [story, setStory] = useState<NewsItem | null>(null);
+  useEffect(() => {
+    let alive = true;
+    setStory(null);
+    const base = symbol.replace(/USDT$|USD$/, '');
+    const keys = [symbol, base, inst.nameFa?.split('/')[0]?.trim(), inst.nameEn?.split('/')[0]?.trim()].filter((k): k is string => Boolean(k && k.length >= 3));
+    void newsFor(inst.market === 'crypto' ? 'crypto' : 'forex').then((list) => {
+      const hit = list.find((n) => keys.some((k) => n.title.includes(k) || n.summary.includes(k)));
+      if (alive) setStory(hit ?? null);
+    });
+    return () => { alive = false; };
+  }, [symbol, inst.market, inst.nameFa, inst.nameEn]);
   const prevClose = tk?.prevClose ?? stats.prevClose;
   const dayLo = tk?.low != null ? Math.min(tk.low, tk.last) : null;
   const dayHi = tk?.high != null ? Math.max(tk.high, tk.last) : null;
@@ -171,6 +192,12 @@ export function SymbolDetails() {
         </>
       ) : null}
 
+      {story ? (
+        <button className="details-news" onClick={() => openPage('news', story.slug ?? null)}>
+          <span className="muted small">{L('اخبار', 'News')} · {fa ? faAgo(story.time) : new Date(story.time).toISOString().slice(0, 16).replace('T', ' ')}</span>
+          <b className="fa" dir="auto">{story.title}</b>
+        </button>
+      ) : null}
       <div className="details-facts">
         <h3 className="details-title fa">{L('حقایق کلیدی', 'Key facts')}</h3>
         <p className={fa ? 'fa' : ''}>{factsFor(inst.market, name, fa)}</p>

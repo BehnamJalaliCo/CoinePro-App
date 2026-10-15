@@ -29,6 +29,9 @@ on:
       - 'web/relay/**'
       # So is the owner's console.
       - 'web/admin/**'
+      # And the browser app at /next/: it ships as pro-chart-next.zip from android-ci.yml, never
+      # inside the APK, so a web-only change needs neither a build nor a version of its own.
+      - 'webapp/**'
       - '.gitignore'
   workflow_dispatch: {}
 

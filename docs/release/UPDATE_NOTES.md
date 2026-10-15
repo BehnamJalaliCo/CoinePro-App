@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.35.2
+
+**fa**
+
+> نسخه‌ی وب در pro-chart.com/next کامل‌تر شد: امتیاز تکنیکال، عملکرد هفتگی تا سالانه و مظنه‌ی زنده‌ی خرید و فروش کنار هر نماد، و تشخیص خودکار واگرایی، الگوهای هارمونیک و گپ‌ها روی چارت. در برنامه‌ی اندروید چیزی تغییر نکرده است.
+
+**en**
+
+> The web app at pro-chart.com/next grew: a technical rating, performance from a week to a year and the live bid and ask beside each symbol, and automatic divergences, harmonic patterns and gaps on the chart. Nothing changed in the Android app.
+
+---
+
 ## 5.35.1
 
 **fa**
