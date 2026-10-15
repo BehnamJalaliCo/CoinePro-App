@@ -79,3 +79,16 @@ keyboard
 upload-simple
 note
 shuffle
+table
+list-plus
+flag
+shopping-cart
+alarm
+stack
+list-numbers
+fire
+notebook
+tray
+list-dashes
+sort-descending
+arrow-square-out

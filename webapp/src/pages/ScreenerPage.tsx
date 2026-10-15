@@ -7,7 +7,9 @@ import { formatPrice, formatVolume } from '../chart/format';
 import { instrumentOf, marketOf } from '../data/symbols';
 import { loadHistory } from '../data/candles';
 import { rsi, ema, macd, bollinger, atr } from '../engine/indicators.js';
-import { Tabs, downloadCsv, pct } from './kit';
+import { Tabs, downloadCsv, pct, useL } from './kit';
+import { useWatchlist } from '../state/watchlist';
+import type { PageProps } from './registry';
 import { Icon } from '../ui/Icon';
 import type { Candle, Market, Ticker } from '../data/types';
 
@@ -61,14 +63,19 @@ function detect(setup: Setup, bars: Candle[]): { hit: boolean; barsAgo: number |
   return { hit: setup === 'none' || ago != null, barsAgo: ago, rsi: last, atrPct };
 }
 
-export default function ScreenerPage() {
+export default function ScreenerPage({ param = null }: Partial<PageProps> = {}) {
   const t = useT();
+  const L = useL();
+  // `wl:<id>` (the watchlist's "Open in screener"): only that list's symbols, no default condition.
+  const listId = param?.startsWith('wl:') ? param.slice(3) : null;
+  const list = useWatchlist((s) => (listId ? s.lists.find((l) => l.id === listId) ?? null : null));
+  const [onlyList, setOnlyList] = useState(Boolean(listId));
   const tickers = useMarket((s) => s.tickers);
   const setSymbol = usePrefs((s) => s.setSymbol);
   const setInterval = usePrefs((s) => s.setInterval);
   const close = usePage((s) => s.close);
-  const [market, setMarket] = useState<Market | 'all'>('crypto');
-  const [conds, setConds] = useState<Cond[]>([{ field: 'turnover', op: '>', value: 1_000_000 }]);
+  const [market, setMarket] = useState<Market | 'all'>(listId ? 'all' : 'crypto');
+  const [conds, setConds] = useState<Cond[]>(listId ? [] : [{ field: 'turnover', op: '>', value: 1_000_000 }]);
   const [setup, setSetup] = useState<Setup>('none');
   const [tf, setTf] = useState('60');
   const [scan, setScan] = useState<Record<string, ScanRow>>({});
@@ -77,9 +84,9 @@ export default function ScreenerPage() {
   const [name, setName] = useState('');
 
   const base = useMemo(() => Object.values(tickers)
-    .filter((x) => hasLogo(x.symbol) && (market === 'all' || marketOf(x.symbol) === market))
+    .filter((x) => hasLogo(x.symbol) && (market === 'all' || marketOf(x.symbol) === market) && (!onlyList || !list || list.symbols.includes(x.symbol)))
     .filter((x) => conds.every((c) => (c.op === '>' ? fieldOf(x, c.field) > c.value : fieldOf(x, c.field) < c.value)))
-    .sort((a, b) => turnover(b) - turnover(a)), [tickers, market, conds]);
+    .sort((a, b) => turnover(b) - turnover(a)), [tickers, market, conds, onlyList, list]);
 
   const rows = setup === 'none' ? base : base.filter((x) => scan[x.symbol]?.hit);
 
@@ -131,6 +138,7 @@ export default function ScreenerPage() {
     <div className="page-inner">
       <div className="row">
         <Tabs value={market} onChange={(m) => { setMarket(m); setScan({}); }} tabs={[{ id: 'all', label: t('all') }, { id: 'crypto', label: t('crypto') }, { id: 'forex', label: t('forex') }, { id: 'metals', label: t('metals') }, { id: 'indices', label: t('indices') }, { id: 'energy', label: t('energy') }]} />
+        {list ? <button className={`chip wl-filter${onlyList ? ' on' : ''}`} aria-pressed={onlyList} onClick={() => setOnlyList(!onlyList)}><span className="fa">{L('فهرست', 'List')}: {list.name}</span></button> : null}
       </div>
       <div className="row presets">{presets.map((p) => <button key={p.label} className="chip" onClick={p.apply}><span className="fa">{p.label}</span></button>)}</div>
       <div className="card scr-conds">

@@ -10,7 +10,7 @@ import { SignIn } from './shell/SignIn';
 import { IndicatorsDialog } from './shell/IndicatorsDialog';
 import { StudySettings } from './shell/StudySettings';
 import { useCompare } from './state/compare';
-import { AlertDialog, AlertToast } from './shell/AlertsPanel';
+import { AlertDialog, AlertHost, AlertToast } from './shell/AlertsPanel';
 import { attachAppHotkeys } from './chart/hotkeys';
 import { useReplay } from './state/replay';
 import { useWatchlist } from './state/watchlist';
@@ -111,7 +111,7 @@ export function App() {
         <TimeBar supported={(iv) => supported.includes(iv)} />
         <BottomPanel />
       </main>
-      <RightPanel onNewAlert={() => setAlertAt(null)} onAddSymbol={() => setAdding(true)} onSignIn={() => setSignIn(true)} />
+      <RightPanel onNewAlert={() => setAlertAt(null)} onAddSymbol={() => setAdding(true)} onSignIn={() => setSignIn(true)} onCompare={() => setComparing(true)} onSearch={() => setSearch('')} />
       <WidgetBar />
       <PageHost onSignIn={() => setSignIn(true)} />
       {menu ? <MainMenu onClose={() => setMenu(false)} onSignIn={() => setSignIn(true)} /> : null}
@@ -121,6 +121,7 @@ export function App() {
       {studyUid ? <StudySettings uid={studyUid} onClose={() => setStudyUid(null)} /> : null}
       {alertAt !== undefined ? <AlertDialog price={alertAt ?? undefined} onClose={() => setAlertAt(undefined)} /> : null}
       <AlertToast />
+      <AlertHost />
       {premium ? <PremiumDialog onClose={() => setPremium(false)} onSignIn={() => { setPremium(false); setSignIn(true); }} /> : null}
       {settings ? <SettingsDialog onClose={() => setSettings(false)} /> : null}
       {cellSearch !== null ? <SymbolSearch onClose={() => setCellSearch(null)} onPick={(sym) => setCell(cellSearch, { symbol: sym })} /> : null}

@@ -11,7 +11,8 @@ import { useGrid } from './state/grid';
 import { useMarket } from './state/market';
 import { useCompare } from './state/compare';
 import { usePage } from './state/page';
-import { useWatchlist } from './state/watchlist';
+import { useWatchlist, useWatchView } from './state/watchlist';
+import { useOverlay } from './state/overlay';
 import { useChartSettings } from './state/chartSettings';
 import { usePaper } from './state/paper';
 import { useJournal } from './state/journal';
@@ -23,7 +24,7 @@ import { CHART_TYPES } from './chart/chartTypes';
 
 export function expose(): void {
   (window as unknown as { __pc: unknown }).__pc = {
-    usePrefs, useStudies, useDrawing, useScript, useChartBus, useReplay, useAlerts, usePanels, useGrid, useMarket, useCompare, usePage, usePaper, useJournal, useWatchlist, useChartSettings,
+    usePrefs, useStudies, useDrawing, useScript, useChartBus, useReplay, useAlerts, usePanels, useGrid, useMarket, useCompare, usePage, usePaper, useJournal, useWatchlist, useChartSettings, useWatchView, useOverlay,
     pages: PAGES.map((p) => ({ id: p.id, path: p.path, member: Boolean(p.member) })),
     indicators: Object.keys(REGISTRY), examples: EXAMPLES.map((e) => e.name), exampleCode: EXAMPLES.map((e) => e.code),
     tools: TOOL_GROUPS.flatMap((g) => g.tools.map((x) => ({ id: x.id, group: g.id }))), chartTypes: CHART_TYPES.map((c) => c.id),

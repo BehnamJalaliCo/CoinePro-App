@@ -776,19 +776,19 @@ await test('go to date scrolls the chart there', async () => {
 await test('watchlists: create, switch, flag, note, import text', async () => {
   const env = await open('BTCUSDT/1h?e2e=1');
   await ready(env.page);
-  env.page.on('dialog', (dlg) => void dlg.accept(dlg.message().startsWith('New list') ? 'Scalps' : 'buy the dip').catch(() => {}));
+  env.page.on('dialog', (dlg) => void dlg.accept(/^New list|فهرست تازه/.test(dlg.message()) ? 'Scalps' : 'buy the dip').catch(() => {}));
   await env.page.click('.wl-title');
-  await env.page.click('.wl-lists >> text=Create new list');
+  await env.page.click('.wl-lists >> text=/Create new list|فهرست تازه/');
   await env.page.waitForFunction(() => document.querySelector('.wl-title')?.textContent?.includes('Scalps'), null, { timeout: 5000 });
   await pc(env.page, () => window.__pc.useWatchlist.getState().add('SOLUSDT'));
   await env.page.click('.wl-row >> nth=0', { button: 'right' });
   await env.page.click('.menu-row.flags .wl-flag >> nth=2');
   await env.page.click('.wl-row >> nth=0', { button: 'right' });
-  await env.page.click('text=Add note');
+  await env.page.click('.menu >> text=/Add note|افزودن یادداشت/');
   const st = await pc(env.page, () => { const w = window.__pc.useWatchlist.getState(); return { lists: w.lists.length, flags: w.flags, notes: w.notes }; });
   expect(st.lists === 2 && st.flags.SOLUSDT === 2 && st.notes.SOLUSDT === 'buy the dip', JSON.stringify(st));
   await env.page.click('.wl-title');
-  await env.page.click('.wl-lists >> text=Flagged');
+  await env.page.click('.wl-lists button >> text=/Flagged|پرچم‌دار/');
   await env.page.waitForSelector('.wl-row >> text=SOLUSDT', { timeout: 5000 });
   await env.page.goto('http://pc.local/next/BTCUSDT/1h?e2e=1');
   await ready(env.page);

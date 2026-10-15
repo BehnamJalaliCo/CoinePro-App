@@ -5,7 +5,9 @@ import { usePage } from '../state/page';
 import { hasLogo } from '../ui/SymbolLogo';
 import { marketOf } from '../data/symbols';
 import { formatVolume } from '../chart/format';
-import { Tabs, pct } from './kit';
+import { Tabs, pct, useL } from './kit';
+import { useWatchlist } from '../state/watchlist';
+import type { PageProps } from './registry';
 import type { Ticker } from '../data/types';
 
 // The app's heat map (feature/heatmap): tiles sized by turnover (or equal), coloured by the day's
@@ -56,8 +58,13 @@ function colour(v: number, palette: Palette, span: number): string {
   return `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${a})`;
 }
 
-export default function HeatmapPage() {
+export default function HeatmapPage({ param = null }: Partial<PageProps> = {}) {
   const t = useT();
+  const L = useL();
+  // `wl:<id>` (the watchlist's "Open in heat map"): only that list's symbols, every market.
+  const listId = param?.startsWith('wl:') ? param.slice(3) : null;
+  const list = useWatchlist((s) => (listId ? s.lists.find((l) => l.id === listId) ?? null : null));
+  const [onlyList, setOnlyList] = useState(Boolean(listId));
   const tickers = useMarket((s) => s.tickers);
   const setSymbol = usePrefs((s) => s.setSymbol);
   const close = usePage((s) => s.close);
@@ -79,11 +86,12 @@ export default function HeatmapPage() {
   }, []);
 
   const rects = useMemo(() => {
-    const list = Object.values(tickers).filter((x) => hasLogo(x.symbol) && (group === 'crypto' ? marketOf(x.symbol) === 'crypto' : marketOf(x.symbol) !== 'crypto'));
+    const mine = onlyList && list ? new Set(list.symbols) : null;
+    const items0 = Object.values(tickers).filter((x) => hasLogo(x.symbol) && (mine ? mine.has(x.symbol) : group === 'crypto' ? marketOf(x.symbol) === 'crypto' : marketOf(x.symbol) !== 'crypto'));
     const val = (x: Ticker) => (sizeBy === 'equal' ? 1 : Math.max(1, (x.volume ?? 0) * (marketOf(x.symbol) === 'crypto' ? x.last : 1)));
-    const items = list.map((tk) => ({ v: val(tk), tk })).sort((a, b) => b.v - a.v).slice(0, count);
+    const items = items0.map((tk) => ({ v: val(tk), tk })).sort((a, b) => b.v - a.v).slice(0, count);
     return squarify(items, 0, 0, size.w, size.h);
-  }, [tickers, group, sizeBy, count, size]);
+  }, [tickers, group, sizeBy, count, size, onlyList, list]);
 
   const metric = (x: Ticker) => (colourBy === 'change' ? x.changePct : x.high && x.low ? ((x.high - x.low) / x.low) * 100 : 0);
   const span = colourBy === 'change' ? (group === 'crypto' ? 6 : 1) : group === 'crypto' ? 12 : 2;
@@ -91,7 +99,8 @@ export default function HeatmapPage() {
   return (
     <div className="page-inner heat">
       <div className="row">
-        <Tabs value={group} onChange={setGroup} tabs={[{ id: 'crypto', label: t('crypto') }, { id: 'fx', label: t('forex') }]} />
+        <Tabs value={group} onChange={(g) => { setGroup(g); setOnlyList(false); }} tabs={[{ id: 'crypto', label: t('crypto') }, { id: 'fx', label: t('forex') }]} />
+        {list ? <button className={`chip wl-filter${onlyList ? ' on' : ''}`} aria-pressed={onlyList} onClick={() => setOnlyList(!onlyList)}><span className="fa">{L('فهرست', 'List')}: {list.name}</span></button> : null}
         <select value={colourBy} onChange={(e) => setColourBy(e.target.value as ColourBy)}><option value="change">{t('changePct')}</option><option value="range">{t('dayRange')}</option></select>
         <select value={sizeBy} onChange={(e) => setSizeBy(e.target.value as SizeBy)}><option value="turnover">{t('mkTurnover')}</option><option value="equal">{t('hmEqual')}</option></select>
         <select value={palette} onChange={(e) => setPalette(e.target.value as Palette)}><option value="classic">{t('hmClassic')}</option><option value="blind">{t('hmBlind')}</option><option value="mono">{t('hmMono')}</option></select>
