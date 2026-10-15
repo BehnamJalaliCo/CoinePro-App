@@ -10,6 +10,8 @@ import { useChartBus } from '../chart/chartBus';
 import { CHART_TYPES, chartTypeDef } from '../chart/chartTypes';
 import { takeSnapshot } from '../chart/snapshot';
 import { useReplay } from '../state/replay';
+import { LayoutMenu, TemplateMenu } from './SaveMenus';
+import { cellCount, useGrid, type GridId } from '../state/grid';
 
 const FAVOURITE_INTERVALS = ['1', '5', '15', '60', '240', '1D'];
 const INTERVAL_GROUPS: { fa: string; en: string; ids: string[] }[] = [
@@ -31,7 +33,11 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
   const setChartType = usePrefs((s) => s.setChartType);
   const { canUndo, canRedo, drawingLayer: layer, bumpDrawings } = useChartBus();
   const bump = () => { if (layer) bumpDrawings(layer.canUndo(), layer.canRedo(), layer.getDrawings().length); };
-  const [menu, setMenu] = useState<'interval' | 'type' | null>(null);
+  const [menu, setMenu] = useState<'interval' | 'type' | 'save' | 'templates' | 'grid' | null>(null);
+  const gridBtn = useRef<HTMLButtonElement>(null);
+  const { grid, setGrid } = useGrid();
+  const saveBtn = useRef<HTMLButtonElement>(null);
+  const tplBtn = useRef<HTMLButtonElement>(null);
   const ivBtn = useRef<HTMLButtonElement>(null);
   const typeBtn = useRef<HTMLButtonElement>(null);
   const supported = intervalsFor(symbol);
@@ -71,7 +77,7 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
       <button className="ib" onClick={onIndicators} title={t('indicators')}>
         <Icon name="ph-chart-line-up" size="md" /><span className="label fa">{t('indicators')}</span>
       </button>
-      <button className="ib desk-only" title={t('indicatorTemplates')}><Icon name="layout_grid" size="md" /></button>
+      <button ref={tplBtn} className="ib desk-only" title={t('indicatorTemplates')} onClick={() => setMenu(menu === 'templates' ? null : 'templates')}><Icon name="layout_grid" size="md" /></button>
       <span className="sep" />
       <button className="ib" title={t('alert')} onClick={onAlert}><Icon name="ph-bell" size="md" /><span className="label fa">{t('alert')}</span></button>
       <button className={`ib${replayOn ? ' on' : ''}`} title={t('replay')} onClick={onReplay}><Icon name="ph-rewind" size="md" /><span className="label fa">{t('replay')}</span></button>
@@ -80,8 +86,8 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
       <button className="ib desk-only" title={t('redo')} disabled={!canRedo} onClick={() => { layer?.redo(); bump(); }}><Icon name="ph-arrow-clockwise" size="md" /></button>
       <button className="ib phone-only" title={t('drawTrend')} onClick={() => document.body.classList.toggle('rail-open')}><Icon name="pencil" /></button>
       <span className="ws-spacer" />
-      <button className="ib desk-only" title={t('layout')}><Icon name="ph-squares-four" size="md" /></button>
-      <button className="ib desk-only" title={t('save')}><span className="label fa">{t('save')}</span><Icon name="ph-caret-down" size="sm" /></button>
+      <button ref={gridBtn} className="ib desk-only" title={t('layout')} onClick={() => setMenu(menu === 'grid' ? null : 'grid')}><Icon name="ph-squares-four" size="md" /></button>
+      <button ref={saveBtn} className="ib desk-only" title={t('save')} onClick={() => setMenu(menu === 'save' ? null : 'save')}><span className="label fa">{t('save')}</span><Icon name="ph-caret-down" size="sm" /></button>
       <span className="sep" />
       <button className="ib desk-only" title={t('quickSearch')} onClick={onSymbolSearch}><Icon name="search" /></button>
       <button className="ib desk-only" title={t('settings')} onClick={onSettings}><Icon name="settings2" /></button>
@@ -110,6 +116,17 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
           ))}
         </Dropdown>
       ) : null}
+      {menu === 'grid' ? (
+        <Dropdown anchor={gridBtn.current} onClose={() => setMenu(null)} align="right" className="grid-menu">
+          {(['1', '2v', '2h', '3', '4'] as GridId[]).map((g) => (
+            <button key={g} className={`grid-opt${grid === g ? ' on' : ''}`} onClick={() => { setGrid(g); setMenu(null); }} aria-label={g}>
+              <span className={`grid-glyph g-${g}`}>{Array.from({ length: cellCount(g) }, (_, i) => <i key={i} />)}</span>
+            </button>
+          ))}
+        </Dropdown>
+      ) : null}
+      {menu === 'save' ? <LayoutMenu anchor={saveBtn.current} onClose={() => setMenu(null)} /> : null}
+      {menu === 'templates' ? <TemplateMenu anchor={tplBtn.current} onClose={() => setMenu(null)} /> : null}
       {menu === 'type' ? (
         <Dropdown anchor={typeBtn.current} onClose={() => setMenu(null)} className="type-menu">
           {CHART_TYPES.map((c, i) => (

@@ -20,6 +20,7 @@ import { StudyRenderer, type StudyLegendRow } from './studies';
 import { useStudies, VOLUME } from '../state/studies';
 import { useChartSettings } from '../state/chartSettings';
 import { intervalSeconds } from '../data/intervals';
+import { timeOptions } from './time';
 import { COMPARE_COLORS, useCompare } from '../state/compare';
 import { LineSeries } from 'lightweight-charts';
 import { onPrice } from '../data/prices';
@@ -314,28 +315,7 @@ export function ChartView({ feed, digits, displayName, onStudySettings, onAlertA
 
   // Time zone of the axis and the crosshair label. Daily and longer bars keep their UTC date.
   const timezone = usePrefs((s) => s.timezone);
-  useEffect(() => {
-    const daily = ['1D', '1W', '1M'].includes(interval);
-    const tz = daily ? 'UTC' : timezone;
-    const time = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
-    const day = new Intl.DateTimeFormat('en-US', { timeZone: tz, day: 'numeric' });
-    const month = new Intl.DateTimeFormat('en-US', { timeZone: tz, month: 'short' });
-    const year = new Intl.DateTimeFormat('en-US', { timeZone: tz, year: 'numeric' });
-    const full = new Intl.DateTimeFormat('en-GB', { timeZone: tz, weekday: 'short', day: '2-digit', month: 'short', year: '2-digit' });
-    const at = (t: unknown) => new Date((typeof t === 'number' ? t : 0) * 1000);
-    chart.current?.applyOptions({
-      localization: { timeFormatter: (t: unknown) => (daily ? full.format(at(t)) : `${full.format(at(t))}  ${time.format(at(t))}`) },
-      timeScale: {
-        tickMarkFormatter: (t: unknown, type: number) => {
-          const d = at(t);
-          if (type === 0) return year.format(d);
-          if (type === 1) return month.format(d);
-          if (type === 2) return day.format(d);
-          return time.format(d);
-        },
-      },
-    });
-  }, [timezone, interval]);
+  useEffect(() => { chart.current?.applyOptions(timeOptions(timezone, interval)); }, [timezone, interval]);
 
   // The time bar's scale switches; comparing forces percent, as on TradingView.
   const scale = useChartBus((b) => b.scale);

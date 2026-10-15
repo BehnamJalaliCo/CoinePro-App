@@ -16,6 +16,8 @@ import { useReplay } from './state/replay';
 import { useWatchlist } from './state/watchlist';
 import { SettingsDialog } from './shell/SettingsDialog';
 import { PremiumDialog } from './shell/PremiumDialog';
+import { LiteChart } from './chart/LiteChart';
+import { cellCount, useGrid } from './state/grid';
 import { ChartView } from './chart/ChartView';
 import { feed } from './data/feed';
 import { intervalsFor } from './data/candles';
@@ -41,6 +43,9 @@ export function App() {
   const [adding, setAdding] = useState(false);
   const [settings, setSettings] = useState(false);
   const [premium, setPremium] = useState(false);
+  const [cellSearch, setCellSearch] = useState<number | null>(null);
+  const { grid, cells, setCell } = useGrid();
+  const setSymbol = usePrefs((s) => s.setSymbol);
   const addToWatchlist = useWatchlist((s) => s.add);
   const [alertAt, setAlertAt] = useState<number | null | undefined>(undefined);
   const addCompare = useCompare((s) => s.add);
@@ -74,14 +79,14 @@ export function App() {
   // Typing a letter anywhere opens the symbol search with it, as on TradingView.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (search !== null || signIn || indicators || studyUid || comparing || adding || settings || premium || alertAt !== undefined || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (search !== null || signIn || indicators || studyUid || comparing || adding || settings || premium || cellSearch !== null || alertAt !== undefined || e.ctrlKey || e.metaKey || e.altKey) return;
       const el = e.target as HTMLElement;
       if (el.closest('input, textarea, [contenteditable]')) return;
       if (/^[a-zA-Z0-9]$/.test(e.key)) { e.preventDefault(); setSearch(e.key.toUpperCase()); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [search, signIn, indicators, studyUid, comparing, adding, settings, premium, alertAt]);
+  }, [search, signIn, indicators, studyUid, comparing, adding, settings, premium, cellSearch, alertAt]);
 
   const displayName = (lang === 'fa' ? inst.nameFa : inst.nameEn) ?? symbol;
 
@@ -90,7 +95,14 @@ export function App() {
       <TopBar onSymbolSearch={() => setSearch('')} onIndicators={() => setIndicators(true)} onSignIn={() => setSignIn(true)} onCompare={() => setComparing(true)} onAlert={() => setAlertAt(null)} onSettings={() => setSettings(true)} onPremium={() => setPremium(true)} onReplay={() => { const r = useReplay.getState(); if (r.state?.on || r.selecting) r.exit(); else r.select(); }} />
       <ToolRail />
       <main className="ws-main">
-        <ChartView feed={feed} digits={inst.digits} displayName={displayName} onStudySettings={setStudyUid} onAlertAt={(p) => setAlertAt(p)} />
+        <div className={`chart-grid g-${grid}`}>
+          <ChartView feed={feed} digits={inst.digits} displayName={displayName} onStudySettings={setStudyUid} onAlertAt={(p) => setAlertAt(p)} />
+          {cells.slice(0, cellCount(grid) - 1).map((c, i) => (
+            <LiteChart key={i} feed={feed} symbol={c.symbol} interval={c.interval}
+              onSymbol={() => setCellSearch(i)} onInterval={(iv) => setCell(i, { interval: iv })}
+              onFocus={() => undefined} onMain={() => { const main = { symbol, interval }; setSymbol(c.symbol); setInterval(c.interval); setCell(i, main); }} />
+          ))}
+        </div>
         <TimeBar supported={(iv) => supported.includes(iv)} />
         <BottomPanel />
       </main>
@@ -104,6 +116,7 @@ export function App() {
       <AlertToast />
       {premium ? <PremiumDialog onClose={() => setPremium(false)} onSignIn={() => { setPremium(false); setSignIn(true); }} /> : null}
       {settings ? <SettingsDialog onClose={() => setSettings(false)} /> : null}
+      {cellSearch !== null ? <SymbolSearch onClose={() => setCellSearch(null)} onPick={(sym) => setCell(cellSearch, { symbol: sym })} /> : null}
       {adding ? <SymbolSearch onClose={() => setAdding(false)} onPick={(s) => addToWatchlist(s)} /> : null}
       {comparing ? <SymbolSearch onClose={() => setComparing(false)} onPick={(s) => addCompare(s)} /> : null}
     </div>

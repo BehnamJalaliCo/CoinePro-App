@@ -10,6 +10,7 @@ import { usePanels } from '../state/panels';
 import { INTERVALS } from '../data/intervals';
 import { intervalsFor } from '../data/candles';
 import { takeSnapshot } from './snapshot';
+import { useLayouts } from '../state/layouts';
 import type { ChartType } from './chartTypes';
 
 export interface HotkeyActions { indicators(): void; symbolSearch(): void; newAlert(): void; settings(): void }
@@ -65,5 +66,6 @@ export function attachAppHotkeys(actions: HotkeyActions): () => void {
     replayStep: () => { const r = useReplay.getState(); if (r.state?.on) r.controller.step(); },
     replayStepBack: () => { const r = useReplay.getState(); if (r.state?.on) r.controller.stepBack(); },
     screenshot: () => { void takeSnapshot(); },
+    saveLayout: () => useLayouts.getState().save(),
   });
 }
