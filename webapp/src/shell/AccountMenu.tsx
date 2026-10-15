@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePrefs, useT, type Theme } from '../state/prefs';
 import { useSession } from '../data/session';
 import { signOut } from '../data/auth';
+import { usePage } from '../state/page';
 import { Icon } from '../ui/Icon';
 
 // The round button at the top right, as on TradingView: the reader's initial (or a person glyph for
@@ -56,6 +57,11 @@ export function AccountMenu({ onSignIn, onPremium }: { onSignIn(): void; onPremi
               <button className={lang === 'en' ? 'on' : ''} aria-pressed={lang === 'en'} onClick={() => setLang('en')}>English</button>
             </div>
           </div>
+          {signed ? (
+            <button role="menuitem" className="menu-item panel-item" onClick={() => { setOpen(false); usePage.getState().open('panel'); }}>
+              <Icon name="ph-identification-card" size="sm" /><span className="fa">{lang === 'fa' ? 'پنل کاربری' : 'Your panel'}</span>
+            </button>
+          ) : null}
           <button role="menuitem" className="menu-item premium-item" onClick={() => { setOpen(false); onPremium(); }}>
             <Icon name="ph-crown" size="sm" /><span className="fa">{t('premium')}</span>
           </button>

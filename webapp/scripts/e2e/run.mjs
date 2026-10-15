@@ -133,7 +133,7 @@ function mock(url, method = 'GET') {
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ttf': 'font/ttf', '.map': 'application/json', '.txt': 'text/plain' };
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'], ...(UPSTREAM && process.env.HTTPS_PROXY ? { proxy: { server: process.env.HTTPS_PROXY } } : {}) });
 
-async function open(path, { width = 1440, height = 900, scheme = 'light', locale = 'fa-IR', signed = false } = {}) {
+async function open(path, { width = 1440, height = 900, scheme = 'light', locale = 'fa-IR', signed = false, setup = null } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, locale, timezoneId: 'Asia/Tehran' });
   if (signed) {
     // A seeded member session on both platforms (fixtures only: the handles mean nothing upstream).
@@ -158,6 +158,9 @@ async function open(path, { width = 1440, height = 900, scheme = 'light', locale
     if (!rel || !existsSync(file) || statSync(file).isDirectory()) file = join(DIST, 'index.html');
     return r.fulfill({ status: 200, body: readFileSync(file), headers: { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' } });
   });
+  // A suite's own routes (a stateful fake of a server, say). Registered last, so asked first; a
+  // route it does not answer goes on to the fixtures above with route.fallback().
+  if (setup) await setup(ctx);
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message} @ ${(e.stack ?? '').split('\n').slice(1, 3).join(' ').slice(0, 300)}`));

@@ -1697,7 +1697,7 @@ async function renderAudit(host) {
   const d = await api(`audit?action=${encodeURIComponent(filter)}`);
   host.innerHTML = `
     <div class="card flush">
-      <div class="card-head"><div class="segmented" id="audit-filter">${[['', 'همه'], ['login', 'ورودها'], ['message', 'پیام‌ها'], ['coupon', 'کدها'], ['users', 'کاربران'], ['config', 'تنظیمات'], ['password', 'رمز'], ['totp', 'دومرحله‌ای']]
+      <div class="card-head"><div class="segmented" id="audit-filter">${[['', 'همه'], ['login', 'ورودها'], ['message', 'پیام‌ها'], ['coupon', 'کدها'], ['users', 'کاربران'], ['web', 'کاربران وب'], ['config', 'تنظیمات'], ['password', 'رمز'], ['totp', 'دومرحله‌ای']]
         .map(([k, l]) => `<button data-f="${k}" class="${k === filter ? 'on' : ''}">${l}</button>`).join('')}</div>
         <a class="btn sm" href="/admin/api/audit.csv" download>${icon('csv')}خروجی CSV</a></div>
       <div class="table-wrap"><table><thead><tr><th>زمان</th><th>کاربر</th><th>نشانی IP</th><th>رویداد</th><th>جزئیات</th></tr></thead>

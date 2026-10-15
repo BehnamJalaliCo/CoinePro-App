@@ -7,8 +7,9 @@ server only has to run it:
   Every method, and WebSocket upgrades. The bearer stays on the server behind an `HttpOnly` cookie.
 * `/api/img?url=…`: a publisher's photo for the news cards. `https://` only, image types only,
   5 MB, never a private address.
+* `/up/panel/…`: the web user panel (`/next/panel`). See [The web user panel](#the-web-user-panel).
 
-Tests: `python3 -m unittest test_relay` (sixteen cases, against fake backends and a fake publisher).
+Tests: `python3 -m unittest test_relay` (against fake backends, a fake publisher and a fake console).
 
 ## Run it next to the existing relay
 
@@ -19,6 +20,8 @@ Tests: `python3 -m unittest test_relay` (sixteen cases, against fake backends an
     restart: unless-stopped
     environment:
       RELAY_COOKIE_SECURE: "1"
+      PANEL_INTERNAL_TOKEN: ${PANEL_INTERNAL_TOKEN}   # the same value the admin service has
+      RELAY_PANEL_URL: http://admin:8791/internal/panel
     expose: ["8790"]
 ```
 
@@ -51,6 +54,10 @@ browsers, and a restart signs every browser out, as clearing an app's data does 
 | `RELAY_TRADEYAR_CONNECT` | — | e.g. `https://10.0.0.3/`: connect here instead of the public name. TLS is still verified against the public name (SNI) and `Host` still names it |
 | `RELAY_COINEPROFX_CONNECT` | — | same |
 | `RELAY_COOKIE_SECURE` | `1` | `0` only for a local run over plain http |
+| `PANEL_INTERNAL_TOKEN` | empty (panel off) | the web user panel's shared secret, the same value as the admin service's; at least 32 characters (`openssl rand -hex 32`) |
+| `RELAY_PANEL_URL` | `http://admin:8791/internal/panel` | where the admin service's internal panel routes are, on the private network |
+| `RELAY_COUNTRY_HEADER` | `CF-IPCountry` | the request header that carries the reader's two-letter country, if the edge adds one |
+| `RELAY_HASH_SALT` | random per process | salts the hash kept of each session's address; set it to keep the hashes stable across restarts |
 
 ## Rate limits: the relay's, not a second set at the edge
 
@@ -126,6 +133,46 @@ redir /next /next/ 308
 
 When it replaces the terminal, build with `WEB_BASE=/terminal/` and serve it at `/terminal/` with
 the same block; nothing else changes.
+
+## The web user panel
+
+`/next/panel` is the reader's own panel in the web app: identity and membership on both platforms,
+trading and the audit of what the chart sent, live web sessions, the cloud workspace, the inbox,
+support tickets, billing, connections, and data export and erasure. Its server half lives in the
+admin service (`web/admin`, «کاربران وب»); the relay is the only way to it.
+
+* **Who the browser is.** On every sign-in (password, Google, Telegram, register, account link —
+  never a guest token) the relay asks that backend's `me` route with the real token
+  (`api/mobile/v1/me`, `api/user/me`) and keeps the account's id, email, name and VIP / paid / plan
+  flags with the session. Beside it: when the session began, when it was last seen, the browser,
+  system and device family (never the raw User-Agent), the country from `RELAY_COUNTRY_HEADER`,
+  and a salted hash of the address. The address itself is never kept or sent anywhere.
+* **`/up/panel/<path>`** is passed to `RELAY_PANEL_URL/<path>` with `X-Panel-Token` (the secret)
+  and `X-Panel-Identity` (that verified identity). The page must send one of its own handles as
+  `Authorization: Bearer pch_…`, so a browser that signed out cannot use the panel with the
+  cookie alone; the page never names its own account, and whatever it sends as `X-Panel-Identity`
+  is replaced. Bodies up to 2 MB.
+* **Answered by the relay itself**, since only it holds the sessions:
+  `GET /up/panel/sessions` (the reader's live web sessions, this one first),
+  `POST /up/panel/sessions/revoke` with `{sid}`, `{others: true}` or `{all: true}`, and
+  `POST /up/panel/signout` (this browser's sign-out: the page calls it when it forgets its
+  handles, and the relay forgets the session and clears the cookie).
+* **Told to the console**, server to server, batched and without holding a reader's call up:
+  sign-ins, refused sign-ins (the address typed, as an HMAC keyed with the secret, so only the
+  console can match it to an account), sign-outs, refresh failures, revoked sessions, and every
+  `POST`/`PUT`/`PATCH`/`DELETE` to `trade/orders[/id]`, `trade/positions/close|protection`,
+  `trade/leverage`, `executions[/id/close]` and `venues/*` on either platform — with the method,
+  path, status, the symbol, side, quantity, type, price, leverage, venue… from the body (a list of
+  what may go: an API key or secret never does, whatever it is called) and the order id and state
+  that came back. A console that is down loses those lines; the reader's call is never affected.
+* **`/relay/internal/sessions[?account=tradeyar:7]`** and
+  **`POST /relay/internal/sessions/revoke {account, sid?, operator}`** are the console's: «online
+  now», devices and browsers, and «sign out everywhere». They answer 404 without the secret, and
+  Caddy never routes `/relay/*`.
+
+No Caddy change: the panel is under the existing `/up/*` block. Without `PANEL_INTERNAL_TOKEN`
+(or with one shorter than 32 characters) `/up/panel/<path>` answers 503 and no event is sent; the
+sessions list and sign-out still work.
 
 ## How to know it works
 

@@ -1,6 +1,7 @@
 """The owner console against an in-memory database: `python3 -m unittest test_admin`."""
 from __future__ import annotations
 
+import base64
 import io
 import json
 import os
@@ -191,6 +192,13 @@ class ConsoleTest(AioHTTPTestCase):
         self.assertNotIn("style=", html)
         self.assertNotIn("<script>", html)
         self.assertNotIn('style="', (static / "app.js").read_text(encoding="utf-8"))
+        self.assertNotIn('style="', (static / "webusers.js").read_text(encoding="utf-8"))
+        self.assertIn("webusers.js", html)
+
+    async def test_web_users_console_is_served_with_the_strict_policy(self):
+        response = await self.client.get("/admin/static/webusers.js")
+        self.assertEqual(response.status, 200)
+        self.assertIn("VIEWS.web", await response.text())
 
     # ── The app's check-in, campaigns and codes ─────────────────────────────────────────────────
 
@@ -514,6 +522,429 @@ class UsersConsoleTest(AioHTTPTestCase):
         text = (await response.read()).decode("utf-8-sig")
         self.assertIn("sara@example.com", text)
         self.assertTrue(text.startswith("id,email"))
+
+
+PANEL_TOKEN = "p" * 40
+PNG = base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"\x00" * 64).decode()
+
+
+def identity(*accounts: tuple[str, str, str], sid: str = "s1", **extra) -> str:
+    """The relay's X-Panel-Identity for a session holding these (backend, id, email) accounts."""
+    fields = {"identity": [{"backend": b, "id": i, "email": e, "name": "سارا", "vip": False, "paid": False, "plan": ""}
+                           for b, i, e in accounts],
+              "sid": sid, "browser": "Chrome", "os": "Android", "device": "phone", "country": "IR", "ip_hash": "abcd1234",
+              **extra}
+    return base64.urlsafe_b64encode(json.dumps(fields).encode()).decode().rstrip("=")
+
+
+SARA = ("tradeyar", "7", "sara@example.com")
+SARA_FX = ("coineprofx", "45", "sara@example.com")
+ALI = ("tradeyar", "8", "ali@example.com")
+
+
+class WebPanelTest(AioHTTPTestCase):
+    """The web user panel's store (the relay's internal routes) and «کاربران وب» (the owner's view)."""
+
+    async def get_application(self):
+        from aiohttp import web
+        from aiohttp.test_utils import TestServer
+
+        self.relay_sessions: list[dict] = []
+        self.relay_calls: list[tuple[str, dict, dict]] = []
+
+        async def sessions(request: web.Request) -> web.Response:
+            if request.headers.get("X-Panel-Token") != PANEL_TOKEN:
+                return web.json_response({"error": "not_found"}, status=404)
+            account = request.query.get("account")
+            rows = [s for s in self.relay_sessions if not account or account in s["accounts"]]
+            return web.json_response({"sessions": rows, "guests": 3})
+
+        async def revoke(request: web.Request) -> web.Response:
+            body = await request.json()
+            self.relay_calls.append(("revoke", body, dict(request.headers)))
+            return web.json_response({"revoked": 1 if body["account"] == "tradeyar:7" else 0})
+
+        async def bridge(request: web.Request) -> web.Response:
+            if request.headers.get("X-ProChart-Admin") != "b" * 40:
+                return web.json_response({"detail": "unauthorised"}, status=401)
+            tail = request.path.split("/admin-bridge", 1)[1]
+            if tail == "/users":
+                q = request.query.get("q")
+                users = [{"id": 501, "email": "sara@example.com"}] if q == "sara@example.com" else []
+                return web.json_response({"total": len(users), "users": users})
+            if tail == "/users/501":
+                return web.json_response({"id": 501, "email": "sara@example.com", "banned": False, "sessions": [{"live": True}],
+                                          "membership": {"vip": True, "paid": True, "plan": "pro", "expires_at": None},
+                                          "subscriptions": [{"plan": "monthly", "source": "usdt", "live": True,
+                                                             "ends_at": "2030-01-01T00:00:00+00:00"}]})
+            return web.json_response({"detail": "no such account"}, status=404)
+
+        fake = web.Application()
+        fake.router.add_get("/relay/internal/sessions", sessions)
+        fake.router.add_post("/relay/internal/sessions/revoke", revoke)
+        fake.router.add_route("*", "/api/mobile/v1/admin-bridge/{tail:.*}", bridge)
+        self.fake = TestServer(fake)
+        await self.fake.start_server()
+
+        self.tmp = tempfile.TemporaryDirectory()
+        config = admin.Config(db_path=":memory:", access_logs=[], latest_json=str(Path(self.tmp.name) / "none.json"),
+                              cookie_secure=False, background=False, probes=[], panel_token=PANEL_TOKEN,
+                              relay_url=str(self.fake.make_url("")).rstrip("/"), panel_history=3)
+        config.bridges = {
+            "tradeyar": {"label": "TradeYar", "url": str(self.fake.make_url("/api/mobile/v1/admin-bridge")), "token": "b" * 40},
+            "coineprofx": {"label": "CoinePro-FX", "url": "http://127.0.0.1:9/none", "token": ""},
+        }
+        app = admin.build_app(config)
+        app["store"].x("INSERT INTO users(username, pw_hash, created_at) VALUES (?,?,?)",
+                       (USER, admin.hash_password(PASSWORD), admin.now()))
+        return app
+
+    async def tearDownAsync(self):
+        await self.fake.close()
+        await super().tearDownAsync()
+        self.tmp.cleanup()
+
+    @property
+    def store(self) -> admin.Store:
+        return self.app["store"]
+
+    async def panel(self, method: str, path: str, body=None, who: str | None = None, token: str = PANEL_TOKEN, raw: bytes | None = None):
+        headers = {"X-Panel-Token": token, "X-Panel-Identity": who if who is not None else identity(SARA)}
+        if raw is not None:
+            headers["Content-Type"] = "application/json"
+            return await self.client.request(method, "/internal/panel/" + path, data=raw, headers=headers)
+        return await self.client.request(method, "/internal/panel/" + path, json=body, headers=headers)
+
+    async def sign_in(self) -> str:
+        await self.client.post("/admin/api/login", json={"username": USER, "password": PASSWORD})
+        return (await (await self.client.get("/admin/api/session")).json())["csrf"]
+
+    async def relay_events(self, *events: dict):
+        response = await self.client.post("/internal/panel/events", json={"events": list(events)},
+                                          headers={"X-Panel-Token": PANEL_TOKEN})
+        self.assertEqual(response.status, 200)
+        return await response.json()
+
+    def relay_identity(self, *accounts) -> dict:
+        return {"identity": [{"backend": b, "id": i, "email": e, "name": "", "vip": False, "paid": False, "plan": ""}
+                             for b, i, e in accounts], "sid": "s1", "browser": "Firefox", "os": "Windows",
+                "device": "desktop", "country": "DE", "ip_hash": "ffff0000"}
+
+    # ── The relay's door ────────────────────────────────────────────────────────────────────────
+
+    async def test_only_the_relay_with_the_secret_gets_in(self):
+        self.assertEqual((await self.client.get("/internal/panel/me")).status, 404)
+        self.assertEqual((await self.panel("GET", "me", token="x" * 40)).status, 404)
+        self.assertEqual((await self.client.post("/internal/panel/events", json={"events": []})).status, 404)
+        self.assertEqual((await self.panel("GET", "me", who="")).status, 401)
+        self.assertEqual((await self.panel("GET", "me", who="not-base64-json")).status, 401)
+        bad = identity(("tradeyar", "7; DROP TABLE", "x@y.z"))
+        self.assertEqual((await self.panel("GET", "me", who=bad)).status, 401)
+        self.app["config"].panel_token = "short"
+        self.assertEqual((await self.panel("GET", "me", token="short")).status, 503)
+        self.assertEqual(self.store.one("SELECT COUNT(*) FROM web_accounts"), 0)
+
+    async def test_internal_answers_are_never_cached(self):
+        response = await self.panel("GET", "me")
+        self.assertEqual(response.headers.get("Cache-Control"), "no-store")
+
+    async def test_both_platforms_in_one_browser_are_one_web_account(self):
+        me = await (await self.panel("GET", "me", who=identity(SARA, SARA_FX))).json()
+        self.assertEqual(me["account"], "tradeyar:7")
+        self.assertEqual([a["alias"] for a in me["aliases"]], ["coineprofx:45", "tradeyar:7"])
+        alone = await (await self.panel("GET", "me", who=identity(SARA_FX))).json()
+        self.assertEqual(alone["account"], "tradeyar:7")
+        other = await (await self.panel("GET", "me", who=identity(ALI))).json()
+        self.assertEqual(other["account"], "tradeyar:8")
+        self.assertEqual(me["session"]["browser"], "Chrome")
+
+    # ── What the relay saw ──────────────────────────────────────────────────────────────────────
+
+    async def test_relay_events_become_activity_trades_and_security(self):
+        who = self.relay_identity(SARA)
+        await self.relay_events(
+            {"kind": "signin", "backend": "tradeyar", "method": "google", "at": admin.now(), **who},
+            {"kind": "trade", "backend": "tradeyar", "method": "POST", "path": "trade/orders", "status": 200,
+             "fields": {"symbol": "btcusdt", "side": "BUY", "type": "limit", "quantity": 0.01, "price": 80000},
+             "order_id": "991", "state": "submitted", **who},
+            {"kind": "trade", "backend": "tradeyar", "method": "POST", "path": "trade/positions/close", "status": 422,
+             "fields": {"symbol": "ETHUSDT", "side": "sell", "quantity": 1}, "detail": "margin too low", **who},
+            {"kind": "trade", "backend": "tradeyar", "method": "DELETE", "path": "venues/lbank", "status": 200, "fields": {}, **who},
+            {"kind": "signin_failed", "backend": "tradeyar", "email_hash": admin.email_key(PANEL_TOKEN, "Sara@Example.com"),
+             **self.relay_identity()},
+            {"kind": "bogus", **who},
+        )
+        account = self.store.q("SELECT * FROM web_accounts WHERE account='tradeyar:7'")[0]
+        self.assertEqual((account["sign_ins"], account["last_browser"], account["last_country"]), (1, "Firefox", "DE"))
+        trades = self.store.q("SELECT * FROM web_trades ORDER BY id")
+        self.assertEqual([(t["action"], t["symbol"], t["side"], t["ok"]) for t in trades],
+                         [("order", "BTCUSDT", "buy", 1), ("close", "ETHUSDT", "sell", 0), ("venue_disconnect", None, None, 1)])
+        self.assertEqual(trades[0]["order_id"], "991")
+        self.assertEqual(trades[2]["venue"], "lbank")
+        security = await (await self.panel("GET", "security")).json()
+        kinds = [item["kind"] for item in security["items"]]
+        self.assertIn("signin", kinds)
+        self.assertIn("signin_failed", kinds)
+        self.assertEqual(security["failed_30d"], 1)
+        self.assertEqual(security["devices"][0]["browser"], "Firefox")
+        mine = await (await self.panel("GET", "trades?status=failed")).json()
+        self.assertEqual([t["symbol"] for t in mine["items"]], ["ETHUSDT"])
+        theirs = await (await self.panel("GET", "trades", who=identity(ALI))).json()
+        self.assertEqual(theirs["items"], [])
+        activity = await (await self.panel("GET", "activity")).json()
+        self.assertNotIn("ip_hash", activity["items"][0])
+
+    async def test_client_events_are_small_batched_and_limited(self):
+        events = [{"kind": "error", "name": "TypeError: x is undefined", "detail": {"stack": "at a.js:1", "version": "6.0", "big": "y" * 5000}},
+                  {"kind": "feature", "name": "indicator.add.rsi"}, {"kind": "page", "name": "panel/security"},
+                  {"kind": "signin", "name": "forged"}, {"kind": "feature", "name": ""}]
+        stored = await (await self.panel("POST", "event", {"events": events})).json()
+        self.assertEqual(stored["stored"], 3)
+        self.assertEqual(self.store.one("SELECT COUNT(*) FROM web_events WHERE kind='signin'"), 0)
+        detail = json.loads(self.store.one("SELECT detail FROM web_events WHERE kind='error'"))
+        self.assertLessEqual(len(detail["big"]), 1500)
+        self.assertEqual((await self.panel("POST", "event", {"events": [{"kind": "page", "name": "x"}] * 51})).status, 400)
+        self.assertEqual((await self.panel("POST", "event", raw=b'{"events":[' + b'1,' * 40000 + b'1]}')).status, 413)
+        statuses = [(await self.panel("POST", "event", {"events": [{"kind": "page", "name": "x"}]})).status for _ in range(31)]
+        self.assertEqual(statuses[-1], 429)
+
+    # ── The cloud workspace ─────────────────────────────────────────────────────────────────────
+
+    async def test_workspace_versions_conflicts_history_and_restore(self):
+        first = await (await self.panel("PUT", "workspace/layouts", {"data": {"keys": {"pc.layouts.v1": "1"}}, "base_version": 0})).json()
+        self.assertEqual(first["version"], 1)
+        stale = await self.panel("PUT", "workspace/layouts", {"data": {"keys": {}}, "base_version": 0})
+        self.assertEqual((stale.status, (await stale.json())["version"]), (409, 1))
+        for n in range(2, 6):
+            await self.panel("PUT", "workspace/layouts", {"data": {"keys": {"pc.layouts.v1": str(n)}}, "base_version": n - 1})
+        versions = await (await self.panel("GET", "workspace/layouts/versions")).json()
+        self.assertEqual([v["version"] for v in versions["versions"]], [5, 4, 3])  # panel_history=3
+        old = await (await self.panel("GET", "workspace/layouts/versions/3")).json()
+        self.assertEqual(old["data"]["keys"]["pc.layouts.v1"], "3")
+        restored = await (await self.panel("POST", "workspace/layouts/restore", {"version": 3})).json()
+        self.assertEqual(restored["version"], 6)
+        current = await (await self.panel("GET", "workspace/layouts")).json()
+        self.assertEqual((current["version"], current["data"]["keys"]["pc.layouts.v1"]), (6, "3"))
+        self.assertEqual((await self.panel("POST", "workspace/layouts/restore", {"version": 1})).status, 404)
+        forced = await self.panel("PUT", "workspace/layouts", {"data": {"keys": {}}, "base_version": 1, "force": True})
+        self.assertEqual(forced.status, 200)
+        self.assertEqual((await self.panel("GET", "workspace/secrets")).status, 404)
+        self.assertEqual((await self.panel("PUT", "workspace/settings", {"data": "text"})).status, 400)
+        big = {"data": {"keys": {"pc.prefs.v1": "x" * (256 * 1024)}}, "base_version": 0}
+        self.assertEqual((await self.panel("PUT", "workspace/settings", big)).status, 413)
+        drawings = {"data": {"keys": {"pc.drawings.v1.BTCUSDT": "x" * (512 * 1024)}}, "base_version": 0}
+        self.assertEqual((await self.panel("PUT", "workspace/drawings", drawings)).status, 200)
+        # Another reader sees none of it.
+        theirs = await (await self.panel("GET", "workspace/layouts", who=identity(ALI))).json()
+        self.assertIsNone(theirs["data"])
+        listing = await (await self.panel("GET", "workspace")).json()
+        self.assertEqual({k["kind"]: k["version"] for k in listing["kinds"]}["layouts"], 7)
+
+    async def test_profile_and_prefs_keep_only_what_they_know(self):
+        saved = await (await self.panel("PUT", "profile", {"display_name": "S" * 99, "tagline": "سلام", "avatar": "data:image/svg+xml;base64,PHN2Zz4="})).json()
+        self.assertEqual(saved.get("error"), "avatar")
+        saved = await (await self.panel("PUT", "profile", {"display_name": "S" * 99, "avatar": "🦁", "admin": True})).json()
+        self.assertEqual(len(saved["profile"]["display_name"]), 40)
+        self.assertNotIn("admin", saved["profile"])
+        prefs = await (await self.panel("PUT", "prefs", {"autosync": 1, "sync_kinds": ["layouts", "evil"], "role": "owner"})).json()
+        self.assertEqual(prefs["prefs"], {"autosync": True, "sync_kinds": ["layouts"]})
+
+    # ── Inbox and tickets ───────────────────────────────────────────────────────────────────────
+
+    async def test_messages_tickets_and_attachments(self):
+        await self.panel("GET", "me")
+        await self.panel("GET", "me", who=identity(ALI))
+        csrf = await self.sign_in()
+        headers = {"X-CSRF-Token": csrf}
+        self.assertEqual((await self.client.post("/admin/api/web/messages", json={"title": "t", "body": "b"})).status, 403)
+        await self.client.post("/admin/api/web/messages", json={"account": None, "title": "به همه", "body": "سلام"}, headers=headers)
+        one = await (await self.client.post("/admin/api/web/messages", json={"account": "tradeyar:7", "title": "فقط سارا",
+                                                                             "body": "متن", "kind": "offer"}, headers=headers)).json()
+        bad = await self.client.post("/admin/api/web/messages", json={"account": "tradeyar:7", "title": "x", "body": "y",
+                                                                      "link": "javascript:alert(1)"}, headers=headers)
+        self.assertEqual(bad.status, 400)
+        inbox = await (await self.panel("GET", "inbox")).json()
+        self.assertEqual((len(inbox["items"]), inbox["unread"]), (2, 2))
+        ali = await (await self.panel("GET", "inbox", who=identity(ALI))).json()
+        self.assertEqual([m["title"] for m in ali["items"]], ["به همه"])
+        self.assertEqual((await self.panel("POST", f"inbox/{one['id']}/read", who=identity(ALI))).status, 404)
+        await self.panel("POST", f"inbox/{one['id']}/read")
+        self.assertEqual((await (await self.panel("GET", "inbox")).json())["unread"], 1)
+        await self.panel("POST", "inbox/read-all")
+        self.assertEqual((await (await self.panel("GET", "inbox")).json())["unread"], 0)
+        await self.panel("DELETE", f"inbox/{one['id']}")
+        self.assertEqual(len((await (await self.panel("GET", "inbox")).json())["items"]), 1)
+
+        refused = await self.panel("POST", "tickets", {"subject": "چارت", "body": "تصویر", "attachments": [
+            {"name": "x.svg", "data": base64.b64encode(b"<svg onload=alert(1)>").decode()}]})
+        self.assertEqual((refused.status, (await refused.json())["error"]), (400, "attachment_type"))
+        huge = base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"0" * (301 * 1024)).decode()
+        self.assertEqual((await self.panel("POST", "tickets", {"subject": "big", "body": "too big", "attachments": [{"data": huge}]})).status, 413)
+        made = await self.panel("POST", "tickets", {"subject": "مشکل چارت", "category": "bug", "body": "چارت باز نمی‌شود",
+                                                    "attachments": [{"name": "shot.png", "data": "data:image/png;base64," + PNG}]})
+        self.assertEqual(made.status, 201)
+        ticket_id = (await made.json())["id"]
+        thread = await (await self.panel("GET", f"tickets/{ticket_id}")).json()
+        attachment = thread["messages"][0]["attachments"][0]
+        self.assertEqual(attachment["type"], "image/png")
+        image = await self.panel("GET", f"tickets/{ticket_id}/attachments/{attachment['id']}")
+        self.assertEqual((image.status, image.headers["X-Content-Type-Options"]), (200, "nosniff"))
+        self.assertIn("sandbox", image.headers["Content-Security-Policy"])
+        self.assertEqual((await self.panel("GET", f"tickets/{ticket_id}", who=identity(ALI))).status, 404)
+        self.assertEqual((await self.panel("GET", f"tickets/{ticket_id}/attachments/{attachment['id']}", who=identity(ALI))).status, 404)
+
+        waiting = await (await self.client.get("/admin/api/web/tickets?status=waiting")).json()
+        self.assertEqual([t["id"] for t in waiting["items"]], [ticket_id])
+        owner_view = await (await self.client.get(f"/admin/api/web/tickets/{ticket_id}")).json()
+        self.assertEqual(owner_view["account"]["email"], "sara@example.com")
+        self.assertEqual((await self.client.get(f"/admin/api/web/attachments/{attachment['id']}")).status, 200)
+        replied = await self.client.post(f"/admin/api/web/tickets/{ticket_id}/reply", json={"body": "درست شد"}, headers=headers)
+        self.assertEqual((await replied.json())["status"], "answered")
+        mine = await (await self.panel("GET", "tickets")).json()
+        self.assertTrue(mine["items"][0]["unread_user"])
+        self.assertEqual((await (await self.panel("GET", "inbox")).json())["items"][0]["kind"], "ticket")
+        await self.panel("POST", f"tickets/{ticket_id}/messages", {"body": "ممنون"})
+        self.assertEqual(self.store.one("SELECT status FROM web_tickets WHERE id=?", (ticket_id,)), "open")
+        await self.panel("POST", f"tickets/{ticket_id}/close")
+        self.assertEqual(self.store.one("SELECT status FROM web_tickets WHERE id=?", (ticket_id,)), "closed")
+        # Five new tickets an hour: the one above and four more.
+        statuses = [(await self.panel("POST", "tickets", {"subject": f"subject {n}", "body": "body text"})).status for n in range(5)]
+        self.assertEqual(statuses, [201, 201, 201, 201, 429])
+        actions = [r["action"] for r in self.store.q("SELECT action FROM audit")]
+        self.assertIn("web.message", actions)
+        self.assertIn("web.ticket_reply", actions)
+
+    # ── Export and erase ────────────────────────────────────────────────────────────────────────
+
+    async def test_export_holds_everything_and_erase_removes_it(self):
+        await self.relay_events({"kind": "trade", "backend": "tradeyar", "method": "POST", "path": "trade/orders", "status": 200,
+                                 "fields": {"symbol": "BTCUSDT"}, **self.relay_identity(SARA)})
+        await self.panel("PUT", "workspace/settings", {"data": {"keys": {"pc.prefs.v1": "{}"}}, "base_version": 0})
+        await self.panel("POST", "tickets", {"subject": "سوال", "body": "یک سوال دارم",
+                                             "attachments": [{"name": "a.png", "data": PNG}]})
+        export = await self.panel("GET", "export")
+        self.assertIn("attachment", export.headers["Content-Disposition"])
+        data = await export.json()
+        self.assertEqual(data["account"], "tradeyar:7")
+        self.assertEqual(data["workspace"][0]["kind"], "settings")
+        self.assertEqual(data["tickets"][0]["messages"][0]["attachments"][0]["data"], PNG)
+        self.assertEqual(data["trades"][0]["symbol"], "BTCUSDT")
+        self.assertEqual((await self.panel("DELETE", "data", {})).status, 400)
+        erased = await (await self.panel("DELETE", "data", {"confirm": True})).json()
+        self.assertEqual(erased["erased"]["web_trades_anonymised"], 1)
+        for table in ("web_workspace", "web_tickets", "web_attachments", "web_ticket_messages", "web_events"):
+            self.assertEqual(self.store.one(f"SELECT COUNT(*) FROM {table}"), 0, table)
+        self.assertIsNone(self.store.one("SELECT account FROM web_trades"))
+        self.assertEqual(self.store.one("SELECT action FROM audit ORDER BY id DESC LIMIT 1"), "web.erase")
+
+    # ── «کاربران وب» ────────────────────────────────────────────────────────────────────────────
+
+    async def test_owner_views_are_closed_until_signed_in(self):
+        for path in ("web/overview", "web/accounts", "web/accounts.csv", "web/accounts/tradeyar:7", "web/trades",
+                     "web/trades.csv", "web/tickets", "web/tickets/1", "web/messages", "web/errors", "web/attachments/1",
+                     "web/accounts/tradeyar:7/timeline"):
+            self.assertEqual((await self.client.get(f"/admin/api/{path}")).status, 401, path)
+
+    async def test_owner_overview_accounts_and_detail(self):
+        await self.relay_events({"kind": "signin", "backend": "tradeyar", "method": "password", **self.relay_identity(SARA, SARA_FX)},
+                                {"kind": "trade", "backend": "tradeyar", "method": "POST", "path": "trade/orders", "status": 200,
+                                 "fields": {"symbol": "BTCUSDT", "side": "buy"}, **self.relay_identity(SARA)},
+                                {"kind": "signin", "backend": "tradeyar", "method": "password", **self.relay_identity(ALI)})
+        await self.panel("POST", "event", {"events": [{"kind": "error", "name": "RangeError: bad", "detail": {"version": "6.0"}}]})
+        self.relay_sessions[:] = [{"sid": "s1", "accounts": ["tradeyar:7", "coineprofx:45"], "last_seen": admin.now(),
+                                   "created": admin.now() - 60, "browser": "Chrome", "os": "Android", "device": "phone", "country": "IR"},
+                                  {"sid": "s2", "accounts": ["tradeyar:8"], "last_seen": admin.now() - 3600,
+                                   "created": admin.now() - 7200, "browser": "Safari", "os": "iOS", "device": "phone", "country": "IR"}]
+        csrf = await self.sign_in()
+        overview = await (await self.client.get("/admin/api/web/overview")).json()
+        self.assertTrue(overview["relay"]["ok"])
+        self.assertEqual((overview["online_now"], overview["live_sessions"], overview["guests"]), (1, 2, 3))
+        self.assertEqual(overview["kpis"]["accounts"], 2)
+        self.assertEqual(overview["series"]["signins"][-1], 2)
+        self.assertEqual(overview["kpis"]["errors_24h"], 1)
+        self.assertEqual(overview["browsers"][0]["label"], "Chrome")
+        listing = await (await self.client.get("/admin/api/web/accounts?filter=online")).json()
+        self.assertEqual([a["account"] for a in listing["accounts"]], ["tradeyar:7"])
+        self.assertTrue(listing["accounts"][0]["online"])
+        self.assertEqual(listing["accounts"][0]["trades_30d"], 1)
+        traders = await (await self.client.get("/admin/api/web/accounts?filter=traders")).json()
+        self.assertEqual(traders["total"], 1)
+        found = await (await self.client.get("/admin/api/web/accounts?q=coineprofx:45")).json()
+        self.assertEqual(found["total"], 1)
+        csv_text = (await (await self.client.get("/admin/api/web/accounts.csv")).read()).decode("utf-8-sig")
+        self.assertTrue(csv_text.startswith("account,aliases,email"))
+        detail = await (await self.client.get("/admin/api/web/accounts/tradeyar:7")).json()
+        self.assertEqual([s["sid"] for s in detail["sessions"]], ["s1"])
+        bridge = next(b for b in detail["bridges"] if b["alias"] == "tradeyar:7")
+        self.assertEqual((bridge["bridge_id"], bridge["membership"]["vip"]), (501, True))
+        self.assertEqual(bridge["premium_until"], "2030-01-01T00:00:00+00:00")
+        self.assertTrue(detail["account"]["vip"])
+        vip = await (await self.client.get("/admin/api/web/accounts?filter=premium")).json()
+        self.assertEqual([a["account"] for a in vip["accounts"]], ["tradeyar:7"])
+        self.assertEqual((await self.client.get("/admin/api/web/accounts/tradeyar:999")).status, 404)
+        timeline = await (await self.client.get("/admin/api/web/accounts/tradeyar:7/timeline")).json()
+        self.assertEqual({i["kind"] for i in timeline["items"]}, {"signin", "trade", "error"})
+        self.assertEqual((await self.client.post("/admin/api/web/accounts/tradeyar:7/revoke", json={})).status, 403)
+        revoked = await (await self.client.post("/admin/api/web/accounts/tradeyar:7/revoke", json={"sid": "s1"},
+                                                headers={"X-CSRF-Token": csrf})).json()
+        self.assertEqual(revoked["revoked"], 1)
+        self.assertEqual(self.relay_calls[0][1]["operator"], USER)
+        self.assertEqual(self.relay_calls[0][2]["X-Panel-Token"], PANEL_TOKEN)
+        await self.client.put("/admin/api/web/accounts/tradeyar:7/note", json={"note": "VIP از تلگرام"}, headers={"X-CSRF-Token": csrf})
+        self.assertEqual(self.store.one("SELECT note FROM web_accounts WHERE account='tradeyar:7'"), "VIP از تلگرام")
+        errors = await (await self.client.get("/admin/api/web/errors")).json()
+        self.assertEqual((errors["groups"][0]["name"], errors["groups"][0]["count"]), ("RangeError: bad", 1))
+        actions = {r["action"] for r in self.store.q("SELECT action FROM audit")}
+        self.assertTrue({"web.revoke", "web.note", "web.export_accounts"} <= actions)
+
+    async def test_owner_trade_audit_filters_and_csv(self):
+        who = self.relay_identity(SARA)
+        await self.relay_events(*[{"kind": "trade", "backend": "tradeyar", "method": "POST", "path": "trade/orders",
+                                   "status": status, "fields": {"symbol": symbol, "side": side, "venue": "lbank"}, **who}
+                                  for symbol, side, status in (("BTCUSDT", "buy", 200), ("ETHUSDT", "sell", 400), ("BTCUSDT", "sell", 200))])
+        await self.sign_in()
+        everything = await (await self.client.get("/admin/api/web/trades")).json()
+        self.assertEqual((everything["total"], everything["ok"], everything["accounts"]), (3, 2, 1))
+        btc = await (await self.client.get("/admin/api/web/trades?symbol=btcusdt&side=sell")).json()
+        self.assertEqual(btc["total"], 1)
+        failed = await (await self.client.get("/admin/api/web/trades?status=failed&venue=lbank")).json()
+        self.assertEqual([t["symbol"] for t in failed["items"]], ["ETHUSDT"])
+        dated = await (await self.client.get(f"/admin/api/web/trades?from={admin.now() + 60}")).json()
+        self.assertEqual(dated["total"], 0)
+        csv_text = (await (await self.client.get("/admin/api/web/trades.csv?symbol=ETHUSDT")).read()).decode("utf-8-sig")
+        self.assertEqual(len(csv_text.strip().splitlines()), 2)
+        self.assertIn("web.export_trades", {r["action"] for r in self.store.q("SELECT action FROM audit")})
+
+    async def test_owner_can_view_and_restore_a_workspace_version(self):
+        for n in (1, 2):
+            await self.panel("PUT", "workspace/drawings", {"data": {"keys": {"pc.drawings.v1.BTCUSDT": str(n)}}, "base_version": n - 1})
+        csrf = await self.sign_in()
+        detail = await (await self.client.get("/admin/api/web/accounts/tradeyar:7")).json()
+        self.assertEqual({w["kind"]: w["version"] for w in detail["workspace"]}["drawings"], 2)
+        view = await self.client.get("/admin/api/web/accounts/tradeyar:7/workspace/drawings/1")
+        self.assertEqual((await view.json())["keys"]["pc.drawings.v1.BTCUSDT"], "1")
+        restored = await (await self.client.post("/admin/api/web/accounts/tradeyar:7/workspace/drawings/restore", json={"version": 1},
+                                                 headers={"X-CSRF-Token": csrf})).json()
+        self.assertEqual(restored["version"], 3)
+        current = await (await self.panel("GET", "workspace/drawings")).json()
+        self.assertEqual(current["data"]["keys"]["pc.drawings.v1.BTCUSDT"], "1")
+        actions = {r["action"] for r in self.store.q("SELECT action FROM audit")}
+        self.assertTrue({"web.workspace_view", "web.workspace_restore"} <= actions)
+
+    async def test_old_lines_are_pruned(self):
+        old = admin.now() - 400 * 86400
+        self.store.x("INSERT INTO web_events(account, at, kind, name) VALUES ('tradeyar:7', ?, 'page', 'x')", (old,))
+        self.store.x("INSERT INTO web_events(account, at, kind, name) VALUES ('tradeyar:7', ?, 'signin', 'x')", (old,))
+        self.store.x("INSERT INTO web_trades(account, at, action) VALUES ('tradeyar:7', ?, 'order')", (old,))
+        self.assertEqual(admin.prune_panel(self.store), 2)
+        self.assertEqual(self.store.one("SELECT COUNT(*) FROM web_trades"), 1)
+
+    def test_migrations_run_once_and_in_order(self):
+        with tempfile.TemporaryDirectory() as folder:
+            db = str(Path(folder) / "a.sqlite3")
+            admin.Store(db)
+            store = admin.Store(db)
+            self.assertEqual(store.meta("panel_schema"), str(len(admin.PANEL_MIGRATIONS)))
 
 
 class CommandLineTest(unittest.TestCase):

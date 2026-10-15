@@ -130,3 +130,15 @@ arrow-down
 square
 drop
 sliders-horizontal
+identification-card
+shield-check
+cloud-check
+cloud-arrow-down
+plugs-connected
+credit-card
+lifebuoy
+database
+device-mobile
+device-tablet
+desktop
+paperclip

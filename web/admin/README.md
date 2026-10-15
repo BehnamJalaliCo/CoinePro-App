@@ -61,6 +61,60 @@ Premium periods and the owner's note, with ban / unban (every session ends at on
 everywhere, mark email verified, send a password-reset mail, send a notification, grant or end
 Premium (TradeYar) and delete (the email typed to confirm). Every action is in the audit log.
 
+## «کاربران وب» — the web app's readers and their panel
+
+The web app's own user panel (`pro-chart.com/next/panel`) keeps its data here, and the owner
+watches it here. The browser never calls this service for it: the relay (`web/relay`) verifies
+the reader with their backend and calls `/internal/panel/…` with a shared secret and that
+identity. **Caddy must never route `/internal/*`** — the four lines below do not, and the secret
+is the second lock.
+
+| variable (this service) | default | |
+| --- | --- | --- |
+| `PANEL_INTERNAL_TOKEN` | empty (section off) | the same value as the relay's `PANEL_INTERNAL_TOKEN`; at least 32 random characters (`openssl rand -hex 32`) |
+| `ADMIN_RELAY_URL` | `http://web-relay:8790` | the relay on the private network, for «online now» and revoking sessions |
+
+```yaml
+# docker-compose.yml: the admin service gains two variables; the relay gets the same secret
+  admin:
+    environment:
+      PANEL_INTERNAL_TOKEN: ${PANEL_INTERNAL_TOKEN}
+      ADMIN_RELAY_URL: http://web-relay:8790
+  web-relay:
+    environment:
+      PANEL_INTERNAL_TOKEN: ${PANEL_INTERNAL_TOKEN}
+      RELAY_PANEL_URL: http://admin:8791/internal/panel
+```
+
+**What the reader's panel stores** (one SQLite file, per web account `tradeyar:<id>` or
+`coineprofx:<id>`; a reader signed in to both platforms in one browser is one account with two
+aliases): profile and preferences; the cloud workspace — layouts, chart settings, drawings,
+indicator templates and scripts, watchlists — as opaque JSON with a version each, the last ten
+versions kept for restore, 256 KB a part (1 MB for drawings), a stale write refused with 409; the
+inbox (messages from the owner, to one account or all); support tickets with up to three small
+images a message (PNG, JPEG, WebP or GIF, 300 KB each, judged by their bytes, served with a
+sandboxing CSP); the activity and security log; the trade audit; client errors and feature use.
+`GET export` hands the reader all of it as one JSON file; `DELETE data` (with `{confirm: true}`)
+erases it, keeping only the trade audit with no account on it, and is written to the audit log.
+Every write is size-limited and rate-limited per account (60 writes a minute, 30 event batches a
+minute, 5 new tickets an hour, 20 replies in ten minutes, 6 exports an hour).
+
+**Kept for:** page views and feature use 90 days, client errors 60 days, the trade audit two
+years, everything else a year (pruned every six hours).
+
+**What the owner sees** under «کاربران وب»: online now (sessions seen in the last five minutes,
+from the relay), sign-ins, trades and errors per day, devices, browsers, systems and countries,
+the most used features; a searchable, filterable list of web accounts (both backends) with last
+seen, VIP / Premium, sign-ins, trades, open tickets and errors, with CSV; per account the
+timeline, live web sessions with «close» and «sign out everywhere», the trade audit, the cloud
+workspace (sizes, versions, download, restore), tickets, a message into their panel and a note;
+VIP / Premium read through the existing admin bridges (matched by email: `membership`, the live
+subscriptions and the ban), or the flags the backend's `me` gave at the last sign-in when a bridge
+is not configured; a global trade audit with filters (account, symbol, side, status, action,
+backend, venue, dates) and CSV; the tickets inbox with reply, reply-and-close and reopen; messages
+to one or all web readers; the error feed, grouped. Every action, every CSV and every workspace
+download is in the audit log.
+
 ## The account
 
 No password is ever in the repository or the image. Create the owner's account on the server, once,
@@ -136,5 +190,7 @@ from the browser's view (Cloudflare in front is fine). `ADMIN_COOKIE_SECURE=0` i
 | `ADMIN_SESSION_IDLE_HOURS` / `ADMIN_SESSION_MAX_DAYS` | `12` / `7` | |
 | `ADMIN_HELLO_PER_MINUTE` | `60` | per address; Iranian carriers put many phones behind one |
 | `ADMIN_COOKIE_SECURE` | `1` | |
+| `PANEL_INTERNAL_TOKEN` | empty | «کاربران وب», above |
+| `ADMIN_RELAY_URL` | `http://web-relay:8790` | «کاربران وب», above |
 
 One replica: state is one SQLite file.

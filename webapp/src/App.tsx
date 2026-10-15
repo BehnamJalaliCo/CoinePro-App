@@ -29,6 +29,7 @@ import { useMarket } from './state/market';
 import { usePrefs, applyTheme } from './state/prefs';
 import { formatPrice } from './chart/format';
 import { useRoute } from './route';
+import { startPanel } from './usercp/telemetry';
 
 export function App() {
   const symbol = usePrefs((s) => s.symbol);
@@ -56,6 +57,7 @@ export function App() {
   const addCompare = useCompare((s) => s.add);
   useRoute();
 
+  useEffect(() => startPanel(), []);
   useEffect(() => { applyTheme(theme); }, [theme]);
   useEffect(() => { document.documentElement.lang = lang; }, [lang]);
 

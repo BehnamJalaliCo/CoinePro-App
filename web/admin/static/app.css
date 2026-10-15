@@ -503,6 +503,48 @@ table.users td .pill { margin-block: 1px; }
   .modal-body .grid.g-2 { grid-template-columns: 1fr; }
 }
 
+/* «کاربران وب» (webusers.js) */
+.web-tabs .segmented { flex-wrap: wrap; }
+.web-tabs .segmented button { display: inline-flex; align-items: center; gap: 6px; }
+.web-tabs .segmented svg { width: 15px; height: 15px; }
+.web-online { display: grid; max-height: 360px; overflow-y: auto; }
+.web-online-row {
+  display: grid; grid-template-columns: 10px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 10px 20px;
+  border: 0; border-top: 1px solid var(--line); background: transparent; text-align: start; cursor: pointer; font-size: 12.5px;
+}
+.web-online-row:hover { background: var(--panel-2); }
+.web-online-row span:nth-child(2) { display: grid; min-width: 0; }
+.web-online-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
+.web-detail { max-width: 420px; overflow-wrap: anywhere; font-size: 12px; }
+.web-pane-wait { min-height: 180px; }
+.link-btn { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font: inherit; }
+.link-btn:hover { text-decoration: underline; }
+.side { font-weight: 700; font-size: 12px; direction: ltr; }
+.side.buy { color: var(--good); }
+.side.sell { color: var(--bad); }
+.thread { display: grid; gap: 12px; }
+.bubble { max-width: 82%; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--panel-2); display: grid; gap: 6px; }
+.bubble.user { justify-self: start; }
+.bubble.owner { justify-self: end; background: rgba(139, 123, 255, .1); border-color: rgba(139, 123, 255, .35); }
+.bubble-head { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; }
+.bubble p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+.shots { display: flex; gap: 8px; flex-wrap: wrap; }
+.shots img { width: 120px; height: 90px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line-2); display: block; }
+/* A wide row inside a dialog (a tab strip, a table) scrolls on its own instead of widening the dialog. */
+.modal-body { grid-template-columns: minmax(0, 1fr); }
+.modal .tabs { overflow-x: auto; }
+.modal .tabs button { white-space: nowrap; }
+@media (max-width: 560px) {
+  .modal-body .grid.g-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .modal-body .kpi { padding: 14px 14px 10px; }
+  .modal-body .kpi .kpi-value { font-size: 22px; }
+}
+@media (max-width: 900px) {
+  .bubble { max-width: 100%; }
+  .web-online-row { grid-template-columns: 10px minmax(0, 1fr) auto; }
+  .web-online-row span:nth-child(3) { display: none; }
+}
+
 @media (max-width: 1280px) {
   .g-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .composer { grid-template-columns: 1fr; }

@@ -107,6 +107,15 @@ class Config:
             "token": os.environ.get("ADMIN_COINEPROFX_BRIDGE_TOKEN", ""),
         },
     })
+    # The web user panel (`/next/panel`, «کاربران وب»). The relay is its only caller and proves it with
+    # this secret, the same value as the relay's (at least 32 characters; shorter turns it off).
+    panel_token: str = field(default_factory=lambda: os.environ.get("PANEL_INTERNAL_TOKEN", ""))
+    relay_url: str = field(default_factory=lambda: os.environ.get("ADMIN_RELAY_URL", "http://web-relay:8790").rstrip("/"))
+    panel_history: int = 10
+
+    @property
+    def panel_enabled(self) -> bool:
+        return len(self.panel_token) >= 32
 
 
 SESSION_COOKIE = "pca_session"
@@ -244,6 +253,60 @@ CREATE INDEX IF NOT EXISTS installs_last_seen ON installs (last_seen);
 CREATE INDEX IF NOT EXISTS audit_at ON audit (at);
 """
 
+PANEL_MIGRATIONS = [
+    # 1 — the web user panel (`/next/panel`) and «کاربران وب».
+    """
+    CREATE TABLE IF NOT EXISTS web_accounts (
+        account TEXT PRIMARY KEY, backend TEXT NOT NULL, backend_id TEXT NOT NULL, email TEXT, email_key TEXT, name TEXT,
+        first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL, sign_ins INTEGER NOT NULL DEFAULT 0,
+        vip INTEGER NOT NULL DEFAULT 0, paid INTEGER NOT NULL DEFAULT 0, plan TEXT, premium_until TEXT,
+        membership TEXT, bridge_id INTEGER, bridge_checked_at INTEGER,
+        profile TEXT NOT NULL DEFAULT '{}', prefs TEXT NOT NULL DEFAULT '{}', note TEXT,
+        last_device TEXT, last_browser TEXT, last_os TEXT, last_country TEXT);
+    CREATE TABLE IF NOT EXISTS web_aliases (
+        alias TEXT PRIMARY KEY, account TEXT NOT NULL, backend TEXT NOT NULL, email TEXT, email_key TEXT, name TEXT,
+        vip INTEGER NOT NULL DEFAULT 0, paid INTEGER NOT NULL DEFAULT 0, plan TEXT, last_seen INTEGER);
+    CREATE INDEX IF NOT EXISTS web_aliases_account ON web_aliases (account);
+    CREATE INDEX IF NOT EXISTS web_aliases_email ON web_aliases (email_key);
+    CREATE TABLE IF NOT EXISTS web_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, account TEXT, at INTEGER NOT NULL, kind TEXT NOT NULL, name TEXT,
+        detail TEXT, source TEXT NOT NULL DEFAULT 'relay', backend TEXT, sid TEXT, device TEXT, browser TEXT, os TEXT,
+        country TEXT, ip_hash TEXT);
+    CREATE INDEX IF NOT EXISTS web_events_account ON web_events (account, at);
+    CREATE INDEX IF NOT EXISTS web_events_kind ON web_events (kind, at);
+    CREATE TABLE IF NOT EXISTS web_trades (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, account TEXT, at INTEGER NOT NULL, backend TEXT, method TEXT, path TEXT,
+        action TEXT, symbol TEXT, side TEXT, quantity REAL, type TEXT, price REAL, venue TEXT, status INTEGER,
+        ok INTEGER NOT NULL DEFAULT 0, order_id TEXT, state TEXT, detail TEXT, fields TEXT, sid TEXT, device TEXT);
+    CREATE INDEX IF NOT EXISTS web_trades_account ON web_trades (account, at);
+    CREATE INDEX IF NOT EXISTS web_trades_at ON web_trades (at);
+    CREATE TABLE IF NOT EXISTS web_workspace (
+        account TEXT NOT NULL, kind TEXT NOT NULL, version INTEGER NOT NULL, data TEXT NOT NULL, size INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL, device TEXT, PRIMARY KEY (account, kind));
+    CREATE TABLE IF NOT EXISTS web_workspace_history (
+        account TEXT NOT NULL, kind TEXT NOT NULL, version INTEGER NOT NULL, data TEXT NOT NULL, size INTEGER NOT NULL,
+        saved_at INTEGER NOT NULL, device TEXT, restored_from INTEGER, PRIMARY KEY (account, kind, version));
+    CREATE TABLE IF NOT EXISTS web_inbox (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, account TEXT, created_at INTEGER NOT NULL, created_by TEXT,
+        kind TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, link TEXT, ticket_id INTEGER);
+    CREATE INDEX IF NOT EXISTS web_inbox_account ON web_inbox (account, created_at);
+    CREATE TABLE IF NOT EXISTS web_inbox_state (
+        message_id INTEGER NOT NULL, account TEXT NOT NULL, read_at INTEGER, dismissed INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (message_id, account));
+    CREATE TABLE IF NOT EXISTS web_tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, account TEXT NOT NULL, subject TEXT NOT NULL, category TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+        unread_user INTEGER NOT NULL DEFAULT 0, unread_owner INTEGER NOT NULL DEFAULT 1);
+    CREATE INDEX IF NOT EXISTS web_tickets_account ON web_tickets (account, updated_at);
+    CREATE TABLE IF NOT EXISTS web_ticket_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, ticket_id INTEGER NOT NULL, at INTEGER NOT NULL, author TEXT NOT NULL,
+        operator TEXT, body TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS web_attachments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, ticket_id INTEGER NOT NULL, message_id INTEGER NOT NULL, account TEXT NOT NULL,
+        name TEXT, type TEXT NOT NULL, size INTEGER NOT NULL, data BLOB NOT NULL, created_at INTEGER NOT NULL);
+    """,
+]
+
 
 class Store:
     def __init__(self, path: str):
@@ -255,6 +318,12 @@ class Store:
         self.db.execute("PRAGMA foreign_keys=ON")
         self.db.executescript(SCHEMA)
         self.salt = self.meta("salt") or self._set_meta("salt", secrets.token_hex(32))
+        # The web user panel's tables, one numbered step at a time: a step runs once, in order, and
+        # a later change is a new step at the end of the list, never an edit of an old one.
+        done = int(self.meta("panel_schema") or 0)
+        for number, step in enumerate(PANEL_MIGRATIONS[done:], start=done + 1):
+            self.db.executescript(step)
+            self._set_meta("panel_schema", str(number))
 
     def meta(self, key: str) -> str | None:
         row = self.db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
@@ -359,6 +428,8 @@ def build_app(config: Config | None = None) -> web.Application:
     app.router.add_post(r"/admin/api/users/{backend:[a-z]+}/{id:\d+}/{action:[a-z-]+}", users_action)
     app.router.add_put(r"/admin/api/users/{backend:[a-z]+}/{id:\d+}/note", users_note)
     app.router.add_delete(r"/admin/api/users/{backend:[a-z]+}/{id:\d+}", users_delete)
+    # The web user panel: the relay's internal routes, and «کاربران وب» (web accounts).
+    install_panel(app)
 
     app.on_startup.append(_start)
     app.on_cleanup.append(_stop)
@@ -372,6 +443,7 @@ async def _start(app: web.Application) -> None:
     if app["config"].background:
         app["state"]["tasks"].append(asyncio.create_task(_every(app["config"].ingest_every_seconds, lambda: ingest_logs(app))))
         app["state"]["tasks"].append(asyncio.create_task(_every(app["config"].probe_every_seconds, lambda: run_probes(app))))
+        app["state"]["tasks"].append(asyncio.create_task(_every(6 * 3600, lambda: prune_panel(app["store"]))))
 
 
 async def _stop(app: web.Application) -> None:
@@ -406,7 +478,7 @@ async def security_headers(request: web.Request, handler):
 
 
 def _harden(request: web.Request, response: web.StreamResponse) -> None:
-    if request.path.startswith("/api/app/"):
+    if request.path.startswith("/api/app/") or request.path.startswith("/internal/"):
         response.headers.setdefault("Cache-Control", "no-store")
     if request.path.startswith("/admin"):
         response.headers.setdefault(
@@ -1551,6 +1623,1485 @@ async def users_delete(request: web.Request) -> web.Response:
         request.app["store"].audit(session["username"], client_ip(request), "users.delete",
                                    {"backend": name, "user": user_id})
     return _relay(status, data)
+
+
+# ── The web user panel ──────────────────────────────────────────────────────────────────────────
+#
+# `/next/panel` is the reader's own panel in the web app, and «کاربران وب» is the owner's view of
+# it. The browser never talks to this service for it: the relay (web/relay/relay.py) holds the
+# reader's session, asks the reader's backend who they are, and calls `/internal/panel/…` here with
+# the shared secret and that verified identity in `X-Panel-Identity`. The relay also posts what it
+# saw — sign-ins, sign-outs, trading calls — to `/internal/panel/events`. Caddy never routes
+# `/internal/*`; the secret is the second lock.
+#
+# A web account is `<backend>:<id>` (tradeyar:7). A reader signed in to both platforms in one
+# browser has two; the first one seen (TradeYar first) keeps the panel's data, the other is an alias
+# of it, so the workspace does not split when the forex reader is given a crypto account too.
+
+PANEL_BACKENDS = ("tradeyar", "coineprofx")
+PANEL_ALIAS = re.compile(r"^(tradeyar|coineprofx):[A-Za-z0-9_.-]{1,64}$")
+PANEL_KINDS = ("layouts", "settings", "drawings", "templates", "watchlist")
+PANEL_KIND_LIMIT = {"drawings": 1024 * 1024}
+PANEL_KIND_DEFAULT_LIMIT = 256 * 1024
+PANEL_BODY_LIMIT = 1600 * 1024
+PANEL_TICKET_CATEGORIES = ("account", "billing", "trading", "bug", "idea", "other")
+PANEL_TICKET_STATES = ("open", "answered", "closed")
+PANEL_ATTACHMENT_LIMIT = 300 * 1024
+PANEL_ATTACHMENTS_PER_MESSAGE = 3
+PANEL_INBOX_KINDS = ("info", "offer", "warning", "update", "ticket")
+PANEL_CLIENT_KINDS = ("error", "feature", "page")
+PANEL_SECURITY_KINDS = ("signin", "signout", "signin_failed", "refresh_failed", "session_revoked", "erase")
+# Per account, as (requests, seconds). Every write the panel accepts is counted against one of these.
+PANEL_LIMITS = {
+    "write": (60, 60), "events": (30, 60), "ticket": (5, 3600), "reply": (20, 600), "export": (6, 3600),
+    "relay": (600, 60),
+}
+# How long each kind of line is kept, in days.
+PANEL_RETENTION = {"page": 90, "feature": 90, "error": 60}
+PANEL_DEFAULT_RETENTION = 365
+PANEL_TRADE_RETENTION = 730
+PANEL_PREFS = {"autosync": bool, "sync_kinds": list, "digest": bool, "lang": str, "theme": str, "sounds": bool}
+TRADE_ACTIONS = (
+    (re.compile(r"^trade/orders$"), {"POST": "order"}),
+    (re.compile(r"^trade/orders/[^/]+$"), {"PATCH": "amend", "PUT": "amend", "DELETE": "cancel"}),
+    (re.compile(r"^trade/positions/close$"), {"POST": "close"}),
+    (re.compile(r"^trade/positions/protection$"), {"POST": "protection", "PUT": "protection", "PATCH": "protection"}),
+    (re.compile(r"^trade/leverage$"), {"POST": "leverage", "PUT": "leverage", "PATCH": "leverage"}),
+    (re.compile(r"^executions$"), {"POST": "execution"}),
+    (re.compile(r"^executions/[^/]+/close$"), {"POST": "execution_close"}),
+    (re.compile(r"^venues/[^/]+$"), {"POST": "venue_connect", "PUT": "venue_connect", "DELETE": "venue_disconnect"}),
+)
+
+
+def email_key(secret: str, email: str) -> str:
+    """The keyed hash the relay puts on a refused sign-in's address (relay.py `email_hash`)."""
+    email = (email or "").strip().lower()
+    return hmac.new(secret.encode(), email.encode(), hashlib.sha256).hexdigest()[:32] if email and secret else ""
+
+
+def _jsonish(value, fallback):
+    try:
+        out = json.loads(value) if isinstance(value, str) and value else fallback
+    except ValueError:
+        return fallback
+    return out if isinstance(out, type(fallback)) else fallback
+
+
+def install_panel(app: web.Application) -> None:
+    app["panel_limits"] = {name: RateLimit(n, window) for name, (n, window) in PANEL_LIMITS.items()}
+    r = app.router
+    base = "/internal/panel"
+    r.add_post(f"{base}/events", panel_events_in)
+    r.add_get(f"{base}/me", panel_me)
+    r.add_put(f"{base}/profile", panel_profile)
+    r.add_put(f"{base}/prefs", panel_prefs)
+    r.add_get(f"{base}/activity", panel_activity)
+    r.add_get(f"{base}/security", panel_security)
+    r.add_post(f"{base}/event", panel_client_events)
+    r.add_get(f"{base}/trades", panel_trades)
+    r.add_get(f"{base}/workspace", panel_workspace_list)
+    r.add_get(base + r"/workspace/{kind:[a-z]+}", panel_workspace_get)
+    r.add_put(base + r"/workspace/{kind:[a-z]+}", panel_workspace_put)
+    r.add_get(base + r"/workspace/{kind:[a-z]+}/versions", panel_workspace_versions)
+    r.add_get(base + r"/workspace/{kind:[a-z]+}/versions/{version:\d+}", panel_workspace_version)
+    r.add_post(base + r"/workspace/{kind:[a-z]+}/restore", panel_workspace_restore)
+    r.add_get(f"{base}/inbox", panel_inbox)
+    r.add_post(f"{base}/inbox/read-all", panel_inbox_read_all)
+    r.add_post(base + r"/inbox/{id:\d+}/read", panel_inbox_read)
+    r.add_delete(base + r"/inbox/{id:\d+}", panel_inbox_dismiss)
+    r.add_get(f"{base}/tickets", panel_tickets)
+    r.add_post(f"{base}/tickets", panel_ticket_new)
+    r.add_get(base + r"/tickets/{id:\d+}", panel_ticket)
+    r.add_post(base + r"/tickets/{id:\d+}/messages", panel_ticket_reply)
+    r.add_post(base + r"/tickets/{id:\d+}/close", panel_ticket_close)
+    r.add_get(base + r"/tickets/{id:\d+}/attachments/{aid:\d+}", panel_attachment)
+    r.add_get(f"{base}/export", panel_export)
+    r.add_delete(f"{base}/data", panel_erase)
+
+    api = "/admin/api/web"
+    account = r"{account:(tradeyar|coineprofx):[A-Za-z0-9_.-]{1,64}}"
+    r.add_get(f"{api}/overview", web_overview)
+    r.add_get(f"{api}/accounts", web_accounts)
+    r.add_get(f"{api}/accounts.csv", web_accounts_csv)
+    r.add_get(f"{api}/accounts/{account}", web_account)
+    r.add_get(f"{api}/accounts/{account}/timeline", web_timeline)
+    r.add_post(f"{api}/accounts/{account}/refresh", web_refresh)
+    r.add_post(f"{api}/accounts/{account}/revoke", web_revoke)
+    r.add_put(f"{api}/accounts/{account}/note", web_note)
+    r.add_get(f"{api}/accounts/{account}/workspace/" + r"{kind:[a-z]+}/{version:\d+}", web_workspace_version)
+    r.add_post(f"{api}/accounts/{account}/workspace/" + r"{kind:[a-z]+}/restore", web_workspace_restore)
+    r.add_get(f"{api}/trades", web_trades)
+    r.add_get(f"{api}/trades.csv", web_trades_csv)
+    r.add_get(f"{api}/tickets", web_tickets)
+    r.add_get(api + r"/tickets/{id:\d+}", web_ticket)
+    r.add_post(api + r"/tickets/{id:\d+}/reply", web_ticket_reply)
+    r.add_post(api + r"/tickets/{id:\d+}/status", web_ticket_status)
+    r.add_get(api + r"/attachments/{aid:\d+}", web_attachment)
+    r.add_get(f"{api}/messages", web_messages)
+    r.add_post(f"{api}/messages", web_message_send)
+    r.add_get(f"{api}/errors", web_errors)
+
+
+# ── Reading the relay's calls ─────────────────────────────────────────────────────────────────────
+
+
+def _panel_refuse(status: int, error: str, **extra) -> web.HTTPException:
+    kind = {400: web.HTTPBadRequest, 401: web.HTTPUnauthorized, 403: web.HTTPForbidden, 404: web.HTTPNotFound,
+            409: web.HTTPConflict, 413: web.HTTPRequestEntityTooLarge, 429: web.HTTPTooManyRequests,
+            503: web.HTTPServiceUnavailable}[status]
+    if status == 413:
+        return web.HTTPRequestEntityTooLarge(max_size=PANEL_BODY_LIMIT, actual_size=0,
+                                             text=json.dumps({"error": error, **extra}), content_type="application/json")
+    return kind(text=json.dumps({"error": error, **extra}), content_type="application/json")
+
+
+def _relay_only(request: web.Request) -> None:
+    """The secret, compared in constant time. A wrong or missing one is told nothing but «no»."""
+    config: Config = request.app["config"]
+    if not config.panel_enabled:
+        raise _panel_refuse(503, "panel_off")
+    sent = request.headers.get("X-Panel-Token", "")
+    if not sent or not hmac.compare_digest(sent.encode(), config.panel_token.encode()):
+        raise _panel_refuse(404, "not_found")
+
+
+async def panel_body(request: web.Request, limit: int = PANEL_BODY_LIMIT) -> dict:
+    """The JSON body, read up to [limit] bytes — past it the call is refused, not truncated."""
+    if request.content_length is not None and request.content_length > limit:
+        raise _panel_refuse(413, "too_large")
+    chunks, size = [], 0
+    async for chunk in request.content.iter_chunked(64 * 1024):
+        size += len(chunk)
+        if size > limit:
+            raise _panel_refuse(413, "too_large")
+        chunks.append(chunk)
+    try:
+        body = json.loads(b"".join(chunks) or b"{}")
+    except ValueError:
+        raise _panel_refuse(400, "invalid_json")
+    if not isinstance(body, dict):
+        raise _panel_refuse(400, "invalid_json")
+    return body
+
+
+def _clean_identity(raw) -> list[dict]:
+    out = []
+    for item in raw if isinstance(raw, list) else []:
+        if not isinstance(item, dict) or item.get("backend") not in PANEL_BACKENDS:
+            continue
+        ident = clean_text(item.get("id"), 64)
+        if not ident or not PANEL_ALIAS.match(f"{item['backend']}:{ident}"):
+            continue
+        out.append({"backend": item["backend"], "id": ident, "email": clean_text(item.get("email"), 254).lower(),
+                    "name": clean_text(item.get("name"), 120), "vip": bool(item.get("vip")),
+                    "paid": bool(item.get("paid")), "plan": clean_text(item.get("plan"), 40)})
+    return out
+
+
+def _client(raw: dict) -> dict:
+    return {
+        "sid": clean_text(raw.get("sid"), 32), "browser": clean_text(raw.get("browser"), 32),
+        "os": clean_text(raw.get("os"), 32), "device": clean_text(raw.get("device"), 16),
+        "country": (clean_text(raw.get("country"), 2).upper() or None), "ip_hash": clean_text(raw.get("ip_hash"), 32),
+    }
+
+
+def panel_account(app: web.Application, identity: list[dict], client: dict, at: int, touch: bool = True) -> str | None:
+    """The canonical web account for the aliases a session carries, created on first sight."""
+    store: Store = app["store"]
+    secret = app["config"].panel_token
+    aliases = [f"{who['backend']}:{who['id']}" for who in identity]
+    if not aliases:
+        return None
+    known = [store.one("SELECT account FROM web_aliases WHERE alias=?", (alias,)) for alias in aliases]
+    account = next((a for a in known if a), None) or aliases[0]
+    lead = next((who for who in identity if f"{who['backend']}:{who['id']}" == account), identity[0])
+    for who, alias, existing in zip(identity, aliases, known):
+        store.x(
+            "INSERT INTO web_aliases(alias, account, backend, email, email_key, name, vip, paid, plan, last_seen) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(alias) DO UPDATE SET email=COALESCE(NULLIF(excluded.email, ''), email), "
+            "email_key=COALESCE(NULLIF(excluded.email_key, ''), email_key), name=COALESCE(NULLIF(excluded.name, ''), name), "
+            "vip=excluded.vip, paid=excluded.paid, plan=excluded.plan, last_seen=excluded.last_seen",
+            (alias, existing or account, who["backend"], who["email"], email_key(secret, who["email"]), who["name"],
+             int(who["vip"]), int(who["paid"]), who["plan"], at))
+    backend, backend_id = account.split(":", 1)
+    vip = any(who["vip"] for who in identity)
+    paid = any(who["paid"] for who in identity)
+    plan = next((who["plan"] for who in identity if who["plan"]), "")
+    store.x(
+        "INSERT INTO web_accounts(account, backend, backend_id, email, email_key, name, first_seen, last_seen, vip, paid, plan, "
+        "last_device, last_browser, last_os, last_country) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
+        "ON CONFLICT(account) DO UPDATE SET email=COALESCE(NULLIF(excluded.email, ''), email), "
+        "email_key=COALESCE(NULLIF(excluded.email_key, ''), email_key), name=COALESCE(NULLIF(excluded.name, ''), name), "
+        "last_seen=MAX(last_seen, excluded.last_seen), vip=excluded.vip, paid=excluded.paid, "
+        "plan=COALESCE(NULLIF(excluded.plan, ''), plan), last_device=COALESCE(NULLIF(excluded.last_device, ''), last_device), "
+        "last_browser=COALESCE(NULLIF(excluded.last_browser, ''), last_browser), last_os=COALESCE(NULLIF(excluded.last_os, ''), last_os), "
+        "last_country=COALESCE(excluded.last_country, last_country)" if touch else
+        "INSERT OR IGNORE INTO web_accounts(account, backend, backend_id, email, email_key, name, first_seen, last_seen, vip, paid, "
+        "plan, last_device, last_browser, last_os, last_country) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (account, backend, backend_id, lead["email"], email_key(secret, lead["email"]), lead["name"], at, at, int(vip),
+         int(paid), plan, client.get("device") or "", client.get("browser") or "", client.get("os") or "", client.get("country")))
+    return account
+
+
+def panel_reader(request: web.Request) -> dict:
+    """Who is calling: the relay's secret, then the identity it verified with the backend."""
+    _relay_only(request)
+    raw = request.headers.get("X-Panel-Identity", "")
+    try:
+        decoded = json.loads(base64.urlsafe_b64decode(raw + "=" * (-len(raw) % 4)))
+    except (ValueError, TypeError):
+        raise _panel_refuse(401, "no_identity")
+    if not isinstance(decoded, dict):
+        raise _panel_refuse(401, "no_identity")
+    identity = _clean_identity(decoded.get("identity"))
+    client = _client(decoded)
+    account = panel_account(request.app, identity, client, now())
+    if account is None:
+        raise _panel_refuse(401, "no_identity")
+    store: Store = request.app["store"]
+    aliases = [row["alias"] for row in store.q("SELECT alias FROM web_aliases WHERE account=?", (account,))] or [account]
+    return {"account": account, "aliases": aliases, "identity": identity, **client}
+
+
+def panel_limit(request: web.Request, reader: dict, bucket: str) -> None:
+    if not request.app["panel_limits"][bucket].allow(reader["account"]):
+        raise _panel_refuse(429, "slow_down")
+
+
+def panel_log(store: Store, account: str | None, kind: str, name: str = "", detail=None, source: str = "relay",
+              client: dict | None = None, backend: str | None = None, at: int | None = None) -> None:
+    client = client or {}
+    text = None if detail is None else json.dumps(detail, ensure_ascii=False)[:4000]
+    store.x("INSERT INTO web_events(account, at, kind, name, detail, source, backend, sid, device, browser, os, country, ip_hash) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (account, at or now(), kind, name[:80], text, source, backend, client.get("sid"), client.get("device"),
+             client.get("browser"), client.get("os"), client.get("country"), client.get("ip_hash")))
+
+
+def trade_action(method: str, path: str) -> str:
+    for pattern, by_method in TRADE_ACTIONS:
+        if pattern.match(path):
+            return by_method.get(method, method.lower())
+    return method.lower()
+
+
+def _number(value) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number == number and abs(number) < 1e15 else None
+
+
+async def panel_events_in(request: web.Request) -> web.Response:
+    """What the relay saw. Each line is the relay's word; the browser has no way to write here."""
+    _relay_only(request)
+    body = await panel_body(request, 512 * 1024)
+    events = body.get("events")
+    if not isinstance(events, list):
+        raise _panel_refuse(400, "events")
+    store: Store = request.app["store"]
+    stored = 0
+    store.x("BEGIN")
+    try:
+        for event in events[:500]:
+            if not isinstance(event, dict):
+                continue
+            kind = clean_text(event.get("kind"), 32)
+            at = int(_number(event.get("at")) or now())
+            identity = _clean_identity(event.get("identity"))
+            client = _client(event)
+            backend = event.get("backend") if event.get("backend") in PANEL_BACKENDS else None
+            account = panel_account(request.app, identity, client, at, touch=kind != "session_revoked") if identity else None
+            if kind == "signin" and account:
+                store.x("UPDATE web_accounts SET sign_ins=sign_ins+1 WHERE account=?", (account,))
+                panel_log(store, account, "signin", clean_text(event.get("method"), 16), None, "relay", client, backend, at)
+            elif kind == "signin_failed":
+                key = clean_text(event.get("email_hash"), 64)
+                if key and backend:
+                    account = store.one("SELECT account FROM web_aliases WHERE email_key=? AND backend=?", (key, backend))
+                panel_log(store, account, "signin_failed", clean_text(event.get("method"), 16), None, "relay", client, backend, at)
+            elif kind in ("signout", "refresh_failed"):
+                panel_log(store, account, kind, clean_text(event.get("how"), 16), None, "relay", client, backend, at)
+            elif kind == "session_revoked":
+                panel_log(store, account, kind, clean_text(event.get("by"), 16),
+                          {"operator": clean_text(event.get("operator"), 64), "target": clean_text(event.get("target"), 32)},
+                          "relay", client, backend, at)
+            elif kind == "trade":
+                fields = event.get("fields") if isinstance(event.get("fields"), dict) else {}
+                fields = {clean_text(k, 32): (v if isinstance(v, (int, float, bool)) or v is None else clean_text(v, 64))
+                          for k, v in list(fields.items())[:24]}
+                method = clean_text(event.get("method"), 8).upper()
+                path = clean_text(event.get("path"), 120)
+                status = int(_number(event.get("status")) or 0)
+                action = trade_action(method, path)
+                venue = fields.get("venue") or (path.split("/")[1] if path.startswith("venues/") else None)
+                store.x(
+                    "INSERT INTO web_trades(account, at, backend, method, path, action, symbol, side, quantity, type, price, venue, "
+                    "status, ok, order_id, state, detail, fields, sid, device) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (account, at, backend, method, path, action, clean_text(fields.get("symbol"), 24).upper() or None,
+                     clean_text(fields.get("side") or fields.get("direction"), 8).lower() or None,
+                     _number(fields.get("quantity") if fields.get("quantity") is not None else fields.get("volume")),
+                     clean_text(fields.get("type"), 16) or None, _number(fields.get("price")), venue,
+                     status, int(200 <= status < 300), clean_text(event.get("order_id"), 64) or None,
+                     clean_text(event.get("state"), 32) or None, clean_text(event.get("detail"), 200) or None,
+                     json.dumps(fields, ensure_ascii=False), client["sid"], client["device"]))
+                panel_log(store, account, "trade", action,
+                          {"symbol": fields.get("symbol"), "side": fields.get("side"), "status": status}, "relay", client, backend, at)
+            else:
+                continue
+            stored += 1
+        store.x("COMMIT")
+    except Exception:
+        store.x("ROLLBACK")
+        raise
+    return web.json_response({"stored": stored})
+
+
+# ── The reader's panel ───────────────────────────────────────────────────────────────────────────
+
+
+def _account_row(store: Store, account: str):
+    rows = store.q("SELECT * FROM web_accounts WHERE account=?", (account,))
+    return rows[0] if rows else None
+
+
+def _inbox_rows(store: Store, account: str, limit: int = 100) -> list[dict]:
+    row = _account_row(store, account)
+    since = (row["first_seen"] if row else now()) - 30 * 86400
+    rows = store.q(
+        "SELECT m.*, s.read_at, s.dismissed FROM web_inbox m LEFT JOIN web_inbox_state s ON s.message_id=m.id AND s.account=? "
+        "WHERE (m.account=? OR (m.account IS NULL AND m.created_at>=?)) AND COALESCE(s.dismissed, 0)=0 "
+        "ORDER BY m.created_at DESC, m.id DESC LIMIT ?", (account, account, since, limit))
+    return [{"id": r["id"], "kind": r["kind"], "title": r["title"], "body": r["body"], "link": r["link"] or "",
+             "ticket_id": r["ticket_id"], "created_at": r["created_at"], "read": r["read_at"] is not None,
+             "broadcast": r["account"] is None} for r in rows]
+
+
+def _workspace_meta(store: Store, account: str) -> list[dict]:
+    rows = {r["kind"]: r for r in store.q("SELECT kind, version, size, updated_at, device FROM web_workspace WHERE account=?", (account,))}
+    counts = {r["kind"]: r["n"] for r in store.q(
+        "SELECT kind, COUNT(*) AS n FROM web_workspace_history WHERE account=? GROUP BY kind", (account,))}
+    return [{"kind": kind, "version": rows[kind]["version"] if kind in rows else 0, "size": rows[kind]["size"] if kind in rows else 0,
+             "updated_at": rows[kind]["updated_at"] if kind in rows else None, "device": rows[kind]["device"] if kind in rows else None,
+             "versions": counts.get(kind, 0), "limit": PANEL_KIND_LIMIT.get(kind, PANEL_KIND_DEFAULT_LIMIT)}
+            for kind in PANEL_KINDS]
+
+
+async def panel_me(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    store: Store = request.app["store"]
+    row = _account_row(store, reader["account"])
+    aliases = [dict(r) for r in store.q(
+        "SELECT alias, backend, email, name, vip, paid, plan, last_seen FROM web_aliases WHERE account=? ORDER BY alias",
+        (reader["account"],))]
+    inbox = _inbox_rows(store, reader["account"])
+    last = store.q("SELECT at, name, device, browser, os, country FROM web_events WHERE account=? AND kind='signin' "
+                   "ORDER BY at DESC LIMIT 2", (reader["account"],))
+    return web.json_response({
+        "account": reader["account"], "aliases": aliases,
+        "first_seen": row["first_seen"], "last_seen": row["last_seen"], "sign_ins": row["sign_ins"],
+        "vip": bool(row["vip"]), "paid": bool(row["paid"]), "plan": row["plan"], "premium_until": row["premium_until"],
+        "profile": _jsonish(row["profile"], {}), "prefs": _jsonish(row["prefs"], {}),
+        "unread": sum(1 for m in inbox if not m["read"]),
+        "open_tickets": store.one("SELECT COUNT(*) FROM web_tickets WHERE account=? AND status!='closed'", (reader["account"],)) or 0,
+        "answered_tickets": store.one("SELECT COUNT(*) FROM web_tickets WHERE account=? AND unread_user>0", (reader["account"],)) or 0,
+        "trades_30d": store.one("SELECT COUNT(*) FROM web_trades WHERE account=? AND at>=?", (reader["account"], now() - 30 * 86400)) or 0,
+        "workspace": _workspace_meta(store, reader["account"]),
+        "previous_sign_in": dict(last[1]) if len(last) > 1 else None,
+        "session": {"sid": reader["sid"], "device": reader["device"], "browser": reader["browser"], "os": reader["os"],
+                    "country": reader["country"]},
+    })
+
+
+AVATAR_PATTERN = re.compile(r"^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$")
+
+
+async def panel_profile(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    panel_limit(request, reader, "write")
+    body = await panel_body(request, 96 * 1024)
+    avatar = str(body.get("avatar") or "")
+    if avatar and (len(avatar) > 64 * 1024 or not (AVATAR_PATTERN.match(avatar) or len(avatar) <= 8)):
+        raise _panel_refuse(400, "avatar")
+    profile = {"display_name": clean_text(body.get("display_name"), 40), "tagline": clean_text(body.get("tagline"), 80),
+               "avatar": avatar}
+    store: Store = request.app["store"]
+    store.x("UPDATE web_accounts SET profile=? WHERE account=?", (json.dumps(profile, ensure_ascii=False), reader["account"]))
+    panel_log(store, reader["account"], "feature", "profile.save", None, "panel", reader)
+    return web.json_response({"profile": profile})
+
+
+async def panel_prefs(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    panel_limit(request, reader, "write")
+    body = await panel_body(request, 8 * 1024)
+    store: Store = request.app["store"]
+    prefs = _jsonish(store.one("SELECT prefs FROM web_accounts WHERE account=?", (reader["account"],)), {})
+    for key, kind in PANEL_PREFS.items():
+        if key not in body:
+            continue
+        value = body[key]
+        if kind is bool:
+            prefs[key] = bool(value)
+        elif kind is list:
+            prefs[key] = [k for k in (value if isinstance(value, list) else []) if k in PANEL_KINDS]
+        else:
+            prefs[key] = clean_text(value, 16)
+    store.x("UPDATE web_accounts SET prefs=? WHERE account=?", (json.dumps(prefs), reader["account"]))
+    return web.json_response({"prefs": prefs})
+
+
+def _page(request: web.Request, default: int = 50, top: int = 200) -> tuple[int, int]:
+    try:
+        limit = max(1, min(top, int(request.query.get("limit", default))))
+        before = int(request.query.get("before", 0))
+    except ValueError:
+        limit, before = default, 0
+    return limit, before
+
+
+def _event_row(row: sqlite3.Row, owner: bool = False) -> dict:
+    out = {"id": row["id"], "at": row["at"], "kind": row["kind"], "name": row["name"] or "", "source": row["source"],
+           "backend": row["backend"], "device": row["device"], "browser": row["browser"], "os": row["os"],
+           "country": row["country"], "detail": _jsonish(row["detail"], {}) if row["detail"] else None}
+    if owner:
+        out.update({"sid": row["sid"], "ip_hash": (row["ip_hash"] or "")[:8], "account": row["account"]})
+    return out
+
+
+async def panel_activity(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    limit, before = _page(request)
+    kind = clean_text(request.query.get("kind"), 20)
+    store: Store = request.app["store"]
+    rows = store.q("SELECT * FROM web_events WHERE account=? AND (?='' OR kind=?) AND (?=0 OR id<?) AND kind!='error' "
+                   "ORDER BY id DESC LIMIT ?", (reader["account"], kind, kind, before, before, limit))
+    return web.json_response({"items": [_event_row(r) for r in rows]})
+
+
+async def panel_security(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    store: Store = request.app["store"]
+    marks = ",".join("?" for _ in PANEL_SECURITY_KINDS)
+    rows = store.q(f"SELECT * FROM web_events WHERE account=? AND kind IN ({marks}) ORDER BY id DESC LIMIT 100",
+                   (reader["account"], *PANEL_SECURITY_KINDS))
+    devices = [dict(r) for r in store.q(
+        "SELECT browser, os, device, MAX(at) AS last_seen, COUNT(*) AS sign_ins, MAX(country) AS country FROM web_events "
+        "WHERE account=? AND kind='signin' GROUP BY browser, os, device ORDER BY last_seen DESC LIMIT 20", (reader["account"],))]
+    failed = store.one("SELECT COUNT(*) FROM web_events WHERE account=? AND kind='signin_failed' AND at>=?",
+                       (reader["account"], now() - 30 * 86400)) or 0
+    return web.json_response({"items": [_event_row(r) for r in rows], "devices": devices, "failed_30d": failed})
+
+
+async def panel_client_events(request: web.Request) -> web.Response:
+    """The page's own lines: its errors and which features it used. Small, batched, signed-in only."""
+    reader = panel_reader(request)
+    panel_limit(request, reader, "events")
+    body = await panel_body(request, 64 * 1024)
+    events = body.get("events")
+    if not isinstance(events, list) or len(events) > 50:
+        raise _panel_refuse(400, "events")
+    store: Store = request.app["store"]
+    stored = 0
+    stamp = now()
+    for event in events:
+        if not isinstance(event, dict) or event.get("kind") not in PANEL_CLIENT_KINDS:
+            continue
+        name = clean_text(event.get("name"), 80)
+        if not name:
+            continue
+        detail = event.get("detail") if isinstance(event.get("detail"), dict) else None
+        if detail is not None:
+            detail = {clean_text(k, 24): (clean_text(v, 1500) if isinstance(v, str) else v if isinstance(v, (int, float, bool)) else None)
+                      for k, v in list(detail.items())[:12]}
+            if len(json.dumps(detail)) > 4000:
+                detail = {"truncated": True}
+        at = int(_number(event.get("at")) or stamp)
+        # A clock that is off by more than a day is the browser's, not the event's.
+        at = at if abs(at - stamp) < 86400 else stamp
+        panel_log(store, reader["account"], event["kind"], name, detail, "page", reader, None, at)
+        stored += 1
+    return web.json_response({"stored": stored})
+
+
+def _trade_row(row: sqlite3.Row) -> dict:
+    out = dict(row)
+    out["fields"] = _jsonish(row["fields"], {})
+    out["ok"] = bool(row["ok"])
+    return out
+
+
+def _trade_filters(request: web.Request, account: str | None) -> tuple[str, list]:
+    clauses, args = [], []
+    if account:
+        clauses.append("account=?")
+        args.append(account)
+    for key in ("symbol", "side", "venue", "backend", "action"):
+        value = clean_text(request.query.get(key), 24)
+        if value:
+            clauses.append(f"{key}=?")
+            args.append(value.upper() if key == "symbol" else value.lower())
+    status = request.query.get("status")
+    if status in ("ok", "failed"):
+        clauses.append("ok=?")
+        args.append(1 if status == "ok" else 0)
+    for key, op in (("from", ">="), ("to", "<=")):
+        try:
+            value = int(request.query.get(key) or 0)
+        except ValueError:
+            value = 0
+        if value:
+            clauses.append(f"at{op}?")
+            args.append(value)
+    if not account:
+        q = clean_text(request.query.get("account"), 80)
+        if q:
+            clauses.append("account=?")
+            args.append(q)
+    return ("WHERE " + " AND ".join(clauses)) if clauses else "", args
+
+
+async def panel_trades(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    where, args = _trade_filters(request, reader["account"])
+    limit, before = _page(request, 100, 500)
+    store: Store = request.app["store"]
+    rows = store.q(f"SELECT * FROM web_trades {where} {'AND' if where else 'WHERE'} (?=0 OR id<?) ORDER BY id DESC LIMIT ?",
+                   (*args, before, before, limit))
+    return web.json_response({"items": [_trade_row(r) for r in rows],
+                              "total": store.one(f"SELECT COUNT(*) FROM web_trades {where}", args) or 0})
+
+
+def _kind(request: web.Request) -> str:
+    kind = request.match_info["kind"]
+    if kind not in PANEL_KINDS:
+        raise _panel_refuse(404, "kind")
+    return kind
+
+
+async def panel_workspace_list(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    return web.json_response({"kinds": _workspace_meta(request.app["store"], reader["account"])})
+
+
+async def panel_workspace_get(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    kind = _kind(request)
+    rows = request.app["store"].q("SELECT * FROM web_workspace WHERE account=? AND kind=?", (reader["account"], kind))
+    if not rows:
+        return web.json_response({"kind": kind, "version": 0, "data": None})
+    row = rows[0]
+    return web.json_response({"kind": kind, "version": row["version"], "data": json.loads(row["data"]), "size": row["size"],
+                              "updated_at": row["updated_at"], "device": row["device"]})
+
+
+def save_workspace(app: web.Application, account: str, kind: str, data_text: str, device: str | None,
+                   restored_from: int | None = None) -> int:
+    """A new version of one part of the workspace; the history keeps the last few, older ones go."""
+    store: Store = app["store"]
+    current = store.one("SELECT version FROM web_workspace WHERE account=? AND kind=?", (account, kind)) or 0
+    version = current + 1
+    stamp = now()
+    size = len(data_text.encode())
+    store.x("INSERT INTO web_workspace(account, kind, version, data, size, updated_at, device) VALUES (?,?,?,?,?,?,?) "
+            "ON CONFLICT(account, kind) DO UPDATE SET version=excluded.version, data=excluded.data, size=excluded.size, "
+            "updated_at=excluded.updated_at, device=excluded.device", (account, kind, version, data_text, size, stamp, device))
+    store.x("INSERT OR REPLACE INTO web_workspace_history(account, kind, version, data, size, saved_at, device, restored_from) "
+            "VALUES (?,?,?,?,?,?,?,?)", (account, kind, version, data_text, size, stamp, device, restored_from))
+    store.x("DELETE FROM web_workspace_history WHERE account=? AND kind=? AND version<=?",
+            (account, kind, version - app["config"].panel_history))
+    return version
+
+
+async def panel_workspace_put(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    kind = _kind(request)
+    panel_limit(request, reader, "write")
+    limit = PANEL_KIND_LIMIT.get(kind, PANEL_KIND_DEFAULT_LIMIT)
+    body = await panel_body(request, limit + 16 * 1024)
+    data = body.get("data")
+    if not isinstance(data, dict):
+        raise _panel_refuse(400, "data")
+    text = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    if len(text.encode()) > limit:
+        raise _panel_refuse(413, "too_large", limit=limit)
+    store: Store = request.app["store"]
+    current = store.one("SELECT version FROM web_workspace WHERE account=? AND kind=?", (reader["account"], kind)) or 0
+    try:
+        base = int(body.get("base_version") or 0)
+    except (TypeError, ValueError):
+        raise _panel_refuse(400, "base_version")
+    if base != current and not body.get("force"):
+        raise _panel_refuse(409, "newer_version", version=current)
+    device = clean_text(body.get("device"), 60) or f"{reader['browser']} · {reader['os']}"
+    version = save_workspace(request.app, reader["account"], kind, text, device)
+    panel_log(store, reader["account"], "feature", f"workspace.save.{kind}", {"version": version, "size": len(text.encode())},
+              "panel", reader)
+    return web.json_response({"kind": kind, "version": version, "size": len(text.encode())})
+
+
+async def panel_workspace_versions(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    kind = _kind(request)
+    rows = request.app["store"].q("SELECT version, size, saved_at, device, restored_from FROM web_workspace_history "
+                                  "WHERE account=? AND kind=? ORDER BY version DESC", (reader["account"], kind))
+    return web.json_response({"kind": kind, "versions": [dict(r) for r in rows]})
+
+
+async def panel_workspace_version(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    kind = _kind(request)
+    rows = request.app["store"].q("SELECT * FROM web_workspace_history WHERE account=? AND kind=? AND version=?",
+                                  (reader["account"], kind, int(request.match_info["version"])))
+    if not rows:
+        raise _panel_refuse(404, "version")
+    return web.json_response({"kind": kind, "version": rows[0]["version"], "data": json.loads(rows[0]["data"]),
+                              "saved_at": rows[0]["saved_at"]})
+
+
+def restore_workspace(app: web.Application, account: str, kind: str, version: int, device: str) -> int:
+    rows = app["store"].q("SELECT data FROM web_workspace_history WHERE account=? AND kind=? AND version=?",
+                          (account, kind, version))
+    if not rows:
+        raise _panel_refuse(404, "version")
+    return save_workspace(app, account, kind, rows[0]["data"], device, restored_from=version)
+
+
+async def panel_workspace_restore(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    kind = _kind(request)
+    panel_limit(request, reader, "write")
+    body = await panel_body(request, 1024)
+    try:
+        version = int(body.get("version"))
+    except (TypeError, ValueError):
+        raise _panel_refuse(400, "version")
+    new = restore_workspace(request.app, reader["account"], kind, version, f"{reader['browser']} · {reader['os']}")
+    panel_log(request.app["store"], reader["account"], "feature", f"workspace.restore.{kind}", {"from": version, "version": new},
+              "panel", reader)
+    return web.json_response({"kind": kind, "version": new})
+
+
+async def panel_inbox(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    items = _inbox_rows(request.app["store"], reader["account"])
+    return web.json_response({"items": items, "unread": sum(1 for m in items if not m["read"])})
+
+
+def _own_message(store: Store, account: str, message_id: int) -> None:
+    row = store.q("SELECT account FROM web_inbox WHERE id=?", (message_id,))
+    if not row or (row[0]["account"] is not None and row[0]["account"] != account):
+        raise _panel_refuse(404, "message")
+
+
+async def panel_inbox_read(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    panel_limit(request, reader, "write")
+    store: Store = request.app["store"]
+    message_id = int(request.match_info["id"])
+    _own_message(store, reader["account"], message_id)
+    store.x("INSERT INTO web_inbox_state(message_id, account, read_at) VALUES (?,?,?) "
+            "ON CONFLICT(message_id, account) DO UPDATE SET read_at=COALESCE(read_at, excluded.read_at)",
+            (message_id, reader["account"], now()))
+    return web.json_response({"ok": True})
+
+
+async def panel_inbox_read_all(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    panel_limit(request, reader, "write")
+    store: Store = request.app["store"]
+    marked = 0
+    for item in _inbox_rows(store, reader["account"], 500):
+        if not item["read"]:
+            store.x("INSERT INTO web_inbox_state(message_id, account, read_at) VALUES (?,?,?) "
+                    "ON CONFLICT(message_id, account) DO UPDATE SET read_at=excluded.read_at", (item["id"], reader["account"], now()))
+            marked += 1
+    return web.json_response({"marked": marked})
+
+
+async def panel_inbox_dismiss(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    panel_limit(request, reader, "write")
+    store: Store = request.app["store"]
+    message_id = int(request.match_info["id"])
+    _own_message(store, reader["account"], message_id)
+    store.x("INSERT INTO web_inbox_state(message_id, account, read_at, dismissed) VALUES (?,?,?,1) "
+            "ON CONFLICT(message_id, account) DO UPDATE SET dismissed=1", (message_id, reader["account"], now()))
+    return web.json_response({"ok": True})
+
+
+def sniff_image(data: bytes) -> str | None:
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+def _attachments(raw) -> list[tuple[str, str, bytes]]:
+    """Small images only, judged by their bytes: never SVG, never anything a browser would run."""
+    if raw in (None, []):
+        return []
+    if not isinstance(raw, list) or len(raw) > PANEL_ATTACHMENTS_PER_MESSAGE:
+        raise _panel_refuse(400, "attachments")
+    out = []
+    for item in raw:
+        if not isinstance(item, dict):
+            raise _panel_refuse(400, "attachments")
+        text = str(item.get("data") or "")
+        if "," in text and text.startswith("data:"):
+            text = text.split(",", 1)[1]
+        if len(text) > PANEL_ATTACHMENT_LIMIT * 4 // 3 + 8:
+            raise _panel_refuse(413, "attachment_too_large", limit=PANEL_ATTACHMENT_LIMIT)
+        try:
+            data = base64.b64decode(text, validate=True)
+        except (ValueError, TypeError):
+            raise _panel_refuse(400, "attachments")
+        if len(data) > PANEL_ATTACHMENT_LIMIT:
+            raise _panel_refuse(413, "attachment_too_large", limit=PANEL_ATTACHMENT_LIMIT)
+        kind = sniff_image(data)
+        if kind is None:
+            raise _panel_refuse(400, "attachment_type")
+        out.append((clean_text(item.get("name"), 80) or "image", kind, data))
+    return out
+
+
+def _store_message(store: Store, ticket_id: int, account: str, author: str, operator: str | None, text: str,
+                   files: list[tuple[str, str, bytes]]) -> int:
+    stamp = now()
+    message_id = store.x("INSERT INTO web_ticket_messages(ticket_id, at, author, operator, body) VALUES (?,?,?,?,?)",
+                         (ticket_id, stamp, author, operator, text)).lastrowid
+    for name, kind, data in files:
+        store.x("INSERT INTO web_attachments(ticket_id, message_id, account, name, type, size, data, created_at) "
+                "VALUES (?,?,?,?,?,?,?,?)", (ticket_id, message_id, account, name, kind, len(data), data, stamp))
+    return message_id
+
+
+def _ticket_row(row: sqlite3.Row) -> dict:
+    return {"id": row["id"], "account": row["account"], "subject": row["subject"], "category": row["category"],
+            "status": row["status"], "created_at": row["created_at"], "updated_at": row["updated_at"],
+            "unread_user": bool(row["unread_user"]), "unread_owner": bool(row["unread_owner"])}
+
+
+def _thread(store: Store, ticket_id: int, owner: bool = False) -> list[dict]:
+    files: dict[int, list] = defaultdict(list)
+    for a in store.q("SELECT id, message_id, name, type, size FROM web_attachments WHERE ticket_id=? ORDER BY id", (ticket_id,)):
+        files[a["message_id"]].append({"id": a["id"], "name": a["name"], "type": a["type"], "size": a["size"]})
+    return [{"id": m["id"], "at": m["at"], "author": m["author"], "body": m["body"], "attachments": files.get(m["id"], []),
+             **({"operator": m["operator"]} if owner else {})}
+            for m in store.q("SELECT * FROM web_ticket_messages WHERE ticket_id=? ORDER BY id", (ticket_id,))]
+
+
+async def panel_tickets(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    rows = request.app["store"].q("SELECT * FROM web_tickets WHERE account=? ORDER BY updated_at DESC LIMIT 100",
+                                  (reader["account"],))
+    return web.json_response({"items": [_ticket_row(r) for r in rows]})
+
+
+async def panel_ticket_new(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    body = await panel_body(request)
+    subject, text = clean_text(body.get("subject"), 120), clean_text(body.get("body"), 4000)
+    category = body.get("category") if body.get("category") in PANEL_TICKET_CATEGORIES else "other"
+    if len(subject) < 3 or len(text) < 5:
+        raise _panel_refuse(400, "subject_and_body")
+    files = _attachments(body.get("attachments"))
+    store: Store = request.app["store"]
+    if (store.one("SELECT COUNT(*) FROM web_tickets WHERE account=? AND status!='closed'", (reader["account"],)) or 0) >= 10:
+        raise _panel_refuse(429, "too_many_open")
+    panel_limit(request, reader, "ticket")
+    stamp = now()
+    ticket_id = store.x("INSERT INTO web_tickets(account, subject, category, status, created_at, updated_at, unread_owner) "
+                        "VALUES (?,?,?,?,?,?,1)", (reader["account"], subject, category, "open", stamp, stamp)).lastrowid
+    _store_message(store, ticket_id, reader["account"], "user", None, text, files)
+    panel_log(store, reader["account"], "feature", "ticket.open", {"ticket": ticket_id, "category": category}, "panel", reader)
+    return web.json_response({"id": ticket_id}, status=201)
+
+
+def _own_ticket(store: Store, account: str, ticket_id: int) -> sqlite3.Row:
+    rows = store.q("SELECT * FROM web_tickets WHERE id=? AND account=?", (ticket_id, account))
+    if not rows:
+        raise _panel_refuse(404, "ticket")
+    return rows[0]
+
+
+async def panel_ticket(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    store: Store = request.app["store"]
+    ticket = _own_ticket(store, reader["account"], int(request.match_info["id"]))
+    store.x("UPDATE web_tickets SET unread_user=0 WHERE id=?", (ticket["id"],))
+    return web.json_response({"ticket": _ticket_row(ticket), "messages": _thread(store, ticket["id"])})
+
+
+async def panel_ticket_reply(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    body = await panel_body(request)
+    store: Store = request.app["store"]
+    ticket = _own_ticket(store, reader["account"], int(request.match_info["id"]))
+    text = clean_text(body.get("body"), 4000)
+    if len(text) < 1:
+        raise _panel_refuse(400, "body")
+    files = _attachments(body.get("attachments"))
+    panel_limit(request, reader, "reply")
+    _store_message(store, ticket["id"], reader["account"], "user", None, text, files)
+    store.x("UPDATE web_tickets SET status='open', updated_at=?, unread_owner=1 WHERE id=?", (now(), ticket["id"]))
+    return web.json_response({"ok": True}, status=201)
+
+
+async def panel_ticket_close(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    panel_limit(request, reader, "write")
+    store: Store = request.app["store"]
+    ticket = _own_ticket(store, reader["account"], int(request.match_info["id"]))
+    store.x("UPDATE web_tickets SET status='closed', updated_at=? WHERE id=?", (now(), ticket["id"]))
+    return web.json_response({"ok": True})
+
+
+def _image(row: sqlite3.Row) -> web.Response:
+    return web.Response(body=row["data"], content_type=row["type"], headers={
+        "Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff",
+        "Content-Disposition": "inline", "Content-Security-Policy": "default-src 'none'; sandbox"})
+
+
+async def panel_attachment(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    store: Store = request.app["store"]
+    ticket = _own_ticket(store, reader["account"], int(request.match_info["id"]))
+    rows = store.q("SELECT * FROM web_attachments WHERE id=? AND ticket_id=?", (int(request.match_info["aid"]), ticket["id"]))
+    if not rows:
+        raise _panel_refuse(404, "attachment")
+    return _image(rows[0])
+
+
+def account_export(store: Store, account: str) -> dict:
+    """Everything this service holds for one web account, in one document."""
+    row = _account_row(store, account)
+    tickets = []
+    for t in store.q("SELECT * FROM web_tickets WHERE account=? ORDER BY id", (account,)):
+        thread = _thread(store, t["id"])
+        for message in thread:
+            for a in message["attachments"]:
+                data = store.one("SELECT data FROM web_attachments WHERE id=?", (a["id"],))
+                a["data"] = base64.b64encode(data).decode() if data else ""
+        tickets.append({**_ticket_row(t), "messages": thread})
+    return {
+        "exported_at": now(), "account": account,
+        "profile": {k: row[k] for k in ("backend", "backend_id", "email", "name", "first_seen", "last_seen", "sign_ins",
+                                        "vip", "paid", "plan", "premium_until", "last_device", "last_browser", "last_os",
+                                        "last_country")} if row else None,
+        "panel_profile": _jsonish(row["profile"], {}) if row else {}, "prefs": _jsonish(row["prefs"], {}) if row else {},
+        "aliases": [dict(r) for r in store.q("SELECT alias, backend, email, name, vip, paid, plan, last_seen FROM web_aliases "
+                                             "WHERE account=?", (account,))],
+        "workspace": [{"kind": r["kind"], "version": r["version"], "updated_at": r["updated_at"], "data": json.loads(r["data"])}
+                      for r in store.q("SELECT * FROM web_workspace WHERE account=?", (account,))],
+        "workspace_history": [{k: r[k] for k in ("kind", "version", "size", "saved_at", "device", "restored_from")}
+                              for r in store.q("SELECT * FROM web_workspace_history WHERE account=? ORDER BY kind, version", (account,))],
+        "inbox": _inbox_rows(store, account, 1000),
+        "tickets": tickets,
+        "activity": [_event_row(r) for r in store.q("SELECT * FROM web_events WHERE account=? ORDER BY id", (account,))],
+        "trades": [_trade_row(r) for r in store.q("SELECT * FROM web_trades WHERE account=? ORDER BY id", (account,))],
+    }
+
+
+async def panel_export(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    panel_limit(request, reader, "export")
+    store: Store = request.app["store"]
+    data = account_export(store, reader["account"])
+    panel_log(store, reader["account"], "feature", "data.export", None, "panel", reader)
+    return web.Response(body=json.dumps(data, ensure_ascii=False, indent=1).encode(), content_type="application/json",
+                        charset="utf-8", headers={"Content-Disposition": 'attachment; filename="pro-chart-panel-data.json"'})
+
+
+def erase_account(store: Store, account: str) -> dict:
+    """Everything of the account goes, except the trading audit, which stays without a name on it."""
+    counts = {}
+    for table in ("web_workspace", "web_workspace_history", "web_events", "web_attachments", "web_inbox_state"):
+        counts[table] = store.x(f"DELETE FROM {table} WHERE account=?", (account,)).rowcount
+    tickets = [r["id"] for r in store.q("SELECT id FROM web_tickets WHERE account=?", (account,))]
+    for ticket_id in tickets:
+        store.x("DELETE FROM web_ticket_messages WHERE ticket_id=?", (ticket_id,))
+    counts["web_tickets"] = store.x("DELETE FROM web_tickets WHERE account=?", (account,)).rowcount
+    counts["web_inbox"] = store.x("DELETE FROM web_inbox WHERE account=?", (account,)).rowcount
+    counts["web_trades_anonymised"] = store.x(
+        "UPDATE web_trades SET account=NULL, sid=NULL, device=NULL WHERE account=?", (account,)).rowcount
+    counts["web_aliases"] = store.x("DELETE FROM web_aliases WHERE account=?", (account,)).rowcount
+    counts["web_accounts"] = store.x("DELETE FROM web_accounts WHERE account=?", (account,)).rowcount
+    return counts
+
+
+async def panel_erase(request: web.Request) -> web.Response:
+    reader = panel_reader(request)
+    panel_limit(request, reader, "write")
+    body = await panel_body(request, 1024)
+    if body.get("confirm") is not True:
+        raise _panel_refuse(400, "confirm")
+    store: Store = request.app["store"]
+    counts = erase_account(store, reader["account"])
+    store.audit("reader", None, "web.erase", {"account": reader["account"], "rows": sum(counts.values())})
+    return web.json_response({"erased": counts})
+
+
+def prune_panel(store: Store) -> int:
+    """Old lines out: page views and feature use after 90 days, errors after 60, the rest after a year,
+    the trading audit after two."""
+    stamp, removed = now(), 0
+    for kind, days in PANEL_RETENTION.items():
+        removed += store.x("DELETE FROM web_events WHERE kind=? AND at<?", (kind, stamp - days * 86400)).rowcount
+    marks = ",".join("?" for _ in PANEL_RETENTION)
+    removed += store.x(f"DELETE FROM web_events WHERE kind NOT IN ({marks}) AND at<?",
+                       (*PANEL_RETENTION, stamp - PANEL_DEFAULT_RETENTION * 86400)).rowcount
+    removed += store.x("DELETE FROM web_trades WHERE at<?", (stamp - PANEL_TRADE_RETENTION * 86400,)).rowcount
+    return removed
+
+
+# ── «کاربران وب»: the owner's view ──────────────────────────────────────────────────────────────
+
+
+async def relay_call(app: web.Application, method: str, path: str, *, params: dict | None = None,
+                     body: dict | None = None) -> tuple[int, dict]:
+    config: Config = app["config"]
+    if not config.panel_enabled:
+        return 503, {"error": "panel_off"}
+    try:
+        async with app["state"]["http"].request(method, config.relay_url + path, params=params, json=body,
+                                                 headers={"X-Panel-Token": config.panel_token},
+                                                 timeout=aiohttp.ClientTimeout(total=8), allow_redirects=False) as response:
+            try:
+                data = await response.json(content_type=None)
+            except ValueError:
+                data = {}
+            return response.status, data if isinstance(data, dict) else {}
+    except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as error:
+        return 502, {"error": "relay_unreachable", "detail": type(error).__name__}
+
+
+def _web_account_param(request: web.Request) -> str:
+    account = request.match_info["account"]
+    if _account_row(request.app["store"], account) is None:
+        raise web.HTTPNotFound(text=json.dumps({"error": "web_account"}), content_type="application/json")
+    return account
+
+
+def _split(items, key: str, limit: int = 10) -> list[dict]:
+    counts: dict[str, int] = defaultdict(int)
+    for item in items:
+        counts[item.get(key) or "?"] += 1
+    return [{"label": k, "value": v} for k, v in sorted(counts.items(), key=lambda kv: -kv[1])[:limit]]
+
+
+async def web_overview(request: web.Request) -> web.Response:
+    require(request)
+    store: Store = request.app["store"]
+    status, live = await relay_call(request.app, "GET", "/relay/internal/sessions")
+    sessions = live.get("sessions", []) if status == 200 else []
+    stamp = now()
+    online = [s for s in sessions if stamp - int(s.get("last_seen") or 0) <= 300]
+    days = _days(request.app, 30)
+
+    def by_day(sql: str) -> list[int]:
+        found: dict[str, int] = defaultdict(int)
+        for row in store.q(sql, (stamp - 31 * 86400,)):
+            found[day_of(request.app, row[0])] += 1
+        return [found.get(day, 0) for day in days]
+
+    signins = by_day("SELECT at FROM web_events WHERE kind='signin' AND at>=?")
+    trades = by_day("SELECT at FROM web_trades WHERE at>=?")
+    errors = by_day("SELECT at FROM web_events WHERE kind='error' AND at>=?")
+    recent = [dict(r) for r in store.q("SELECT device, browser, os, country FROM web_events WHERE kind='signin' AND at>=?",
+                                       (stamp - 30 * 86400,))]
+    source = sessions or recent
+    return web.json_response({
+        "relay": {"ok": status == 200, "status": status, "error": live.get("error") if status != 200 else None},
+        "online_now": len({tuple(s.get("accounts") or [s.get("sid")]) for s in online}),
+        "online_sessions": len(online), "live_sessions": len(sessions), "guests": live.get("guests", 0),
+        "online": [{**s, "accounts": s.get("accounts")} for s in sorted(online, key=lambda s: -int(s.get("last_seen") or 0))[:50]],
+        "kpis": {
+            "accounts": store.one("SELECT COUNT(*) FROM web_accounts") or 0,
+            "active_1d": store.one("SELECT COUNT(*) FROM web_accounts WHERE last_seen>=?", (stamp - 86400,)) or 0,
+            "active_7d": store.one("SELECT COUNT(*) FROM web_accounts WHERE last_seen>=?", (stamp - 7 * 86400,)) or 0,
+            "new_7d": store.one("SELECT COUNT(*) FROM web_accounts WHERE first_seen>=?", (stamp - 7 * 86400,)) or 0,
+            "signins_today": signins[-1], "signins_7d": sum(signins[-7:]),
+            "failed_24h": store.one("SELECT COUNT(*) FROM web_events WHERE kind='signin_failed' AND at>=?", (stamp - 86400,)) or 0,
+            "trades_24h": store.one("SELECT COUNT(*) FROM web_trades WHERE at>=?", (stamp - 86400,)) or 0,
+            "trades_failed_24h": store.one("SELECT COUNT(*) FROM web_trades WHERE at>=? AND ok=0", (stamp - 86400,)) or 0,
+            "errors_24h": store.one("SELECT COUNT(*) FROM web_events WHERE kind='error' AND at>=?", (stamp - 86400,)) or 0,
+            "open_tickets": store.one("SELECT COUNT(*) FROM web_tickets WHERE status!='closed'") or 0,
+            "waiting_tickets": store.one("SELECT COUNT(*) FROM web_tickets WHERE unread_owner=1 AND status!='closed'") or 0,
+            "vip": store.one("SELECT COUNT(*) FROM web_accounts WHERE vip=1") or 0,
+            "synced": store.one("SELECT COUNT(DISTINCT account) FROM web_workspace") or 0,
+        },
+        "days": days, "series": {"signins": signins, "trades": trades, "errors": errors},
+        "devices": _split(source, "device"), "browsers": _split(source, "browser"), "systems": _split(source, "os"),
+        "countries": _split(source, "country"),
+        "features": [dict(r) for r in store.q(
+            "SELECT name AS label, COUNT(*) AS value FROM web_events WHERE kind IN ('feature', 'page') AND at>=? "
+            "GROUP BY name ORDER BY value DESC LIMIT 12", (stamp - 7 * 86400,))],
+    })
+
+
+WEB_ACCOUNT_SORTS = {
+    "seen": "a.last_seen DESC", "new": "a.first_seen DESC", "signins": "a.sign_ins DESC",
+    "trades": "trades_30d DESC, a.last_seen DESC", "email": "a.email ASC",
+}
+
+
+def _web_accounts_query(request: web.Request, online: set[str]) -> tuple[str, list]:
+    clauses, args = [], []
+    q = clean_text(request.query.get("q"), 80).lower()
+    if q:
+        clauses.append("(a.account LIKE ? OR LOWER(a.email) LIKE ? OR LOWER(a.name) LIKE ? OR a.account IN "
+                       "(SELECT account FROM web_aliases WHERE alias LIKE ? OR LOWER(email) LIKE ?))")
+        args += [f"%{q}%"] * 5
+    backend = request.query.get("backend")
+    if backend in PANEL_BACKENDS:
+        clauses.append("a.account IN (SELECT account FROM web_aliases WHERE backend=?)")
+        args.append(backend)
+    show = request.query.get("filter")
+    stamp = now()
+    if show == "online":
+        marks = ",".join("?" for _ in online) or "''"
+        clauses.append(f"a.account IN (SELECT account FROM web_aliases WHERE alias IN ({marks}))")
+        args += list(online)
+    elif show == "vip":
+        clauses.append("a.vip=1")
+    elif show == "premium":
+        clauses.append("(a.paid=1 OR (a.premium_until IS NOT NULL AND a.premium_until>?))")
+        args.append(datetime.now(timezone.utc).isoformat())
+    elif show == "traders":
+        clauses.append("a.account IN (SELECT account FROM web_trades WHERE at>=?)")
+        args.append(stamp - 30 * 86400)
+    elif show == "tickets":
+        clauses.append("a.account IN (SELECT account FROM web_tickets WHERE status!='closed')")
+    elif show == "errors":
+        clauses.append("a.account IN (SELECT account FROM web_events WHERE kind='error' AND at>=?)")
+        args.append(stamp - 7 * 86400)
+    elif show == "active7":
+        clauses.append("a.last_seen>=?")
+        args.append(stamp - 7 * 86400)
+    return ("WHERE " + " AND ".join(clauses)) if clauses else "", args
+
+
+def _web_account_rows(store: Store, where: str, args: list, order: str, limit: int, offset: int, online: set[str]) -> list[dict]:
+    stamp = now()
+    rows = store.q(
+        "SELECT a.*, (SELECT COUNT(*) FROM web_trades t WHERE t.account=a.account AND t.at>=?) AS trades_30d, "
+        "(SELECT COUNT(*) FROM web_trades t WHERE t.account=a.account) AS trades_total, "
+        "(SELECT COUNT(*) FROM web_tickets k WHERE k.account=a.account AND k.status!='closed') AS open_tickets, "
+        "(SELECT COUNT(*) FROM web_events e WHERE e.account=a.account AND e.kind='error' AND e.at>=?) AS errors_7d "
+        f"FROM web_accounts a {where} ORDER BY {order} LIMIT ? OFFSET ?",
+        (stamp - 30 * 86400, stamp - 7 * 86400, *args, limit, offset))
+    out = []
+    for row in rows:
+        aliases = [r["alias"] for r in store.q("SELECT alias FROM web_aliases WHERE account=? ORDER BY alias", (row["account"],))]
+        item = {k: row[k] for k in ("account", "backend", "backend_id", "email", "name", "first_seen", "last_seen", "sign_ins",
+                                    "plan", "premium_until", "last_device", "last_browser", "last_os", "last_country",
+                                    "trades_30d", "trades_total", "open_tickets", "errors_7d", "bridge_checked_at")}
+        item.update({"vip": bool(row["vip"]), "paid": bool(row["paid"]), "aliases": aliases,
+                     "membership": _jsonish(row["membership"], {}) if row["membership"] else None,
+                     "online": any(a in online for a in aliases)})
+        out.append(item)
+    return out
+
+
+async def _online_aliases(app: web.Application) -> tuple[set[str], list[dict], int]:
+    status, live = await relay_call(app, "GET", "/relay/internal/sessions")
+    sessions = live.get("sessions", []) if status == 200 else []
+    stamp = now()
+    online = {a for s in sessions if stamp - int(s.get("last_seen") or 0) <= 300 for a in s.get("accounts") or []}
+    return online, sessions, status
+
+
+async def web_accounts(request: web.Request) -> web.Response:
+    require(request)
+    store: Store = request.app["store"]
+    online, _, status = await _online_aliases(request.app)
+    where, args = _web_accounts_query(request, online)
+    order = WEB_ACCOUNT_SORTS.get(request.query.get("sort") or "seen", WEB_ACCOUNT_SORTS["seen"])
+    try:
+        page = max(1, int(request.query.get("page", 1)))
+        size = max(1, min(200, int(request.query.get("size", 50))))
+    except ValueError:
+        page, size = 1, 50
+    total = store.one(f"SELECT COUNT(*) FROM web_accounts a {where}", args) or 0
+    return web.json_response({"total": total, "page": page, "size": size, "relay_ok": status == 200,
+                              "accounts": _web_account_rows(store, where, args, order, size, (page - 1) * size, online)})
+
+
+WEB_ACCOUNT_CSV = ["account", "aliases", "email", "name", "first_seen", "last_seen", "sign_ins", "vip", "paid", "plan",
+                   "premium_until", "trades_30d", "trades_total", "open_tickets", "errors_7d", "last_device", "last_browser",
+                   "last_os", "last_country", "online"]
+
+
+async def web_accounts_csv(request: web.Request) -> web.Response:
+    session = require(request)
+    store: Store = request.app["store"]
+    online, _, _ = await _online_aliases(request.app)
+    where, args = _web_accounts_query(request, online)
+    rows = _web_account_rows(store, where, args, WEB_ACCOUNT_SORTS["seen"], 20000, 0, online)
+    store.audit(session["username"], client_ip(request), "web.export_accounts", {"rows": len(rows)})
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(WEB_ACCOUNT_CSV)
+    for row in rows:
+        writer.writerow([" ".join(row[c]) if c == "aliases" else ("" if row.get(c) is None else row.get(c)) for c in WEB_ACCOUNT_CSV])
+    return web.Response(body=("﻿" + out.getvalue()).encode(), content_type="text/csv", charset="utf-8",
+                        headers={"Content-Disposition": 'attachment; filename="pro-chart-web-accounts.csv"'})
+
+
+async def bridge_state(request: web.Request, account: str) -> list[dict]:
+    """Each alias's account on its own server, through the existing admin bridges: VIP, Premium,
+    ban. Matched by email, since a bridge's own id is not always the id `me` gives the reader."""
+    store: Store = request.app["store"]
+    out = []
+    for alias in store.q("SELECT alias, backend, email FROM web_aliases WHERE account=?", (account,)):
+        bridge = request.app["config"].bridges.get(alias["backend"])
+        entry = {"alias": alias["alias"], "backend": alias["backend"], "configured": bool(bridge and bridge.get("token"))}
+        if not entry["configured"] or not alias["email"]:
+            out.append(entry)
+            continue
+        status, listing = await bridge_call(request, bridge, "GET", "/users",
+                                            params={"q": alias["email"], "scope": "all", "size": "5"})
+        match = next((u for u in (listing.get("users") or []) if str(u.get("email") or "").lower() == alias["email"]), None) \
+            if status == 200 else None
+        if match is None:
+            entry["error"] = "not_found" if status == 200 else listing.get("error") or f"http_{status}"
+            out.append(entry)
+            continue
+        status, detail = await bridge_call(request, bridge, "GET", f"/users/{int(match['id'])}")
+        if status != 200:
+            entry["error"] = detail.get("error") or f"http_{status}"
+            out.append(entry)
+            continue
+        subscriptions = detail.get("subscriptions") or []
+        live = [s for s in subscriptions if s.get("live")]
+        entry.update({
+            "bridge_id": int(match["id"]), "banned": bool(detail.get("banned")), "membership": detail.get("membership"),
+            "plan": detail.get("plan"), "kyc": detail.get("kyc"),
+            "premium_until": max((s.get("ends_at") or "" for s in live), default=None),
+            "subscriptions": subscriptions[:10], "sessions_live": sum(1 for s in detail.get("sessions") or [] if s.get("live")),
+            "email_verified": detail.get("email_verified"), "created_at": detail.get("created_at"),
+        })
+        out.append(entry)
+    vip = any((e.get("membership") or {}).get("vip") for e in out)
+    paid = any((e.get("membership") or {}).get("paid") for e in out)
+    premium = max((e.get("premium_until") or "" for e in out), default="") or None
+    bridge_id = next((e.get("bridge_id") for e in out if e["alias"] == account and e.get("bridge_id")), None)
+    if any("bridge_id" in e for e in out):
+        store.x("UPDATE web_accounts SET vip=?, paid=?, premium_until=?, membership=?, bridge_id=COALESCE(?, bridge_id), "
+                "bridge_checked_at=? WHERE account=?",
+                (int(vip), int(paid), premium, json.dumps([{k: e.get(k) for k in ("alias", "membership", "premium_until", "banned")}
+                                                           for e in out], ensure_ascii=False), bridge_id, now(), account))
+    return out
+
+
+async def web_account(request: web.Request) -> web.Response:
+    require(request)
+    account = _web_account_param(request)
+    store: Store = request.app["store"]
+    row = _account_row(store, account)
+    aliases = [dict(r) for r in store.q("SELECT alias, backend, email, name, vip, paid, plan, last_seen FROM web_aliases "
+                                        "WHERE account=? ORDER BY alias", (account,))]
+    status, live = await relay_call(request.app, "GET", "/relay/internal/sessions")
+    names = {a["alias"] for a in aliases}
+    sessions = [s for s in live.get("sessions", []) if names & set(s.get("accounts") or [])] if status == 200 else []
+    bridges = []
+    if not row["bridge_checked_at"] or now() - row["bridge_checked_at"] > 3600:
+        bridges = await bridge_state(request, account)
+        row = _account_row(store, account)
+    stamp = now()
+    return web.json_response({
+        "account": {k: row[k] for k in row.keys() if k not in ("profile", "prefs", "membership", "email_key")},
+        "membership": _jsonish(row["membership"], []) if row["membership"] else None,
+        "profile": _jsonish(row["profile"], {}), "prefs": _jsonish(row["prefs"], {}),
+        "aliases": aliases, "sessions": sessions, "relay_ok": status == 200, "bridges": bridges,
+        "workspace": _workspace_meta(store, account),
+        "workspace_versions": [dict(r) for r in store.q(
+            "SELECT kind, version, size, saved_at, device, restored_from FROM web_workspace_history WHERE account=? "
+            "ORDER BY kind, version DESC", (account,))],
+        "tickets": [_ticket_row(r) for r in store.q("SELECT * FROM web_tickets WHERE account=? ORDER BY updated_at DESC", (account,))],
+        "counts": {
+            "trades_30d": store.one("SELECT COUNT(*) FROM web_trades WHERE account=? AND at>=?", (account, stamp - 30 * 86400)) or 0,
+            "trades_failed_30d": store.one("SELECT COUNT(*) FROM web_trades WHERE account=? AND at>=? AND ok=0",
+                                           (account, stamp - 30 * 86400)) or 0,
+            "errors_7d": store.one("SELECT COUNT(*) FROM web_events WHERE account=? AND kind='error' AND at>=?",
+                                   (account, stamp - 7 * 86400)) or 0,
+            "failed_signins_30d": store.one("SELECT COUNT(*) FROM web_events WHERE account=? AND kind='signin_failed' AND at>=?",
+                                            (account, stamp - 30 * 86400)) or 0,
+            "unread_inbox": sum(1 for m in _inbox_rows(store, account) if not m["read"]),
+        },
+        "features": [dict(r) for r in store.q(
+            "SELECT name AS label, COUNT(*) AS value FROM web_events WHERE account=? AND kind IN ('feature', 'page') AND at>=? "
+            "GROUP BY name ORDER BY value DESC LIMIT 10", (account, stamp - 30 * 86400))],
+    })
+
+
+async def web_timeline(request: web.Request) -> web.Response:
+    require(request)
+    account = _web_account_param(request)
+    limit, before = _page(request, 100, 500)
+    kind = clean_text(request.query.get("kind"), 20)
+    rows = request.app["store"].q(
+        "SELECT * FROM web_events WHERE account=? AND (?='' OR kind=?) AND (?=0 OR id<?) ORDER BY id DESC LIMIT ?",
+        (account, kind, kind, before, before, limit))
+    return web.json_response({"items": [_event_row(r, owner=True) for r in rows]})
+
+
+async def web_refresh(request: web.Request) -> web.Response:
+    session = require(request, mutating=True)
+    account = _web_account_param(request)
+    bridges = await bridge_state(request, account)
+    request.app["store"].audit(session["username"], client_ip(request), "web.refresh", {"account": account})
+    return web.json_response({"bridges": bridges})
+
+
+async def web_revoke(request: web.Request) -> web.Response:
+    """One live web session of the account ({sid}), or all of them ({})."""
+    session = require(request, mutating=True)
+    account = _web_account_param(request)
+    body = await read_json(request)
+    sid = clean_text(body.get("sid"), 32)
+    store: Store = request.app["store"]
+    revoked = 0
+    for alias in [r["alias"] for r in store.q("SELECT alias FROM web_aliases WHERE account=?", (account,))] or [account]:
+        status, data = await relay_call(request.app, "POST", "/relay/internal/sessions/revoke",
+                                        body={"account": alias, "sid": sid, "operator": session["username"]})
+        if status != 200:
+            return fail(502, data.get("error") or "relay_unreachable")
+        revoked += int(data.get("revoked") or 0)
+    store.audit(session["username"], client_ip(request), "web.revoke", {"account": account, "sid": sid or "all", "revoked": revoked})
+    return web.json_response({"revoked": revoked})
+
+
+async def web_note(request: web.Request) -> web.Response:
+    session = require(request, mutating=True)
+    account = _web_account_param(request)
+    body = await read_json(request)
+    note = clean_text(body.get("note"), 2000)
+    request.app["store"].x("UPDATE web_accounts SET note=? WHERE account=?", (note, account))
+    request.app["store"].audit(session["username"], client_ip(request), "web.note", {"account": account})
+    return web.json_response({"ok": True})
+
+
+async def web_workspace_version(request: web.Request) -> web.Response:
+    session = require(request)
+    account = _web_account_param(request)
+    kind = request.match_info["kind"]
+    store: Store = request.app["store"]
+    rows = store.q("SELECT * FROM web_workspace_history WHERE account=? AND kind=? AND version=?",
+                   (account, kind, int(request.match_info["version"])))
+    if not rows:
+        return fail(404, "version")
+    store.audit(session["username"], client_ip(request), "web.workspace_view",
+                {"account": account, "kind": kind, "version": rows[0]["version"]})
+    return web.Response(body=rows[0]["data"].encode(), content_type="application/json", charset="utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="{kind}-v{rows[0]["version"]}.json"'})
+
+
+async def web_workspace_restore(request: web.Request) -> web.Response:
+    session = require(request, mutating=True)
+    account = _web_account_param(request)
+    kind = request.match_info["kind"]
+    if kind not in PANEL_KINDS:
+        return fail(404, "kind")
+    body = await read_json(request)
+    try:
+        version = int(body.get("version"))
+    except (TypeError, ValueError):
+        return fail(400, "version")
+    new = restore_workspace(request.app, account, kind, version, "owner console")
+    store: Store = request.app["store"]
+    panel_log(store, account, "feature", f"workspace.restore.{kind}", {"from": version, "version": new, "by": "owner"}, "owner")
+    store.audit(session["username"], client_ip(request), "web.workspace_restore",
+                {"account": account, "kind": kind, "from": version, "version": new})
+    return web.json_response({"version": new})
+
+
+WEB_TRADE_CSV = ["id", "at", "account", "backend", "action", "method", "path", "symbol", "side", "quantity", "type", "price",
+                 "venue", "status", "ok", "order_id", "state", "detail", "device"]
+
+
+async def web_trades(request: web.Request) -> web.Response:
+    require(request)
+    store: Store = request.app["store"]
+    where, args = _trade_filters(request, None)
+    try:
+        page = max(1, int(request.query.get("page", 1)))
+        size = max(1, min(500, int(request.query.get("size", 100))))
+    except ValueError:
+        page, size = 1, 100
+    rows = store.q(f"SELECT * FROM web_trades {where} ORDER BY id DESC LIMIT ? OFFSET ?", (*args, size, (page - 1) * size))
+    totals = store.q(f"SELECT COUNT(*) AS n, SUM(ok) AS ok, COUNT(DISTINCT account) AS accounts FROM web_trades {where}", args)[0]
+    return web.json_response({"items": [_trade_row(r) for r in rows], "total": totals["n"] or 0, "ok": totals["ok"] or 0,
+                              "accounts": totals["accounts"] or 0, "page": page, "size": size,
+                              "symbols": [dict(r) for r in store.q(
+                                  f"SELECT symbol AS label, COUNT(*) AS value FROM web_trades {where} "
+                                  f"{'AND' if where else 'WHERE'} symbol IS NOT NULL GROUP BY symbol ORDER BY value DESC LIMIT 10", args)]})
+
+
+async def web_trades_csv(request: web.Request) -> web.Response:
+    session = require(request)
+    store: Store = request.app["store"]
+    where, args = _trade_filters(request, None)
+    rows = store.q(f"SELECT {', '.join(WEB_TRADE_CSV)} FROM web_trades {where} ORDER BY id DESC LIMIT 100000", args)
+    store.audit(session["username"], client_ip(request), "web.export_trades", {"rows": len(rows), "filters": dict(request.query)})
+    return _csv(rows, WEB_TRADE_CSV, "pro-chart-web-trades.csv")
+
+
+async def web_tickets(request: web.Request) -> web.Response:
+    require(request)
+    store: Store = request.app["store"]
+    status = request.query.get("status") or ""
+    q = clean_text(request.query.get("q"), 80).lower()
+    clauses, args = [], []
+    if status in PANEL_TICKET_STATES:
+        clauses.append("t.status=?")
+        args.append(status)
+    elif status == "waiting":
+        clauses.append("t.unread_owner=1 AND t.status!='closed'")
+    if q:
+        clauses.append("(LOWER(t.subject) LIKE ? OR t.account LIKE ? OR LOWER(a.email) LIKE ?)")
+        args += [f"%{q}%"] * 3
+    where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+    rows = store.q(f"SELECT t.*, a.email, a.name FROM web_tickets t LEFT JOIN web_accounts a ON a.account=t.account {where} "
+                   "ORDER BY t.unread_owner DESC, t.updated_at DESC LIMIT 300", args)
+    return web.json_response({"items": [{**_ticket_row(r), "email": r["email"], "name": r["name"],
+                                         "messages": store.one("SELECT COUNT(*) FROM web_ticket_messages WHERE ticket_id=?", (r["id"],))}
+                                        for r in rows],
+                              "counts": {s: store.one("SELECT COUNT(*) FROM web_tickets WHERE status=?", (s,)) or 0
+                                         for s in PANEL_TICKET_STATES}})
+
+
+def _ticket_or_404(store: Store, ticket_id: int) -> sqlite3.Row:
+    rows = store.q("SELECT * FROM web_tickets WHERE id=?", (ticket_id,))
+    if not rows:
+        raise web.HTTPNotFound(text=json.dumps({"error": "ticket"}), content_type="application/json")
+    return rows[0]
+
+
+async def web_ticket(request: web.Request) -> web.Response:
+    require(request)
+    store: Store = request.app["store"]
+    ticket = _ticket_or_404(store, int(request.match_info["id"]))
+    store.x("UPDATE web_tickets SET unread_owner=0 WHERE id=?", (ticket["id"],))
+    account = _account_row(store, ticket["account"])
+    return web.json_response({"ticket": _ticket_row(ticket), "messages": _thread(store, ticket["id"], owner=True),
+                              "account": {"account": ticket["account"], "email": account["email"] if account else None,
+                                          "name": account["name"] if account else None}})
+
+
+def _inbox_message(store: Store, account: str | None, kind: str, title: str, body: str, link: str, operator: str,
+                   ticket_id: int | None = None) -> int:
+    return store.x("INSERT INTO web_inbox(account, created_at, created_by, kind, title, body, link, ticket_id) VALUES (?,?,?,?,?,?,?,?)",
+                   (account, now(), operator, kind, title, body, link or None, ticket_id)).lastrowid
+
+
+async def web_ticket_reply(request: web.Request) -> web.Response:
+    session = require(request, mutating=True)
+    store: Store = request.app["store"]
+    ticket = _ticket_or_404(store, int(request.match_info["id"]))
+    body = await read_json(request)
+    text = clean_text(body.get("body"), 4000)
+    if not text:
+        return fail(400, "body")
+    _store_message(store, ticket["id"], ticket["account"], "owner", session["username"], text, [])
+    status = "closed" if body.get("close") else "answered"
+    store.x("UPDATE web_tickets SET status=?, updated_at=?, unread_user=1, unread_owner=0 WHERE id=?", (status, now(), ticket["id"]))
+    _inbox_message(store, ticket["account"], "ticket", f"پاسخ پشتیبانی: {ticket['subject']}"[:120], text[:400], "",
+                   session["username"], ticket["id"])
+    store.audit(session["username"], client_ip(request), "web.ticket_reply", {"ticket": ticket["id"], "status": status})
+    return web.json_response({"ok": True, "status": status})
+
+
+async def web_ticket_status(request: web.Request) -> web.Response:
+    session = require(request, mutating=True)
+    store: Store = request.app["store"]
+    ticket = _ticket_or_404(store, int(request.match_info["id"]))
+    body = await read_json(request)
+    status = body.get("status")
+    if status not in PANEL_TICKET_STATES:
+        return fail(400, "status")
+    store.x("UPDATE web_tickets SET status=?, updated_at=? WHERE id=?", (status, now(), ticket["id"]))
+    store.audit(session["username"], client_ip(request), "web.ticket_status", {"ticket": ticket["id"], "status": status})
+    return web.json_response({"ok": True})
+
+
+async def web_attachment(request: web.Request) -> web.Response:
+    require(request)
+    rows = request.app["store"].q("SELECT * FROM web_attachments WHERE id=?", (int(request.match_info["aid"]),))
+    if not rows:
+        return fail(404, "attachment")
+    return _image(rows[0])
+
+
+async def web_messages(request: web.Request) -> web.Response:
+    require(request)
+    store: Store = request.app["store"]
+    rows = store.q("SELECT m.*, (SELECT COUNT(*) FROM web_inbox_state s WHERE s.message_id=m.id AND s.read_at IS NOT NULL) AS reads "
+                   "FROM web_inbox m WHERE m.kind!='ticket' ORDER BY m.id DESC LIMIT 200")
+    return web.json_response({"items": [dict(r) for r in rows],
+                              "accounts": store.one("SELECT COUNT(*) FROM web_accounts") or 0})
+
+
+async def web_message_send(request: web.Request) -> web.Response:
+    """A message in the panel's inbox: to one web account, or to every one ({account: null})."""
+    session = require(request, mutating=True)
+    body = await read_json(request)
+    store: Store = request.app["store"]
+    title, text = clean_text(body.get("title"), 120), clean_text(body.get("body"), 2000)
+    if not title or not text:
+        return fail(400, "title_and_body_required")
+    kind = body.get("kind") if body.get("kind") in PANEL_INBOX_KINDS and body.get("kind") != "ticket" else "info"
+    link = clean_text(body.get("link"), 300)
+    if link and not (LINK_PATTERN.match(link) or re.fullmatch(r"/next/[\w\-/]*", link)):
+        return fail(400, "link")
+    account = body.get("account")
+    if account is not None:
+        account = str(account)
+        if not PANEL_ALIAS.match(account) or _account_row(store, account) is None:
+            return fail(404, "web_account")
+    message_id = _inbox_message(store, account, kind, title, text, link, session["username"])
+    store.audit(session["username"], client_ip(request), "web.message",
+                {"id": message_id, "account": account or "all", "kind": kind, "title": title})
+    return web.json_response({"id": message_id})
+
+
+async def web_errors(request: web.Request) -> web.Response:
+    """The pages' own errors, newest first and grouped by message, across every web account."""
+    require(request)
+    store: Store = request.app["store"]
+    try:
+        days = max(1, min(60, int(request.query.get("days", 7))))
+    except ValueError:
+        days = 7
+    q = clean_text(request.query.get("q"), 80).lower()
+    rows = store.q("SELECT * FROM web_events WHERE kind='error' AND at>=? AND (?='' OR LOWER(name) LIKE ? OR LOWER(detail) LIKE ?) "
+                   "ORDER BY id DESC LIMIT 500", (now() - days * 86400, q, f"%{q}%", f"%{q}%"))
+    groups: dict[str, dict] = {}
+    for row in rows:
+        detail = _jsonish(row["detail"], {}) if row["detail"] else {}
+        key = row["name"] or "?"
+        group = groups.setdefault(key, {"name": key, "count": 0, "accounts": set(), "last_at": row["at"], "first_at": row["at"],
+                                        "sample": detail, "browsers": defaultdict(int), "versions": defaultdict(int)})
+        group["count"] += 1
+        group["first_at"] = row["at"]
+        if row["account"]:
+            group["accounts"].add(row["account"])
+        group["browsers"][f"{row['browser'] or '?'} · {row['os'] or '?'}"] += 1
+        group["versions"][str(detail.get("version") or "?")] += 1
+    out = sorted(groups.values(), key=lambda g: (-g["count"], -g["last_at"]))
+    for group in out:
+        group["accounts"] = sorted(group["accounts"])[:20]
+        group["browsers"] = dict(group["browsers"])
+        group["versions"] = dict(group["versions"])
+    return web.json_response({"groups": out[:100], "recent": [_event_row(r, owner=True) for r in rows[:100]], "days": days})
 
 
 # ── The owner's account ─────────────────────────────────────────────────────────────────────────

@@ -7,7 +7,8 @@ export type PageId =
   | 'portfolio' | 'paper' | 'journal' | 'connections' | 'trade'
   | 'backtest' | 'script' | 'alerts' | 'tools' | 'vision' | 'ai' | 'signals' | 'signal' | 'assistant'
   | 'academy' | 'lesson' | 'community' | 'thread' | 'help' | 'safety' | 'terms' | 'privacy'
-  | 'home' | 'profile' | 'membership' | 'verify' | 'activity' | 'notifications' | 'delete' | 'pro' | 'reset';
+  | 'home' | 'profile' | 'membership' | 'verify' | 'activity' | 'notifications' | 'delete' | 'pro' | 'reset'
+  | 'panel';
 
 /** What every page receives: the address's extra segment, and a way to ask the reader to sign in. */
 export interface PageProps { param: string | null; onSignIn(): void }
@@ -60,6 +61,7 @@ export const PAGES: PageDef[] = [
   { id: 'terms', path: 'legal/terms', fa: 'قوانین استفاده', en: 'Terms of use', icon: 'ph-info', group: null, component: P(() => import('./LegalPage')) },
   { id: 'privacy', path: 'legal/privacy', fa: 'حریم خصوصی', en: 'Privacy', icon: 'ph-info', group: null, component: P(() => import('./LegalPage')) },
 
+  { id: 'panel', path: 'panel', fa: 'پنل کاربری', en: 'Your panel', icon: 'ph-identification-card', group: 'account', member: true, component: P(() => import('../usercp/PanelPage')) },
   { id: 'home', path: 'home', fa: 'خانه و خلاصه‌ی حساب', en: 'Home', icon: 'ph-user-circle', group: 'account', member: true, component: P(() => import('./HomePage')) },
   { id: 'profile', path: 'profile', fa: 'پروفایل و تنظیمات', en: 'Profile and settings', icon: 'ph-user-circle', group: 'account', component: P(() => import('./ProfilePage')) },
   { id: 'membership', path: 'membership', fa: 'عضویت صرافی', en: 'Exchange membership', icon: 'ph-crown', group: 'account', member: true, component: P(() => import('./MembershipPage')) },

@@ -1,6 +1,6 @@
 # سیاست حریم خصوصی — پرو چارت
 
-**آخرین بازنگری:** ۱۴۰۵/۰۷/۲۱
+**آخرین بازنگری:** ۱۴۰۵/۰۷/۲۳
 
 ---
 
@@ -74,7 +74,25 @@
 * موقعیت مکانی، دفترچه تلفن، تقویم، میکروفون، فایل‌های شما.
 * شناسهٔ تبلیغاتی (`AAID`)، IMEI، MAC، یا هر شناسهٔ سخت‌افزاری.
 * **گزارش خطای خودکار.** اپ هیچ SDK کرش ندارد؛ گزارش پایداری فقط از Android Vitals در Play Console
-  می‌آید که خود گوگل جمع می‌کند و ما به دادهٔ فردی در آن دسترسی نداریم.
+  می‌آید که خود گوگل جمع می‌کند و ما به دادهٔ فردی در آن دسترسی نداریم. نسخهٔ وب خطاهای خودش را فقط
+  به سرور خود پرو چارت می‌فرستد (بند ۲-۴).
+
+### ۲-۴ نسخهٔ وب (pro-chart.com) و پنل کاربری
+
+نسخهٔ وب در مرورگر اجرا می‌شود و چند چیز را جور دیگری نگه می‌دارد:
+
+| داده | چه وقت | کجا |
+| --- | --- | --- |
+| توکن نشست و توکن تازه‌سازی | هنگام ورود | روی سرور pro-chart.com پشت یک کوکی `HttpOnly`؛ مرورگر فقط یک شناسهٔ بی‌معنا نگه می‌دارد |
+| زمان ورود و خروج، خانوادهٔ مرورگر و دستگاه (مثلاً «Chrome · Android · گوشی»)، کشور، و چکیدهٔ نمک‌زدهٔ نشانی IP | هر ورود به وب | pro-chart.com — هرگز خود نشانی IP |
+| سفارش‌هایی که از چارت وب فرستاده می‌شود: نماد، جهت، مقدار، نوع، قیمت و پاسخ صرافی | هر سفارش، بستن پوزیشن، حد سود و ضرر، اهرم، اجرای سیگنال و اتصال صرافی | pro-chart.com — **هرگز کلید یا رمز API** |
+| گزارش خطای صفحه و نام قابلیت‌هایی که استفاده می‌کنید (مثلاً «افزودن اندیکاتور RSI») | فقط وقتی وارد شده‌اید، دسته‌ای و کوچک، بدون ایمیل و توکن | pro-chart.com |
+| فضای کار ابری (چیدمان، تنظیمات چارت، ترسیم‌ها، اندیکاتورها، دیده‌بان‌ها)، تیکت‌های پشتیبانی و تصویرهای پیوستشان | فقط وقتی خودتان همگام کنید یا تیکت بفرستید | pro-chart.com |
+
+این داده‌ها برای پنل کاربری خود شما و پشتیبانی پرو چارت است و فروخته یا به کسی داده نمی‌شود. گزارش
+خطا و نام قابلیت‌ها در «پنل کاربری ← داده‌ها و حریم خصوصی» خاموش می‌شود. همان‌جا می‌توانید یک نسخه از
+همهٔ این داده‌ها بگیرید یا پاکشان کنید؛ با پاک کردن، فقط فهرست سفارش‌ها بدون نام شما برای بازبینی
+می‌ماند. نگهداری: گزارش خطا ۶۰ روز، نام قابلیت‌ها ۹۰ روز، فهرست سفارش‌ها دو سال و بقیه یک سال.
 
 ---
 
@@ -167,7 +185,7 @@
 
 # Privacy Policy — Pro Chart
 
-**Last reviewed:** 2026-10-13
+**Last reviewed:** 2026-10-15
 
 Every claim below was written from this repository's code rather than from a template. If the app's
 behaviour changes, this file changes with it.
@@ -209,7 +227,22 @@ network would rate-limit everyone else on the same address. Clearing app data ge
 Google Analytics, no Facebook SDK, no attribution library. The only Google library present is
 Firebase Messaging, for notifications. No location, contacts, calendar, microphone or files. No
 advertising id, IMEI or MAC address. No automatic crash reporting: the app ships no crash SDK, and
-stability data comes only from Android Vitals in the Play Console.
+stability data comes only from Android Vitals in the Play Console. The web version reports its own
+errors only to Pro Chart's own server (below).
+
+**The web version (pro-chart.com) and its user panel.** In the browser, your session and refresh
+tokens stay on the pro-chart.com server behind an `HttpOnly` cookie; the page holds only a
+meaningless handle. Pro Chart's server keeps, for your own panel and for support: when you signed in
+and out on the web, the browser and device family (such as "Chrome · Android · phone"), the country
+and a salted hash of the IP address (never the address itself); every order sent from the web chart —
+symbol, side, quantity, type, price and the exchange's answer, **never an API key or secret**; the
+page's own error reports and the names of the features you use (such as "add the RSI indicator"),
+only while you are signed in, batched and small, without your email or any token; and, only when you
+use them, your cloud workspace (layouts, chart settings, drawings, indicators, watchlists) and your
+support tickets with their pictures. None of it is sold or shared. Error and feature reports can be
+turned off under Your panel → Data and privacy, where you can also download all of it or erase it;
+erasing keeps only the order log, with your name removed, for review. Kept for: error reports 60
+days, feature names 90 days, the order log two years, the rest one year.
 
 ## 3) Permissions
 
