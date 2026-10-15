@@ -80,7 +80,10 @@
   .ws-top .iv:not(.on) { display: none; }
   .ws-top .ib:not(.topbar-symbol):not(.iv) .label { display: none; }
   .ws-top .cta { display: none; }
-  .ws-top { gap: 0; padding: 0 2px; }
+  .ws-top { gap: 0; padding: 0 2px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+  .ws-top::-webkit-scrollbar { display: none; }
+  .ws-top > * { flex-shrink: 0; }
+  .topbar-symbol { padding: 0 6px 0 4px; gap: 6px; }
   .ws-top .sep { margin: 0 2px; }
   .timebar-clock { display: none !important; }
   .ws-rail { position: fixed; left: 0; top: var(--topbar-h); bottom: 52px; width: var(--rail-w); z-index: 30; transform: translateX(-100%); transition: transform 0.2s ease; box-shadow: var(--shadow-pop); }
