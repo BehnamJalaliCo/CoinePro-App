@@ -7,7 +7,7 @@
 // fixtures or fetched from the upstream through the browser context. Every test fails on any
 // uncaught page error. Playwright is a dev dependency; CI installs its Chromium first.
 import { createRequire } from 'node:module';
-import { existsSync, readFileSync, statSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync, mkdirSync } from 'node:fs';
 import { dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -865,6 +865,16 @@ await test('auto analysis: divergences, harmonics and gaps draw without errors',
   for (const iv of ['15', '240', '1D']) { await pc(env.page, (x) => window.__pc.usePrefs.getState().setInterval(x), iv); await ready(env.page); }
   return env;
 });
+
+// Further suites, one file per area of the workspace: scripts/e2e/suites/*.mjs, each a default export
+// that takes the same helpers the tests above use.
+const suites = join(here, 'suites');
+if (existsSync(suites)) {
+  for (const f of readdirSync(suites).filter((x) => x.endsWith('.mjs')).sort()) {
+    const mod = await import(join(suites, f));
+    await mod.default({ test, open, ready, pc, expect });
+  }
+}
 
 await browser.close();
 const failed = results.filter((r) => !r.ok);
