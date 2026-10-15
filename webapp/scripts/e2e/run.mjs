@@ -43,7 +43,9 @@ const PRICE = { BTCUSDT: 81000, ETHUSDT: 2400, SOLUSDT: 103, BNBUSDT: 720, XRPUS
 const FX = ['XAUUSD', 'XAGUSD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCHF'];
 const json = (body, status = 200) => ({ status, contentType: 'application/json', body: JSON.stringify(body) });
 
-function mock(url) {
+let r_method = 'GET';
+function mock(url, method = 'GET') {
+  r_method = method;
   const u = new URL(url);
   const p = u.pathname;
   const q = u.searchParams;
@@ -63,6 +65,67 @@ function mock(url) {
   if (p === '/up/tradeyar/api/mobile/v1/auth/login') return json({ detail: 'ایمیل یا رمز عبور درست نیست.' }, 401);
   if (p === '/up/coineprofx/api/user/auth/login') return json({ detail: { code: 'bad', message: 'ایمیل یا رمز عبور درست نیست.' } }, 401);
   if (p === '/up/tradeyar/api/mobile/v1/payments/plans') return json({ plans: [{ id: 'monthly', days: 30, price_toman: 1, price_usdt: '15' }], usdt: { network: 'BEP20', wallet: '0x0000000000000000000000000000000000000000' } });
+
+  // ── Member routes (a seeded session, handle pch_e2e) ──
+  const TYM = '/up/tradeyar/api/mobile/v1/';
+  const FXM = '/up/coineprofx/api/user/mobile/';
+  const iso = (d = 0) => new Date(Date.now() + d).toISOString();
+  const signal = (id, symbol, status = 'active') => ({ id, symbol, direction: 'BUY', timeframe: '1h', status, confidence: 0.82, entry: PRICE[symbol], entry_zone: { low: PRICE[symbol] * 0.998, high: PRICE[symbol] * 1.002 }, stop_loss: PRICE[symbol] * 0.98, targets: [{ level: 1, price: PRICE[symbol] * 1.02, hit: status !== 'active' }, { level: 2, price: PRICE[symbol] * 1.04, hit: false }], risk_reward_tp1: 1.5, rationale: 'شکست مقاومت با حجم بالا.', score_breakdown: { technical: 0.8, pattern: 0.7, ml: 0.75 }, live_pnl_percent: status === 'active' ? 0.6 : 2.1, created_at: iso(-7200e3), closed_at: status === 'active' ? null : iso() });
+  for (const pre of [TYM, FXM]) {
+    if (p === `${pre}briefing`) return json({ body: '## خلاصه‌ی امروز\n\n* بیت‌کوین بالای **80,000** مانده است.\n* داده‌ی تورم آمریکا امروز منتشر می‌شود.', generated_at: Date.now() });
+    if (p === `${pre}portfolio`) return json({ total: { amount: 12345.67, currency: 'USDT' }, change: { amount: 120.5, percent: 0.98, period: '24h' }, holdings: [{ symbol: 'BTCUSDT', display_name: 'Bitcoin', quantity: 0.1, quantity_unit: 'BTC', value: 8100, change_percent: 1.2 }], as_of: Date.now() });
+    if (p === `${pre}kyc`) return json({ level: 0, status: 'not_started', required_fields: ['full_name'] });
+    if (p === `${pre}kyc/level1`) return json({ level: 1, status: 'pending', submitted_at: Date.now() });
+    if (p === `${pre}notifications`) return json({ items: [{ kind: 'signal', title: 'سیگنال تازه BTCUSDT', body: 'خرید در 81000', ts: NOW - 600, read: false, data: { signal_id: '11' } }], unread: 1, has_more: false });
+    if (p === `${pre}notifications/read`) return json({ ok: true, marked: 1 });
+    if (p === `${pre}push/preferences`) return json({ preferences: { new_signals: true, signal_updates: true, price_alerts: true, announcements: true } });
+    if (p === `${pre}alerts`) return r_method === 'POST' ? json({ alert: { id: 'a2', symbol: 'BTCUSDT', condition: 'above', value: 90000, trigger: 'once', active: true } }) : json({ items: [{ id: 'a1', symbol: pre === TYM ? 'BTCUSDT' : 'XAUUSD', condition: 'cross_up', value: pre === TYM ? 90000 : 4200, trigger: 'once', active: true, created_at_ms: Date.now() - 1000, channels: ['push'] }] });
+    if (p.startsWith(`${pre}alerts/`)) return json({ alert: { id: 'a1', symbol: 'BTCUSDT', condition: 'above', value: 90000, trigger: 'once', active: false }, removed: true });
+    if (p === `${pre}account`) return json({ ok: true });
+  }
+  if (p === `${TYM}market/candles`) { const tf = tfOf(q.get('tf')); return json({ symbol: q.get('symbol'), tf, has_more: false, candles: series(q.get('symbol').length * 7, PRICE[q.get('symbol')] ?? 10, TF[tf] ?? 3600, Math.min(1000, Number(q.get('limit') ?? 500))) }); }
+  if (p === `${TYM}signals`) return json({ items: [signal(11, 'BTCUSDT', q.get('status') === 'active' ? 'active' : 'closed'), signal(12, 'ETHUSDT', q.get('status') === 'active' ? 'active' : 'closed')], total: 2 });
+  if (/^\/up\/tradeyar\/api\/mobile\/v1\/signals\/\d+$/.test(p)) return json({ signal: signal(Number(p.split('/').pop()), 'BTCUSDT') });
+  if (p === '/up/coineprofx/api/public/signals/active' || p === '/up/coineprofx/api/public/signals/recent') return json({ items: [signal(21, 'XAUUSD', p.endsWith('active') ? 'active' : 'closed')] });
+  if (p.startsWith('/up/coineprofx/api/public/signals/detail/')) return json({ signal: signal(21, 'XAUUSD') });
+  if (p === `${TYM}executions`) return r_method === 'POST' ? json({ execution: { id: 'e1', signal_id: 11, venue: 'lbank', status: 'queued' } }) : json({ items: [{ id: 'e1', signal_id: 11, venue: 'lbank', product: 'futures', status: 'open', side: 'buy', quantity: '0.01', signal: { symbol: 'BTCUSDT', direction: 'BUY', timeframe: '1h' }, created_at: iso(-3600e3) }] });
+  if (p === `${TYM}venues/lbank`) return json({ configured: true, connected: true, status: 'ok', permission: 'futures', key_hint: 'abcd…wxyz' });
+  if (p === `${TYM}trade/account`) return json({ available: 1000, equity: 1050, margin_used: 50, unrealized_pnl: 5, trading_enabled: true });
+  if (p === `${TYM}trade/positions`) return json({ items: [{ symbol: 'BTCUSDT', side: 'long', quantity: 0.01, entry_price: 80000, mark_price: 81000, unrealized_pnl: 10, leverage: 5, liquidation_price: 65000 }] });
+  if (p === `${TYM}trade/orders`) return r_method === 'POST' ? json({ order: { id: 5, status: 'submitted' } }) : json({ items: [{ id: 4, symbol: 'ETHUSDT', side: 'buy', type: 'limit', quantity: 0.5, price: 2300, status: 'open', can_cancel: true, can_amend: true, protection: 'none' }] });
+  if (p === `${TYM}market/depth` || p === '/up/tradeyar/api/v1/public/market/depth') { const m = PRICE[q.get('symbol')] ?? 100; return json({ symbol: q.get('symbol'), bids: Array.from({ length: 20 }, (_, i) => [m * (1 - (i + 1) * 0.0005), 1 + i * 0.3, 3]), asks: Array.from({ length: 20 }, (_, i) => [m * (1 + (i + 1) * 0.0005), 1 + i * 0.2, 2]) }); }
+  if (p === `${TYM}portfolio/history`) return json({ trades: [{ id: 1, symbol: 'BTCUSDT', side: 'buy', opened_at: NOW - 86400 * 3, closed_at: NOW - 86400 * 2, entry: 78000, exit: 80000, quantity: 0.01, pnl: 20, fee: 0.4, currency: 'USDT' }, { id: 2, symbol: 'ETHUSDT', side: 'sell', opened_at: NOW - 86400, closed_at: NOW - 3600, entry: 2500, exit: 2550, quantity: 0.2, pnl: -10, fee: 0.2, currency: 'USDT' }], total: 2 });
+  if (p === '/up/coineprofx/api/user/trade-history') return json({ items: [{ id: 1, symbol: 'XAUUSD', direction: 'BUY', volume: 0.1, entry_price: 4100, exit_price: 4140, open_time: iso(-86400e3), close_time: iso(-3600e3), net_profit: 40, commission: 0.7, swap: 0, pips: 400 }], total_pages: 1 });
+  if (p === `${TYM}membership/status`) return json({ status: 'awaiting_uid', message_fa: 'UID صرافی را ثبت کنید.', next_step: 'uid', can_resubmit: true });
+  if (p === `${TYM}membership/uid`) return json({ status: 'verifying', message_fa: 'در حال بررسی' });
+  if (p === '/up/tradeyar/api/v1/public/membership') return json({ lbank_referral_url: 'https://lbank.com/ref/e2e', ourbit_referral_url: 'https://ourbit.com/ref/e2e', min_deposit_usdt: 50, uid_exchanges: ['lbank', 'ourbit'], notice_fa: 'با لینک ما ثبت‌نام کنید.' });
+  if (p === `${TYM}announcements`) return json({ announcements: [{ id: 1, title: 'به‌روزرسانی سرویس', summary: 'نسخه‌ی تازه', published_at: iso(-3600e3) }] });
+  if (p === `${TYM}entitlements`) return json({ premium: false, all: true });
+  if (p === `${TYM}ai/quota` || p === '/up/coineprofx/api/user/ai-signal/quota') return json({ remaining: 2, used: 1, limit: 3 });
+  if (p === `${TYM}ai/generate` || p === '/up/coineprofx/api/user/ai-signal/generate') return json({ id: 'job1', status: 'queued' });
+  if (p.endsWith('/result/job1')) return json({ id: 'job1', status: 'done', result: { symbol: 'BTCUSDT', direction: 'long', timeframe: '1h', entry: 81000, entry_zone: { low: 80800, high: 81200 }, sl: 79800, tp1: 82500, tp2: 84000, confidence: 0.74, rr: 1.25, rationale: 'ساختار صعودی در تایم ساعتی.', warnings: ['خبر مهم امروز'] } });
+  if (p === '/up/coineprofx/api/user/ai/chat') return json({ answer: 'روند کوتاه‌مدت **صعودی** است.', remaining: 9 });
+  if (p === '/up/coineprofx/api/user/academy-token') return json({ token: 'pch_e2eacademy', expires_in: 3600 });
+  const AC = '/up/coineprofx/api/academy/';
+  if (p === `${AC}me`) return json({ username: 'e2e', tier: 'free', completed: 3, total_lessons: 40, progress_pct: 7.5, xp: 120, quizzes_taken: 2, avg_quiz: 80 });
+  if (p === `${AC}catalog`) return json({ tier: 'free', levels: [{ key: 'beginner', name: 'مقدماتی', lessons: [{ slug: 'intro', title: 'بازار فارکس چیست', order: 1, completed: true }, { slug: 'candles', title: 'کندل‌ها', order: 2 }, { slug: 'pro', title: 'درس ویژه', order: 3, locked: true, lock_reason: 'tier' }] }] });
+  if (p === `${AC}lessons/beginner/roadmap`) return json({ modules: [{ index: 1, title: 'شروع', lessons: [{ slug: 'intro', title: 'بازار فارکس چیست', order: 1, completed: true }], done: 1, total: 1 }] });
+  if (p.startsWith(`${AC}lesson/`) && p.endsWith('/quiz')) return json({ questions: [{ id: 1, question: 'کندل سبز یعنی؟', options: ['بسته شدن بالاتر از باز شدن', 'برعکس'] }] });
+  if (p.startsWith(`${AC}lesson/`) && p.endsWith('/quiz/submit')) return json({ score: 100, correct: 1, total: 1, passed: true, results: [{ id: 1, correct_index: 0, your_index: 0, is_correct: true, explanation: 'درست است.' }] });
+  if (p.startsWith(`${AC}lesson/`)) return json({ slug: 'candles', title: 'کندل‌ها', summary: 'آشنایی با کندل', content: '## کندل\n\nهر کندل چهار قیمت دارد.', reading_time_min: 4 });
+  if (p.startsWith(`${AC}progress/`)) return json({ ok: true });
+  if (p === `${AC}streak`) return json({ current: 3, longest: 5, today_done: true });
+  if (p === `${AC}achievements`) return json({ items: [{ badge: 'first', title: 'اولین درس', desc: 'یک درس تمام شد', icon: '🎓', earned: true }] });
+  if (p === `${AC}leaderboard`) return json({ items: [{ rank: 1, username: 'top', xp: 900, completed: 30 }, { rank: 7, username: 'e2e', xp: 120, completed: 3, is_me: true }], my_rank: 7, total_students: 100 });
+  if (p === `${AC}glossary`) return json({ terms: [{ term: 'پیپ', def: 'کوچک‌ترین واحد تغییر قیمت' }] });
+  const CM = '/up/tradeyar/api/v1/public/app-community/';
+  if (p === `${CM}me`) return json(r_method === 'POST' ? { registered: true, display_name: 'e2e' } : { registered: true, display_name: 'e2e' });
+  if (p === `${CM}posts` && r_method === 'POST') return json({ id: 99, status: 'published' });
+  if (p === `${CM}posts` || p === `${CM}posts/search`) return json({ posts: [{ id: 1, content: 'نظرتان درباره‌ی طلا چیست؟', author: 'ali', category: 'تحلیل', likes: 2, replies_count: 1, reactions: { '🔥': 1 }, created_at: iso(-3600e3), status: 'published' }] });
+  if (/\/posts\/\d+$/.test(p) && p.startsWith(CM)) return json({ post: { id: 1, content: 'نظرتان درباره‌ی طلا چیست؟', author: 'e2e', category: 'تحلیل', likes: 2, created_at: iso(-3600e3) }, replies: [{ id: 5, content: 'صعودی است.', author: 'sara', created_at: iso(-600e3) }] });
+  if (p.startsWith(CM) && /\/(like|react|reply|report|best-reply\/\d+)$/.test(p)) return json({ likes: 3, liked: true, reactions: { '🔥': 2 }, ok: true });
+  if (p === `${CM}leaderboard`) return json({ items: [{ rank: 1, username: 'ali', xp: 50 }] });
+  if (p === '/api/app/latest') return json({ version_code: 600, version_name: '6.0.0', notes_fa: '* بهبودها', url: 'https://pro-chart.com/app.apk' });
   return json({ detail: 'not in fixtures' }, 404);
 }
 
@@ -70,8 +133,15 @@ function mock(url) {
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ttf': 'font/ttf', '.map': 'application/json', '.txt': 'text/plain' };
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'], ...(UPSTREAM && process.env.HTTPS_PROXY ? { proxy: { server: process.env.HTTPS_PROXY } } : {}) });
 
-async function open(path, { width = 1440, height = 900, scheme = 'light', locale = 'fa-IR' } = {}) {
+async function open(path, { width = 1440, height = 900, scheme = 'light', locale = 'fa-IR', signed = false } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, locale, timezoneId: 'Asia/Tehran' });
+  if (signed) {
+    // A seeded member session on both platforms (fixtures only: the handles mean nothing upstream).
+    await ctx.addInitScript(() => {
+      const s = { access: 'pch_e2e', refresh: 'pch_e2e_r', refreshAt: Date.now() + 36e5, user: { name: 'E2E', email: 'e2e@example.com' } };
+      try { if (!localStorage.getItem('pc.sessions.v1')) localStorage.setItem('pc.sessions.v1', JSON.stringify({ tradeyar: s, coineprofx: s })); } catch { /* ignore */ }
+    });
+  }
   const net = { calls: 0, failed: [] };
   await ctx.route('http://pc.local/**', async (r) => {
     const u = new URL(r.request().url());
@@ -81,7 +151,7 @@ async function open(path, { width = 1440, height = 900, scheme = 'light', locale
         try { const resp = await r.fetch({ url: UPSTREAM + u.pathname + u.search }); if (resp.status() >= 500) net.failed.push(`${resp.status()} ${u.pathname}`); return r.fulfill({ response: resp }); }
         catch { net.failed.push(`ERR ${u.pathname}`); return r.abort(); }
       }
-      return r.fulfill(mock(u.href));
+      return r.fulfill(mock(u.href, r.request().method()));
     }
     const rel = u.pathname.replace(/^\/next\//, '');
     let file = join(DIST, rel);
@@ -441,6 +511,200 @@ await test('stress: 60 symbol and interval switches', async () => {
   const heap = await env.page.evaluate(() => performance.memory?.usedJSHeapSize ?? 0);
   expect(heap === 0 || heap < 400e6, `heap ${Math.round(heap / 1e6)} MB`);
   console.log(`      heap ${Math.round(heap / 1e6)} MB`);
+  return env;
+});
+
+
+// ── Pages (every screen of the app beside the chart) ─────────────────────────────────────────────
+const BAD = ['ارتباط برقرار نشد', 'این امکان روی این سرور فعال نیست', 'درخواست‌ها زیاد بود'];
+const settle = async (page) => {
+  await page.waitForSelector('.page-body', { timeout: 10000 });
+  await page.waitForFunction(() => { const b = document.querySelector('.page-body'); return b && !/در حال بارگذاری…/.test(b.textContent ?? ''); }, null, { timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(250);
+};
+const openPage = async (page, id, param = null) => { await pc(page, ([i, p]) => window.__pc.usePage.getState().open(i, p), [id, param]); await settle(page); };
+
+await test('every page opens for a guest (members-only pages ask to sign in)', async () => {
+  const env = await open('BTCUSDT/1h?e2e=1');
+  await ready(env.page);
+  const pages = await pc(env.page, () => window.__pc.pages);
+  expect(pages.length >= 35, `only ${pages.length} pages`);
+  for (const p of pages) {
+    if (['signal', 'lesson', 'thread', 'reset'].includes(p.id)) continue;
+    await openPage(env.page, p.id);
+    const path = await env.page.evaluate(() => location.pathname);
+    expect(path === `/next/${p.path}`, `${p.id}: address ${path}`);
+    if (p.member) expect(await env.page.isVisible('.gate'), `${p.id}: no sign-in gate`);
+    else {
+      const text = await env.page.textContent('.page-body');
+      expect((text ?? '').trim().length > 10, `${p.id}: empty page`);
+    }
+  }
+  await pc(env.page, () => window.__pc.usePage.getState().close());
+  await env.page.waitForFunction(() => /\/next\/[A-Z0-9]+\//.test(location.pathname), null, { timeout: 5000 });
+  return env;
+});
+
+await test('every page opens for a member, with data and no error state', async () => {
+  const env = await open('BTCUSDT/1h?e2e=1', { signed: true });
+  await ready(env.page);
+  const pages = await pc(env.page, () => window.__pc.pages);
+  const params = { signal: 'tradeyar-11', lesson: 'candles', thread: '1' };
+  for (const p of pages) {
+    if (p.id === 'reset') continue;
+    await openPage(env.page, p.id, params[p.id] ?? null);
+    expect(!(await env.page.isVisible('.gate')), `${p.id}: gate shown to a member`);
+    const text = (await env.page.textContent('.page-body')) ?? '';
+    for (const b of BAD) expect(!text.includes(b), `${p.id}: shows "${b}"`);
+    if (!UPSTREAM) await env.page.screenshot({ path: join(SHOTS, `page-${p.id}.png`) });
+  }
+  return env;
+});
+
+await test('deep link opens a lesson; its quiz is taken and passed', async () => {
+  const env = await open('academy/lesson/candles?e2e=1', { signed: true });
+  await settle(env.page);
+  await env.page.waitForSelector('text=کندل‌ها', { timeout: 10000 });
+  await env.page.click('text=آزمون این درس');
+  await env.page.waitForSelector('.quiz input[type=radio]', { timeout: 10000 });
+  await env.page.click('.quiz .opt >> nth=0');
+  await env.page.click('text=ثبت پاسخ‌ها');
+  await env.page.waitForSelector('text=قبول شدید', { timeout: 10000 });
+  return env;
+});
+
+await test('main menu: open, search, go to a page, back to the chart', async () => {
+  const env = await open('ETHUSDT/4h?e2e=1');
+  await ready(env.page);
+  await env.page.click('.menu-btn');
+  await env.page.waitForSelector('.drawer', { timeout: 5000 });
+  const items = await env.page.locator('.drawer-item').count();
+  expect(items >= 30, `menu lists ${items} items`);
+  await env.page.fill('.drawer-search input, input.drawer-search', 'هیت');
+  await env.page.click('.drawer-item >> nth=0');
+  await env.page.waitForSelector('.heat-box .tile', { timeout: 10000 });
+  await env.page.keyboard.press('Escape');
+  await env.page.waitForFunction(() => location.pathname === '/next/ETHUSDT/4h', null, { timeout: 5000 });
+  return env;
+});
+
+await test('tools: the calculators compute', async () => {
+  const env = await open('tools?e2e=1');
+  await settle(env.page);
+  const out = await env.page.textContent('.tools-out');
+  expect(/100\.00/.test(out ?? ''), `risk output: ${out}`);
+  await env.page.click('.page-tabs >> text=ریسک به ریوارد');
+  await env.page.fill('input[aria-label="ورود"]', '100');
+  await env.page.fill('input[aria-label="حد ضرر"]', '95');
+  await env.page.fill('input[aria-label="حد سود"]', '110');
+  await env.page.waitForFunction(() => /1 : 2\.00/.test(document.querySelector('.tools-out')?.textContent ?? ''), null, { timeout: 5000 });
+  return env;
+});
+
+await test('paper trading: buy, protect, close, history', async () => {
+  const env = await open('paper-trade?e2e=1');
+  await settle(env.page);
+  await env.page.waitForFunction(() => window.__pc.useMarket.getState().tickers.BTCUSDT, null, { timeout: 15000 });
+  await env.page.fill('.ticket input >> nth=0', '0.01');
+  await env.page.click('.ticket button.btn.buy');
+  await env.page.waitForFunction(() => window.__pc.usePaper.getState().positions.length === 1, null, { timeout: 5000 });
+  await env.page.click('table >> text=بستن');
+  await env.page.waitForFunction(() => window.__pc.usePaper.getState().history.length === 1, null, { timeout: 5000 });
+  await env.page.click('.page-tabs >> text=آمار');
+  await env.page.waitForSelector('text=نرخ برد', { timeout: 5000 });
+  return env;
+});
+
+await test('journal: log a trade and read the statistics', async () => {
+  const env = await open('journal?e2e=1');
+  await settle(env.page);
+  await env.page.click('text=ثبت معامله');
+  await env.page.fill('.form input >> nth=1', '100');
+  await env.page.fill('.form input >> nth=2', '110');
+  await env.page.click('.chip >> text=ترند');
+  await env.page.click('.form button.btn-primary');
+  await env.page.waitForFunction(() => window.__pc.useJournal.getState().entries.length === 1 && window.__pc.useJournal.getState().entries[0].pnl === 10, null, { timeout: 5000 });
+  await env.page.click('.page-tabs >> text=آمار');
+  await env.page.waitForSelector('text=بر اساس برچسب', { timeout: 5000 });
+  return env;
+});
+
+await test('backtest page runs every built-in strategy', async () => {
+  const env = await open('backtest?e2e=1');
+  await settle(env.page);
+  const options = await env.page.$$eval('.form select >> nth=1', () => []);
+  void options;
+  for (const id of ['ma_cross', 'rsi', 'macd', 'bollinger', 'breakout', 'supertrend']) {
+    await env.page.selectOption('.form select:near(:text("استراتژی"))', id).catch(async () => { await env.page.locator('.form select').nth(1).selectOption(id); });
+    await env.page.click('text=اجرای بک‌تست');
+    await env.page.waitForSelector('.bt-stats.wide', { timeout: 20000 });
+  }
+  return env;
+});
+
+await test('AI setup builder returns a setup and draws it', async () => {
+  const env = await open('ai?e2e=1', { signed: true });
+  await settle(env.page);
+  await env.page.click('text=ساخت ستاپ');
+  await env.page.waitForSelector('text=ساختار صعودی', { timeout: 20000 });
+  await env.page.click('text=نمایش روی چارت');
+  await ready(env.page);
+  return env;
+});
+
+await test('live trade: order book, order with confirmation, position actions', async () => {
+  const env = await open('trade?e2e=1', { signed: true });
+  await settle(env.page);
+  env.page.on('dialog', (d) => void d.accept().catch(() => {}));
+  await env.page.click('.page-tabs >> text=دفتر سفارش');
+  await env.page.waitForSelector('.dom-row.bid', { timeout: 10000 });
+  await env.page.fill('.ticket input >> nth=0', '0.01');
+  await env.page.click('.ticket button.btn.buy');
+  await env.page.waitForSelector('text=ثبت شد', { timeout: 10000 });
+  return env;
+});
+
+await test('community: thread, reply and reactions', async () => {
+  const env = await open('community?e2e=1');
+  await settle(env.page);
+  await env.page.click('.reactions .chip >> nth=1');
+  await env.page.click('.post.click');
+  await settle(env.page);
+  await env.page.waitForSelector('text=صعودی است', { timeout: 10000 });
+  await env.page.fill('.form textarea', 'موافقم، بالای مقاومت است.');
+  await env.page.click('text=ارسال پاسخ');
+  return env;
+});
+
+await test('help library: search and an entry', async () => {
+  const env = await open('tutorials?e2e=1');
+  await settle(env.page);
+  await env.page.fill('.scr-search', 'RSI');
+  await env.page.click('.help-card >> nth=0');
+  await env.page.waitForSelector('.help-entry h2', { timeout: 5000 });
+  await env.page.click('.page-tabs >> text=میانبرهای صفحه‌کلید');
+  await env.page.waitForSelector('kbd', { timeout: 5000 });
+  return env;
+});
+
+await test('legal: terms and privacy render from the documents', async () => {
+  const env = await open('legal/terms?e2e=1');
+  await settle(env.page);
+  await env.page.waitForSelector('.md h2', { timeout: 10000 });
+  await env.page.click('.page-tabs >> text=حریم خصوصی');
+  await env.page.waitForFunction(() => location.pathname === '/next/legal/privacy', null, { timeout: 5000 });
+  await env.page.waitForSelector('.md h2', { timeout: 10000 });
+  return env;
+});
+
+await test('pages fit a phone (390 wide)', async () => {
+  const env = await open('BTCUSDT/1h?e2e=1', { width: 390, height: 844, signed: true });
+  await ready(env.page);
+  for (const id of ['markets', 'portfolio', 'paper', 'tools', 'signals', 'academy', 'community', 'trade', 'profile', 'backtest']) {
+    await openPage(env.page, id);
+    const overflow = await env.page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+    expect(!overflow, `${id}: horizontal overflow on a phone`);
+  }
   return env;
 });
 

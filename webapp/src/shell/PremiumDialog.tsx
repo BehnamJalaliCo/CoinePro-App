@@ -17,6 +17,22 @@ const PLAN_KEY = { monthly: 'planMonthly', quarterly: 'planQuarterly', yearly: '
 
 export function PremiumDialog({ onClose, onSignIn }: { onClose(): void; onSignIn(): void }) {
   const t = useT();
+  return (
+    <div className="scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="dialog premium" role="dialog" aria-modal="true" aria-label={t('premium')} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
+        <header className="dialog-head">
+          <h2 className="fa">{t('premiumTitle')}</h2>
+          <button className="ib" onClick={onClose} aria-label="close"><Icon name="ph-x" size="md" /></button>
+        </header>
+        <PremiumBody onSignIn={onSignIn} />
+      </div>
+    </div>
+  );
+}
+
+/** The plans, the USDT checkout and the reader's current entitlement; also the Pro page's body. */
+export function PremiumBody({ onSignIn }: { onSignIn(): void }) {
+  const t = useT();
   const lang = usePrefs((s) => s.lang);
   const signed = useSession((s) => Boolean(s.sessions.tradeyar));
   const [plans, setPlans] = useState<Plans | null>(null);
@@ -45,48 +61,40 @@ export function PremiumDialog({ onClose, onSignIn }: { onClose(): void; onSignIn
   };
 
   return (
-    <div className="scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="dialog premium" role="dialog" aria-modal="true" aria-label={t('premium')} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
-        <header className="dialog-head">
-          <h2 className="fa">{t('premiumTitle')}</h2>
-          <button className="ib" onClick={onClose} aria-label="close"><Icon name="ph-x" size="md" /></button>
-        </header>
-        <div className="premium-body" dir={lang === 'fa' ? 'rtl' : 'ltr'}>
-          {ent?.premium ? (
-            <p className="hint">{`${t('premiumActive')}${ent.ends_at ? ` ${t('premiumUntil')} ${new Intl.DateTimeFormat(lang === 'fa' ? 'fa-IR-u-ca-persian' : 'en-GB', { dateStyle: 'long' }).format(new Date(ent.ends_at))}` : ''}.`}</p>
-          ) : null}
-          {plans === null ? <p className="hint">{t('loading')}…</p> : null}
-          <div className="plans">
-            {(plans?.plans ?? []).map((p) => (
-              <button key={p.id} className={`plan${pick?.id === p.id ? ' on' : ''}`} onClick={() => setPick(p)}>
-                <span className="plan-name">{p.id in PLAN_KEY ? t(PLAN_KEY[p.id as keyof typeof PLAN_KEY]) : p.id}</span>
-                <span className="plan-price num">{p.price_usdt} USDT</span>
-                <span className="plan-days">{`${lang === 'fa' ? faNum(p.days) : p.days} ${t('days')}`}</span>
-              </button>
-            ))}
-          </div>
-          {pick && plans?.usdt ? (
-            <div className="pay">
-              <p className="hint">{t('premiumPay')} <b className="num">{pick.price_usdt} USDT · {plans.usdt.network}</b></p>
-              <div className="wallet num" dir="ltr">
-                <code>{plans.usdt.wallet}</code>
-                <button className="lt" onClick={() => { void navigator.clipboard?.writeText(plans.usdt!.wallet); setCopied(true); setTimeout(() => setCopied(false), 1500); }} aria-label="copy">
-                  <Icon name={copied ? 'ph-check' : 'ph-copy'} size="sm" />
-                </button>
-              </div>
-              {signed ? (
-                <>
-                  <input className="num tx" dir="ltr" placeholder="0x…" value={hash} onChange={(e) => setHash(e.target.value)} spellCheck={false} />
-                  <button className="btn btn-primary" disabled={busy} onClick={() => void submit()}>{t('premiumConfirm')}</button>
-                </>
-              ) : (
-                <button className="btn btn-primary" onClick={onSignIn}>{t('signIn')}</button>
-              )}
-            </div>
-          ) : null}
-          {msg ? <p className={msg.ok ? 'ok' : 'error'}>{msg.text}</p> : null}
-        </div>
-      </div>
+  <div className="premium-body" dir={lang === 'fa' ? 'rtl' : 'ltr'}>
+    {ent?.premium ? (
+      <p className="hint">{`${t('premiumActive')}${ent.ends_at ? ` ${t('premiumUntil')} ${new Intl.DateTimeFormat(lang === 'fa' ? 'fa-IR-u-ca-persian' : 'en-GB', { dateStyle: 'long' }).format(new Date(ent.ends_at))}` : ''}.`}</p>
+    ) : null}
+    {plans === null ? <p className="hint">{t('loading')}…</p> : null}
+    <div className="plans">
+      {(plans?.plans ?? []).map((p) => (
+        <button key={p.id} className={`plan${pick?.id === p.id ? ' on' : ''}`} onClick={() => setPick(p)}>
+          <span className="plan-name">{p.id in PLAN_KEY ? t(PLAN_KEY[p.id as keyof typeof PLAN_KEY]) : p.id}</span>
+          <span className="plan-price num">{p.price_usdt} USDT</span>
+          <span className="plan-days">{`${lang === 'fa' ? faNum(p.days) : p.days} ${t('days')}`}</span>
+        </button>
+      ))}
     </div>
+    {pick && plans?.usdt ? (
+      <div className="pay">
+        <p className="hint">{t('premiumPay')} <b className="num">{pick.price_usdt} USDT · {plans.usdt.network}</b></p>
+        <div className="wallet num" dir="ltr">
+          <code>{plans.usdt.wallet}</code>
+          <button className="lt" onClick={() => { void navigator.clipboard?.writeText(plans.usdt!.wallet); setCopied(true); setTimeout(() => setCopied(false), 1500); }} aria-label="copy">
+            <Icon name={copied ? 'ph-check' : 'ph-copy'} size="sm" />
+          </button>
+        </div>
+        {signed ? (
+          <>
+            <input className="num tx" dir="ltr" placeholder="0x…" value={hash} onChange={(e) => setHash(e.target.value)} spellCheck={false} />
+            <button className="btn btn-primary" disabled={busy} onClick={() => void submit()}>{t('premiumConfirm')}</button>
+          </>
+        ) : (
+          <button className="btn btn-primary" onClick={onSignIn}>{t('signIn')}</button>
+        )}
+      </div>
+    ) : null}
+    {msg ? <p className={msg.ok ? 'ok' : 'error'}>{msg.text}</p> : null}
+  </div>
   );
 }

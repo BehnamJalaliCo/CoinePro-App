@@ -3,6 +3,8 @@
 import { useEffect } from 'react';
 import { usePrefs } from './state/prefs';
 import { INTERVALS, intervalLabel } from './data/intervals';
+import { usePage } from './state/page';
+import { pageById, pageFromPath } from './pages/registry';
 
 const BASE = import.meta.env.BASE_URL;
 const SYMBOL_RE = /^[A-Z0-9]{2,12}$/;
@@ -38,17 +40,28 @@ export function readAddress(loc: Location = window.location): { symbol: string |
   };
 }
 
-/** Applies the address once at start, then keeps it in step with the chart. */
+/** Applies the address once at start, then keeps it in step with the chart or the open page. */
 export function useRoute(): void {
   const symbol = usePrefs((s) => s.symbol);
   const interval = usePrefs((s) => s.interval);
+  const page = usePage((s) => s.page);
+  const param = usePage((s) => s.param);
   useEffect(() => {
-    const path = `${BASE}${symbol}/${intervalLabel(interval)}`;
-    if (window.location.pathname !== path || window.location.search) window.history.replaceState(null, '', path + window.location.hash);
-  }, [symbol, interval]);
+    const path = page
+      ? `${BASE}${pageById(page).path}${param ? `/${encodeURIComponent(param)}` : ''}`
+      : `${BASE}${symbol}/${intervalLabel(interval)}`;
+    // The reset page keeps its token in the query until the page has read it.
+    const keepQuery = page === 'reset';
+    if (window.location.pathname !== path || (window.location.search && !keepQuery)) {
+      window.history.replaceState(null, '', path + (keepQuery ? window.location.search : '') + window.location.hash);
+    }
+  }, [symbol, interval, page, param]);
 }
 
 export function applyAddress(): void {
+  const rest = window.location.pathname.startsWith(BASE) ? window.location.pathname.slice(BASE.length) : '';
+  const page = pageFromPath(rest);
+  if (page) { usePage.getState().open(page.id, page.param); return; }
   const { symbol, interval } = readAddress();
   const p = usePrefs.getState();
   if (symbol) p.setSymbol(symbol);

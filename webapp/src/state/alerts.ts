@@ -9,6 +9,7 @@ import { authed } from '../data/auth';
 import { backendOf, FX_SYMBOLS } from '../data/symbols';
 import { useSession } from '../data/session';
 import { uuid } from '../data/http';
+import { chime, inQuietHours, readNotify } from './notify';
 
 export type AlertCondition = 'above' | 'below' | 'cross';
 
@@ -29,7 +30,8 @@ const read = (): PriceAlert[] => { try { const v = JSON.parse(localStorage.getIt
 interface AlertsState {
   list: PriceAlert[];
   fired: PriceAlert | null;
-  add(symbol: string, condition: AlertCondition, value: number): void;
+  /** `serverId`: the alert already exists on the account (made by the alert centre); only watch it here. */
+  add(symbol: string, condition: AlertCondition, value: number, serverId?: string): void;
   remove(id: string): void;
   toggle(id: string): void;
   dismiss(): void;
@@ -47,10 +49,10 @@ export const useAlerts = create<AlertsState>((set, get) => {
   return {
     list: read(),
     fired: null,
-    add: (symbol, condition, value) => {
-      const a: PriceAlert = { id: uuid(), symbol, condition, value, active: true, createdAt: Date.now() };
+    add: (symbol, condition, value, serverId) => {
+      const a: PriceAlert = { id: uuid(), symbol, condition, value, active: true, createdAt: Date.now(), serverId };
       set({ list: [a, ...get().list] }); save();
-      const path = serverPath(symbol);
+      const path = serverId ? null : serverPath(symbol);
       if (path) {
         const backend = backendOf(symbol);
         void authed<{ alert?: { id?: string | number } }>(backend, path, {
@@ -76,6 +78,9 @@ export const useAlerts = create<AlertsState>((set, get) => {
 const lastSeen = new Map<string, number>();
 
 function notify(a: PriceAlert, price: number) {
+  const prefs = readNotify();
+  if (inQuietHours(new Date(), prefs)) return;
+  if (prefs.sound) chime();
   try {
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification(`${a.symbol} ${a.condition === 'below' ? '≤' : a.condition === 'above' ? '≥' : '⇄'} ${a.value}`, { body: `${price}`, tag: a.id, icon: `${import.meta.env.BASE_URL}generated/app-icons/favicon-32.png` });

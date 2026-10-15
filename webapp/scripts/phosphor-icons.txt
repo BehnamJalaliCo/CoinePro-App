@@ -70,3 +70,5 @@ trash
 pencil-simple
 target
 google-logo
+arrow-left
+arrow-right

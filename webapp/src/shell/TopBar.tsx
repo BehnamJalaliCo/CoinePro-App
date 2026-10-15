@@ -23,7 +23,7 @@ const INTERVAL_GROUPS: { fa: string; en: string; ids: string[] }[] = [
 // TradingView's top toolbar, left to right: symbol, compare, intervals, chart type, indicators,
 // templates, alert, replay, undo/redo — then layout, save, quick search, settings, fullscreen,
 // snapshot, and ours: the premium button and the account.
-export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAlert, onReplay, onSettings, onPremium }: { onSymbolSearch(): void; onIndicators(): void; onSignIn(): void; onCompare(): void; onAlert(): void; onReplay(): void; onSettings(): void; onPremium(): void }) {
+export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAlert, onReplay, onSettings, onPremium, onMenu }: { onSymbolSearch(): void; onIndicators(): void; onSignIn(): void; onCompare(): void; onAlert(): void; onReplay(): void; onSettings(): void; onPremium(): void; onMenu(): void }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
   const symbol = usePrefs((s) => s.symbol);
@@ -51,6 +51,7 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
 
   return (
     <header className="ws-top" role="toolbar" aria-label={t('appName')}>
+      <button className="ib menu-btn" title={t('menu')} onClick={onMenu}><Icon name="ph-list" size="md" /></button>
       <button className="ib topbar-symbol" onClick={onSymbolSearch} title={t('symbolSearch')}>
         <SymbolLogo symbol={symbol} size={20} />
         <span className="label sym">{symbol}</span>

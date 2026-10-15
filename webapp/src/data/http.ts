@@ -79,6 +79,8 @@ export interface RequestOptions {
   token?: string | null;
   signal?: AbortSignal;
   timeoutMs?: number;
+  /** Extra headers (the community's X-Community-Key). */
+  headers?: Record<string, string>;
 }
 
 export async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
@@ -86,7 +88,7 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
   const quiet = quietUntil.get(fam) ?? 0;
   if (quiet > Date.now()) throw new HttpError(429, null, quiet - Date.now());
 
-  const headers: Record<string, string> = { ...baseHeaders() };
+  const headers: Record<string, string> = { ...baseHeaders(), ...(opts.headers ?? {}) };
   if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
   const hasBody = opts.body !== undefined;
   const isForm = typeof FormData !== 'undefined' && opts.body instanceof FormData;

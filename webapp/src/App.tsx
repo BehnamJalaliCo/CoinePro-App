@@ -18,6 +18,9 @@ import { SettingsDialog } from './shell/SettingsDialog';
 import { PremiumDialog } from './shell/PremiumDialog';
 import { LiteChart } from './chart/LiteChart';
 import { cellCount, useGrid } from './state/grid';
+import { MainMenu } from './shell/MainMenu';
+import { PageHost } from './pages/PageHost';
+import { usePage } from './state/page';
 import { ChartView } from './chart/ChartView';
 import { feed } from './data/feed';
 import { intervalsFor } from './data/candles';
@@ -43,6 +46,8 @@ export function App() {
   const [adding, setAdding] = useState(false);
   const [settings, setSettings] = useState(false);
   const [premium, setPremium] = useState(false);
+  const [menu, setMenu] = useState(false);
+  const page = usePage((s) => s.page);
   const [cellSearch, setCellSearch] = useState<number | null>(null);
   const { grid, cells, setCell } = useGrid();
   const setSymbol = usePrefs((s) => s.setSymbol);
@@ -79,20 +84,20 @@ export function App() {
   // Typing a letter anywhere opens the symbol search with it, as on TradingView.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (search !== null || signIn || indicators || studyUid || comparing || adding || settings || premium || cellSearch !== null || alertAt !== undefined || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (search !== null || signIn || indicators || studyUid || comparing || adding || settings || premium || menu || page || cellSearch !== null || alertAt !== undefined || e.ctrlKey || e.metaKey || e.altKey) return;
       const el = e.target as HTMLElement;
       if (el.closest('input, textarea, [contenteditable]')) return;
       if (/^[a-zA-Z0-9]$/.test(e.key)) { e.preventDefault(); setSearch(e.key.toUpperCase()); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [search, signIn, indicators, studyUid, comparing, adding, settings, premium, cellSearch, alertAt]);
+  }, [search, signIn, indicators, studyUid, comparing, adding, settings, premium, menu, page, cellSearch, alertAt]);
 
   const displayName = (lang === 'fa' ? inst.nameFa : inst.nameEn) ?? symbol;
 
   return (
     <div className="ws">
-      <TopBar onSymbolSearch={() => setSearch('')} onIndicators={() => setIndicators(true)} onSignIn={() => setSignIn(true)} onCompare={() => setComparing(true)} onAlert={() => setAlertAt(null)} onSettings={() => setSettings(true)} onPremium={() => setPremium(true)} onReplay={() => { const r = useReplay.getState(); if (r.state?.on || r.selecting) r.exit(); else r.select(); }} />
+      <TopBar onSymbolSearch={() => setSearch('')} onIndicators={() => setIndicators(true)} onSignIn={() => setSignIn(true)} onCompare={() => setComparing(true)} onAlert={() => setAlertAt(null)} onSettings={() => setSettings(true)} onPremium={() => setPremium(true)} onMenu={() => setMenu(true)} onReplay={() => { const r = useReplay.getState(); if (r.state?.on || r.selecting) r.exit(); else r.select(); }} />
       <ToolRail />
       <main className="ws-main">
         <div className={`chart-grid g-${grid}`}>
@@ -108,6 +113,8 @@ export function App() {
       </main>
       <RightPanel onNewAlert={() => setAlertAt(null)} onAddSymbol={() => setAdding(true)} onSignIn={() => setSignIn(true)} />
       <WidgetBar />
+      <PageHost onSignIn={() => setSignIn(true)} />
+      {menu ? <MainMenu onClose={() => setMenu(false)} onSignIn={() => setSignIn(true)} /> : null}
       {search !== null ? <SymbolSearch initial={search} onClose={() => setSearch(null)} /> : null}
       {signIn ? <SignIn onClose={() => setSignIn(false)} /> : null}
       {indicators ? <IndicatorsDialog onClose={() => setIndicators(false)} /> : null}
