@@ -16,7 +16,14 @@ export async function goToTime(t: number): Promise<boolean> {
       let idx = bars.findIndex((b) => b.t >= t);
       if (idx < 0) idx = bars.length - 1;
       const span = Math.max(40, Math.round(((api.timeScale().getVisibleLogicalRange()?.to ?? 100) - (api.timeScale().getVisibleLogicalRange()?.from ?? 0))));
-      api.timeScale().setVisibleLogicalRange({ from: idx - span / 2, to: idx + span / 2 });
+      const range = { from: idx - span / 2, to: idx + span / 2 };
+      // A load or a live bar landing at the same moment can move the view back; hold it there.
+      for (let k = 0; k < 4; k++) {
+        api.timeScale().setVisibleLogicalRange(range);
+        await wait(120);
+        const now = api.timeScale().getVisibleLogicalRange();
+        if (now && now.from <= idx && now.to >= idx) break;
+      }
       return bars[0]!.t <= t;
     }
     // Showing the oldest bars asks the chart for the page before them.

@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.35.1
+
+**fa**
+
+> نسخه‌ی تازه‌ی وب پرو چارت در pro-chart.com/next آماده است: همه‌ی صفحه‌های برنامه، از پرتفوی و سیگنال تا آکادمی و انجمن، کنار چارت. در برنامه‌ی اندروید چیزی تغییر نکرده است.
+
+**en**
+
+> The new Pro Chart web app is ready at pro-chart.com/next: every screen of the app, from the portfolio and signals to the academy and community, beside the chart. Nothing changed in the Android app.
+
+---
+
 ## 5.35.0
 
 **fa**

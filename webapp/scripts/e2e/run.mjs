@@ -757,13 +757,17 @@ await test('context menu: invert, indexed, prev close, CSV; Alt+I', async () => 
 await test('go to date scrolls the chart there', async () => {
   const env = await open('BTCUSDT/1h?e2e=1');
   await ready(env.page);
-  const target = await pc(env.page, () => window.__pc.useChartBus.getState().bars[100].t);
+  // The date as the page's own clock writes it (the browser's time zone, not the runner's).
+  const local = await pc(env.page, () => {
+    const d = new Date(window.__pc.useChartBus.getState().bars[100].t * 1000);
+    const p2 = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}`;
+  });
   await env.page.keyboard.press('Alt+g');
-  const d = new Date(target * 1000);
-  const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   await env.page.fill('.goto-pop input', local);
   await env.page.click('.goto-pop button');
   await env.page.waitForSelector('.goto-pop', { state: 'detached', timeout: 8000 });
+  await env.page.waitForTimeout(400);
   const range = await pc(env.page, () => window.__pc.useChartBus.getState().api.timeScale().getVisibleLogicalRange());
   expect(range.from < 100 && range.to > 100, `range ${JSON.stringify(range)}`);
   return env;
