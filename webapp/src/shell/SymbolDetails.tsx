@@ -212,13 +212,16 @@ export function SymbolDetails({ onCompare, onSearch }: { onCompare?(): void; onS
     });
     return () => { alive = false; };
   }, [symbol, inst.market, inst.nameFa, inst.nameEn]);
-  // The community's posts that name the symbol (its base asset).
+  // The community's posts that name the symbol (its base asset), once the reader stops on it: arrowing
+  // down a watchlist does not search for every symbol it passes.
   useEffect(() => {
     let alive = true;
     setPosts([]);
     const q = inst.market === 'crypto' ? inst.base : symbol;
-    void community<Record<string, unknown>>(`posts/search?q=${encodeURIComponent(q)}`).then((r) => { if (alive) setPosts(listOf(r).map(readPost).filter((p) => p.content).slice(0, 3)); }).catch(() => undefined);
-    return () => { alive = false; };
+    const id = setTimeout(() => {
+      void community<Record<string, unknown>>(`posts/search?q=${encodeURIComponent(q)}`).then((r) => { if (alive) setPosts(listOf(r).map(readPost).filter((p) => p.content).slice(0, 3)); }).catch(() => undefined);
+    }, 400);
+    return () => { alive = false; clearTimeout(id); };
   }, [symbol, inst.market, inst.base]);
 
   // The day's figures from the daily bar (TradingView's), the 24-hour ticker until it arrives.
