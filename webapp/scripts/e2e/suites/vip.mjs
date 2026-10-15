@@ -207,6 +207,35 @@ export default async function ({ test, open, ready, pc, expect, fixtures }) {
     return env;
   });
 
+  await test('vip: Telegram links through the coineprofx.com window, and only that window is heard', async () => {
+    // @CoineProFxBot's widget domain is coineprofx.com, so the widget runs in a window there
+    // (CoineProFx frontend/website/public/tg-link.html); here a stand-in posts what the widget gives.
+    const w = world({ reg: 'approved', vip: 'active', forex: 'approved' });
+    let linked = null;
+    const mock = (u, method, req) => {
+      if (u.pathname === '/up/coineprofx/api/user/auth/link/telegram' && method === 'POST') { linked = JSON.parse(req.postData() ?? '{}'); return json({ merged: false }); }
+      return w.mock(u, method, req);
+    };
+    const now = Math.floor(Date.now() / 1000);
+    const env = await open('vip/status?e2e=1', { signed: true, mock, setup: async (ctx) => {
+      await ctx.route('https://coineprofx.com/tg-link.html', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: `<!doctype html><script>
+        setTimeout(() => {
+          window.opener.postMessage({ type: 'pc:telegram-auth', user: { id: 'x' } }, '*');
+          window.opener.postMessage({ type: 'pc:telegram-auth', user: { id: 777, first_name: 'E2E', auth_date: ${now}, hash: 'abc' } }, '*');
+        }, 400);
+      </script>` }));
+    } });
+    await settle(env.page);
+    await env.page.waitForSelector('.vip-tg button', { timeout: 10000 });
+    const [pop] = await Promise.all([env.page.waitForEvent('popup'), env.page.click('.vip-tg button')]);
+    expect(new URL(pop.url()).origin === 'https://coineprofx.com', `popup at ${pop.url()}`);
+    // This page posting to itself is not the coineprofx.com window: ignored.
+    await env.page.evaluate(() => window.postMessage({ type: 'pc:telegram-auth', user: { id: 1, auth_date: 1, hash: 'forged' } }, '*'));
+    await env.page.waitForSelector('.vip-forex-card >> text=تلگرام به حساب فارکس وصل شد.', { timeout: 10000 });
+    expect(linked && linked.id === 777 && linked.hash === 'abc' && linked.first_name === 'E2E', `linked ${JSON.stringify(linked)}`);
+    return env;
+  });
+
   await test('vip: performance — account record and public track record', async () => {
     const env = await open('performance?e2e=1', { signed: true });
     await settle(env.page);

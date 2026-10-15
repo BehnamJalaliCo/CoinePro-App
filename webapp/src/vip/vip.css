@@ -117,7 +117,6 @@
 .vip-event-text { display: flex; flex-direction: column; gap: 2px; line-height: 1.8; min-width: 0; }
 .vip-event-text span { color: var(--text-2); }
 .vip-event-time { white-space: nowrap; padding-top: 2px; }
-.vip-tg-widget { min-height: 44px; }
 .vip-copy { display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--bg-sunken); }
 .vip-copy code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 13px; }
 
