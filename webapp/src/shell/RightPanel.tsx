@@ -7,6 +7,7 @@ import { DataWindow } from './DataWindow';
 import { AlertsPanel } from './AlertsPanel';
 import { ObjectTree } from './ObjectTree';
 import { Screener } from './Screener';
+import { VipPanel } from '../trade/VipPanel';
 import './panels-x.css';
 
 // The widgets the panel opens less often load when first opened, so the first paint stays light.
@@ -38,6 +39,7 @@ export const PANEL_TITLES: Record<PanelId, { fa: string; en: string }> = {
   notes: { fa: 'یادداشت‌ها', en: 'Notes' },
   log: { fa: 'گزارش اعلان‌ها', en: 'Notification log' },
   order: { fa: 'پنل سفارش', en: 'Order panel' },
+  vip: { fa: 'کانال VIP', en: 'VIP channel' },
 };
 
 // The right panel: whichever widget is open in the widget bar. The watchlist carries the symbol's
@@ -91,6 +93,7 @@ export function RightPanel({ onNewAlert, onAddSymbol, onSignIn, onCompare, onSea
         : open === 'notes' ? <NotesPanel />
         : open === 'log' ? <NotificationLog />
         : open === 'order' ? <OrderPanel />
+        : open === 'vip' ? <VipPanel onSignIn={onSignIn} />
         : (
           <section className="panel-generic">
             <header className="panel-head"><span className="fa">{title}</span></header>

@@ -295,8 +295,13 @@ export default async function ({ test, open, ready, pc, expect }) {
     await p.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.6);
     await p.click('.axis-plus');
     await p.click('.cm [data-act=plus-buy]');
+    // The trading area answers every offer with its ticket, on paper for a guest: send it.
+    const ticket = async () => { if (await p.waitForSelector('.ot .ot-submit', { timeout: 1500 }).catch(() => null)) await p.click('.ot .ot-submit'); };
+    await ticket();
+    await p.waitForFunction(() => window.__pc.usePaper.getState().orders.length === 1, null, { timeout: 5000 }).catch(() => {});
     expect((await pc(p, () => window.__pc.usePaper.getState().orders.length)) === 1, 'fallback: paper order');
     await p.click('.legend-trade .lt-sell');
+    await ticket();
     await p.waitForFunction(() => window.__pc.usePaper.getState().positions.some((x) => x.side === 'short'));
     // The paper panel opened under the chart: the chart is shorter now.
     const box2 = await p.locator('.chart-host').boundingBox();

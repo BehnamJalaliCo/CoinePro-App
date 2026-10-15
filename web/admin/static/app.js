@@ -931,7 +931,7 @@ async function openUser(backend, id) {
     <div class="modal-head"><div class="who lg"><span class="avatar">${initials(u)}</span><div><h3>${esc(u.full_name || u.email || '#' + u.id)}</h3><span class="mono faint">${esc(u.email || '')}</span></div><span class="pill info plain">${esc(server)}</span></div>
       <button class="icon-btn ghost" data-close>${icon('x')}</button></div>
     <div class="modal-body">
-      <div class="chips">${userBadges(u)} ${originPill(u.signup_platform, u.signup_flavor)}${runningPro ? ' <span class="pill accent">پریمیوم</span>' : ''}</div>
+      <div class="chips">${userBadges(u)} ${originPill(u.signup_platform, u.signup_flavor)}${u.entitlements?.plan === 'vip' ? ' <span class="pill accent" title="عضو کانال VIP تریدیار: همه‌چیز رایگان">VIP</span>' : runningPro ? ' <span class="pill accent">پریمیوم</span>' : ''}</div>
       ${u.banned ? `<div class="notice bad">${icon('stop')}<span>مسدود از ${when(isoEpoch(u.banned_at))}${u.ban_reason ? ' — ' + esc(u.ban_reason) : ''}</span></div>` : ''}
       <div class="grid g-2">
         <div class="card inset"><div class="card-head"><h3>حساب</h3></div>${kv([

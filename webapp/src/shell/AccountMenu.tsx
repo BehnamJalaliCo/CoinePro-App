@@ -4,6 +4,7 @@ import { useSession } from '../data/session';
 import { signOut } from '../data/auth';
 import { usePage } from '../state/page';
 import { Icon } from '../ui/Icon';
+import { PlanBadge, useVipName } from '../trade/PlanBadge';
 
 // The round button at the top right, as on TradingView: the reader's initial (or a person glyph for
 // a guest) opening the menu with the account, theme and language.
@@ -16,6 +17,7 @@ export function AccountMenu({ onSignIn, onPremium }: { onSignIn(): void; onPremi
   const user = sessions.tradeyar?.user ?? sessions.coineprofx?.user ?? null;
   const signed = Boolean(sessions.tradeyar || sessions.coineprofx);
   const initial = (user?.name ?? user?.email ?? '').trim().charAt(0).toUpperCase();
+  const vipName = useVipName();
 
   useEffect(() => {
     if (!open) return;
@@ -36,7 +38,7 @@ export function AccountMenu({ onSignIn, onPremium }: { onSignIn(): void; onPremi
       {open ? (
         <div className="menu account-menu" role="menu">
           <div className="menu-user">
-            <span className="fa">{user?.name ?? (signed ? t('account') : t('guest'))}</span>
+            <span className="fa">{user?.name ?? (signed ? t('account') : t('guest'))} <PlanBadge /></span>
             {user?.email ? <span className="num muted">{user.email}</span> : null}
           </div>
           <div className="menu-sep" />
@@ -63,7 +65,7 @@ export function AccountMenu({ onSignIn, onPremium }: { onSignIn(): void; onPremi
             </button>
           ) : null}
           <button role="menuitem" className="menu-item premium-item" onClick={() => { setOpen(false); onPremium(); }}>
-            <Icon name="ph-crown" size="sm" /><span className="fa">{t('premium')}</span>
+            <Icon name="ph-crown" size="sm" /><span className="fa">{vipName ?? t('premium')}</span>
           </button>
           <div className="menu-sep" />
           {signed ? (

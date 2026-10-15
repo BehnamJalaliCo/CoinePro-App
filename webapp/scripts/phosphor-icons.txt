@@ -166,3 +166,6 @@ star-four
 monitor
 check-square
 arrows-clockwise
+crown-simple
+seal-check
+wallet

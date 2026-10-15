@@ -10,6 +10,8 @@ import { PaperPanel } from './PaperPanel';
 import { NotesTab } from './NotesTab';
 import { useL } from '../pages/kit';
 import './studies.css';
+import { AccountPanel, AccountTabButton } from '../trade/AccountPanel';
+import { hostActions } from '../trade/host';
 
 // Under the chart, where TradingView keeps Pine Editor, the Strategy Tester and the Trading Panel:
 // the screener, NamaScript (our Pine), the strategy tester, the trading panel (paper) and notes.
@@ -70,6 +72,7 @@ export function BottomPanel() {
             <span className="fa">{label(x)}</span>
           </button>
         ))}
+        <AccountTabButton />
         <span className="ws-spacer" />
         {bottom ? (
           <>
@@ -83,7 +86,7 @@ export function BottomPanel() {
       </nav>
       {bottom ? (
         <div className="ws-bottom-body" role="tabpanel" style={{ height }}>
-          {bottom === 'screener' ? <Screener /> : bottom === 'namascript' ? <NamaScriptPanel /> : bottom === 'backtest' ? <BacktestPanel /> : bottom === 'notes' ? <NotesTab /> : <PaperPanel />}
+          {bottom === 'screener' ? <Screener /> : bottom === 'namascript' ? <NamaScriptPanel /> : bottom === 'backtest' ? <BacktestPanel /> : bottom === 'notes' ? <NotesTab /> : bottom === 'account' ? <AccountPanel onSignIn={() => hostActions.signIn()} /> : <PaperPanel />}
         </div>
       ) : null}
     </section>

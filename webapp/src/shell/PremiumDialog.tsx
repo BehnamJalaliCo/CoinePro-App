@@ -5,6 +5,8 @@ import { authed } from '../data/auth';
 import { useSession } from '../data/session';
 import { Icon } from '../ui/Icon';
 import { faNum } from '../i18n/time';
+import { VipCard, useVipName } from '../trade/PlanBadge';
+import { useEntitlements, usePremium } from '../trade/entitlements';
 
 // «پرو چارت پرمیوم» on the web: the plans TradeYar publishes, paid in USDT on BEP20 to the wallet
 // it names, confirmed by the transaction hash (POST payments/usdt). The same checkout the phone's
@@ -17,11 +19,12 @@ const PLAN_KEY = { monthly: 'planMonthly', quarterly: 'planQuarterly', yearly: '
 
 export function PremiumDialog({ onClose, onSignIn }: { onClose(): void; onSignIn(): void }) {
   const t = useT();
+  const vipName = useVipName();
   return (
     <div className="scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="dialog premium" role="dialog" aria-modal="true" aria-label={t('premium')} onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}>
         <header className="dialog-head">
-          <h2 className="fa">{t('premiumTitle')}</h2>
+          <h2 className="fa">{vipName ?? t('premiumTitle')}</h2>
           <button className="ib" onClick={onClose} aria-label="close"><Icon name="ph-x" size="md" /></button>
         </header>
         <PremiumBody onSignIn={onSignIn} />
@@ -42,6 +45,8 @@ export function PremiumBody({ onSignIn }: { onSignIn(): void }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  // Premium is decided across both platforms (trade/entitlements.ts); a VIP channel member has it all.
+  const premium = usePremium();
 
   useEffect(() => {
     void request<Plans>('/up/tradeyar/api/mobile/v1/payments/plans').then(setPlans).catch(() => setPlans({ plans: [] }));
@@ -54,6 +59,7 @@ export function PremiumBody({ onSignIn }: { onSignIn(): void }) {
     try {
       const r = await authed<Entitlement>('tradeyar', '/up/tradeyar/api/mobile/v1/payments/usdt', { body: { plan: pick.id, tx_hash: hash.trim() } });
       setEnt(r);
+      void useEntitlements.getState().load();
       setMsg({ ok: true, text: t('premiumOk') });
     } catch (e) {
       setMsg({ ok: false, text: (e instanceof HttpError && e.readerMessage) || t('networkError') });
@@ -62,9 +68,10 @@ export function PremiumBody({ onSignIn }: { onSignIn(): void }) {
 
   return (
   <div className="premium-body" dir={lang === 'fa' ? 'rtl' : 'ltr'}>
-    {ent?.premium ? (
+    {premium.premium ? <VipCard /> : ent?.premium ? (
       <p className="hint">{`${t('premiumActive')}${ent.ends_at ? ` ${t('premiumUntil')} ${new Intl.DateTimeFormat(lang === 'fa' ? 'fa-IR-u-ca-persian' : 'en-GB', { dateStyle: 'long' }).format(new Date(ent.ends_at))}` : ''}.`}</p>
     ) : null}
+    {premium.vip ? null : <>
     {plans === null ? <p className="hint">{t('loading')}…</p> : null}
     <div className="plans">
       {(plans?.plans ?? []).map((p) => (
@@ -94,6 +101,7 @@ export function PremiumBody({ onSignIn }: { onSignIn(): void }) {
         )}
       </div>
     ) : null}
+    </>}
     {msg ? <p className={msg.ok ? 'ok' : 'error'}>{msg.text}</p> : null}
   </div>
   );

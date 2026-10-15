@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 import { PANEL_TITLES } from './RightPanel';
 import type { StringKey } from '../i18n/strings';
 import './panels-x.css';
+import { VipWidgetButton } from '../trade/VipPanel';
 
 // The right edge, in TradingView's two groups: what belongs to this chart on top (watchlist,
 // alerts, objects, data window, the order ticket and the book), the market's widgets at the bottom,
@@ -52,6 +53,7 @@ export function WidgetBar() {
   return (
     <aside className="ws-wbar" aria-label="panels">
       {TOP.map(button)}
+      <VipWidgetButton />
       <span className="ws-spacer" />
       {BOTTOM.map(button)}
       <span className="wbar-sep" />

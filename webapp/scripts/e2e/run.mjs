@@ -93,6 +93,12 @@ function mock(url, method = 'GET') {
   if (p === `${TYM}trade/account`) return json({ available: 1000, equity: 1050, margin_used: 50, unrealized_pnl: 5, trading_enabled: true });
   if (p === `${TYM}trade/positions`) return json({ items: [{ symbol: 'BTCUSDT', side: 'long', quantity: 0.01, entry_price: 80000, mark_price: 81000, unrealized_pnl: 10, leverage: 5, liquidation_price: 65000 }] });
   if (p === `${TYM}trade/orders`) return r_method === 'POST' ? json({ order: { id: 5, status: 'submitted' } }) : json({ items: [{ id: 4, symbol: 'ETHUSDT', side: 'buy', type: 'limit', quantity: 0.5, price: 2300, status: 'open', can_cancel: true, can_amend: true, protection: 'none' }] });
+  // Trading from the chart and the VIP channel (suites/trade.mjs).
+  if (/^\/up\/tradeyar\/api\/mobile\/v1\/trade\/orders\/\d+$/.test(p)) { const del = r_method === 'DELETE'; return json({ order: { id: Number(p.split('/').pop()), symbol: 'BTCUSDT', side: 'buy', type: 'limit', quantity: 0.01, price: 80000, status: del ? 'cancelled' : 'open', can_cancel: !del, can_amend: !del, protection: 'none' } }); }
+  if (p === `${TYM}trade/positions/protection`) return json({ position: { symbol: 'BTCUSDT', side: 'long', quantity: 0.01, entry_price: 80000 } });
+  if (p === `${TYM}trade/positions/close`) return json({ order: { id: 6, symbol: 'BTCUSDT', side: 'sell', type: 'market', quantity: 0.01, status: 'filled', reduce_only: true, can_cancel: false, can_amend: false } });
+  if (p === `${TYM}trade/leverage`) return json({ symbol: 'BTCUSDT', leverage: 10 });
+  if (/^\/up\/tradeyar\/api\/mobile\/v1\/executions\/[\w-]+\/close$/.test(p)) return json({ execution: { id: 'e1', signal_id: 11, venue: 'lbank', status: 'closed', can_request_close: false } });
   if (p === `${TYM}market/depth` || p === '/up/tradeyar/api/v1/public/market/depth') { const m = PRICE[q.get('symbol')] ?? 100; return json({ symbol: q.get('symbol'), bids: Array.from({ length: 20 }, (_, i) => [m * (1 - (i + 1) * 0.0005), 1 + i * 0.3, 3]), asks: Array.from({ length: 20 }, (_, i) => [m * (1 + (i + 1) * 0.0005), 1 + i * 0.2, 2]) }); }
   if (p === `${TYM}portfolio/history`) return json({ trades: [{ id: 1, symbol: 'BTCUSDT', side: 'buy', opened_at: NOW - 86400 * 3, closed_at: NOW - 86400 * 2, entry: 78000, exit: 80000, quantity: 0.01, pnl: 20, fee: 0.4, currency: 'USDT' }, { id: 2, symbol: 'ETHUSDT', side: 'sell', opened_at: NOW - 86400, closed_at: NOW - 3600, entry: 2500, exit: 2550, quantity: 0.2, pnl: -10, fee: 0.2, currency: 'USDT' }], total: 2 });
   if (p === '/up/coineprofx/api/user/trade-history') return json({ items: [{ id: 1, symbol: 'XAUUSD', direction: 'BUY', volume: 0.1, entry_price: 4100, exit_price: 4140, open_time: iso(-86400e3), close_time: iso(-3600e3), net_profit: 40, commission: 0.7, swap: 0, pips: 400 }], total_pages: 1 });
@@ -841,6 +847,8 @@ await test('legend buy/sell boxes place a paper trade', async () => {
   await ready(env.page);
   await env.page.waitForSelector('.legend-trade .lt-buy', { timeout: 10000 });
   await env.page.click('.legend-trade .lt-buy');
+  // Once the legend offers the order (pc:order-ticket), the ticket opens on paper for a guest.
+  if (await env.page.waitForSelector('.ot .ot-submit', { timeout: 1500 }).catch(() => null)) await env.page.click('.ot .ot-submit');
   await env.page.waitForFunction(() => window.__pc.usePaper.getState().positions.some((p) => p.symbol === 'ETHUSDT' && p.side === 'long'), null, { timeout: 5000 });
   return env;
 });

@@ -68,6 +68,12 @@ export function appHotkeyHandlers(actions: HotkeyActions): Record<string, (e: Ke
     const sym = usePrefs.getState().symbol;
     const px = useMarket.getState().tickers[sym]?.last;
     if (!px) return;
+    // While replaying, Shift+B/S are the replay's practice trades (the replay bar takes them).
+    if (useReplay.getState().state?.on) return;
+    // Offered to live trading first (its ticket), paper only when nobody takes it.
+    const ev = new CustomEvent('pc:order-ticket', { cancelable: true, detail: { symbol: sym, side: side === 'long' ? 'buy' : 'sell', price: px, type: 'market', source: 'hotkey' } });
+    window.dispatchEvent(ev);
+    if (ev.defaultPrevented) return;
     usePaper.getState().open(sym, side, Number((1000 / px).toPrecision(2)), px);
     if (usePanels.getState().bottom !== 'paper') usePanels.getState().setBottom('paper');
   };

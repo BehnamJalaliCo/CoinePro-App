@@ -32,6 +32,7 @@ import { useRoute } from './route';
 import { startPanel } from './usercp/telemetry';
 import { intervalBox } from './shell/IntervalMenu';
 import { StudiesHost } from './shell/StudiesHost';
+import { TradeHost } from './trade/TradeHost';
 
 export function App() {
   const symbol = usePrefs((s) => s.symbol);
@@ -130,6 +131,7 @@ export function App() {
       <AlertToast />
       <AlertHost />
       <StudiesHost />
+      <TradeHost onSignIn={() => setSignIn(true)} />
       {premium ? <PremiumDialog onClose={() => setPremium(false)} onSignIn={() => { setPremium(false); setSignIn(true); }} /> : null}
       {settings ? <SettingsDialog onClose={() => setSettings(false)} /> : null}
       {cellSearch !== null ? <SymbolSearch allowExpr current={useGrid.getState().cells[cellSearch]?.symbol} onClose={() => setCellSearch(null)} onPick={(sym) => { useGrid.getState().setActive(cellSearch + 1); applySymbol(sym); }} /> : null}

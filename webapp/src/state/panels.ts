@@ -2,8 +2,8 @@ import { create } from 'zustand';
 
 export type PanelId =
   | 'watchlist' | 'alerts' | 'signals' | 'ai' | 'objects' | 'data' | 'news' | 'calendar' | 'screener'
-  | 'hotlists' | 'dom' | 'notes' | 'log' | 'order';
-export type BottomTab = 'screener' | 'namascript' | 'backtest' | 'paper' | 'notes';
+  | 'hotlists' | 'dom' | 'notes' | 'log' | 'order' | 'vip';
+export type BottomTab = 'screener' | 'namascript' | 'backtest' | 'paper' | 'notes' | 'account';
 
 const KEY = 'pc.panels.v1';
 interface Stored { open: PanelId | null; bottom: BottomTab | null; split?: number; detailsCollapsed?: boolean }
