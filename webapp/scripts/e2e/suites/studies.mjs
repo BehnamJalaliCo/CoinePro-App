@@ -222,7 +222,8 @@ export default async function ({ test, open, ready, pc, expect }) {
     expect(src.split('\n')[2].startsWith('// y = ta.ema(close, 9)'), `comment: ${src.split('\n')[2]}`);
     await env.page.keyboard.press('Control+f');
     await env.page.waitForSelector('.ce-find input');
-    await env.page.keyboard.type('close');
+    // Fill the box itself: on a slow runner the keys can land before the box takes the focus.
+    await env.page.fill('.ce-find input', 'close');
     await env.page.waitForFunction(() => /\/2/.test(document.querySelector('.ce-count')?.textContent ?? ''), null, { timeout: 3000 }).catch(() => {});
     expect(/\/2/.test(await env.page.textContent('.ce-count')), 'find count');
     await env.page.keyboard.press('Escape');
