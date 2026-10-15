@@ -1,0 +1,63 @@
+/*
+ * The frame, laid out like TradingView's chart page and always left to right, whatever the
+ * language: time runs left to right on every chart, and a trader's hands know where the tools
+ * are. Persian text inside each part keeps its own direction (see .fa in base.css).
+ *
+ *   ┌───────────────────────── top bar ─────────────────────────┬────┐
+ *   │rail│                chart                    │   panel     │wbar│
+ *   │    ├─────────── time bar ────────────────────┤             │    │
+ *   │    ├─────────── bottom panel (tabs) ─────────┤             │    │
+ *   └────┴─────────────────────────────────────────┴─────────────┴────┘
+ */
+.ws {
+  display: grid;
+  height: 100%;
+  grid-template-columns: var(--rail-w) minmax(0, 1fr) auto var(--widgetbar-w);
+  grid-template-rows: var(--topbar-h) minmax(0, 1fr);
+  grid-template-areas:
+    'top top top top'
+    'rail main panel wbar';
+  background: var(--line);
+  gap: 1px;
+  direction: ltr;
+}
+.ws > * { background: var(--bg); min-width: 0; min-height: 0; }
+
+.ws-top { grid-area: top; display: flex; align-items: center; gap: 2px; padding: 0 6px; overflow: hidden; }
+.ws-rail { grid-area: rail; display: flex; flex-direction: column; align-items: center; padding: 6px 0; gap: 2px; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+.ws-main { grid-area: main; display: grid; grid-template-rows: minmax(0, 1fr) 30px auto; }
+.ws-panel { grid-area: panel; width: var(--panel-w); display: flex; flex-direction: column; overflow: hidden; }
+.ws-panel[hidden] { display: none; }
+.ws-wbar { grid-area: wbar; display: flex; flex-direction: column; align-items: center; padding: 6px 0; gap: 4px; }
+
+.ws-spacer { flex: 1; }
+
+.ws-chart { position: relative; min-height: 0; }
+.ws-timebar { display: flex; align-items: center; gap: 2px; padding: 0 6px; border-top: 1px solid var(--line); font-size: var(--fs-ui); }
+.ws-timebar .ib { height: 26px; min-width: 30px; font-size: var(--fs-ui); }
+
+.ws-bottom { border-top: 1px solid var(--line); }
+.ws-bottom-tabs { display: flex; align-items: center; height: 34px; padding: 0 6px; gap: 2px; }
+.ws-bottom-tabs .tab { height: 28px; padding: 0 10px; border-radius: 4px; color: var(--text-2); }
+.ws-bottom-tabs .tab:hover { background: var(--bg-hover); color: var(--text); }
+.ws-bottom-tabs .tab.on { color: var(--text); background: var(--bg-active); }
+.ws-bottom-body { height: 260px; border-top: 1px solid var(--line); overflow: auto; }
+
+/* Rail tool groups: 38px buttons with the corner arrow that opens the group, like TradingView. */
+.tool { position: relative; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; color: var(--text); }
+.tool:hover { background: var(--bg-hover); }
+.tool.on { color: var(--gold); background: var(--gold-soft); }
+.tool .more { position: absolute; right: 1px; bottom: 1px; width: 5px; height: 5px; border-right: 1.5px solid var(--text-3); border-bottom: 1.5px solid var(--text-3); }
+.rail-sep { width: 28px; height: 1px; background: var(--line); margin: 4px 0; flex: none; }
+
+.wbar-btn { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; color: var(--text-2); }
+.wbar-btn:hover { background: var(--bg-hover); color: var(--text); }
+.wbar-btn.on { color: var(--gold); background: var(--gold-soft); }
+
+/* Tooltips: native title for now; a styled one replaces it with the first interaction pass. */
+
+/* Narrow screens: the panel becomes an overlay, the rail stays. Phones get their own layout. */
+@media (max-width: 1100px) {
+  .ws { grid-template-columns: var(--rail-w) minmax(0, 1fr) 0 var(--widgetbar-w); }
+  .ws-panel { position: fixed; right: var(--widgetbar-w); top: var(--topbar-h); bottom: 0; box-shadow: var(--shadow-pop); z-index: 20; }
+}

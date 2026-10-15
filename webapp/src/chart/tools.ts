@@ -1,0 +1,105 @@
+// The drawing tools on the left rail, in TradingView's groups and order. Every id is one the
+// drawing engine knows (src/engine/drawings.js built-ins, or EXT_REGISTRY in drawtools_ext.js);
+// every icon is the TradingView glyph of the same name in the shared sprite (`tool_<id>`).
+export interface ToolDef { id: string; fa: string; en: string; key?: string }
+export interface ToolGroup { id: string; fa: string; en: string; tools: ToolDef[] }
+
+export const TOOL_GROUPS: ToolGroup[] = [
+  { id: 'cursors', fa: 'نشانگر', en: 'Cursors', tools: [
+    { id: 'cursor', fa: 'نشانگر', en: 'Cross' },
+    { id: 'select', fa: 'انتخاب', en: 'Select' },
+  ] },
+  { id: 'lines', fa: 'خط‌ها', en: 'Trend line tools', tools: [
+    { id: 'trend', fa: 'خط روند', en: 'Trend line', key: 'Alt+T' },
+    { id: 'ray', fa: 'پرتو', en: 'Ray' },
+    { id: 'infoline', fa: 'خط اطلاعاتی', en: 'Info line' },
+    { id: 'extline', fa: 'خط امتدادیافته', en: 'Extended line' },
+    { id: 'angle', fa: 'زاویه‌ی روند', en: 'Trend angle' },
+    { id: 'hline', fa: 'خط افقی', en: 'Horizontal line', key: 'Alt+H' },
+    { id: 'hray', fa: 'پرتو افقی', en: 'Horizontal ray', key: 'Alt+J' },
+    { id: 'vline', fa: 'خط عمودی', en: 'Vertical line', key: 'Alt+V' },
+    { id: 'crossline', fa: 'خط صلیبی', en: 'Cross line', key: 'Alt+C' },
+    { id: 'channel', fa: 'کانال موازی', en: 'Parallel channel' },
+    { id: 'regchannel', fa: 'کانال رگرسیون', en: 'Regression trend' },
+    { id: 'flatchannel', fa: 'کانال سقف و کف صاف', en: 'Flat top/bottom' },
+    { id: 'disjointchannel', fa: 'کانال ناپیوسته', en: 'Disjoint channel' },
+    { id: 'pitchfork', fa: 'چنگال اندروز', en: 'Pitchfork' },
+    { id: 'schiff', fa: 'چنگال شیف', en: 'Schiff pitchfork' },
+    { id: 'modschiff', fa: 'چنگال شیف اصلاح‌شده', en: 'Modified Schiff pitchfork' },
+    { id: 'insidepitchfork', fa: 'چنگال داخلی', en: 'Inside pitchfork' },
+  ] },
+  { id: 'fib', fa: 'فیبوناچی و گان', en: 'Gann and Fibonacci tools', tools: [
+    { id: 'fib', fa: 'اصلاحی فیبوناچی', en: 'Fib retracement', key: 'Alt+F' },
+    { id: 'fib3', fa: 'گسترش فیبوناچی روندی', en: 'Trend-based fib extension' },
+    { id: 'fibext', fa: 'گسترش فیبوناچی', en: 'Fib extension' },
+    { id: 'fibchannel', fa: 'کانال فیبوناچی', en: 'Fib channel' },
+    { id: 'fibtime', fa: 'منطقه‌ی زمانی فیبوناچی', en: 'Fib time zone' },
+    { id: 'fibfan', fa: 'بادبزن فیبوناچی', en: 'Fib speed resistance fan' },
+    { id: 'fibtimeext', fa: 'زمان فیبوناچی روندی', en: 'Trend-based fib time' },
+    { id: 'fibcircles', fa: 'دایره‌های فیبوناچی', en: 'Fib circles' },
+    { id: 'fibspiral', fa: 'مارپیچ فیبوناچی', en: 'Fib spiral' },
+    { id: 'fibarcs', fa: 'کمان‌های فیبوناچی', en: 'Fib speed resistance arcs' },
+    { id: 'fibwedge', fa: 'گوه‌ی فیبوناچی', en: 'Fib wedge' },
+    { id: 'pitchfan', fa: 'پیچ‌فن', en: 'Pitchfan' },
+    { id: 'gannbox', fa: 'جعبه‌ی گان', en: 'Gann box' },
+    { id: 'gannsquare', fa: 'مربع گان', en: 'Gann square' },
+    { id: 'gannfixed', fa: 'مربع ثابت گان', en: 'Gann square fixed' },
+    { id: 'gannfan', fa: 'بادبزن گان', en: 'Gann fan' },
+  ] },
+  { id: 'patterns', fa: 'الگوها', en: 'Patterns', tools: [
+    { id: 'xabcd', fa: 'الگوی XABCD', en: 'XABCD pattern' },
+    { id: 'cypher', fa: 'الگوی سایفر', en: 'Cypher pattern' },
+    { id: 'hns', fa: 'سر و شانه', en: 'Head and shoulders' },
+    { id: 'abcd', fa: 'الگوی ABCD', en: 'ABCD pattern' },
+    { id: 'tripattern', fa: 'الگوی مثلث', en: 'Triangle pattern' },
+    { id: 'threedrives', fa: 'الگوی سه حرکت', en: 'Three drives pattern' },
+    { id: 'ell_impulse', fa: 'موج ایمپالس الیوت', en: 'Elliott impulse wave' },
+    { id: 'ell_abc', fa: 'موج اصلاحی الیوت', en: 'Elliott correction wave' },
+    { id: 'ell_triangle', fa: 'مثلث الیوت', en: 'Elliott triangle wave' },
+    { id: 'ell_wxy', fa: 'ترکیب دوگانه‌ی الیوت', en: 'Elliott double combo wave' },
+    { id: 'ell_wxyxz', fa: 'ترکیب سه‌گانه‌ی الیوت', en: 'Elliott triple combo wave' },
+    { id: 'cyclic', fa: 'خط‌های دوره‌ای', en: 'Cyclic lines' },
+    { id: 'timecycles', fa: 'چرخه‌های زمانی', en: 'Time cycles' },
+    { id: 'sine', fa: 'خط سینوسی', en: 'Sine line' },
+  ] },
+  { id: 'forecast', fa: 'پیش‌بینی و اندازه‌گیری', en: 'Forecasting and measurement tools', tools: [
+    { id: 'longshort', fa: 'موقعیت خرید', en: 'Long position' },
+    { id: 'short', fa: 'موقعیت فروش', en: 'Short position' },
+    { id: 'forecast', fa: 'پیش‌بینی', en: 'Forecast' },
+    { id: 'projection', fa: 'پروجکشن', en: 'Projection' },
+    { id: 'pricerange', fa: 'بازه‌ی قیمت', en: 'Price range' },
+    { id: 'daterange', fa: 'بازه‌ی زمان', en: 'Date range' },
+    { id: 'dprange', fa: 'بازه‌ی قیمت و زمان', en: 'Date and price range' },
+  ] },
+  { id: 'shapes', fa: 'شکل‌ها', en: 'Geometric shapes', tools: [
+    { id: 'brush', fa: 'قلم‌مو', en: 'Brush' },
+    { id: 'highlighter', fa: 'هایلایتر', en: 'Highlighter' },
+    { id: 'arrow', fa: 'پیکان', en: 'Arrow' },
+    { id: 'rect', fa: 'مستطیل', en: 'Rectangle' },
+    { id: 'rotrect', fa: 'مستطیل چرخیده', en: 'Rotated rectangle' },
+    { id: 'path', fa: 'مسیر', en: 'Path' },
+    { id: 'circle', fa: 'دایره', en: 'Circle' },
+    { id: 'ellipse', fa: 'بیضی', en: 'Ellipse' },
+    { id: 'polyline', fa: 'خط چندتکه', en: 'Polyline' },
+    { id: 'triangle', fa: 'مثلث', en: 'Triangle' },
+    { id: 'arc', fa: 'کمان', en: 'Arc' },
+    { id: 'curve', fa: 'منحنی', en: 'Curve' },
+    { id: 'doublecurve', fa: 'منحنی دوگانه', en: 'Double curve' },
+  ] },
+  { id: 'annotations', fa: 'متن و برچسب', en: 'Annotation tools', tools: [
+    { id: 'text', fa: 'متن', en: 'Text' },
+    { id: 'note', fa: 'یادداشت', en: 'Note' },
+    { id: 'callout', fa: 'کال‌اوت', en: 'Callout' },
+    { id: 'pricelabel', fa: 'برچسب قیمت', en: 'Price label' },
+    { id: 'signpost', fa: 'تابلو', en: 'Signpost' },
+    { id: 'flag', fa: 'پرچم', en: 'Flag mark' },
+    { id: 'arrowup', fa: 'فلش بالا', en: 'Arrow mark up' },
+    { id: 'arrowdown', fa: 'فلش پایین', en: 'Arrow mark down' },
+    { id: 'arrowdir', fa: 'پیکان جهت‌دار', en: 'Arrow marker' },
+  ] },
+];
+
+/** Freehand tools are drawn by dragging, not by clicking points (EXT_FREEHAND in the engine). */
+export const FREEHAND_TOOLS = ['brush', 'highlighter'];
+
+export const ALL_TOOLS: ToolDef[] = TOOL_GROUPS.flatMap((g) => g.tools);

@@ -1,0 +1,88 @@
+/*
+ * Pro Chart's web design tokens.
+ *
+ * The chart and the frame around it take TradingView's own measurements, colour for colour, so a
+ * trader moving between the two feels at home: #0F0F0F / #FFFFFF stage, #2E2E2E / #EBEBEB lines,
+ * #089981 / #F23645 candles. Pro Chart's gold (#D4A64A, the phone's brand colour) marks what is
+ * ours: the active tool, the selected row, the premium call to action. Nothing else is gold.
+ *
+ * Sizes are TradingView desktop's: 38px top bar, 52px tool rail, 30px list rows, 13px interface
+ * text, 12px axis text. One typeface for every script and every figure: IRANYekanX.
+ */
+@font-face { font-family: 'IRANYekanX'; src: url('/generated/fonts/iranyekanx_regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'IRANYekanX'; src: url('/generated/fonts/iranyekanx_medium.ttf') format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'IRANYekanX'; src: url('/generated/fonts/iranyekanx_semibold.ttf') format('truetype'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'IRANYekanX'; src: url('/generated/fonts/iranyekanx_bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+
+:root {
+  --font: 'IRANYekanX', system-ui, sans-serif;
+
+  /* Stage and surfaces */
+  --bg: #FFFFFF;
+  --bg-panel: #FFFFFF;
+  --bg-sunken: #F7F7F7;
+  --bg-hover: #F0F0F0;
+  --bg-active: #E8E8E8;
+  --bg-overlay: rgba(15, 15, 15, 0.42);
+  --bg-elevated: #FFFFFF;
+  --line: #EBEBEB;
+  --line-strong: #D9D9D9;
+
+  /* Text */
+  --text: #0F0F0F;
+  --text-2: #4A4A4A;
+  --text-3: #8C8C8C;
+  --text-inverse: #FFFFFF;
+
+  /* Market */
+  --up: #089981;
+  --down: #F23645;
+  --up-soft: rgba(8, 153, 129, 0.12);
+  --down-soft: rgba(242, 54, 69, 0.12);
+
+  /* Brand */
+  --gold: #B8862E;
+  --gold-strong: #D4A64A;
+  --gold-soft: rgba(212, 166, 74, 0.16);
+  --focus: #D4A64A;
+
+  /* Status */
+  --info: #2962FF;
+  --warn: #F57C00;
+
+  --shadow-pop: 0 2px 4px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.14);
+  --radius: 6px;
+  --radius-lg: 10px;
+
+  /* Metrics */
+  --topbar-h: 38px;
+  --rail-w: 52px;
+  --widgetbar-w: 46px;
+  --panel-w: 330px;
+  --row-h: 30px;
+  --fs-ui: 13px;
+  --fs-small: 12px;
+  --fs-list: 14px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0F0F0F; --bg-panel: #0F0F0F; --bg-sunken: #161616; --bg-hover: #1F1F1F; --bg-active: #2A2A2A;
+    --bg-overlay: rgba(0, 0, 0, 0.6); --bg-elevated: #1E1E1E; --line: #2E2E2E; --line-strong: #3D3D3D;
+    --text: #DBDBDB; --text-2: #B8B8B8; --text-3: #8C8C8C; --text-inverse: #0F0F0F;
+    --up-soft: rgba(8, 153, 129, 0.2); --down-soft: rgba(242, 54, 69, 0.2);
+    --gold: #D4A64A; --gold-strong: #E2B85E; --gold-soft: rgba(212, 166, 74, 0.18);
+    --shadow-pop: 0 2px 4px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #0F0F0F; --bg-panel: #0F0F0F; --bg-sunken: #161616; --bg-hover: #1F1F1F; --bg-active: #2A2A2A;
+  --bg-overlay: rgba(0, 0, 0, 0.6); --bg-elevated: #1E1E1E; --line: #2E2E2E; --line-strong: #3D3D3D;
+  --text: #DBDBDB; --text-2: #B8B8B8; --text-3: #8C8C8C; --text-inverse: #0F0F0F;
+  --up-soft: rgba(8, 153, 129, 0.2); --down-soft: rgba(242, 54, 69, 0.2);
+  --gold: #D4A64A; --gold-strong: #E2B85E; --gold-soft: rgba(212, 166, 74, 0.18);
+  --shadow-pop: 0 2px 4px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}

@@ -607,6 +607,10 @@ def check_single_typeface() -> None:
     for path in ROOT.rglob("*"):
         if not path.is_file() or "build" in path.parts or ".git" in path.parts or ".gradle" in path.parts:
             continue
+        # Third-party packages the web app installs are not the project's files; `webapp/dist` is a
+        # build output like any `build/`.
+        if "node_modules" in path.parts or path.parts[len(ROOT.parts):len(ROOT.parts) + 2] == ("webapp", "dist"):
+            continue
         if path.resolve() == Path(__file__).resolve():
             continue
         if path.suffix.lower() in {".ttf", ".otf", ".woff", ".woff2"}:

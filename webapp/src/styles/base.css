@@ -1,0 +1,44 @@
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--fs-ui);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; padding: 0; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+::selection { background: var(--gold-soft); }
+
+/* Every figure is Latin and tabular; prose counts are written in Persian digits by the copy. */
+.num { font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+
+/* Persian text inside the left-to-right frame: written right to left, but placed where the frame
+ * puts things (its left edge), so a label sits beside its value instead of drifting away from it. */
+.fa { direction: rtl; unicode-bidi: isolate; text-align: left; }
+
+.icon { width: 28px; height: 28px; flex: none; fill: currentColor; }
+.icon.sm { width: 18px; height: 18px; }
+.icon.md { width: 22px; height: 22px; }
+
+/* Icon buttons: TradingView's 34×34 hit area with a 4px radius hover tile. */
+.ib {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 34px; height: 34px; padding: 0 6px; gap: 6px;
+  border-radius: 4px; color: var(--text);
+}
+.ib:hover { background: var(--bg-hover); }
+.ib[aria-pressed='true'], .ib.on { color: var(--gold); background: var(--gold-soft); }
+.ib:disabled { color: var(--text-3); cursor: default; background: none; }
+.ib .label { font-size: var(--fs-ui); white-space: nowrap; }
+
+.sep { width: 1px; height: 22px; background: var(--line); flex: none; margin: 0 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
