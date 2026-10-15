@@ -1,6 +1,17 @@
 // The studies area: indicator settings, the indicators dialog, the catalogue, NamaScript, the strategy
 // tester, replay, the bottom dock, paper trading and help. Same helpers as run.mjs.
 export default async function ({ test, open, ready, pc, expect }) {
+  // A line's tag settles a frame or two after its price moves; drag it where it rests, not where it was.
+  const settled = async (page, loc) => {
+    let a = await loc.boundingBox();
+    for (let i = 0; i < 15; i++) {
+      await page.waitForTimeout(80);
+      const b = await loc.boundingBox();
+      if (a && b && Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5) return b;
+      a = b;
+    }
+    return a;
+  };
   const addStudy = (page, key) => pc(page, (k) => window.__pc.useStudies.getState().add(k), key);
   const study = (page, uid) => pc(page, (u) => window.__pc.useStudies.getState().list.find((s) => s.uid === u), uid);
   const openSettings = async (page, uid) => {
@@ -372,7 +383,7 @@ export default async function ({ test, open, ready, pc, expect }) {
     expect(await R(() => window.__pc.usePaper.getState().positions.length) === paper0, 'Shift+B made a paper trade while replaying');
     await env.page.waitForFunction(() => document.querySelectorAll('.tl-tag').length === 3, null, { timeout: 3000 });
     // Drag the stop loss down by its tag.
-    const tag = await env.page.locator('.tl-tag', { hasText: 'SL' }).boundingBox();
+    const tag = await settled(env.page, env.page.locator('.tl-tag', { hasText: 'SL' }));
     await env.page.mouse.move(tag.x + 8, tag.y + 10); await env.page.mouse.down(); await env.page.mouse.move(tag.x + 8, tag.y + 50, { steps: 4 }); await env.page.mouse.up();
     const sl1 = await R(() => window.__pc.useReplay.getState().trades[0].sl);
     expect(sl1 < tr[0].sl, `drag ${tr[0].sl} → ${sl1}`);
@@ -456,7 +467,7 @@ export default async function ({ test, open, ready, pc, expect }) {
     const p0 = await R(() => window.__pc.usePaper.getState().positions[0]);
     expect(p0.sl > 0 && p0.tp > p0.entry, `protected ${JSON.stringify(p0)}`);
     await env.page.waitForFunction(() => document.querySelectorAll('.tl-tag').length === 3, null, { timeout: 3000 });
-    const tag = await env.page.locator('.tl-tag', { hasText: 'TP' }).boundingBox();
+    const tag = await settled(env.page, env.page.locator('.tl-tag', { hasText: 'TP' }));
     await env.page.mouse.move(tag.x + 8, tag.y + 10); await env.page.mouse.down(); await env.page.mouse.move(tag.x + 8, tag.y - 30, { steps: 4 }); await env.page.mouse.up();
     const tp1 = await R(() => window.__pc.usePaper.getState().positions[0].tp);
     expect(tp1 > p0.tp, `drag tp ${p0.tp} → ${tp1}`);
@@ -470,7 +481,7 @@ export default async function ({ test, open, ready, pc, expect }) {
     await env.page.waitForFunction(() => window.__pc.usePaper.getState().orders.length === 1, null, { timeout: 5000 });
     await env.page.waitForSelector('.pp-tab.on >> text=سفارش‌ها');
     expect(await env.page.isVisible('.pp-tab .pp-badge.pending'), 'orders badge');
-    const ot = await env.page.locator('.tl-tag', { hasText: 'لیمیت' }).boundingBox();
+    const ot = await settled(env.page, env.page.locator('.tl-tag', { hasText: 'لیمیت' }));
     const lp0 = await R(() => window.__pc.usePaper.getState().orders[0].limitPrice);
     if (ot && ot.y > 40) {
       await env.page.mouse.move(ot.x + 8, ot.y + 10); await env.page.mouse.down(); await env.page.mouse.move(ot.x + 8, ot.y - 20, { steps: 4 }); await env.page.mouse.up();
