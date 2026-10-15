@@ -176,7 +176,7 @@ jobs:
         working-directory: webapp
         run: |
           npx playwright install --with-deps chromium
-          E2E_SHOTS=e2e-shots npm run e2e
+          E2E_VERBOSE=1 E2E_SHOTS=e2e-shots npm run e2e
 
       - name: Keep the end-to-end failure pictures
         if: failure()

@@ -72,6 +72,12 @@ export default async function ({ test, open, ready, pc, expect, fixtures }) {
     await env.page.click('text=واریز کردم — همین الان بررسی کن');
     await env.page.waitForSelector('.vip-result .vip-note', { timeout: 5000 });
     expect(w.seen.some((x) => x.p.endsWith('membership/vip/recheck') && x.method === 'POST'), 'recheck posted');
+    // Re-read on its 8 s timer and after each step, never in a loop (an unstable hook dependency once
+    // made every answer trigger the next request).
+    const reads = w.seen.filter((x) => x.p.endsWith('membership/status')).length;
+    await env.page.waitForTimeout(1500);
+    const later = w.seen.filter((x) => x.p.endsWith('membership/status')).length;
+    expect(reads <= 8 && later - reads <= 1, `membership/status read ${reads} times, then ${later - reads} more in 1.5 s`);
     return env;
   });
 

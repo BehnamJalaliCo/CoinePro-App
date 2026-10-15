@@ -235,6 +235,7 @@ const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable
 
 async function open(path, { width = 1440, height = 900, scheme = 'light', locale = 'fa-IR', signed = false, setup = null, mock: custom = null } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, locale, timezoneId: 'Asia/Tehran' });
+  opened.push(ctx);
   if (signed) {
     // A seeded member session on both platforms (fixtures only: the handles mean nothing upstream).
     await ctx.addInitScript(() => {
@@ -273,9 +274,13 @@ async function open(path, { width = 1440, height = 900, scheme = 'light', locale
 }
 
 const results = [];
+// Every context a test opens, so a failing test's pages are closed too (its `env` never returns),
+// not left running beside the next tests.
+const opened = [];
 async function test(name, fn) {
   if (ONLY && !name.includes(ONLY)) return;
   const t = Date.now();
+  const mark = opened.length;
   let env;
   try {
     env = await fn();
@@ -285,9 +290,11 @@ async function test(name, fn) {
   } catch (e) {
     results.push({ name, ok: false, ms: Date.now() - t, error: String(e.message ?? e).slice(0, process.env.E2E_VERBOSE ? 4000 : 400) });
     console.log(`  ✗ ${name}\n      ${String(e.message ?? e).slice(0, process.env.E2E_VERBOSE ? 4000 : 400)}`);
-    if (env?.page) await env.page.screenshot({ path: join(SHOTS, `${name.replace(/\W+/g, '_')}.png`) }).catch(() => {});
+    const shot = env?.page ?? opened.slice(mark).at(-1)?.pages().at(-1);
+    if (shot) await shot.screenshot({ path: join(SHOTS, `${name.replace(/\W+/g, '_')}.png`) }).catch(() => {});
   } finally {
     await env?.ctx?.close().catch(() => {});
+    for (const ctx of opened.splice(mark)) await ctx.close().catch(() => {});
   }
 }
 const expect = (cond, msg) => { if (!cond) throw new Error(msg); };

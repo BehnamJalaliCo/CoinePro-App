@@ -72,9 +72,12 @@ export function downloadCsv(name: string, rows: (string | number | null)[][]): v
 }
 
 /** A line in both languages, for page copy that is not shared with the workspace. */
+const L_FA = (f: string, _e: string): string => f;
+const L_EN = (_f: string, e: string): string => e;
+
+/** Stable per language, like `useT`, so it is safe in hook dependencies. */
 export function useL(): (fa: string, en: string) => string {
-  const lang = usePrefs((s) => s.lang);
-  return (f, e) => (lang === 'fa' ? f : e);
+  return usePrefs((s) => s.lang) === 'fa' ? L_FA : L_EN;
 }
 
 /** A labelled input row for the page forms. */

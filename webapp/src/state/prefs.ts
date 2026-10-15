@@ -97,10 +97,13 @@ export const usePrefs = create<PrefsState>((set, get) => {
   };
 });
 
+// One function per language, so a hook that lists `t` among its dependencies runs once per language
+// change, not on every render (the VIP funnel re-read the server in a loop when it changed).
+const T_FA = (key: StringKey): string => fa[key];
+const T_EN = (key: StringKey): string => en[key];
+
 export function useT(): (key: StringKey) => string {
-  const lang = usePrefs((s) => s.lang);
-  const table = lang === 'fa' ? fa : en;
-  return (key) => table[key];
+  return usePrefs((s) => s.lang) === 'fa' ? T_FA : T_EN;
 }
 
 /** Applies the theme to the document: `data-theme` only for an explicit choice, as the tokens expect. */
