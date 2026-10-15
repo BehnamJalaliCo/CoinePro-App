@@ -10,6 +10,7 @@ import { SymbolLogo } from '../ui/SymbolLogo';
 import { faAgo } from '../i18n/time';
 import { State, Tabs, dateTime, pct, useL, useLoad } from './kit';
 import type { PageProps } from './registry';
+import { VipNudge } from '../vip/VipCard';
 
 // Signals (feature/signals): active, recent and closed signals of the platform the reader picks,
 // with filters, the public track record for everyone, and each one opening its detail page or
@@ -55,6 +56,7 @@ export default function SignalsPage({ onSignIn }: PageProps) {
         <input className="scr-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={L('نماد', 'Symbol')} dir="ltr" />
         {closed.length ? <span className="num muted">{wins}/{closed.length} · {((wins / closed.length) * 100).toFixed(0)}% win</span> : null}
       </div>
+      {signed ? <VipNudge /> : null}
       {!signed && tab !== 'record' ? <div className="empty fa">{L('سیگنال‌های فعال برای اعضاست.', 'Active signals are for members.')} <button className="link" onClick={onSignIn}>{L('ورود', 'Sign in')}</button></div> : (
         <State loading={list.loading} error={list.error} onRetry={list.reload} empty={!rows.length}>
           <table className="table">

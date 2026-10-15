@@ -31,11 +31,13 @@ import { useTrading } from './trade/store';
 import { useTicket } from './trade/ticket';
 import { pollVip, useVip } from './trade/vip';
 import { useEntitlements } from './trade/entitlements';
+import { useVip as useVipMember } from './vip/store';
+import { useSession } from './data/session';
 
 export function expose(): void {
   (window as unknown as { __pc: unknown }).__pc = {
     usePrefs, useStudies, useDrawing, useScript, useChartBus, useReplay, useAlerts, usePanels, useGrid, useMarket, useCompare, usePage, usePaper, useJournal, useWatchlist, useChartSettings, useWatchView, usePlacement, useOverlay,
-    useTrading, useTicket, useVip, useEntitlements, pollVip,
+    useTrading, useTicket, useVip, useEntitlements, pollVip, useVipMember, useSession,
     useLayouts, gridPresets: PRESETS.map((p) => ({ id: p.id, cells: p.cells })),
     /** The snapshot canvas's size and how many of its pixels differ from the background. */
     snapshotProbe: async (opts?: Record<string, unknown>) => {

@@ -431,9 +431,8 @@ export default async function ({ test, open, ready, pc, expect }) {
     await p.waitForTimeout(300);
     expect(await pc(p, () => window.__pc.useChartBus.getState().api.panes()[1].getHeight()) < 40, 'double click maximises the main pane');
     await p.mouse.dblclick(box.x + box.width * 0.3, box.y + box.height * 0.1);
-    await p.click('.nav-buttons [data-nav=left]');
-    await p.click('.nav-buttons [data-nav=left]');
-    await p.click('.nav-buttons [data-nav=left]');
+    // Scroll back until the live bar is off screen (how far one step goes depends on the width).
+    for (let k = 0; k < 15 && !(await p.$('.go-live')); k++) { await p.click('.nav-buttons [data-nav=left]'); await p.waitForTimeout(80); }
     await p.waitForSelector('.go-live');
     await p.click('.go-live');
     await p.waitForSelector('.go-live', { state: 'detached', timeout: 5000 });

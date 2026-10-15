@@ -223,6 +223,7 @@ export default async function ({ test, open, ready, pc, expect }) {
     await env.page.keyboard.press('Control+f');
     await env.page.waitForSelector('.ce-find input');
     await env.page.keyboard.type('close');
+    await env.page.waitForFunction(() => /\/2/.test(document.querySelector('.ce-count')?.textContent ?? ''), null, { timeout: 3000 }).catch(() => {});
     expect(/\/2/.test(await env.page.textContent('.ce-count')), 'find count');
     await env.page.keyboard.press('Escape');
     expect((await env.page.textContent('.ce-status')).includes('Line') || (await env.page.textContent('.ce-status')).includes('خط'), 'status line');

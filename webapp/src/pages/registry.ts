@@ -8,7 +8,8 @@ export type PageId =
   | 'backtest' | 'script' | 'alerts' | 'tools' | 'vision' | 'ai' | 'signals' | 'signal' | 'assistant'
   | 'academy' | 'lesson' | 'community' | 'thread' | 'help' | 'safety' | 'terms' | 'privacy'
   | 'home' | 'profile' | 'membership' | 'verify' | 'activity' | 'notifications' | 'delete' | 'pro' | 'reset'
-  | 'panel';
+  | 'panel'
+  | 'vip-join' | 'vip-status' | 'affiliate' | 'performance' | 'copytrade';
 
 /** What every page receives: the address's extra segment, and a way to ask the reader to sign in. */
 export interface PageProps { param: string | null; onSignIn(): void }
@@ -64,13 +65,20 @@ export const PAGES: PageDef[] = [
   { id: 'panel', path: 'panel', fa: 'پنل کاربری', en: 'Your panel', icon: 'ph-identification-card', group: 'account', member: true, component: P(() => import('../usercp/PanelPage')) },
   { id: 'home', path: 'home', fa: 'خانه و خلاصه‌ی حساب', en: 'Home', icon: 'ph-user-circle', group: 'account', member: true, component: P(() => import('./HomePage')) },
   { id: 'profile', path: 'profile', fa: 'پروفایل و تنظیمات', en: 'Profile and settings', icon: 'ph-user-circle', group: 'account', component: P(() => import('./ProfilePage')) },
-  { id: 'membership', path: 'membership', fa: 'عضویت صرافی', en: 'Exchange membership', icon: 'ph-crown', group: 'account', member: true, component: P(() => import('./MembershipPage')) },
+  // The older exchange-membership screen is now the free-VIP funnel (vip-join); the address stays.
+  { id: 'membership', path: 'membership', fa: 'عضویت صرافی', en: 'Exchange membership', icon: 'ph-crown', group: null, member: true, component: P(() => import('./MembershipPage')) },
   { id: 'verify', path: 'account/verify', fa: 'احراز هویت', en: 'Verification', icon: 'ph-check', group: 'account', member: true, component: P(() => import('./VerifyPage')) },
   { id: 'activity', path: 'activity', fa: 'فعالیت', en: 'Activity', icon: 'ph-bell-ringing', group: 'account', member: true, component: P(() => import('./ActivityPage')) },
   { id: 'notifications', path: 'notifications', fa: 'تنظیمات اعلان', en: 'Notification settings', icon: 'ph-bell', group: 'account', component: P(() => import('./NotificationsPage')) },
   { id: 'pro', path: 'pro', fa: 'پرو چارت پرمیوم', en: 'Pro Chart Premium', icon: 'ph-crown', group: 'account', component: P(() => import('./ProPage')) },
   { id: 'delete', path: 'account/delete', fa: 'حذف حساب', en: 'Delete account', icon: 'ph-trash', group: 'account', member: true, component: P(() => import('./DeleteAccountPage')) },
   { id: 'reset', path: 'reset', fa: 'بازیابی رمز', en: 'Reset password', icon: 'ph-sign-in', group: null, component: P(() => import('./ResetPage')) },
+  // The free VIP (area H): TradeYar's sign-up funnel and rules on the web, and the user site's screens.
+  { id: 'vip-join', path: 'vip', fa: 'عضویت رایگان VIP', en: 'Free VIP membership', icon: 'ph-crown', group: 'account', component: P(() => import('../vip/VipJoinPage')) },
+  { id: 'vip-status', path: 'vip/status', fa: 'وضعیت VIP', en: 'VIP status', icon: 'ph-seal-check', group: 'account', member: true, component: P(() => import('../vip/VipStatusPage')) },
+  { id: 'performance', path: 'performance', fa: 'عملکرد و کارنامه', en: 'Performance', icon: 'ph-chart-line-up', group: 'trade', component: P(() => import('../vip/PerformancePage')) },
+  { id: 'copytrade', path: 'copytrade', fa: 'کپی‌ترید', en: 'Copy trading', icon: 'ph-robot', group: 'trade', member: true, component: P(() => import('../vip/CopyTradePage')) },
+  { id: 'affiliate', path: 'affiliate', fa: 'معرفی دوستان', en: 'Referrals', icon: 'ph-users', group: 'account', member: true, component: P(() => import('../vip/AffiliatePage')) },
 ];
 
 export const GROUPS: { id: MenuGroup; fa: string; en: string }[] = [

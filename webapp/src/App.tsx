@@ -33,6 +33,7 @@ import { startPanel } from './usercp/telemetry';
 import { intervalBox } from './shell/IntervalMenu';
 import { StudiesHost } from './shell/StudiesHost';
 import { TradeHost } from './trade/TradeHost';
+import { VipLayer } from './vip/VipLayer';
 
 export function App() {
   const symbol = usePrefs((s) => s.symbol);
@@ -122,6 +123,7 @@ export function App() {
       <RightPanel onNewAlert={() => setAlertAt(null)} onAddSymbol={() => setAdding(true)} onSignIn={() => setSignIn(true)} onCompare={() => setComparing(true)} onSearch={() => setSearch('')} />
       <WidgetBar />
       <PageHost onSignIn={() => setSignIn(true)} />
+      <VipLayer />
       {menu ? <MainMenu onClose={() => setMenu(false)} onSignIn={() => setSignIn(true)} /> : null}
       {search !== null ? <SymbolSearch initial={search} allowExpr onClose={() => setSearch(null)} /> : null}
       {signIn ? <SignIn onClose={() => setSignIn(false)} /> : null}

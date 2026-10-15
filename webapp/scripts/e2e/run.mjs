@@ -132,14 +132,108 @@ function mock(url, method = 'GET') {
   if (p.startsWith(CM) && /\/(like|react|reply|report|best-reply\/\d+)$/.test(p)) return json({ likes: 3, liked: true, reactions: { '🔥': 2 }, ok: true });
   if (p === `${CM}leaderboard`) return json({ items: [{ rank: 1, username: 'ali', xp: 50 }] });
   if (p === '/api/app/latest') return json({ version_code: 600, version_name: '6.0.0', notes_fa: '* بهبودها', url: 'https://pro-chart.com/app.apk' });
+  const vip = vipFixture(p, q);
+  if (vip) return vip;
   return json({ detail: 'not in fixtures' }, 404);
+}
+
+// ── VIP (area H): TradeYar's VIP rules and gate, the user site's portal routes, the forex VIP ──────
+const VIP_RULES = {
+  currency: 'USDT', price: 0, default_exchange: 'lbank',
+  exchanges: [
+    { id: 'lbank', label: 'LBank', referral_url: 'https://lbank.com/ref/E2E', uid_pattern: '^LBA[0-9A-Z]{5,10}$', uid_example: 'LBA1A23456', copy_trade: true },
+    { id: 'ourbit', label: 'Ourbit', referral_url: 'https://www.ourbit.com/register?inviteCode=E2E', uid_pattern: '^[0-9]{6,10}$', uid_example: '40429440', copy_trade: false },
+  ],
+  entry: { min_deposit: 50, registration_min_deposit: 50, invite_ttl_hours: 24, one_uid_one_account: true },
+  stay: { warn_below: 30, critical_below: 10, grace_hours: 48, rejoin_at: 50, warn_repeat_hours: 24 },
+  checks: { balance_every_seconds: 1800, pending_every_seconds: 60, pending_window_hours: 168, pending_reminder_hours: [24, 72], uid_recheck_every_seconds: 60, uid_recheck_hours: 24, exchange_lag_fa: '۳۰ دقیقه تا ۱ ساعت' },
+  support_url: 'https://t.me/CoinePro_Admin',
+  texts_html: {
+    deal: 'کانال VIP رایگان است؛ فقط کافیست حداقل <b>۵۰ تتر</b> در حساب خودت در صرافی (LBank یا Ourbit) با لینک ما داشته باشی — پول دست خودت می‌ماند.',
+    have_account: 'صرافی فقط حساب‌هایی را به ما نشان می‌دهد که <b>با لینک تریدیار</b> ساخته شده‌اند.',
+    lbank_register: 'UID صرافی LBank با <b>LBA</b> شروع می‌شود (مثل LBA1A23456).',
+    ourbit_register: 'UID صرافی Ourbit یک عدد هشت‌رقمی است.',
+    fresh_signup: 'اگر همین امروز ثبت‌نام کرده‌ای، ثبت ارتباط زیرمجموعه ۳۰ دقیقه تا ۱ ساعت طول می‌کشد.',
+    stay_rule: '📌 <b>شرط ماندن در کانال:</b> اگر موجودی زیر <b>۳۰ تتر</b> برود هشدار می‌گیری، و اگر زیر <b>۱۰ تتر</b> برود و <b>۴۸ ساعت</b> بماند، از کانال خارج می‌شوی.',
+  },
+  registration_status_fa: { awaiting_uid: 'هنوز UID صرافی را ثبت نکرده‌اید.', pending_deposit: 'حساب شما زیرمجموعه‌ی تریدیار تأیید شد، اما موجودی به حد لازم نرسیده است.', rejected_referral: 'هنوز به‌عنوان زیرمجموعه‌ی تریدیار شناسایی نشدی.', approved: 'حساب شما تأیید شده است.', error: 'بررسی خودکار انجام نشد.' },
+  notices: { low: { level: 'warning', title: 'هشدار کمبود موجودی VIP' }, critical: { level: 'error', title: 'اخطار نهایی موجودی VIP' }, removed: { level: 'error', title: 'دسترسی VIP لغو شد' } },
+};
+function vipMember(status = 'active', over = {}) {
+  const entitled = ['active', 'low', 'critical'].includes(status);
+  const bal = { active: 82.5, low: 21.4, critical: 4.2, removed: 0, pending_deposit: 12, awaiting_referral: null, none: null, expired: null }[status] ?? null;
+  const ev = (event, level, title, body, ago) => ({ id: String(100 + ago), event, level, title, body, balance: bal, at: new Date(Date.now() - ago * 3600e3).toISOString() });
+  const events = {
+    active: [ev('granted', 'ok', 'دسترسی VIP فعال شد', 'کانال سیگنال VIP و امکانات رایگان برای شما باز است.', 30)],
+    low: [ev('low', 'warning', 'هشدار کمبود موجودی VIP', 'موجودی حساب LBank شما 21.4 تتر است.', 2), ev('granted', 'ok', 'دسترسی VIP فعال شد', '', 300)],
+    critical: [ev('critical', 'error', 'اخطار نهایی موجودی VIP', 'اگر تا ۴۸ ساعت آینده به بالای ۱۰ تتر نرسد، دسترسی لغو می‌شود.', 1), ev('low', 'warning', 'هشدار کمبود موجودی VIP', '', 26)],
+    removed: [ev('removed', 'error', 'دسترسی VIP لغو شد', 'به دلیل پایین ماندن موجودی، دسترسی شما لغو شد.', 3), ev('critical', 'error', 'اخطار نهایی موجودی VIP', '', 52)],
+  }[status] ?? [];
+  return {
+    status, entitled, balance: bal, exchange: status === 'none' ? null : 'lbank', uid: status === 'none' ? null : 'LBA1A23456',
+    message_fa: { active: 'دسترسی VIP شما فعال است: کانال سیگنال و امکانات رایگان.', low: 'موجودی حسابتان زیر ۳۰ تتر است.', critical: 'اخطار نهایی: موجودی زیر ۱۰ تتر است.', removed: 'دسترسی VIP به دلیل پایین ماندن موجودی لغو شد.', pending_deposit: 'حساب شما زیرمجموعه‌ی تریدیار است؛ برای فعال شدن VIP موجودی باید به ۵۰ تتر برسد.', awaiting_referral: 'UID شما ثبت شد و هر دقیقه خودکار بررسی می‌شود.', none: 'هنوز عضو VIP نیستید.' }[status] ?? '',
+    rule_fa: 'ورود با حداقل ۵۰ تتر در حساب خودتان.',
+    checked_at: new Date(Date.now() - 600e3).toISOString(),
+    critical_since: status === 'critical' ? new Date(Date.now() - 2 * 3600e3).toISOString() : null,
+    removal_due_at: status === 'critical' ? new Date(Date.now() + 46 * 3600e3).toISOString() : null,
+    pending_since: status === 'pending_deposit' ? new Date(Date.now() - 3600e3).toISOString() : null,
+    pending_until: status === 'pending_deposit' ? new Date(Date.now() + 167 * 3600e3).toISOString() : null,
+    thresholds: { min_deposit: 50, warn: 30, critical: 10, grace_hours: 48, pending_window_hours: 168 },
+    channel: { configured: true, telegram_known: entitled, invite_url: entitled ? 'https://t.me/+e2eVip' : null },
+    support_url: 'https://t.me/CoinePro_Admin', events, ...over,
+  };
+}
+const FOREX_RULES = {
+  market: 'forex', signals_only: true, price: 0, broker: { name: 'OneRoyal', referral_url: 'https://vc.cabinet.oneroyal.com/links/go/e2e' },
+  entry: { min_deposit: 500, currency: 'USD', verification: 'manual', plan: 'free_lifetime', lifetime: true }, access: ['signal_channel', 'app_signals'],
+  alternatives: { trial_hours: 48, plans: [{ key: 'monthly', months: 1, price: 30 }], currency: 'USDT' }, bot_url: 'https://t.me/CoineProFxBot', support_url: 'https://t.me/CoinePro_Admin',
+  texts_html: { broker_guide: '<b>۱) ورود از لینک رفرال</b> و ساخت حساب.', broker_funding: 'واریز <b>ریالی</b> یا USDT.' },
+  steps_fa: ['در بروکر OneRoyal از طریق لینک ما ثبت‌نام کنید.', 'حساب معاملاتی خودتان را با حداقل 500 دلار شارژ کنید.', 'شماره‌ی حساب معاملاتی و ایمیل بروکر را بفرستید.'],
+};
+function forexMember(status = 'none') {
+  return {
+    status, entitled: status === 'approved', signals_only: true,
+    message_fa: { none: 'هنوز درخواستی ثبت نکرده‌اید.', submitted: 'درخواست شما ثبت شد؛ پشتیبانی واریز را بررسی می‌کند.', approved: 'دسترسی VIP فارکس برای شما فعال است.', rejected: 'درخواست شما تأیید نشد.' }[status],
+    vip: status === 'approved' ? { plan: 'free_lifetime', expires_at: '2126-01-01T00:00:00+00:00', lifetime: true } : null,
+    claim: status === 'none' ? null : { id: 5, account_login: '•••••567', email: 'fx@example.com', status: status === 'approved' ? 'approved' : status, reason: status === 'rejected' ? 'واریز پیدا نشد' : null, submitted_at: new Date().toISOString(), reviewed_at: null },
+    telegram_linked: false, channel_invite: status === 'approved' ? 'https://t.me/+e2eFx' : null, can_submit: status !== 'approved',
+  };
+}
+function vipFixture(p, q) {
+  const TYM = '/up/tradeyar/api/mobile/v1/';
+  const PU = '/up/tradeyar/api/user/v1/';
+  const iso = (d = 0) => new Date(Date.now() + d).toISOString();
+  if (p === '/up/tradeyar/api/v1/public/vip/rules' || p === '/up/tradeyar/api/v1/public/membership/rules') return json(VIP_RULES);
+  if (p === `${TYM}membership/vip`) return json(vipMember('active'));
+  if (p === `${TYM}membership/vip/invite`) return json({ invite_url: 'https://t.me/+e2eFresh', expires_at: iso(864e5), single_use: true });
+  if (p === `${TYM}membership/vip/recheck`) return json({ ...vipMember('active'), recheck: { outcome: 'already_member', granted: true, message_fa: 'شما هم‌اکنون عضو فعال کانال VIP هستی.' } });
+  if (p === '/up/coineprofx/api/public/forex-vip/rules') return json(FOREX_RULES);
+  if (p === '/up/coineprofx/api/user/mobile/forex-vip') return json(forexMember('none'));
+  if (p === '/up/coineprofx/api/user/mobile/forex-vip/claim') return json(forexMember('submitted'));
+  if (p === '/up/coineprofx/api/public/auth/config') return json({ bot_username: 'CoineProFxBot' });
+  if (p === `${PU}performance/stats`) return json({ totalTrades: 26, closedTrades: 24, activeTrades: 2, winCount: 15, lossCount: 7, breakevenCount: 1, unknownOutcomeCount: 1, winRate: 68.2, winRateDenominator: 22, longCount: 16, shortCount: 10, outcomeAvailable: true, activeSignalClosed: 0, monthlyBreakdown: [{ month: '2026-08', wins: 6, losses: 3, breakeven: 0, unknown: 0, total: 9, graded: 9, winRate: 66.7 }, { month: '2026-09', wins: 5, losses: 2, breakeven: 1, unknown: 1, total: 9, graded: 7, winRate: 71.4 }, { month: '2026-10', wins: 4, losses: 2, breakeven: 0, unknown: 0, total: 6, graded: 6, winRate: 66.7 }] });
+  if (p === `${PU}performance/history`) return json({ trades: Array.from({ length: 22 }, (_, i) => ({ id: i, symbol: 'BTCUSDT', direction: 'LONG', outcome: i % 3 === 2 ? 'LOSS' : 'WIN', closedAt: iso(-(22 - i) * 864e5), createdAt: iso(-(23 - i) * 864e5), isWin: i % 3 !== 2 })), total: 22 });
+  if (p === `${PU}affiliate/link`) return json({ lbankUid: 'LBA1A23456', referralCode: 'E2ECODE', referralLink: 'https://lbank.com/ref/E2ECODE' });
+  if (p === `${PU}affiliate/summary`) return json({ configured: true, totalReferrals: 4, activeReferrals: 2, monthlyReferrals: 4, members: [{ openId: 'LBA9X11111', transaction: true }, { openId: 'LBA9X22222', transaction: false }] });
+  if (p === `${PU}account/balance`) return json({ userId: -2000000042, totalBalance: 1250.4, availableBalance: 1100.2, unrealizedPnl: 12.6, marginUsed: 150.2, error: null, timestamp: iso(-60e3) });
+  if (p === `${PU}settings/status`) return json({ willTrade: false, linked: true, apiReady: true, botEnabled: true, autoEntryEnabled: false, registrationStatus: 'approved', openPositions: 1, blockers: [{ code: 'auto_entry_off', message: 'ورود خودکار خاموش است؛ سیگنال‌ها می‌آیند اما اجرا نمی‌شوند.', action: 'quick_enable' }], lastError: null, lastSuccessAt: null, serverEgressIp: '203.0.113.7', exitMode: 'follow' });
+  if (p === `${PU}settings/test-connection`) return json({ ok: true, code: null, message: 'اتصال برقرار است.', serverEgressIp: '203.0.113.7', available: 1100.2, equity: 1250.4 });
+  if (p === `${PU}settings/audit`) return json({ entries: [{ field: 'leverage_value', oldValue: '5', newValue: '10', actorId: 1, source: 'web', changedAt: iso(-864e5) }] });
+  if (p === `${PU}settings`) return r_method === 'PUT' ? json({ ok: true, updated: 1, savedFields: ['leverageValue', 'enabled', 'autoEntryEnabled'], notes: [] }) : json({ enabled: true, apiKeySet: true, apiSecretSet: true, leverageValue: 5, amountValue: 25, tpTarget: 3, exitMode: 'follow', autoTpSlEnabled: true, autoEntryEnabled: false, trailingStopEnabled: false, maxPositions: 5, maxPositionsChoices: [1, 2, 3, 5, 10, 20], leverageCap: 15, slMode: 'EXACT', slOffsetPct: null, slOffsetMaxPct: 4.8, amountMin: 5 });
+  if (p === `${PU}positions/active`) return json({ positions: [{ id: 1, positionCode: 'P1', symbol: 'BTC_USDT', symbolNorm: 'BTCUSDT', direction: 'LONG', entryPrice: 80000, slPrice: 78000, tpPrice: 84000, tpTarget: 2, status: 'ACTIVE', openedAt: iso(-7200e3) }], total: 1 });
+  if (p === `${PU}positions/history`) return json({ positions: [{ id: 2, positionCode: 'P2', symbol: 'ETH_USDT', symbolNorm: 'ETHUSDT', direction: 'SHORT', entryPrice: 2500, slPrice: 2600, tpPrice: 2300, status: 'CLOSED', closedAt: iso(-864e5), outcome: { code: 'CLOSED_TP', label: 'هدف ۲', tone: 'up' } }], total: 1 });
+  if (p === `${PU}positions/exchange`) return json({ positions: [{ symbol: 'BTCUSDT', direction: 'LONG', volume: 0.01, entryPrice: 80000, markPrice: 81000, marginUsdt: 160, notionalUsdt: 810, unrealizedPnl: 10, leverage: 5, liquidationPrice: 65000 }], error: null });
+  if (p === `${PU}positions/orders`) return json({ orders: [{ symbol: 'BTCUSDT', side: 'buy', action: 'open', price: 80000, volume: 0.01, status: 'filled', clientOrderId: 'c1', at: iso(-7200e3) }], error: null });
+  if (p === `${PU}signals/recent`) return json({ signals: [{ positionId: 11, positionCode: 'S11', symbol: 'BTC/USDT', side: 'LONG', entryPrice: 80000, tp1: 82000, tp2: 84000, tp3: null, sl: 78000, confidence: 0.8, strength: 3, metaScore: null, timeframe: '1h', status: 'ACTIVE', createdAt: iso(-3600e3) }], total: 1 });
+  void q;
+  return null;
 }
 
 // ── Harness ───────────────────────────────────────────────────────────────────────────────────────
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ttf': 'font/ttf', '.map': 'application/json', '.txt': 'text/plain' };
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'], ...(UPSTREAM && process.env.HTTPS_PROXY ? { proxy: { server: process.env.HTTPS_PROXY } } : {}) });
 
-async function open(path, { width = 1440, height = 900, scheme = 'light', locale = 'fa-IR', signed = false, setup = null } = {}) {
+async function open(path, { width = 1440, height = 900, scheme = 'light', locale = 'fa-IR', signed = false, setup = null, mock: custom = null } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, locale, timezoneId: 'Asia/Tehran' });
   if (signed) {
     // A seeded member session on both platforms (fixtures only: the handles mean nothing upstream).
@@ -157,7 +251,9 @@ async function open(path, { width = 1440, height = 900, scheme = 'light', locale
         try { const resp = await r.fetch({ url: UPSTREAM + u.pathname + u.search }); if (resp.status() >= 500) net.failed.push(`${resp.status()} ${u.pathname}`); return r.fulfill({ response: resp }); }
         catch { net.failed.push(`ERR ${u.pathname}`); return r.abort(); }
       }
-      return r.fulfill(mock(u.href, r.request().method()));
+      // A suite may answer some routes itself (`open(path, { mock(url, method) })`), else the fixtures do.
+      const own = custom ? custom(u, r.request().method(), r.request()) : null;
+      return r.fulfill(own ?? mock(u.href, r.request().method()));
     }
     const rel = u.pathname.replace(/^\/next\//, '');
     let file = join(DIST, rel);
@@ -884,7 +980,7 @@ const suites = join(here, 'suites');
 if (existsSync(suites)) {
   for (const f of readdirSync(suites).filter((x) => x.endsWith('.mjs')).sort()) {
     const mod = await import(join(suites, f));
-    await mod.default({ test, open, ready, pc, expect });
+    await mod.default({ test, open, ready, pc, expect, fixtures: { json, vipMember, forexMember, VIP_RULES } });
   }
 }
 

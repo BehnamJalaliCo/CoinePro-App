@@ -3,6 +3,7 @@ import { useSession } from '../data/session';
 import { activeBackend, member, ty, num, ms, str, usePlatform } from '../data/member';
 import { Markdown } from './Markdown';
 import { State, Tabs, dateTime, money, pct, useL, useLoad } from './kit';
+import { VipCard } from '../vip/VipCard';
 
 // Home (feature/home): the account at a glance — the day's briefing the platform writes, the
 // portfolio's value and change, the announcements, and the ways into the rest. A reader with both
@@ -49,6 +50,7 @@ export default function HomePage() {
           </section>
         </div>
         <aside className="stack side">
+          <VipCard />
           <section className="card">
             <h3 className="fa">{L('پرتفوی', 'Portfolio')}</h3>
             <State loading={folio.loading} error={folio.error} onRetry={folio.reload}>
@@ -58,7 +60,7 @@ export default function HomePage() {
             </State>
           </section>
           <section className="card doors">
-            {([['signals', L('سیگنال‌ها', 'Signals')], ['ai', L('ستاپ‌ساز هوشمند', 'AI setup builder')], ['activity', L('فعالیت', 'Activity')], ['alerts', L('هشدارها', 'Alerts')], ['journal', L('ژورنال', 'Journal')], ['academy', L('آکادمی', 'Academy')], ['membership', L('عضویت صرافی', 'Exchange membership')], ['profile', L('پروفایل', 'Profile')]] as const).map(([id, label]) => (
+            {([['signals', L('سیگنال‌ها', 'Signals')], ['ai', L('ستاپ‌ساز هوشمند', 'AI setup builder')], ['activity', L('فعالیت', 'Activity')], ['alerts', L('هشدارها', 'Alerts')], ['journal', L('ژورنال', 'Journal')], ['academy', L('آکادمی', 'Academy')], ['vip-status', L('وضعیت VIP', 'VIP status')], ['copytrade', L('کپی‌ترید', 'Copy trading')], ['performance', L('عملکرد', 'Performance')], ['affiliate', L('معرفی دوستان', 'Referrals')], ['profile', L('پروفایل', 'Profile')]] as const).map(([id, label]) => (
               <button key={id} className="btn btn-quiet sm" onClick={() => open(id)}><span className="fa">{label}</span></button>
             ))}
           </section>

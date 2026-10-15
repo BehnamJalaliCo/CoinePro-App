@@ -169,3 +169,11 @@ arrows-clockwise
 crown-simple
 seal-check
 wallet
+telegram-logo
+hourglass
+users
+gift
+x-circle
+check-circle
+lock-key-open
+handshake

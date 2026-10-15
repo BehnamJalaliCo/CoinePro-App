@@ -76,5 +76,8 @@ export function startEntitlementWatch(): () => void {
     prev = s.sessions;
   });
   const timer = setInterval(() => void useEntitlements.getState().load(), 600_000);
-  return () => { off(); clearInterval(timer); watching = false; };
+  // The VIP pages notice a membership granted or removed (the balance rules) before the next poll.
+  const changed = () => void useEntitlements.getState().load();
+  window.addEventListener('pc:entitlements-changed', changed);
+  return () => { off(); clearInterval(timer); window.removeEventListener('pc:entitlements-changed', changed); watching = false; };
 }

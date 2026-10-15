@@ -104,6 +104,9 @@ export default function ProfilePage({ onSignIn }: PageProps) {
         <button className="btn btn-quiet sm" onClick={() => open('privacy')}>{L('حریم خصوصی', 'Privacy')}</button>
         {signed ? (
           <>
+            <button className="btn btn-quiet sm" onClick={() => open('vip-status')}>{L('وضعیت VIP', 'VIP status')}</button>
+            <button className="btn btn-quiet sm" onClick={() => open('copytrade')}>{L('کپی‌ترید', 'Copy trading')}</button>
+            <button className="btn btn-quiet sm" onClick={() => open('affiliate')}>{L('معرفی دوستان', 'Referrals')}</button>
             <button className="btn btn-quiet sm" onClick={() => open('verify')}>{L('احراز هویت', 'Verification')}</button>
             <button className="btn btn-quiet sm" onClick={() => signOut()}>{L('خروج از حساب', 'Sign out')}</button>
             <button className="btn btn-quiet sm down" onClick={() => open('delete')}>{L('حذف حساب', 'Delete the account')}</button>
