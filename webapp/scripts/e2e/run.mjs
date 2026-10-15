@@ -987,4 +987,10 @@ if (existsSync(suites)) {
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} passed`);
+// The failures again, last, so the end of a long log carries them; on GitHub also as annotations.
+for (const f of failed) {
+  const msg = f.error.replace(/\s+/g, ' ').slice(0, 300);
+  console.log(`  ✗ ${f.name} — ${msg}`);
+  if (process.env.GITHUB_ACTIONS) console.log(`::error title=e2e::${f.name} — ${msg}`);
+}
 process.exit(failed.length ? 1 : 0);
