@@ -7,6 +7,9 @@ import { useDrawing } from '../state/drawing';
 import { formatPrice } from './format';
 import { Icon } from '../ui/Icon';
 import { digitsOf } from '../state/market';
+import { copyChartImage, exportBarsCsv } from './actions';
+import { useChartSettings } from '../state/chartSettings';
+import { usePage } from '../state/page';
 
 // The chart's right-click menu, TradingView's first items: reset the view, an alert or a horizontal
 // line at the price under the pointer, copy that price, clear drawings or indicators.
@@ -14,7 +17,9 @@ export function ChartContextMenu({ at, onClose, onAlertAt }: { at: { x: number; 
   const t = useT();
   const ref = useRef<HTMLDivElement>(null);
   const symbol = usePrefs((s) => s.symbol);
-  const { api, drawingLayer: layer } = useChartBus();
+  const { api, drawingLayer: layer, invert, setInvert, scale, setScale } = useChartBus();
+  const settings = useChartSettings();
+  const openPage = usePage((s) => s.open);
   const clearStudies = useStudies((s) => s.clear);
   const clearDrawings = useDrawing((s) => s.clearAll);
   const digits = digitsOf(symbol);
@@ -31,7 +36,7 @@ export function ChartContextMenu({ at, onClose, onAlertAt }: { at: { x: number; 
 
   const run = (fn: () => void) => () => { fn(); onClose(); };
   const left = Math.min(at.x, window.innerWidth - 270);
-  const top = Math.min(at.y, window.innerHeight - 280);
+  const top = Math.max(8, Math.min(at.y, window.innerHeight - 520));
 
   return createPortal(
     <div ref={ref} className="menu dropdown ctx" role="menu" style={{ position: 'fixed', left, top }}>
@@ -58,6 +63,15 @@ export function ChartContextMenu({ at, onClose, onAlertAt }: { at: { x: number; 
           <div className="menu-sep" />
         </>
       ) : null}
+      <button className="menu-item" onClick={run(() => setInvert(!invert))}><Icon name="ph-arrows-down-up" size="sm" /><span>Invert scale</span>{invert ? <Icon name="ph-check" size="sm" /> : <kbd className="num">Alt+I</kbd>}</button>
+      <button className="menu-item" onClick={run(() => setScale(scale === 'indexed' ? 'normal' : 'indexed'))}><Icon name="ph-percent" size="sm" /><span>Indexed to 100</span>{scale === 'indexed' ? <Icon name="ph-check" size="sm" /> : null}</button>
+      <button className="menu-item" onClick={run(() => settings.set({ prevClose: !settings.prevClose }))}><Icon name="tool_hline" size="sm" /><span>Previous close line</span>{settings.prevClose ? <Icon name="ph-check" size="sm" /> : null}</button>
+      <button className="menu-item" onClick={run(() => settings.set({ events: !settings.events }))}><Icon name="ph-calendar-blank" size="sm" /><span>Economic events</span>{settings.events ? <Icon name="ph-check" size="sm" /> : null}</button>
+      <div className="menu-sep" />
+      <button className="menu-item" onClick={run(() => { void copyChartImage(); })}><Icon name="ph-camera" size="sm" /><span>Copy chart image</span></button>
+      <button className="menu-item" onClick={run(exportBarsCsv)}><Icon name="ph-download-simple" size="sm" /><span>Export chart data (CSV)</span></button>
+      <button className="menu-item" onClick={run(() => openPage('help', 'shortcuts'))}><Icon name="ph-keyboard" size="sm" /><span>Keyboard shortcuts</span><kbd className="num">?</kbd></button>
+      <div className="menu-sep" />
       <button className="menu-item" onClick={run(clearDrawings)}><Icon name="trash2" size="sm" /><span className="fa">{t('contextRemoveDrawings')}</span></button>
       <button className="menu-item" onClick={run(clearStudies)}><Icon name="ph-trash" size="sm" /><span className="fa">{t('contextRemoveStudies')}</span></button>
     </div>,

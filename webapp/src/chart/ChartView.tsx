@@ -22,7 +22,11 @@ import { useChartSettings } from '../state/chartSettings';
 import { intervalSeconds } from '../data/intervals';
 import { timeOptions } from './time';
 import { COMPARE_COLORS, useCompare } from '../state/compare';
-import { LineSeries } from 'lightweight-charts';
+import { LineSeries, createSeriesMarkers, createTextWatermark, type SeriesMarker } from 'lightweight-charts';
+import { useMarket } from '../state/market';
+import { calendarWeek, type CalendarEvent } from '../data/intel';
+import { DrawingStyleBar } from './DrawingStyleBar';
+import { marketOf } from '../data/symbols';
 import { onPrice } from '../data/prices';
 import { ScriptRenderer } from './scriptRenderer';
 import { useScript } from '../state/script';
@@ -303,6 +307,54 @@ export function ChartView({ feed, digits, displayName, onStudySettings, onAlertA
   }, [setup, symbol, chartType]);
   useEffect(() => { if (setup && setup.symbol !== symbol) useOverlay.getState().clear(); }, [symbol, setup]);
 
+  // The previous session's close as a dotted line (TradingView's "Previous day close price line").
+  const prevCloseOn = useChartSettings((x) => x.prevClose);
+  const prevClose = useMarket((m) => { const tk = m.tickers[symbol]; if (!tk) return null; const v = tk.prevClose ?? tk.last - tk.change; return Number.isFinite(v) && v > 0 ? Number(v.toPrecision(10)) : null; });
+  useEffect(() => {
+    const series = price.current;
+    if (!series || !prevCloseOn || prevClose == null) return;
+    const line = series.createPriceLine({ price: prevClose, color: '#787B86', lineWidth: 1, lineStyle: LineStyle.Dotted, axisLabelVisible: true, title: 'Prev close' });
+    return () => { try { series.removePriceLine(line); } catch { /* series replaced */ } };
+  }, [prevCloseOn, prevClose, chartType, up, down, priceLine, symbol]);
+
+  // The symbol and interval behind the bars, faint, as TradingView's watermark.
+  const watermark = useChartSettings((x) => x.watermark);
+  useEffect(() => {
+    const c = chart.current;
+    if (!c || !watermark) return;
+    const wm = createTextWatermark(c.panes()[0]!, { horzAlign: 'center', vertAlign: 'center', lines: [{ text: `${symbol}, ${intervalLabel(interval)}`, color: dark ? 'rgba(255,255,255,0.07)' : 'rgba(19,23,34,0.07)', fontSize: 64, fontFamily: "'IRANYekanX', sans-serif", fontStyle: '' }] });
+    return () => { try { wm.detach(); } catch { /* chart gone */ } };
+  }, [watermark, symbol, interval, dark]);
+
+  // The week's high-impact economic events that touch this symbol, on the bars they fall in.
+  const eventsOn = useChartSettings((x) => x.events);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  useEffect(() => {
+    if (!eventsOn) return;
+    let alive = true;
+    void loadEvents().then((e) => { if (alive) setEvents(e); });
+    return () => { alive = false; };
+  }, [eventsOn]);
+  useEffect(() => {
+    const series = price.current;
+    const list = bars.current;
+    if (!series || !eventsOn || !events.length || !list.length || timeless()) return;
+    const ccy = marketOf(symbol) === 'crypto' ? ['USD'] : [symbol.slice(0, 3), symbol.slice(3, 6)].map((c) => (c === 'XAU' || c === 'XAG' ? 'USD' : c));
+    const first = list[0]!.t; const last = list[list.length - 1]!.t + intervalSeconds(interval);
+    const markers: SeriesMarker<Time>[] = [];
+    for (const e of events) {
+      const t = Math.floor(e.time / 1000);
+      if (e.impact !== 'high' || t < first || t >= last || !ccy.includes(e.currency.toUpperCase().slice(0, 3))) continue;
+      let lo = 0; let hi = list.length - 1;
+      while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (list[mid]!.t <= t) lo = mid; else hi = mid - 1; }
+      markers.push({ time: list[lo]!.t as Time, position: 'belowBar', color: '#F57C00', shape: 'circle', text: `${e.currency} ${e.title}`.slice(0, 22) });
+    }
+    if (!markers.length) return;
+    markers.sort((a, b) => (a.time as number) - (b.time as number));
+    const plugin = createSeriesMarkers(series, markers);
+    return () => { try { plugin.detach(); } catch { /* series replaced */ } };
+  }, [eventsOn, events, barsVersion, chartType, up, down, priceLine, symbol, interval]);
+
   // Replay: repaint from the slice as it grows; back to everything on exit.
   const replaySlice = useReplay((r) => r.slice);
   useEffect(() => {
@@ -323,11 +375,12 @@ export function ChartView({ feed, digits, displayName, onStudySettings, onAlertA
   const autoScale = useChartBus((b) => b.autoScale);
   const compare = useCompare((s) => s.symbols);
   const removeCompare = useCompare((s) => s.remove);
+  const invert = useChartBus((b) => b.invert);
   useEffect(() => {
     const pct = scale === 'percent' || compare.length > 0;
-    const mode = scale === 'log' && !pct ? PriceScaleMode.Logarithmic : pct ? PriceScaleMode.Percentage : PriceScaleMode.Normal;
-    chart.current?.priceScale('right').applyOptions({ mode, autoScale });
-  }, [scale, autoScale, compare.length]);
+    const mode = pct ? PriceScaleMode.Percentage : scale === 'log' ? PriceScaleMode.Logarithmic : scale === 'indexed' ? PriceScaleMode.IndexedTo100 : PriceScaleMode.Normal;
+    chart.current?.priceScale('right').applyOptions({ mode, autoScale, invertScale: invert });
+  }, [scale, autoScale, compare.length, invert]);
 
   // Compared symbols: a line each, same interval, live from the price feed.
   const [compareLast, setCompareLast] = useState<Record<string, number>>({});
@@ -504,6 +557,7 @@ export function ChartView({ feed, digits, displayName, onStudySettings, onAlertA
         <div key={r.uid} className="legend pane-legend" style={{ top: (paneTops[r.pane] ?? 0) + 4 }}>{studyRow(r)}</div>
       ))}
       <ReplayBar />
+      <DrawingStyleBar />
       <TextEditor />
       {menuAt ? <ChartContextMenu at={menuAt} onClose={() => setMenuAt(null)} onAlertAt={onAlertAt} /> : null}
       {state === 'loading' ? <div className="chart-state fa">{t('loading')}…</div> : null}
@@ -512,4 +566,11 @@ export function ChartView({ feed, digits, displayName, onStudySettings, onAlertA
       ) : null}
     </div>
   );
+}
+
+// The week's calendar, fetched once per visit for the chart's event markers.
+let eventsCache: Promise<CalendarEvent[]> | null = null;
+function loadEvents(): Promise<CalendarEvent[]> {
+  eventsCache ??= calendarWeek().catch(() => { eventsCache = null; return []; });
+  return eventsCache;
 }

@@ -12,6 +12,11 @@ import { intervalsFor } from '../data/candles';
 import { takeSnapshot } from './snapshot';
 import { useLayouts } from '../state/layouts';
 import type { ChartType } from './chartTypes';
+import { useGrid, type GridId } from '../state/grid';
+import { usePage } from '../state/page';
+import { usePaper } from '../state/paper';
+import { useMarket } from '../state/market';
+import { copyChartImage } from './actions';
 
 export interface HotkeyActions { indicators(): void; symbolSearch(): void; newAlert(): void; settings(): void }
 
@@ -38,6 +43,15 @@ export function attachAppHotkeys(actions: HotkeyActions): () => void {
   };
   const scroll = (bars: number) => () => { const s = ts(); if (s) s.scrollToPosition(s.scrollPosition() + bars, false); };
   const bus = () => useChartBus.getState();
+  const setIv = (iv: string) => () => { const p = usePrefs.getState(); if (intervalsFor(p.symbol).includes(iv)) p.setInterval(iv); };
+  // Shift+B / Shift+S: a paper trade at the live price, sized at about 1,000 USDT.
+  const paperAtMarket = (side: 'long' | 'short') => {
+    const sym = usePrefs.getState().symbol;
+    const px = useMarket.getState().tickers[sym]?.last;
+    if (!px) return;
+    usePaper.getState().open(sym, side, Number((1000 / px).toPrecision(2)), px);
+    if (usePanels.getState().bottom !== 'paper') usePanels.getState().setBottom('paper');
+  };
 
   return attachHotkeys({
     cursor: () => { if (useReplay.getState().selecting) useReplay.getState().exit(); else useDrawing.getState().setTool('cursor', 'cursors'); },
@@ -67,5 +81,15 @@ export function attachAppHotkeys(actions: HotkeyActions): () => void {
     replayStepBack: () => { const r = useReplay.getState(); if (r.state?.on) r.controller.stepBack(); },
     screenshot: () => { void takeSnapshot(); },
     saveLayout: () => useLayouts.getState().save(),
+    invertScale: () => bus().setInvert(!bus().invert),
+    help: () => usePage.getState().open('help', 'shortcuts'),
+    gotoDate: () => window.dispatchEvent(new CustomEvent('pc:goto')),
+    cycleGrid: () => { const order: GridId[] = ['1', '2v', '2h', '3', '4']; const g = useGrid.getState(); g.setGrid(order[(order.indexOf(g.grid) + 1) % order.length]!); },
+    tf1: setIv('5'), tf2: setIv('15'), tf3: setIv('60'), tf4: setIv('240'), tf5: setIv('1D'),
+    cloneSel: () => { const l = bus().drawingLayer; if (l && l.selected >= 0) l.clone(l.selected); },
+    lockSel: () => { const l = bus().drawingLayer; if (l && l.selected >= 0) { l.toggleLock(l.selected); l.render(); } },
+    buy: () => paperAtMarket('long'),
+    sell: () => paperAtMarket('short'),
+    copyImage: () => { void copyChartImage(); },
   });
 }

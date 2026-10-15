@@ -2,6 +2,16 @@ import { useState } from 'react';
 import { useChartSettings, type ChartSettings } from '../state/chartSettings';
 import { usePrefs, useT, type Theme } from '../state/prefs';
 import { Icon } from '../ui/Icon';
+import { useChartBus } from '../chart/chartBus';
+
+// Candle colour pairs: TradingView's, the reversed pair some markets read, colour-blind and monochrome.
+const PRESETS = [
+  { name: 'Classic', up: '#089981', down: '#F23645' },
+  { name: 'Reversed', up: '#F23645', down: '#089981' },
+  { name: 'Colour-blind', up: '#2962FF', down: '#FF9800' },
+  { name: 'Monochrome', up: '#787B86', down: '#131722' },
+  { name: 'Vivid', up: '#26A69A', down: '#EF5350' },
+];
 
 type Tab = 'symbol' | 'status' | 'appearance';
 
@@ -11,6 +21,8 @@ export function SettingsDialog({ onClose }: { onClose(): void }) {
   const t = useT();
   const s = useChartSettings();
   const { theme, setTheme } = usePrefs();
+  const invert = useChartBus((b) => b.invert);
+  const setInvert = useChartBus((b) => b.setInvert);
   const [tab, setTab] = useState<Tab>('symbol');
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: 'symbol', label: 'Symbol', icon: 'chart_candles' },
@@ -38,7 +50,15 @@ export function SettingsDialog({ onClose }: { onClose(): void }) {
               <>
                 <label className="setting-row"><span>Up colour</span><input type="color" value={s.up} onChange={(e) => s.set({ up: e.target.value })} /></label>
                 <label className="setting-row"><span>Down colour</span><input type="color" value={s.down} onChange={(e) => s.set({ down: e.target.value })} /></label>
+                <div className="setting-row"><span>Colour presets</span>
+                  <span className="swatches">{PRESETS.map((p) => (
+                    <button key={p.name} className={`preset${s.up === p.up && s.down === p.down ? ' on' : ''}`} title={p.name} onClick={() => s.set({ up: p.up, down: p.down })}>
+                      <i style={{ background: p.up }} /><i style={{ background: p.down }} />
+                    </button>
+                  ))}</span>
+                </div>
                 <label className="setting-row"><span>Price line</span>{toggle('priceLine')}</label>
+                <label className="setting-row"><span>Previous close line</span>{toggle('prevClose')}</label>
                 <label className="setting-row"><span>Countdown to bar close</span>{toggle('countdown')}</label>
               </>
             ) : null}
@@ -60,6 +80,9 @@ export function SettingsDialog({ onClose }: { onClose(): void }) {
                     <option value="both">Vert and horz</option><option value="vertical">Vert only</option><option value="horizontal">Horz only</option><option value="none">None</option>
                   </select>
                 </label>
+                <label className="setting-row"><span>Watermark</span>{toggle('watermark')}</label>
+                <label className="setting-row"><span>Economic events on the chart</span>{toggle('events')}</label>
+                <label className="setting-row"><span>Invert price scale</span><input type="checkbox" checked={invert} onChange={(e) => setInvert(e.target.checked)} /></label>
                 <label className="setting-row"><span>Crosshair</span>
                   <select value={s.crosshair} onChange={(e) => s.set({ crosshair: e.target.value as ChartSettings['crosshair'] })}>
                     <option value="normal">Normal</option><option value="magnet">Magnet</option>

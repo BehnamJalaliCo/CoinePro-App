@@ -23,6 +23,13 @@ export class DrawingLayer {
   getDrawings(): DrawingObject[];
   getSelected(): DrawingObject | null;
   removeAt(index: number): void;
+  selectAt(index: number): void;
+  toggleLock(index: number): void;
+  toggleVisible(index: number): void;
+  clone(index: number): number;
+  addHLine(price: number, color?: string): number;
+  hideAll(on: boolean): void;
+  allHidden(): boolean;
   setStyle(index: number, style: Record<string, unknown>): void;
   lockAll(on: boolean): void;
   clearAll(): void;

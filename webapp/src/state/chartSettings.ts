@@ -11,10 +11,17 @@ export interface ChartSettings {
   showOhlc: boolean;
   showChange: boolean;
   countdown: boolean;
+  /** A line at the previous session's close. */
+  prevClose: boolean;
+  /** The symbol and interval written faintly behind the bars. */
+  watermark: boolean;
+  /** Economic events of the week marked on the bars they fall in. */
+  events: boolean;
 }
 
 export const DEFAULT_SETTINGS: ChartSettings = {
   up: '#089981', down: '#F23645', grid: 'both', crosshair: 'normal', priceLine: true, showOhlc: true, showChange: true, countdown: true,
+  prevClose: false, watermark: false, events: true,
 };
 
 const KEY = 'pc.chartsettings.v1';

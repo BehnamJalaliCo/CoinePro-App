@@ -25,7 +25,7 @@ export default function NewsPage({ param }: { param: string | null }) {
   const [story, setStory] = useState<NewsItem | null>(null);
   const [body, setBody] = useState<string | null>(null);
   const feed = useLoad(async () => {
-    if (tab === 'crypto') return cryptoNews(60);
+    if (tab === 'crypto') return cryptoNews(50);
     if (tab === 'forex') return forexNews();
     if (tab === 'saved') return readSaved();
     const r = await member<Record<string, unknown>>('announcements?limit=30');

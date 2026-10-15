@@ -1,3 +1,4 @@
+import { goToTime } from '../chart/actions';
 import { useEffect, useRef, useState } from 'react';
 import { Dropdown } from '../ui/Menu';
 import { TIMEZONES } from '../engine/scales_crosshair.js';
@@ -60,7 +61,6 @@ function Clock() {
 }
 
 export function TimeBar({ supported }: { supported: (interval: string) => boolean }) {
-  const t = useT();
   const setInterval = usePrefs((s) => s.setInterval);
   const interval = usePrefs((s) => s.interval);
   const { api, bars, scale, autoScale, setScale, setAutoScale, setPendingSpan } = useChartBus();
@@ -83,7 +83,7 @@ export function TimeBar({ supported }: { supported: (interval: string) => boolea
         <button key={r.id} className="ib range num" onClick={() => pick(r)}>{r.id}</button>
       ))}
       <span className="sep" />
-      <button className="ib" title={t('goToDate')}><Icon name="ph-calendar-blank" size="sm" /></button>
+      <GoToDate />
       <span className="ws-spacer" />
       <Clock />
       <span className="sep" />
@@ -94,5 +94,35 @@ export function TimeBar({ supported }: { supported: (interval: string) => boolea
       <button className={`ib scale${autoScale ? ' on' : ''}`} aria-pressed={autoScale}
         onClick={() => setAutoScale(!autoScale)}>auto</button>
     </div>
+  );
+}
+
+/** TradingView's «Go to» (Alt+G): a date and time; the chart scrolls there, loading older history. */
+function GoToDate() {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [miss, setMiss] = useState(false);
+  useEffect(() => { const on = () => setOpen(true); window.addEventListener('pc:goto', on); return () => window.removeEventListener('pc:goto', on); }, []);
+  const go = async () => {
+    const ms = Date.parse(value);
+    if (!Number.isFinite(ms)) return;
+    setBusy(true); setMiss(false);
+    const ok = await goToTime(Math.floor(ms / 1000));
+    setBusy(false);
+    if (ok) setOpen(false); else setMiss(true);
+  };
+  return (
+    <span className="goto">
+      <button className={`ib${open ? ' on' : ''}`} title={`${t('goToDate')} (Alt+G)`} aria-expanded={open} onClick={() => setOpen(!open)}><Icon name="ph-calendar-blank" size="sm" /></button>
+      {open ? (
+        <form className="goto-pop" onSubmit={(e) => { e.preventDefault(); void go(); }} onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}>
+          <input type="datetime-local" value={value} onChange={(e) => setValue(e.target.value)} autoFocus aria-label={t('goToDate')} />
+          <button className="btn btn-primary sm" disabled={busy || !value}>{busy ? '…' : 'Go'}</button>
+          {miss ? <span className="muted small fa">{t('goToDateMiss')}</span> : null}
+        </form>
+      ) : null}
+    </span>
   );
 }

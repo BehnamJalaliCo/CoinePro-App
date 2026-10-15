@@ -72,3 +72,10 @@ target
 google-logo
 arrow-left
 arrow-right
+arrows-down-up
+percent
+download-simple
+keyboard
+upload-simple
+note
+shuffle

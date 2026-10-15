@@ -10,7 +10,7 @@ import type { Candle } from '../data/types';
 
 export type ChartType =
   | 'bars' | 'candles' | 'hollow' | 'heikin' | 'line' | 'linemarkers' | 'step' | 'area' | 'baseline'
-  | 'columns' | 'highlow' | 'renko' | 'linebreak' | 'kagi' | 'pnf' | 'range';
+  | 'columns' | 'highlow' | 'volcandles' | 'renko' | 'linebreak' | 'kagi' | 'pnf' | 'range';
 
 export interface ChartTypeDef { id: ChartType; icon: string; fa: string; en: string; group: number }
 
@@ -18,6 +18,7 @@ export const CHART_TYPES: ChartTypeDef[] = [
   { id: 'bars', icon: 'chart_bars', fa: 'میله‌ای', en: 'Bars', group: 0 },
   { id: 'candles', icon: 'chart_candles', fa: 'شمعی', en: 'Candles', group: 0 },
   { id: 'hollow', icon: 'chart_hollow', fa: 'شمعی توخالی', en: 'Hollow candles', group: 0 },
+  { id: 'volcandles', icon: 'chart_volcandles', fa: 'شمعی حجمی', en: 'Volume candles', group: 0 },
   { id: 'line', icon: 'chart_line', fa: 'خطی', en: 'Line', group: 1 },
   { id: 'linemarkers', icon: 'chart_lwm', fa: 'خطی با نشانگر', en: 'Line with markers', group: 1 },
   { id: 'step', icon: 'chart_step', fa: 'پله‌ای', en: 'Step line', group: 1 },
@@ -68,6 +69,26 @@ export function createPriceSeries(chart: IChartApi, type: ChartType, p: Palette,
   }
 }
 
+/** A colour with the bar's volume as its strength: a quiet bar faint, a heavy one solid. */
+function volumeTint(hex: string, v: number, avg: number): string {
+  const k = avg > 0 ? Math.max(0.25, Math.min(1, v / (avg * 1.5))) : 1;
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1]!, 16);
+  return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${k.toFixed(2)})`;
+}
+
+function volCandle(b: Candle, avg: number, p: Palette) {
+  const c = volumeTint(b.c >= b.o ? p.up : p.down, b.v, avg);
+  return { time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c, color: c, borderColor: c, wickColor: c };
+}
+
+const avgVolume = (bars: Candle[], end: number) => {
+  let n = 0; let sum = 0;
+  for (let i = Math.max(0, end - 20); i < end; i++) { sum += bars[i]!.v; n++; }
+  return n ? sum / n : 0;
+};
+
 function heikinAshi(bars: Candle[]): Candle[] {
   const out: Candle[] = [];
   for (let i = 0; i < bars.length; i++) {
@@ -90,6 +111,8 @@ export function seriesData(type: ChartType, bars: Candle[], p: Palette): unknown
       return bars.map((b, i) => ({ time: b.t as UTCTimestamp, value: b.c, color: b.c >= (bars[i - 1]?.c ?? b.o) ? p.up : p.down }));
     case 'heikin':
       return ohlc(heikinAshi(bars));
+    case 'volcandles':
+      return bars.map((b, i) => volCandle(b, avgVolume(bars, i), p));
     case 'renko': case 'linebreak': case 'range': case 'kagi': case 'pnf': {
       const built = buildNonStandard(type, bars) as { kind: 'candle' | 'line'; data: { t: number; o?: number; h?: number; l?: number; c?: number; value?: number }[] } | null;
       if (!built) return ohlc(bars);
@@ -110,6 +133,8 @@ export function livePoint(type: ChartType, bar: Candle, prev: Candle | undefined
       return { time: bar.t as UTCTimestamp, value: bar.c };
     case 'columns':
       return { time: bar.t as UTCTimestamp, value: bar.c, color: bar.c >= (prev?.c ?? bar.o) ? p.up : p.down };
+    case 'volcandles':
+      return volCandle(bar, prev?.v ?? bar.v, p);
     default:
       return { time: bar.t as UTCTimestamp, open: bar.o, high: bar.h, low: bar.l, close: bar.c };
   }

@@ -29,9 +29,9 @@ function groupOf(id: string): Exclude<Group, 'all' | 'shortcuts'> {
 export default function HelpPage({ param }: { param: string | null }) {
   const L = useL();
   const lang = usePrefs((s) => s.lang);
-  const [group, setGroup] = useState<Group>('all');
+  const [group, setGroup] = useState<Group>(param === 'shortcuts' ? 'shortcuts' : 'all');
   const [q, setQ] = useState('');
-  const [openId, setOpenId] = useState<string | null>(param);
+  const [openId, setOpenId] = useState<string | null>(param === 'shortcuts' ? null : param);
   const lib = useLoad(() => fetch(`${BASE}content.json`).then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json() as Promise<Record<string, Entry>>; }), []);
   const pick = (b: Bi | undefined) => (b ? (lang === 'fa' ? b.fa || b.en : b.en || b.fa) ?? '' : '');
   const pickList = (b: BiList | undefined) => (b ? (lang === 'fa' ? b.fa?.length ? b.fa : b.en : b.en?.length ? b.en : b.fa) ?? [] : []);

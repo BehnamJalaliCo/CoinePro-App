@@ -65,6 +65,7 @@ export function attachDrawings(canvas: HTMLCanvasElement, chart: IChartApi): Dra
 
   const bump = () => useChartBus.getState().bumpDrawings(layer.canUndo(), layer.canRedo(), layer.getDrawings().length);
   layer.onChange = (list) => { if (symbol) save(symbol, list); bump(); };
+  layer.onSelect = (i) => useChartBus.getState().setSelectedDrawing(i);
   layer.onToolReset = () => { useDrawing.getState().setTool('cursor', 'cursors'); };
   // Text is written in the app's own editor, not the browser's prompt; a double click on any
   // drawing that carries text opens it again.
@@ -115,6 +116,7 @@ export function attachDrawings(canvas: HTMLCanvasElement, chart: IChartApi): Dra
       if (next === symbol) return;
       symbol = next;
       layer.setDrawings(load(next));
+      useChartBus.getState().setSelectedDrawing(-1);
       bump();
     },
     setSeries(series) { layer.setSeries(series); },
@@ -126,6 +128,7 @@ export function attachDrawings(canvas: HTMLCanvasElement, chart: IChartApi): Dra
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(repaint);
       chart.unsubscribeCrosshairMove(repaint);
       useChartBus.getState().setDrawingLayer(null);
+      useChartBus.getState().setSelectedDrawing(-1);
     },
   };
 }

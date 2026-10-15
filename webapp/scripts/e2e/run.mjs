@@ -244,7 +244,7 @@ await test('every chart type renders', async () => {
     await env.page.waitForTimeout(250);
   }
   await pc(env.page, () => window.__pc.usePrefs.getState().setChartType('candles'));
-  expect(types.length === 16, `expected 16 chart types, got ${types.length}`);
+  expect(types.length === 17, `expected 17 chart types, got ${types.length}`);
   return env;
 });
 
@@ -538,6 +538,8 @@ await test('every page opens for a guest (members-only pages ask to sign in)', a
     else {
       const text = await env.page.textContent('.page-body');
       expect((text ?? '').trim().length > 10, `${p.id}: empty page`);
+      const bad = BAD.find((b) => (text ?? '').includes(b));
+      if (bad) console.log(`      note: ${p.id} shows "${bad}"`);
     }
   }
   await pc(env.page, () => window.__pc.usePage.getState().close());
@@ -705,6 +707,108 @@ await test('pages fit a phone (390 wide)', async () => {
     const overflow = await env.page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
     expect(!overflow, `${id}: horizontal overflow on a phone`);
   }
+  return env;
+});
+
+
+// ── Chart parity: style bar, scales, go to date, watchlists, replay trading ───────────────────────
+await test('drawing style bar: colour, width, style, lock, clone, delete', async () => {
+  const env = await open('BTCUSDT/1h?e2e=1');
+  await ready(env.page);
+  await pc(env.page, () => { const l = window.__pc.useChartBus.getState().drawingLayer; l.addHLine(window.__pc.useChartBus.getState().bars.at(-1).c, '#2962FF'); l.selectAt(0); });
+  await env.page.waitForSelector('.draw-style-bar', { timeout: 5000 });
+  await env.page.click('.draw-style-bar .dsb-group >> nth=0 >> button');
+  await env.page.click('.dsb-pop .swatch >> nth=1');
+  const color = await pc(env.page, () => window.__pc.useChartBus.getState().drawingLayer.getDrawings()[0].color);
+  expect(color === '#F23645', `colour ${color}`);
+  await env.page.click('.draw-style-bar .dsb-group >> nth=1 >> button');
+  await env.page.click('.dsb-pop .dsb-line >> nth=3');
+  await env.page.click('.draw-style-bar .dsb-group >> nth=2 >> button');
+  await env.page.click('.dsb-pop .dsb-line >> nth=1');
+  const d = await pc(env.page, () => window.__pc.useChartBus.getState().drawingLayer.getDrawings()[0]);
+  expect(d.width === 4 && d.lineStyle === 'dashed', `style ${JSON.stringify(d)}`);
+  await env.page.click('.draw-style-bar [title="clone"]');
+  expect(await pc(env.page, () => window.__pc.useChartBus.getState().drawingLayer.getDrawings().length) === 2, 'clone');
+  await env.page.click('.draw-style-bar [title="حذف"]');
+  expect(await pc(env.page, () => window.__pc.useChartBus.getState().drawingLayer.getDrawings().length) === 1, 'delete');
+  return env;
+});
+
+await test('context menu: invert, indexed, prev close, CSV; Alt+I', async () => {
+  const env = await open('ETHUSDT/1h?e2e=1');
+  await ready(env.page);
+  const box = await env.page.locator('.chart-host').boundingBox();
+  await env.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
+  await env.page.click('.ctx >> text=Invert scale');
+  expect(await pc(env.page, () => window.__pc.useChartBus.getState().invert), 'not inverted');
+  await env.page.keyboard.press('Alt+i');
+  expect(!(await pc(env.page, () => window.__pc.useChartBus.getState().invert)), 'Alt+I did not toggle');
+  await env.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
+  await env.page.click('.ctx >> text=Indexed to 100');
+  expect(await pc(env.page, () => window.__pc.useChartBus.getState().scale) === 'indexed', 'indexed');
+  await env.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
+  const dl = env.page.waitForEvent('download', { timeout: 5000 });
+  await env.page.click('.ctx >> text=Export chart data');
+  const file = await dl;
+  expect(/ETHUSDT_1h\.csv/.test(file.suggestedFilename()), file.suggestedFilename());
+  return env;
+});
+
+await test('go to date scrolls the chart there', async () => {
+  const env = await open('BTCUSDT/1h?e2e=1');
+  await ready(env.page);
+  const target = await pc(env.page, () => window.__pc.useChartBus.getState().bars[100].t);
+  await env.page.keyboard.press('Alt+g');
+  const d = new Date(target * 1000);
+  const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  await env.page.fill('.goto-pop input', local);
+  await env.page.click('.goto-pop button');
+  await env.page.waitForSelector('.goto-pop', { state: 'detached', timeout: 8000 });
+  const range = await pc(env.page, () => window.__pc.useChartBus.getState().api.timeScale().getVisibleLogicalRange());
+  expect(range.from < 100 && range.to > 100, `range ${JSON.stringify(range)}`);
+  return env;
+});
+
+await test('watchlists: create, switch, flag, note, import text', async () => {
+  const env = await open('BTCUSDT/1h?e2e=1');
+  await ready(env.page);
+  env.page.on('dialog', (dlg) => void dlg.accept(dlg.message().startsWith('New list') ? 'Scalps' : 'buy the dip').catch(() => {}));
+  await env.page.click('.wl-title');
+  await env.page.click('.wl-lists >> text=Create new list');
+  await env.page.waitForFunction(() => document.querySelector('.wl-title')?.textContent?.includes('Scalps'), null, { timeout: 5000 });
+  await pc(env.page, () => window.__pc.useWatchlist.getState().add('SOLUSDT'));
+  await env.page.click('.wl-row >> nth=0', { button: 'right' });
+  await env.page.click('.menu-row.flags .wl-flag >> nth=2');
+  await env.page.click('.wl-row >> nth=0', { button: 'right' });
+  await env.page.click('text=Add note');
+  const st = await pc(env.page, () => { const w = window.__pc.useWatchlist.getState(); return { lists: w.lists.length, flags: w.flags, notes: w.notes }; });
+  expect(st.lists === 2 && st.flags.SOLUSDT === 2 && st.notes.SOLUSDT === 'buy the dip', JSON.stringify(st));
+  await env.page.click('.wl-title');
+  await env.page.click('.wl-lists >> text=Flagged');
+  await env.page.waitForSelector('.wl-row >> text=SOLUSDT', { timeout: 5000 });
+  await env.page.goto('http://pc.local/next/BTCUSDT/1h?e2e=1');
+  await ready(env.page);
+  expect(await pc(env.page, () => window.__pc.useWatchlist.getState().lists.length) === 2, 'lists not kept');
+  return env;
+});
+
+await test('replay: random bar, ±10, practice trades, back to real time', async () => {
+  const env = await open('BTCUSDT/1h?e2e=1');
+  await ready(env.page);
+  await pc(env.page, () => window.__pc.useReplay.getState().select());
+  await env.page.click('.replay-bar >> text=Random bar');
+  await env.page.waitForSelector('.replay-bar .btn.buy', { timeout: 5000 });
+  const i0 = await pc(env.page, () => window.__pc.useReplay.getState().state.idx);
+  await env.page.click('.replay-bar >> text=+10');
+  const i1 = await pc(env.page, () => window.__pc.useReplay.getState().state.idx);
+  expect(i1 === i0 + 10, `idx ${i0} → ${i1}`);
+  await env.page.click('.replay-bar .btn.buy');
+  await env.page.click('.replay-bar >> text=+10');
+  await env.page.click('.replay-bar >> text=Flatten');
+  const trades = await pc(env.page, () => window.__pc.useReplay.getState().trades);
+  expect(trades.length === 1 && trades[0].exit != null, JSON.stringify(trades));
+  await env.page.click('.replay-bar [title="jump to real time"]');
+  expect(!(await pc(env.page, () => window.__pc.useReplay.getState().state)), 'replay still on');
   return env;
 });
 

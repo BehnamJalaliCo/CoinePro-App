@@ -14,7 +14,16 @@ interface ReplayStore {
   select(): void;
   start(bars: Candle[], startTime: number): void;
   exit(): void;
+  /** Practice trades inside the replay: opened and closed at the replayed bar's close. */
+  trades: ReplayTrade[];
+  trade(side: 'long' | 'short'): void;
+  flatten(): void;
 }
+
+export interface ReplayTrade { side: 'long' | 'short'; entry: number; at: number; exit?: number; exitAt?: number }
+
+/** A replayed trade's result in percent of its entry, at `price` while it is open. */
+export const replayPnl = (t: ReplayTrade, price: number) => ((t.exit ?? price) - t.entry) / t.entry * 100 * (t.side === 'long' ? 1 : -1);
 
 export const useReplay = create<ReplayStore>((set, get) => {
   const controller = new ReplayController({
@@ -33,7 +42,21 @@ export const useReplay = create<ReplayStore>((set, get) => {
       set({ selecting: false });
       controller.enter(bars, { startTime });
     },
-    exit: () => { controller.exit(); set({ selecting: false, state: null, slice: null }); },
+    exit: () => { controller.exit(); set({ selecting: false, state: null, slice: null, trades: [] }); },
+    trades: [],
+    trade: (side) => {
+      const last = get().slice?.[get().slice!.length - 1];
+      if (!last) return;
+      // An opposite trade closes the open one first, as a one-position practice account does.
+      const open = get().trades.find((t) => t.exit == null);
+      if (open && open.side !== side) { get().flatten(); return; }
+      set({ trades: [...get().trades, { side, entry: last.c, at: last.t }] });
+    },
+    flatten: () => {
+      const last = get().slice?.[get().slice!.length - 1];
+      if (!last) return;
+      set({ trades: get().trades.map((t) => (t.exit == null ? { ...t, exit: last.c, exitAt: last.t } : t)) });
+    },
   };
 });
 

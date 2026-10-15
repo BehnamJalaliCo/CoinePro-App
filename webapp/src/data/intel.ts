@@ -42,7 +42,8 @@ const ms = (raw: unknown): number => {
 const noTags = (s: unknown): string => (typeof s === 'string' ? s.replace(/<[^>]*>/g, '').trim() : '');
 
 export async function cryptoNews(limit = 30): Promise<NewsItem[]> {
-  const r = await request<{ data?: Record<string, unknown>[] }>(`/api/news?limit=${limit}`);
+  // The relay accepts at most 50.
+  const r = await request<{ data?: Record<string, unknown>[] }>(`/api/news?limit=${Math.min(50, Math.max(1, limit))}`);
   return (r.data ?? []).map((x) => ({
     id: `c${String(x.id)}`, market: 'crypto' as const,
     title: noTags(x.titleFa ?? x.originalTitleEn), summary: noTags(x.summaryFa),

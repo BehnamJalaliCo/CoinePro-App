@@ -5,7 +5,7 @@ import type { IChartApi } from 'lightweight-charts';
 import type { Candle } from '../data/types';
 import type { DrawingLayer } from '../engine/drawings.js';
 
-export type ScaleMode = 'normal' | 'log' | 'percent';
+export type ScaleMode = 'normal' | 'log' | 'percent' | 'indexed';
 
 interface ChartBusState {
   api: IChartApi | null;
@@ -14,6 +14,10 @@ interface ChartBusState {
   hover: Candle | null;
   scale: ScaleMode;
   autoScale: boolean;
+  /** The price scale upside down (TradingView's Alt+I). */
+  invert: boolean;
+  /** The drawing the reader has selected, or −1. */
+  selectedDrawing: number;
   /** Seconds of history to show once the next load finishes (a time-bar range button). */
   pendingSpan: number | null;
   drawingLayer: DrawingLayer | null;
@@ -32,6 +36,8 @@ interface ChartBusState {
   setHover(bar: Candle | null): void;
   setScale(mode: ScaleMode): void;
   setAutoScale(on: boolean): void;
+  setInvert(on: boolean): void;
+  setSelectedDrawing(i: number): void;
   setPendingSpan(seconds: number | null): void;
 }
 
@@ -41,6 +47,8 @@ export const useChartBus = create<ChartBusState>((set) => ({
   hover: null,
   scale: 'normal',
   autoScale: true,
+  invert: false,
+  selectedDrawing: -1,
   pendingSpan: null,
   drawingLayer: null,
   canUndo: false,
@@ -56,6 +64,8 @@ export const useChartBus = create<ChartBusState>((set) => ({
   setHover: (hover) => set({ hover }),
   setScale: (scale) => set({ scale }),
   setAutoScale: (autoScale) => set({ autoScale }),
+  setInvert: (invert) => set({ invert }),
+  setSelectedDrawing: (selectedDrawing) => set({ selectedDrawing }),
   setPendingSpan: (pendingSpan) => set({ pendingSpan }),
 }));
 
