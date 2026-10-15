@@ -65,14 +65,34 @@ const ctrlOnly = (e) => (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey;
 const ctrlAlt = (e) => (e.ctrlKey || e.metaKey) && e.altKey && !e.shiftKey;
 const shiftOnly = (e) => e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey;
 
+// English labels for the help page in English (every label exists in both languages).
+const GROUP_EN = { 'ابزارها': 'Tools', 'ویرایش': 'Editing', 'تایم‌فریم': 'Interval', 'نوع چارت': 'Chart type', 'ناوبری': 'Navigation', 'نما': 'View', 'چیدمان': 'Layout', 'ترید': 'Trading', 'بازپخش': 'Replay', 'دیگر': 'Other' };
+const EN = {
+  cursor: 'Cancel drawing, clear the selection, back to the cursor', trend: 'Trend line', hline: 'Horizontal line', hray: 'Horizontal ray', vline: 'Vertical line', crossline: 'Cross line',
+  rect: 'Rectangle (or Alt+E)', fib: 'Fib retracement', text: 'Text', magnet: 'Magnet', stayDraw: 'Stay in drawing mode',
+  undo: 'Undo', redo: 'Redo', deleteSel: 'Remove the selected drawings', cloneSel: 'Clone the selected drawing', copySel: 'Copy the selected drawings', pasteSel: 'Paste drawings',
+  selectAll: 'Select all drawings', removeAll: 'Remove all drawings', clearChart: 'Clear the chart (drawings and indicators)', lockSel: 'Lock / unlock the selected drawing', hideAll: 'Hide / show all drawings',
+  tfNext: 'Next interval', tfPrev: 'Previous interval', tf1: '5 minutes', tf2: '15 minutes', tf3: '1 hour', tf4: '4 hours', tf5: 'Daily',
+  typeCandles: 'Candles', typeBars: 'Bars (OHLC)', typeLine: 'Line', typeArea: 'Area', typeHeikin: 'Heikin Ashi',
+  scrollLeft: 'Move the drawing / scroll left', scrollRight: 'Move the drawing / scroll right', zoomIn: 'Move the drawing / zoom in', zoomOut: 'Move the drawing / zoom out',
+  nudgeUpFast: 'Move the drawing up fast', nudgeDownFast: 'Move the drawing down fast', scrollEnd: 'Jump to the latest bar', scrollHome: 'Jump to the oldest bar', gotoDate: 'Go to date',
+  resetChart: 'Reset chart view', fit: 'Fit the chart', resetScale: 'Reset the price scale', invertScale: 'Invert the price scale', percentScale: 'Percent scale', logScale: 'Log scale',
+  toggleRight: 'Show / hide the side panel', fullscreen: 'Full screen', toggleTheme: 'Dark / light theme', indicators: 'Indicators', symbolSearch: 'Symbol search', settings: 'Chart settings', help: 'Keyboard shortcuts',
+  saveLayout: 'Save the layout', cycleGrid: 'Next multi-chart layout', newAlert: 'New alert at the cursor price', buy: 'Quick buy', sell: 'Quick sell',
+  replayToggle: 'Enter / leave replay', replayPlay: 'Play / pause', replayStep: 'Move the drawing fast / next replay step', replayStepBack: 'Move the drawing fast / previous replay step',
+  screenshot: 'Chart snapshot', copyImage: 'Copy chart image', saveScript: 'Save the script (in the script editor)',
+};
+
 export const SHORTCUTS = [
   // ── ابزارهای ترسیم ──
-  { id: 'cursor',   group: 'ابزارها', combo: 'Esc',     label: 'نشانگر (لغو ترسیم)', allowInInput: true, match: (e) => k(e) === 'escape', prevent: false },
+  { id: 'cursor',   group: 'ابزارها', combo: 'Esc',     label: 'لغو ترسیم، برداشتن انتخاب و بازگشت به نشانگر', allowInInput: true, match: (e) => k(e) === 'escape', prevent: false },
   { id: 'trend',    group: 'ابزارها', combo: 'Alt+T',   label: 'خط روند',            match: (e) => altOnly(e) && k(e) === 't' },
   { id: 'hline',    group: 'ابزارها', combo: 'Alt+H',   label: 'خط افقی',            match: (e) => altOnly(e) && k(e) === 'h' },
+  { id: 'hray',     group: 'ابزارها', combo: 'Alt+J',   label: 'پرتو افقی',           match: (e) => altOnly(e) && k(e) === 'j' },
   { id: 'vline',    group: 'ابزارها', combo: 'Alt+V',   label: 'خط عمودی',           match: (e) => altOnly(e) && k(e) === 'v' },
-  { id: 'ray',      group: 'ابزارها', combo: 'Alt+R',   label: 'پرتو (Ray)',          match: (e) => altOnly(e) && k(e) === 'r' },
-  { id: 'rect',     group: 'ابزارها', combo: 'Alt+E',   label: 'مستطیل',              match: (e) => altOnly(e) && k(e) === 'e' },
+  { id: 'crossline', group: 'ابزارها', combo: 'Alt+C',  label: 'خط صلیبی',           match: (e) => altOnly(e) && k(e) === 'c' },
+  // Alt+R is TradingView's «reset chart» (ناوبری below); the ray has no key of its own, as there.
+  { id: 'rect',     group: 'ابزارها', combo: 'Alt+Shift+R', label: 'مستطیل (یا Alt+E)', match: (e) => (e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey && (k(e) === 'r' || e.code === 'KeyR')) || (altOnly(e) && k(e) === 'e') },
   { id: 'fib',      group: 'ابزارها', combo: 'Alt+F',   label: 'فیبوناچی',            match: (e) => altOnly(e) && k(e) === 'f' },
   { id: 'text',     group: 'ابزارها', combo: 'Alt+X',   label: 'متن',                 match: (e) => altOnly(e) && k(e) === 'x' },
   // Alt+P/Alt+L طبق TradingView به «مقیاس درصدی/لگاریتمی» اختصاص دارند (نه ابزار ترسیم) — کانال/لانگ‌شورت از ریل ابزار در دسترس‌اند. (#۴۴۴)
@@ -82,13 +102,15 @@ export const SHORTCUTS = [
   // ── ویرایش ──
   { id: 'undo',      group: 'ویرایش', combo: 'Ctrl+Z', label: 'واگرد',  allowInInput: false, match: (e) => ctrlOnly(e) && k(e) === 'z' },
   { id: 'redo',      group: 'ویرایش', combo: 'Ctrl+Y', label: 'ازنو',   allowInInput: false, match: (e) => (ctrlOnly(e) && k(e) === 'y') || ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && k(e) === 'z') },
-  { id: 'deleteSel', group: 'ویرایش', combo: 'Delete', label: 'حذف آبجکت انتخابی', match: (e) => noMods(e) && (k(e) === 'delete' || k(e) === 'backspace') },
+  { id: 'deleteSel', group: 'ویرایش', combo: 'Delete', label: 'حذف ترسیم‌های انتخابی', match: (e) => noMods(e) && (k(e) === 'delete' || k(e) === 'backspace') },
   { id: 'cloneSel',  group: 'ویرایش', combo: 'Ctrl+D', label: 'تکثیر آبجکت انتخابی', match: (e) => ctrlOnly(e) && k(e) === 'd' },
-  { id: 'copySel',   group: 'ویرایش', combo: 'Ctrl+C', label: 'کپی آبجکت انتخابی', match: (e) => ctrlOnly(e) && k(e) === 'c' },
-  { id: 'pasteSel',  group: 'ویرایش', combo: 'Ctrl+V', label: 'چسباندن آبجکت', match: (e) => ctrlOnly(e) && k(e) === 'v' },
-  { id: 'selectAll', group: 'ویرایش', combo: 'Ctrl+A', label: 'انتخاب همه‌ی ترسیم‌ها', match: (e) => ctrlOnly(e) && k(e) === 'a' },
+  // Copy, paste and select-all act only when there is a drawing to act on; otherwise the browser
+  // keeps the keys (copying selected text, say), so these do not prevent the default themselves.
+  { id: 'copySel',   group: 'ویرایش', combo: 'Ctrl+C', label: 'کپی ترسیم‌های انتخابی', prevent: false, match: (e) => ctrlOnly(e) && k(e) === 'c' },
+  { id: 'pasteSel',  group: 'ویرایش', combo: 'Ctrl+V', label: 'چسباندن ترسیم', prevent: false, match: (e) => ctrlOnly(e) && k(e) === 'v' },
+  { id: 'selectAll', group: 'ویرایش', combo: 'Ctrl+A', label: 'انتخاب همه‌ی ترسیم‌ها', prevent: false, match: (e) => ctrlOnly(e) && k(e) === 'a' },
   { id: 'removeAll', group: 'ویرایش', combo: 'Ctrl+Alt+Backspace', label: 'حذف همه‌ی ترسیم‌ها', match: (e) => ctrlAlt(e) && k(e) === 'backspace' },
-  { id: 'clearChart',group: 'ویرایش', combo: 'Ctrl+Alt+R', label: 'پاک صفحه (خروجی‌ها)', match: (e) => ctrlAlt(e) && k(e) === 'r' },
+  { id: 'clearChart',group: 'ویرایش', combo: 'Ctrl+Alt+R', label: 'پاک‌کردن چارت (ترسیم‌ها و اندیکاتورها)', match: (e) => ctrlAlt(e) && k(e) === 'r' },
   { id: 'lockSel',   group: 'ویرایش', combo: 'Ctrl+L', label: 'قفل/بازکردن انتخابی', match: (e) => ctrlOnly(e) && k(e) === 'l' },
   { id: 'hideAll',   group: 'ویرایش', combo: 'Ctrl+Alt+H', label: 'نمایش/پنهان همه‌ی ترسیم‌ها', match: (e) => ctrlAlt(e) && k(e) === 'h' },
 
@@ -118,6 +140,7 @@ export const SHORTCUTS = [
   { id: 'scrollEnd',  group: 'ناوبری', combo: 'End',  label: 'پرش به جدیدترین', match: (e) => noMods(e) && k(e) === 'end' },
   { id: 'scrollHome', group: 'ناوبری', combo: 'Home', label: 'پرش به قدیمی‌ترین', match: (e) => noMods(e) && k(e) === 'home' },
   { id: 'gotoDate',   group: 'ناوبری', combo: 'Alt+G', label: 'پرش به تاریخ', match: (e) => altOnly(e) && k(e) === 'g' },
+  { id: 'resetChart', group: 'ناوبری', combo: 'Alt+R', label: 'بازنشانی نمای چارت', match: (e) => altOnly(e) && (k(e) === 'r' || e.code === 'KeyR') },
   { id: 'fit',        group: 'ناوبری', combo: 'Ctrl+Alt+0', label: 'هم‌اندازه‌سازی چارت', match: (e) => ctrlAlt(e) && (e.code === 'Digit0' || e.key === '0') },
   { id: 'resetScale', group: 'ناوبری', combo: 'Ctrl+Alt+S', label: 'بازنشانی مقیاس قیمت', match: (e) => ctrlAlt(e) && k(e) === 's' },
   { id: 'invertScale', group: 'ناوبری', combo: 'Alt+I', label: 'وارونه‌سازی محور قیمت', match: (e) => altOnly(e) && k(e) === 'i' },
@@ -153,8 +176,10 @@ export const SHORTCUTS = [
   // ── اسکریپت ──
   // «اسکرین‌شات» با میان‌بُر ترکیبی تا با «تایپ حرف → جستجوی نماد» TV تداخل نکند (باره S آزاد شد؛ دکمه‌ی دوربین + منوی راست‌کلیک هم دارد).
   { id: 'screenshot', group: 'دیگر', combo: 'Alt+S', label: 'اسکرین‌شات چارت', match: (e) => altOnly(e) && k(e) === 's' },
-  { id: 'saveScript', group: 'دیگر', combo: 'Ctrl+Shift+S', label: 'ذخیره‌ی اسکریپت', allowInInput: true, match: (e) => (e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && k(e) === 's' },
-].map((s) => ({ prevent: true, allowInInput: false, ...s, combo: fmtKey(s.combo) }));
+  // TradingView's «copy chart image». In the script editor the same keys save the script (below).
+  { id: 'copyImage', group: 'دیگر', combo: 'Ctrl+Shift+S', label: 'کپی تصویر چارت', match: (e) => (e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && k(e) === 's' },
+  { id: 'saveScript', group: 'دیگر', combo: 'Ctrl+Shift+S', label: 'ذخیره‌ی اسکریپت (در ویرایشگر اسکریپت)', allowInInput: true, match: (e) => (e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && k(e) === 's' },
+].map((s) => ({ prevent: true, allowInInput: false, ...s, combo: fmtKey(s.combo), en: EN[s.id] || s.label, groupEn: GROUP_EN[s.group] || s.group }));
 
 // گروه‌بندی آماده برای دیالوگ راهنما: [{ group, items: [...] }]
 export const SHORTCUT_GROUPS = (() => {

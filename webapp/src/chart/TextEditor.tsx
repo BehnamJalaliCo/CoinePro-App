@@ -1,58 +1,82 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useChartBus } from './chartBus';
-import { useT } from '../state/prefs';
+import { usePrefs } from '../state/prefs';
 import { Icon } from '../ui/Icon';
+import { useL } from '../pages/kit';
+import { STYLE_KEYS } from '../engine/drawings.js';
+import { TextFields } from './DrawingSettingsDialog';
+import { drawingName } from './DrawingActions';
+import './drawing.css';
 
-const COLORS = ['#2962FF', '#089981', '#F23645', '#FF9800', '#9C27B0', '#0F0F0F', '#787B86'];
+/** Drawings that mean nothing without their text: cancelling a new one takes it away. */
+export const TEXT_REQUIRED = ['text', 'anchoredtext', 'note', 'comment', 'callout', 'table'];
 
-// The text of a text drawing (text, note, callout, signpost…), written in place of the browser's
-// prompt: several lines, a colour, a size. An empty new text is removed.
+const hasText = (st: Record<string, unknown>) => (Array.isArray(st.cells)
+  ? (st.cells as unknown[][]).some((r) => Array.isArray(r) && r.some((c) => String(c ?? '').trim()))
+  : String(st.text ?? '').trim().length > 0);
+
+// The text of a text-bearing drawing (text, anchored text, note, callout, comment, table, price
+// label, signpost, flag…), written in place of the browser's prompt: several lines, colour, size,
+// bold, italic, alignment, wrap, background and border. It opens as soon as such a drawing is placed.
+// A new drawing that needs a text and gets none is taken away without leaving an undo step; one
+// that reads without a text (a flag, a price label) stays.
 export function TextEditor() {
-  const t = useT();
+  const L = useL();
+  const lang = usePrefs((s) => s.lang);
   const edit = useChartBus((s) => s.textEdit);
   const layer = useChartBus((s) => s.drawingLayer);
   const setEdit = useChartBus((s) => s.setTextEdit);
   const d = edit && layer ? layer.getDrawings()[edit.index] : undefined;
-  const [text, setText] = useState('');
-  const [color, setColor] = useState('#2962FF');
-  const [size, setSize] = useState(14);
-  const area = useRef<HTMLTextAreaElement>(null);
+  const [st, setSt] = useState<Record<string, unknown>>({});
 
   useEffect(() => {
     if (!d) return;
-    setText(String(d.text ?? ''));
-    setColor(String(d.color ?? '#2962FF'));
-    setSize(Number(d.fontSize ?? 14));
-    requestAnimationFrame(() => area.current?.focus());
+    const pick: Record<string, unknown> = { text: d.text ?? '', cells: d.cells };
+    for (const k of STYLE_KEYS) if (d[k] !== undefined) pick[k] = JSON.parse(JSON.stringify(d[k]));
+    if (d.type === 'text' && pick.fontSize === undefined) pick.fontSize = 14;
+    setSt(pick);
   }, [edit]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!edit || !layer || !d) return null;
   const close = (save: boolean) => {
-    if (save && text.trim()) layer.setStyle(edit.index, { text, color, fontSize: size });
-    else if (edit.fresh) layer.removeAt(edit.index);
+    if (!edit || !layer || !d) { setEdit(null); return; }
+    const ok = save && hasText(st);
+    const required = TEXT_REQUIRED.includes(d.type);
+    if (ok || (save && !required)) {
+      const patch = { ...st };
+      if (!Array.isArray(patch.cells)) delete patch.cells;
+      if (edit.fresh) layer.amend(edit.index, patch); else layer.setStyle(edit.index, patch);
+      layer.render();
+    } else if (edit.fresh && required) layer.abandon(edit.index);
+    else if (!edit.fresh && save && required) layer.removeAt(edit.index);
     setEdit(null);
   };
+
+  // Escape cancels and Ctrl+Enter keeps, wherever the focus is.
+  useEffect(() => {
+    if (!edit) return;
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); close(false); }
+      else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); close(true); }
+    };
+    window.addEventListener('keydown', key, true);
+    return () => window.removeEventListener('keydown', key, true);
+  });
+
+  if (!edit || !layer || !d) return null;
   return (
     <div className="scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) close(true); }}>
-      <div className="dialog settings" role="dialog" aria-modal="true" aria-label={t('drawText')}
-        onKeyDown={(e) => { if (e.key === 'Escape') close(false); if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) close(true); }}>
+      <div className="dialog settings dtext" role="dialog" aria-modal="true" aria-label={L('متن', 'Text')} dir={lang === 'fa' ? 'rtl' : 'ltr'}>
         <header className="dialog-head">
-          <h2 className="fa">{t('drawText')}</h2>
-          <button className="ib" onClick={() => close(false)} aria-label="close"><Icon name="ph-x" size="md" /></button>
+          <h2>{drawingName(d.type, lang)}</h2>
+          <button className="ib" onClick={() => close(false)} aria-label={L('بستن', 'Close')}><Icon name="ph-x" size="md" /></button>
         </header>
         <div className="settings-body">
-          <textarea ref={area} className="text-edit" dir="auto" rows={4} value={text} onChange={(e) => setText(e.target.value)} />
-          <div className="setting-row">
-            <span className="swatches">{COLORS.map((c) => <button key={c} className={`swatch${c === color ? ' on' : ''}`} style={{ background: c }} onClick={() => setColor(c)} aria-label={c} />)}</span>
-            <select value={size} onChange={(e) => setSize(Number(e.target.value))} className="num">
-              {[10, 12, 14, 16, 20, 24, 28, 32].map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
+          <TextFields d={{ ...st, type: d.type, color: st.color ?? d.color }} set={(p) => setSt((s) => ({ ...s, ...p }))} autoFocus />
         </div>
         <footer className="dialog-foot">
           <span className="ws-spacer" />
-          <button className="btn btn-quiet" onClick={() => close(false)}>{t('back')}</button>
-          <button className="btn btn-primary" onClick={() => close(true)}>Ok</button>
+          <button className="btn btn-quiet" data-act="cancel" onClick={() => close(false)}>{L('انصراف', 'Cancel')}</button>
+          <button className="btn btn-primary" data-act="ok" onClick={() => close(true)}>{L('تأیید', 'Ok')}</button>
         </footer>
       </div>
     </div>

@@ -78,6 +78,13 @@ export function App() {
     settings: () => setSettings(true),
   }), []);
 
+  // An indicator's settings, asked for from outside the chart (the object tree's gear).
+  useEffect(() => {
+    const on = (e: Event) => { const uid = (e as CustomEvent<{ uid?: string }>).detail?.uid; if (uid) setStudyUid(uid); };
+    window.addEventListener('pc:study-settings', on);
+    return () => window.removeEventListener('pc:study-settings', on);
+  }, []);
+
   // Replay ends when the symbol or the interval changes.
   useEffect(() => { useReplay.getState().exit(); }, [symbol, interval]);
 

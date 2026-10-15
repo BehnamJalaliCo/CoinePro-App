@@ -3,12 +3,14 @@
 // نقاط بر حسب {t (unix), p (price)} ذخیره می‌شوند تا با zoom/pan ثابت بمانند.
 
 // افزونه‌ی فصل ۴ (PRO_CHART_BUILD_SPEC): ۳۹ ابزار ترسیم جدید، drop-in.
-import { EXT_NEED, EXT_FREEHAND, EXT_LABELS, isExt, extDraw, extHit, extHandles } from './drawtools_ext.js';
+import { EXT_NEED, EXT_FREEHAND, EXT_LABELS, EXT_ONE, EXT_POLY, isExt, extDraw, extHit, extHandles, extInit, extMove, extScreen, extMaxPts, normLevels, dirOf, drawTextBlock, hitTextBlock, drawLineText } from './drawtools_ext.js';
 import { DrawingHistory } from './drawing_history.js';
 
-const FIB = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
-// رنگ هر سطح فیبوناچی — هم‌تراز پالت پیش‌فرض فیب TradingView (خاکستری/قرمز/سبزروشن/سبز/سبزآبی/آبی/خاکستری).
-const FIB_COLORS = ['#787b86', '#f23645', '#81c784', '#4caf50', '#089981', '#64b5f6', '#787b86'];
+// The keys of a drawing that are its look rather than its place: what «Save as default», the
+// templates and the settings dialog carry from one drawing to another.
+export const STYLE_KEYS = ['color', 'width', 'lineStyle', 'dashed', 'fill', 'fillOpacity', 'fontSize', 'bold', 'italic', 'bg', 'bgOpacity', 'border', 'textColor', 'align', 'valign', 'wrap', 'wrapWidth', 'extendLeft', 'extendRight', 'middle', 'priceLabels', 'stats', 'levels', 'fibBg', 'bands', 'rows', 'va', 'widthPct', 'mode', 'header', 'account', 'risk', 'riskUnit', 'lot', 'upColor', 'downColor', 'dir'];
+// Text-bearing drawings: an editor opens when one is placed and on a double click.
+export const TEXT_TYPES = ['text', 'anchoredtext', 'note', 'pricenote', 'pin', 'comment', 'callout', 'pricelabel', 'signpost', 'flag', 'table'];
 
 export class DrawingLayer {
   constructor(canvas, chart) {
@@ -42,6 +44,13 @@ export class DrawingLayer {
     this.hover = -1;          // آبجکت زیر ماوس (برای cursor)
     this.onSelect = null;     // callback هنگام تغییر انتخاب
     this.stayInMode = false;  // ماندن در حالت ترسیم پس از کشیدن
+    this.lang = 'fa';         // labels drawn on the canvas follow the reader's language
+    this.emoji = '🙂';        // the glyph the Icons tool places next
+    this.eraserCursor = 'pointer';
+    this.zoomBox = null;      // the Zoom-in tool's rectangle while it is dragged
+    this.onZoomBox = null;    // (box) the rectangle the reader zoomed to
+    this.onCreated = null;    // (index) a drawing was just placed
+    this.tfN = null;          // the interval's size within its class (15 for 15 minutes)
     this._history = new DrawingHistory(100);
     this._undo = this._history.past; // alias تشخیصی سازگار با نسخه‌ی قبل
     this._redo = this._history.future;
@@ -59,6 +68,90 @@ export class DrawingLayer {
   redo() { const next = this._history.redo(this.drawings); if (!next) return; this.drawings = next; this.selected = -1; this.multiSel = new Set(); this._changed(); this.onSelect && this.onSelect(-1); }
   canUndo() { return this._history.canUndo(); }
   canRedo() { return this._history.canRedo(); }
+  // A new symbol starts a new history: undo never brings back another symbol's drawings.
+  resetHistory() { this._history = new DrawingHistory(100); this._undo = this._history.past; this._redo = this._history.future; }
+
+  // ── Public surface for the host (hit-test for the right-click menu, selection, clipboard) ──
+  /** The drawing under (x, y) in canvas pixels, topmost first, or -1. */
+  hitTest(x, y) { return this._hit(x, y); }
+  /** Every selected drawing, in stacking order. */
+  selectedIndices() {
+    const s = new Set(this.multiSel); if (this.selected >= 0) s.add(this.selected);
+    return [...s].filter((i) => i >= 0 && i < this.drawings.length).sort((a, b) => a - b);
+  }
+  /** Adds a drawing to the selection or takes it out (Ctrl+click in the object tree). */
+  toggleSelect(i) {
+    if (i < 0 || i >= this.drawings.length) return;
+    const s = new Set(this.selectedIndices());
+    if (s.has(i)) s.delete(i); else s.add(i);
+    const list = [...s];
+    if (list.length <= 1) { this.multiSel = new Set(); this.selected = list.length ? list[0] : -1; }
+    else { this.multiSel = s; this.selected = s.has(i) ? i : list[0]; }
+    this.render(); this.onSelect && this.onSelect(this.selected);
+  }
+  /** Deep copies of the selected drawings (Ctrl+C). */
+  copySelected() { return this.selectedIndices().map((i) => JSON.parse(JSON.stringify(this.drawings[i]))); }
+  /** Pastes copies a little down and to the right of the originals, selected; one undo step. */
+  pasteMany(list) {
+    const src = (Array.isArray(list) ? list : [list]).filter((o) => o && o.type);
+    if (!src.length) return [];
+    this._pushUndo();
+    const made = [];
+    for (const obj of src) {
+      const c = JSON.parse(JSON.stringify(obj)); c.locked = false; c.visible = true;
+      this._offset(c, 14);
+      this.drawings.push(c); made.push(this.drawings.length - 1);
+    }
+    this.multiSel = made.length > 1 ? new Set(made) : new Set();
+    this.selected = made[made.length - 1];
+    this._changed(); this.onSelect && this.onSelect(this.selected);
+    return made;
+  }
+  // Shifts a copy by `px` pixels down and right (in time and price, or on screen for anchored text).
+  _offset(c, px) {
+    if (extScreen(c.type)) { const W = this.canvas.width || 1, H = this.canvas.height || 1; c.ax = Math.min(0.98, (c.ax || 0.5) + px / W); c.ay = Math.min(0.98, (c.ay || 0.5) + px / H); return; }
+    const h = this._handlePoints(c).find((p) => p.x != null && p.y != null);
+    if (h) { const ot = this._t(h.x), op = this._p(h.y), nt = this._t(h.x + px), np = this._p(h.y + px); if (ot != null && op != null && nt != null && np != null) this._moveBy(c, nt - ot, np - op); }
+  }
+  /** The same style on several drawings at once, one undo step (a group's lock or visibility). */
+  setStyleMany(idxs, st) {
+    const list = (idxs || []).filter((i) => this.drawings[i]);
+    if (!list.length) return;
+    this._pushUndo();
+    list.forEach((i) => Object.assign(this.drawings[i], st));
+    this._changed();
+  }
+  /**
+   * Removes a drawing that was placed a moment ago and left empty (a text whose editor was
+   * cancelled) together with the history step its placing recorded, so undo has nothing to bring back.
+   */
+  abandon(i) {
+    if (i < 0 || i >= this.drawings.length) return;
+    this._history.past.pop();
+    this.drawings.splice(i, 1);
+    this.multiSel = new Set();
+    if (this.selected === i) this.selected = -1; else if (this.selected > i) this.selected--;
+    this._changed(); this.onSelect && this.onSelect(this.selected);
+  }
+  /** Completes a drawing placed a moment ago (its text) without a history step of its own. */
+  amend(i, st) { const d = this.drawings[i]; if (!d) return; Object.assign(d, st); this._changed(); }
+  // ── Live edits (the settings dialog): changes show at once, OK records one undo step, Cancel restores ──
+  beginEdit() { return this._snapshot(); }
+  liveStyle(i, st) { const d = this.drawings[i]; if (!d) return; Object.assign(d, st); this.render(); }
+  endEdit(before, commit) {
+    if (!before) return;
+    if (commit) { if (JSON.stringify(before) !== JSON.stringify(this.drawings)) { this._history.record(before); } this._changed(); }
+    else { this.drawings = before; this._changed(); }
+    this.onSelect && this.onSelect(this.selected);
+  }
+  // A drawing has just been placed: the tool goes back to the cursor (unless the reader stays in
+  // drawing mode), the new drawing is selected, and the host hears of it (a text opens its editor).
+  _created() {
+    const idx = this.drawings.length - 1;
+    this._reset();
+    if (!this.stayInMode && idx >= 0) { this.selected = idx; this.multiSel = new Set(); this.render(); this.onSelect && this.onSelect(idx); }
+    if (idx >= 0) this.onCreated && this.onCreated(idx);
+  }
 
   // ── API برای Object Tree / نوار استایل ──
   selectAt(i) { this.selected = (i >= 0 && i < this.drawings.length) ? i : -1; this.render(); this.onSelect && this.onSelect(this.selected); }
@@ -71,19 +164,27 @@ export class DrawingLayer {
     this.dragging = false; this.measuring = false;
     this.render(); this.onSelect && this.onSelect(-1);
   }
+  // Arrow keys move the selected drawings 1px (8px with Shift). Left and right step a whole bar
+  // when a pixel is less than one, so the drawing always moves. False when nothing could move.
   nudgeSelected(key, large = false) {
-    if (this.selected < 0) return false;
-    const d = this.drawings[this.selected]; if (!d || d.locked) return false;
-    const h = this._handlePoints(d).find((p) => p.x != null && p.y != null); if (!h) return false;
+    const idxs = this.selectedIndices().filter((i) => this.drawings[i] && !this.drawings[i].locked);
+    if (!idxs.length) return false;
     const step = large ? 8 : 1;
+    const sx = key === 'ArrowLeft' ? -step : key === 'ArrowRight' ? step : 0;
+    const sy = key === 'ArrowUp' ? -step : key === 'ArrowDown' ? step : 0;
+    if (!sx && !sy) return false;
+    const ref = idxs.map((i) => this._handlePoints(this.drawings[i]).find((p) => p.x != null && p.y != null)).find(Boolean);
     let dt = 0, dp = 0;
-    if (key === 'ArrowUp') dp = this._p(h.y - step) - this._p(h.y);
-    else if (key === 'ArrowDown') dp = this._p(h.y + step) - this._p(h.y);
-    else if (key === 'ArrowLeft') dt = this._t(h.x - step) - this._t(h.x);
-    else if (key === 'ArrowRight') dt = this._t(h.x + step) - this._t(h.x);
-    else return false;
-    if (!Number.isFinite(dt) || !Number.isFinite(dp) || (!dt && !dp)) return false;
-    this._pushUndo(); this._moveBy(d, dt, dp); this._changed();
+    if (ref) {
+      if (sy) { const a = this._p(ref.y), b = this._p(ref.y + sy); if (a != null && b != null) dp = b - a; }
+      if (sx) { const a = this._t(ref.x), b = this._t(ref.x + sx); if (a != null && b != null) dt = b - a; if (!dt) { const iv = this._barInterval(); if (iv) dt = Math.sign(sx) * iv; } }
+    }
+    const screenOnly = idxs.every((i) => extScreen(this.drawings[i].type));
+    if (!screenOnly && (!Number.isFinite(dt) || !Number.isFinite(dp) || (!dt && !dp))) return false;
+    this._pushUndo();
+    const W = this.canvas.width || 1, H = this.canvas.height || 1;
+    idxs.forEach((i) => { const d = this.drawings[i]; if (extScreen(d.type)) { d.ax = (d.ax || 0) + sx / W; d.ay = (d.ay || 0) + sy / H; } else this._moveBy(d, dt, dp); });
+    this._changed();
     return true;
   }
   // انتخاب همه‌ی ترسیم‌های قفل‌نشده (Ctrl+A TV) — به multiSel می‌ریزد تا move/delete/style گروهی کار کند.
@@ -117,11 +218,23 @@ export class DrawingLayer {
   setStayInMode(on) { this.stayInMode = !!on; }
   // «نمایش روی تایم‌فریم‌ها» (Visibility on intervals TV) — کلاس tf جاری (minutes/hours/days/weeks/months)
   //   از BazaarNama ست می‌شود؛ ترسیم دارای tfVis[class]===false در این کلاس رندر/انتخاب نمی‌شود. #271
-  setTfClass(cls) { if (this.tfClass === cls) return; this.tfClass = cls; this.render(); }
-  _tfHidden(d) { return !!(d && d.tfVis && this.tfClass && d.tfVis[this.tfClass] === false); }
+  //   A class may also carry a range (TradingView's Visibility tab): {on, min, max} in that class's
+  //   units, against the interval's size n (15 for 15 minutes, 4 for 4 hours).
+  setTfClass(cls, n) { if (this.tfClass === cls && this.tfN === (n ?? null)) return; this.tfClass = cls; this.tfN = n ?? null; this.render(); }
+  _tfHidden(d) {
+    if (!d || !d.tfVis || !this.tfClass) return false;
+    const v = d.tfVis[this.tfClass];
+    if (v === false) return true;
+    if (v && typeof v === 'object') {
+      if (v.on === false) return true;
+      const n = this.tfN;
+      if (n != null && ((v.min != null && n < v.min) || (v.max != null && n > v.max))) return true;
+    }
+    return false;
+  }
   // فرمتر زمان (tz-aware، از BazaarNama) — برای برچسب تاریخ خط عمودی روی محور زمان (مثل TV). #281
   setTimeFmt(fn) { this.timeFmt = (typeof fn === 'function') ? fn : null; }
-  lockAll(on) { this._pushUndo(); this.drawings.forEach((d) => { d.locked = on; }); this._changed(); }
+  lockAll(on, record = true) { if (record) this._pushUndo(); this.drawings.forEach((d) => { d.locked = on; }); this._changed(); }
   hideAll(on) { this._pushUndo(); this.drawings.forEach((d) => { d.visible = !on; }); this._changed(); }
   // آیا همه‌ی ترسیم‌ها پنهان‌اند؟ (برای تیک منوی «پنهان‌کردن ترسیم‌ها»)
   allHidden() { return this.drawings.length > 0 && this.drawings.every((d) => d.visible === false); }
@@ -133,8 +246,7 @@ export class DrawingLayer {
     const d = this.drawings[i]; if (!d) return -1;
     this._pushUndo();
     const c = JSON.parse(JSON.stringify(d)); c.locked = false;
-    const h = this._handlePoints(d).find((p) => p.x != null && p.y != null);
-    if (h) { const ot = this._t(h.x), op = this._p(h.y), nt = this._t(h.x + 14), np = this._p(h.y + 14); if (ot != null && op != null && nt != null && np != null) this._moveBy(c, nt - ot, np - op); }
+    this._offset(c, 14);
     this.drawings.push(c); this.selected = this.drawings.length - 1; this._changed(); this.onSelect && this.onSelect(this.selected);
     return this.selected;
   }
@@ -146,8 +258,7 @@ export class DrawingLayer {
     if (!obj || !obj.type) return -1;
     this._pushUndo();
     const c = JSON.parse(JSON.stringify(obj)); c.locked = false; c.visible = true;
-    const h = this._handlePoints(c).find((p) => p.x != null && p.y != null);
-    if (h) { const ot = this._t(h.x), op = this._p(h.y), nt = this._t(h.x + 14), np = this._p(h.y + 14); if (ot != null && op != null && nt != null && np != null) this._moveBy(c, nt - ot, np - op); }
+    this._offset(c, 14);
     this.drawings.push(c); this.selected = this.drawings.length - 1; this._changed(); this.onSelect && this.onSelect(this.selected);
     return this.selected;
   }
@@ -165,7 +276,9 @@ export class DrawingLayer {
   setProfile(buckets) { this.profile = buckets; this.render(); }
   setScriptPaint(s) { this.script = s; this.render(); }
   setCandles(cs) { this.candles = cs; }
-  setDigits(d) { if (Number.isFinite(d)) this.digits = d; } // دقت اعشار نماد فعال (برچسب ابزار اندازه‌گیری)
+  setDigits(d) { if (Number.isFinite(d)) this.digits = d; }
+  // A price as the axis writes it (the host may hand its own formatter, with thousands separators).
+  _fmtP(v) { try { if (typeof this.priceFmt === 'function') return String(this.priceFmt(v)); } catch (e) { /* fall back */ } return Number(v).toFixed(this.digits); } // دقت اعشار نماد فعال (برچسب ابزار اندازه‌گیری)
   setMagnet(on, mode) { this.magnet = on; if (mode) this.magnetMode = mode; }
 
   _snap(pt) {
@@ -190,10 +303,20 @@ export class DrawingLayer {
     const def = d && d.type ? this.toolDefaults[d.type] : null;
     if (!def) return d;
     const out = { ...d };
-    ['color', 'width', 'lineStyle', 'fill', 'fillOpacity', 'fontSize', 'bold', 'italic', 'bg', 'bgOpacity', 'border'].forEach((k) => { if (def[k] !== undefined) out[k] = def[k]; });
+    STYLE_KEYS.forEach((k) => { if (def[k] !== undefined) out[k] = JSON.parse(JSON.stringify(def[k])); });
     return out;
   }
-  setTool(t, color) { this.tool = t; if (color) this.color = color; this.pending = null; this.tmp = null; this.twoClick = false; this.dragging = false; this.multiSel = new Set(); this.hover = -1; this.canvas.style.pointerEvents = t === 'cursor' ? 'none' : 'auto'; this.canvas.style.cursor = (t === 'cursor' || t === 'select') ? 'default' : 'crosshair'; if (t !== 'select') { this.selected = -1; this.onSelect && this.onSelect(-1); } }
+  // 'cursor' and 'eraser' leave the chart its own pointer (the layer takes it only over a drawing);
+  // every other tool takes the pointer, and touch-action:none so a finger draws instead of scrolling.
+  setTool(t, color) {
+    this.tool = t; if (color) this.color = color; this.pending = null; this.tmp = null; this.twoClick = false; this.dragging = false; this.multiSel = new Set(); this.hover = -1; this.zoomBox = null;
+    const passive = t === 'cursor' || t === 'eraser';
+    this.canvas.style.pointerEvents = passive ? 'none' : 'auto';
+    this.canvas.style.touchAction = passive ? '' : 'none';
+    this.canvas.style.cursor = (t === 'cursor' || t === 'select') ? 'default' : t === 'eraser' ? this.eraserCursor : t === 'zoom' ? 'zoom-in' : 'crosshair';
+    if (t !== 'select') { this.selected = -1; this.onSelect && this.onSelect(-1); }
+    this.render();
+  }
   // record=true وقتی کاربر صریحاً چیدمانی را لود می‌کند (باید undo شود)؛
   // پیش‌فرض false برای لود اولیه/بازیابی نماد که نباید در تاریخچه بیفتد.
   setDrawings(arr, record = false) { if (record && this.drawings.length) this._pushUndo(); this.drawings = arr || []; this.selected = -1; this.render(); }
@@ -236,6 +359,7 @@ export class DrawingLayer {
   // نقاط لنگر یک ترسیم در مختصات صفحه — برای تست داخل مستطیل Marquee (هر نوع: pts / p0,p1 / hline p / vline t / متن t,p).
   _screenPts(d) {
     const out = []; const add = (t, p) => { const x = (t != null) ? this._x(t) : null; const y = (p != null) ? this._y(p) : null; if (x != null || y != null) out.push({ x, y }); };
+    if (extScreen(d.type)) { out.push({ x: (d.ax || 0) * this.canvas.width, y: (d.ay || 0) * this.canvas.height }); return out; }
     if (Array.isArray(d.pts)) d.pts.forEach((q) => add(q.t, q.p));
     if (d.p0) add(d.p0.t, d.p0.p);
     if (d.p1) add(d.p1.t, d.p1.p);
@@ -275,6 +399,16 @@ export class DrawingLayer {
     if (d.type === 'hline') { const y = this._y(d.p); return [{ x: 14, y, set: (t, p) => { d.p = p; } }]; }
     if (d.type === 'vline') { const x = this._x(d.t); return [{ x, y: 14, set: (t) => { d.t = t; } }]; }
     if (d.type === 'text') { return [{ x: this._x(d.t), y: this._y(d.p), set: (t, p) => { d.t = t; d.p = p; } }]; }
+    // Long and short positions: entry, stop and target on the left edge, the width on the right.
+    if ((d.type === 'longshort' || d.type === 'short') && d.p0 && d.p1) {
+      const g = this._posGeom(d); if (!g) return [];
+      return [
+        { x: g.xa, y: g.yE, set: (t, p) => { d.p0 = { t, p }; } },
+        { x: g.xa, y: g.yS, set: (t, p) => { d.p1 = { t: d.p1.t, p }; } },
+        { x: g.xa, y: g.yT, set: (t, p) => { d.tp = p; } },
+        { x: g.xb, y: g.yE, set: (t) => { d.p1 = { t, p: d.p1.p }; } },
+      ];
+    }
     if (d.pts) return d.pts.map((pp, k) => ({ x: this._x(pp.t), y: this._y(pp.p), set: (t, p) => { d.pts[k] = { t, p }; } }));
     const out = [];
     if (d.p0) out.push({ x: this._x(d.p0.t), y: this._y(d.p0.p), set: (t, p) => { d.p0 = { t, p }; } });
@@ -284,6 +418,8 @@ export class DrawingLayer {
   _hitHandle(d, x, y) { const hs = this._handlePoints(d); for (let i = 0; i < hs.length; i++) { const h = hs[i]; if (h.x != null && h.y != null && Math.hypot(x - h.x, y - h.y) < 9) return i; } return -1; }
   _moveBy(d, dt, dp) {
     const mv = (pt) => ({ t: pt.t + dt, p: pt.p + dp });
+    if (isExt(d.type) && extMove(d, dt, dp, this)) return;
+    if (d.tp != null && Number.isFinite(d.tp)) d.tp += dp;
     if (d.type === 'hline') { d.p += dp; return; }
     if (d.type === 'vline') { d.t += dt; return; }
     if (d.type === 'text') { d.t += dt; d.p += dp; return; }
@@ -323,8 +459,22 @@ export class DrawingLayer {
     const cv = this.canvas;
     const down = (e) => {
       if (!this.series) return;
+      if (e.button != null && e.button !== 0) return; // only the primary button (or a finger) draws; a right click is the menu's
       const r = cv.getBoundingClientRect();
       const x = e.clientX - r.left, y = e.clientY - r.top;
+      // A finger has no double click: two taps close together finish a polyline or edit a drawing.
+      if (e.pointerType && e.pointerType !== 'mouse') {
+        const now = Date.now(), lt = this._lastTap; this._lastTap = { t: now, x, y };
+        if (lt && now - lt.t < 320 && Math.hypot(x - lt.x, y - lt.y) < 24) {
+          this._lastTap = null;
+          if (this.pending && EXT_POLY.includes(this.pending.type)) { finishPoly(); return; }
+          if (this.tool === 'cursor' || this.tool === 'select') { const idx = this._hit(x, y); if (idx >= 0) { this.selected = idx; this.render(); this.onSelect && this.onSelect(idx); this.onDblEdit && this.onDblEdit(idx); return; } }
+        }
+      }
+      // Eraser: a click on a drawing removes it (locked drawings stay).
+      if (this.tool === 'eraser') { const hit = this._hit(x, y); if (hit >= 0 && this.drawings[hit] && !this.drawings[hit].locked) this.removeAt(hit); return; }
+      // Zoom in: drag a rectangle; the host zooms the chart to it on release.
+      if (this.tool === 'zoom') { this.zoomBox = { x0: x, y0: y, x1: x, y1: y }; this.render(); return; }
       if (this.tool === 'cursor' || this.tool === 'select') {
         // Shift+درگ ⇒ ابزار اندازه‌گیری گذرا (سبک TV): جعبه‌ی Δقیمت/٪/بار/ساعت که با رهاکردن پاک می‌شود.
         if (e.shiftKey) { const mp = this._snap({ t: this._t(x), p: this._p(y) }); if (mp.t != null && mp.p != null) { this.tmp = { type: 'dprange', p0: mp, p1: mp, color: '#089981', width: 2 }; this.dragging = true; this.didDrag = false; this.downXY = { x, y }; this.measuring = true; return; } }
@@ -333,7 +483,7 @@ export class DrawingLayer {
         // ۱) اگر آبجکتی انتخاب شده، روی handleهایش کلیک شده؟ → درگ handle
         if (this.selected >= 0) {
           const sd = this.drawings[this.selected];
-          if (sd && !sd.locked) { const hi = this._hitHandle(sd, x, y); if (hi >= 0) { this._pushUndo(); this.dragHandle = { idx: this.selected, hi }; return; } }
+          if (sd && !sd.locked) { const hi = this._hitHandle(sd, x, y); if (hi >= 0) { this.dragHandle = { idx: this.selected, hi, screen: extScreen(sd.type), snap: this._snapshot() }; return; } }
         }
         // ۲) انتخاب آبجکت زیر کلیک
         const hit = this._hit(x, y);
@@ -359,11 +509,13 @@ export class DrawingLayer {
         this.selected = hit; this.onSelect && this.onSelect(hit); this.render();
         // ۳) اگر روی بدنه‌ی آبجکت قفل‌نشده کلیک شد → جابه‌جایی کل آبجکت (یا گروه چند-انتخاب).
         //    گارد this.drawings[hit]: در حالت «پاک‌کن» onSelect همان آبجکت را حذف می‌کند و آرایه کوچک می‌شود ⇒ بدون گارد، خواندن .locked کرش می‌داد.
-        if (hit >= 0 && this.drawings[hit] && !this.drawings[hit].locked) { const sp = this._snap({ t: this._t(x), p: this._p(y) }); if (sp.t != null && sp.p != null) { this._pushUndo();
+        if (hit >= 0 && this.drawings[hit] && !this.drawings[hit].locked) { const sp = this._snap({ t: this._t(x), p: this._p(y) }); if ((sp.t != null && sp.p != null) || extScreen(this.drawings[hit].type)) {
+          // A plain click selects without a history step; the step is recorded when the drawing first moves.
+          const snap = this._snapshot();
           // Alt+درگ ⇒ کلون درجا و درگ کپی (اصل سر جایش می‌مانَد) — ژست رایج TV. بدون Alt = جابه‌جایی خود آبجکت.
           let mi = hit;
-          if (e.altKey) { const dup = JSON.parse(JSON.stringify(this.drawings[hit])); dup.locked = false; this.drawings.push(dup); mi = this.drawings.length - 1; this.onSelect && this.onSelect(mi); this.multiSel = new Set(); }
-          this.selected = mi; this.dragMove = { idx: mi, last: sp }; } }
+          if (e.altKey) { this._history.record(snap); const dup = JSON.parse(JSON.stringify(this.drawings[hit])); dup.locked = false; this.drawings.push(dup); mi = this.drawings.length - 1; this.onSelect && this.onSelect(mi); this.multiSel = new Set(); }
+          this.selected = mi; this.dragMove = { idx: mi, last: sp, xy: { x, y }, snap: e.altKey ? null : snap }; } }
         return;
       }
       let pt = this._snap({ t: this._t(x), p: this._p(y) });
@@ -377,35 +529,46 @@ export class DrawingLayer {
         this.render();
         return;
       }
+      // One-click tools (a note, a flag, an anchored VWAP, an icon…) are placed where the click lands.
+      if (EXT_ONE.includes(this.tool)) {
+        const clr = this.tool === 'arrowup' ? '#089981' : this.tool === 'arrowdown' ? '#f23645' : this.color;
+        const nd = this._applyDef({ type: this.tool, p0: pt, p1: pt, color: clr, width: 2 });
+        extInit(nd, this, x, y);
+        this._pushUndo(); this.drawings.push(nd); this._created();
+        return;
+      }
       const NEED = { channel: 3, pitchfork: 3, ...EXT_NEED };
       if (NEED[this.tool]) {
         if (!this.pending || this.pending.type !== this.tool) this.pending = { type: this.tool, pts: [pt], color: this.color };
         else this.pending.pts.push(pt);
-        if (this.pending.pts.length >= NEED[this.tool]) { this._pushUndo(); this.drawings.push(this._applyDef({ type: this.tool, pts: this.pending.pts.slice(), color: this.color, width: 2 })); this.pending = null; this._reset(); }
+        if (this.pending.pts.length >= NEED[this.tool]) { this._pushUndo(); this.drawings.push(this._applyDef({ type: this.tool, pts: this.pending.pts.slice(), color: this.color, width: 2 })); this.pending = null; this._created(); }
         else this.render();
         return;
       }
       // خط چندتکه (polyline): هر کلیک یک رأس اضافه می‌کند؛ پایان با دابل‌کلیک یا Enter (بی‌پایان ثابت).
-      if (this.tool === 'polyline' || this.tool === 'path') {
+      if (EXT_POLY.includes(this.tool)) {
         const tt = this.tool;
         if (!this.pending || this.pending.type !== tt) this.pending = { type: tt, pts: [pt], color: this.color };
         else this.pending.pts.push(pt);
+        const max = extMaxPts(tt);
+        if (max && this.pending.pts.length >= max) { finishPoly(); return; }
         this.render();
         return;
       }
-      if (this.tool === 'hline') { this._pushUndo(); this.drawings.push(this._applyDef({ type: 'hline', p: pt.p, color: this.color, width: 2 })); this._reset(); return; }
-      if (this.tool === 'vline') { this._pushUndo(); this.drawings.push(this._applyDef({ type: 'vline', t: pt.t, color: this.color, width: 2 })); this._reset(); return; }
+      if (this.tool === 'hline') { this._pushUndo(); this.drawings.push(this._applyDef({ type: 'hline', p: pt.p, color: this.color, width: 2 })); this._created(); return; }
+      if (this.tool === 'vline') { this._pushUndo(); this.drawings.push(this._applyDef({ type: 'vline', t: pt.t, color: this.color, width: 2 })); this._created(); return; }
       // The host's own text editor when it has one (onTextRequest: the new drawing's index, then
       // setStyle(i, {text})); window.prompt only as the fallback.
       if (this.tool === 'text') {
+        if (this.onCreated) { this._pushUndo(); this.drawings.push(this._applyDef({ type: 'text', t: pt.t, p: pt.p, text: '', color: this.color })); this._created(); return; }
         if (this.onTextRequest) { this._pushUndo(); this.drawings.push(this._applyDef({ type: 'text', t: pt.t, p: pt.p, text: '', color: this.color })); const idx = this.drawings.length - 1; this._reset(); this.onTextRequest(idx); return; }
         const txt = window.prompt('متن (برای خط جدید «\\n» بنویسید):'); if (txt) { this._pushUndo(); this.drawings.push(this._applyDef({ type: 'text', t: pt.t, p: pt.p, text: txt, color: this.color })); } this._reset(); return;
       }
       // ابزارهای دونقطه‌ای: پشتیبانی از هر دو حالت «کلیک-کلیک» (مثل TradingView) و «کلیک-کشیدن».
       // اگر منتظر کلیک دوم هستیم، این کلیک نقطه‌ی پایانی است و ترسیم ثبت می‌شود.
       if (this.twoClick && this.tmp) {
-        this.tmp.p1 = e.shiftKey ? this._constrainDraw(this.tmp.type, this.tmp.p0, pt) : pt; this._pushUndo(); this.drawings.push(this._applyDef(this.tmp));
-        this.tmp = null; this.twoClick = false; this.dragging = false; this.didDrag = false; this._reset(); return;
+        this.tmp.p1 = e.shiftKey ? this._constrainDraw(this.tmp.type, this.tmp.p0, pt) : pt; this._pushUndo(); const nd = this._applyDef(this.tmp); extInit(nd, this, x, y); this.drawings.push(nd);
+        this.tmp = null; this.twoClick = false; this.dragging = false; this.didDrag = false; this._created(); return;
       }
       // نشانگر فلش بالا/پایین = سیگنال خرید/فروش ⇒ رنگ پیش‌فرض معنایی سبز/قرمز (مثل TV؛ کاربر می‌تواند بعداً تغییر دهد).
       const _clr = this.tool === 'arrowup' ? '#089981' : this.tool === 'arrowdown' ? '#f23645' : this.color;
@@ -461,11 +624,27 @@ export class DrawingLayer {
         return;
       }
       if (this.marquee) { this.marquee.x1 = x; this.marquee.y1 = y; this.render(); return; }
+      if (this.zoomBox) { this.zoomBox.x1 = x; this.zoomBox.y1 = y; this.render(); return; }
       if (this.dragOrder && this.order) { const pr = this._p(y); if (pr != null) { this.order[this.dragOrder] = pr; this.render(); this.onOrder && this.onOrder({ ...this.order }); } return; }
       // درگ handle
-      if (this.dragHandle) { const d = this.drawings[this.dragHandle.idx]; const sp = this._snap({ t: this._t(x), p: this._p(y) }); if (d && sp.t != null && sp.p != null) { this._handlePoints(d)[this.dragHandle.hi].set(sp.t, sp.p); this.render(); } return; }
+      if (this.dragHandle) {
+        const d = this.drawings[this.dragHandle.idx];
+        if (this.dragHandle.snap) { this._history.record(this.dragHandle.snap); this.dragHandle.snap = null; }
+        if (d && this.dragHandle.screen) { d.ax = Math.max(0, Math.min(1, x / (cv.width || 1))); d.ay = Math.max(0, Math.min(1, y / (cv.height || 1))); this.render(); return; }
+        const sp = this._snap({ t: this._t(x), p: this._p(y) }); if (d && sp.t != null && sp.p != null) { const h = this._handlePoints(d)[this.dragHandle.hi]; if (h) h.set(sp.t, sp.p); this.render(); } return;
+      }
       // جابه‌جایی کل آبجکت
-      if (this.dragMove) { const d = this.drawings[this.dragMove.idx]; const sp = this._snap({ t: this._t(x), p: this._p(y) }); if (d && sp.t != null && sp.p != null) { const dt = sp.t - this.dragMove.last.t, dp = sp.p - this.dragMove.last.p; if (this.multiSel.size > 1 && this.multiSel.has(this.dragMove.idx)) { this.multiSel.forEach((i) => { const dd = this.drawings[i]; if (dd && !dd.locked) this._moveBy(dd, dt, dp); }); } else { this._moveBy(d, dt, dp); } this.dragMove.last = sp; this.render(); } return; }
+      if (this.dragMove) {
+        const d = this.drawings[this.dragMove.idx]; const sp = this._snap({ t: this._t(x), p: this._p(y) });
+        const sx = x - this.dragMove.xy.x, sy = y - this.dragMove.xy.y; this.dragMove.xy = { x, y };
+        if (this.dragMove.snap && (sx || sy)) { this._history.record(this.dragMove.snap); this.dragMove.snap = null; }
+        const moveOne = (dd, dt, dp) => { if (extScreen(dd.type)) { dd.ax = (dd.ax || 0) + sx / (cv.width || 1); dd.ay = (dd.ay || 0) + sy / (cv.height || 1); } else if (dt != null) this._moveBy(dd, dt, dp); };
+        const ok = sp.t != null && sp.p != null && this.dragMove.last && this.dragMove.last.t != null && this.dragMove.last.p != null;
+        const dt = ok ? sp.t - this.dragMove.last.t : null, dp = ok ? sp.p - this.dragMove.last.p : null;
+        if (d) { if (this.multiSel.size > 1 && this.multiSel.has(this.dragMove.idx)) { this.multiSel.forEach((i) => { const dd = this.drawings[i]; if (dd && !dd.locked) moveOne(dd, dt, dp); }); } else moveOne(d, dt, dp); }
+        if (ok) this.dragMove.last = sp; else if (sp.t != null && sp.p != null) this.dragMove.last = sp;
+        this.render(); return;
+      }
       // hover-highlight (سبک TV): ترسیم زیر نشانگر را با دستگیره‌های کم‌رنگ برجسته کن. hit-test از قبل روی هر
       // mousemove اجرا می‌شود، پس render فقط روی «تغییر» hover اجرا می‌شود (ارزان). فقط نشانگر/انتخاب و نه حین رسم.
       if ((this.tool === 'cursor' || this.tool === 'select') && !this.pending) {
@@ -476,11 +655,12 @@ export class DrawingLayer {
       // #۱۱ در حالت cursor هم ترسیم‌ها قابل ویرایش‌اند: وقتی کرسر روی یک ترسیم/دستگیره/خط سفارش
       // است، لایه‌ی ترسیم را موقتاً فعال می‌کنیم تا کلیک=انتخاب/ویرایش؛ در فضای خالی غیرفعال تا چارت
       // اسکرول/زوم کند. (move روی window است، پس حتی با pointerEvents=none هم اجرا می‌شود.)
-      if (this.tool === 'cursor' && !this.dragging && !this.dragMove && !this.dragHandle && !this.dragOrder) {
+      if ((this.tool === 'cursor' || this.tool === 'eraser') && !this.dragging && !this.dragMove && !this.dragHandle && !this.dragOrder) {
         const over = this._interactiveAt(x, y);
-        const want = (over || e.shiftKey) ? 'auto' : 'none'; // Shift ⇒ کانوس رویدادها را بگیرد تا Shift+درگ اندازه‌گیری کار کند
+        const want = (over || (e.shiftKey && this.tool === 'cursor')) ? 'auto' : 'none'; // Shift ⇒ کانوس رویدادها را بگیرد تا Shift+درگ اندازه‌گیری کار کند
         if (cv.style.pointerEvents !== want) cv.style.pointerEvents = want;
-        cv.style.cursor = over ? 'pointer' : 'default';
+        cv.style.cursor = this.tool === 'eraser' ? this.eraserCursor : over ? 'pointer' : 'default';
+        if (this.tool === 'eraser') { const hv = over ? this._hit(x, y) : -1; if (hv !== this.hover) { this.hover = hv; this.render(); } }
       }
       // hover برای cursor (تغییر نشانگر)
       if (this.tool === 'select' && !this.dragging) { const sd = this.selected >= 0 ? this.drawings[this.selected] : null; const onH = sd && !sd.locked && this._hitHandle(sd, x, y) >= 0; const h = this._hit(x, y); cv.style.cursor = onH ? 'crosshair' : (h >= 0 ? 'move' : 'default'); this.hover = h; }
@@ -521,34 +701,41 @@ export class DrawingLayer {
         }
         this.render(); return;
       }
+      if (this.zoomBox) {
+        const z = this.zoomBox; this.zoomBox = null; this.render();
+        if (Math.abs(z.x1 - z.x0) > 6 && Math.abs(z.y1 - z.y0) > 6 && this.onZoomBox) this.onZoomBox({ x0: Math.min(z.x0, z.x1), y0: Math.min(z.y0, z.y1), x1: Math.max(z.x0, z.x1), y1: Math.max(z.y0, z.y1) });
+        if (Math.abs(z.x1 - z.x0) > 6 && Math.abs(z.y1 - z.y0) > 6) this._reset();
+        return;
+      }
       if (this.dragOrder) { this.dragOrder = null; return; }
-      if (this.dragHandle) { this.dragHandle = null; this._changed(); return; }
-      if (this.dragMove) { this.dragMove = null; this._changed(); return; }
+      if (this.dragHandle) { const moved = !this.dragHandle.snap; this.dragHandle = null; if (moved) this._changed(); else this.render(); return; }
+      if (this.dragMove) { const moved = !this.dragMove.snap; this.dragMove = null; if (moved) this._changed(); else this.render(); return; }
       // اندازه‌گیری گذرا (Shift+درگ سبک TV): با رهاکردن پاک می‌شود (ثبت نمی‌شود).
       if (this.measuring) { this.measuring = false; this.dragging = false; this.tmp = null; this.didDrag = false; this.render(); return; }
       if (this.tmp && this.dragging) {
-        if (this.didDrag) { this._pushUndo(); this.drawings.push(this._applyDef(this.tmp)); this.tmp = null; this.dragging = false; this.didDrag = false; this._reset(); } // کشیده شد ⇒ ثبت
+        if (this.didDrag) { this._pushUndo(); const nd = this._applyDef(this.tmp); extInit(nd, this); this.drawings.push(nd); this.tmp = null; this.dragging = false; this.didDrag = false; this._created(); } // کشیده شد ⇒ ثبت
         else { this.dragging = false; this.twoClick = true; this.render(); } // فقط کلیک شد ⇒ منتظر کلیک دوم (مثل TV)
       }
     };
     const key = (e) => {
       const tag = e.target && e.target.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return;
-      if (e.key === 'Enter' && this.pending && (this.pending.type === 'polyline' || this.pending.type === 'path')) { e.preventDefault(); this._finishPoly && this._finishPoly(); return; }
+      if (e.key === 'Enter' && this.pending && EXT_POLY.includes(this.pending.type)) { e.preventDefault(); this._finishPoly && this._finishPoly(); return; }
     };
     // پایان‌دادن خط چندتکه (دابل‌کلیک یا Enter). دابل‌کلیک دو mousedown می‌زند ⇒ رأس تکراری انتهایی حذف می‌شود.
     const finishPoly = () => {
-      if (!this.pending || (this.pending.type !== 'polyline' && this.pending.type !== 'path')) return;
+      if (!this.pending || !EXT_POLY.includes(this.pending.type)) return;
       const t = this.pending.type;
       const pts = this.pending.pts.slice();
       const L = pts.length;
       if (L >= 2 && pts[L - 1].t === pts[L - 2].t && pts[L - 1].p === pts[L - 2].p) pts.pop();
-      if (pts.length >= 2) { this._pushUndo(); this.drawings.push(this._applyDef({ type: t, pts, color: this.pending.color, width: 2 })); }
-      this.pending = null; this._reset();
+      this.pending = null;
+      if (pts.length >= 2) { this._pushUndo(); this.drawings.push(this._applyDef({ type: t, pts, color: this.color, width: 2 })); this._created(); }
+      else this._reset();
     };
     const dbl = (e) => {
       // اگر خط چندتکه/مسیر در حال ترسیم است ⇒ پایان بده (رفتار قبلی).
-      if (this.pending && (this.pending.type === 'polyline' || this.pending.type === 'path')) { finishPoly(); return; }
+      if (this.pending && EXT_POLY.includes(this.pending.type)) { finishPoly(); return; }
       // دابل‌کلیک روی یک ترسیم (در حالت نشانگر/انتخاب) ⇒ انتخاب + ویرایش (متن: ویرایش محتوا) — سبک TV.
       if (this.tool !== 'cursor' && this.tool !== 'select') return;
       try {
@@ -591,13 +778,17 @@ export class DrawingLayer {
       } catch (err) { /* noop */ }
     };
     this._finishPoly = finishPoly;
-    cv.addEventListener('mousedown', down);
+    // Pointer events, so a mouse, a pen and a finger all draw. The host may hand a press on the
+    // chart to the layer itself (a finger on a drawing in cursor mode) through _down.
+    this._down = down;
+    cv.addEventListener('pointerdown', down);
     cv.addEventListener('dblclick', dbl);
     cv.addEventListener('wheel', wheel, { passive: false });
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
     window.addEventListener('keydown', key);
-    this._cleanup = () => { stopEdgePan(); cv.removeEventListener('mousedown', down); cv.removeEventListener('dblclick', dbl); cv.removeEventListener('wheel', wheel); window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); window.removeEventListener('keydown', key); };
+    this._cleanup = () => { stopEdgePan(); cv.removeEventListener('pointerdown', down); cv.removeEventListener('dblclick', dbl); cv.removeEventListener('wheel', wheel); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); window.removeEventListener('keydown', key); };
   }
 
   // #۱۱ آیا نقطه‌ی (x,y) روی چیزی قابل‌تعامل است؟ (خط سفارش، دستگیره‌ی آبجکت انتخاب‌شده، یا بدنه‌ی یک ترسیم)
@@ -610,6 +801,7 @@ export class DrawingLayer {
   // hit-test: نزدیک‌ترین ترسیم به نقطه‌ی کلیک (یا -1)
   _hit(x, y) {
     const near = 7;
+    const pb = this._paneBox; if (pb && pb.w && (x > pb.w || y > pb.h)) return -1; // the axes belong to the chart
     for (let i = this.drawings.length - 1; i >= 0; i--) {
       const d = this.drawings[i];
       if (!d || d.visible === false) continue; // شی مخفی (toggleVisible) نباید کلیک‌پذیر باشد
@@ -618,7 +810,7 @@ export class DrawingLayer {
       if (d.type === 'hline') { const yy = this._y(d.p); if (yy != null && Math.abs(yy - y) < near) return i; continue; }
       if (d.type === 'vline') { const xx = this._x(d.t); if (xx != null && Math.abs(xx - x) < near) return i; continue; }
       // متن: جعبه‌ی تقریبی حول لنگر (t,p) — قبلاً هیچ شاخه‌ای نداشت و انتخاب/راست‌کلیک متن کار نمی‌کرد.
-      if (d.type === 'text') { const tx = this._x(d.t), ty = this._y(d.p); if (tx == null || ty == null) continue; const fs = Math.max(8, Math.min(64, d.fontSize || 12)); const tlines = String(d.text || '').replace(/\\n/g, '\n').split('\n'); const maxLen = tlines.reduce((a, s) => Math.max(a, s.length), 0); const lh = Math.round(fs * 1.3); const hw = Math.max(24, maxLen * fs * 0.4); if (x >= tx - hw && x <= tx + hw && y >= ty - fs - 4 && y <= ty + 5 + (tlines.length - 1) * lh) return i; continue; }
+      if (d.type === 'text') { if (hitTextBlock(d, x, y)) return i; const tx = this._x(d.t), ty = this._y(d.p); if (tx == null || ty == null) continue; const fs = Math.max(8, Math.min(64, d.fontSize || 12)); const tlines = String(d.text || '').replace(/\\n/g, '\n').split('\n'); const maxLen = tlines.reduce((a, s) => Math.max(a, s.length), 0); const lh = Math.round(fs * 1.3); const hw = Math.max(24, maxLen * fs * 0.4); if (x >= tx - hw && x <= tx + hw && y >= ty - fs - 4 && y <= ty + 5 + (tlines.length - 1) * lh) return i; continue; }
       // ابزارهای پایه‌ی چندنقطه‌ای (channel/pitchfork) که از pts استفاده می‌کنند نه p0/p1 — قبلاً در _hit می‌افتادند (مثل باگ متن) و انتخاب/راست‌کلیک نمی‌شدند.
       if (Array.isArray(d.pts) && d.pts.length) {
         const P = d.pts.map((pt) => ({ x: this._x(pt.t), y: this._y(pt.p) })).filter((q) => q.x != null && q.y != null);
@@ -634,21 +826,33 @@ export class DrawingLayer {
         if (!hitPts && d.type === 'channel' && P.length >= 3) { const q2 = { x: P[2].x + (P[1].x - P[0].x), y: P[2].y + (P[1].y - P[0].y) }; if (segHit(P[2], q2)) hitPts = true; }
         if (hitPts) return i; continue;
       }
+      if (d.type === 'longshort' || d.type === 'short') {
+        const g = this._posGeom(d); if (!g) continue;
+        const ysP = [g.yE, g.yS, g.yT].filter((v) => v != null); if (!ysP.length) continue;
+        if (x >= g.xa - near && x <= g.xb + near && y >= Math.min(...ysP) - near && y <= Math.max(...ysP) + near) return i;
+        continue;
+      }
       const x0 = this._x(d.p0 && d.p0.t), y0 = this._y(d.p0 && d.p0.p), x1 = this._x(d.p1 && d.p1.t), y1 = this._y(d.p1 && d.p1.p);
       if (x0 == null || x1 == null) continue;
-      if (d.type === 'rect' || d.type === 'fib' || d.type === 'longshort' || d.type === 'short') {
+      if ((d.type === 'fib' || d.type === 'rect') && (d.extendLeft || d.extendRight)) {
+        const W = this.canvas.width, xl = d.extendLeft ? 0 : Math.min(x0, x1), xr = d.extendRight ? W : Math.max(x0, x1);
+        if (x >= xl - near && x <= xr + near && y >= Math.min(y0, y1) - near && y <= Math.max(y0, y1) + near) return i;
+        continue;
+      }
+      if (d.type === 'rect' || d.type === 'fib') {
         if (x >= Math.min(x0, x1) - near && x <= Math.max(x0, x1) + near && y >= Math.min(y0, y1) - near && y <= Math.max(y0, y1) + near) return i;
       } else { // خط: فاصله تا پاره‌خط
         const A = x - x0, B = y - y0, C = x1 - x0, D = y1 - y0; const dot = A * C + B * D, len = C * C + D * D;
         // ray از p0 در جهت p1 تا امتداد (رندر ۴۰۰۰×) کشیده می‌شود؛ پس سقف t را clamp نکن تا دُم امتدادیافته هم قابل‌انتخاب باشد (مثل TV). بقیه‌ی خطوط پاره‌خط محدود [۰,۱].
-        const t = len ? (d.type === 'ray' ? Math.max(0, dot / len) : Math.max(0, Math.min(1, dot / len))) : 0;
+        const fwd = d.type === 'ray' || d.extendRight, back = !!d.extendLeft;
+        const t = len ? Math.max(back ? -Infinity : 0, Math.min(fwd ? Infinity : 1, dot / len)) : 0;
         const px = x0 + t * C, py = y0 + t * D; if (Math.hypot(x - px, y - py) < near) return i;
       }
     }
     return -1;
   }
 
-  _reset() { this.twoClick = false; this.didDrag = false; if (!this.stayInMode) { this.tool = 'cursor'; this.canvas.style.pointerEvents = 'none'; this.canvas.style.cursor = 'default'; this.onToolReset && this.onToolReset(); } this._changed(); }
+  _reset() { this.twoClick = false; this.didDrag = false; if (!this.stayInMode) { this.tool = 'cursor'; this.canvas.style.pointerEvents = 'none'; this.canvas.style.touchAction = ''; this.canvas.style.cursor = 'default'; this.onToolReset && this.onToolReset(); } this._changed(); }
   destroy() { this._cleanup && this._cleanup(); }
 
   resize(w, h) { this.canvas.width = w; this.canvas.height = h; this.render(); }
@@ -677,10 +881,25 @@ export class DrawingLayer {
     (s.barcolors || []).forEach((bc) => { if (bc.all) return; ctx.fillStyle = bc.color || '#f59e0b'; (bc.bars || []).forEach((t) => { const x = this._x(t); if (x == null) return; ctx.beginPath(); ctx.arc(x, H - 8, 2.5, 0, 7); ctx.fill(); }); });
   }
 
+  // The main pane's area: the canvas less the price axis on the right, the time axis at the bottom
+  // and any indicator panes under the price (TradingView keeps drawings inside their pane).
+  _pane() {
+    const W = this.canvas.width, H = this.canvas.height;
+    let pw = 0, th = 0, ph = null;
+    try { pw = this.chart.priceScale('right').width() || 0; } catch (e) { pw = 0; }
+    try { th = this.chart.timeScale().height() || 0; } catch (e) { th = 0; }
+    try { const ps = this.chart.panes && this.chart.panes(); if (ps && ps.length > 1) ph = ps[0].getHeight(); } catch (e) { ph = null; }
+    const h = ph != null ? Math.min(ph, H - th) : H - th;
+    return { w: Math.max(0, W - pw), h: Math.max(0, h), pw, th, W, H };
+  }
+
   render() {
     const ctx = this.ctx; if (!ctx) return;
     const W = this.canvas.width, H = this.canvas.height;
     ctx.clearRect(0, 0, W, H);
+    const pane = this._pane();
+    this._paneBox = pane;
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, pane.w, pane.h); ctx.clip();
     // Volume Profile (نوارهای افقی سمت راست)
     if (this.profile && this.profile.length) {
       const maxV = Math.max(...this.profile.map((b) => b.vol)) || 1;
@@ -690,7 +909,7 @@ export class DrawingLayer {
         const yh = this._y(b.hi), yl = this._y(b.lo); const h = (yh != null && yl != null) ? Math.max(2, Math.abs(yl - yh) - 1) : 4;
         const w = (b.vol / maxV) * maxW;
         ctx.fillStyle = b.poc ? 'rgba(245,158,11,.55)' : (b.va ? 'rgba(59,130,246,.42)' : 'rgba(59,130,246,.18)');
-        ctx.fillRect(W - w, y - h / 2, w, h);
+        ctx.fillRect(pane.w - w, y - h / 2, w, h);
       });
     }
     if (this.script) this._paintScript(ctx, W, H);
@@ -708,6 +927,96 @@ export class DrawingLayer {
       this.pending.pts.forEach((p) => { const x = this._x(p.t), y = this._y(p.p); if (x != null && y != null) { ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill(); } });
     }
     if (this.order) this._drawOrder(ctx);
+    ctx.restore();
+    this._axisTags(ctx, pane);
+    // The Zoom-in tool's rectangle while it is dragged.
+    if (this.zoomBox) { const z = this.zoomBox; ctx.save(); ctx.fillStyle = 'rgba(41,98,255,0.10)'; ctx.strokeStyle = 'rgba(41,98,255,0.9)'; ctx.lineWidth = 1; ctx.setLineDash([4, 3]); ctx.fillRect(Math.min(z.x0, z.x1), Math.min(z.y0, z.y1), Math.abs(z.x1 - z.x0), Math.abs(z.y1 - z.y0)); ctx.strokeRect(Math.min(z.x0, z.x1) + 0.5, Math.min(z.y0, z.y1) + 0.5, Math.abs(z.x1 - z.x0), Math.abs(z.y1 - z.y0)); ctx.restore(); }
+    this._drawAxisLabels(ctx, W, H);
+  }
+
+  // The anchors of a drawing as {t?, p?}: a horizontal line has only a price, a vertical one only a time.
+  _anchors(d) {
+    if (!d) return [];
+    if (extScreen(d.type)) return [];
+    if (d.type === 'hline') return [{ p: d.p }];
+    if (d.type === 'vline') return [{ t: d.t }];
+    if (d.type === 'text') return [{ t: d.t, p: d.p }];
+    if ((d.type === 'longshort' || d.type === 'short') && d.p0 && d.p1) { const g = this._posPrices(d); return [{ t: d.p0.t, p: g.entry }, { p: g.stop }, { p: g.target }, { t: d.p1.t }]; }
+    if (d.type === 'barspattern' && d.dst) return [{ t: d.dst.t, p: d.dst.p }];
+    if (Array.isArray(d.pts)) return d.pts.map((q) => ({ t: q.t, p: q.p }));
+    if (EXT_ONE.includes(d.type)) return d.p0 ? [d.type === 'pricelabel' ? { p: d.p0.p } : { t: d.p0.t, p: d.p0.p }] : [];
+    const out = [];
+    if (d.p0) out.push({ t: d.p0.t, p: d.p0.p });
+    if (d.p1) out.push({ t: d.p1.t, p: d.p1.p });
+    return out;
+  }
+
+  // Every horizontal line's price on the price axis and every vertical line's date on the time axis
+  // (a cross line has both), in the drawing's colour — what TradingView keeps on its axes.
+  _axisTags(ctx, pane) {
+    const { W, H, pw, th } = pane;
+    ctx.save(); ctx.setLineDash([]); ctx.font = '11px IRANYekanX, sans-serif'; ctx.textBaseline = 'middle';
+    const priceTag = (y, txt, bg) => {
+      if (y == null || y < 0 || y > pane.h) return;
+      const tw = ctx.measureText(txt).width, h = 18;
+      const x = pw ? W - pw : W - tw - 10, w = pw || tw + 8;
+      ctx.fillStyle = bg; ctx.fillRect(x, y - h / 2, w, h);
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.fillText(txt, x + 6, y);
+    };
+    const timeTag = (x, txt, bg) => {
+      if (x == null || !txt || x < 0 || x > pane.w) return;
+      const w = ctx.measureText(txt).width + 12, h = th ? Math.min(th - 1, 22) : 16;
+      const left = Math.max(0, Math.min(pane.w - w, x - w / 2)), top = th ? H - th + 1 : H - h - 1;
+      ctx.fillStyle = bg; ctx.fillRect(left, top, w, h);
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(txt, left + w / 2, top + h / 2);
+    };
+    const tf = (t) => { try { return this.timeFmt ? String(this.timeFmt(t) || '') : ''; } catch (e) { return ''; } };
+    for (const d of this.drawings) {
+      if (!d || d.visible === false || this._tfHidden(d)) continue;
+      const col = d.color || '#2962FF';
+      if (d.type === 'hline' && d.p != null) priceTag(this._y(d.p), this._fmtP(d.p), col);
+      else if (d.type === 'vline' && d.t != null) timeTag(this._x(d.t), tf(d.t), col);
+      else if (d.type === 'crossline' && d.p0) { priceTag(this._y(d.p0.p), this._fmtP(d.p0.p), col); timeTag(this._x(d.p0.t), tf(d.p0.t), col); }
+    }
+    ctx.restore();
+  }
+
+  // TradingView's axis labels for the selected drawing: each anchor's price on the price axis and
+  // its time on the time axis, with the span between them shaded.
+  _drawAxisLabels(ctx, W, H) {
+    if (this.selected < 0 || this.multiSel.size > 1) return;
+    const d = this.drawings[this.selected];
+    if (!d || d.visible === false || this._tfHidden(d)) return;
+    let pw = 0, th = 0;
+    try { pw = this.chart.priceScale('right').width(); th = this.chart.timeScale().height(); } catch (e) { return; }
+    if (!pw && !th) return;
+    const an = this._anchors(d);
+    if (!an.length) return;
+    const ys = [], xs = [];
+    ctx.save();
+    ctx.font = '11px IRANYekanX, sans-serif'; ctx.textBaseline = 'middle'; ctx.setLineDash([]);
+    const pane = this._paneBox ? this._paneBox.h : H - th;
+    for (const a of an) {
+      if (a.p != null) { const y = this._y(a.p); if (y != null && y >= 0 && y <= pane) ys.push({ y, p: a.p }); }
+      if (a.t != null) { const x = this._x(a.t); if (x != null && x >= 0 && x <= W - pw) xs.push({ x, t: a.t }); }
+    }
+    const blue = '#2962FF';
+    if (pw && ys.length > 1) { const a = Math.min(...ys.map((q) => q.y)), b = Math.max(...ys.map((q) => q.y)); ctx.fillStyle = 'rgba(41,98,255,0.18)'; ctx.fillRect(W - pw, a, pw, b - a); }
+    if (th && xs.length > 1) { const a = Math.min(...xs.map((q) => q.x)), b = Math.max(...xs.map((q) => q.x)); ctx.fillStyle = 'rgba(41,98,255,0.18)'; ctx.fillRect(a, pane, b - a, th); }
+    if (pw) for (const q of ys) {
+      const txt = this._fmtP(q.p); const h = 18;
+      ctx.fillStyle = blue; ctx.fillRect(W - pw, q.y - h / 2, pw, h);
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.fillText(txt, W - pw + 6, q.y);
+    }
+    if (th && this.timeFmt) for (const q of xs) {
+      let txt = ''; try { txt = String(this.timeFmt(q.t) || ''); } catch (e) { txt = ''; }
+      if (!txt) continue;
+      const w = ctx.measureText(txt).width + 12, h = Math.min(th, 22);
+      const x = Math.max(0, Math.min(W - pw - w, q.x - w / 2));
+      ctx.fillStyle = blue; ctx.fillRect(x, pane + 1, w, h);
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(txt, x + w / 2, pane + 1 + h / 2);
+    }
+    ctx.restore();
   }
 
   _drawOrder(ctx) {
@@ -763,82 +1072,130 @@ export class DrawingLayer {
     if (d.type === 'fibext') {
       const xx0 = this._x(d.p0 && d.p0.t), xx1 = this._x(d.p1 && d.p1.t);
       if (xx0 == null || xx1 == null) return;
-      const lv = [0, 0.618, 1, 1.272, 1.618, 2.618]; const base = d.p0.p, diff = d.p1.p - d.p0.p;
-      const xa = Math.min(xx0, xx1), xb = Math.max(xx0, xx1) + 30;
-      lv.forEach((l) => { const pr = base + diff * l; const y = this._y(pr); if (y == null) return; ctx.globalAlpha = 0.85; ctx.beginPath(); ctx.moveTo(xa, y); ctx.lineTo(xb, y); ctx.stroke(); ctx.fillText(`${String(+l.toFixed(3))}  ${pr.toFixed(this.digits)}`, xa + 4, y - 2); ctx.globalAlpha = 1; });
+      const base = d.p0.p, diff = d.p1.p - d.p0.p;
+      const xa = d.extendLeft ? 0 : Math.min(xx0, xx1), xb = d.extendRight ? W : Math.max(xx0, xx1) + 30;
+      normLevels(d, 'fibext').filter((l) => l.on).forEach((l) => { const pr = base + diff * l.v; const y = this._y(pr); if (y == null) return; if (d.levels) { ctx.strokeStyle = l.color; ctx.fillStyle = l.color; } ctx.globalAlpha = 0.85; ctx.beginPath(); ctx.moveTo(xa, y); ctx.lineTo(xb, y); ctx.stroke(); ctx.fillText(`${String(+l.v.toFixed(3))}  ${pr.toFixed(this.digits)}`, Math.max(xa, Math.min(xx0, xx1)) + 4, y - 2); ctx.globalAlpha = 1; });
       return;
     }
     if (d.type === 'hline') { const y = this._y(d.p); if (y == null) return; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-      // برچسب قیمت به‌صورت tag رنگی لبه‌ی راست (نزدیک محور قیمت) — سبک TV؛ قبلاً متن ساده‌ی لبه‌ی چپ بود. #287
-      const lbl = d.p.toFixed(this.digits); ctx.save(); ctx.font = '11px sans-serif'; const tw = ctx.measureText(lbl).width; const pad = 4, tagW = tw + pad * 2, tagH = 15; const tx = W - tagW - 2; ctx.fillStyle = d.color; ctx.globalAlpha = 0.95; ctx.fillRect(tx, y - tagH / 2, tagW, tagH); ctx.globalAlpha = 1; ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillText(lbl, tx + pad, y); ctx.restore(); return; }
+      drawLineText(ctx, d, 0, y, (this._paneBox ? this._paneBox.w : W), y);
+      return; } // its price tag sits on the price axis (_axisTags), as on TradingView #287
     if (d.type === 'vline') { const x = this._x(d.t); if (x == null) return; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-      // برچسب تاریخ خط عمودی به‌صورت tag رنگی محور زمان (پایین، مرکز خط)، tz-درست — سبک TV؛ هم‌سبک با price-tag خط افقی #287. (#281→#288)
-      if (this.timeFmt) { try { const lbl = this.timeFmt(d.t); if (lbl) { const s = String(lbl); ctx.save(); ctx.font = '11px sans-serif'; const tw = ctx.measureText(s).width; const pad = 4, tagW = tw + pad * 2, tagH = 15; let tx = x - tagW / 2; tx = Math.max(2, Math.min(tx, this.canvas.width - tagW - 2)); const ty = H - tagH - 1; ctx.fillStyle = d.color; ctx.globalAlpha = 0.95; ctx.fillRect(tx, ty, tagW, tagH); ctx.globalAlpha = 1; ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillText(s, tx + pad, ty + tagH / 2); ctx.restore(); } } catch (e) { /* noop */ } }
-      return; }
+      drawLineText(ctx, d, x, (this._paneBox ? this._paneBox.h : H), x, 0);
+      return; } // its date tag sits on the time axis (_axisTags), in the reader's time zone #281→#288
     const x0 = this._x(d.p0?.t), y0 = this._y(d.p0?.p), x1 = this._x(d.p1?.t), y1 = this._y(d.p1?.p);
-    if (d.type === 'text') { const x = this._x(d.t), y = this._y(d.p); if (x == null || y == null) return; const fs = Math.max(8, Math.min(64, d.fontSize || 12)); const italic = d.italic ? 'italic ' : ''; const bold = d.bold ? 'bold ' : ''; ctx.font = `${italic}${bold}${fs}px IRANYekanX, sans-serif`;
-      // متن چندخطی مثل ابزار Text TV: هم نیولاین واقعی (paste) هم «\n» تایپ‌شده در prompt را می‌شکند؛ هر خط با line-height. تک‌خطی دقیقاً مثل قبل. #295
-      const lines = String(d.text || '').replace(/\\n/g, '\n').split('\n'); const lh = Math.round(fs * 1.3);
-      // پس‌زمینه (#284) + حاشیه‌ی (Border، #285) متن — کادر مشترک که همه‌ی خطوط را دربر می‌گیرد.
-      if (d.bg || d.border) { let tw = 0; for (let li = 0; li < lines.length; li++) { const w = ctx.measureText(lines[li]).width; if (w > tw) tw = w; } const pad = 3; const rx = x - pad, ry = y - fs - pad + 2, rw = tw + pad * 2, rh = (lines.length - 1) * lh + fs + pad * 2;
-        if (d.bg) { ctx.save(); ctx.fillStyle = d.bg; ctx.globalAlpha = (d.bgOpacity != null ? d.bgOpacity : 0.9); ctx.fillRect(rx, ry, rw, rh); ctx.restore(); }
-        if (d.border) { ctx.save(); ctx.strokeStyle = d.border; ctx.lineWidth = 1; ctx.strokeRect(rx, ry, rw, rh); ctx.restore(); } }
-      for (let li = 0; li < lines.length; li++) ctx.fillText(lines[li], x, y + li * lh); return; }
+    // Text: several lines, bold/italic, aligned and wrapped, on an optional background and border. #295
+    if (d.type === 'text') { const x = this._x(d.t), y = this._y(d.p); if (x == null || y == null) return; drawTextBlock(ctx, d, x, y); return; }
+    if (d.type === 'longshort' || d.type === 'short') { this._drawPosition(ctx, d); return; }
     if (x0 == null || y0 == null || x1 == null || y1 == null) return;
-    if (d.type === 'trend') { ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-      // برچسب اطلاعاتی Δقیمت/٪/بار هنگام انتخاب (مثل خط روند TV) — متن رنگی ساده، هم‌سبک برچسب‌های دیگر ترسیم.
-      if (sel && d.p0 && d.p1) {
+    if (d.type === 'trend' || d.type === 'ray') {
+      const L = this._lineEnds(d, x0, y0, x1, y1, W, H);
+      ctx.beginPath(); ctx.moveTo(L.ax, L.ay); ctx.lineTo(L.bx, L.by); ctx.stroke();
+      if (d.middle) { ctx.save(); ctx.setLineDash([]); ctx.fillStyle = '#fff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc((x0 + x1) / 2, (y0 + y1) / 2, 3.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.restore(); }
+      if (d.priceLabels && d.p0 && d.p1) { for (const [px, py, pr] of [[x0, y0, d.p0.p], [x1, y1, d.p1.p]]) this._tag(ctx, px, py + (py <= Math.min(y0, y1) ? -10 : 10), this._fmtP(pr), d.color, 'center'); }
+      drawLineText(ctx, d, x0, y0, x1, y1);
+      // Stats (TradingView's trend-line stats): Δprice, %, bars, span — while selected, always, or never.
+      const showStats = d.stats === 'always' || (sel && d.stats !== 'hidden');
+      if (showStats && d.type === 'trend' && d.p0 && d.p1) {
         const dp = d.p1.p - d.p0.p, pct = d.p0.p ? (dp / d.p0.p * 100) : 0;
         const iv = this._barInterval(), bars = iv ? Math.round((d.p1.t - d.p0.t) / iv) : 0;
         const sg = dp >= 0 ? '+' : '−';
-        ctx.fillText(`${sg}${Math.abs(dp).toFixed(this.digits)} (${sg}${Math.abs(pct).toFixed(2)}%) · ${Math.abs(bars)} بار`, x1 + 8, y1 - 2);
+        ctx.save(); ctx.setLineDash([]); ctx.font = '11px IRANYekanX, sans-serif';
+        ctx.fillText(`${sg}${Math.abs(dp).toFixed(this.digits)} (${sg}${Math.abs(pct).toFixed(2)}%) · ${Math.abs(bars)} bars`, x1 + 8, y1 - 2); // market figures: Latin, as the axis
+        ctx.restore();
       }
     }
-    else if (d.type === 'ray') { const dx = x1 - x0, dy = y1 - y0; const k = 4000; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + dx * k, y0 + dy * k); ctx.stroke(); }
-    else if (d.type === 'rect') { ctx.globalAlpha = (d.fillOpacity != null ? d.fillOpacity : 0.18); ctx.fillStyle = d.fill || d.color; ctx.fillRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0)); ctx.fillStyle = d.color; ctx.globalAlpha = 1; ctx.strokeRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0)); }
+    else if (d.type === 'rect') {
+      const rx = Math.min(x0, x1), ry = Math.min(y0, y1), rw = Math.abs(x1 - x0), rh = Math.abs(y1 - y0);
+      const ex0 = d.extendLeft ? 0 : rx, ex1 = d.extendRight ? W : rx + rw;
+      ctx.globalAlpha = (d.fillOpacity != null ? d.fillOpacity : 0.18); ctx.fillStyle = d.fill || d.color; ctx.fillRect(ex0, ry, ex1 - ex0, rh); ctx.fillStyle = d.color; ctx.globalAlpha = 1; ctx.strokeRect(rx, ry, rw, rh);
+      if (d.middle) { ctx.save(); ctx.globalAlpha = 0.6; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.moveTo(ex0, ry + rh / 2); ctx.lineTo(ex1, ry + rh / 2); ctx.stroke(); ctx.restore(); }
+      if (d.text) { const vy = d.valign === 'top' ? ry : d.valign === 'bottom' ? ry + rh : ry + rh / 2; const vd = { ...d, valign: d.valign === 'top' ? 'bottom' : d.valign === 'bottom' ? 'top' : 'middle' }; drawLineText(ctx, vd, rx, vy, rx + rw, vy); }
+    }
     else if (d.type === 'fib') {
       const top = Math.max(d.p0.p, d.p1.p), bot = Math.min(d.p0.p, d.p1.p), rng = top - bot;
-      const xa = Math.min(x0, x1), xb = Math.max(x0, x1);
+      const xa = d.extendLeft ? 0 : Math.min(x0, x1), xb = d.extendRight ? W : Math.max(x0, x1);
+      const lvls = normLevels(d, 'fib').filter((l) => l.on).sort((a, b) => a.v - b.v);
       // سطوح با رنگ اختصاصی هر سطح (سبک TV) + باند پس‌زمینه‌ی کم‌رنگ بین سطوح متوالی.
-      const ys = FIB.map((lv) => this._y(top - rng * lv));
-      FIB.forEach((lv, i) => {
-        const y = ys[i]; if (y == null) return; const col = FIB_COLORS[i] || d.color;
+      const ys = lvls.map((l) => this._y(top - rng * l.v));
+      lvls.forEach((l, i) => {
+        const y = ys[i]; if (y == null) return; const col = l.color || d.color;
         // باند پس‌زمینه بین این سطح و سطح قبلی (رنگ همین سطح، شفافیت کم مثل Background فیب TV).
-        if (i > 0 && ys[i - 1] != null) { ctx.globalAlpha = 0.08; ctx.fillStyle = col; ctx.fillRect(xa, Math.min(y, ys[i - 1]), xb - xa, Math.abs(y - ys[i - 1])); ctx.globalAlpha = 1; }
-        const price = top - rng * lv;
+        if (d.fibBg !== false && i > 0 && ys[i - 1] != null) { ctx.globalAlpha = 0.08; ctx.fillStyle = col; ctx.fillRect(xa, Math.min(y, ys[i - 1]), xb - xa, Math.abs(y - ys[i - 1])); ctx.globalAlpha = 1; }
+        const price = top - rng * l.v;
         ctx.strokeStyle = col; ctx.fillStyle = col; ctx.globalAlpha = 0.85;
         ctx.beginPath(); ctx.moveTo(xa, y); ctx.lineTo(xb, y); ctx.stroke();
         // برچسب سطح/قیمت را با شفافیت کامل بکش (خط فیب کم‌رنگ است ولی متن مثل TV واضح) — #289
         ctx.globalAlpha = 1;
-        ctx.fillText(`${String(+lv.toFixed(3))}  ${price.toFixed(this.digits)}`, xa + 4, y - 2);
+        ctx.fillText(`${String(+l.v.toFixed(3))}  ${price.toFixed(this.digits)}`, Math.min(x0, x1) + 4, y - 2);
       });
     }
-    else if (d.type === 'longshort') {
-      const entry = d.p0.p, stop = d.p1.p, risk = entry - stop, target = entry + 2 * risk;
-      const yE = this._y(entry), yS = this._y(stop), yT = this._y(target);
-      const xa = Math.min(x0, x1), xb = Math.max(x0, x1) + 40;
-      // درصد حرکت تا هدف/حد ضرر — کمیّت R:R مثل ابزار Long Position/Short Position TV.
-      const rwdPct = entry ? (Math.abs(target - entry) / Math.abs(entry) * 100) : 0;
-      const rskPct = entry ? (Math.abs(stop - entry) / Math.abs(entry) * 100) : 0;
-      if (yT != null && yE != null) { ctx.fillStyle = 'rgba(34,197,94,.15)'; ctx.fillRect(xa, Math.min(yT, yE), xb - xa, Math.abs(yE - yT)); }
-      if (yS != null && yE != null) { ctx.fillStyle = 'rgba(239,68,68,.15)'; ctx.fillRect(xa, Math.min(yS, yE), xb - xa, Math.abs(yE - yS)); }
-      ctx.fillStyle = d.color; ctx.strokeStyle = '#22c55e'; if (yT != null) { ctx.beginPath(); ctx.moveTo(xa, yT); ctx.lineTo(xb, yT); ctx.stroke(); ctx.fillText(`هدف 2R  ${target.toFixed(this.digits)} (${rwdPct.toFixed(2)}%)`, xa + 4, yT - 2); }
-      ctx.strokeStyle = '#94a3b8'; if (yE != null) { ctx.beginPath(); ctx.moveTo(xa, yE); ctx.lineTo(xb, yE); ctx.stroke(); ctx.fillText(`ورود  ${entry.toFixed(this.digits)}`, xa + 4, yE - 2); }
-      ctx.strokeStyle = '#ef4444'; if (yS != null) { ctx.beginPath(); ctx.moveTo(xa, yS); ctx.lineTo(xb, yS); ctx.stroke(); ctx.fillText(`حد ضرر  ${stop.toFixed(this.digits)} (${rskPct.toFixed(2)}%)`, xa + 4, yS - 2); }
-    }
-    else if (d.type === 'short') {
-      // موقعیت شورت (ابزار Short Position TV): برعکس لانگ — حد ضرر بالای ورود، هدف پایین (entry − 2R).
-      //   جعبه‌ی سبز سود پایین ورود، جعبه‌ی قرمز ریسک بالای ورود. p0=ورود، p1=حد ضرر (که بالا کشیده می‌شود).
-      const entry = d.p0.p, stop = d.p1.p, risk = stop - entry, target = entry - 2 * risk;
-      const yE = this._y(entry), yS = this._y(stop), yT = this._y(target);
-      const xa = Math.min(x0, x1), xb = Math.max(x0, x1) + 40;
-      const rwdPct = entry ? (Math.abs(target - entry) / Math.abs(entry) * 100) : 0;
-      const rskPct = entry ? (Math.abs(stop - entry) / Math.abs(entry) * 100) : 0;
-      if (yT != null && yE != null) { ctx.fillStyle = 'rgba(34,197,94,.15)'; ctx.fillRect(xa, Math.min(yT, yE), xb - xa, Math.abs(yE - yT)); }
-      if (yS != null && yE != null) { ctx.fillStyle = 'rgba(239,68,68,.15)'; ctx.fillRect(xa, Math.min(yS, yE), xb - xa, Math.abs(yE - yS)); }
-      ctx.fillStyle = d.color; ctx.strokeStyle = '#22c55e'; if (yT != null) { ctx.beginPath(); ctx.moveTo(xa, yT); ctx.lineTo(xb, yT); ctx.stroke(); ctx.fillText(`هدف 2R  ${target.toFixed(this.digits)} (${rwdPct.toFixed(2)}%)`, xa + 4, yT - 2); }
-      ctx.strokeStyle = '#94a3b8'; if (yE != null) { ctx.beginPath(); ctx.moveTo(xa, yE); ctx.lineTo(xb, yE); ctx.stroke(); ctx.fillText(`ورود  ${entry.toFixed(this.digits)}`, xa + 4, yE - 2); }
-      ctx.strokeStyle = '#ef4444'; if (yS != null) { ctx.beginPath(); ctx.moveTo(xa, yS); ctx.lineTo(xb, yS); ctx.stroke(); ctx.fillText(`حد ضرر  ${stop.toFixed(this.digits)} (${rskPct.toFixed(2)}%)`, xa + 4, yS - 2); }
-    }
+  }
+
+  _tr(fa, en) { return this.lang === 'en' ? en : fa; }
+
+  // A line from p0 to p1 extended to the edge on the sides asked for (a ray always to the right).
+  _lineEnds(d, x0, y0, x1, y1, W, H) {
+    const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy) || 1, K = (W + H) * 4;
+    const right = d.type === 'ray' || d.extendRight, left = d.extendLeft;
+    return { ax: left ? x0 - dx / len * K : x0, ay: left ? y0 - dy / len * K : y0, bx: right ? x1 + dx / len * K : x1, by: right ? y1 + dy / len * K : y1 };
+  }
+
+  // A small filled label with white text, centred on x, above / below / on y.
+  _tag(ctx, x, y, text, bg, place) {
+    ctx.save(); ctx.setLineDash([]); ctx.font = '11px IRANYekanX, sans-serif';
+    const lines = String(text).split('\n'); let w = 0; lines.forEach((l) => { w = Math.max(w, ctx.measureText(l).width); });
+    const bw = w + 12, lh = 15, bh = lines.length * lh + 6;
+    const by = place === 'above' ? y - bh - 3 : place === 'below' ? y + 3 : y - bh / 2;
+    ctx.fillStyle = bg; ctx.globalAlpha = 0.95;
+    if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x - bw / 2, by, bw, bh, 3); ctx.fill(); } else ctx.fillRect(x - bw / 2, by, bw, bh);
+    ctx.globalAlpha = 1; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    lines.forEach((l, i) => { ctx.direction = dirOf(l); ctx.fillText(l, x, by + 3 + lh / 2 + i * lh); });
+    ctx.restore();
+  }
+
+  // Entry, stop and target of a long or short position. The target is the reader's (d.tp) once
+  // dragged or typed; until then two times the risk, as before.
+  _posPrices(d) {
+    const entry = d.p0.p, stop = d.p1.p, long = d.type === 'longshort';
+    const target = (d.tp != null && Number.isFinite(d.tp)) ? d.tp : (long ? entry + 2 * (entry - stop) : entry - 2 * (stop - entry));
+    return { entry, stop, target, long };
+  }
+  _posGeom(d) {
+    if (!d.p0 || !d.p1) return null;
+    const x0 = this._x(d.p0.t), x1 = this._x(d.p1.t); if (x0 == null || x1 == null) return null;
+    const g = this._posPrices(d); const xa = Math.min(x0, x1), xb = Math.max(Math.max(x0, x1), xa + 40);
+    return { xa, xb, yE: this._y(g.entry), yS: this._y(g.stop), yT: this._y(g.target), ...g };
+  }
+  /** The money side of a position: account, risk, quantity, reward and the reward/risk ratio. */
+  positionStats(d) {
+    const g = this._posPrices(d);
+    const account = Number.isFinite(d.account) ? d.account : 1000, lot = Number.isFinite(d.lot) && d.lot > 0 ? d.lot : 1;
+    const risk = Number.isFinite(d.risk) ? d.risk : 1;
+    const riskAmt = d.riskUnit === 'amount' ? risk : account * risk / 100;
+    const per = Math.abs(g.entry - g.stop);
+    const qty = per ? riskAmt / per / lot : 0;
+    const reward = qty * lot * Math.abs(g.target - g.entry);
+    return { ...g, account, lot, riskAmt, qty, reward, rr: per ? Math.abs(g.target - g.entry) / per : 0, tpPct: g.entry ? (g.target - g.entry) / g.entry * 100 : 0, slPct: g.entry ? (g.stop - g.entry) / g.entry * 100 : 0 };
+  }
+  // TradingView's long and short position: the profit zone in green, the risk zone in red, the
+  // target, entry and stop lines, and the labels with prices, percentages, amounts, the quantity
+  // and the reward/risk ratio.
+  _drawPosition(ctx, d) {
+    const g = this._posGeom(d); if (!g) return;
+    const { xa, xb, yE, yS, yT } = g; const st = this.positionStats(d);
+    ctx.save(); ctx.setLineDash([]); ctx.lineWidth = 1;
+    if (yT != null && yE != null) { ctx.fillStyle = 'rgba(8,153,129,0.2)'; ctx.fillRect(xa, Math.min(yT, yE), xb - xa, Math.abs(yE - yT)); }
+    if (yS != null && yE != null) { ctx.fillStyle = 'rgba(242,54,69,0.2)'; ctx.fillRect(xa, Math.min(yS, yE), xb - xa, Math.abs(yE - yS)); }
+    const line = (y, col) => { if (y == null) return; ctx.strokeStyle = col; ctx.beginPath(); ctx.moveTo(xa, y); ctx.lineTo(xb, y); ctx.stroke(); };
+    line(yT, '#089981'); line(yE, '#787b86'); line(yS, '#f23645');
+    // Figures are isolated left to right so a Persian label keeps «(+3.00%)» as written.
+    const cx = (xa + xb) / 2, iso = (v) => `\u2066${v}\u2069`, f = (v) => iso(this._fmtP(v));
+    const q = st.qty >= 100 ? st.qty.toFixed(0) : st.qty >= 1 ? st.qty.toFixed(2) : Number(st.qty.toPrecision(3)).toString();
+    const sgn = (v) => iso(`(${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(2)}%)`);
+    if (yT != null) this._tag(ctx, cx, yT, `${this._tr('هدف', 'Target')}: ${f(st.target)} ${sgn(st.tpPct)}  ${this._tr('مبلغ', 'Amount')}: ${iso(st.reward.toFixed(2))}`, '#089981', yT <= (yE ?? yT) ? 'above' : 'below');
+    if (yE != null) this._tag(ctx, cx, yE, `${this._tr('نسبت سود به ریسک', 'Risk/reward ratio')}: ${iso(st.rr.toFixed(2))}\n${this._tr('حجم', 'Qty')}: ${iso(q)}`, '#5d606b', 'center');
+    if (yS != null) this._tag(ctx, cx, yS, `${this._tr('حد ضرر', 'Stop')}: ${f(st.stop)} ${sgn(st.slPct)}  ${this._tr('مبلغ', 'Amount')}: ${iso(st.riskAmt.toFixed(2))}`, '#f23645', yS <= (yE ?? yS) ? 'above' : 'below');
+    ctx.restore();
   }
 }

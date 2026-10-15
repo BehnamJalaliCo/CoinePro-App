@@ -1,6 +1,7 @@
 // TradingView's keyboard shortcuts, from the old Pro-Chart table (engine/hotkeys.js): drawing tools
-// on Alt, intervals and chart types, scale switches, zoom and scroll, replay, snapshot. Undo, redo
-// and Delete are the drawing layer's own (drawingHost.ts).
+// on Alt, intervals and chart types, scale switches, zoom and scroll, replay, snapshot, the drawing
+// clipboard and selection. Undo, redo and Delete are the drawing layer's own (drawingHost.ts).
+// Every combination the help page lists has its handler here (or in drawingHost.ts).
 import { attachHotkeys } from '../engine/hotkeys.js';
 import { useDrawing } from '../state/drawing';
 import { usePrefs } from '../state/prefs';
@@ -17,10 +18,21 @@ import { usePage } from '../state/page';
 import { usePaper } from '../state/paper';
 import { useMarket } from '../state/market';
 import { copyChartImage } from './actions';
+import { useScript } from '../state/script';
+import { clearChart, copySelection, inDialog, pasteClip } from './DrawingActions';
+import { resetChartView } from './DrawingZoom';
 
 export interface HotkeyActions { indicators(): void; symbolSearch(): void; newAlert(): void; settings(): void }
 
+/** Shortcuts the drawing layer handles itself (drawingHost.ts): undo, redo and Delete. */
+export const LAYER_SHORTCUTS = ['undo', 'redo', 'deleteSel'];
+
 export function attachAppHotkeys(actions: HotkeyActions): () => void {
+  return attachHotkeys(appHotkeyHandlers(actions));
+}
+
+/** Every shortcut's handler; with LAYER_SHORTCUTS this covers every row of the help page. */
+export function appHotkeyHandlers(actions: HotkeyActions): Record<string, (e: KeyboardEvent) => void> {
   const tool = (id: string, group: string) => () => useDrawing.getState().setTool(id, group);
   const type = (t: ChartType) => () => usePrefs.getState().setChartType(t);
   const ts = () => useChartBus.getState().api?.timeScale();
@@ -43,6 +55,13 @@ export function attachAppHotkeys(actions: HotkeyActions): () => void {
   };
   const scroll = (bars: number) => () => { const s = ts(); if (s) s.scrollToPosition(s.scrollPosition() + bars, false); };
   const bus = () => useChartBus.getState();
+  // Arrow keys move the selected drawing first (1px, 8px with Shift), as on TradingView; with no
+  // drawing selected they scroll, zoom or step the replay as before.
+  const nudgeOr = (key: string, large: boolean, fallback?: () => void) => () => {
+    const l = bus().drawingLayer;
+    if (l && !inDialog() && l.selectedIndices().length && l.nudgeSelected(key, large)) return;
+    fallback?.();
+  };
   const setIv = (iv: string) => () => { const p = usePrefs.getState(); if (intervalsFor(p.symbol).includes(iv)) p.setInterval(iv); };
   // Shift+B / Shift+S: a paper trade at the live price, sized at about 1,000 USDT.
   const paperAtMarket = (side: 'long' | 'short') => {
@@ -53,16 +72,32 @@ export function attachAppHotkeys(actions: HotkeyActions): () => void {
     if (usePanels.getState().bottom !== 'paper') usePanels.getState().setBottom('paper');
   };
 
-  return attachHotkeys({
-    cursor: () => { if (useReplay.getState().selecting) useReplay.getState().exit(); else useDrawing.getState().setTool('cursor', 'cursors'); },
-    trend: tool('trend', 'lines'), hline: tool('hline', 'lines'), vline: tool('vline', 'lines'), ray: tool('ray', 'lines'),
+  return {
+    // Esc: out of the replay's bar picking, else the drawing in progress is cancelled, the selection
+    // cleared and the reader's cursor comes back.
+    cursor: () => {
+      if (useReplay.getState().selecting) { useReplay.getState().exit(); return; }
+      bus().drawingLayer?.cancelInteraction();
+      const d = useDrawing.getState();
+      if (d.tool !== d.cursor) d.resetTool();
+    },
+    trend: tool('trend', 'lines'), hline: tool('hline', 'lines'), hray: tool('hray', 'lines'), vline: tool('vline', 'lines'), crossline: tool('crossline', 'lines'),
     rect: tool('rect', 'shapes'), fib: tool('fib', 'fib'), text: tool('text', 'annotations'),
     magnet: () => useDrawing.getState().setMagnet(!useDrawing.getState().magnet),
+    stayDraw: () => useDrawing.getState().setStay(!useDrawing.getState().stay),
+    copySel: (e) => { if (copySelection()) e.preventDefault(); },
+    pasteSel: (e) => { if (pasteClip()) e.preventDefault(); },
+    selectAll: (e) => { const l = bus().drawingLayer; if (l && l.getDrawings().length) { e.preventDefault(); l.selectAll(); } },
+    clearChart: () => clearChart(),
+    resetChart: () => resetChartView(),
     hideAll: () => useDrawing.getState().setHidden(!useDrawing.getState().hidden),
     removeAll: () => useDrawing.getState().clearAll(),
     tfNext: stepInterval(1), tfPrev: stepInterval(-1),
     typeCandles: type('candles'), typeBars: type('bars'), typeLine: type('line'), typeArea: type('area'), typeHeikin: type('heikin'),
-    scrollLeft: scroll(-10), scrollRight: scroll(10), zoomIn: zoom(0.8), zoomOut: zoom(1.25),
+    scrollLeft: nudgeOr('ArrowLeft', false, scroll(-10)), scrollRight: nudgeOr('ArrowRight', false, scroll(10)),
+    zoomIn: (e) => (e.key === 'ArrowUp' ? nudgeOr('ArrowUp', false, zoom(0.8))() : zoom(0.8)()),
+    zoomOut: (e) => (e.key === 'ArrowDown' ? nudgeOr('ArrowDown', false, zoom(1.25))() : zoom(1.25)()),
+    nudgeUpFast: nudgeOr('ArrowUp', true), nudgeDownFast: nudgeOr('ArrowDown', true),
     scrollEnd: () => ts()?.scrollToRealTime(), scrollHome: () => { const s = ts(); if (s) s.setVisibleLogicalRange({ from: 0, to: 120 }); },
     fit: () => ts()?.fitContent(),
     resetScale: () => bus().api?.priceScale('right').applyOptions({ autoScale: true }),
@@ -77,8 +112,8 @@ export function attachAppHotkeys(actions: HotkeyActions): () => void {
     settings: () => actions.settings(),
     replayToggle: () => { const r = useReplay.getState(); if (r.state?.on || r.selecting) r.exit(); else r.select(); },
     replayPlay: () => { const r = useReplay.getState(); if (r.state?.on) r.controller.toggle(); },
-    replayStep: () => { const r = useReplay.getState(); if (r.state?.on) r.controller.step(); },
-    replayStepBack: () => { const r = useReplay.getState(); if (r.state?.on) r.controller.stepBack(); },
+    replayStep: nudgeOr('ArrowRight', true, () => { const r = useReplay.getState(); if (r.state?.on) r.controller.step(); }),
+    replayStepBack: nudgeOr('ArrowLeft', true, () => { const r = useReplay.getState(); if (r.state?.on) r.controller.stepBack(); }),
     screenshot: () => { void takeSnapshot(); },
     saveLayout: () => useLayouts.getState().save(),
     invertScale: () => bus().setInvert(!bus().invert),
@@ -91,5 +126,7 @@ export function attachAppHotkeys(actions: HotkeyActions): () => void {
     buy: () => paperAtMarket('long'),
     sell: () => paperAtMarket('short'),
     copyImage: () => { void copyChartImage(); },
-  });
+    // In the script editor Ctrl+Shift+S keeps the script (it is kept on every change; this makes it explicit).
+    saveScript: () => { const s = useScript.getState(); s.setSource(s.source); },
+  };
 }

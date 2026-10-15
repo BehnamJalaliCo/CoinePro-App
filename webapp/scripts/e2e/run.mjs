@@ -727,7 +727,7 @@ await test('drawing style bar: colour, width, style, lock, clone, delete', async
   await env.page.click('.dsb-pop .dsb-line >> nth=1');
   const d = await pc(env.page, () => window.__pc.useChartBus.getState().drawingLayer.getDrawings()[0]);
   expect(d.width === 4 && d.lineStyle === 'dashed', `style ${JSON.stringify(d)}`);
-  await env.page.click('.draw-style-bar [title="clone"]');
+  await env.page.click('.draw-style-bar [data-act="clone"]');
   expect(await pc(env.page, () => window.__pc.useChartBus.getState().drawingLayer.getDrawings().length) === 2, 'clone');
   await env.page.click('.draw-style-bar [title="حذف"]');
   expect(await pc(env.page, () => window.__pc.useChartBus.getState().drawingLayer.getDrawings().length) === 1, 'delete');
