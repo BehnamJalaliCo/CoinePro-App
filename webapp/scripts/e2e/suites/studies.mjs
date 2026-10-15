@@ -384,6 +384,12 @@ export default async function ({ test, open, ready, pc, expect }) {
     await env.page.waitForFunction(() => document.querySelectorAll('.tl-tag').length === 3, null, { timeout: 3000 });
     // Drag the stop loss down by its tag.
     const tag = await settled(env.page, env.page.locator('.tl-tag', { hasText: 'SL' }));
+    // The crosshair on the tag's row first: the axis «+» would sit on the tag there, and must not
+    // (it once swallowed this drag on CI).
+    await env.page.mouse.move(tag.x - 60, tag.y + 10);
+    await env.page.waitForSelector('.axis-plus', { timeout: 3000 });
+    const plus = await env.page.locator('.axis-plus').boundingBox();
+    expect(plus.x + plus.width <= tag.x + 1, `the axis + (${JSON.stringify(plus)}) covers the SL tag (${JSON.stringify(tag)})`);
     await env.page.mouse.move(tag.x + 8, tag.y + 10); await env.page.mouse.down(); await env.page.mouse.move(tag.x + 8, tag.y + 50, { steps: 4 }); await env.page.mouse.up();
     const sl1 = await R(() => window.__pc.useReplay.getState().trades[0].sl);
     expect(sl1 < tr[0].sl, `drag ${tr[0].sl} → ${sl1}`);

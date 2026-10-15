@@ -18,6 +18,33 @@ import { addHorizontalLine, addPosition, addTextNote, offerOrderTicket, openAler
 import { openChartSettings } from '../shell/SettingsDialog';
 import './chart-x.css';
 
+const TAGS = '.tl-tag, .ltl-tag, .alert-handle';
+
+/**
+ * Where the «+» goes on row y: beside the axis, or just past a line's draggable tag on that row (a
+ * practice or paper trade's, a live order's, an alert's), so the tag can still be grabbed and the
+ * «+» still offers that price. Measured on the page at render, never inside the chart's own events.
+ */
+function besideTags(host: HTMLElement | null, x: number, y: number, leftSide: boolean): number {
+  if (!host) return x;
+  const box = host.getBoundingClientRect();
+  const top = box.top + y - 9;
+  let at = x;
+  for (let pass = 0; pass < 4; pass++) {
+    let moved = false;
+    for (const tag of host.querySelectorAll(TAGS)) {
+      const r = tag.getBoundingClientRect();
+      const left = box.left + at;
+      if (r.width && left < r.right + 2 && left + 18 > r.left - 2 && top < r.bottom + 2 && top + 18 > r.top - 2) {
+        at = leftSide ? r.right - box.left + 4 : r.left - box.left - 22;
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  return at;
+}
+
 export const AxisPlus = memo(function AxisPlus({ api, series, digits, onAlertAt }: { api: IChartApi | null; series: ISeriesApi<SeriesType> | null; digits: number; onAlertAt?(price: number | null): void }) {
   const L = useL();
   const on = useChartSettings((s) => s.plusButton);
@@ -41,8 +68,9 @@ export const AxisPlus = memo(function AxisPlus({ api, series, digits, onAlertAt 
   if (!api || !on || (!at && !menu)) return null;
   const leftW = api.priceScale('left').width();
   // Beside the price axis: at the pane's right edge, or its left edge when the scale is on the left.
-  const x = leftSide ? leftW + 4 : leftW + api.timeScale().width() - 22;
   const y = menu ? null : at?.y;
+  const edge = leftSide ? leftW + 4 : leftW + api.timeScale().width() - 22;
+  const x = y != null ? besideTags(api.chartElement().closest<HTMLElement>('.ws-chart'), edge, y, leftSide) : edge;
   const px = menu?.price ?? at?.price ?? 0;
   const label = formatPrice(px, digits);
   const last = useMarket.getState().tickers[symbol]?.last ?? px;
