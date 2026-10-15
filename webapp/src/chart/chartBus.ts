@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import type { IChartApi } from 'lightweight-charts';
 import type { Candle } from '../data/types';
+import type { DrawingLayer } from '../engine/drawings.js';
 
 export type ScaleMode = 'normal' | 'log' | 'percent';
 
@@ -15,6 +16,12 @@ interface ChartBusState {
   autoScale: boolean;
   /** Seconds of history to show once the next load finishes (a time-bar range button). */
   pendingSpan: number | null;
+  drawingLayer: DrawingLayer | null;
+  canUndo: boolean;
+  canRedo: boolean;
+  drawingCount: number;
+  setDrawingLayer(layer: DrawingLayer | null): void;
+  bumpDrawings(canUndo: boolean, canRedo: boolean, count: number): void;
   setApi(api: IChartApi | null): void;
   setBars(bars: Candle[]): void;
   setHover(bar: Candle | null): void;
@@ -30,6 +37,12 @@ export const useChartBus = create<ChartBusState>((set) => ({
   scale: 'normal',
   autoScale: true,
   pendingSpan: null,
+  drawingLayer: null,
+  canUndo: false,
+  canRedo: false,
+  drawingCount: 0,
+  setDrawingLayer: (drawingLayer) => set({ drawingLayer }),
+  bumpDrawings: (canUndo, canRedo, drawingCount) => set({ canUndo, canRedo, drawingCount }),
   setApi: (api) => set({ api }),
   setBars: (bars) => set({ bars }),
   setHover: (hover) => set({ hover }),

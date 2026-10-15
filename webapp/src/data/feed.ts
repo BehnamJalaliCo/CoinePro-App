@@ -12,8 +12,8 @@ const monthLike = (iv: string) => iv === '1W' || iv === '1M';
 
 export const feed: ChartFeed = {
   async history(symbol, interval, before) {
-    setFocus(symbol);
-    return (await loadHistory(symbol, interval, before)).bars;
+    if (!before) setFocus(symbol);
+    return loadHistory(symbol, interval, before, before ? 'bulk' : 'reader');
   },
 
   live(symbol, interval, from, onBar) {

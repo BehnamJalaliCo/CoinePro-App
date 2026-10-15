@@ -3,13 +3,14 @@
 // is guarded and the app works without it.
 import { create } from 'zustand';
 import { en, fa, type StringKey } from '../i18n/strings';
+import type { ChartType } from '../chart/chartTypes';
 
 export type Theme = 'system' | 'light' | 'dark';
 export type Lang = 'fa' | 'en';
 
 const KEY = 'pc.prefs.v1';
 
-interface Stored { theme: Theme; lang: Lang; symbol: string; interval: string }
+interface Stored { theme: Theme; lang: Lang; symbol: string; interval: string; chartType: ChartType }
 
 function read(): Partial<Stored> {
   try {
@@ -29,24 +30,27 @@ interface PrefsState extends Stored {
   setLang(lang: Lang): void;
   setSymbol(symbol: string): void;
   setInterval(interval: string): void;
+  setChartType(chartType: ChartType): void;
 }
 
 const initial = read();
 
 export const usePrefs = create<PrefsState>((set, get) => {
   const persist = () => {
-    const { theme, lang, symbol, interval } = get();
-    write({ theme, lang, symbol, interval });
+    const { theme, lang, symbol, interval, chartType } = get();
+    write({ theme, lang, symbol, interval, chartType });
   };
   return {
     theme: initial.theme ?? 'system',
     lang: initial.lang ?? 'fa',
     symbol: initial.symbol ?? 'BTCUSDT',
     interval: initial.interval ?? '60',
+    chartType: initial.chartType ?? 'candles',
     setTheme: (theme) => { set({ theme }); persist(); },
     setLang: (lang) => { set({ lang }); persist(); },
     setSymbol: (symbol) => { set({ symbol }); persist(); },
     setInterval: (interval) => { set({ interval }); persist(); },
+    setChartType: (chartType) => { set({ chartType }); persist(); },
   };
 });
 

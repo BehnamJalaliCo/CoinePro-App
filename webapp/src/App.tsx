@@ -7,6 +7,9 @@ import { TimeBar } from './shell/TimeBar';
 import { BottomPanel } from './shell/BottomPanel';
 import { SymbolSearch } from './shell/SymbolSearch';
 import { SignIn } from './shell/SignIn';
+import { IndicatorsDialog } from './shell/IndicatorsDialog';
+import { StudySettings } from './shell/StudySettings';
+import { useCompare } from './state/compare';
 import { ChartView } from './chart/ChartView';
 import { feed } from './data/feed';
 import { intervalsFor } from './data/candles';
@@ -26,6 +29,10 @@ export function App() {
   const inst = useMarket((s) => s.instruments[symbol]) ?? instrumentOf(symbol, tk?.last);
   const [search, setSearch] = useState<string | null>(null);
   const [signIn, setSignIn] = useState(false);
+  const [indicators, setIndicators] = useState(false);
+  const [studyUid, setStudyUid] = useState<string | null>(null);
+  const [comparing, setComparing] = useState(false);
+  const addCompare = useCompare((s) => s.add);
   useRoute();
 
   useEffect(() => { applyTheme(theme); }, [theme]);
@@ -46,23 +53,23 @@ export function App() {
   // Typing a letter anywhere opens the symbol search with it, as on TradingView.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (search !== null || signIn || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (search !== null || signIn || indicators || studyUid || comparing || e.ctrlKey || e.metaKey || e.altKey) return;
       const el = e.target as HTMLElement;
       if (el.closest('input, textarea, [contenteditable]')) return;
       if (/^[a-zA-Z0-9]$/.test(e.key)) { e.preventDefault(); setSearch(e.key.toUpperCase()); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [search, signIn]);
+  }, [search, signIn, indicators, studyUid, comparing]);
 
   const displayName = (lang === 'fa' ? inst.nameFa : inst.nameEn) ?? symbol;
 
   return (
     <div className="ws">
-      <TopBar onSymbolSearch={() => setSearch('')} onIndicators={() => undefined} onSignIn={() => setSignIn(true)} />
+      <TopBar onSymbolSearch={() => setSearch('')} onIndicators={() => setIndicators(true)} onSignIn={() => setSignIn(true)} onCompare={() => setComparing(true)} />
       <ToolRail />
       <main className="ws-main">
-        <ChartView feed={feed} digits={inst.digits} displayName={displayName} />
+        <ChartView feed={feed} digits={inst.digits} displayName={displayName} onStudySettings={setStudyUid} />
         <TimeBar supported={(iv) => supported.includes(iv)} />
         <BottomPanel />
       </main>
@@ -70,6 +77,9 @@ export function App() {
       <WidgetBar />
       {search !== null ? <SymbolSearch initial={search} onClose={() => setSearch(null)} /> : null}
       {signIn ? <SignIn onClose={() => setSignIn(false)} /> : null}
+      {indicators ? <IndicatorsDialog onClose={() => setIndicators(false)} /> : null}
+      {studyUid ? <StudySettings uid={studyUid} onClose={() => setStudyUid(null)} /> : null}
+      {comparing ? <SymbolSearch onClose={() => setComparing(false)} onPick={(s) => addCompare(s)} /> : null}
     </div>
   );
 }
