@@ -10,7 +10,22 @@ export type Lang = 'fa' | 'en';
 
 const KEY = 'pc.prefs.v1';
 
-interface Stored { theme: Theme; lang: Lang; symbol: string; interval: string; chartType: ChartType; timezone: string }
+interface Stored {
+  theme: Theme; lang: Lang; symbol: string; interval: string; chartType: ChartType; timezone: string;
+  /** The intervals shown as buttons in the top bar (TradingView's starred ones). */
+  favIntervals: string[];
+  /** Intervals the reader added (TradingView's "Add custom interval"). */
+  customIntervals: string[];
+  /** Chart types shown as buttons beside the type menu. */
+  favChartTypes: ChartType[];
+  /** The time zone follows the symbol's exchange (TradingView's "Exchange"). */
+  tzExchange: boolean;
+  /** Regular trading hours only, where a symbol has them (US indices). */
+  session: 'regular' | 'extended';
+  /** Trading sessions shaded on intraday charts (sydney, tokyo, london, newyork), and their overlaps. */
+  shadedSessions: string[];
+  sessionOverlaps: boolean;
+}
 
 function read(): Partial<Stored> {
   try {
@@ -32,6 +47,13 @@ interface PrefsState extends Stored {
   setInterval(interval: string): void;
   setChartType(chartType: ChartType): void;
   setTimezone(tz: string): void;
+  setFavIntervals(list: string[]): void;
+  setCustomIntervals(list: string[]): void;
+  setFavChartTypes(list: ChartType[]): void;
+  setTzExchange(on: boolean): void;
+  setSession(s: 'regular' | 'extended'): void;
+  setShadedSessions(list: string[]): void;
+  setSessionOverlaps(on: boolean): void;
 }
 
 const initial = read();
@@ -42,8 +64,8 @@ function localZone(): string {
 
 export const usePrefs = create<PrefsState>((set, get) => {
   const persist = () => {
-    const { theme, lang, symbol, interval, chartType, timezone } = get();
-    write({ theme, lang, symbol, interval, chartType, timezone });
+    const { theme, lang, symbol, interval, chartType, timezone, favIntervals, customIntervals, favChartTypes, tzExchange, session, shadedSessions, sessionOverlaps } = get();
+    write({ theme, lang, symbol, interval, chartType, timezone, favIntervals, customIntervals, favChartTypes, tzExchange, session, shadedSessions, sessionOverlaps });
   };
   return {
     theme: initial.theme ?? 'system',
@@ -52,12 +74,26 @@ export const usePrefs = create<PrefsState>((set, get) => {
     interval: initial.interval ?? '60',
     chartType: initial.chartType ?? 'candles',
     timezone: initial.timezone ?? localZone(),
+    favIntervals: Array.isArray(initial.favIntervals) ? initial.favIntervals : ['1', '5', '15', '60', '240', '1D'],
+    customIntervals: Array.isArray(initial.customIntervals) ? initial.customIntervals : [],
+    favChartTypes: Array.isArray(initial.favChartTypes) ? initial.favChartTypes : [],
+    tzExchange: initial.tzExchange ?? false,
+    session: initial.session === 'regular' ? 'regular' : 'extended',
+    shadedSessions: Array.isArray(initial.shadedSessions) ? initial.shadedSessions : [],
+    sessionOverlaps: initial.sessionOverlaps ?? true,
     setTheme: (theme) => { set({ theme }); persist(); },
     setLang: (lang) => { set({ lang }); persist(); },
     setSymbol: (symbol) => { set({ symbol }); persist(); },
     setInterval: (interval) => { set({ interval }); persist(); },
     setChartType: (chartType) => { set({ chartType }); persist(); },
     setTimezone: (timezone) => { set({ timezone }); persist(); },
+    setFavIntervals: (favIntervals) => { set({ favIntervals }); persist(); },
+    setCustomIntervals: (customIntervals) => { set({ customIntervals }); persist(); },
+    setFavChartTypes: (favChartTypes) => { set({ favChartTypes }); persist(); },
+    setTzExchange: (tzExchange) => { set({ tzExchange }); persist(); },
+    setSession: (session) => { set({ session }); persist(); },
+    setShadedSessions: (shadedSessions) => { set({ shadedSessions }); persist(); },
+    setSessionOverlaps: (sessionOverlaps) => { set({ sessionOverlaps }); persist(); },
   };
 });
 

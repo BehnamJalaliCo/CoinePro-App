@@ -108,6 +108,8 @@ interface AlertsState {
 }
 
 function serverPath(symbol: string): string | null {
+  // A spread (BTCUSDT/ETHUSDT) is watched in this browser only: no backend knows it.
+  if (/[-+*/() ]/.test(symbol)) return null;
   const backend = backendOf(symbol);
   if (!useSession.getState().sessions[backend]) return null;
   if (backend === 'coineprofx' && !FX_SYMBOLS.includes(symbol)) return null;

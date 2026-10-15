@@ -368,6 +368,8 @@ export default async function ({ test, open, ready, pc, expect }) {
     await page.waitForFunction(() => window.__pc.usePaper.getState().rules.leverage === 10, null, { timeout: 5000 }).catch(() => {});
     expect(await state(page, () => window.__pc.usePaper.getState().rules.leverage) === 10, 'leverage');
     await page.click('.op-types button >> nth=1');
+    // The limit price fills in from the last price a moment after the type switch.
+    await page.waitForFunction(() => Number(document.querySelector('.op-field input')?.value) > 0, null, { timeout: 5000 });
     const px = Number(await page.inputValue('.op-field >> nth=0 >> input'));
     const tpS = String(Math.round(px * 1.05)), slS = String(Math.round(px * 0.95));
     await page.fill('.op-bracket input >> nth=0', tpS);

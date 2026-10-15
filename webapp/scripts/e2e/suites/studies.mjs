@@ -245,6 +245,8 @@ export default async function ({ test, open, ready, pc, expect }) {
     await env.page.click('.ns-btn >> nth=1');
     await pc(env.page, () => window.__pc.useScript.getState().setSource('indicator("T")\nlen = input.int(10, "Length")\nplot(ta.rsi(close, len), "RSI", color.purple)'));
     await env.page.keyboard.press('Control+s');
+    // Outside the editor Ctrl+S is the layout's (it asks for a name on a new layout); close that.
+    if (await env.page.waitForSelector('.scrim', { timeout: 1500 }).catch(() => null)) { await env.page.keyboard.press('Escape'); await env.page.waitForSelector('.scrim', { state: 'detached', timeout: 3000 }); }
     await env.page.click('.ce-ta');
     await env.page.keyboard.press('Control+s');
     const lib = await pc(env.page, () => window.__pc.useScript.getState().lib);

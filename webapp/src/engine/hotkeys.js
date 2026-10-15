@@ -214,6 +214,8 @@ export function attachHotkeys(handlers, opts = {}) {
 
   const onKeyDown = (e) => {
     if (!isEnabled()) return;
+    // A key a field already handled (the script editor's own Ctrl+S, say) is not the chart's.
+    if (e.defaultPrevented) return;
     const eventTarget = e.target || document.activeElement;
     if (ownsNativeSpaceActivation(eventTarget, e)) return;
     const typing = isTypingTarget(eventTarget);

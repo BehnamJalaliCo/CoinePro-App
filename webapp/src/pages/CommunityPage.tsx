@@ -4,6 +4,8 @@ import { usePage } from '../state/page';
 import { CATEGORIES, CATEGORY_EN, REACTIONS, community, communityImage, listOf, readPost, type Post } from '../data/community';
 import { faAgo } from '../i18n/time';
 import { State, Tabs, dateTime, errorText, useL, useLoad } from './kit';
+import type { PageProps } from './registry';
+import { takePendingPost } from '../shell/publish';
 
 // The community (feature/community): the feed by category with search, posts with likes and
 // reactions, a name to post under, the composer with a picture, and the leaderboard. Anonymous:
@@ -30,12 +32,13 @@ export function Reactions({ post, onChange }: { post: Post; onChange(p: Post): v
   );
 }
 
-export default function CommunityPage() {
+export default function CommunityPage({ param }: Partial<PageProps> = {}) {
   const L = useL();
   const t = useT();
   const lang = usePrefs((s) => s.lang);
   const open = usePage((s) => s.open);
-  const [tab, setTab] = useState<'feed' | 'compose' | 'leaders'>('feed');
+  // «Publish idea» from the top bar opens the composer (community/post… is the thread page).
+  const [tab, setTab] = useState<'feed' | 'compose' | 'leaders'>(param === 'compose' ? 'compose' : 'feed');
   const [cat, setCat] = useState('');
   const [q, setQ] = useState('');
   const [search, setSearch] = useState('');
@@ -87,9 +90,10 @@ function Compose({ me, onDone }: { me: ReturnType<typeof useMe>; onDone(): void 
   const t = useT();
   const lang = usePrefs((s) => s.lang);
   const [name, setName] = useState('');
-  const [content, setContent] = useState('');
-  const [category, setCategory] = useState<string>('عمومی');
-  const [image, setImage] = useState<string | null>(null);
+  const [pending] = useState(takePendingPost);
+  const [content, setContent] = useState(pending?.text ?? '');
+  const [category, setCategory] = useState<string>(pending ? 'تحلیل' : 'عمومی');
+  const [image, setImage] = useState<string | null>(pending?.image ?? null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 

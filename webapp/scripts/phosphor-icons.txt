@@ -155,3 +155,14 @@ scales
 tree-structure
 caret-line-left
 caret-line-right
+function
+link
+image
+lightbulb
+sparkle
+clock-counter-clockwise
+file-plus
+star-four
+monitor
+check-square
+arrows-clockwise

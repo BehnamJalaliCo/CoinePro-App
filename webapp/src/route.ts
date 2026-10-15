@@ -1,43 +1,54 @@
 // The address follows the open chart: <base>SYMBOL/INTERVAL (pro-chart.com/next/BTCUSDT/4h), and a
 // link in that form, or ?symbol=&tf= as the current terminal writes, opens straight onto the chart.
+// A spread or formula travels encoded in the same place: /next/BTCUSDT%2FETHUSDT/1h.
 import { useEffect } from 'react';
 import { usePrefs } from './state/prefs';
-import { INTERVALS, intervalLabel } from './data/intervals';
+import { intervalLabel, parseIntervalInput } from './data/intervals';
 import { usePage } from './state/page';
 import { pageById, pageFromPath } from './pages/registry';
+import { normaliseExpression } from './data/symbols';
 
 const BASE = import.meta.env.BASE_URL;
 const SYMBOL_RE = /^[A-Z0-9]{2,12}$/;
 
-/** '4h', '240', 'H4', '15m', 'M15', '1d', 'D', '1W', 'W1', '1M' (month) → an interval id. */
+/** '4h', '240', 'H4', '15m', 'M15', '1d', 'D', '1W', 'W1', '1M' (month), '45m', '3M' → an interval id. */
 export function parseInterval(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const s = raw.trim();
-  if (INTERVALS.some((i) => i.id === s)) return s;
-  const byLabel = INTERVALS.find((i) => i.label.toLowerCase() === s.toLowerCase() && !(s === '1m' && i.id === '1M'));
-  if (s === '1M') return '1M';
-  if (byLabel) return byLabel.id;
-  const m = /^([MHDW])(\d{1,3})$/i.exec(s);
-  if (m) {
-    const n = Number(m[2]);
-    const unit = m[1]!.toUpperCase();
-    const id = unit === 'M' ? String(n) : unit === 'H' ? String(n * 60) : unit === 'D' ? '1D' : '1W';
-    return INTERVALS.some((i) => i.id === id) ? id : null;
+  return parseIntervalInput(raw);
+}
+
+const decode = (s: string) => { try { return decodeURIComponent(s); } catch { return s; } };
+
+/** A symbol from the address: a plain ticker, or a spread / formula of plain tickers. */
+export function readSymbol(raw: string): string | null {
+  const s = decode(raw).toUpperCase().replace(/\s+/g, '');
+  if (SYMBOL_RE.test(s.replace('/', '')) && !/[-+*()]/.test(s) && s.split('/').length <= 2) {
+    const plain = s.replace('/', '');
+    // 'BTC/USDT' and 'EUR/USD' are one instrument written with a slash, not a ratio.
+    if (s.includes('/') && s.split('/').every((x) => x.length >= 2 && x.length <= 5)) return plain;
+    if (!s.includes('/')) return plain;
   }
-  if (/^d$/i.test(s)) return '1D';
-  if (/^w$/i.test(s)) return '1W';
-  return null;
+  return normaliseExpression(s);
+}
+
+/** The address segment for a symbol: a spread is encoded so its slash stays one segment. */
+export function symbolSegment(symbol: string): string {
+  return SYMBOL_RE.test(symbol) ? symbol : encodeURIComponent(symbol);
 }
 
 export function readAddress(loc: Location = window.location): { symbol: string | null; interval: string | null } {
   const rest = loc.pathname.startsWith(BASE) ? loc.pathname.slice(BASE.length) : '';
   const [seg1, seg2] = rest.split('/').filter(Boolean);
   const q = new URLSearchParams(loc.search);
-  const symbol = (q.get('symbol') ?? seg1 ?? '').toUpperCase().replace('/', '');
+  const raw = q.get('symbol') ?? seg1 ?? '';
   return {
-    symbol: SYMBOL_RE.test(symbol) ? symbol : null,
-    interval: parseInterval(q.get('tf') ?? q.get('interval') ?? seg2 ?? null),
+    symbol: raw ? readSymbol(raw) : null,
+    interval: parseInterval(q.get('tf') ?? q.get('interval') ?? (seg2 ? decode(seg2) : null)),
   };
+}
+
+/** The address of a chart, for a link that opens it. */
+export function chartPath(symbol: string, interval: string): string {
+  return `${BASE}${symbolSegment(symbol)}/${intervalLabel(interval)}`;
 }
 
 /** Applies the address once at start, then keeps it in step with the chart or the open page. */
@@ -49,7 +60,7 @@ export function useRoute(): void {
   useEffect(() => {
     const path = page
       ? `${BASE}${pageById(page).path}${param ? `/${encodeURIComponent(param)}` : ''}`
-      : `${BASE}${symbol}/${intervalLabel(interval)}`;
+      : chartPath(symbol, interval);
     // The reset page keeps its token in the query until the page has read it.
     const keepQuery = page === 'reset';
     if (window.location.pathname !== path || (window.location.search && !keepQuery)) {

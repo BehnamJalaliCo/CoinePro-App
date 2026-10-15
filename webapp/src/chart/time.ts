@@ -2,6 +2,7 @@
 // names (figures are Latin, as on TradingView). Daily and longer bars keep their UTC date.
 // TradingView's «Scales and lines → Time scale» choices: day of week, date format, 12/24 hours.
 import type { DeepPartial, TimeChartOptions } from 'lightweight-charts';
+import { intervalSeconds } from '../data/intervals';
 
 export type DateFormat = 'dd MMM \'yy' | 'MMM dd, yyyy' | 'yyyy-MM-dd' | 'dd/MM/yyyy' | 'MM/dd/yyyy';
 export interface TimeLook { hour12?: boolean; dayOfWeek?: boolean; dateFormat?: DateFormat }
@@ -42,13 +43,13 @@ export function clockText(t: number, tz: string, hour12 = false): string {
 
 /** The bar's time as the crosshair label writes it: the date, and the clock on intraday bars. */
 export function barTimeText(t: number, timezone: string, interval: string, look: TimeLook = {}): string {
-  const daily = ['1D', '1W', '1M'].includes(interval);
+  const daily = intervalSeconds(interval) >= 86400;
   const tz = daily ? 'UTC' : timezone;
   return daily ? dateText(t, tz, look) : `${dateText(t, tz, look)}  ${clockText(t, tz, look.hour12)}`;
 }
 
 export function timeOptions(timezone: string, interval: string, look: TimeLook = {}): DeepPartial<TimeChartOptions> {
-  const daily = ['1D', '1W', '1M'].includes(interval);
+  const daily = intervalSeconds(interval) >= 86400;
   const tz = daily ? 'UTC' : zoneOf(timezone);
   const time = safeFormat(tz, { hour: '2-digit', minute: '2-digit', hour12: Boolean(look.hour12) }, look.hour12 ? 'en-US' : 'en-GB');
   const day = safeFormat(tz, { day: 'numeric' });

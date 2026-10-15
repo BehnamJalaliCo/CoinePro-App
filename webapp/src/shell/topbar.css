@@ -1,0 +1,327 @@
+/*
+ * The top bar and what opens from it — the interval menu and box, the chart-type stars, the
+ * multi-chart layout menu, the layout menu and its dialogs, the snapshot menu, quick search, the
+ * symbol search, the phone's "⋯" sheet — the time bar's menus, the main menu's switches, and the
+ * chart grid with its other charts. TradingView's measurements: 32px menu rows, 14px menu text,
+ * 11px group heads; gold only marks what is selected.
+ */
+
+/* Persian inside a right-to-left menu or dialog starts at the right. */
+:is(.tvm, .ss, .quick, .tv-small, .open-layouts, .sheet, .drawer, .iv-box, .pc-toast)[dir='rtl'] .fa,
+:is(.tvm, .ss, .quick, .tv-small, .open-layouts, .sheet, .drawer, .iv-box) [dir='rtl'] .fa,
+.pc-toast.fa { text-align: start; }
+
+/* ── Top bar ─────────────────────────────────────────────────────────────────────────────────── */
+/* Buttons keep their size; what does not fit folds into the "⋯" sheet (below), never overlaps. */
+.ws-top > :not(.ws-spacer) { flex-shrink: 0; }
+.ws-top > .sep { margin: 0 3px; }
+.iv-group { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+.ib.iv-caret { min-width: 22px; padding: 0 2px; }
+.ws-top .ib.open, .ws-timebar .ib.open { background: var(--bg-active); }
+.ib.type-btn, .ib.fav-type { min-width: 34px; }
+.alert-btn { position: relative; }
+.alert-btn .badge {
+  position: absolute; top: 3px; inset-inline-start: 19px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 8px;
+  background: var(--gold-strong); color: #1A1406; font-size: 10px; font-weight: 700; line-height: 15px; text-align: center;
+  box-shadow: 0 0 0 1.5px var(--bg);
+}
+.grid-btn .grid-glyph { width: 22px; height: 18px; color: var(--text); }
+.save-group { display: inline-flex; align-items: center; gap: 0; flex: none; }
+.layout-name { max-width: 190px; gap: 4px; padding: 0 6px 0 8px; }
+.layout-name .label { overflow: hidden; text-overflow: ellipsis; color: var(--text-2); font-weight: 500; }
+.layout-name:hover .label { color: var(--text); }
+.save-btn .label { font-weight: 500; color: var(--text-3); }
+.save-btn.dirty .label { color: var(--text); }
+.trade-btn {
+  height: 30px; padding: 0 12px; margin-inline-end: 6px; border-radius: 15px; border: 1px solid var(--line-strong);
+  color: var(--text); font-weight: 500; white-space: nowrap; flex: none;
+}
+.trade-btn:hover { background: var(--bg-hover); }
+.logo-expr {
+  display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; flex: none;
+  width: 20px; height: 20px; background: var(--bg-active); color: var(--text-2);
+}
+.logo-expr .icon { width: 70%; height: 70%; }
+.search-row .logo-expr { width: 24px; height: 24px; }
+
+/* Narrower desktops: TradingView drops the button labels first, then the layout's name. */
+/* …and below 1100px the rest goes into the "⋯" sheet, as on a phone. */
+.ws-top .more-btn { display: none; }
+@media (max-width: 1430px) { .ws-top .tb-lbl { display: none; } }
+@media (max-width: 1290px) { .ws-top .tb-b { display: none !important; } .ws-top .more-btn { display: inline-flex; } .ws-top .layout-name { max-width: 110px; } }
+@media (max-width: 1150px) { .ws-top .tb-c { display: none !important; } }
+@media (max-width: 860px) { .ws-top .tb-d { display: none !important; } }
+
+/* ── Menus (TradingView's rows) ─────────────────────────────────────────────────────────────── */
+.tvm { padding: 6px 0; }
+.tvm .menu-item { height: 32px; padding: 0 12px; font-size: 14px; gap: 10px; text-align: start; }
+.tvm .menu-item .icon.sm { color: var(--text-2); }
+.tvm .menu-item.on .icon.sm { color: inherit; }
+.tvm .menu-item kbd { margin-inline-start: auto; font: inherit; font-size: 12px; color: var(--text-3); border: 0; background: none; padding: 0; }
+.tvm .menu-title { padding: 10px 12px 4px; font-size: 11px; font-weight: 500; }
+.tvm .menu-sep { margin: 6px 0; }
+.tvm .menu-item:disabled { opacity: 0.45; cursor: default; background: none; }
+.menu-note { margin: 0; padding: 2px 12px 6px; font-size: 12px; color: var(--text-3); max-width: 280px; }
+
+/* Switches, as TradingView's: a dark track when on (light in dark mode). */
+.switch { position: relative; flex: none; width: 34px; height: 18px; border-radius: 9px; background: var(--line-strong); margin-inline-start: auto; transition: background 0.15s; }
+.switch i { position: absolute; top: 2px; inset-inline-start: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--bg-elevated); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); transition: inset-inline-start 0.15s; }
+.switch.on { background: var(--text); }
+.switch.on i { inset-inline-start: 18px; background: var(--bg); }
+.toggle-row { cursor: pointer; }
+.toggle-row .hint-i { display: inline-flex; color: var(--text-3); }
+.toggle-row kbd { margin-inline-start: auto; }
+.toggle-row kbd + .switch { margin-inline-start: 10px; }
+.menu-item.mcheck .tick { width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid var(--line-strong); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.menu-item.mcheck .tick.on { background: var(--text); border-color: var(--text); color: var(--bg); }
+.menu-item.mcheck .tick .icon { width: 14px; height: 14px; }
+
+/* Interval menu */
+.iv-menu.tvm { min-width: 210px; padding-top: 4px; }
+.iv-menu .iv-add { height: 40px; border-bottom: 1px solid var(--line); margin-bottom: 2px; }
+.iv-search { display: flex; align-items: center; gap: 6px; margin: 6px 8px 2px; padding: 0 8px; height: 30px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--text-3); }
+.iv-search:focus-within { border-color: var(--info); }
+.iv-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--text); font-size: 13px; }
+.iv-head { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 10px 12px 4px; color: var(--text-3); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.iv-head:hover { color: var(--text); }
+.iv-head .icon { width: 14px; height: 14px; }
+.iv-group-sec + .iv-group-sec { border-top: 1px solid var(--line); margin-top: 4px; }
+.iv-row { cursor: pointer; border-radius: 4px; margin: 0 6px; width: auto; padding: 0 6px 0 8px !important; }
+.iv-row .iv-name { flex: 1; }
+.iv-row.off { color: var(--text-3); cursor: default; }
+.iv-row.off:hover { background: none; }
+.iv-star, .iv-x { opacity: 0; color: var(--text-3); }
+.iv-row:hover .iv-star, .iv-row:hover .iv-x, .type-row:hover .iv-star, .iv-star.fav { opacity: 1; }
+.tvm .iv-star .icon.sm { color: var(--text-3); }
+.tvm .iv-star.fav .icon.sm, .tvm .iv-star:hover .icon.sm { color: var(--gold-strong); }
+.tvm .iv-x:hover .icon.sm { color: var(--text); }
+.type-menu.tvm { min-width: 230px; }
+.type-row { cursor: pointer; }
+.type-row > span { flex: 1; }
+.type-row .icon.md { width: 22px; height: 22px; }
+
+/* The "Change interval" box (a digit typed on the chart) */
+.scrim.clear { background: transparent; align-items: center; padding: 0; }
+.scrim.center { align-items: center; padding-top: 0; }
+.iv-box {
+  width: 280px; padding: 18px 20px 16px; border-radius: 8px; background: var(--bg-elevated); box-shadow: var(--shadow-pop);
+  border: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 8vh;
+}
+.iv-box h3 { margin: 0; font-size: 18px; font-weight: 600; }
+.iv-box input {
+  width: 200px; height: 46px; border-radius: 8px; border: 2px solid var(--info); background: var(--bg); color: var(--text);
+  text-align: center; font-size: 18px; outline: none;
+}
+.iv-box-hint { margin: 0; min-height: 18px; font-size: 12px; color: var(--text-3); }
+.iv-box-hint.bad { color: var(--down); }
+
+/* Small TradingView dialogs: add custom interval, layout name, go to */
+.dialog.tv-small { width: min(400px, calc(100vw - 32px)); }
+.dialog.tv-small .dialog-head { border-bottom: 1px solid var(--line); padding: 14px 12px 12px 20px; }
+.dialog.tv-small[dir='rtl'] .dialog-head { padding: 14px 20px 12px 12px; }
+.dialog.tv-small .dialog-head h2 { font-size: 18px; }
+.tv-small-body { display: flex; flex-direction: column; gap: 12px; padding: 18px 20px; }
+.tv-field { display: grid; grid-template-columns: 100px minmax(0, 1fr); align-items: center; gap: 12px; font-size: 14px; }
+.tv-field.wide { grid-template-columns: 1fr; gap: 6px; color: var(--text-2); font-size: 12px; }
+.tv-field input, .tv-field select {
+  height: 34px; border: 1px solid var(--line-strong); border-radius: 6px; padding: 0 10px; background: var(--bg); color: var(--text); font-size: 14px; min-width: 0;
+}
+.tv-field input:focus, .tv-field select:focus { outline: none; border-color: var(--info); box-shadow: 0 0 0 2px rgba(41, 98, 255, 0.18); }
+.dialog-foot.end { justify-content: flex-end; }
+.small { font-size: 12px; }
+
+/* Multi-chart layout menu */
+.grid-menu.tvm { display: block; padding: 4px 0 6px; min-width: 300px; max-width: 430px; gap: 0; }
+.grid-row { display: flex; align-items: center; gap: 6px; padding: 3px 12px; border-bottom: 1px solid var(--line); }
+.grid-n { width: 18px; flex: none; color: var(--text-3); font-size: 12px; }
+.grid-opts { display: flex; flex-wrap: wrap; gap: 2px; }
+.grid-menu .grid-opt { width: 34px; height: 34px; border-radius: 4px; color: var(--text); }
+.grid-menu .grid-opt.on { background: var(--text); color: var(--bg); }
+.grid-glyph { width: 22px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.2; }
+.grid-glyph rect { vector-effect: non-scaling-stroke; }
+.grid-menu .menu-title { padding-top: 12px; }
+.grid-menu .toggle-row { gap: 6px; }
+
+/* Layout menu and the open-layout dialog */
+.layout-menu.tvm { min-width: 280px; }
+.layout-menu .saved { gap: 10px; }
+.layout-menu .saved .lname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
+.layout-menu .saved .muted { margin-inline-start: auto; }
+.dialog.open-layouts { width: min(720px, calc(100vw - 32px)); height: min(560px, 80vh); }
+.ol-head, .ol-row { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.2fr) 150px 30px; align-items: center; gap: 10px; padding: 0 20px; }
+.ol-head { height: 32px; color: var(--text-3); font-size: 12px; border-bottom: 1px solid var(--line); }
+.ol-sort { display: inline-flex; align-items: center; gap: 4px; color: inherit; font-size: inherit; text-align: start; }
+.ol-sort.on, .ol-sort:hover { color: var(--text); }
+.ol-sort .icon { width: 14px; height: 14px; }
+.ol-list { overflow-y: auto; flex: 1; min-height: 0; }
+.ol-row { height: 44px; cursor: pointer; font-size: 14px; }
+.ol-row.on { background: var(--bg-hover); }
+.ol-row.current .ol-name { font-weight: 600; }
+.ol-name { display: inline-flex; align-items: center; gap: 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ol-name .icon { color: var(--gold); flex: none; }
+.ol-sym { color: var(--text-2); font-size: 13px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ol-sym { display: inline-flex; gap: 8px; align-items: baseline; }
+.ol-sym em { font-style: normal; color: var(--text-3); font-size: 12px; }
+.ol-when { color: var(--text-3); font-size: 12px; }
+.ol-row .lt { opacity: 0; }
+.ol-row:hover .lt, .ol-row.on .lt { opacity: 1; }
+
+/* Snapshot menu */
+.snap-menu.tvm { min-width: 270px; }
+.snap-format { padding: 4px 12px; font-size: 14px; }
+.snap-format .seg button { min-width: 44px; }
+
+/* ── Search dialogs: symbols, quick search ──────────────────────────────────────────────────── */
+.dialog.ss { width: min(840px, calc(100vw - 32px)); height: min(680px, calc(100vh - 16vh)); }
+.ss .dialog-head { padding: 16px 12px 10px 20px; }
+.ss[dir='rtl'] .dialog-head, .quick[dir='rtl'] .dialog-head, .open-layouts[dir='rtl'] .dialog-head { padding: 16px 20px 10px 12px; }
+.ss-field {
+  display: flex; align-items: center; gap: 8px; margin: 2px 20px 12px; padding: 0 6px 0 10px; height: 40px;
+  border: 1px solid var(--line-strong); border-radius: 8px; background: var(--bg);
+}
+.ss-field:focus-within { border-color: var(--info); box-shadow: 0 0 0 2px rgba(41, 98, 255, 0.16); }
+.ss-field .icon { color: var(--text-3); flex: none; }
+.ss-field input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; font-size: 16px; font-weight: 500; color: var(--text); }
+.ss-clear { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--text-3); color: var(--bg); flex: none; }
+.ss-clear .icon { width: 13px; height: 13px; color: var(--bg); }
+.ss-tabs { padding: 0 20px 12px; gap: 6px; }
+.ss-tabs .chip { height: 32px; padding: 0 14px; font-size: 14px; }
+.ss .search-list { flex: 1; min-height: 0; }
+.ss .search-row { grid-template-columns: 24px minmax(110px, 190px) minmax(0, 1fr) auto; height: 40px; gap: 12px; border-bottom: 1px solid var(--line); text-align: start; }
+.ss.compare .search-row { grid-template-columns: 24px minmax(110px, 190px) minmax(0, 1fr) auto 24px; }
+.ss .search-row .sym { font-size: 15px; font-weight: 600; text-align: start; }
+.ss .search-row .name { font-size: 14px; color: var(--text); }
+.ss .search-row.on { background: var(--bg-hover); box-shadow: inset 0 0 0 1px var(--text-3); }
+.ss .search-row .src { display: inline-flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+.ss .search-row .kind { font-size: 12px; color: var(--text-3); }
+.ss .search-row .venue { font-size: 14px; color: var(--text); }
+.ss .search-row .add { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; color: var(--text-2); }
+.ss .search-row:hover .add { background: var(--bg-active); }
+.ss .search-row .add.on { background: var(--bg-active); }
+.hl { color: var(--info); font-weight: inherit; }
+.ss-section { padding: 10px 20px 4px; font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--line); }
+.ss-foot { padding: 10px 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--text-3); text-align: center; }
+.ss-foot .num { color: var(--text-2); }
+.expr-row .sym { color: var(--info); }
+
+.dialog.quick { width: min(600px, calc(100vw - 32px)); height: min(560px, calc(100vh - 16vh)); }
+.quick .dialog-head { padding: 16px 12px 10px 20px; }
+.qs-list { overflow-y: auto; flex: 1; min-height: 0; border-top: 1px solid var(--line); padding-bottom: 6px; }
+.qs-section { padding: 10px 20px 4px; font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.04em; }
+.qs-row { display: flex; align-items: center; gap: 12px; width: 100%; height: 38px; padding: 0 20px; text-align: start; font-size: 14px; }
+.qs-row .icon.sm { color: var(--text-2); flex: none; }
+.qs-row.on { background: var(--bg-hover); }
+.qs-label { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.qs-row kbd { font: inherit; font-size: 12px; color: var(--text-3); border: 0; background: none; padding: 0; }
+.qs-row .switch { margin-inline-start: 6px; }
+.qs-empty { display: flex; align-items: center; justify-content: center; height: 100%; min-height: 200px; padding: 20px; color: var(--text-2); font-size: 16px; text-align: center; }
+
+/* ── Toast ──────────────────────────────────────────────────────────────────────────────────── */
+.pc-toast {
+  position: fixed; left: 50%; bottom: 72px; transform: translateX(-50%); z-index: 300; max-width: calc(100vw - 32px);
+  padding: 9px 16px; border-radius: 6px; background: #131722; color: #fff; font-size: 13px; box-shadow: var(--shadow-pop);
+  animation: pc-toast-in 0.18s ease-out;
+}
+:root[data-theme='dark'] .pc-toast { background: #F2F2F2; color: #0F0F0F; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .pc-toast { background: #F2F2F2; color: #0F0F0F; } }
+@keyframes pc-toast-in { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (prefers-reduced-motion: reduce) { .pc-toast { animation: none; } .switch, .switch i { transition: none; } }
+
+/* ── Phone "⋯" sheet ────────────────────────────────────────────────────────────────────────── */
+.sheet-scrim { align-items: flex-end; padding: 0; }
+.sheet {
+  width: 100%; max-height: 82vh; overflow-y: auto; background: var(--bg-elevated); border-radius: 14px 14px 0 0;
+  box-shadow: var(--shadow-pop); padding: 6px 12px calc(16px + env(safe-area-inset-bottom));
+}
+.sheet-grip { width: 40px; height: 4px; border-radius: 2px; background: var(--line-strong); margin: 4px auto 6px; }
+.sheet-title { padding: 10px 4px 6px; font-size: 12px; font-weight: 600; color: var(--text-3); }
+.sheet-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.sheet-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 64px; padding: 6px 2px; border-radius: 10px; font-size: 11px; color: var(--text); text-align: center; }
+.sheet-tile:hover, .sheet-tile:active { background: var(--bg-hover); }
+.sheet-tile.on { color: var(--gold); background: var(--gold-soft); }
+.sheet-tile:disabled { color: var(--text-3); }
+.sheet-tile .grid-glyph { width: 22px; height: 22px; }
+@media (max-width: 760px) { .sheet-tile.grid-tile { display: none; } }
+
+/* ── Main menu: TradingView's switches ──────────────────────────────────────────────────────── */
+.drawer-item { text-align: start; }
+.drawer-tv { padding: 4px 0 6px; border-bottom: 1px solid var(--line); }
+.drawer-row { display: flex; align-items: center; gap: 12px; width: 100%; height: 40px; padding: 0 18px; text-align: start; }
+.drawer-row:hover { background: var(--bg-hover); }
+.drawer-row kbd { margin-inline-start: auto; font: inherit; font-size: 12px; color: var(--text-3); border: 0; background: none; padding: 0; }
+.drawer-row > span:not(.switch) { flex: 1; }
+.lang-row:hover { background: none; }
+
+/* ── Time bar ───────────────────────────────────────────────────────────────────────────────── */
+.ws-timebar .ib.range.on { color: var(--gold); background: var(--gold-soft); }
+.timebar-gear { min-width: 26px !important; color: var(--text-2); }
+.session-btn .label { font-size: 12px; font-weight: 600; color: var(--text-2); }
+.tz-menu.tvm { min-width: 250px; max-height: min(70vh, 640px); }
+.tz-row { gap: 6px !important; }
+.tz-check { width: 18px; flex: none; display: inline-flex; color: var(--text); }
+.tz-row .tz-off { min-width: 0; }
+.session-menu.tvm { min-width: 240px; }
+.goto-dialog { width: min(420px, calc(100vw - 32px)) !important; }
+.goto-tabs { display: flex; gap: 18px; padding: 0 20px; border-bottom: 1px solid var(--line); }
+.goto-tabs button { height: 40px; color: var(--text-2); font-size: 14px; border-bottom: 2px solid transparent; }
+.goto-tabs button.on { color: var(--text); border-bottom-color: var(--text); }
+.goto-dialog .goto-pop { position: static; box-shadow: none; background: none; padding: 18px 20px 20px; border-radius: 0; flex-wrap: wrap; }
+.goto-dialog .goto-pop input { flex: 1; min-width: 0; height: 36px; font-size: 14px; }
+.goto-dialog .goto-pop .btn, .goto-range .btn { height: 36px; padding: 0 16px; }
+.goto-range { display: flex; flex-direction: column; gap: 12px; padding: 18px 20px 20px; }
+.goto-range-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+.session-shading { position: absolute; left: 0; top: 0; z-index: 1; pointer-events: none; }
+.shading-menu.tvm { min-width: 220px; }
+.shade-swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.shade-all { justify-content: flex-start; gap: 8px; }
+.shade-all .btn { height: 28px; padding: 0 12px; font-size: 13px; }
+
+/* ── The chart grid and its other charts ────────────────────────────────────────────────────── */
+.chart-grid > .cell, .chart-grid > .cell-slot { position: relative; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); min-width: 0; min-height: 0; background: var(--bg); }
+.chart-grid > .cell > .ws-chart { min-height: 0; min-width: 0; }
+.chart-grid.multi > .active::after { content: ''; position: absolute; inset: 0; z-index: 40; pointer-events: none; box-shadow: inset 0 0 0 1px var(--gold); }
+.chart-grid.maxed > .cell:not(.active), .chart-grid.maxed > .cell-slot:not(.active) { display: none; }
+.chart-grid.maxed > .active { grid-area: 1 / 1 / -1 / -1 !important; }
+.chart-grid.maxed > .active::after { display: none; }
+.cell-restore { position: absolute; top: 6px; inset-inline-end: 70px; z-index: 41; height: 26px !important; min-width: 26px !important; background: var(--bg-elevated); box-shadow: var(--shadow-pop); }
+.chart-grid .lite { position: relative; display: block; min-width: 0; min-height: 0; container-type: inline-size; }
+.chart-grid .lite .lite-host { position: absolute; inset: 0; }
+.lite-legend {
+  position: absolute; top: 6px; left: 8px; right: 64px; z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px;
+  font-size: 12px; pointer-events: none; direction: ltr;
+}
+.lite-legend > * { pointer-events: auto; }
+.lite-legend .lite-ohlc, .lite-legend .lite-vol, .lite-legend .num, .lite-legend .legend-dot { pointer-events: none; }
+.lite-sym { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 4px; margin-inline-start: -4px; border-radius: 4px; }
+.lite-sym:hover { background: var(--bg-hover); }
+.lite-sym .sym { font-size: 13px; }
+.lite-ohlc i, .lite-vol i { font-style: normal; color: var(--text-2); margin: 0 2px 0 6px; }
+.lite-ohlc { white-space: normal; }
+.lite-ohlc i:first-child { margin-inline-start: 0; }
+@container (max-width: 520px) { .lite-vol { display: none; } }
+@container (max-width: 400px) { .lite-ohlc .lite-o, .lite-ohlc .lite-chg { display: none; } }
+@container (max-width: 300px) { .lite-ohlc { display: none; } }
+.lite-tools { display: inline-flex; gap: 2px; opacity: 0; }
+.lite:hover .lite-tools { opacity: 1; }
+.expr-glyph { color: var(--text-2); }
+
+@media (max-width: 760px) {
+  .ws-top .more-btn { position: sticky; right: 0; margin-inline-start: auto; background: var(--bg); box-shadow: -8px 0 8px -4px var(--bg); }
+  .chart-grid > .cell-slot { display: none !important; }
+  .chart-grid > .cell-main { grid-area: 1 / 1 / 2 / 2 !important; }
+  .chart-grid.multi > .active::after { display: none; }
+  .cell-restore { display: none; }
+  .ws-top .iv-caret { min-width: 22px; }
+  .dialog.ss, .dialog.quick { width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; }
+  .search-scrim, .scrim:has(> .dialog.quick) { padding-top: 0 !important; }
+  .ss .search-row { grid-template-columns: 24px minmax(0, 1fr) auto; padding: 0 14px; }
+  .ss .search-row .name { display: none; }
+  .ss .search-row .src .venue { display: none; }
+  .ss-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .ss-tabs .chip { flex: none; }
+  .ss-foot { display: none; }
+  .ol-head, .ol-row { grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr) 30px; padding: 0 14px; }
+  .ol-when, .ol-head > :nth-child(3) { display: none; }
+  .iv-box { margin-bottom: 30vh; }
+}

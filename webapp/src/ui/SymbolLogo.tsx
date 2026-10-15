@@ -26,7 +26,8 @@ const CRYPTO_QUOTES = ['USDT', 'USDC', 'FDUSD', 'BUSD', 'BTC', 'ETH', 'USD'];
 export interface LogoParts { primary: string | null; secondary: string | null }
 
 export function logoParts(symbol: string, m: Record<string, string> | null = map): LogoParts {
-  if (!m) return { primary: null, secondary: null };
+  // A spread or formula (BTCUSDT/ETHUSDT, XAUUSD*2) has no artwork of its own: it never reaches a list.
+  if (!m || /[-+*/() ]/.test(symbol)) return { primary: null, secondary: null };
   const s = symbol.toUpperCase();
   const metal = METAL[s.slice(0, 3)];
   if (metal && m[`metal:${metal}`]) return { primary: m[`metal:${metal}`] ?? null, secondary: null };
@@ -53,6 +54,8 @@ export function SymbolLogo({ symbol, size = 20 }: { symbol: string; size?: numbe
   const [, setReady] = useState(map !== null);
   useEffect(() => { if (!map) loadLogoMap().then(() => setReady(true)); }, []);
   const { primary, secondary } = logoParts(symbol);
+  // On the chart a spread shows the formula glyph (ƒ), as TradingView does.
+  if (/[-+*/() ]/.test(symbol)) return <span className="logo logo-expr" style={{ width: size, height: size }} aria-hidden><svg className="icon sm"><use href="#ph-function" /></svg></span>;
   if (!primary) return <span className="logo logo-empty" style={{ width: size, height: size }} aria-hidden />;
   if (secondary) {
     const small = Math.round(size * 0.72);
