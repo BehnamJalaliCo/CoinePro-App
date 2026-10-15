@@ -10,7 +10,7 @@ export type Lang = 'fa' | 'en';
 
 const KEY = 'pc.prefs.v1';
 
-interface Stored { theme: Theme; lang: Lang; symbol: string; interval: string; chartType: ChartType }
+interface Stored { theme: Theme; lang: Lang; symbol: string; interval: string; chartType: ChartType; timezone: string }
 
 function read(): Partial<Stored> {
   try {
@@ -31,14 +31,19 @@ interface PrefsState extends Stored {
   setSymbol(symbol: string): void;
   setInterval(interval: string): void;
   setChartType(chartType: ChartType): void;
+  setTimezone(tz: string): void;
 }
 
 const initial = read();
 
+function localZone(): string {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Tehran'; } catch { return 'Asia/Tehran'; }
+}
+
 export const usePrefs = create<PrefsState>((set, get) => {
   const persist = () => {
-    const { theme, lang, symbol, interval, chartType } = get();
-    write({ theme, lang, symbol, interval, chartType });
+    const { theme, lang, symbol, interval, chartType, timezone } = get();
+    write({ theme, lang, symbol, interval, chartType, timezone });
   };
   return {
     theme: initial.theme ?? 'system',
@@ -46,11 +51,13 @@ export const usePrefs = create<PrefsState>((set, get) => {
     symbol: initial.symbol ?? 'BTCUSDT',
     interval: initial.interval ?? '60',
     chartType: initial.chartType ?? 'candles',
+    timezone: initial.timezone ?? localZone(),
     setTheme: (theme) => { set({ theme }); persist(); },
     setLang: (lang) => { set({ lang }); persist(); },
     setSymbol: (symbol) => { set({ symbol }); persist(); },
     setInterval: (interval) => { set({ interval }); persist(); },
     setChartType: (chartType) => { set({ chartType }); persist(); },
+    setTimezone: (timezone) => { set({ timezone }); persist(); },
   };
 });
 

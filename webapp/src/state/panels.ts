@@ -17,6 +17,8 @@ interface PanelsState {
 }
 
 const initial = read();
+// A phone opens on the chart, not on a panel covering it.
+if (typeof window !== 'undefined' && window.innerWidth <= 760) initial.open = null;
 
 export const usePanels = create<PanelsState>((set, get) => {
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ open: get().open, bottom: get().bottom })); } catch { /* ignore */ } };

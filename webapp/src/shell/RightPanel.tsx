@@ -17,7 +17,7 @@ const TITLES: Record<PanelId, StringKey> = {
 
 // The right panel: whichever widget is open in the widget bar. The watchlist carries the symbol's
 // details under it, split by a draggable line in TradingView; here a fixed split for now.
-export function RightPanel({ onNewAlert }: { onNewAlert(): void }) {
+export function RightPanel({ onNewAlert, onAddSymbol }: { onNewAlert(): void; onAddSymbol(): void }) {
   const t = useT();
   const open = usePanels((s) => s.open);
   if (!open) return <aside className="ws-panel" hidden />;
@@ -25,7 +25,7 @@ export function RightPanel({ onNewAlert }: { onNewAlert(): void }) {
     <aside className="ws-panel" aria-label={t(TITLES[open])}>
       {open === 'watchlist' ? (
         <>
-          <Watchlist />
+          <Watchlist onAdd={onAddSymbol} />
           <SymbolDetails />
         </>
       ) : open === 'data' ? <DataWindow />

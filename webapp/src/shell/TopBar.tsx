@@ -9,6 +9,7 @@ import { AccountMenu } from './AccountMenu';
 import { useChartBus } from '../chart/chartBus';
 import { CHART_TYPES, chartTypeDef } from '../chart/chartTypes';
 import { takeSnapshot } from '../chart/snapshot';
+import { useReplay } from '../state/replay';
 
 const FAVOURITE_INTERVALS = ['1', '5', '15', '60', '240', '1D'];
 const INTERVAL_GROUPS: { fa: string; en: string; ids: string[] }[] = [
@@ -20,7 +21,7 @@ const INTERVAL_GROUPS: { fa: string; en: string; ids: string[] }[] = [
 // TradingView's top toolbar, left to right: symbol, compare, intervals, chart type, indicators,
 // templates, alert, replay, undo/redo — then layout, save, quick search, settings, fullscreen,
 // snapshot, and ours: the premium button and the account.
-export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAlert }: { onSymbolSearch(): void; onIndicators(): void; onSignIn(): void; onCompare(): void; onAlert(): void }) {
+export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAlert, onReplay, onSettings, onPremium }: { onSymbolSearch(): void; onIndicators(): void; onSignIn(): void; onCompare(): void; onAlert(): void; onReplay(): void; onSettings(): void; onPremium(): void }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
   const symbol = usePrefs((s) => s.symbol);
@@ -34,6 +35,7 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
   const ivBtn = useRef<HTMLButtonElement>(null);
   const typeBtn = useRef<HTMLButtonElement>(null);
   const supported = intervalsFor(symbol);
+  const replayOn = useReplay((r) => r.selecting || Boolean(r.state?.on));
   const label = (x: { fa: string; en: string }) => (lang === 'fa' ? x.fa : x.en);
 
   const fullscreen = () => {
@@ -47,7 +49,7 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
         <SymbolLogo symbol={symbol} size={20} />
         <span className="label sym">{symbol}</span>
       </button>
-      <button className="ib" title={t('compare')} onClick={onCompare}><Icon name="ph-plus" size="md" /></button>
+      <button className="ib desk-only" title={t('compare')} onClick={onCompare}><Icon name="ph-plus" size="md" /></button>
       <span className="sep" />
       {FAVOURITE_INTERVALS.filter((iv) => supported.includes(iv)).map((iv) => (
         <button key={iv} className={`ib iv${iv === interval ? ' on' : ''}`} aria-pressed={iv === interval}
@@ -69,24 +71,25 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
       <button className="ib" onClick={onIndicators} title={t('indicators')}>
         <Icon name="ph-chart-line-up" size="md" /><span className="label fa">{t('indicators')}</span>
       </button>
-      <button className="ib" title={t('indicatorTemplates')}><Icon name="layout_grid" size="md" /></button>
+      <button className="ib desk-only" title={t('indicatorTemplates')}><Icon name="layout_grid" size="md" /></button>
       <span className="sep" />
       <button className="ib" title={t('alert')} onClick={onAlert}><Icon name="ph-bell" size="md" /><span className="label fa">{t('alert')}</span></button>
-      <button className="ib" title={t('replay')}><Icon name="ph-rewind" size="md" /><span className="label fa">{t('replay')}</span></button>
+      <button className={`ib${replayOn ? ' on' : ''}`} title={t('replay')} onClick={onReplay}><Icon name="ph-rewind" size="md" /><span className="label fa">{t('replay')}</span></button>
       <span className="sep" />
-      <button className="ib" title={t('undo')} disabled={!canUndo} onClick={() => { layer?.undo(); bump(); }}><Icon name="ph-arrow-counter-clockwise" size="md" /></button>
-      <button className="ib" title={t('redo')} disabled={!canRedo} onClick={() => { layer?.redo(); bump(); }}><Icon name="ph-arrow-clockwise" size="md" /></button>
+      <button className="ib desk-only" title={t('undo')} disabled={!canUndo} onClick={() => { layer?.undo(); bump(); }}><Icon name="ph-arrow-counter-clockwise" size="md" /></button>
+      <button className="ib desk-only" title={t('redo')} disabled={!canRedo} onClick={() => { layer?.redo(); bump(); }}><Icon name="ph-arrow-clockwise" size="md" /></button>
+      <button className="ib phone-only" title={t('drawTrend')} onClick={() => document.body.classList.toggle('rail-open')}><Icon name="pencil" /></button>
       <span className="ws-spacer" />
-      <button className="ib" title={t('layout')}><Icon name="ph-squares-four" size="md" /></button>
-      <button className="ib" title={t('save')}><span className="label fa">{t('save')}</span><Icon name="ph-caret-down" size="sm" /></button>
+      <button className="ib desk-only" title={t('layout')}><Icon name="ph-squares-four" size="md" /></button>
+      <button className="ib desk-only" title={t('save')}><span className="label fa">{t('save')}</span><Icon name="ph-caret-down" size="sm" /></button>
       <span className="sep" />
-      <button className="ib" title={t('quickSearch')} onClick={onSymbolSearch}><Icon name="search" /></button>
-      <button className="ib" title={t('settings')}><Icon name="settings2" /></button>
-      <button className="ib" title={t('fullscreen')} onClick={fullscreen}><Icon name="maximize2" /></button>
-      <button className="ib" title={t('snapshot')} onClick={() => void takeSnapshot()}><Icon name="camera" /></button>
+      <button className="ib desk-only" title={t('quickSearch')} onClick={onSymbolSearch}><Icon name="search" /></button>
+      <button className="ib desk-only" title={t('settings')} onClick={onSettings}><Icon name="settings2" /></button>
+      <button className="ib desk-only" title={t('fullscreen')} onClick={fullscreen}><Icon name="maximize2" /></button>
+      <button className="ib desk-only" title={t('snapshot')} onClick={() => void takeSnapshot()}><Icon name="camera" /></button>
       <span className="sep" />
-      <button className="cta" title={t('premium')}><span className="fa">{t('premium')}</span></button>
-      <AccountMenu onSignIn={onSignIn} />
+      <button className="cta" title={t('premium')} onClick={onPremium}><span className="fa">{t('premium')}</span></button>
+      <AccountMenu onSignIn={onSignIn} onPremium={onPremium} />
 
       {menu === 'interval' ? (
         <Dropdown anchor={ivBtn.current} onClose={() => setMenu(null)} className="iv-menu">

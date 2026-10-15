@@ -5,12 +5,14 @@ import { createPortal } from 'react-dom';
 // Closes on outside click, Escape, or a pick.
 export function Dropdown({ anchor, onClose, children, align = 'left', className = '' }: { anchor: HTMLElement | null; onClose(): void; children: ReactNode; align?: 'left' | 'right'; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ left?: number; right?: number; top: number }>({ top: 0 });
+  const [pos, setPos] = useState<{ left?: number; right?: number; top?: number; bottom?: number }>({ top: 0 });
 
+  // Under the anchor, or above it when the anchor sits in the lower part of the window.
   useLayoutEffect(() => {
     if (!anchor) return;
     const r = anchor.getBoundingClientRect();
-    setPos(align === 'left' ? { left: r.left, top: r.bottom + 4 } : { right: window.innerWidth - r.right, top: r.bottom + 4 });
+    const v = r.bottom > window.innerHeight * 0.6 ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 };
+    setPos(align === 'left' ? { left: r.left, ...v } : { right: window.innerWidth - r.right, ...v });
   }, [anchor, align]);
 
   useEffect(() => {

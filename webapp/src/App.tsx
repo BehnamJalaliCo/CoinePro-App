@@ -11,6 +11,11 @@ import { IndicatorsDialog } from './shell/IndicatorsDialog';
 import { StudySettings } from './shell/StudySettings';
 import { useCompare } from './state/compare';
 import { AlertDialog, AlertToast } from './shell/AlertsPanel';
+import { attachAppHotkeys } from './chart/hotkeys';
+import { useReplay } from './state/replay';
+import { useWatchlist } from './state/watchlist';
+import { SettingsDialog } from './shell/SettingsDialog';
+import { PremiumDialog } from './shell/PremiumDialog';
 import { ChartView } from './chart/ChartView';
 import { feed } from './data/feed';
 import { intervalsFor } from './data/candles';
@@ -33,6 +38,10 @@ export function App() {
   const [indicators, setIndicators] = useState(false);
   const [studyUid, setStudyUid] = useState<string | null>(null);
   const [comparing, setComparing] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [settings, setSettings] = useState(false);
+  const [premium, setPremium] = useState(false);
+  const addToWatchlist = useWatchlist((s) => s.add);
   const [alertAt, setAlertAt] = useState<number | null | undefined>(undefined);
   const addCompare = useCompare((s) => s.add);
   useRoute();
@@ -52,30 +61,40 @@ export function App() {
     document.title = tk ? `${symbol} ${formatPrice(tk.last, inst.digits)}${pct}` : `${symbol} · Pro Chart`;
   }, [symbol, tk, inst.digits]);
 
+  useEffect(() => attachAppHotkeys({
+    indicators: () => setIndicators(true),
+    symbolSearch: () => setSearch(''),
+    newAlert: () => setAlertAt(null),
+    settings: () => setSettings(true),
+  }), []);
+
+  // Replay ends when the symbol or the interval changes.
+  useEffect(() => { useReplay.getState().exit(); }, [symbol, interval]);
+
   // Typing a letter anywhere opens the symbol search with it, as on TradingView.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (search !== null || signIn || indicators || studyUid || comparing || alertAt !== undefined || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (search !== null || signIn || indicators || studyUid || comparing || adding || settings || premium || alertAt !== undefined || e.ctrlKey || e.metaKey || e.altKey) return;
       const el = e.target as HTMLElement;
       if (el.closest('input, textarea, [contenteditable]')) return;
       if (/^[a-zA-Z0-9]$/.test(e.key)) { e.preventDefault(); setSearch(e.key.toUpperCase()); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [search, signIn, indicators, studyUid, comparing, alertAt]);
+  }, [search, signIn, indicators, studyUid, comparing, adding, settings, premium, alertAt]);
 
   const displayName = (lang === 'fa' ? inst.nameFa : inst.nameEn) ?? symbol;
 
   return (
     <div className="ws">
-      <TopBar onSymbolSearch={() => setSearch('')} onIndicators={() => setIndicators(true)} onSignIn={() => setSignIn(true)} onCompare={() => setComparing(true)} onAlert={() => setAlertAt(null)} />
+      <TopBar onSymbolSearch={() => setSearch('')} onIndicators={() => setIndicators(true)} onSignIn={() => setSignIn(true)} onCompare={() => setComparing(true)} onAlert={() => setAlertAt(null)} onSettings={() => setSettings(true)} onPremium={() => setPremium(true)} onReplay={() => { const r = useReplay.getState(); if (r.state?.on || r.selecting) r.exit(); else r.select(); }} />
       <ToolRail />
       <main className="ws-main">
-        <ChartView feed={feed} digits={inst.digits} displayName={displayName} onStudySettings={setStudyUid} />
+        <ChartView feed={feed} digits={inst.digits} displayName={displayName} onStudySettings={setStudyUid} onAlertAt={(p) => setAlertAt(p)} />
         <TimeBar supported={(iv) => supported.includes(iv)} />
         <BottomPanel />
       </main>
-      <RightPanel onNewAlert={() => setAlertAt(null)} />
+      <RightPanel onNewAlert={() => setAlertAt(null)} onAddSymbol={() => setAdding(true)} />
       <WidgetBar />
       {search !== null ? <SymbolSearch initial={search} onClose={() => setSearch(null)} /> : null}
       {signIn ? <SignIn onClose={() => setSignIn(false)} /> : null}
@@ -83,6 +102,9 @@ export function App() {
       {studyUid ? <StudySettings uid={studyUid} onClose={() => setStudyUid(null)} /> : null}
       {alertAt !== undefined ? <AlertDialog price={alertAt ?? undefined} onClose={() => setAlertAt(undefined)} /> : null}
       <AlertToast />
+      {premium ? <PremiumDialog onClose={() => setPremium(false)} onSignIn={() => { setPremium(false); setSignIn(true); }} /> : null}
+      {settings ? <SettingsDialog onClose={() => setSettings(false)} /> : null}
+      {adding ? <SymbolSearch onClose={() => setAdding(false)} onPick={(s) => addToWatchlist(s)} /> : null}
       {comparing ? <SymbolSearch onClose={() => setComparing(false)} onPick={(s) => addCompare(s)} /> : null}
     </div>
   );

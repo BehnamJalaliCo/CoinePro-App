@@ -2,6 +2,7 @@
 // watchlist, the details panel and the tab title read.
 import { create } from 'zustand';
 import type { Instrument, Ticker } from '../data/types';
+import { instrumentOf } from '../data/symbols';
 
 interface MarketState {
   tickers: Record<string, Ticker>;
@@ -24,3 +25,9 @@ export const useMarket = create<MarketState>((set) => ({
     return { instruments: next };
   }),
 }));
+
+/** Price precision for a symbol: the catalogue's, else derived from its live price. */
+export function digitsOf(symbol: string): number {
+  const s = useMarket.getState();
+  return s.instruments[symbol]?.digits ?? instrumentOf(symbol, s.tickers[symbol]?.last).digits;
+}

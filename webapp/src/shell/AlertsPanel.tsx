@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useT, usePrefs } from '../state/prefs';
 import { useAlerts, type AlertCondition } from '../state/alerts';
-import { useMarket } from '../state/market';
+import { useMarket, digitsOf } from '../state/market';
 import { instrumentOf } from '../data/symbols';
 import { formatPrice } from '../chart/format';
 import { SymbolLogo } from '../ui/SymbolLogo';
@@ -25,7 +25,7 @@ export function AlertsPanel({ onNew }: { onNew(): void }) {
       <div className="panel-body">
         {!list.length ? <div className="empty fa">{t('alertsEmpty')}</div> : null}
         {list.map((a) => {
-          const digits = instrumentOf(a.symbol).digits;
+          const digits = digitsOf(a.symbol);
           return (
             <div key={a.id} className={`alert-row${a.active ? '' : ' off'}`}>
               <button className="alert-main" onClick={() => setSymbol(a.symbol)}>
@@ -108,7 +108,7 @@ export function AlertToast() {
       <Icon name="ph-bell-ringing" size="md" />
       <span className="fa">{t('alertTriggered')}</span>
       <span className="sym">{fired.symbol}</span>
-      <span className="num">{formatPrice(fired.value, instrumentOf(fired.symbol).digits)}</span>
+      <span className="num">{formatPrice(fired.value, digitsOf(fired.symbol))}</span>
       <button className="lt" onClick={dismiss} aria-label="close"><Icon name="ph-x" size="sm" /></button>
     </div>
   );

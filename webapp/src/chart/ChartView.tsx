@@ -18,12 +18,17 @@ import { attachDrawings, type DrawingHost } from './drawingHost';
 import { createPriceSeries, livePoint, seriesData, DERIVED, type Palette as TypePalette } from './chartTypes';
 import { StudyRenderer, type StudyLegendRow } from './studies';
 import { useStudies, VOLUME } from '../state/studies';
+import { useChartSettings } from '../state/chartSettings';
+import { intervalSeconds } from '../data/intervals';
 import { COMPARE_COLORS, useCompare } from '../state/compare';
 import { LineSeries } from 'lightweight-charts';
 import { onPrice } from '../data/prices';
 import { ScriptRenderer } from './scriptRenderer';
 import { useScript } from '../state/script';
 import { runScript } from '../engine/namascript.js';
+import { useReplay } from '../state/replay';
+import { ReplayBar } from '../shell/ReplayBar';
+import { ChartContextMenu } from './ChartContextMenu';
 
 export interface HistoryResult { bars: Candle[]; more: boolean }
 
@@ -37,6 +42,11 @@ export interface ChartFeed {
 interface Palette extends TypePalette { text: string; grid: string; cross: string; crossLabel: string; lineSep: string }
 
 function palette(dark: boolean): Palette {
+  const { up, down } = useChartSettings.getState();
+  return { ...basePalette(dark), up, down };
+}
+
+function basePalette(dark: boolean): Palette {
   return dark
     ? { bg: '#0F0F0F', text: '#B8B8B8', lineSep: '#2E2E2E', grid: 'rgba(242,242,242,0.06)', cross: '#9C9C9C', crossLabel: '#4A4A4A', up: '#089981', down: '#F23645', line: '#2962FF' }
     : { bg: '#FFFFFF', text: '#0F0F0F', lineSep: '#EBEBEB', grid: 'rgba(46,46,46,0.06)', cross: '#9C9C9C', crossLabel: '#131722', up: '#089981', down: '#F23645', line: '#2962FF' };
@@ -44,7 +54,7 @@ function palette(dark: boolean): Palette {
 
 const volColor = (b: Candle, p: Palette, dark: boolean) => (b.c >= b.o ? p.up : p.down) + (dark ? '80' : '66');
 
-export function ChartView({ feed, digits, displayName, onStudySettings }: { feed: ChartFeed; digits: number; displayName: string; onStudySettings?(uid: string): void }) {
+export function ChartView({ feed, digits, displayName, onStudySettings, onAlertAt }: { feed: ChartFeed; digits: number; displayName: string; onStudySettings?(uid: string): void; onAlertAt?(price: number | null): void }) {
   const t = useT();
   const symbol = usePrefs((s) => s.symbol);
   const interval = usePrefs((s) => s.interval);
@@ -70,6 +80,7 @@ export function ChartView({ feed, digits, displayName, onStudySettings }: { feed
   const [attempt, setAttempt] = useState(0);
   const [legendRows, setLegendRows] = useState<StudyLegendRow[]>([]);
   const [paneTops, setPaneTops] = useState<number[]>([]);
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number; price: number | null } | null>(null);
   const dark = isDark(theme);
   const darkRef = useRef(dark);
   darkRef.current = dark;
@@ -86,17 +97,20 @@ export function ChartView({ feed, digits, displayName, onStudySettings }: { feed
   const timeless = () => ['renko', 'linebreak', 'kagi', 'pnf', 'range'].includes(typeRef.current);
   const showVolume = () => !timeless() && studiesRef.current.some((s) => s.key === VOLUME && !s.hidden);
 
+  /** The bars on screen: the replay's slice while replaying, otherwise everything loaded. */
+  const view = () => useReplay.getState().slice ?? bars.current;
+
   function paintPrice() {
     const p = palette(darkRef.current);
-    price.current?.setData(seriesData(typeRef.current, bars.current, p) as never);
+    price.current?.setData(seriesData(typeRef.current, view(), p) as never);
   }
   function paintVolume() {
     const p = palette(darkRef.current);
-    volume.current?.setData(showVolume() ? bars.current.map((b) => ({ time: b.t as UTCTimestamp, value: b.v, color: volColor(b, p, darkRef.current) })) : []);
+    volume.current?.setData(showVolume() ? view().map((b) => ({ time: b.t as UTCTimestamp, value: b.v, color: volColor(b, p, darkRef.current) })) : []);
   }
   function rebuildStudies() {
-    renderer.current?.rebuild(timeless() ? [] : studiesRef.current.filter((s) => s.key !== VOLUME), bars.current);
-    script.current?.draw(useScript.getState().applied ? useScript.getState().result : null, bars.current);
+    renderer.current?.rebuild(timeless() ? [] : studiesRef.current.filter((s) => s.key !== VOLUME), view());
+    script.current?.draw(useScript.getState().applied ? useScript.getState().result : null, view());
     setLegendRows(renderer.current?.legend(null) ?? []);
     measurePanes();
   }
@@ -146,9 +160,15 @@ export function ChartView({ feed, digits, displayName, onStudySettings }: { feed
 
     c.subscribeCrosshairMove((param: MouseEventParams<Time>) => {
       if (!param.time) { setHoverIdx(null); useChartBus.getState().setHover(null); return; }
-      const i = bars.current.findIndex((b) => b.t === param.time);
+      const v = view();
+      const i = v.findIndex((b) => b.t === param.time);
       setHoverIdx(i >= 0 ? i : null);
-      useChartBus.getState().setHover(i >= 0 ? bars.current[i]! : null);
+      useChartBus.getState().setHover(i >= 0 ? v[i]! : null);
+    });
+    // Replay: the click that picks the starting bar.
+    c.subscribeClick((param) => {
+      const r = useReplay.getState();
+      if (r.selecting && typeof param.time === 'number') r.start(bars.current, param.time);
     });
     // Older history when the reader scrolls near the left edge.
     c.timeScale().subscribeVisibleLogicalRangeChange((range) => {
@@ -184,19 +204,53 @@ export function ChartView({ feed, digits, displayName, onStudySettings }: { feed
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dark]);
 
-  // Chart type: a new price series in place of the old one; drawings, markers and levels follow it.
+  // Chart type (and the candle colours, the price line): a new price series in place of the old
+  // one; drawings, markers and levels follow it.
+  const up = useChartSettings((x) => x.up);
+  const down = useChartSettings((x) => x.down);
+  const priceLine = useChartSettings((x) => x.priceLine);
+  const gridMode = useChartSettings((x) => x.grid);
+  const crosshairMode = useChartSettings((x) => x.crosshair);
+  const countdown = useChartSettings((x) => x.countdown);
+  const showOhlc = useChartSettings((x) => x.showOhlc);
+  const showChange = useChartSettings((x) => x.showChange);
   useEffect(() => {
     const c = chart.current;
     if (!c || !price.current) return;
     c.removeSeries(price.current);
     price.current = createPriceSeries(c, chartType, palette(darkRef.current), fmt());
+    price.current.applyOptions({ priceLineVisible: priceLine });
     renderer.current?.resetPriceSeries();
     drawing.current?.setSeries(price.current);
     paintPrice();
     paintVolume();
     rebuildStudies();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chartType]);
+  }, [chartType, up, down, priceLine]);
+
+  useEffect(() => {
+    const p = palette(darkRef.current);
+    chart.current?.applyOptions({
+      grid: { vertLines: { visible: gridMode === 'both' || gridMode === 'vertical', color: p.grid }, horzLines: { visible: gridMode === 'both' || gridMode === 'horizontal', color: p.grid } },
+      crosshair: { mode: crosshairMode === 'magnet' ? CrosshairMode.Magnet : CrosshairMode.Normal },
+    });
+  }, [gridMode, crosshairMode, dark]);
+
+  // Time left in the forming bar, under the last price on the axis, as TradingView shows it.
+  useEffect(() => {
+    if (!countdown || ['1W', '1M'].includes(interval)) { price.current?.applyOptions({ title: '' }); return; }
+    const secs = intervalSeconds(interval);
+    const tick = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const left = secs - (now % secs);
+      const h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60), x = left % 60;
+      const txt = h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}`;
+      price.current?.applyOptions({ title: txt });
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [countdown, interval, chartType]);
 
   // Price precision follows the instrument.
   useEffect(() => { price.current?.applyOptions({ priceFormat: { type: 'price', ...fmt() } }); }, [digits]);
@@ -228,6 +282,42 @@ export function ChartView({ feed, digits, displayName, onStudySettings }: { feed
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scriptApplied, scriptRun, barsVersion]);
+
+  // Replay: repaint from the slice as it grows; back to everything on exit.
+  const replaySlice = useReplay((r) => r.slice);
+  useEffect(() => {
+    if (!chart.current) return;
+    paintPrice(); paintVolume();
+    renderer.current?.refresh(view());
+    setLegendRows(renderer.current?.legend(null) ?? []);
+    if (!replaySlice) chart.current.timeScale().scrollToRealTime();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replaySlice]);
+
+  // Time zone of the axis and the crosshair label. Daily and longer bars keep their UTC date.
+  const timezone = usePrefs((s) => s.timezone);
+  useEffect(() => {
+    const daily = ['1D', '1W', '1M'].includes(interval);
+    const tz = daily ? 'UTC' : timezone;
+    const time = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
+    const day = new Intl.DateTimeFormat('en-US', { timeZone: tz, day: 'numeric' });
+    const month = new Intl.DateTimeFormat('en-US', { timeZone: tz, month: 'short' });
+    const year = new Intl.DateTimeFormat('en-US', { timeZone: tz, year: 'numeric' });
+    const full = new Intl.DateTimeFormat('en-GB', { timeZone: tz, weekday: 'short', day: '2-digit', month: 'short', year: '2-digit' });
+    const at = (t: unknown) => new Date((typeof t === 'number' ? t : 0) * 1000);
+    chart.current?.applyOptions({
+      localization: { timeFormatter: (t: unknown) => (daily ? full.format(at(t)) : `${full.format(at(t))}  ${time.format(at(t))}`) },
+      timeScale: {
+        tickMarkFormatter: (t: unknown, type: number) => {
+          const d = at(t);
+          if (type === 0) return year.format(d);
+          if (type === 1) return month.format(d);
+          if (type === 2) return day.format(d);
+          return time.format(d);
+        },
+      },
+    });
+  }, [timezone, interval]);
 
   // The time bar's scale switches; comparing forces percent, as on TradingView.
   const scale = useChartBus((b) => b.scale);
@@ -324,6 +414,7 @@ export function ChartView({ feed, digits, displayName, onStudySettings }: { feed
         const tail = list[list.length - 1];
         if (tail && bar.t < tail.t) return;
         if (tail && bar.t === tail.t) list[list.length - 1] = bar; else list.push(bar);
+        if (useReplay.getState().slice) return;
         const p = palette(darkRef.current);
         const point = livePoint(typeRef.current, bar, list[list.length - 2], p);
         if (point) price.current?.update(point as never); else if (DERIVED.includes(typeRef.current)) paintPrice();
@@ -344,9 +435,10 @@ export function ChartView({ feed, digits, displayName, onStudySettings }: { feed
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hoverIdx]);
 
-  const shown = hoverIdx != null ? bars.current[hoverIdx] ?? last : last;
-  const shownIdx = hoverIdx ?? bars.current.length - 1;
-  const prev = shownIdx > 0 ? bars.current[shownIdx - 1] : undefined;
+  const onScreen = replaySlice ?? bars.current;
+  const shown = hoverIdx != null ? onScreen[hoverIdx] ?? last : replaySlice ? onScreen[onScreen.length - 1] ?? null : last;
+  const shownIdx = hoverIdx ?? onScreen.length - 1;
+  const prev = shownIdx > 0 ? onScreen[shownIdx - 1] : undefined;
   const chg = shown ? shown.c - (prev?.c ?? shown.o) : 0;
   const chgPct = shown && (prev?.c ?? shown.o) ? (chg / (prev?.c ?? shown.o)) * 100 : 0;
   const tone = shown && shown.c >= shown.o ? 'up' : 'down';
@@ -367,7 +459,14 @@ export function ChartView({ feed, digits, displayName, onStudySettings }: { feed
   );
 
   return (
-    <div className="ws-chart">
+    <div className="ws-chart" onContextMenu={(e) => {
+      if ((e.target as HTMLElement).closest('.legend, .replay-bar')) return;
+      e.preventDefault();
+      const r = e.currentTarget.getBoundingClientRect();
+      const y = e.clientY - r.top;
+      const px = price.current?.coordinateToPrice(y);
+      setMenuAt({ x: e.clientX, y: e.clientY, price: typeof px === 'number' ? px : null });
+    }}>
       <div ref={host} className="chart-host" />
       <canvas ref={drawCanvas} className="draw-layer" />
       <div className="legend">
@@ -376,10 +475,10 @@ export function ChartView({ feed, digits, displayName, onStudySettings }: { feed
           <span className="legend-title fa">{displayName}</span>
           <span className="legend-dot">·</span>
           <span className="num">{intervalLabel(interval)}</span>
-          {shown ? (
+          {shown && showOhlc ? (
             <span className={`legend-ohlc num ${tone}`}>
               <i>O</i>{formatPrice(shown.o, digits)} <i>H</i>{formatPrice(shown.h, digits)} <i>L</i>{formatPrice(shown.l, digits)} <i>C</i>{formatPrice(shown.c, digits)}
-              {' '}{chg >= 0 ? '+' : '−'}{formatPrice(Math.abs(chg), digits)} ({chg >= 0 ? '+' : '−'}{Math.abs(chgPct).toFixed(2)}%)
+              {showChange ? <>{' '}{chg >= 0 ? '+' : '−'}{formatPrice(Math.abs(chg), digits)} ({chg >= 0 ? '+' : '−'}{Math.abs(chgPct).toFixed(2)}%)</> : null}
             </span>
           ) : null}
         </div>
@@ -405,6 +504,8 @@ export function ChartView({ feed, digits, displayName, onStudySettings }: { feed
       {legendRows.filter((r) => r.pane > 0).map((r) => (
         <div key={r.uid} className="legend pane-legend" style={{ top: (paneTops[r.pane] ?? 0) + 4 }}>{studyRow(r)}</div>
       ))}
+      <ReplayBar />
+      {menuAt ? <ChartContextMenu at={menuAt} onClose={() => setMenuAt(null)} onAlertAt={onAlertAt} /> : null}
       {state === 'loading' ? <div className="chart-state fa">{t('loading')}…</div> : null}
       {state === 'error' ? (
         <div className="chart-state fa">{t('chartFailed')} <button className="link" onClick={() => setAttempt((a) => a + 1)}>{t('retry')}</button></div>

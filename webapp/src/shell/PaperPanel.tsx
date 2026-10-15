@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { usePaper, pnlOf } from '../state/paper';
-import { useMarket } from '../state/market';
+import { useMarket, digitsOf } from '../state/market';
 import { usePrefs, useT } from '../state/prefs';
 import { instrumentOf } from '../data/symbols';
 import { formatPrice } from '../chart/format';
@@ -61,7 +61,7 @@ export function PaperPanel() {
         <div className="bt-trades">
           <div className="bt-row bt-head p5"><span>Symbol</span><span>Side</span><span>Entry</span><span>Exit</span><span>P&amp;L</span></div>
           {history.map((h) => {
-            const d = instrumentOf(h.symbol).digits;
+            const d = digitsOf(h.symbol);
             return (
               <div key={h.id} className="bt-row p5">
                 <span className="sym">{h.symbol}</span>

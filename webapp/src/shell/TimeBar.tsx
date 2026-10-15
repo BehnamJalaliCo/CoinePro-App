@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Dropdown } from '../ui/Menu';
+import { TIMEZONES } from '../engine/scales_crosshair.js';
 import { usePrefs, useT } from '../state/prefs';
 import { useChartBus, showSpan } from '../chart/chartBus';
 import { Icon } from '../ui/Icon';
@@ -22,13 +24,39 @@ function ytdSpan(): number {
   return Math.floor((now.getTime() - Date.UTC(now.getUTCFullYear(), 0, 1)) / 1000);
 }
 
+function offsetLabel(tz: string): string {
+  try {
+    const part = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' }).formatToParts(new Date()).find((p) => p.type === 'timeZoneName');
+    return (part?.value ?? 'UTC').replace('GMT', 'UTC').replace(/^UTC$/, 'UTC');
+  } catch { return 'UTC'; }
+}
+
+// The clock at the right of the time bar, in the chosen time zone; a click lists the zones.
 function Clock() {
+  const t = useT();
+  const lang = usePrefs((s) => s.lang);
+  const tz = usePrefs((s) => s.timezone);
+  const setTz = usePrefs((s) => s.setTimezone);
   const [now, setNow] = useState(() => new Date());
+  const [open, setOpen] = useState(false);
+  const btn = useRef<HTMLButtonElement>(null);
   useEffect(() => { const id = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(id); }, []);
-  const hh = String(now.getUTCHours()).padStart(2, '0');
-  const mm = String(now.getUTCMinutes()).padStart(2, '0');
-  const ss = String(now.getUTCSeconds()).padStart(2, '0');
-  return <span className="timebar-clock num">{hh}:{mm}:{ss} UTC</span>;
+  let time = '';
+  try { time = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(now); } catch { time = now.toISOString().slice(11, 19); }
+  return (
+    <>
+      <button ref={btn} className="ib timebar-clock num" title={t('timezone')} onClick={() => setOpen(!open)}>{time} ({offsetLabel(tz)})</button>
+      {open ? (
+        <Dropdown anchor={btn.current} onClose={() => setOpen(false)} align="right" className="tz-menu">
+          {TIMEZONES.map((z) => (
+            <button key={z.id} className={`menu-item${z.id === tz ? ' on' : ''}`} onClick={() => { setTz(z.id); setOpen(false); }}>
+              <span className="num tz-off">({offsetLabel(z.id)})</span><span className={lang === 'fa' ? 'fa' : ''}>{lang === 'fa' ? z.label : z.id.split('/').pop()!.replace('_', ' ')}</span>
+            </button>
+          ))}
+        </Dropdown>
+      ) : null}
+    </>
+  );
 }
 
 export function TimeBar({ supported }: { supported: (interval: string) => boolean }) {

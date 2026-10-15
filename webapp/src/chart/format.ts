@@ -3,6 +3,7 @@ const cache = new Map<number, Intl.NumberFormat>();
 
 export function formatPrice(v: number, digits: number): string {
   if (!Number.isFinite(v)) return '—';
+  if (v === 0) return '0';
   let f = cache.get(digits);
   if (!f) {
     f = new Intl.NumberFormat('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -13,6 +14,7 @@ export function formatPrice(v: number, digits: number): string {
 
 export function formatVolume(v: number): string {
   if (!Number.isFinite(v)) return '—';
+  if (v === 0) return '0';
   const a = Math.abs(v);
   if (a >= 1e9) return (v / 1e9).toFixed(2) + 'B';
   if (a >= 1e6) return (v / 1e6).toFixed(2) + 'M';
@@ -22,6 +24,7 @@ export function formatVolume(v: number): string {
 
 export function formatPct(v: number): string {
   if (!Number.isFinite(v)) return '—';
+  if (v === 0) return '0';
   return `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(2)}%`;
 }
 

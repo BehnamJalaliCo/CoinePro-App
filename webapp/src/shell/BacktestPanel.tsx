@@ -1,8 +1,8 @@
 import { useScript } from '../state/script';
 import { usePrefs, useT } from '../state/prefs';
-import { instrumentOf } from '../data/symbols';
 import { formatPrice } from '../chart/format';
 import { usePanels } from '../state/panels';
+import { digitsOf } from '../state/market';
 
 // TradingView's Strategy Tester, for the NamaScript strategy on the chart: the overview figures,
 // the equity curve, and the trade list. Results are in price points per one unit, as the engine
@@ -14,7 +14,7 @@ export function BacktestPanel() {
   const applied = useScript((s) => s.applied);
   const setBottom = usePanels((s) => s.setBottom);
   const st = result?.ok ? result.strategy : null;
-  const digits = instrumentOf(symbol).digits;
+  const digits = digitsOf(symbol);
   const fmt = (v: number) => formatPrice(v, Math.min(digits, 4));
 
   if (!applied || !st) {

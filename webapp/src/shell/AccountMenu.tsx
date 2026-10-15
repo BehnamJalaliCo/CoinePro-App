@@ -6,7 +6,7 @@ import { Icon } from '../ui/Icon';
 
 // The round button at the top right, as on TradingView: the reader's initial (or a person glyph for
 // a guest) opening the menu with the account, theme and language.
-export function AccountMenu({ onSignIn }: { onSignIn(): void }) {
+export function AccountMenu({ onSignIn, onPremium }: { onSignIn(): void; onPremium(): void }) {
   const t = useT();
   const sessions = useSession((s) => s.sessions);
   const { theme, setTheme, lang, setLang } = usePrefs();
@@ -56,6 +56,9 @@ export function AccountMenu({ onSignIn }: { onSignIn(): void }) {
               <button className={lang === 'en' ? 'on' : ''} aria-pressed={lang === 'en'} onClick={() => setLang('en')}>English</button>
             </div>
           </div>
+          <button role="menuitem" className="menu-item premium-item" onClick={() => { setOpen(false); onPremium(); }}>
+            <Icon name="ph-crown" size="sm" /><span className="fa">{t('premium')}</span>
+          </button>
           <div className="menu-sep" />
           {signed ? (
             <button role="menuitem" className="menu-item" onClick={() => { signOut(); setOpen(false); }}>
