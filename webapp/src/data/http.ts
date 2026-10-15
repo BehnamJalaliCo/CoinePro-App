@@ -89,7 +89,8 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
   const headers: Record<string, string> = { ...baseHeaders() };
   if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
   const hasBody = opts.body !== undefined;
-  if (hasBody) headers['Content-Type'] = 'application/json; charset=UTF-8';
+  const isForm = typeof FormData !== 'undefined' && opts.body instanceof FormData;
+  if (hasBody && !isForm) headers['Content-Type'] = 'application/json; charset=UTF-8';
   const method = opts.method ?? (hasBody ? 'POST' : 'GET');
 
   const timeout = new AbortController();
@@ -100,7 +101,7 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
   try {
     res = await fetch(path, {
       method, headers, cache: 'no-store', credentials: 'same-origin',
-      body: hasBody ? JSON.stringify(opts.body) : method === 'GET' ? undefined : '',
+      body: isForm ? (opts.body as FormData) : hasBody ? JSON.stringify(opts.body) : method === 'GET' ? undefined : '',
       signal: timeout.signal,
     });
   } catch (e) {

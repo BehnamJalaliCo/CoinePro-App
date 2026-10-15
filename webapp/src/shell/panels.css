@@ -345,3 +345,28 @@
 .tx { height: 40px; border: 1px solid var(--line-strong); border-radius: 8px; padding: 0 10px; background: var(--bg); color: var(--text); }
 .ok { color: var(--up); margin: 0; }
 @media (max-width: 520px) { .plans { grid-template-columns: 1fr; } }
+
+/* Signals and AI */
+.sig-rate { margin-left: auto; font-size: var(--fs-small); color: var(--up); align-self: center; }
+.sig-row { display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; }
+.sig-row:hover { background: var(--bg-hover); }
+.sig-top { display: flex; align-items: center; gap: 8px; }
+.sig-dir { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; }
+.sig-dir.up { background: var(--up-soft); }
+.sig-dir.down { background: var(--down-soft); }
+.sig-levels { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: var(--fs-small); }
+.sig-time { color: var(--text-3); font-size: 11px; text-align: right; }
+.ai-body { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.ai-go { width: 100%; }
+.ai-busy { display: flex; align-items: center; gap: 8px; }
+.spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line-strong); border-top-color: var(--gold); animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.ai-result { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; line-height: 1.8; }
+.ai-result p { margin: 0; }
+.ai-head { display: flex; align-items: center; gap: 8px; }
+.ai-reason { white-space: pre-line; color: var(--text-2); }
+.ai-chat { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+.ai-msg .q { margin: 0; font-weight: 600; }
+.ai-msg .a { margin: 4px 0 0; white-space: pre-line; color: var(--text-2); line-height: 1.8; }
+.ai-ask { display: flex; gap: 4px; border: 1px solid var(--line-strong); border-radius: 8px; padding: 2px 2px 2px 8px; }
+.ai-ask input { flex: 1; border: 0; outline: 0; background: none; color: var(--text); height: 34px; }

@@ -4,9 +4,10 @@ import { useChartBus } from './chartBus';
 import { usePrefs } from '../state/prefs';
 import { intervalLabel } from '../data/intervals';
 
-export async function takeSnapshot(): Promise<void> {
+/** The chart as a PNG with its drawings and the footer, or null when no chart is mounted. */
+export async function chartImage(): Promise<Blob | null> {
   const api = useChartBus.getState().api;
-  if (!api) return;
+  if (!api) return null;
   const shot = api.takeScreenshot();
   const draw = document.querySelector<HTMLCanvasElement>('.draw-layer');
   const footer = 28;
@@ -30,8 +31,14 @@ export async function takeSnapshot(): Promise<void> {
   ctx.fillStyle = '#D4A64A';
   ctx.fillText('pro-chart.com', out.width - 12, shot.height + footer / 2);
 
-  const blob = await new Promise<Blob | null>((r) => out.toBlob(r, 'image/png'));
+  return new Promise<Blob | null>((r) => out.toBlob(r, 'image/png'));
+}
+
+export async function takeSnapshot(): Promise<void> {
+  const blob = await chartImage();
   if (!blob) return;
+  const { symbol, interval } = usePrefs.getState();
+  const now = new Date();
   try { await navigator.clipboard?.write?.([new ClipboardItem({ 'image/png': blob })]); } catch { /* clipboard not allowed: the download still happens */ }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);

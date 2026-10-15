@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ColorType, CrosshairMode, HistogramSeries, LineStyle, PriceScaleMode, createChart,
-  type IChartApi, type ISeriesApi, type MouseEventParams, type SeriesType, type Time, type UTCTimestamp,
+  type IChartApi, type IPriceLine, type ISeriesApi, type MouseEventParams, type SeriesType, type Time, type UTCTimestamp,
 } from 'lightweight-charts';
 import type { Candle } from '../data/types';
 import { formatPrice, formatVolume } from './format';
@@ -27,6 +27,7 @@ import { ScriptRenderer } from './scriptRenderer';
 import { useScript } from '../state/script';
 import { runScript } from '../engine/namascript.js';
 import { useReplay } from '../state/replay';
+import { useOverlay } from '../state/overlay';
 import { ReplayBar } from '../shell/ReplayBar';
 import { ChartContextMenu } from './ChartContextMenu';
 
@@ -282,6 +283,23 @@ export function ChartView({ feed, digits, displayName, onStudySettings, onAlertA
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scriptApplied, scriptRun, barsVersion]);
+
+  // A trade setup (a signal, the AI's reading) as price lines: entry, stop, targets.
+  const setup = useOverlay((o) => o.setup);
+  useEffect(() => {
+    const series = price.current;
+    if (!series || !setup || setup.symbol !== symbol) return;
+    const lines: IPriceLine[] = [];
+    const add = (p: number | null, color: string, title: string, style = LineStyle.Solid) => {
+      if (p == null) return;
+      lines.push(series.createPriceLine({ price: p, color, lineWidth: 2, lineStyle: style, axisLabelVisible: true, title }));
+    };
+    add(setup.entry, '#2962FF', `${setup.label} · Entry`);
+    add(setup.sl, '#F23645', 'SL', LineStyle.Dashed);
+    setup.targets.forEach((tp, i) => add(tp, '#089981', `TP${i + 1}`, LineStyle.Dashed));
+    return () => { lines.forEach((l) => { try { series.removePriceLine(l); } catch { /* series replaced */ } }); };
+  }, [setup, symbol, chartType]);
+  useEffect(() => { if (setup && setup.symbol !== symbol) useOverlay.getState().clear(); }, [symbol, setup]);
 
   // Replay: repaint from the slice as it grows; back to everything on exit.
   const replaySlice = useReplay((r) => r.slice);

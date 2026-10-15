@@ -93,6 +93,40 @@ sha256sum /tmp/pro-chart-terminal.zip       # must match the line above
 The zip holds the files of `web/build/terminal/` at its top level, plus `BUILD.txt` naming the
 commit it was built from.
 
+## Serving the new web app at `/next/`
+
+`webapp/` is the browser's own app (Vite + React + TypeScript + lightweight-charts), built to run at
+`/next/` beside `/terminal/` until it replaces it. It talks only to this relay (`/up/*`, `/api/*`,
+`/api/img`) and to `/terminal/google-callback.html` for Google sign-in, all on the same origin.
+Every push to `main` puts it on the same rolling release:
+
+```bash
+curl -fsSL -o /tmp/pro-chart-next.zip \
+  https://github.com/BehnamJalaliCo/CoinePro-App/releases/download/web-latest/pro-chart-next.zip
+curl -fsSL https://github.com/BehnamJalaliCo/CoinePro-App/releases/download/web-latest/pro-chart-next.zip.sha256
+sha256sum /tmp/pro-chart-next.zip           # must match the line above
+```
+
+Unzip it into the directory Caddy serves as `/next/`. Every path that is not a file is the app's
+own address (`/next/BTCUSDT/4h`), so it falls back to `index.html`. `assets/*` carry a content hash
+and may be cached forever; `index.html` and `generated/*` (fonts, icons, logos, names) carry none:
+
+```caddy
+handle_path /next/* {
+    root * /srv/pro-chart/next
+    @hashed path /assets/*
+    header @hashed Cache-Control "public, max-age=31536000, immutable"
+    @plain not path /assets/*
+    header @plain Cache-Control "no-cache"
+    try_files {path} /index.html
+    file_server
+}
+redir /next /next/ 308
+```
+
+When it replaces the terminal, build with `WEB_BASE=/terminal/` and serve it at `/terminal/` with
+the same block; nothing else changes.
+
 ## How to know it works
 
 `docker compose exec web-relay python -c "import urllib.request;print(urllib.request.urlopen('http://127.0.0.1:8790/relay/health').read())"` prints `{"ok": true}`. Then, from the page: sign in

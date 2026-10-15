@@ -94,7 +94,7 @@ export function App() {
         <TimeBar supported={(iv) => supported.includes(iv)} />
         <BottomPanel />
       </main>
-      <RightPanel onNewAlert={() => setAlertAt(null)} onAddSymbol={() => setAdding(true)} />
+      <RightPanel onNewAlert={() => setAlertAt(null)} onAddSymbol={() => setAdding(true)} onSignIn={() => setSignIn(true)} />
       <WidgetBar />
       {search !== null ? <SymbolSearch initial={search} onClose={() => setSearch(null)} /> : null}
       {signIn ? <SignIn onClose={() => setSignIn(false)} /> : null}

@@ -7,6 +7,8 @@ import type { StringKey } from '../i18n/strings';
 const ITEMS: { id: PanelId; icon: string; label: StringKey }[] = [
   { id: 'watchlist', icon: 'ph-list', label: 'watchlist' },
   { id: 'alerts', icon: 'ph-bell', label: 'alerts' },
+  { id: 'signals', icon: 'ph-lightning', label: 'signals' },
+  { id: 'ai', icon: 'ph-brain', label: 'aiTitle' },
   { id: 'objects', icon: 'ph-rows', label: 'objectTree' },
   { id: 'data', icon: 'ph-columns', label: 'dataWindow' },
   { id: 'news', icon: 'ph-newspaper', label: 'news' },

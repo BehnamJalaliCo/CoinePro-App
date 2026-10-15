@@ -161,6 +161,22 @@ jobs:
         with:
           node-version: "22"
 
+      # The new web app (webapp/: Vite + React + TypeScript + lightweight-charts) served at
+      # pro-chart.com/next/ beside the terminal: its tests, a strict type check, and the bundle.
+      - name: The new web app passes its tests and builds
+        working-directory: webapp
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+          WEB_BASE=/next/ npm run build
+
+      - name: Keep the new web app bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: pro-chart-next
+          path: webapp/dist/
+          if-no-files-found: error
+
       - name: The chart still compiles for the browser, and the web version builds
         run: |
           yarn --version
@@ -185,7 +201,10 @@ jobs:
           (cd web/build/terminal && zip -qr ../pro-chart-terminal.zip .)
           (cd web/build && sha256sum pro-chart-terminal.zip > pro-chart-terminal.zip.sha256)
           gh release view web-latest >/dev/null 2>&1 || gh release create web-latest --prerelease --latest=false --title "Web bundle — latest main" --notes "The web app's bundle, rebuilt on every push to main. Deploy: web/relay/README.md."
-          gh release upload web-latest web/build/pro-chart-terminal.zip web/build/pro-chart-terminal.zip.sha256 --clobber
+          printf 'commit %s\nversion %s\nbuilt %s\n' "$GITHUB_SHA" "$(python3 scripts/release/version.py --name)" "$(date -u +%FT%TZ)" > webapp/dist/BUILD.txt
+          (cd webapp/dist && zip -qr ../../web/build/pro-chart-next.zip .)
+          (cd web/build && sha256sum pro-chart-next.zip > pro-chart-next.zip.sha256)
+          gh release upload web-latest web/build/pro-chart-terminal.zip web/build/pro-chart-terminal.zip.sha256 web/build/pro-chart-next.zip web/build/pro-chart-next.zip.sha256 --clobber
           gh release edit web-latest --notes "The web app's bundle, built from $GITHUB_SHA. Deploy: web/relay/README.md."
 
       - name: Lint, test, and assemble debug + staging + release + benchmark

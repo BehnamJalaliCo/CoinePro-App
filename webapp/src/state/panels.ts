@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type PanelId = 'watchlist' | 'alerts' | 'objects' | 'data' | 'news' | 'calendar' | 'screener';
+export type PanelId = 'watchlist' | 'alerts' | 'signals' | 'ai' | 'objects' | 'data' | 'news' | 'calendar' | 'screener';
 export type BottomTab = 'screener' | 'namascript' | 'backtest' | 'paper';
 
 const KEY = 'pc.panels.v1';
