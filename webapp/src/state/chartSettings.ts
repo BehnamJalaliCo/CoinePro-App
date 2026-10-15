@@ -17,11 +17,17 @@ export interface ChartSettings {
   watermark: boolean;
   /** Economic events of the week marked on the bars they fall in. */
   events: boolean;
+  /** A line where each trading day starts, on intraday intervals. */
+  sessionBreaks: boolean;
+  /** The old Pro-Chart's automatic reading: RSI divergences, harmonic patterns, gaps. */
+  autoDivergence: boolean;
+  autoHarmonic: boolean;
+  autoGaps: boolean;
 }
 
 export const DEFAULT_SETTINGS: ChartSettings = {
   up: '#089981', down: '#F23645', grid: 'both', crosshair: 'normal', priceLine: true, showOhlc: true, showChange: true, countdown: true,
-  prevClose: false, watermark: false, events: true,
+  prevClose: false, watermark: false, events: true, sessionBreaks: false, autoDivergence: false, autoHarmonic: false, autoGaps: false,
 };
 
 const KEY = 'pc.chartsettings.v1';

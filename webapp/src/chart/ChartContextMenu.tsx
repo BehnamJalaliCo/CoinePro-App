@@ -66,7 +66,12 @@ export function ChartContextMenu({ at, onClose, onAlertAt }: { at: { x: number; 
       <button className="menu-item" onClick={run(() => setInvert(!invert))}><Icon name="ph-arrows-down-up" size="sm" /><span>Invert scale</span>{invert ? <Icon name="ph-check" size="sm" /> : <kbd className="num">Alt+I</kbd>}</button>
       <button className="menu-item" onClick={run(() => setScale(scale === 'indexed' ? 'normal' : 'indexed'))}><Icon name="ph-percent" size="sm" /><span>Indexed to 100</span>{scale === 'indexed' ? <Icon name="ph-check" size="sm" /> : null}</button>
       <button className="menu-item" onClick={run(() => settings.set({ prevClose: !settings.prevClose }))}><Icon name="tool_hline" size="sm" /><span>Previous close line</span>{settings.prevClose ? <Icon name="ph-check" size="sm" /> : null}</button>
+      <button className="menu-item" onClick={run(() => settings.set({ sessionBreaks: !settings.sessionBreaks }))}><Icon name="tool_vline" size="sm" /><span>Session breaks</span>{settings.sessionBreaks ? <Icon name="ph-check" size="sm" /> : null}</button>
       <button className="menu-item" onClick={run(() => settings.set({ events: !settings.events }))}><Icon name="ph-calendar-blank" size="sm" /><span>Economic events</span>{settings.events ? <Icon name="ph-check" size="sm" /> : null}</button>
+      <div className="menu-sep" />
+      <button className="menu-item" onClick={run(() => settings.set({ autoDivergence: !settings.autoDivergence }))}><Icon name="ph-trend-up" size="sm" /><span>Auto: RSI divergences</span>{settings.autoDivergence ? <Icon name="ph-check" size="sm" /> : null}</button>
+      <button className="menu-item" onClick={run(() => settings.set({ autoHarmonic: !settings.autoHarmonic }))}><Icon name="tool_xabcd" size="sm" /><span>Auto: harmonic patterns</span>{settings.autoHarmonic ? <Icon name="ph-check" size="sm" /> : null}</button>
+      <button className="menu-item" onClick={run(() => settings.set({ autoGaps: !settings.autoGaps }))}><Icon name="ph-columns" size="sm" /><span>Auto: price gaps</span>{settings.autoGaps ? <Icon name="ph-check" size="sm" /> : null}</button>
       <div className="menu-sep" />
       <button className="menu-item" onClick={run(() => { void copyChartImage(); })}><Icon name="ph-camera" size="sm" /><span>Copy chart image</span></button>
       <button className="menu-item" onClick={run(exportBarsCsv)}><Icon name="ph-download-simple" size="sm" /><span>Export chart data (CSV)</span></button>

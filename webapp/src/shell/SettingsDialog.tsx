@@ -80,6 +80,10 @@ export function SettingsDialog({ onClose }: { onClose(): void }) {
                     <option value="both">Vert and horz</option><option value="vertical">Vert only</option><option value="horizontal">Horz only</option><option value="none">None</option>
                   </select>
                 </label>
+                <label className="setting-row"><span>Session breaks</span>{toggle('sessionBreaks')}</label>
+                <label className="setting-row"><span>Auto: RSI divergences</span>{toggle('autoDivergence')}</label>
+                <label className="setting-row"><span>Auto: harmonic patterns</span>{toggle('autoHarmonic')}</label>
+                <label className="setting-row"><span>Auto: price gaps</span>{toggle('autoGaps')}</label>
                 <label className="setting-row"><span>Watermark</span>{toggle('watermark')}</label>
                 <label className="setting-row"><span>Economic events on the chart</span>{toggle('events')}</label>
                 <label className="setting-row"><span>Invert price scale</span><input type="checkbox" checked={invert} onChange={(e) => setInvert(e.target.checked)} /></label>

@@ -10,7 +10,7 @@ import type { Candle } from '../data/types';
 
 export type ChartType =
   | 'bars' | 'candles' | 'hollow' | 'heikin' | 'line' | 'linemarkers' | 'step' | 'area' | 'baseline'
-  | 'columns' | 'highlow' | 'volcandles' | 'renko' | 'linebreak' | 'kagi' | 'pnf' | 'range';
+  | 'columns' | 'highlow' | 'volcandles' | 'hlcarea' | 'renko' | 'linebreak' | 'kagi' | 'pnf' | 'range';
 
 export interface ChartTypeDef { id: ChartType; icon: string; fa: string; en: string; group: number }
 
@@ -24,6 +24,7 @@ export const CHART_TYPES: ChartTypeDef[] = [
   { id: 'step', icon: 'chart_step', fa: 'پله‌ای', en: 'Step line', group: 1 },
   { id: 'area', icon: 'chart_area', fa: 'ناحیه‌ای', en: 'Area', group: 2 },
   { id: 'baseline', icon: 'chart_baseline', fa: 'خط مبنا', en: 'Baseline', group: 2 },
+  { id: 'hlcarea', icon: 'chart_hlcarea', fa: 'ناحیه‌ی سقف، کف و پایانی', en: 'HLC area', group: 2 },
   { id: 'columns', icon: 'chart_columns', fa: 'ستونی', en: 'Columns', group: 3 },
   { id: 'highlow', icon: 'chart_highlow', fa: 'سقف و کف', en: 'High-low', group: 3 },
   { id: 'heikin', icon: 'chart_heikin', fa: 'هیکن آشی', en: 'Heikin Ashi', group: 4 },
@@ -52,6 +53,9 @@ export function createPriceSeries(chart: IChartApi, type: ChartType, p: Palette,
       return chart.addSeries(CandlestickSeries, { ...common, upColor: 'rgba(0,0,0,0)', downColor: p.down, borderUpColor: p.up, borderDownColor: p.down, wickUpColor: p.up, wickDownColor: p.down });
     case 'line': case 'kagi': case 'pnf':
       return chart.addSeries(LineSeries, { ...common, color: p.line, lineWidth: 2 });
+    case 'hlcarea':
+      // The close as a line; the high–close and close–low bands are drawn by the chart (BandFill).
+      return chart.addSeries(LineSeries, { ...common, color: '#787B86', lineWidth: 2 });
     case 'linemarkers':
       return chart.addSeries(LineSeries, { ...common, color: p.line, lineWidth: 2, pointMarkersVisible: true, pointMarkersRadius: 3 });
     case 'step':
@@ -105,7 +109,7 @@ function heikinAshi(bars: Candle[]): Candle[] {
 export function seriesData(type: ChartType, bars: Candle[], p: Palette): unknown[] {
   const ohlc = (list: Candle[]) => list.map((b) => ({ time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c }));
   switch (type) {
-    case 'line': case 'linemarkers': case 'step': case 'area': case 'baseline':
+    case 'line': case 'linemarkers': case 'step': case 'area': case 'baseline': case 'hlcarea':
       return bars.map((b) => ({ time: b.t as UTCTimestamp, value: b.c }));
     case 'columns':
       return bars.map((b, i) => ({ time: b.t as UTCTimestamp, value: b.c, color: b.c >= (bars[i - 1]?.c ?? b.o) ? p.up : p.down }));
@@ -127,7 +131,8 @@ export function seriesData(type: ChartType, bars: Candle[], p: Palette): unknown
 
 /** One live point for a time-based type, or null when the type must be rebuilt instead. */
 export function livePoint(type: ChartType, bar: Candle, prev: Candle | undefined, p: Palette): unknown | null {
-  if (DERIVED.includes(type)) return null;
+  // HLC area's bands are rebuilt with the line, so a live bar repaints the whole type.
+  if (DERIVED.includes(type) || type === 'hlcarea') return null;
   switch (type) {
     case 'line': case 'linemarkers': case 'step': case 'area': case 'baseline':
       return { time: bar.t as UTCTimestamp, value: bar.c };

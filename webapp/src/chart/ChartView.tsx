@@ -26,6 +26,12 @@ import { LineSeries, createSeriesMarkers, createTextWatermark, type SeriesMarker
 import { useMarket } from '../state/market';
 import { calendarWeek, type CalendarEvent } from '../data/intel';
 import { DrawingStyleBar } from './DrawingStyleBar';
+import { SessionBreaks } from './SessionBreaks';
+import { AutoOverlay } from './AutoOverlay';
+import { useQuote } from '../data/quote';
+import { BandFillPrimitive } from '../engine/bandFill.js';
+import { usePaper } from '../state/paper';
+import { usePanels } from '../state/panels';
 import { marketOf } from '../data/symbols';
 import { onPrice } from '../data/prices';
 import { ScriptRenderer } from './scriptRenderer';
@@ -110,6 +116,22 @@ export function ChartView({ feed, digits, displayName, onStudySettings, onAlertA
   function paintPrice() {
     const p = palette(darkRef.current);
     price.current?.setData(seriesData(typeRef.current, view(), p) as never);
+    paintHlc(p);
+  }
+  // HLC area: the high–close band in the rising colour and the close–low band in the falling one.
+  const hlc = useRef<{ series: ISeriesApi<SeriesType>; up: BandFillPrimitive; down: BandFillPrimitive } | null>(null);
+  function paintHlc(p: Palette) {
+    const series = price.current;
+    if (!series || typeRef.current !== 'hlcarea') { hlc.current = null; return; }
+    const v = view();
+    const up = v.map((b) => ({ time: b.t, upper: b.h, lower: b.c }));
+    const down = v.map((b) => ({ time: b.t, upper: b.c, lower: b.l }));
+    if (!hlc.current || hlc.current.series !== series) {
+      const a = new BandFillPrimitive(up, tint(p.up, 0.28));
+      const b = new BandFillPrimitive(down, tint(p.down, 0.28));
+      series.attachPrimitive(a as never); series.attachPrimitive(b as never);
+      hlc.current = { series, up: a, down: b };
+    } else { hlc.current.up.setData(up); hlc.current.down.setData(down); }
   }
   function paintVolume() {
     const p = palette(darkRef.current);
@@ -329,6 +351,7 @@ export function ChartView({ feed, digits, displayName, onStudySettings, onAlertA
   // The week's high-impact economic events that touch this symbol, on the bars they fall in.
   const eventsOn = useChartSettings((x) => x.events);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [eventsAt, setEventsAt] = useState<Map<number, CalendarEvent[]>>(new Map());
   useEffect(() => {
     if (!eventsOn) return;
     let alive = true;
@@ -342,17 +365,22 @@ export function ChartView({ feed, digits, displayName, onStudySettings, onAlertA
     const ccy = marketOf(symbol) === 'crypto' ? ['USD'] : [symbol.slice(0, 3), symbol.slice(3, 6)].map((c) => (c === 'XAU' || c === 'XAG' ? 'USD' : c));
     const first = list[0]!.t; const last = list[list.length - 1]!.t + intervalSeconds(interval);
     const markers: SeriesMarker<Time>[] = [];
+    const byBar = new Map<number, CalendarEvent[]>();
     for (const e of events) {
       const t = Math.floor(e.time / 1000);
       if (e.impact !== 'high' || t < first || t >= last || !ccy.includes(e.currency.toUpperCase().slice(0, 3))) continue;
       let lo = 0; let hi = list.length - 1;
       while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (list[mid]!.t <= t) lo = mid; else hi = mid - 1; }
-      markers.push({ time: list[lo]!.t as Time, position: 'belowBar', color: '#F57C00', shape: 'circle', text: `${e.currency} ${e.title}`.slice(0, 22) });
+      // A dot under the bar, as TradingView marks events; the names are in the legend on hover.
+      markers.push({ time: list[lo]!.t as Time, position: 'belowBar', color: '#F57C00', shape: 'circle', size: 0.6 });
+      const k = list[lo]!.t;
+      byBar.set(k, [...(byBar.get(k) ?? []), e]);
     }
+    setEventsAt(byBar);
     if (!markers.length) return;
     markers.sort((a, b) => (a.time as number) - (b.time as number));
     const plugin = createSeriesMarkers(series, markers);
-    return () => { try { plugin.detach(); } catch { /* series replaced */ } };
+    return () => { try { plugin.detach(); } catch { /* series replaced */ } setEventsAt(new Map()); };
   }, [eventsOn, events, barsVersion, chartType, up, down, priceLine, symbol, interval]);
 
   // Replay: repaint from the slice as it grows; back to everything on exit.
@@ -510,6 +538,18 @@ export function ChartView({ feed, digits, displayName, onStudySettings, onAlertA
     </div>
   );
 
+  // TradingView's Buy/Sell boxes under the title: the live top of the book; a click is a paper trade.
+  const quote = useQuote(symbol);
+  const replayOn = useReplay((r) => Boolean(r.state?.on));
+  const sessionBreaks = useChartSettings((x) => x.sessionBreaks);
+  const autoDiv = useChartSettings((x) => x.autoDivergence);
+  const autoHarm = useChartSettings((x) => x.autoHarmonic);
+  const autoGaps = useChartSettings((x) => x.autoGaps);
+  const paperTrade = (side: 'long' | 'short', px: number) => {
+    usePaper.getState().open(symbol, side, Number((1000 / px).toPrecision(2)), px);
+    if (usePanels.getState().bottom !== 'paper') usePanels.getState().setBottom('paper');
+  };
+
   return (
     <div className="ws-chart" onContextMenu={(e) => {
       if ((e.target as HTMLElement).closest('.legend, .replay-bar')) return;
@@ -520,6 +560,8 @@ export function ChartView({ feed, digits, displayName, onStudySettings, onAlertA
       setMenuAt({ x: e.clientX, y: e.clientY, price: typeof px === 'number' ? px : null });
     }}>
       <div ref={host} className="chart-host" />
+      {sessionBreaks ? <SessionBreaks api={chart.current} bars={bars.current} intraday={intervalSeconds(interval) < 86400} timezone={timezone} version={barsVersion} color={dark ? 'rgba(255,255,255,0.18)' : 'rgba(19,23,34,0.18)'} /> : null}
+      {(autoDiv || autoHarm || autoGaps) && !timeless() ? <AutoOverlay api={chart.current} series={price.current} bars={view()} version={barsVersion + (replaySlice?.length ?? 0)} flags={{ divergence: autoDiv, harmonic: autoHarm, gaps: autoGaps }} fa={usePrefs.getState().lang === 'fa'} /> : null}
       <canvas ref={drawCanvas} className="draw-layer" />
       <div className="legend">
         <div className="legend-row">
@@ -534,6 +576,18 @@ export function ChartView({ feed, digits, displayName, onStudySettings, onAlertA
             </span>
           ) : null}
         </div>
+        {shown && eventsAt.get(shown.t)?.length ? (
+          <div className="legend-events">
+            {eventsAt.get(shown.t)!.map((e, i) => <span key={i} className="num"><i className="ev-dot" />{e.currency} · {e.title}{e.actual ? ` · ${e.actual}` : e.forecast ? ` · f ${e.forecast}` : ''}</span>)}
+          </div>
+        ) : null}
+        {quote && !replayOn ? (
+          <div className="legend-trade" role="group" aria-label="trade">
+            <button className="lt-sell" title="Sell (paper)" onClick={() => paperTrade('short', (quote.bid + quote.ask) / 2)}><b className="num">{formatPrice(quote.bid, digits)}</b><span>SELL</span></button>
+            <span className="lt-spread num">{formatPrice(quote.spread, digits)}</span>
+            <button className="lt-buy" title="Buy (paper)" onClick={() => paperTrade('long', (quote.bid + quote.ask) / 2)}><b className="num">{formatPrice(quote.ask, digits)}</b><span>BUY</span></button>
+          </div>
+        ) : null}
         {volStudy && shown ? (
           <div className={`legend-study${volStudy.hidden ? ' off' : ''}`}>
             <span className="legend-study-name">Vol</span>
@@ -573,4 +627,12 @@ let eventsCache: Promise<CalendarEvent[]> | null = null;
 function loadEvents(): Promise<CalendarEvent[]> {
   eventsCache ??= calendarWeek().catch(() => { eventsCache = null; return []; });
   return eventsCache;
+}
+
+/** A #rrggbb colour at an opacity. */
+function tint(hex: string, a: number): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1]!, 16);
+  return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
 }

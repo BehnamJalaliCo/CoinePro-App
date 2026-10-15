@@ -66,7 +66,7 @@
 .ib.range:hover, .ib.scale:hover { color: var(--text); }
 
 /* Watchlist */
-.wl { display: flex; flex-direction: column; min-height: 0; flex: 1 1 55%; }
+.wl { display: flex; flex-direction: column; min-height: 120px; flex: 0 1 auto; max-height: 58%; }
 .wl-head { display: flex; align-items: center; height: 40px; padding: 0 4px 0 8px; border-bottom: 1px solid var(--line); }
 .wl-title { font-weight: 600; font-size: var(--fs-list); }
 .wl-cols, .wl-row { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1.05fr) minmax(0, 0.95fr) minmax(0, 0.85fr); align-items: center; column-gap: 6px; padding: 0 8px; }
@@ -82,7 +82,7 @@
 .wl-row .c-num { text-align: right; font-size: var(--fs-ui); white-space: nowrap; overflow: hidden; }
 
 /* Symbol details */
-.details { border-top: 1px solid var(--line); padding: 12px 14px; overflow-y: auto; flex: 1 1 45%; }
+.details { border-top: 1px solid var(--line); padding: 12px 14px; overflow-y: auto; flex: 1 1 42%; min-height: 0; }
 .details-head { display: flex; align-items: center; gap: 10px; }
 .details-names { display: flex; flex-direction: column; min-width: 0; }
 .details-sym { font-size: var(--fs-list); }
@@ -588,3 +588,35 @@ kbd { border: 1px solid var(--line-strong); border-bottom-width: 2px; border-rad
 .preset { display: inline-flex; gap: 2px; padding: 3px; border-radius: 6px; border: 1px solid var(--line); }
 .preset i { width: 10px; height: 18px; border-radius: 2px; display: block; }
 .preset.on { border-color: var(--text); }
+.spark { display: block; width: 100%; height: 44px; margin-top: 8px; }
+.spark-line { fill: none; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.spark.up .spark-line { stroke: var(--up); } .spark.down .spark-line { stroke: var(--down); }
+.spark-fill { stroke: none; opacity: 0.12; }
+.spark.up .spark-fill { fill: var(--up); } .spark.down .spark-fill { fill: var(--down); }
+.details-facts p { margin: 0; font-size: var(--fs-small); line-height: 1.8; color: var(--text-2); }
+.details-facts { border-radius: 8px; padding: 2px 10px 10px; margin-top: 12px; background: color-mix(in srgb, var(--info) 6%, transparent); }
+.details-facts .details-title { margin-top: 10px; }
+.rating-tfs .chip { height: 24px; padding: 0 8px; }
+.gauge { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 4px 0 8px; color: var(--text); }
+.gauge svg { width: 170px; height: 90px; }
+.gauge > b { font-size: 15px; }
+.gauge-counts { display: flex; gap: 22px; font-size: var(--fs-small); }
+.gauge-parts { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: var(--fs-small); color: var(--text-2); }
+.details-range .bar.grad { background: linear-gradient(90deg, var(--down), var(--up)); }
+.details-range .bar.grad .fill { top: -4px; width: 12px; height: 12px; border-radius: 50%; background: var(--bg); border: 2.5px solid var(--text); transform: translateX(-6px); }
+.perf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.perf { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; border-radius: 6px; background: var(--bg-sunken); font-size: var(--fs-small); }
+.perf.up { background: var(--up-soft); } .perf.down { background: var(--down-soft); }
+.perf.up b { color: var(--up); } .perf.down b { color: var(--down); }
+.perf span { color: var(--text-3); font-size: 11px; }
+.legend-trade { display: flex; align-items: stretch; gap: 4px; margin: 4px 0 2px; pointer-events: auto; }
+.legend-trade button { display: flex; flex-direction: column; align-items: center; min-width: 72px; padding: 2px 8px; border-radius: 4px; border: 1px solid; background: var(--bg); font-size: 11px; line-height: 1.25; }
+.legend-trade .lt-sell { color: var(--down); border-color: var(--down); }
+.legend-trade .lt-buy { color: var(--info); border-color: var(--info); }
+.legend-trade button:hover { background: var(--bg-hover); }
+.legend-trade b { font-weight: 600; font-size: 12px; }
+.lt-spread { align-self: center; color: var(--text-3); font-size: 11px; }
+.legend-events { display: flex; flex-direction: column; gap: 2px; margin: 2px 0; font-size: 11px; color: var(--text-2); }
+.ev-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #F57C00; margin-inline-end: 6px; }
+.session-breaks { position: absolute; left: 0; top: 0; z-index: 3; pointer-events: none; }
+.auto-overlay { position: absolute; left: 0; top: 0; z-index: 3; pointer-events: none; }

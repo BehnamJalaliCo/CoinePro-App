@@ -244,7 +244,7 @@ await test('every chart type renders', async () => {
     await env.page.waitForTimeout(250);
   }
   await pc(env.page, () => window.__pc.usePrefs.getState().setChartType('candles'));
-  expect(types.length === 17, `expected 17 chart types, got ${types.length}`);
+  expect(types.length === 18, `expected 18 chart types, got ${types.length}`);
   return env;
 });
 
@@ -813,6 +813,56 @@ await test('replay: random bar, ±10, practice trades, back to real time', async
   expect(trades.length === 1 && trades[0].exit != null, JSON.stringify(trades));
   await env.page.click('.replay-bar [title="jump to real time"]');
   expect(!(await pc(env.page, () => window.__pc.useReplay.getState().state)), 'replay still on');
+  return env;
+});
+
+
+// ── Symbol details, quote boxes, session breaks (the old Pro-Chart's and TradingView's) ───────────
+await test('symbol details: sparkline, quote, rating, ranges, performance', async () => {
+  const env = await open('BTCUSDT/1h?e2e=1');
+  await ready(env.page);
+  await env.page.waitForSelector('.details .gauge', { timeout: 15000 });
+  await env.page.waitForSelector('.details .perf-grid .perf', { timeout: 15000 });
+  await env.page.waitForSelector('.details .spark polyline', { timeout: 15000 });
+  const text = await env.page.textContent('.details');
+  expect(/اسپرد/.test(text ?? ''), 'no quote in details');
+  expect(/بازه‌ی ۵۲ هفته/.test(text ?? ''), 'no 52-week range');
+  await env.page.click('.rating-tfs .chip >> nth=0');
+  await env.page.waitForSelector('.details .gauge', { timeout: 15000 });
+  return env;
+});
+
+await test('legend buy/sell boxes place a paper trade', async () => {
+  const env = await open('ETHUSDT/1h?e2e=1');
+  await ready(env.page);
+  await env.page.waitForSelector('.legend-trade .lt-buy', { timeout: 10000 });
+  await env.page.click('.legend-trade .lt-buy');
+  await env.page.waitForFunction(() => window.__pc.usePaper.getState().positions.some((p) => p.symbol === 'ETHUSDT' && p.side === 'long'), null, { timeout: 5000 });
+  return env;
+});
+
+await test('session breaks draw on intraday; HLC area renders', async () => {
+  const env = await open('BTCUSDT/15m?e2e=1');
+  await ready(env.page);
+  await pc(env.page, () => window.__pc.useChartSettings?.getState().set({ sessionBreaks: true }));
+  await env.page.waitForSelector('canvas.session-breaks', { timeout: 5000 });
+  const painted = await env.page.evaluate(() => { const c = document.querySelector('canvas.session-breaks'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; for (let i = 3; i < d.length; i += 4) if (d[i]) return true; return false; });
+  expect(painted, 'no session break drawn');
+  await pc(env.page, () => window.__pc.usePrefs.getState().setChartType('hlcarea'));
+  await env.page.waitForTimeout(500);
+  await ready(env.page);
+  return env;
+});
+
+
+await test('auto analysis: divergences, harmonics and gaps draw without errors', async () => {
+  const env = await open('BTCUSDT/1h?e2e=1');
+  await ready(env.page);
+  await pc(env.page, () => window.__pc.useChartSettings.getState().set({ autoDivergence: true, autoHarmonic: true, autoGaps: true }));
+  await env.page.waitForSelector('canvas.auto-overlay', { timeout: 5000 });
+  const found = Number(await env.page.getAttribute('canvas.auto-overlay', 'data-found'));
+  console.log(`      ${found} detections`);
+  for (const iv of ['15', '240', '1D']) { await pc(env.page, (x) => window.__pc.usePrefs.getState().setInterval(x), iv); await ready(env.page); }
   return env;
 });
 
