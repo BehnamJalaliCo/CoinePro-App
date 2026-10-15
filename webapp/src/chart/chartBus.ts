@@ -1,7 +1,7 @@
 // The one live chart, reachable from the frame around it (the time bar's ranges and scale switches,
 // the snapshot button, the data window) without threading refs through every component.
 import { create } from 'zustand';
-import type { IChartApi } from 'lightweight-charts';
+import type { IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts';
 import type { Candle } from '../data/types';
 import type { DrawingLayer } from '../engine/drawings.js';
 
@@ -9,6 +9,8 @@ export type ScaleMode = 'normal' | 'log' | 'percent' | 'indexed';
 
 interface ChartBusState {
   api: IChartApi | null;
+  /** The main price series (changes when the chart type changes), for markers and price lines. */
+  series: ISeriesApi<SeriesType> | null;
   bars: Candle[];
   /** Bar under the crosshair, or null for the last bar. */
   hover: Candle | null;
@@ -32,6 +34,7 @@ interface ChartBusState {
   setDrawingLayer(layer: DrawingLayer | null): void;
   bumpDrawings(canUndo: boolean, canRedo: boolean, count: number): void;
   setApi(api: IChartApi | null): void;
+  setSeries(series: ISeriesApi<SeriesType> | null): void;
   setBars(bars: Candle[]): void;
   setHover(bar: Candle | null): void;
   setScale(mode: ScaleMode): void;
@@ -43,6 +46,7 @@ interface ChartBusState {
 
 export const useChartBus = create<ChartBusState>((set) => ({
   api: null,
+  series: null,
   bars: [],
   hover: null,
   scale: 'normal',
@@ -60,6 +64,7 @@ export const useChartBus = create<ChartBusState>((set) => ({
   setDrawingLayer: (drawingLayer) => set({ drawingLayer }),
   bumpDrawings: (canUndo, canRedo, drawingCount) => set((s) => ({ canUndo, canRedo, drawingCount, drawingVersion: s.drawingVersion + 1 })),
   setApi: (api) => set({ api }),
+  setSeries: (series) => set({ series }),
   setBars: (bars) => set({ bars }),
   setHover: (hover) => set({ hover }),
   setScale: (scale) => set({ scale }),

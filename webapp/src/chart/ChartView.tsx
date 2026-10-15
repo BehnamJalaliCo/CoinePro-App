@@ -182,6 +182,7 @@ export function ChartView({ feed, digits, displayName, onStudySettings, onAlertA
     });
     chart.current = c;
     price.current = createPriceSeries(c, typeRef.current, p, fmt());
+    useChartBus.getState().setSeries(price.current);
     volume.current = c.addSeries(HistogramSeries, { priceScaleId: 'vol', priceFormat: { type: 'volume' }, lastValueVisible: false, priceLineVisible: false });
     c.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
     renderer.current = new StudyRenderer(c, () => price.current, () => digitsRef.current);
@@ -215,7 +216,7 @@ export function ChartView({ feed, digits, displayName, onStudySettings, onAlertA
       drawing.current?.dispose(); drawing.current = null;
       script.current?.clear(); script.current = null;
       renderer.current?.dispose(); renderer.current = null;
-      useChartBus.getState().setApi(null); c.remove(); chart.current = null; price.current = null; volume.current = null;
+      useChartBus.getState().setApi(null); useChartBus.getState().setSeries(null); c.remove(); chart.current = null; price.current = null; volume.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -248,6 +249,7 @@ export function ChartView({ feed, digits, displayName, onStudySettings, onAlertA
     if (!c || !price.current) return;
     c.removeSeries(price.current);
     price.current = createPriceSeries(c, chartType, palette(darkRef.current), fmt());
+    useChartBus.getState().setSeries(price.current);
     price.current.applyOptions({ priceLineVisible: priceLine });
     renderer.current?.resetPriceSeries();
     drawing.current?.setSeries(price.current);
