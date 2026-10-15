@@ -53,6 +53,23 @@ export default async function ({ test, open, ready, pc, expect }) {
     await page.mouse.up();
   };
 
+  await test('trade: without an LBank key the chart asks the key link, never the account (no TYR-016)', async () => {
+    const seen = [];
+    const answer = (body) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    const env = await open('BTCUSDT/1h?e2e=1', { signed: true, mock: (u) => {
+      seen.push(u.pathname);
+      if (u.pathname === '/up/tradeyar/api/mobile/v1/venues/lbank') return answer({ configured: false, connected: false, status: 'none', permission: '' });
+      if (u.pathname === '/up/tradeyar/api/mobile/v1/trade/account') return { status: 400, contentType: 'application/json', body: JSON.stringify({ code: 'TYR-016' }) };
+      return null;
+    } });
+    await ready(env.page);
+    await env.page.waitForFunction(() => window.__pc.useTrading.getState().books.tradeyar.status === 'no-keys', null, { timeout: 8000 });
+    await env.page.waitForTimeout(1500);
+    expect(seen.some((p) => p.endsWith('/venues/lbank')), 'the key link was asked');
+    expect(!seen.some((p) => p.endsWith('/trade/account') || p.endsWith('/trade/positions') || p.includes('/trade/orders')), `asked without a key: ${seen.filter((p) => p.includes('/trade/')).join(', ')}`);
+    return env;
+  });
+
   await test('trade: a member’s chart order opens the live ticket and sends one confirmed order', async () => {
     const env = await start('BTCUSDT/1h?e2e=1', { signed: true });
     const { page } = env;

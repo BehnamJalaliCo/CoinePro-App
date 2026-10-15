@@ -340,7 +340,7 @@ class PanelTest(AioHTTPTestCase):
         base = str(self.upstream.make_url("/"))
         self.config = relay.Config(backends={"tradeyar": base, "coineprofx": base}, cookie_secure=False,
                                    panel_url=str(self.console.make_url("/internal/panel")), panel_token=PANEL_TOKEN,
-                                   hash_salt="salt")
+                                   hash_salt="salt", probe_grace=0.3)
         return relay.build_app(self.config)
 
     async def asyncTearDown(self) -> None:
@@ -516,6 +516,26 @@ class PanelTest(AioHTTPTestCase):
         self.assertEqual(response.status, 401)
         await self.events("refresh_failed")
         self.assertNotIn("tradeyar", self.session().identity)
+
+    async def test_the_other_platforms_refusal_of_a_good_sign_in_is_not_a_failed_attempt(self) -> None:
+        # The page tries TradeYar, which does not know this password, then gets in on CoinePro-FX.
+        await self.sign_in(password="wrong")
+        response = await self.client.post("/up/coineprofx/api/user/auth/login",
+                                          json={"email": "sara@example.com", "password": "x"},
+                                          headers={"User-Agent": CHROME_PHONE, "X-Forwarded-For": "6.6.6.6, 203.0.113.9"})
+        self.assertEqual(response.status, 200)
+        await self.events("signin")
+        await asyncio.sleep(0.6)
+        await relay.settle(self.app)
+        self.assertEqual([e for e in self.seen["events"] if e["kind"] == "signin_failed"], [])
+        self.assertEqual(self.app[relay.PROBES], {})
+
+    async def test_a_refusal_from_another_address_or_the_same_platform_still_counts(self) -> None:
+        await self.sign_in(password="wrong")
+        await self.client.post("/up/coineprofx/api/user/auth/login", json={"email": "sara@example.com", "password": "x"},
+                               headers={"User-Agent": CHROME_PHONE, "X-Forwarded-For": "6.6.6.6, 198.51.100.4"})
+        await self.sign_in()  # the same platform, the same address: the refusal was a wrong password
+        self.assertEqual(len(await self.events("signin_failed")), 1)
 
     async def test_the_consoles_calls_need_the_secret(self) -> None:
         await self.sign_in()

@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import { HttpError, pageVisible } from '../data/http';
 import { useSession } from '../data/session';
-import { getAccount, getOrders, getPositions } from './api';
+import { getAccount, getOrders, getPositions, getVenueLink } from './api';
 import { LIVE_VENUES, type Venue } from './venue';
 import { backendText, isWorking, type Account, type Order, type Position, type PosSide } from './wire';
 
@@ -71,6 +71,14 @@ export const useTrading = create<TradingState>((set, get) => {
   const loadAccount = async (v: Venue) => {
     if (!LIVE_VENUES.includes(v)) return;
     if (!signedIn(v)) { patch(v, empty('signed-out')); return; }
+    // TradeYar answers the account 400 TYR-016 until an LBank key is saved; its key link says so
+    // without an error (server report, 2026-10-15), so the account is asked only once there is a key.
+    if (v === 'tradeyar') {
+      try {
+        const link = await getVenueLink();
+        if (!link.configured && !link.connected) { patch(v, { status: 'no-keys', message: null, account: null, accountAt: Date.now() }); return; }
+      } catch { /* the account call below says what is wrong */ }
+    }
     try {
       const account = await getAccount(v);
       patch(v, { account, status: account.tradingEnabled ? 'live' : 'off', message: null, accountAt: Date.now() });

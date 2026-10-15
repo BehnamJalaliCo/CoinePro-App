@@ -99,6 +99,10 @@ class Config:
     state_file: str = field(default_factory=lambda: os.environ.get("RELAY_STATE_FILE", ""))
     state_key: str = field(default_factory=lambda: os.environ.get("RELAY_STATE_KEY", ""))
     state_every: float = 60.0
+    # The page signs in on both platforms with one e-mail and password; the one that does not know the
+    # reader answers 401 a moment before the other lets them in. A refused sign-in waits this long,
+    # and is not reported when the same e-mail from the same address gets into the other platform.
+    probe_grace: float = 15.0
 
     @property
     def persist(self) -> bool:
@@ -387,6 +391,7 @@ SWEEPER = web.AppKey("sweeper", asyncio.Task)
 EVENTS = web.AppKey("events", asyncio.Queue)
 SENDER = web.AppKey("sender", asyncio.Task)
 PENDING = web.AppKey("pending", set)
+PROBES = web.AppKey("probes", dict)
 
 
 def build_app(config: Config | None = None) -> web.Application:
@@ -396,6 +401,7 @@ def build_app(config: Config | None = None) -> web.Application:
     app[SESSIONS] = Sessions(config.session_days * 86400)
     app[BUCKETS] = Buckets()
     app[PENDING] = set()
+    app[PROBES] = {}
     # The panel's own routes before the backends' catch-all, which would read "panel" as a backend.
     app.router.add_get("/up/panel/sessions", panel_sessions)
     app.router.add_post("/up/panel/sessions/revoke", panel_revoke)
@@ -463,6 +469,9 @@ async def _save_state(app: web.Application) -> None:
 
 async def _close_clients(app: web.Application) -> None:
     app[SWEEPER].cancel()
+    for held in list(app[PROBES].values()):
+        for _, task in held:
+            task.cancel()
     if app[CONFIG].persist:
         await _save_state(app)
     app[SENDER].cancel()
@@ -566,10 +575,12 @@ async def passthrough(request: web.Request) -> web.StreamResponse:
                 if backend not in session.identity:
                     background(request.app, resolve_identity(request.app, session, backend))
             elif method != "guest":
+                drop_probe(request.app, backend, email_hash(body, config.panel_token), session.ip_hash)
                 background(request.app, signed_in(request.app, session, backend, method, hint))
     elif AUTH_ATTEMPT.match(path) and status in (401, 403):
-        emit(request.app, {"kind": "signin_failed", "backend": backend, "method": sign_in_method(path),
-                           "email_hash": email_hash(body, config.panel_token), **client_fields(session, request, config)})
+        failed = {"kind": "signin_failed", "backend": backend, "method": sign_in_method(path),
+                  "email_hash": email_hash(body, config.panel_token), **client_fields(session, request, config)}
+        hold_failure(request.app, failed)
     elif issuing and sign_in_method(path) == "refresh" and status in (401, 403) and session is not None:
         # The page signs that platform out now; so does the relay.
         emit(request.app, {"kind": "refresh_failed", "backend": backend, **session_fields(session)})
@@ -876,6 +887,42 @@ async def trade_event(app: web.Application, session: Session | None, backend: st
 
 
 # ── Telling the console ─────────────────────────────────────────────────────────────────────────
+
+
+def hold_failure(app: web.Application, event: dict) -> None:
+    """A refused sign-in is reported after `probe_grace`, unless `drop_probe` takes it back first."""
+    if not app[CONFIG].panel_enabled:
+        return
+    event.setdefault("at", time.time())
+    key = (event.get("ip_hash", ""), event.get("email_hash", ""))
+
+    async def later() -> None:
+        await asyncio.sleep(app[CONFIG].probe_grace)
+        emit(app, event)
+
+    task = asyncio.ensure_future(later())
+    held = app[PROBES].setdefault(key, [])
+    held.append((event.get("backend"), task))
+
+    def done(_: asyncio.Future) -> None:
+        left = [item for item in app[PROBES].get(key, []) if item[1] is not task]
+        if left:
+            app[PROBES][key] = left
+        else:
+            app[PROBES].pop(key, None)
+
+    task.add_done_callback(done)
+
+
+def drop_probe(app: web.Application, backend: str, mail: str, ip: str) -> None:
+    """A sign-in into one platform takes back the other platform's refusal of the same e-mail from the
+    same address (the page asked both). A refusal on the same platform stays: that was a wrong password."""
+    if not mail or not ip:
+        return
+    for other, task in list(app[PROBES].get((ip, mail), [])):
+        if other != backend:
+            task.cancel()
+            break
 
 
 def emit(app: web.Application, event: dict) -> None:
