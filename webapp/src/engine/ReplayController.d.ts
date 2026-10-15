@@ -1,24 +1,43 @@
 export const SPEED_LADDER: number[];
+export function speedToDelay(speed: number): number;
+export function indexForTime(full: unknown[], t: number): number;
 export interface ReplayState { on: boolean; playing: boolean; speed: number; idx: number; length: number; progress: number; atStart: boolean; atEnd: boolean }
 export class ReplayController {
-  constructor(opts?: { speed?: number; onSlice?(slice: unknown[]): void; onStep?(bar: unknown, slice: unknown[], idx: number): void; onChange?(s: ReplayState): void; onEnd?(): void });
+  constructor(opts?: { speed?: number; onSlice?(slice: unknown[]): void; onStep?(bar: unknown, slice: unknown[], idx: number): void; onChange?(s: ReplayState): void; onEnd?(): void; onIntrabar?(sub: unknown, bar: unknown, j: number, slice: unknown[]): void });
   static canEnter(candles: unknown[]): boolean;
   readonly isOn: boolean;
+  readonly atStart: boolean;
+  readonly atEnd: boolean;
+  readonly progress: number;
+  readonly remaining: number;
+  readonly hasIntrabar: boolean;
   idx: number;
   full: unknown[];
   playing: boolean;
   speed: number;
+  onIntrabar: ((sub: unknown, bar: unknown, j: number, slice: unknown[]) => void) | null;
   enter(candles: unknown[], opts?: { startIndex?: number; startTime?: number; startPct?: number }): boolean;
   slice(): unknown[];
   step(): boolean;
   stepBack(): boolean;
+  stepBy(n: number): boolean;
   seek(o: { index?: number; time?: number }): boolean;
+  seekToTime(t: number): boolean;
+  seekToPct(p: number): boolean;
   play(): void;
   pause(): void;
+  stop(): void;
   toggle(): void;
   setSpeed(speed: number): void;
-  speedUp(): void;
-  speedDown(): void;
+  speedUp(): number;
+  speedDown(): number;
+  currentBar(): unknown;
+  currentTime(): number | null;
+  setIntrabarData(map: Map<number, unknown[]> | Record<number, unknown[]> | null): this;
+  enableIntrabar(on?: boolean): this;
+  disableIntrabar(): this;
+  stepIntrabar(): boolean;
   exit(): void;
   destroy(): void;
 }
+export default ReplayController;

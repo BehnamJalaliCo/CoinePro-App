@@ -42,12 +42,55 @@ export function fillPrice(side: Side, price: number, rules: PaperRules, maker = 
 
 export const marginOf = (p: { qty: number; entry: number; leverage?: number }) => (p.qty * p.entry) / Math.max(1, p.leverage ?? 1);
 
+/** The quantity that loses `riskPct` of the balance if the stop is hit (the old app's size calculator). */
+export function sizeForRisk(balance: number, riskPct: number, entry: number, sl: number): number {
+  const d = Math.abs(entry - sl);
+  if (!(d > 0) || !(balance > 0) || !(riskPct > 0)) return 0;
+  return Number(((balance * riskPct) / 100 / d).toPrecision(4));
+}
+
+export interface PaperStats {
+  n: number; wins: number; losses: number; win: number; net: number; gross: number; loss: number; pf: number;
+  avgWin: number; avgLoss: number; best: number; worst: number; dd: number; ddPct: number; fees: number;
+  /** The longest runs of wins and of losses in a row. */
+  winStreak: number; lossStreak: number;
+  /** Balance after each closed trade, oldest first, starting from the starting balance. */
+  curve: Array<{ t: number; v: number }>;
+}
+
+/** The account's record from its history (newest first, as the store keeps it). */
+export function paperStats(history: PaperTrade[], start: number): PaperStats {
+  const h = [...history].sort((a, b) => a.closedAt - b.closedAt);
+  let bal = start; let peak = start; let dd = 0; let ddPct = 0;
+  let run = 0; let winStreak = 0; let lossStreak = 0;
+  const curve = [{ t: h[0] ? h[0].openedAt : Date.now(), v: start }];
+  for (const x of h) {
+    bal += x.pnl; peak = Math.max(peak, bal);
+    dd = Math.max(dd, peak - bal); ddPct = Math.max(ddPct, peak > 0 ? (peak - bal) / peak * 100 : 0);
+    curve.push({ t: x.closedAt, v: bal });
+    if (x.pnl > 0) { run = run > 0 ? run + 1 : 1; winStreak = Math.max(winStreak, run); }
+    else { run = run < 0 ? run - 1 : -1; lossStreak = Math.max(lossStreak, -run); }
+  }
+  const wins = h.filter((x) => x.pnl > 0); const losses = h.filter((x) => x.pnl <= 0);
+  const gross = wins.reduce((n, x) => n + x.pnl, 0); const loss = losses.reduce((n, x) => n + x.pnl, 0);
+  return {
+    n: h.length, wins: wins.length, losses: losses.length, win: h.length ? (wins.length / h.length) * 100 : 0, net: gross + loss, gross, loss,
+    pf: loss ? gross / Math.abs(loss) : gross ? Infinity : 0, avgWin: wins.length ? gross / wins.length : 0, avgLoss: losses.length ? loss / losses.length : 0,
+    best: h.reduce((m, x) => Math.max(m, x.pnl), 0), worst: h.reduce((m, x) => Math.min(m, x.pnl), 0), dd, ddPct,
+    fees: h.reduce((n, x) => n + (x.fees ?? 0), 0), winStreak, lossStreak, curve,
+  };
+}
+
 interface PaperState extends Stored {
   /** A market order at the live price (kept for the bottom panel). */
   open(symbol: string, side: Side, qty: number, price: number, sl?: number, tp?: number): string | null;
   place(order: Omit<PaperOrder, 'id' | 'createdAt'>, price: number): string | null;
   cancel(id: string): void;
   close(id: string, price: number, reason?: CloseReason): void;
+  /** Closes `share` (0–1) of a position at the market; the rest stays open. */
+  closePart(id: string, share: number, price: number): void;
+  /** Moves a working order's prices, stop or target (dragging its line on the chart). */
+  modifyOrder(id: string, patch: Partial<Pick<PaperOrder, 'limitPrice' | 'stopPrice' | 'sl' | 'tp'>>): void;
   protect(id: string, sl?: number, tp?: number): void;
   setRules(r: Partial<PaperRules>): void;
   reset(): void;
@@ -100,6 +143,28 @@ export const usePaper = create<PaperState>((set, get) => {
         history: [{ ...p, exit, closedAt: Date.now(), pnl: pnl - (p.fees ?? 0), reason, fees: (p.fees ?? 0) + fee }, ...get().history].slice(0, 500),
         balance: get().balance + pnl,
       });
+      save();
+    },
+    closePart: (id, share, price) => {
+      const { positions, rules } = get();
+      const p = positions.find((x) => x.id === id);
+      if (!p || !(price > 0) || !(share > 0)) return;
+      if (share >= 1) { get().close(id, price); return; }
+      const part = Number((p.qty * share).toPrecision(6));
+      if (!(part > 0) || part >= p.qty) { get().close(id, price); return; }
+      const exit = fillPrice(p.side === 'long' ? 'short' : 'long', price, rules);
+      const fee = part * exit * (rules.takerFeePercent / 100);
+      const entryFee = (p.fees ?? 0) * (part / p.qty);
+      const gain = pnlOf({ ...p, qty: part }, exit) - fee;
+      set({
+        positions: positions.map((x) => (x.id === id ? { ...x, qty: Number((x.qty - part).toPrecision(6)), fees: (x.fees ?? 0) - entryFee } : x)),
+        history: [{ ...p, id: `${p.id}:${Date.now().toString(36)}`, qty: part, exit, closedAt: Date.now(), pnl: gain - entryFee, reason: 'manual' as CloseReason, fees: entryFee + fee }, ...get().history].slice(0, 500),
+        balance: get().balance + gain,
+      });
+      save();
+    },
+    modifyOrder: (id, patch) => {
+      set({ orders: get().orders.map((o) => (o.id === id ? { ...o, ...patch } : o)) });
       save();
     },
     protect: (id, sl, tp) => { set({ positions: get().positions.map((p) => (p.id === id ? { ...p, sl, tp } : p)) }); save(); },

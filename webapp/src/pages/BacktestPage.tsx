@@ -32,7 +32,7 @@ export default function BacktestPage() {
   const setInterval = usePrefs((s) => s.setInterval);
   const close = usePage((s) => s.close);
   const setBottom = usePanels((s) => s.setBottom);
-  const scriptApplied = useScript((s) => s.applied);
+  const scriptApplied = useScript((s) => s.on);
   const [symbol, setSym] = useState(chartSymbol);
   const [interval, setIv] = useState(chartInterval);
   const [strategy, setStrategy] = useState<StrategyId>('ma_cross');

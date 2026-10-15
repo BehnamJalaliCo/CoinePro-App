@@ -30,6 +30,7 @@ import { usePrefs, applyTheme } from './state/prefs';
 import { formatPrice } from './chart/format';
 import { useRoute } from './route';
 import { startPanel } from './usercp/telemetry';
+import { StudiesHost } from './shell/StudiesHost';
 
 export function App() {
   const symbol = usePrefs((s) => s.symbol);
@@ -80,12 +81,8 @@ export function App() {
     settings: () => setSettings(true),
   }), []);
 
-  // An indicator's settings, asked for from outside the chart (the object tree's gear).
-  useEffect(() => {
-    const on = (e: Event) => { const uid = (e as CustomEvent<{ uid?: string }>).detail?.uid; if (uid) setStudyUid(uid); };
-    window.addEventListener('pc:study-settings', on);
-    return () => window.removeEventListener('pc:study-settings', on);
-  }, []);
+  // An indicator's settings asked for from outside the chart (the object tree's gear, the
+  // indicators dialog) open in StudiesHost, which listens for pc:study-settings itself.
 
   // Replay ends when the symbol or the interval changes.
   useEffect(() => { useReplay.getState().exit(); }, [symbol, interval]);
@@ -131,6 +128,7 @@ export function App() {
       {alertAt !== undefined ? <AlertDialog price={alertAt ?? undefined} onClose={() => setAlertAt(undefined)} /> : null}
       <AlertToast />
       <AlertHost />
+      <StudiesHost />
       {premium ? <PremiumDialog onClose={() => setPremium(false)} onSignIn={() => { setPremium(false); setSignIn(true); }} /> : null}
       {settings ? <SettingsDialog onClose={() => setSettings(false)} /> : null}
       {cellSearch !== null ? <SymbolSearch onClose={() => setCellSearch(null)} onPick={(sym) => setCell(cellSearch, { symbol: sym })} /> : null}

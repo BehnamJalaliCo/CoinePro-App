@@ -214,10 +214,26 @@ self.onmessage = function (e) {
       stratResult={trades:n,net:eq,win:n?Math.round(wins/n*100):0,pf:gl?(gp/gl):(gp>0?99:0),dd:dd,equity:equity,list:trades.slice(-50),
         avgWin:avgW,avgLoss:avgL,maxWin:maxW,maxLoss:maxL,longN:longN,shortN:shortN,winStreak:wsMax,lossStreak:lsMax,avgTrade:avgTrade,expectancy:expectancy,sharpe:sharpe,grossProfit:gp,grossLoss:gl,wins:wins,losses:n-wins};
     }
-    self.postMessage({ok:true,plots:plots,shapes:shapes,hlines:hlines,bgs:bgs,labels:labels,alerts:alerts,inputs:inputs,zones:zones,fills:fills,lines:lines.filter(Boolean),boxes:boxes.filter(Boolean),tables:tables,barcolors:barcolors,candleplots:candleplots,strategy:stratResult});
+    // The entry and exit signals as bar indices, for the strategy tester's own simulation (properties, trade list).
+    var sigs=null; if(strat.enabled){ var idx=function(a){ var o=[]; if(a)for(var i=0;i<N;i++)if(a[i])o.push(i); return o; }; sigs={long:idx(strat.long),short:idx(strat.short),exitL:idx(strat.exitL),exitS:idx(strat.exitS)}; }
+    self.postMessage({ok:true,plots:plots,shapes:shapes,hlines:hlines,bgs:bgs,labels:labels,alerts:alerts,inputs:inputs,zones:zones,fills:fills,lines:lines.filter(Boolean),boxes:boxes.filter(Boolean),tables:tables,barcolors:barcolors,candleplots:candleplots,strategy:stratResult,signals:sigs});
   } catch (err) {
-    self.postMessage({ok:false,error:String(err&&err.message||err)});
+    self.postMessage({ok:false,error:String(err&&err.message||err),errorLine:errorLineOf(err,d.source)});
   }
+};
+// The line of the reader's code an error points at (1-based), or 0: a run-time error carries it in
+// its stack (two lines of the Function header come first); a syntax error does not, so the code is
+// compiled line by line until something other than "the code ended early" goes wrong.
+function errorLineOf(err,src){
+  try {
+    var st=String(err&&err.stack||''), m=/<anonymous>:(\\d+):\\d+/.exec(st);
+    if(m&&!(err instanceof SyntaxError)){ var n=(+m[1])-2; return n>0?n:0; }
+    if(err instanceof SyntaxError){
+      var ls=String(src).replace(/\\bvarip\\b/g,'').replace(/\\bvar\\b/g,'').replace(/:=/g,'=').split('\\n');
+      for(var k=1;k<=ls.length;k++){ try{ new Function(ls.slice(0,k).join('\\n')); }catch(e){ if(!/end of input|Unexpected end/i.test(String(e&&e.message))) return k; } }
+    }
+  } catch(e){ /* no line */ }
+  return 0;
 };
 `;
 

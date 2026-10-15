@@ -147,7 +147,7 @@
 }
 
 /* ── Axis buttons, navigation, panes ──────────────────────────────────────────────────────────── */
-.axis-plus { position: absolute; z-index: 7; width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--bg-elevated); border: 1px solid var(--line-strong); color: var(--text-2); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
+.axis-plus { position: absolute; z-index: 9; width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--bg-elevated); border: 1px solid var(--line-strong); color: var(--text-2); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
 .axis-plus .icon.sm { width: 13px; height: 13px; }
 .axis-plus:hover { color: var(--text); background: var(--bg-hover); }
 .axis-chips { display: contents; }

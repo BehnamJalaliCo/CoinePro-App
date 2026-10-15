@@ -4,11 +4,14 @@ import { useChartBus } from './chartBus';
 import { usePrefs } from '../state/prefs';
 import { intervalLabel } from '../data/intervals';
 import { chartImage } from './snapshot';
+import { replayGoTo } from '../state/replay';
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Brings `t` (seconds) to the middle of the chart; scrolls back for older history up to 12 times. */
 export async function goToTime(t: number): Promise<boolean> {
+  // While replaying, the date moves the replay; while picking its first bar, it starts there.
+  if (replayGoTo(t, useChartBus.getState().bars)) return true;
   for (let i = 0; i < 12; i++) {
     const { api, bars } = useChartBus.getState();
     if (!api || !bars.length) return false;

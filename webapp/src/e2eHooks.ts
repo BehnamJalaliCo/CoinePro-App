@@ -20,6 +20,7 @@ import { PAGES } from './pages/registry';
 import { events as panelEvents, flushEvents as flushPanelEvents } from './data/panel';
 import { useLayouts } from './state/layouts';
 import { REGISTRY } from './engine/indicators.js';
+import { STUDIES } from './engine/indicators_ext_c.js';
 import { EXAMPLES } from './engine/scriptlib.js';
 import { TOOL_GROUPS } from './chart/tools';
 import { CHART_TYPES } from './chart/chartTypes';
@@ -30,7 +31,7 @@ export function expose(): void {
     usePrefs, useStudies, useDrawing, useScript, useChartBus, useReplay, useAlerts, usePanels, useGrid, useMarket, useCompare, usePage, usePaper, useJournal, useWatchlist, useChartSettings, useWatchView, usePlacement, useOverlay,
     pages: PAGES.map((p) => ({ id: p.id, path: p.path, member: Boolean(p.member) })),
     panel: { flush: () => flushPanelEvents(), waiting: () => panelEvents.size }, useLayouts,
-    indicators: Object.keys(REGISTRY), examples: EXAMPLES.map((e) => e.name), exampleCode: EXAMPLES.map((e) => e.code),
+    indicators: Object.keys(REGISTRY), studyKeys: Object.keys(STUDIES), examples: EXAMPLES.map((e) => e.name), exampleCode: EXAMPLES.map((e) => e.code),
     tools: TOOL_GROUPS.flatMap((g) => g.tools.map((x) => ({ id: x.id, group: g.id }))), chartTypes: CHART_TYPES.map((c) => c.id),
   };
 }

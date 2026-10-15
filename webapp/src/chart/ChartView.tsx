@@ -266,9 +266,12 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
         } catch { /* series gone */ }
       });
     }
-    // Panes a move left empty go away.
+    // Panes a move left empty go away — but not one the indicators keep for a hidden study, which
+    // holds the later panes and their legends in place (TradingView keeps the empty pane too).
     const ps = c.panes();
-    for (let i = ps.length - 1; i > 0; i--) { if (!ps[i]!.getSeries().length) { try { c.removePane(i); } catch { /* kept */ } } }
+    let reserved = new Set<number>();
+    try { reserved = new Set((renderer.current?.legend(null) ?? []).filter((x) => x.hidden && x.pane > 0).map((x) => x.pane)); } catch { /* none */ }
+    for (let i = ps.length - 1; i > 0; i--) { if (!ps[i]!.getSeries().length && !reserved.has(i)) { try { c.removePane(i); } catch { /* kept */ } } }
     scalesUsed.current = { left, right };
     applyScales();
   }

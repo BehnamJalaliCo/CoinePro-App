@@ -402,7 +402,7 @@ export default async function ({ test, open, ready, pc, expect }) {
     await pc(page, () => window.__pc.useStudies.getState().add('rsi'));
     await page.click('.objects [data-act="study-settings"]');
     await page.waitForSelector('.dialog.settings[role=dialog]');
-    await page.click('.dialog.settings[role=dialog] .dialog-head .ib');
+    await page.click('.dialog.settings[role=dialog] .dialog-head .ib[aria-label="بستن"]');
     await page.click('.objects .otree-tools [aria-label="حذف همه"]');
     expect(await count(page) === 0, 'remove all');
     return env;

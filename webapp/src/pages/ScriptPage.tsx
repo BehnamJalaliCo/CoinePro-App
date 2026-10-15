@@ -2,18 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useScript } from '../state/script';
 import { usePage } from '../state/page';
 import { usePanels } from '../state/panels';
-import { uuid } from '../data/http';
 import { NamaScriptPanel } from '../shell/NamaScriptPanel';
 import { downloadText, pickText, useL } from './kit';
 
 // NamaScript as a page (feature/script): the reader's library of saved scripts beside the editor,
 // a converter for code pasted from Pine, files in and out, and a share link that carries the
 // script itself (compressed in the link's fragment, so no server ever holds it).
-interface Saved { id: string; name: string; code: string; updatedAt: number }
-const KEY = 'pc.scripts.v1';
-const readLib = (): Saved[] => { try { const v = JSON.parse(localStorage.getItem(KEY) ?? '[]') as unknown; return Array.isArray(v) ? (v as Saved[]) : []; } catch { return []; } };
-const writeLib = (l: Saved[]) => { try { localStorage.setItem(KEY, JSON.stringify(l)); } catch { /* full */ } };
-
 /** Pine habits this engine reads differently, rewritten; each rewrite is reported. */
 export function convertPine(src: string): { code: string; fixes: string[] } {
   const fixes: string[] = [];
@@ -60,21 +54,19 @@ export async function unpack(s: string): Promise<string | null> {
 
 export default function ScriptPage({ param }: { param: string | null }) {
   const L = useL();
-  const { source, setSource, apply } = useScript();
+  const { source, apply, lib, tabs, active, save: saveTab, open, deleteSaved, newTab, rename } = useScript();
   const close = usePage((s) => s.close);
   const setBottom = usePanels((s) => s.setBottom);
-  const [lib, setLib] = useState<Saved[]>(readLib);
-  const [current, setCurrent] = useState<string | null>(null);
+  const current = tabs.find((t) => t.id === active)?.savedId ?? null;
   const [note, setNote] = useState<string | null>(null);
   const [paste, setPaste] = useState<string | null>(null);
 
   // A shared link: #ns=<packed> opens that script; /s/<id> opens a saved one of this browser.
   useEffect(() => {
     const h = /#ns=([A-Za-z0-9_-]+)/.exec(window.location.hash);
-    if (h) { void unpack(h[1]!).then((code) => { if (code) { setSource(code); setNote(L('اسکریپت اشتراکی باز شد؛ برای نگه داشتن ذخیره کنید.', 'The shared script is open; save it to keep it.')); } }); return; }
+    if (h) { void unpack(h[1]!).then((code) => { if (code) { newTab(code, /\b(?:indicator|strategy)\s*\(\s*["']([^"']+)/.exec(code)?.[1] ?? L('اسکریپت اشتراکی', 'Shared script')); setNote(L('اسکریپت اشتراکی باز شد؛ برای نگه داشتن ذخیره کنید.', 'The shared script is open; save it to keep it.')); } }); return; }
     if (param) {
-      const s = readLib().find((x) => x.id === param);
-      if (s) { setSource(s.code); setCurrent(s.id); } else setNote(L('این اسکریپت در این مرورگر نیست.', 'That script is not in this browser.'));
+      if (lib.some((x) => x.id === param)) open(param); else setNote(L('این اسکریپت در این مرورگر نیست.', 'That script is not in this browser.'));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -83,9 +75,9 @@ export default function ScriptPage({ param }: { param: string | null }) {
     const have = lib.find((x) => x.id === current);
     const name = asNew || !have ? window.prompt(L('نام اسکریپت', 'Script name'), have?.name ?? /indicator\s*\(\s*["']([^"']+)/.exec(source)?.[1] ?? 'NamaScript') : have.name;
     if (!name) return;
-    const id = asNew || !have ? uuid().slice(0, 8) : have.id;
-    const next = [{ id, name, code: source, updatedAt: Date.now() }, ...lib.filter((x) => x.id !== id)];
-    setLib(next); writeLib(next); setCurrent(id); setNote(L('ذخیره شد.', 'Saved.'));
+    if (!have || asNew) rename(name);
+    saveTab(asNew, name);
+    setNote(L('ذخیره شد.', 'Saved.'));
   };
   const share = async () => {
     const url = `${window.location.origin}${import.meta.env.BASE_URL}script#ns=${await pack(source)}`;
@@ -98,10 +90,10 @@ export default function ScriptPage({ param }: { param: string | null }) {
       <div className="row">
         <button className="btn btn-primary sm" onClick={() => save(false)}>{L('ذخیره', 'Save')}</button>
         <button className="btn btn-quiet sm" onClick={() => save(true)}>{L('ذخیره با نام تازه', 'Save as new')}</button>
-        <button className="btn btn-quiet sm" onClick={() => { apply(); setBottom('namascript'); close(); }}>{L('اجرا روی چارت', 'Run on the chart')}</button>
+        <button className="btn btn-quiet sm" onClick={() => { apply(); if (usePanels.getState().bottom !== 'namascript') setBottom('namascript'); close(); }}>{L('اجرا روی چارت', 'Run on the chart')}</button>
         <button className="btn btn-quiet sm" onClick={() => void share()}>{L('پیوند اشتراک', 'Share link')}</button>
         <button className="btn btn-quiet sm" onClick={() => downloadText(`${lib.find((x) => x.id === current)?.name ?? 'script'}.ns`, source, 'text/plain')}>{L('خروجی فایل', 'Export')}</button>
-        <button className="btn btn-quiet sm" onClick={() => void pickText('.ns,.txt,.pine,text/plain').then((t) => { if (t != null) { setSource(t); setCurrent(null); } })}>{L('ورود فایل', 'Import')}</button>
+        <button className="btn btn-quiet sm" onClick={() => void pickText('.ns,.txt,.pine,text/plain').then((t) => { if (t != null) newTab(t, L('فایل واردشده', 'Imported')); })}>{L('ورود فایل', 'Import')}</button>
         <button className="btn btn-quiet sm" onClick={() => setPaste('')}>{L('تبدیل از Pine', 'Convert from Pine')}</button>
         {note ? <span className="muted fa">{note}</span> : null}
       </div>
@@ -111,7 +103,7 @@ export default function ScriptPage({ param }: { param: string | null }) {
           <textarea className="ns-code paste" rows={8} dir="ltr" spellCheck={false} value={paste} onChange={(e) => setPaste(e.target.value)} />
           {converted?.fixes.length ? <ul className="muted small">{converted.fixes.map((f) => <li key={f} className="num">{f}</li>)}</ul> : null}
           <div className="row">
-            <button className="btn btn-primary sm" disabled={!paste.trim()} onClick={() => { if (converted) { setSource(converted.code); setCurrent(null); setPaste(null); } }}>{L('باز کردن در ویرایشگر', 'Open in the editor')}</button>
+            <button className="btn btn-primary sm" disabled={!paste.trim()} onClick={() => { if (converted) { newTab(converted.code, L('تبدیل از Pine', 'From Pine')); setPaste(null); } }}>{L('باز کردن در ویرایشگر', 'Open in the editor')}</button>
             <button className="btn btn-quiet sm" onClick={() => setPaste(null)}>{L('انصراف', 'Cancel')}</button>
           </div>
         </section>
@@ -122,8 +114,8 @@ export default function ScriptPage({ param }: { param: string | null }) {
           {!lib.length ? <p className="muted fa small">{L('هنوز اسکریپتی ذخیره نکرده‌اید.', 'No saved scripts yet.')}</p> : null}
           {lib.map((s) => (
             <div key={s.id} className={`lib-row${s.id === current ? ' on' : ''}`}>
-              <button className="link-btn" onClick={() => { setSource(s.code); setCurrent(s.id); }}>{s.name}</button>
-              <button className="lt" title={L('حذف', 'Delete')} onClick={() => { if (window.confirm(L('حذف شود؟', 'Delete?'))) { const next = lib.filter((x) => x.id !== s.id); setLib(next); writeLib(next); if (current === s.id) setCurrent(null); } }}>×</button>
+              <button className="link-btn" onClick={() => open(s.id)}>{s.name}</button>
+              <button className="lt" title={L('حذف', 'Delete')} onClick={() => { if (window.confirm(L('حذف شود؟', 'Delete?'))) deleteSaved(s.id); }}>×</button>
             </div>
           ))}
         </aside>

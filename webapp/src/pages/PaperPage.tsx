@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { usePaper, pnlOf, marginOf, type OrderType, type Side } from '../state/paper';
+import { usePaper, pnlOf, marginOf, paperStats, type OrderType, type Side } from '../state/paper';
 import { useMarket } from '../state/market';
 import { usePrefs } from '../state/prefs';
 import { usePage } from '../state/page';
@@ -7,10 +7,13 @@ import { instrumentOf } from '../data/symbols';
 import { formatPrice } from '../chart/format';
 import { SymbolLogo } from '../ui/SymbolLogo';
 import { Field, Tabs, dateTime, downloadCsv, money, parseNum, useL } from './kit';
+import { EquityCurve, PaperStatsGrid, RiskSizer } from '../shell/PaperParts';
 
 // The full practice account (feature/papertrade): an order ticket with every order type, the
 // account's rules, open positions with their protection, working orders, and the history with
-// its statistics. The book runs in state/paper.ts against the live prices.
+// its statistics (the equity curve, the longest winning and losing runs). Positions close in part
+// (25/50/75%), the size can come from the risk, and the bottom dock's trading panel shows the same
+// account. The book runs in state/paper.ts against the live prices.
 export default function PaperPage() {
   const L = useL();
   const symbol = usePrefs((s) => s.symbol);
@@ -40,19 +43,8 @@ export default function PaperPage() {
     }, tk.last);
   };
 
-  const stats = useMemo(() => {
-    const h = book.history;
-    const wins = h.filter((x) => x.pnl > 0); const losses = h.filter((x) => x.pnl <= 0);
-    const gross = wins.reduce((n, x) => n + x.pnl, 0); const loss = losses.reduce((n, x) => n + x.pnl, 0);
-    let peak = book.rules.startingBalance; let bal = book.rules.startingBalance; let dd = 0;
-    for (const x of [...h].reverse()) { bal += x.pnl; peak = Math.max(peak, bal); dd = Math.max(dd, peak - bal); }
-    return {
-      n: h.length, win: h.length ? (wins.length / h.length) * 100 : 0, net: gross + loss,
-      pf: loss ? gross / Math.abs(loss) : gross ? Infinity : 0, avgWin: wins.length ? gross / wins.length : 0, avgLoss: losses.length ? loss / losses.length : 0,
-      best: h.reduce((m, x) => Math.max(m, x.pnl), 0), worst: h.reduce((m, x) => Math.min(m, x.pnl), 0), dd,
-      fees: h.reduce((n, x) => n + (x.fees ?? 0), 0),
-    };
-  }, [book.history, book.rules.startingBalance]);
+  const stats = useMemo(() => paperStats(book.history, book.rules.startingBalance), [book.history, book.rules.startingBalance]);
+  const entryNow = type === 'limit' || type === 'stop_limit' ? parseNum(f.limit) : type === 'stop' ? parseNum(f.stop) : tk?.last ?? null;
 
   const err = book.lastError === 'margin' ? L('مارجین کافی نیست.', 'Not enough margin.') : book.lastError ? L('قیمت یا مقدار سفارش درست نیست.', 'The order price or quantity is not valid.') : null;
   const go = (s: string) => { setSymbol(s); close(); };
@@ -76,6 +68,7 @@ export default function PaperPage() {
             </select>
           </Field>
           <Field label={L('مقدار', 'Quantity')}><input className="num" dir="ltr" inputMode="decimal" value={f.qty} onChange={set('qty')} placeholder={tk ? String(Number((1000 / tk.last).toPrecision(2))) : ''} /></Field>
+          <RiskSizer entry={entryNow} sl={parseNum(f.sl)} onSize={(q) => setF({ ...f, qty: String(q) })} />
           {type === 'limit' || type === 'stop_limit' ? <Field label={L('قیمت محدود', 'Limit price')}><input className="num" dir="ltr" inputMode="decimal" value={f.limit} onChange={set('limit')} /></Field> : null}
           {type === 'stop' || type === 'stop_limit' ? <Field label={L('قیمت فعال‌سازی', 'Stop price')}><input className="num" dir="ltr" inputMode="decimal" value={f.stop} onChange={set('stop')} /></Field> : null}
           {type === 'trailing' ? <Field label={L('فاصله‌ی دنباله (درصد)', 'Trail %')}><input className="num" dir="ltr" inputMode="decimal" value={f.trail} onChange={set('trail')} /></Field> : null}
@@ -98,7 +91,7 @@ export default function PaperPage() {
                 const px = tickers[p.symbol]?.last; const pnl = px ? pnlOf(p, px) : 0; const d = instrumentOf(p.symbol, px).digits;
                 return (
                   <tr key={p.id}>
-                    <td><button className="link-btn sym" onClick={() => go(p.symbol)}>{p.symbol}</button></td>
+                    <td><button className="link-btn sym" onClick={() => go(p.symbol)}>{p.symbol}</button>{book.orders.some((o) => o.symbol === p.symbol) ? <span className="pp-badge pending fa" title={L('سفارش در انتظار روی این نماد', 'Working orders on this symbol')}>{L('سفارش', 'order')}</span> : null}</td>
                     <td className={p.side === 'long' ? 'up' : 'down'}>{p.side === 'long' ? 'Long' : 'Short'}</td>
                     <td className="r num">{p.qty}</td><td className="r num">{formatPrice(p.entry, d)}</td>
                     <td className="r num">
@@ -106,7 +99,10 @@ export default function PaperPage() {
                       <input className="mini num" dir="ltr" defaultValue={p.tp ?? ''} placeholder="TP" onBlur={(e) => book.protect(p.id, p.sl, parseNum(e.target.value) ?? undefined)} aria-label="take profit" />
                     </td>
                     <td className={`r num ${pnl >= 0 ? 'up' : 'down'}`}>{money(pnl)}</td>
-                    <td className="r"><button className="btn btn-quiet sm" disabled={!px} onClick={() => px && book.close(p.id, px)}>{L('بستن', 'Close')}</button></td>
+                    <td className="r nowrap">
+                      {[0.25, 0.5, 0.75].map((x) => <button key={x} className="pp-part num" title={L('بستن بخشی از حجم', 'Close part of the position')} disabled={!px} onClick={() => px && book.closePart(p.id, x, px)}>{x * 100}%</button>)}
+                      <button className="btn btn-quiet sm" disabled={!px} onClick={() => px && book.close(p.id, px)}>{L('بستن', 'Close')}</button>
+                    </td>
                   </tr>
                 );
               })}</tbody></table>
@@ -129,13 +125,10 @@ export default function PaperPage() {
             </>
           ) : null}
           {tab === 'stats' ? (
-            <dl className="kv cards-kv">
-              {([
-                [L('تعداد معامله', 'Trades'), String(stats.n)], [L('نرخ برد', 'Win rate'), `${stats.win.toFixed(1)}%`], [L('سود خالص', 'Net profit'), money(stats.net)],
-                [L('ضریب سود', 'Profit factor'), Number.isFinite(stats.pf) ? stats.pf.toFixed(2) : '∞'], [L('میانگین برد', 'Average win'), money(stats.avgWin)], [L('میانگین باخت', 'Average loss'), money(stats.avgLoss)],
-                [L('بهترین معامله', 'Best trade'), money(stats.best)], [L('بدترین معامله', 'Worst trade'), money(stats.worst)], [L('بیشترین افت', 'Max drawdown'), money(stats.dd)], [L('کارمزد پرداختی', 'Fees paid'), money(stats.fees)],
-              ] as [string, string][]).map(([k, v]) => <div key={k} className="kv-row"><dt className="fa">{k}</dt><dd className="num">{v}</dd></div>)}
-            </dl>
+            <div className="pp-page-stats">
+              <EquityCurve curve={stats.curve} start={book.rules.startingBalance} height={160} />
+              <PaperStatsGrid stats={stats} money={(v) => money(v)} />
+            </div>
           ) : null}
           {tab === 'rules' ? <Rules /> : null}
         </div>

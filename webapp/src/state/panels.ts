@@ -3,7 +3,7 @@ import { create } from 'zustand';
 export type PanelId =
   | 'watchlist' | 'alerts' | 'signals' | 'ai' | 'objects' | 'data' | 'news' | 'calendar' | 'screener'
   | 'hotlists' | 'dom' | 'notes' | 'log' | 'order';
-export type BottomTab = 'screener' | 'namascript' | 'backtest' | 'paper';
+export type BottomTab = 'screener' | 'namascript' | 'backtest' | 'paper' | 'notes';
 
 const KEY = 'pc.panels.v1';
 interface Stored { open: PanelId | null; bottom: BottomTab | null; split?: number; detailsCollapsed?: boolean }

@@ -7,10 +7,21 @@ export interface ScriptResult {
   plots?: { name: string; color: string; width: number; style: number; data: ScriptPoint[] }[];
   shapes?: { name: string; color: string; shape: string; points: { time: number; price: number; shape: string }[] }[];
   hlines?: { price: number; title: string; color: string }[];
-  bgs?: unknown[]; fills?: unknown[]; lines?: unknown[]; boxes?: unknown[]; zones?: unknown[]; labels?: { time: number; price: number; text: string; color: string }[];
-  tables?: unknown[]; barcolors?: unknown[]; candleplots?: unknown[];
-  alerts?: { msg: string; bars: number[] }[];
-  inputs?: { key: string; type: string; def: unknown; title?: string; min?: number; max?: number; options?: string[] }[];
+  bgs?: { color?: string; bars?: number[] }[];
+  fills?: { color?: string; a?: ScriptPoint[]; b?: ScriptPoint[] }[];
+  lines?: { x1: number; x2: number; y1: number; y2: number; color?: string; width?: number; style?: number }[];
+  boxes?: { left: number; right: number; top: number; bottom: number; color?: string; bg?: string }[];
+  zones?: { entry: number; sl: number; tps?: number[]; tp?: number; fromTime: number; toTime: number }[];
+  labels?: { time: number; price: number; text: string; color: string }[];
+  tables?: { cells: { col: number; row: number; text: string; color?: string | null }[] }[];
+  barcolors?: { color?: string; bars?: number[]; all?: boolean }[];
+  candleplots?: { name: string; color: string | null; bars?: boolean; data: { time: number; open: number; high: number; low: number; close: number }[] }[];
+  alerts?: { msg: string; bars: number[]; dynamic?: boolean }[];
+  /** The failing line of the reader's code (1-based), when the run failed and it is known. */
+  errorLine?: number;
+  /** A strategy's entry and exit signals as bar indices. */
+  signals?: { long: number[]; short: number[]; exitL: number[]; exitS: number[] } | null;
+  inputs?: { key: string; type: string; def: unknown; title?: string; min?: number; max?: number; step?: number; options?: string[] }[];
   strategy?: StrategyResult | null;
 }
 export interface StrategyResult {

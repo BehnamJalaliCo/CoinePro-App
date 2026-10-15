@@ -314,7 +314,7 @@
 .btn.buy { background: var(--up); color: #fff; }
 .btn.sell { background: var(--down); color: #fff; }
 
-.replay-bar { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); z-index: 8; display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow-pop); }
+.replay-bar { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); z-index: 10; display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: var(--bg-elevated); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow-pop); }
 .replay-bar.selecting { padding: 8px 12px; gap: 10px; border-color: var(--gold); }
 .replay-bar .ib { height: 30px; min-width: 30px; }
 .replay-speed { height: 28px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--bg); color: var(--text); }

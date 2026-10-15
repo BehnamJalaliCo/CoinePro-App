@@ -115,7 +115,20 @@ const FORMAL_CHART = String.fromCharCode(0x0646, 0x0645, 0x0648, 0x062f, 0x0627,
 const house = (text) => text.split(KASRA).join('').split(HAMZA_HEH).join('ه\u200cی').split(HEH_YEH).join('ه\u200cی').split(FORMAL_CHART).join('چارت');
 const helpRoot = join(repo, 'core/help/src/main/assets/help');
 mkdirSync(join(out, 'help', 'images'), { recursive: true });
-writeFileSync(join(out, 'help', 'content.json'), house(readFileSync(join(helpRoot, 'content.json'), 'utf8')));
+// The web's own entries join the phone's: the indicators and tools only the web app has
+// (scripts/help/extra.mjs, both languages), and from the old Pro-Chart library the encyclopedic
+// sections and drawn diagrams of the entries both share (scripts/help/legacy.json, Persian).
+const helpLib = JSON.parse(house(readFileSync(join(helpRoot, 'content.json'), 'utf8')));
+const { default: extraHelp } = await import('./help/extra.mjs');
+for (const [id, entry] of Object.entries(extraHelp)) if (!helpLib[id]) helpLib[id] = entry;
+const legacyHelp = JSON.parse(house(readFileSync(join(here, 'help', 'legacy.json'), 'utf8')));
+for (const [id, old] of Object.entries(legacyHelp)) {
+  const entry = helpLib[id];
+  if (!entry) continue;
+  if (old.sections?.length) entry.sections = old.sections;
+  if (old.diagram) entry.diagram = old.diagram;
+}
+writeFileSync(join(out, 'help', 'content.json'), JSON.stringify(helpLib));
 for (const f of readdirSync(join(helpRoot, 'images'))) copyFileSync(join(helpRoot, 'images', f), join(out, 'help', 'images', f));
 mkdirSync(join(out, 'legal'), { recursive: true });
 for (const f of ['TERMS.md', 'TERMS_EN.md', 'PRIVACY_POLICY.md']) writeFileSync(join(out, 'legal', f), house(readFileSync(join(repo, 'docs/legal', f), 'utf8')));

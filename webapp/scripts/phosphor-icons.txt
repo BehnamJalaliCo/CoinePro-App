@@ -153,3 +153,5 @@ paint-brush
 ruler
 scales
 tree-structure
+caret-line-left
+caret-line-right

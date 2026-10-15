@@ -1,3 +1,5 @@
+import { REGISTRY } from '../engine/indicators.js';
+import { STUDIES } from '../engine/indicators_ext_c.js';
 import { describe, expect, it } from 'vitest';
 import { formatPrice, formatVolume } from '../chart/format';
 import { cleanFa, CATALOG } from '../chart/indicatorCatalog';
@@ -34,8 +36,12 @@ describe('copy', () => {
     }
     expect(cleanFa('حجمِ خالص')).toBe('حجم خالص');
   });
-  it('the catalogue has all 108 studies with English names', () => {
-    expect(CATALOG.length).toBe(108);
+  it('the catalogue has all 108 studies of the old registry, the ones added since, and English names', () => {
+    const keys = new Set(CATALOG.map((e) => e.key));
+    for (const k of Object.keys(REGISTRY)) expect(keys.has(k), k).toBe(true);
+    expect(Object.keys(REGISTRY).length).toBe(108);
+    expect(CATALOG.length).toBe(Object.keys(STUDIES).length);
+    expect(CATALOG.length).toBeGreaterThan(108 + 70);
     for (const e of CATALOG) expect(e.en.length).toBeGreaterThan(1);
   });
 });

@@ -12,13 +12,25 @@ export interface IndicatorOutput {
   guides?: number[]; range?: [number, number]; zone?: [number, number];
   markers?: { time: number; position: 'aboveBar' | 'belowBar' | 'inBar'; shape: 'circle' | 'square' | 'arrowUp' | 'arrowDown'; color: string; text?: string }[];
   levels?: { price: number; color: string; label?: string; extendRight?: boolean }[];
+  /** Re-coloured bars (Bollinger Bars). */
+  candles?: { time: number; open: number; high: number; low: number; close: number; color: string }[];
+  /** A small table over the chart (Performance, Seasonality). */
+  table?: { title: string; rows: [string, string, (string | null)?][] };
+  /** Volume profiles: one segment per range; 'right' hangs off the pane's right edge, 'inside' sits in its range. */
+  profile?: { segments: ProfileSegment[]; place: 'right' | 'inside' };
 }
+export interface ProfileRow { lo: number; hi: number; up: number; down: number; va: boolean; poc: boolean }
+export interface ProfileSegment { from: number; to: number; rows: ProfileRow[]; poc: number; vah: number; val: number }
 export interface IndicatorDef {
   label: string;
   pane: 'main' | 'sub';
   inputs: Record<string, number | string | boolean>;
   color: string;
   calc(c: IndicatorColumns, inputs: Record<string, unknown>): IndicatorOutput;
+  /** Reads the bars on screen (inputs __from/__to): recomputed as the chart scrolls. */
+  visibleRange?: boolean;
+  /** Reads a second symbol (input `symbol`; inputs __other are its closes on these bars). */
+  other?: boolean;
 }
 export const REGISTRY: Record<string, IndicatorDef>;
 export const SOURCE_OPTS: string[];

@@ -390,11 +390,23 @@ self.onmessage = function (e) {
         avgWin:avgW,avgLoss:avgL,maxWin:maxW,maxLoss:maxL,longN:longN,shortN:shortN,winStreak:wsMax,lossStreak:lsMax,avgTrade:avgTrade,expectancy:expectancy,sharpe:sharpe,grossProfit:gp,grossLoss:gl,wins:wins,losses:nT-wins};
     }
 
-    self.postMessage({ok:true,plots:plots,shapes:shapes,hlines:hlines,bgs:bgs,labels:labels,alerts:alerts,inputs:inputs,zones:zones,fills:fills,lines:lines.filter(Boolean),boxes:boxes.filter(Boolean),tables:tables,barcolors:barcolors,candleplots:candleplots,strategy:stratResult});
+        var sigs=null; if(strat.enabled){ var idx=function(a){ var o=[]; for(var i=0;i<N;i++)if(a[i])o.push(i); return o; }; sigs={long:idx(strat.longBars),short:idx(strat.shortBars),exitL:idx(strat.exitLBars),exitS:idx(strat.exitSBars)}; }
+    self.postMessage({ok:true,plots:plots,shapes:shapes,hlines:hlines,bgs:bgs,labels:labels,alerts:alerts,inputs:inputs,zones:zones,fills:fills,lines:lines.filter(Boolean),boxes:boxes.filter(Boolean),tables:tables,barcolors:barcolors,candleplots:candleplots,strategy:stratResult,signals:sigs});
   } catch (err) {
-    self.postMessage({ok:false,error:String(err&&err.message||err)});
+    self.postMessage({ok:false,error:String(err&&err.message||err),errorLine:errorLineOf(err,d.source)});
   }
 };
+function errorLineOf(err,src){
+  try {
+    var st=String(err&&err.stack||''), m=/<anonymous>:(\\d+):\\d+/.exec(st);
+    if(m&&!(err instanceof SyntaxError)){ var n=(+m[1])-2; return n>0?n:0; }
+    if(err instanceof SyntaxError){
+      var ls=String(src).replace(/\\bvarip\\b/g,'').replace(/\\bvar\\b/g,'').replace(/:=/g,'=').split('\\n');
+      for(var k=1;k<=ls.length;k++){ try{ new Function(ls.slice(0,k).join('\\n')); }catch(e){ if(!/end of input|Unexpected end/i.test(String(e&&e.message))) return k; } }
+    }
+  } catch(e){ /* no line */ }
+  return 0;
+}
 // شمارنده‌ی کندل جاری (سطح worker تا همه‌ی کمک‌توابع ببینندش)
 var bar=0;
 `;
