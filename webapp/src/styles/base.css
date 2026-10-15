@@ -21,6 +21,9 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 /* Persian text inside the left-to-right frame: written right to left, but placed where the frame
  * puts things (its left edge), so a label sits beside its value instead of drifting away from it. */
 .fa { direction: rtl; unicode-bidi: isolate; text-align: left; }
+/* In English the same elements carry English text: left to right, unless they say otherwise (a
+ * Persian message from a server keeps its own dir). */
+:root[lang='en'] .fa:not([dir]) { direction: ltr; text-align: start; }
 
 .icon { width: 28px; height: 28px; flex: none; fill: currentColor; }
 .icon.sm { width: 18px; height: 18px; }

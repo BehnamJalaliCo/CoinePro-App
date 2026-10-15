@@ -80,7 +80,9 @@ export function Watchlist({ onAdd }: { onAdd(): void }) {
   const current = usePrefs((s) => s.symbol);
   const setSymbol = usePrefs((s) => s.setSymbol);
   const activeList = wl.lists.find((l) => l.id === wl.active);
-  const activeName = flagView != null ? `${L('پرچم', 'Flagged')} · ${fa ? FLAG_NAMES[flagView]!.fa : FLAG_NAMES[flagView]!.en}` : activeList?.name ?? t('watchlist');
+  // The first list is created as «Watchlist»; it reads in the reader's language until renamed.
+  const listName = (n: string) => (n === 'Watchlist' ? t('watchlist') : n);
+  const activeName = flagView != null ? `${L('پرچم', 'Flagged')} · ${fa ? FLAG_NAMES[flagView]!.fa : FLAG_NAMES[flagView]!.en}` : (activeList ? listName(activeList.name) : t('watchlist'));
   const symbols = useMemo(() => (flagView == null ? wl.symbols : Object.entries(wl.flags).filter(([, c]) => c === flagView).map(([s]) => s)), [flagView, wl.symbols, wl.flags]);
   const loaded = Object.keys(instruments).length > 0;
   const visible = useMemo(() => symbols.filter((s) => !loaded || hasLogo(s)), [symbols, loaded]);
@@ -218,7 +220,7 @@ export function Watchlist({ onAdd }: { onAdd(): void }) {
           {wl.lists.length > 5 ? <div className="menu-form"><input autoFocus value={listQ} onChange={(e) => setListQ(e.target.value)} placeholder={L('جستجوی فهرست', 'Search lists')} dir="auto" /></div> : null}
           {wl.lists.filter((l) => !listQ.trim() || l.name.toLowerCase().includes(listQ.trim().toLowerCase())).map((l) => (
             <button key={l.id} className={`menu-item${flagView == null && l.id === wl.active ? ' on' : ''}`} onClick={() => { wl.setActive(l.id); setFlagView(null); setMenu(null); }}>
-              <span className="grow">{l.name}</span><span className="num muted">{fa ? faNum(l.symbols.length) : l.symbols.length}</span>
+              <span className="grow">{listName(l.name)}</span><span className="num muted">{fa ? faNum(l.symbols.length) : l.symbols.length}</span>
             </button>
           ))}
           {FLAG_COLORS.some((_, i) => Object.values(wl.flags).includes(i)) ? <div className="menu-title fa">{L('فهرست‌های پرچم‌دار', 'Flagged lists')}</div> : null}

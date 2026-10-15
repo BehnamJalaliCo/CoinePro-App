@@ -166,7 +166,8 @@ export function SymbolDetails({ onCompare, onSearch }: { onCompare?(): void; onS
   const next = nextSessionChange(inst.market, now);
   const quote = useQuote(symbol);
   const { ref: priceRef, tick } = useFlash<HTMLSpanElement>(tk?.last);
-  const venue = backendOf(symbol) === 'tradeyar' ? 'TradeYar' : 'CoinePro FX';
+  // The market the prices come from, as symbol search names it: LBank for crypto, MetaTrader 5 for the rest.
+  const venue = backendOf(symbol) === 'tradeyar' ? 'LBank' : 'MetaTrader 5';
   const openPage = usePage((s) => s.open);
   const [copied, setCopied] = useState(false);
 
