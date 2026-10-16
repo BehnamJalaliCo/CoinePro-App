@@ -56,15 +56,27 @@ async function linkTradeYar(fxAccess: string): Promise<void> {
   } catch { /* the crypto side stays a guest; forex works on its own */ }
 }
 
+// TradeYar down (5xx, no answer) is not a reason to keep a CoinePro-FX reader out (server report,
+// 2026-10-16: a 502 from TradeYar left the sign-in failed without asking CoinePro-FX).
+const unavailable = (e: unknown) => !(e instanceof HttpError) || e.status >= 500 || e.status === 0;
+
 async function federated(tyPath: string, fxPath: string, body: unknown): Promise<void> {
+  let tyDown: unknown = null;
   try {
     const r = await request<TokenResponse>(`${TY}/${tyPath}`, { body });
     useSession.getState().put('tradeyar', toSession(r));
     return;
   } catch (e) {
-    if (!refused(e)) throw e;
+    if (unavailable(e)) tyDown = e;
+    else if (!refused(e)) throw e;
   }
-  const r = await request<TokenResponse>(`${FX}/${fxPath}`, { body });
+  let r: TokenResponse;
+  try { r = await request<TokenResponse>(`${FX}/${fxPath}`, { body }); }
+  catch (e) {
+    // CoinePro-FX does not know the reader and TradeYar could not be asked: say TradeYar is out,
+    // not «wrong password» for an account that may live there.
+    throw tyDown && refused(e) ? tyDown : e;
+  }
   const fx = toSession(r);
   useSession.getState().put('coineprofx', fx);
   await linkTradeYar(fx.access);

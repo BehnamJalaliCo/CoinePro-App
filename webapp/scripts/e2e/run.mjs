@@ -570,6 +570,25 @@ await test('sign-in dialog shows the backend error', async () => {
   return env;
 });
 
+await test('sign-in: TradeYar down (502) still lets a CoinePro-FX reader in', async () => {
+  const seen = [];
+  const env = await open('BTCUSDT/1h?e2e=1', { mock: (u, method) => {
+    if (method === 'POST') seen.push(u.pathname);
+    if (u.pathname === '/up/tradeyar/api/mobile/v1/auth/login') return { status: 502, contentType: 'text/html', body: '<html>bad gateway</html>' };
+    if (u.pathname === '/up/coineprofx/api/user/auth/login') return json({ access_token: 'pch_fx9', refresh_token: 'pch_fx9r', expires_in: 3600, user: { email: 'fx@example.com', full_name: 'FX' } });
+    return null;
+  } });
+  await ready(env.page);
+  await env.page.click('.avatar');
+  await env.page.click('.account-menu .menu-item >> text=ورود');
+  await env.page.fill('input[type=email]', 'fx@example.com');
+  await env.page.fill('input[type=password]', 'right-password');
+  await env.page.keyboard.press('Enter');
+  await env.page.waitForFunction(() => Boolean(window.__pc.useSession.getState().sessions.coineprofx), null, { timeout: 10000 });
+  expect(seen.includes('/up/tradeyar/api/mobile/v1/auth/login') && seen.includes('/up/coineprofx/api/user/auth/login'), seen.join(', '));
+  return env;
+});
+
 await test('premium dialog lists plans', async () => {
   const env = await open('BTCUSDT/1h?e2e=1');
   await ready(env.page);
