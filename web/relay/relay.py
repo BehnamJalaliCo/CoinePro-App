@@ -302,6 +302,22 @@ def swap_out(payload, session: Session, backend: str):
     return payload
 
 
+def _handles(payload) -> list[str]:
+    if isinstance(payload, dict):
+        return [h for value in payload.values() for h in _handles(value)]
+    if isinstance(payload, list):
+        return [h for item in payload for h in _handles(item)]
+    return [payload] if isinstance(payload, str) and payload.startswith(HANDLE_PREFIX) else []
+
+
+def _has_handle(payload) -> bool:
+    return bool(_handles(payload))
+
+
+def _resolves(payload, session: Session | None) -> bool:
+    return session is not None and all(h in session.tokens for h in _handles(payload))
+
+
 def swap_in(payload, session: Session | None):
     """A request body with each handle this browser holds put back as its token."""
     if isinstance(payload, dict):
@@ -543,9 +559,21 @@ async def passthrough(request: web.Request) -> web.StreamResponse:
     body = await request.read() if request.can_read_body else None
     if body and auth_route and "json" in headers.get("Content-Type", ""):
         try:
-            body = json.dumps(swap_in(json.loads(body), session)).encode()
+            sent = json.loads(body)
         except ValueError:
-            pass
+            sent = None
+        if sent is not None:
+            # A refresh with a handle this browser no longer holds (its session was revoked, signed out
+            # or expired): the session is over, said plainly. Sent on, it reached the backend as an
+            # empty token, which answered 400/422, and the page kept retrying as a signed-in reader.
+            if sign_in_method(path) == "refresh" and _has_handle(sent) and not _resolves(sent, session):
+                if session is not None:
+                    emit(request.app, {"kind": "refresh_failed", "backend": backend, **session_fields(session)})
+                    session.latest_bearer.pop(backend, None)
+                    session.identity.pop(backend, None)
+                return web.json_response({"detail": "session ended", "code": "session_ended"}, status=401,
+                                         headers={"Cache-Control": "no-store"})
+            body = json.dumps(swap_in(sent, session)).encode()
 
     try:
         async with request.app[UPSTREAM].request(request.method, target, headers=headers, data=body,

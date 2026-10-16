@@ -467,6 +467,27 @@ export default async function ({ test, open, ready, pc, expect }) {
     return env;
   });
 
+  await test('topbar: a session revoked elsewhere returns the page to a guest, not a stuck signed-in reader', async () => {
+    let refreshes = 0;
+    const env = await open('BTCUSDT/1h?e2e=1', { signed: true, mock: (u) => {
+      const p = u.pathname;
+      if (/\/auth\/refresh$/.test(p)) { refreshes++; return { status: 422, contentType: 'application/json', body: JSON.stringify({ detail: [{ msg: 'refresh_token required' }] }) }; }
+      if (p.startsWith('/up/tradeyar/api/mobile/v1/') || p.startsWith('/up/coineprofx/api/user/')) {
+        if (/\/auth\/guest$/.test(p) || /\/public\//.test(p)) return null;
+        return { status: 401, contentType: 'application/json', body: JSON.stringify({ code: 'TYR-004', detail: 'Auth Token Missing' }) };
+      }
+      return null;
+    } });
+    await ready(env.page);
+    // Ask as the panel would; the 401 and the unreadable refresh end the session on that platform.
+    await pc(env.page, () => Promise.allSettled([window.__pc.authed('tradeyar', '/up/tradeyar/api/mobile/v1/me'), window.__pc.authed('coineprofx', '/up/coineprofx/api/user/me')]));
+    await env.page.waitForFunction(() => { const s = window.__pc.useSession.getState().sessions; return !s.tradeyar && !s.coineprofx; }, null, { timeout: 15000 });
+    const settled = refreshes;
+    await env.page.waitForTimeout(3000);
+    expect(refreshes - settled <= 0, `refresh kept being retried: ${refreshes}`);
+    return env;
+  });
+
   await test('topbar: on a dark system theme the menu dark switch reads on, and one click makes it light', async () => {
     const env = await open('BTCUSDT/1h?e2e=1', { scheme: 'dark' });
     const { page } = env;

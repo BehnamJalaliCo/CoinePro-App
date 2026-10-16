@@ -537,6 +537,15 @@ class PanelTest(AioHTTPTestCase):
         await self.sign_in()  # the same platform, the same address: the refusal was a wrong password
         self.assertEqual(len(await self.events("signin_failed")), 1)
 
+    async def test_a_revoked_browser_is_told_its_session_ended(self) -> None:
+        answer = await self.sign_in()
+        refresh_handle = answer["refresh_token"]
+        self.app[relay.SESSIONS].by_id.clear()  # what a revoke from the console or the panel leaves
+        response = await self.client.post("/up/tradeyar/api/mobile/v1/auth/refresh", json={"refresh_token": refresh_handle})
+        self.assertEqual(response.status, 401)
+        # The relay's own answer, not the backend's («bad refresh»): the dead handle went nowhere.
+        self.assertEqual(await response.json(), {"detail": "session ended", "code": "session_ended"})
+
     async def test_the_consoles_calls_need_the_secret(self) -> None:
         await self.sign_in()
         await self.client.post("/up/coineprofx/api/user/auth/guest", json={})

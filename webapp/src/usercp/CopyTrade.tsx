@@ -30,9 +30,9 @@ export default function CopyTrade() {
       {!signedOn('tradeyar') ? <Note tone="info">{L('کپی‌ترید VIP با حساب تریدیار و اتصال صرافی LBank است.', 'VIP copy trading uses a TradeYar account and an LBank connection.')}</Note> : null}
       {premium.forexVip && !premium.vip ? <Note tone="info">{L('عضویت VIP فارکس شما فعال است و همه‌ی امکانات پرو چارت را باز می‌کند. کپی‌ترید رمزارز روی LBank مال کانال VIP تریدیار است و عضویت جدای خودش را دارد.', 'Your forex VIP is active and opens all of Pro Chart. Crypto copy trading on LBank belongs to the TradeYar VIP channel, a membership of its own.')}</Note> : null}
       <div className="ucp-stats">
-        <Stat label={L('عضویت VIP', 'VIP membership')} value={vip.data ? vipStatus(vip.data.status, L) : '—'} tone={vip.data?.status === 'approved' ? 'gold' : undefined}
+        <Stat label={L('عضویت VIP تریدیار', 'TradeYar VIP membership')} value={vip.data ? vipStatus(vip.data.status, L) : '—'} tone={vip.data?.status === 'approved' ? 'gold' : undefined}
           foot={<span className="ucp-actions">
-            <button className="ucp-link" onClick={() => openPage(vip.data?.status === 'approved' ? 'vip-status' : 'vip-join', 'membership')}>{vip.data?.status === 'approved' ? L('وضعیت VIP', 'VIP status') : L('پیوستن به VIP', 'Join VIP')}</button>
+            <button className="ucp-link" onClick={() => openPage(vip.data?.status === 'approved' ? 'vip-status' : 'vip-join', 'membership')}>{vip.data?.status === 'approved' ? L('وضعیت VIP', 'VIP status') : L('پیوستن به VIP تریدیار', 'Join TradeYar VIP')}</button>
             {hasPage('performance') ? <button className="ucp-link" onClick={() => openPage('performance')}>{L('کارنامه', 'Performance')}</button> : null}
           </span>} />
         <Stat label={L('اجرای باز', 'Open')} value={list.data ? by(['open', 'filled']) : '—'} />

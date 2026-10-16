@@ -45,6 +45,9 @@ function toSession(r: TokenResponse, prior?: Session): Session {
 }
 
 const refused = (e: unknown) => e instanceof HttpError && (e.status === 401 || e.status === 403);
+// A refresh the platform cannot read (400/422: the relay sends an ended session's handle on as
+// nothing) is a session that is over too, not a reason to keep retrying as a signed-in reader.
+const ended = (e: unknown) => refused(e) || (e instanceof HttpError && (e.status === 400 || e.status === 422));
 
 async function linkTradeYar(fxAccess: string): Promise<void> {
   try {
@@ -123,8 +126,8 @@ async function refresh(backend: Backend): Promise<string | null> {
     useSession.getState().put(backend, next);
     return next.access;
   } catch (e) {
-    if (refused(e)) useSession.getState().put(backend, null);
-    return refused(e) ? null : s.access;
+    if (ended(e)) useSession.getState().put(backend, null);
+    return ended(e) ? null : s.access;
   }
 }
 
