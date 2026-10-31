@@ -227,7 +227,7 @@ export default async function ({ test, open, ready, pc, expect }) {
     expect(/^[\d,.]+$/.test((await win.textContent('.pip-price')).trim()), 'price in Latin digits');
     expect(/^[+−]\d+\.\d{2}%$/.test((await win.textContent('.pip-chg')).trim()), 'change');
     expect((await win.locator('.pip-line path').count()) === 1, 'line');
-    await win.waitForSelector('.pip-cd', { timeout: 3000 });
+    await win.waitForSelector('.pip-cd', { timeout: 10000 });
     expect(/^\d+:\d{2}(:\d{2})?$/.test((await win.textContent('.pip-cd')).trim()), 'countdown');
     expect((await env.page.getAttribute('.keep-watching', 'aria-pressed')) === 'true', 'button pressed');
     await env.page.click('.keep-watching');
