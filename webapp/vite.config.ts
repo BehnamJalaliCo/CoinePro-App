@@ -27,7 +27,8 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     target: 'es2022',
-    sourcemap: true,
+    // No source maps in the published bundle: the site would serve the whole source to anyone who asks.
+    sourcemap: false,
     minify: process.env.E2E_NOMINIFY ? false : 'esbuild',
     chunkSizeWarningLimit: 900,
   },

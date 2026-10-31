@@ -6,6 +6,7 @@
 //   forex   GET /up/coineprofx/api/user/mobile/market/tickers  every max(cache_ttl, 5 s)
 //           GET /up/coineprofx/api/ws/snapshot?symbols=S     every 1.5 s with a forex chart open
 import { HttpError, pageVisible, request } from './http';
+import { isOffScope } from './cryptoScope';
 import { backendOf, instrumentOf } from './symbols';
 import { useMarket } from '../state/market';
 import type { Ticker } from './types';
@@ -83,7 +84,8 @@ let cryptoCatalogued = false;
 
 async function pollCrypto(): Promise<number> {
   const r = await request<{ data?: CryptoRow[] }>('/api/crypto/prices', { timeoutMs: 10_000 });
-  const rows = (r.data ?? []).filter((x) => typeof x.s === 'string' && Number.isFinite(x.p));
+  // Only what TradeYar will also chart: its price list carries forex, metals and shares too.
+  const rows = (r.data ?? []).filter((x) => typeof x.s === 'string' && Number.isFinite(x.p) && !isOffScope(x.s));
   const now = Date.now();
   const list: Ticker[] = rows.map((x) => {
     const pct = Number(x.c ?? 0);

@@ -12,6 +12,8 @@ interface MarketState {
   put(tickers: Ticker[]): void;
   markLive(at: number): void;
   putInstruments(list: Instrument[]): void;
+  /** A symbol no backend will chart (data/cryptoScope.ts): out of every list at once. */
+  drop(symbol: string): void;
 }
 
 export const useMarket = create<MarketState>((set) => ({
@@ -28,6 +30,12 @@ export const useMarket = create<MarketState>((set) => ({
     const next = { ...s.instruments };
     for (const i of list) next[i.symbol] = i;
     return { instruments: next };
+  }),
+  drop: (symbol) => set((s) => {
+    if (!(symbol in s.tickers) && !(symbol in s.instruments)) return {};
+    const tickers = { ...s.tickers }; delete tickers[symbol];
+    const instruments = { ...s.instruments }; delete instruments[symbol];
+    return { tickers, instruments };
   }),
 }));
 

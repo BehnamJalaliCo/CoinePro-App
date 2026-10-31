@@ -14,6 +14,7 @@ import type { Candle } from './types';
 import { intervalId, intervalSeconds, isSubMinute, parseIntervalId, INTERVALS } from './intervals';
 import { subMinuteHistory } from './ticks';
 import { HttpError, request } from './http';
+import { isScopeRefusal, learnOffScope } from './cryptoScope';
 import { backendOf, exprLegs } from './symbols';
 import { accessFor } from './auth';
 import { academyToken, dropAcademyToken, dropGuestToken, guestToken, spendGuestBudget, type Urgency } from './forexAccess';
@@ -128,6 +129,16 @@ const clean = (raw: unknown): Candle[] => {
 export interface HistoryPage { bars: Candle[]; more: boolean }
 
 async function cryptoPage(symbol: string, plan: Plan, before: number | undefined, limit: number): Promise<HistoryPage> {
+  try {
+    return await cryptoPageOf(symbol, plan, before, limit);
+  } catch (e) {
+    // TradeYar's scope gate: the symbol is not one it charts, so no list offers it again.
+    if (e instanceof HttpError && isScopeRefusal(e.status, e.body)) learnOffScope(symbol);
+    throw e;
+  }
+}
+
+async function cryptoPageOf(symbol: string, plan: Plan, before: number | undefined, limit: number): Promise<HistoryPage> {
   const token = await accessFor('tradeyar');
   if (token) {
     try {

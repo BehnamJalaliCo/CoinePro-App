@@ -39,6 +39,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      # ubuntu-latest moved to Ubuntu 26 (October 2026), whose Python has no wheels for the pinned
+      # Pillow and numpy the visual comparator uses; a fixed Python keeps those pins installable.
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
