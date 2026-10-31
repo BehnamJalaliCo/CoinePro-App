@@ -5,7 +5,8 @@ import { create } from 'zustand';
 import { en, fa, type StringKey } from '../i18n/strings';
 import type { ChartType } from '../chart/chartTypes';
 
-export type Theme = 'system' | 'light' | 'dark';
+/** «نیمه‌شب» (midnight) is the dark theme on true black, for OLED screens (OLD ThemeMode.MIDNIGHT). */
+export type Theme = 'system' | 'light' | 'dark' | 'midnight';
 export type Lang = 'fa' | 'en';
 
 const KEY = 'pc.prefs.v1';
@@ -81,7 +82,8 @@ export const usePrefs = create<PrefsState>((set, get) => {
     session: initial.session === 'regular' ? 'regular' : 'extended',
     shadedSessions: Array.isArray(initial.shadedSessions) ? initial.shadedSessions : [],
     sessionOverlaps: initial.sessionOverlaps ?? true,
-    setTheme: (theme) => { set({ theme }); persist(); },
+    // Applied at once, so a chart repainting on this change already reads the new ground (midnight).
+    setTheme: (theme) => { set({ theme }); persist(); if (typeof document !== 'undefined') applyTheme(theme); },
     setLang: (lang) => { set({ lang }); persist(); },
     setSymbol: (symbol) => { set({ symbol }); persist(); },
     setInterval: (interval) => { set({ interval }); persist(); },
@@ -114,7 +116,7 @@ export function applyTheme(theme: Theme): void {
 }
 
 export function isDark(theme: Theme): boolean {
-  if (theme === 'dark') return true;
+  if (theme === 'dark' || theme === 'midnight') return true;
   if (theme === 'light') return false;
   return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
 }

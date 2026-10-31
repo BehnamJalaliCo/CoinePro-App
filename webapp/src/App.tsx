@@ -42,6 +42,7 @@ import { PhoneDrawing } from './shell/PhoneDrawing';
 import './data/founding';
 import { TeachingLayer } from './coach/TeachingLayer';
 import { MarketPreviewHost } from './pages/MarketPreview';
+import { OwnerBanners } from './shell/OwnerBanners';
 
 export function App() {
   const symbol = usePrefs((s) => s.symbol);
@@ -128,6 +129,7 @@ export function App() {
       <TopBar onSymbolSearch={() => setSearch('')} onIndicators={() => setIndicators(true)} onSignIn={() => setSignIn(true)} onCompare={() => setComparing(true)} onAlert={() => setAlertAt(null)} onSettings={() => setSettings(true)} onPremium={() => setPremium(true)} onMenu={() => setMenu(true)} onReplay={() => { const r = useReplay.getState(); if (r.state?.on || r.selecting) r.exit(); else r.select(); }} />
       <ToolRail />
       <main className="ws-main">
+        <OwnerBanners />
         <ChartGrid feed={feedFor(session)} onCellSearch={setCellSearch}>
           <ChartView feed={feedFor(session)} digits={inst.digits} displayName={displayName} onStudySettings={setStudyUid} onAlertAt={(p) => setAlertAt(p)} />
         </ChartGrid>

@@ -86,3 +86,16 @@
   --shadow-pop: 0 2px 4px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.6);
   color-scheme: dark;
 }
+
+/* «نیمه‌شب»: the dark theme on true black (OLD CoineProMidnightPalette). Only the ground moves —
+   the page and the chart's pane go black, a card takes the dark theme's page, and the hairlines are
+   raised so an edge survives on black. Every ink and hue is the dark theme's. */
+:root[data-theme='midnight'] {
+  --bg: #000000; --bg-panel: #0F0F0F; --bg-sunken: #0A0A0A; --bg-hover: #1F1F1F; --bg-active: #2A2A2A;
+  --bg-overlay: rgba(0, 0, 0, 0.7); --bg-elevated: #161616; --line: #333333; --line-strong: #474747;
+  --text: #DBDBDB; --text-2: #B8B8B8; --text-3: #8C8C8C; --text-inverse: #0F0F0F;
+  --up-soft: rgba(8, 153, 129, 0.2); --down-soft: rgba(242, 54, 69, 0.2);
+  --gold: #D4A64A; --gold-strong: #E2B85E; --gold-soft: rgba(212, 166, 74, 0.18);
+  --shadow-pop: 0 2px 4px rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.7);
+  color-scheme: dark;
+}

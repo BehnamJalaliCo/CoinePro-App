@@ -16,6 +16,9 @@ import { startPulse } from './state/pulse';
 import { startScanWatch } from './state/scanWatch';
 import { applyAddress } from './route';
 import { applyTheme, usePrefs } from './state/prefs';
+import { startErrorCapture } from './state/lastError';
+import { startVisitClock } from './state/visits';
+import { startOwnerChannel } from './data/owner';
 
 const BASE = import.meta.env.BASE_URL;
 
@@ -24,6 +27,8 @@ const BASE = import.meta.env.BASE_URL;
 if (new URLSearchParams(window.location.search).has('e2e')) {
   void import('./e2eHooks').then((m) => m.expose());
 }
+startErrorCapture();
+startVisitClock();
 applyTheme(usePrefs.getState().theme);
 applyAddress();
 startPrices();
@@ -32,6 +37,7 @@ startAlertWatch();
 startPaperWatch();
 startPulse();
 startScanWatch();
+startOwnerChannel();
 
 // The sprite, the logo map and the names are small and needed by the first frame; wait for them
 // (never longer than 1.5 s) so the screen does not paint twice.

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useT } from '../state/prefs';
+import { usePrefs, useT } from '../state/prefs';
+import { AUTH_FAILURE_TEXT, authFailure, retryIn } from '../data/authFailure';
+import { faNum } from '../i18n/time';
 import { Icon } from '../ui/Icon';
-import { HttpError } from '../data/http';
 import {
   authMethods, forgotPassword, googleIdToken, registerStart, registerVerify, signIn, signInWithGoogle, type AuthMethods,
 } from '../data/auth';
@@ -23,18 +24,30 @@ export function SignIn({ onClose }: { onClose(): void }) {
   const [regToken, setRegToken] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fa = usePrefs((s) => s.lang) === 'fa';
+  // A server-sent wait after «too many»: the action button counts it down rather than ignoring taps.
+  const [waitUntil, setWaitUntil] = useState(0);
+  const [now, setNow] = useState(Date.now());
+  const waiting = Math.max(0, Math.ceil((waitUntil - now) / 1000));
+  useEffect(() => {
+    if (waitUntil <= Date.now()) return;
+    const id = window.setInterval(() => { setNow(Date.now()); if (Date.now() >= waitUntil) window.clearInterval(id); }, 1000);
+    return () => window.clearInterval(id);
+  }, [waitUntil]);
 
   useEffect(() => { void authMethods().then(setMethods); }, []);
   useEffect(() => { setError(null); }, [step]);
 
+  // A refusal, a non-answer, a server fault and an unreadable answer are four different sentences
+  // (OLD AuthFailureMapping); the server's own words only on a real verdict.
   const fail = (e: unknown, fallback: StringKey) => {
-    if (e instanceof HttpError) {
-      if (e.readerMessage) return setError(e.readerMessage);
-      if (e.status === 429) return setError(t('tooMany'));
-      if (e.status === -1) return setError(t('networkError'));
-    }
     if (e instanceof Error && e.message === 'popup-blocked') return setError(t('popupBlocked'));
-    setError(t(fallback));
+    if (e instanceof Error && e.message === 'no-google') return setError(t(fallback));
+    const f = authFailure(e);
+    if (f.reason === 'rateLimited' && f.retryAfterSeconds) { setWaitUntil(Date.now() + f.retryAfterSeconds * 1000); setNow(Date.now()); }
+    if (f.message) return setError(f.message);
+    if (f.reason === 'rejected' && fallback === 'wrongCredentials') return setError(t('wrongCredentials'));
+    setError(AUTH_FAILURE_TEXT[f.reason][fa ? 0 : 1]);
   };
 
   const run = async (fn: () => Promise<void>, fallback: StringKey) => {
@@ -71,7 +84,7 @@ export function SignIn({ onClose }: { onClose(): void }) {
             <>
               {methods?.google && methods.googleClientId ? (
                 <>
-                  <button type="button" className="btn btn-google" onClick={google} disabled={busy}>
+                  <button type="button" className="btn btn-google" onClick={google} disabled={busy || waiting > 0}>
                     <Icon name="ph-google-logo" size="md" /><span>{t('continueGoogle')}</span>
                   </button>
                   <div className="or"><span>{t('orEmail')}</span></div>
@@ -109,8 +122,8 @@ export function SignIn({ onClose }: { onClose(): void }) {
           {error ? <p className="error" role="alert">{error}</p> : null}
 
           {step !== 'forgotSent' ? (
-            <button type="submit" className="btn btn-primary" disabled={busy}>
-              {step === 'signin' ? t('signIn') : step === 'signup' ? t('signUpTitle') : step === 'verify' ? t('verify') : t('sendResetLink')}
+            <button type="submit" className="btn btn-primary" disabled={busy || waiting > 0} data-wait={waiting || undefined}>
+              {waiting > 0 ? retryIn(waiting, fa, faNum) : step === 'signin' ? t('signIn') : step === 'signup' ? t('signUpTitle') : step === 'verify' ? t('verify') : t('sendResetLink')}
             </button>
           ) : null}
 

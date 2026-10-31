@@ -3,7 +3,8 @@ import { usePage } from '../state/page';
 import { useSession } from '../data/session';
 import { academy } from '../data/academy';
 import { num, str } from '../data/member';
-import { State, Tabs, useL, useLoad } from './kit';
+import { HttpError } from '../data/http';
+import { State, Tabs, useL, useLoad, parseNum } from './kit';
 
 // The academy (feature/academy, CoinePro-FX): the levels and their lessons with what is done and
 // what is locked, the roadmap of a level by module, the reader's progress, streak and badges, the
@@ -42,6 +43,7 @@ export default function AcademyPage() {
 
   return (
     <div className="page-inner">
+      {m && m.phone_required === true ? <PhoneNeeded onDone={() => { me.reload(); catalog.reload(); }} /> : null}
       <State loading={me.loading} error={me.error} onRetry={me.reload}>
         {m ? (
           <div className="pulse">
@@ -103,5 +105,40 @@ export default function AcademyPage() {
         </>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * «شماره‌ی موبایل لازم است» (OLD AcademyScreen PhoneNeeded): the professional levels open once the
+ * academy profile has a mobile number, which the reader adds here (POST academy/profile {phone});
+ * the server normalises it and says so in its own words when it cannot.
+ */
+function PhoneNeeded({ onDone }: { onDone(): void }) {
+  const L = useL();
+  const [phone, setPhone] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const raw = phone.trim().replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0)).replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660));
+    if (raw.replace(/\D/g, '').length < 8 || parseNum(raw.replace(/[+\s-]/g, '')) == null) { setMsg(L('شماره‌ی موبایلِ معتبر وارد کنید.', 'Enter a valid mobile number.')); return; }
+    setBusy(true); setMsg(null);
+    try {
+      const r = await academy<{ ok?: boolean; phone_required?: boolean }>('profile', { body: { phone: raw } });
+      if (r?.phone_required === false || r?.ok) onDone();
+    } catch (err) {
+      setMsg(err instanceof HttpError && err.readerMessage ? err.readerMessage : L('شماره ثبت نشد. دوباره تلاش کنید.', 'The number was not saved. Try again.'));
+    } finally { setBusy(false); }
+  };
+  return (
+    <section className="card academy-phone" data-card="phone">
+      <h3 className="fa warn-ink">{L('شماره‌ی موبایل لازم است', 'Phone number required')}</h3>
+      <p className="muted small fa">{L('سطح‌های حرفه‌ای وقتی باز می‌شوند که شماره‌ی موبایلت در پروفایل ثبت شده باشد.', 'Professional levels open once your phone number is on your profile.')}</p>
+      <form className="row" onSubmit={(e) => void submit(e)}>
+        <input type="tel" dir="ltr" inputMode="tel" autoComplete="tel" className="num" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="09xx xxx xxxx" aria-label={L('شماره‌ی موبایل', 'Mobile number')} disabled={busy} />
+        <button type="submit" className="btn btn-quiet sm" disabled={busy || !phone.trim()}>{L('ثبت شماره‌ی موبایل', 'Add phone number')}</button>
+      </form>
+      {msg ? <p className="down small fa" role="alert">{msg}</p> : null}
+    </section>
   );
 }

@@ -112,7 +112,7 @@ export function appHotkeyHandlers(actions: HotkeyActions): Record<string, (e: Ke
     logScale: () => bus().setScale(bus().scale === 'log' ? 'normal' : 'log'),
     toggleRight: () => usePanels.getState().toggle(usePanels.getState().open ?? 'watchlist'),
     fullscreen: () => { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen?.(); },
-    toggleTheme: () => { const p = usePrefs.getState(); p.setTheme(p.theme === 'dark' ? 'light' : 'dark'); },
+    toggleTheme: () => { const p = usePrefs.getState(); p.setTheme(p.theme === 'dark' || p.theme === 'midnight' ? 'light' : 'dark'); },
     indicators: () => actions.indicators(),
     symbolSearch: () => actions.symbolSearch(),
     newAlert: () => actions.newAlert(),

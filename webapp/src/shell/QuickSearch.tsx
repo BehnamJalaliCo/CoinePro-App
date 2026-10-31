@@ -130,7 +130,7 @@ export function QuickSearch({ actions, onClose }: { actions: QuickActions; onClo
     for (const [tab, f, e] of [['symbol', 'نماد', 'Symbol'], ['status', 'خط وضعیت', 'Status line'], ['scales', 'مقیاس‌ها', 'Scales'], ['canvas', 'بوم', 'Canvas'], ['trading', 'معامله', 'Trading'], ['alerts', 'هشدارها', 'Alerts'], ['events', 'رویدادها', 'Events']] as const) {
       a(`settings-${tab}`, `تنظیمات چارت: ${f}`, `Chart settings: ${e}`, 'settings2', () => settingsTab(tab));
     }
-    a('theme', 'تم تیره / روشن', 'Dark / light theme', 'ph-moon', () => { const p = usePrefs.getState(); p.setTheme(p.theme === 'dark' ? 'light' : 'dark'); }, 'Ctrl+Alt+T');
+    a('theme', 'تم تیره / روشن', 'Dark / light theme', 'ph-moon', () => { const p = usePrefs.getState(); p.setTheme(p.theme === 'dark' || p.theme === 'midnight' ? 'light' : 'dark'); }, 'Ctrl+Alt+T');
     a('lang', 'زبان: English', 'Language: فارسی', 'ph-translate', () => { const p = usePrefs.getState(); p.setLang(p.lang === 'fa' ? 'en' : 'fa'); });
     a('maximize', 'بزرگ کردن چارت فعال', 'Maximize the active chart', 'ph-arrows-out', () => { const g = useGrid.getState(); g.setMaximized(!g.maximized); }, 'Alt+Enter');
     a('shortcuts', 'میانبرهای صفحه‌کلید', 'Keyboard shortcuts', 'ph-keyboard', () => usePage.getState().open('help', 'shortcuts'), '?');

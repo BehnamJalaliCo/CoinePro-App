@@ -6,6 +6,7 @@
 //   • signing out is local: the handles are forgotten (the relay never sees a logout call, as today).
 import { HttpError, request, type RequestOptions } from './http';
 import { useSession, type AuthUser, type Session } from './session';
+import { UnreadableAnswer } from './authFailure';
 import type { Backend } from './symbols';
 
 const TY = '/up/tradeyar/api/mobile/v1/auth';
@@ -32,8 +33,9 @@ function readUser(u: Record<string, unknown> | undefined): AuthUser | null {
 }
 
 function toSession(r: TokenResponse, prior?: Session): Session {
-  const access = r.access_token ?? r.accessToken ?? r.token;
-  if (!access) throw new HttpError(500, { detail: 'no token' }, null);
+  // An answer with no token in it arrived and could not be read: our fault, not the server's.
+  const access = r && typeof r === 'object' ? r.access_token ?? r.accessToken ?? r.token : undefined;
+  if (!access) throw new UnreadableAnswer();
   const life = (r.expires_in ?? r.expiresIn ?? 3600) * 1000;
   const early = life > 600_000 ? 60_000 : life / 10;
   return {
@@ -54,6 +56,23 @@ async function linkTradeYar(fxAccess: string): Promise<void> {
     const r = await request<TokenResponse>(`${TY}/link/coinepro`, { body: { coinepro_token: fxAccess } });
     useSession.getState().put('tradeyar', toSession(r));
   } catch { /* the crypto side stays a guest; forex works on its own */ }
+}
+
+/**
+ * Opens the crypto account (TradeYar) for a reader signed in to the forex platform alone, so Premium
+ * — held on that account — can be bought (OLD ProRoute onLinkAccount): null when it worked, else the
+ * server's own sentence, or '' when it gave none.
+ */
+export async function linkCryptoAccount(): Promise<string | null> {
+  const fx = await accessFor('coineprofx');
+  if (!fx) return '';
+  try {
+    const r = await request<TokenResponse>(`${TY}/link/coinepro`, { body: { coinepro_token: fx } });
+    useSession.getState().put('tradeyar', toSession(r));
+    return null;
+  } catch (e) {
+    return e instanceof HttpError && e.readerMessage ? e.readerMessage : '';
+  }
 }
 
 // TradeYar down (5xx, no answer) is not a reason to keep a CoinePro-FX reader out (server report,
@@ -87,6 +106,7 @@ export const signInWithGoogle = (idToken: string) => federated('google', 'google
 
 export async function registerStart(email: string, password: string, fullName: string): Promise<{ token: string; cooldown: number }> {
   const r = await request<{ registration_token: string; cooldown_seconds?: number }>(`${TY}/register/start`, { body: { email: email.trim(), password, full_name: fullName.trim() } });
+  if (!r || typeof r !== 'object' || !r.registration_token) throw new UnreadableAnswer();
   return { token: r.registration_token, cooldown: r.cooldown_seconds ?? 60 };
 }
 

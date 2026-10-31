@@ -30,8 +30,10 @@ const TABS: SettingsTab[] = ['symbol', 'status', 'scales', 'canvas', 'trading', 
 
 /** The theme's own colours behind every '' (follow the theme) colour setting. */
 export function themeColours(dark: boolean) {
+  // «نیمه‌شب» (OLD CoineProMidnightPalette): the dark theme on true black — the chart's ground too.
+  const midnight = dark && typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'midnight';
   return dark
-    ? { bg: '#0F0F0F', grid: '#1F1F1F', text: '#B8B8B8', line: '#2E2E2E', cross: '#9C9C9C', watermark: '#FFFFFF', sessionBreak: '#4A4A4A' }
+    ? { bg: midnight ? '#000000' : '#0F0F0F', grid: '#1F1F1F', text: '#B8B8B8', line: '#2E2E2E', cross: '#9C9C9C', watermark: '#FFFFFF', sessionBreak: '#4A4A4A' }
     : { bg: '#FFFFFF', grid: '#F0F0F0', text: '#0F0F0F', line: '#EBEBEB', cross: '#9C9C9C', watermark: '#131722', sessionBreak: '#B2B5BE' };
 }
 

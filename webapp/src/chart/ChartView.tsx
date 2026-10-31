@@ -508,7 +508,7 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
     paintVolume();
     measurePanes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dark, lookKey]);
+  }, [dark, lookKey, theme]);
 
   // Chart type and the series' look: a new price series in place of the old one; drawings,
   // markers and levels follow it.

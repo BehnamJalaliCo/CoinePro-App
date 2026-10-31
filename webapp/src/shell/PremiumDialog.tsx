@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { usePrefs, useT } from '../state/prefs';
 import { request, HttpError } from '../data/http';
-import { authed } from '../data/auth';
+import { authed, linkCryptoAccount } from '../data/auth';
 import { useSession } from '../data/session';
 import { Icon } from '../ui/Icon';
 import { faNum } from '../i18n/time';
 import { VipCard, useVipName } from '../trade/PlanBadge';
 import { useEntitlements, usePremium } from '../trade/entitlements';
+import '../pages/home2.css';
 
 // «پرو چارت پرمیوم» on the web: the plans TradeYar publishes, paid in USDT on BEP20 to the wallet
 // it names, confirmed by the transaction hash (POST payments/usdt). The same checkout the phone's
@@ -38,6 +39,18 @@ export function PremiumBody({ onSignIn }: { onSignIn(): void }) {
   const t = useT();
   const lang = usePrefs((s) => s.lang);
   const signed = useSession((s) => Boolean(s.sessions.tradeyar));
+  // Premium is held on the crypto (TradeYar) account: a reader signed in to forex alone is told so,
+  // and «خرید» connects or creates that account first (OLD ProRoute.kt, pro_link_*).
+  const forexOnly = useSession((s) => Boolean(s.sessions.coineprofx && !s.sessions.tradeyar));
+  const [linking, setLinking] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const fa = lang === 'fa';
+  const link = async () => {
+    setLinking(true); setLinkError(null);
+    const failure = await linkCryptoAccount();
+    setLinking(false);
+    if (failure != null) setLinkError(failure || (fa ? 'حساب کریپتو وصل نشد. لطفاً یک دقیقه‌ی دیگر دوباره امتحان کنید.' : 'The crypto account could not be connected. Please try again in a minute.'));
+  };
   const [plans, setPlans] = useState<Plans | null>(null);
   const [ent, setEnt] = useState<Entitlement | null>(null);
   const [pick, setPick] = useState<Plan | null>(null);
@@ -72,6 +85,7 @@ export function PremiumBody({ onSignIn }: { onSignIn(): void }) {
       <p className="hint">{`${t('premiumActive')}${ent.ends_at ? ` ${t('premiumUntil')} ${new Intl.DateTimeFormat(lang === 'fa' ? 'fa-IR-u-ca-persian' : 'en-GB', { dateStyle: 'long' }).format(new Date(ent.ends_at))}` : ''}.`}</p>
     ) : null}
     {premium.vip || premium.forexVip ? null : <>
+    {forexOnly ? <p className="hint pro-link-note">{linking ? (fa ? 'در حال اتصال حساب کریپتو…' : 'Connecting your crypto account…') : linkError ?? (fa ? 'پرمیوم روی حساب کریپتو ثبت می‌شود. اگر با همین ایمیل حساب کریپتو دارید، «خرید» به همان وصل می‌شود و اگر ندارید، ساخته می‌شود؛ بعد خرید ادامه پیدا می‌کند.' : 'Premium is held on a crypto account. If you have one with this email, Buy connects to it; if not, one is created — then the purchase continues.')}</p> : null}
     {plans === null ? <p className="hint">{t('loading')}…</p> : null}
     <div className="plans">
       {(plans?.plans ?? []).map((p) => (
@@ -91,13 +105,19 @@ export function PremiumBody({ onSignIn }: { onSignIn(): void }) {
             <Icon name={copied ? 'ph-check' : 'ph-copy'} size="sm" />
           </button>
         </div>
+        <p className="usdt-warning">{fa ? 'فقط تتر روی شبکه‌ی BEP20 و دست‌کم همین مبلغ را بفرستید. توکن یا شبکه‌ی دیگر قابل برگشت نیست.' : 'Send USDT on BEP20 only, and at least this amount. Another token or another network cannot be recovered.'}</p>
         {signed ? (
           <>
             <input className="num tx" dir="ltr" placeholder="0x…" value={hash} onChange={(e) => setHash(e.target.value)} spellCheck={false} />
             <button className="btn btn-primary" disabled={busy} onClick={() => void submit()}>{t('premiumConfirm')}</button>
           </>
+        ) : forexOnly ? (
+          <button className="btn btn-primary" disabled={linking} onClick={() => void link()}>{fa ? 'خرید' : 'Buy'}</button>
         ) : (
-          <button className="btn btn-primary" onClick={onSignIn}>{t('signIn')}</button>
+          <>
+            <p className="hint">{fa ? 'پرمیوم روی حساب کریپتوی شما ثبت می‌شود. اول وارد آن شوید و بعد خرید کنید.' : 'Premium is held on your crypto account. Sign in to it first, then buy.'}</p>
+            <button className="btn btn-primary" onClick={onSignIn}>{t('signIn')}</button>
+          </>
         )}
       </div>
     ) : null}
