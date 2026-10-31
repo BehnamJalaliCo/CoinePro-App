@@ -47,6 +47,18 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
+## 5.36.0
+
+**fa**
+
+> نسخه‌ی وب در pro-chart.com/next بخش بزرگی از آنچه اپ اندروید داشت گرفت: صاعقه‌ی خبر و دایره‌ی تقویم روی چارت با برگه‌ی رویدادها، نقطه‌ی کندل غیرعادی با «چرا این حرکت؟»، آموزش انیمیشنی، اسکن رشد، اعلان‌های بازار، «هفته‌ی من»، «دوئل با گذشته»، حالت آفلاین و هشداری که با ترسیمش جابه‌جا می‌شود. در اپ اندروید فقط متن حریم خصوصی به‌روز شد.
+
+**en**
+
+> The web app at pro-chart.com/next now has much of what the Android app had: news and calendar glyphs with their event sheet, the unusual-bar dot with «why this move?», the animated coach, the growth scan, market notifications, «my week», the duel, offline start and alerts that follow their drawing. In the Android app only the privacy text changed.
+
+---
+
 ## 5.35.2
 
 **fa**

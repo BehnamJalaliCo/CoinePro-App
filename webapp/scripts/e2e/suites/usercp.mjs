@@ -187,6 +187,9 @@ export default async function ({ test, open, ready, pc, expect }) {
     const env = await open('BTCUSDT/1h?e2e=1', { signed: true, setup: fake.setup });
     await ready(env.page);
     await env.page.evaluate(() => localStorage.setItem('pc.layouts.v1', JSON.stringify({ layouts: [{ name: 'e2e' }], templates: [], current: null })));
+    // This browser's own settings: the app writes them once the reader changes something (it no
+    // longer rewrites unchanged preferences at start).
+    await pc(env.page, () => { const p = window.__pc.usePrefs.getState(); p.setInterval(p.interval === '60' ? '240' : '60'); });
     await toPanel(env, 'workspace');
     await env.page.waitForSelector('.ucp-part');
     expect(await env.page.locator('.ucp-part').count() === 5, 'five parts');

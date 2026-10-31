@@ -53,8 +53,9 @@ export default async function ({ test, open, ready, expect }) {
     // One a visit with a mouse: nothing else comes.
     await page.waitForTimeout(2600);
     expect(!(await page.$('.coach-layer')), 'a second tip in the same visit');
-    // A new visit: the next tip, the wheel zoom on the plot.
-    await page.reload({ waitUntil: 'domcontentloaded' });
+    // A new visit: the next tip, the wheel zoom on the plot. The address bar has dropped the query by
+    // now (the app writes its own path), so the visit opens the test address again rather than reload.
+    await page.goto('http://pc.local/next/BTCUSDT/1h?e2e=1&coach=1', { waitUntil: 'domcontentloaded' });
     await ready(page);
     await page.waitForSelector('.coach-layer.quiet .coach-card', { timeout: 8000 });
     expect((await page.getAttribute('.coach-layer', 'data-coach-tip')) === 'chart_pinch', 'second visit tip');
