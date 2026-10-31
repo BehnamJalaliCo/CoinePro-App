@@ -452,7 +452,11 @@ export default async function ({ test, open, ready, pc, expect }) {
     await page.evaluate(() => {
       const cv = document.querySelector('canvas.draw-layer'); const r = cv.getBoundingClientRect();
       const ev = (type, x, y, target) => target.dispatchEvent(new PointerEvent(type, { pointerType: 'touch', isPrimary: true, button: 0, buttons: 1, clientX: r.left + x, clientY: r.top + y, bubbles: true }));
+      // On a phone a finger moves the placement cursor like a trackpad and a tap places the point at it (A3).
+      ev('pointerdown', 80, 300, cv); ev('pointermove', 150, 250, window); ev('pointermove', 120, 280, window); ev('pointerup', 120, 280, window);
+      ev('pointerdown', 120, 280, cv); ev('pointerup', 120, 280, window);
       ev('pointerdown', 80, 300, cv); ev('pointermove', 150, 250, window); ev('pointermove', 220, 200, window); ev('pointerup', 220, 200, window);
+      ev('pointerdown', 220, 200, cv); ev('pointerup', 220, 200, window);
     });
     expect(await count(page) === 1, 'a finger did not draw');
     await page.evaluate(() => document.body.classList.add('rail-open'));

@@ -613,7 +613,10 @@ await test('phone layout (390×844)', async () => {
   expect(!(await env.page.isVisible('.ws-panel:not([hidden])')), 'a panel covers the chart on a phone');
   const overflow = await env.page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   expect(!overflow, 'horizontal overflow on a phone');
-  await env.page.click('.phone-only');
+  // The pencil enters drawing mode (floating toolbar and drawing band); the band's tool opens the rail.
+  await env.page.click('.phone-only[data-act="draw-mode"]');
+  await env.page.waitForSelector('.draw-band [data-act="tools"]');
+  await env.page.click('.draw-band [data-act="tools"]');
   await env.page.waitForTimeout(300);
   expect(await env.page.evaluate(() => document.body.classList.contains('rail-open')), 'rail did not open');
   await env.page.screenshot({ path: join(SHOTS, 'phone.png') });

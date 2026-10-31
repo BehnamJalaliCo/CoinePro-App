@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { uncheckedIds, useAlerts } from '../state/alerts';
+import { describeAlert, uncheckedIds, useAlerts } from '../state/alerts';
+import { AlertDrawingMark } from '../shell/AlertDrawingMark';
 import { usePrefs, useT } from '../state/prefs';
 import { useMarket } from '../state/market';
 import { useSession } from '../data/session';
@@ -33,6 +34,7 @@ export default function AlertsPage() {
   const t = useT();
   const sessions = useSession((s) => s.sessions);
   const local = useAlerts();
+  const fa = usePrefs((s) => s.lang) === 'fa';
   const [tab, setTab] = useState<'server' | 'browser' | 'new'>(sessions.tradeyar || sessions.coineprofx ? 'server' : 'browser');
   const server = useLoad(async () => {
     const out: ServerAlert[] = [];
@@ -85,7 +87,7 @@ export default function AlertsPage() {
           <table className="table"><tbody>{local.list.map((a) => (
             <tr key={a.id} className={a.active ? '' : 'muted'}>
               <td><span className="row"><SymbolLogo symbol={a.symbol} size={18} /><b className="sym">{a.symbol}</b></span></td>
-              <td className="num">{a.condition === 'above' ? '≥' : a.condition === 'below' ? '≤' : '⇄'} {a.value}</td>
+              <td className="num"><span className="row">{a.drawingId ? describeAlert(a, fa) : `${a.condition === 'above' ? '≥' : a.condition === 'below' ? '≤' : '⇄'} ${a.value}`}<AlertDrawingMark a={a} /></span></td>
               <td className="num">{a.triggeredAt ? `✓ ${dateTime(a.triggeredAt)}` : dateTime(a.createdAt)}{uncheckedIds([a], local.checkedAt).has(a.id) ? <> <span className="badge unchecked fa">{L('هنوز بررسی نشده', 'Not checked yet')}</span></> : null}</td>
               <td>{a.serverId ? L('در حساب هم ثبت شد', 'Also on the account') : ''}</td>
               <td className="r"><button className="btn btn-quiet sm" onClick={() => local.toggle(a.id)}>{a.active ? L('توقف', 'Pause') : L('فعال', 'Resume')}</button> <button className="btn btn-quiet sm" onClick={() => local.remove(a.id)}>{L('حذف', 'Delete')}</button></td>

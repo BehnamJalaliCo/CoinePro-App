@@ -25,6 +25,9 @@ import { indicatorSeries } from '../data/technicals';
 import { inQuietHours, playSound, readNotify, type SoundId } from './notify';
 import { useSaved } from '../data/saved';
 import { SAVED_TICKERS } from '../data/prices';
+import { boundsAt, findDrawing, BAND_ALERT_TYPES, LINE_ALERT_TYPES } from './drawingLinks';
+import type { DrawingObject } from '../engine/drawings.js';
+import { toolName } from '../chart/tools';
 
 export type AlertCondition =
   | 'above' | 'below' | 'cross' | 'cross_up' | 'cross_down'
@@ -72,6 +75,10 @@ export interface PriceAlert {
   group?: string;
   fires?: number;
   lastFiredAt?: number;
+  /** The drawing this alert watches (its stable id): the alert follows the drawing when it is edited. */
+  drawingId?: string;
+  /** That drawing's tool, so the alert can name it and read it as a line, a band or a price. */
+  drawingType?: string;
 }
 
 export interface AlertLogEntry { id: string; alertId: string; symbol: string; name: string; message: string; price: number; at: number }
@@ -254,9 +261,10 @@ export function lineLevel(l: TrendLine, tSec: number): number {
 }
 
 /** The alert's own words: "BTCUSDT Crossing 90,000". */
-export function describeAlert(a: Pick<PriceAlert, 'symbol' | 'condition' | 'value' | 'high' | 'bars' | 'source' | 'indicator' | 'line'>, fa: boolean, fmt: (v: number) => string = String): string {
+export function describeAlert(a: Pick<PriceAlert, 'symbol' | 'condition' | 'value' | 'high' | 'bars' | 'source' | 'indicator' | 'line'> & { drawingType?: string }, fa: boolean, fmt: (v: number) => string = String): string {
   const c = CONDITION_NAMES[a.condition];
-  const what = a.source === 'indicator' ? (a.indicator?.label ?? a.indicator?.key ?? '').toString() : a.source === 'line' ? (fa ? 'خط روند' : 'Trend line') : a.symbol;
+  const drawn = a.source === 'line' && a.drawingType ? toolName(a.drawingType, fa ? 'fa' : 'en') : null;
+  const what = a.source === 'indicator' ? (a.indicator?.label ?? a.indicator?.key ?? '').toString() : a.source === 'line' ? (drawn ?? (fa ? 'خط روند' : 'Trend line')) : a.symbol;
   const word = fa ? c.fa : c.en;
   if (CHANNEL.includes(a.condition)) return `${what} ${word} ${fmt(a.value)} – ${fmt(a.high ?? a.value)}`;
   if (a.condition === 'move_up_pct' || a.condition === 'move_down_pct') return `${what} ${word} ${a.value}% / ${a.bars ?? 1} ${fa ? 'کندل' : 'bars'}`;
@@ -389,7 +397,33 @@ function evaluate(a: PriceAlert, tkLast: number, now: number): { hit: boolean; v
 }
 
 
+/**
+ * A drawing alert's hit, read from the drawing as it is now (the line was maybe moved since the
+ * alert was made). `null`: not a drawing alert, or the drawings cannot be read — the stored
+ * geometry answers. A drawing that is gone never fires.
+ */
+function drawingHit(a: PriceAlert, prev: number | null, cur: number, now: number, ref: number | null): boolean | null {
+  if (!a.drawingId) return null;
+  const d = findDrawing(a.symbol, a.drawingId);
+  if (d === null) return null;
+  if (!d) return false;
+  const b = boundsAt(d, now / 1000);
+  if (!b.length) return false;
+  const lo = b[0]!, hi = b[b.length - 1]!;
+  if (CHANNEL.includes(a.condition)) return conditionHolds({ condition: a.condition, value: lo, high: hi }, prev, cur, ref);
+  if (a.condition === 'above') return conditionHolds({ condition: 'above', value: hi }, prev, cur, ref);
+  if (a.condition === 'below') return conditionHolds({ condition: 'below', value: lo }, prev, cur, ref);
+  // A crossing of a shape is a crossing of any of its boundaries (price entering or leaving it).
+  return b.some((v) => conditionHolds({ condition: a.condition, value: v, bars: a.bars }, prev, cur, ref));
+}
+
 function test(a: PriceAlert, prev: number | null, cur: number, now: number): boolean {
+  const viaDrawing = MOVES.includes(a.condition) ? null : drawingHit(a, prev, cur, now, null);
+  if (viaDrawing != null) {
+    if (!viaDrawing || !a.and) return viaDrawing;
+    const ref2 = MOVES.includes(a.and.condition) ? moveRef(a, a.and.bars, now) : null;
+    return conditionHolds(a.and, prev, cur, ref2);
+  }
   const op: Operand = a.source === 'line' && a.line ? { condition: a.condition, value: lineLevel(a.line, now / 1000) } : { condition: a.condition, value: a.value, high: a.high, bars: a.bars };
   const ref = MOVES.includes(a.condition) ? moveRef(a, a.bars, now) : null;
   const main = conditionHolds(op, prev, cur, ref);
@@ -472,4 +506,41 @@ export function startAlertWatch(): void {
     }
   };
   if (typeof window !== 'undefined') setInterval(() => { void scan().catch(() => undefined); }, 15_000);
+}
+
+// ── Following the drawings ────────────────────────────────────────────────────────────────────────
+/**
+ * The geometry a drawing alert keeps of its drawing (its line, its band now, its price): what the
+ * dialog and the lists show, and what the platforms hold for a plain level. The watcher re-reads
+ * the drawing itself at every evaluation; this keeps the stored copy in step.
+ */
+export function drawingGeometry(d: DrawingObject, nowSec = Date.now() / 1000): Partial<PriceAlert> | null {
+  const b = boundsAt(d, nowSec);
+  if (!b.length) return null;
+  if (BAND_ALERT_TYPES.includes(d.type) && b.length === 2) return { value: b[0]!, high: b[1]! };
+  const p0 = d.p0 as { t: number; p: number } | undefined, p1 = d.p1 as { t: number; p: number } | undefined;
+  if (LINE_ALERT_TYPES.includes(d.type) && p0 && p1) return { line: { t1: p0.t, p1: p0.p, t2: p1.t, p2: p1.p }, value: b[0]! };
+  return { value: b[0]! };
+}
+
+const close = (x: number | undefined, y: number | undefined) => x === y || (x != null && y != null && Math.abs(x - y) <= Math.abs(y) * 1e-9);
+
+/** The chart's drawings of a symbol changed: every alert on one of them takes its new geometry. */
+export function followDrawings(symbol: string, list: DrawingObject[]): void {
+  const st = useAlerts.getState();
+  const nowSec = Date.now() / 1000;
+  for (const a of st.list) {
+    if (!a.drawingId || a.symbol !== symbol) continue;
+    const d = list.find((x) => x.id === a.drawingId);
+    if (!d) continue;
+    const g = drawingGeometry(d, nowSec);
+    if (!g) continue;
+    const lineSame = !g.line || (a.line && close(a.line.t1, g.line.t1) && close(a.line.p1, g.line.p1) && close(a.line.t2, g.line.t2) && close(a.line.p2, g.line.p2));
+    const bandSame = g.high == null || close(a.high, g.high);
+    // A sloped line's level slides with time by itself; only its anchors count as an edit.
+    const valueSame = g.line ? true : close(a.value, g.value);
+    if (lineSame && bandSame && valueSame) continue;
+    const patch: Partial<PriceAlert> = g.line ? { line: g.line } : g;
+    st.update(a.id, patch);
+  }
 }

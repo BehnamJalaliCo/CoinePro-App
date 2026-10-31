@@ -1,6 +1,6 @@
 // Types for the vendored drawing engine (drawings.js). The engine is plain JavaScript from the old
 // Pro-Chart; only the surface the app calls is described here.
-export interface DrawingObject { type: string; locked?: boolean; visible?: boolean; [k: string]: unknown }
+export interface DrawingObject { type: string; id?: string; locked?: boolean; visible?: boolean; [k: string]: unknown }
 
 /** The keys of a drawing that are its look rather than its place. */
 export const STYLE_KEYS: string[];
@@ -31,6 +31,17 @@ export class DrawingLayer {
   onCreated: ((index: number) => void) | null;
   onZoomBox: ((box: { x0: number; y0: number; x1: number; y1: number }) => void) | null;
   _down?: (e: PointerEvent) => void;
+  _move?: (e: { clientX: number; clientY: number; shiftKey?: boolean }) => void;
+  _up?: () => void;
+  _finishPoly?: () => void;
+  twoClick?: boolean;
+  tmp?: DrawingObject | null;
+  pending?: { type: string; pts: { t: number; p: number }[] } | null;
+  /** True when the last setDrawings handed out ids (the list should be saved). */
+  idsGiven?: boolean;
+  static newId(): string;
+  indexOfId(id: string): number;
+  removeIds(ids: string[]): void;
   static label(type: string): string;
   setSeries(series: unknown): void;
   setCandles(candles: unknown[]): void;

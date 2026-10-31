@@ -98,7 +98,7 @@ export class DrawingLayer {
     this._pushUndo();
     const made = [];
     for (const obj of src) {
-      const c = JSON.parse(JSON.stringify(obj)); c.locked = false; c.visible = true;
+      const c = JSON.parse(JSON.stringify(obj)); c.locked = false; c.visible = true; delete c.id;
       this._offset(c, 14);
       this.drawings.push(c); made.push(this.drawings.length - 1);
     }
@@ -245,7 +245,7 @@ export class DrawingLayer {
   clone(i) {
     const d = this.drawings[i]; if (!d) return -1;
     this._pushUndo();
-    const c = JSON.parse(JSON.stringify(d)); c.locked = false;
+    const c = JSON.parse(JSON.stringify(d)); c.locked = false; delete c.id;
     this._offset(c, 14);
     this.drawings.push(c); this.selected = this.drawings.length - 1; this._changed(); this.onSelect && this.onSelect(this.selected);
     return this.selected;
@@ -257,7 +257,7 @@ export class DrawingLayer {
   paste(obj) {
     if (!obj || !obj.type) return -1;
     this._pushUndo();
-    const c = JSON.parse(JSON.stringify(obj)); c.locked = false; c.visible = true;
+    const c = JSON.parse(JSON.stringify(obj)); c.locked = false; c.visible = true; delete c.id;
     this._offset(c, 14);
     this.drawings.push(c); this.selected = this.drawings.length - 1; this._changed(); this.onSelect && this.onSelect(this.selected);
     return this.selected;
@@ -319,14 +319,38 @@ export class DrawingLayer {
   }
   // record=true وقتی کاربر صریحاً چیدمانی را لود می‌کند (باید undo شود)؛
   // پیش‌فرض false برای لود اولیه/بازیابی نماد که نباید در تاریخچه بیفتد.
-  setDrawings(arr, record = false) { if (record && this.drawings.length) this._pushUndo(); this.drawings = arr || []; this.selected = -1; this.render(); }
+  setDrawings(arr, record = false) { if (record && this.drawings.length) this._pushUndo(); this.drawings = arr || []; this.selected = -1; this.idsGiven = this._ensureIds(); this.render(); }
   getDrawings() { return this.drawings; }
   clearLast() { this.drawings.pop(); this._changed(); }
 
   // #۹ افزودن برنامه‌ای یک ترسیم (مثل جعبه‌ی لانگ/شورت از کلیک‌راست) + ثبت در undo/persist
   addDrawing(d) { if (!d || typeof d !== 'object') return; this._pushUndo(); this.drawings.push(d); this.selected = this.drawings.length - 1; this._changed(); this.onSelect && this.onSelect(this.selected); }
   clearAll() { if (this.drawings.length) this._pushUndo(); this.drawings = []; this.selected = -1; this.multiSel = new Set(); this._changed(); }
-  _changed() { this.render(); this.onChange && this.onChange(this.drawings); }
+  _changed() { this._ensureIds(); this.render(); this.onChange && this.onChange(this.drawings); }
+  // Every drawing carries a stable id (a string), so an alert can follow it across edits, reloads
+  // and z-order moves. A copy (clone, paste, Alt+drag) is a new drawing and gets a new id; a
+  // repeated id is treated the same way. True when an id was handed out.
+  _ensureIds() {
+    const seen = new Set(); let gave = false;
+    for (const d of this.drawings) {
+      if (!d || typeof d !== 'object') continue;
+      if (typeof d.id !== 'string' || !d.id || seen.has(d.id)) { d.id = DrawingLayer.newId(); gave = true; }
+      seen.add(d.id);
+    }
+    return gave;
+  }
+  static newId() { return `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`; }
+  /** The index of the drawing with this id, or -1. */
+  indexOfId(id) { return this.drawings.findIndex((d) => d && d.id === id); }
+  /** Removes the drawings with these ids in one undo step (the answer to «this drawing carries alerts»). */
+  removeIds(ids) {
+    const want = new Set(ids || []);
+    if (!this.drawings.some((d) => d && want.has(d.id))) return;
+    this._pushUndo();
+    this.drawings = this.drawings.filter((d) => !(d && want.has(d.id)));
+    this.multiSel = new Set(); this.selected = -1;
+    this._changed(); this.onSelect && this.onSelect(-1);
+  }
 
   // فاصله‌ی زمانی یک بار (ثانیه) — میانه‌ی چند فاصله‌ی آخر (مقاوم به گپ‌ها) برای اکستراپولیشن در فضای خالی.
   _barInterval() {
@@ -514,7 +538,7 @@ export class DrawingLayer {
           const snap = this._snapshot();
           // Alt+درگ ⇒ کلون درجا و درگ کپی (اصل سر جایش می‌مانَد) — ژست رایج TV. بدون Alt = جابه‌جایی خود آبجکت.
           let mi = hit;
-          if (e.altKey) { this._history.record(snap); const dup = JSON.parse(JSON.stringify(this.drawings[hit])); dup.locked = false; this.drawings.push(dup); mi = this.drawings.length - 1; this.onSelect && this.onSelect(mi); this.multiSel = new Set(); }
+          if (e.altKey) { this._history.record(snap); const dup = JSON.parse(JSON.stringify(this.drawings[hit])); dup.locked = false; dup.id = DrawingLayer.newId(); this.drawings.push(dup); mi = this.drawings.length - 1; this.onSelect && this.onSelect(mi); this.multiSel = new Set(); }
           this.selected = mi; this.dragMove = { idx: mi, last: sp, xy: { x, y }, snap: e.altKey ? null : snap }; } }
         return;
       }
@@ -781,6 +805,8 @@ export class DrawingLayer {
     // Pointer events, so a mouse, a pen and a finger all draw. The host may hand a press on the
     // chart to the layer itself (a finger on a drawing in cursor mode) through _down.
     this._down = down;
+    this._move = move;
+    this._up = up;
     cv.addEventListener('pointerdown', down);
     cv.addEventListener('dblclick', dbl);
     cv.addEventListener('wheel', wheel, { passive: false });

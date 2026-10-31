@@ -36,6 +36,8 @@ import { TradeHost } from './trade/TradeHost';
 import { VipLayer } from './vip/VipLayer';
 import { NotificationOffer } from './shell/NotificationOffer';
 import { OfflineBar } from './shell/Offline';
+import { DrawingAlertDeleteDialog } from './chart/drawingAlerts';
+import { PhoneDrawing } from './shell/PhoneDrawing';
 
 export function App() {
   const symbol = usePrefs((s) => s.symbol);
@@ -126,6 +128,7 @@ export function App() {
           <ChartView feed={feedFor(session)} digits={inst.digits} displayName={displayName} onStudySettings={setStudyUid} onAlertAt={(p) => setAlertAt(p)} />
         </ChartGrid>
         <TimeBar supported={(iv) => supported.includes(iv)} />
+        <PhoneDrawing />
         <BottomPanel />
       </main>
       <RightPanel onNewAlert={() => setAlertAt(null)} onAddSymbol={() => setAdding(true)} onSignIn={() => setSignIn(true)} onCompare={() => setComparing(true)} onSearch={() => setSearch('')} />
@@ -142,6 +145,7 @@ export function App() {
       <AlertToast />
       <OfflineBar />
       <AlertHost />
+      <DrawingAlertDeleteDialog />
       <StudiesHost />
       <TradeHost onSignIn={() => setSignIn(true)} />
       {premium ? <PremiumDialog onClose={() => setPremium(false)} onSignIn={() => { setPremium(false); setSignIn(true); }} /> : null}

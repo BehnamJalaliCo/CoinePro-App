@@ -18,6 +18,10 @@ import { formatPrice } from './format';
 import { attachCursor, ERASER_CURSOR } from './DrawingCursor';
 import { clearZoom, zoomToBox } from './DrawingZoom';
 import { removableDrawings } from './DrawingActions';
+import { guardDrawingDeletes } from './drawingAlerts';
+import { attachPlacement } from './PlacementCursor';
+import { noteDrawings } from '../state/drawingLinks';
+import { followDrawings } from '../state/alerts';
 
 const KEY = (symbol: string) => `pc.drawings.v1.${symbol}`;
 
@@ -29,6 +33,7 @@ function load(symbol: string): DrawingObject[] {
 }
 
 function save(symbol: string, list: DrawingObject[]): void {
+  noteDrawings(symbol, list);
   try {
     if (list.length) localStorage.setItem(KEY(symbol), JSON.stringify(list));
     else localStorage.removeItem(KEY(symbol));
@@ -114,7 +119,19 @@ export function attachDrawings(canvas: HTMLCanvasElement, chart: IChartApi): Dra
   };
 
   const bump = () => useChartBus.getState().bumpDrawings(layer.canUndo(), layer.canRedo(), layer.getDrawings().length);
-  layer.onChange = (list) => { if (symbol) save(symbol, list); bump(); };
+  // A drawing that carries alerts: the alerts take its new geometry (after the edit settles).
+  let followTimer: ReturnType<typeof setTimeout> | null = null;
+  layer.onChange = (list) => {
+    if (symbol) {
+      save(symbol, list);
+      const sym = symbol;
+      if (followTimer) clearTimeout(followTimer);
+      followTimer = setTimeout(() => { followTimer = null; followDrawings(sym, layer.getDrawings()); }, 250);
+    }
+    bump();
+  };
+  // Deleting a drawing that carries alerts asks first (keep / both / the line only).
+  guardDrawingDeletes(layer, () => symbol);
   layer.onSelect = (i) => useChartBus.getState().setSelectedDrawing(i);
   layer.onToolReset = () => { useDrawing.getState().resetTool(); };
   // A drawing just placed: locked like the others when everything is locked; a text-bearing one
@@ -244,6 +261,9 @@ export function attachDrawings(canvas: HTMLCanvasElement, chart: IChartApi): Dra
   host?.addEventListener('pointerdown', onPointerDownCapture, true);
   for (const ev of ['touchstart', 'touchmove', 'touchend', 'touchcancel'] as const) host?.addEventListener(ev, onTouchCapture, { capture: true, passive: false });
 
+  // The phone's placement cursor (a dot moved like a trackpad; a tap places the point at it).
+  const placement = host ? attachPlacement(host, canvas, layer, chart) : null;
+
   useChartBus.getState().setDrawingLayer(layer);
 
   return {
@@ -252,6 +272,8 @@ export function attachDrawings(canvas: HTMLCanvasElement, chart: IChartApi): Dra
       if (next === symbol) return;
       symbol = next;
       layer.setDrawings(load(next));
+      // Drawings saved before every drawing had an id get theirs now, and keep them.
+      if (layer.idsGiven) save(next, layer.getDrawings());
       // A new symbol, a new history: undo never brings another symbol's drawings here.
       layer.resetHistory();
       clearZoom();
@@ -267,6 +289,8 @@ export function attachDrawings(canvas: HTMLCanvasElement, chart: IChartApi): Dra
     dispose() {
       unsub(); unsubSettings(); unsubPrefs();
       if (crossTimer) clearTimeout(crossTimer);
+      if (followTimer) clearTimeout(followTimer);
+      placement?.dispose();
       ro.disconnect();
       cursor?.dispose();
       window.removeEventListener('keydown', onKey);

@@ -25,11 +25,18 @@ import { SymbolSearch } from './SymbolSearch';
 import { faAgo, faNum } from '../i18n/time';
 import { dateTime, useL } from '../pages/kit';
 import { submitOrder } from './orderTicket';
+import { BAND_ALERT_TYPES, boundsAt, findDrawing } from '../state/drawingLinks';
+import { toolName } from '../chart/tools';
+import { AlertDrawingMark } from './AlertDrawingMark';
 import './panels-x.css';
 
 /** What opens the dialog prefilled (the `pc:alert-dialog` event's detail, contract 1, plus a list). */
 export interface AlertSeed {
   symbol?: string; price?: number; line?: TrendLine; study?: { uid: string; key: string; plot?: number };
+  /** A rectangle's or a channel's two boundaries (a drawing alert on a shape). */
+  band?: { low: number; high: number };
+  /** The drawing the alert follows (its stable id) and its tool. */
+  drawingId?: string; drawingType?: string;
   /** A watchlist id: the alert goes on every symbol of the list (or of `symbols`). */
   list?: string; symbols?: string[];
 }
@@ -224,6 +231,7 @@ function AlertRow({ a, onEdit }: { a: PriceAlert; onEdit(): void }) {
           <b className={a.name ? (fa ? 'fa' : '') : 'sym'} dir="auto">{a.name || a.symbol}</b>
           <span className="alert-cond" dir="auto">{describeAlert(a, fa, (v) => formatPrice(v, d))}</span>
         </span>
+        <AlertDrawingMark a={a} />
       </button>
       <span className="alert-sub fa">
         <span className={`badge st ${a.active ? 'on' : a.expired ? 'exp' : 'off'}`}>{status}</span>
@@ -273,6 +281,8 @@ function QuickTrade() {
 // ── The dialog ─────────────────────────────────────────────────────────────────────────────────
 const PRICE_CONDS: AlertCondition[] = ['cross', 'cross_up', 'cross_down', 'above', 'below', 'enter_channel', 'exit_channel', 'inside_channel', 'outside_channel', 'move_up_pct', 'move_down_pct', 'move_up', 'move_down'];
 const LINE_CONDS: AlertCondition[] = ['cross', 'cross_up', 'cross_down', 'above', 'below'];
+/** A shape (rectangle, channel): entering and leaving it, and crossing either boundary. */
+const BAND_CONDS: AlertCondition[] = ['enter_channel', 'exit_channel', 'inside_channel', 'outside_channel', 'cross', 'cross_up', 'cross_down'];
 const IND_CONDS: AlertCondition[] = ['cross', 'cross_up', 'cross_down', 'above', 'below', 'enter_channel', 'exit_channel', 'inside_channel', 'outside_channel'];
 const LIST_CONDS: AlertCondition[] = ['move_up_pct', 'move_down_pct'];
 const FIELDS: { id: PriceField; fa: string; en: string }[] = [
@@ -308,10 +318,18 @@ export function AlertDialog({ onClose, price: initialPrice, seed, edit }: { onCl
   const fmt = (v: number) => (Number.isFinite(v) ? v.toFixed(digits) : '');
 
   const start = edit?.value ?? seed?.price ?? initialPrice ?? tk?.last ?? 0;
-  const initialSource: 'price' | 'line' | 'indicator' = edit?.source ?? (seed?.study ? 'indicator' : seed?.line ? 'line' : 'price');
+  // A drawing alert: the drawing as it is now (the alert follows it when it is edited).
+  const drawingId = edit?.drawingId ?? seed?.drawingId;
+  const drawingType = edit?.drawingType ?? seed?.drawingType;
+  const isBand = Boolean(drawingType && BAND_ALERT_TYPES.includes(drawingType));
+  const drawing = drawingId ? findDrawing(symbol, drawingId) : null;
+  const nowBounds = drawing ? boundsAt(drawing, Date.now() / 1000) : [];
+  const bandNow = isBand ? (nowBounds.length === 2 ? { low: nowBounds[0]!, high: nowBounds[1]! } : seed?.band ?? (edit?.high != null ? { low: edit.value, high: edit.high } : undefined)) : undefined;
+  const drawingLabel = drawingType ? toolName(drawingType, lang) : L('خط روند', 'Trend line');
+  const initialSource: 'price' | 'line' | 'indicator' = edit?.source ?? (seed?.study ? 'indicator' : seed?.line || seed?.band ? 'line' : 'price');
   const [source, setSource] = useState<'price' | 'line' | 'indicator'>(initialSource);
   const [field, setField] = useState<PriceField>(edit?.field ?? 'last');
-  const [cond, setCond] = useState<AlertCondition>(edit?.condition ?? (listId ? 'move_up_pct' : (initialPrice ?? seed?.price) != null && tk && (initialPrice ?? seed?.price)! < tk.last ? 'below' : 'cross'));
+  const [cond, setCond] = useState<AlertCondition>(edit?.condition ?? (listId ? 'move_up_pct' : seed?.band ? 'enter_channel' : (initialPrice ?? seed?.price) != null && tk && (initialPrice ?? seed?.price)! < tk.last ? 'below' : 'cross'));
   const [value, setValue] = useState(edit ? String(edit.value) : listId ? '3' : start ? fmt(start) : '');
   const [high, setHigh] = useState(edit?.high != null ? String(edit.high) : start ? fmt(start * 1.01) : '');
   const [bars, setBars] = useState(String(edit?.bars ?? 4));
@@ -354,24 +372,30 @@ export function AlertDialog({ onClose, price: initialPrice, seed, edit }: { onCl
     return () => { alive = false; };
   }, [source, symbol, interval, indKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const conds = scope === 'list' ? LIST_CONDS : source === 'line' ? LINE_CONDS : source === 'indicator' ? IND_CONDS : PRICE_CONDS;
+  const conds = scope === 'list' ? LIST_CONDS : source === 'line' ? (isBand ? BAND_CONDS : LINE_CONDS) : source === 'indicator' ? IND_CONDS : PRICE_CONDS;
   useEffect(() => { if (!conds.includes(cond)) setCond(conds[0]!); }, [conds, cond]);
   const isChannel = CHANNEL.includes(cond);
   const isMove = MOVES.includes(cond);
   const v = Number(value);
-  const lineNow = line ? lineLevel(line, Date.now() / 1000) : null;
-  const target = source === 'line' ? lineNow : isMove ? null : v;
+  const lineNow = isBand ? null : line ? lineLevel(line, Date.now() / 1000) : null;
+  // A horizontal drawing: its price now, which the alert keeps following.
+  const levelNow = drawingId && !isBand && !line && nowBounds.length === 1 ? nowBounds[0]! : null;
+  const linkedPrice = source === 'price' && drawingId != null && !isMove && levelNow != null;
+  const target = source === 'line' ? lineNow : isMove ? null : linkedPrice ? levelNow : v;
   const pip = symbol.length === 6 && !/^X(AU|AG)/.test(symbol) ? (symbol.includes('JPY') ? 0.01 : 0.0001) : null;
   const dist = source !== 'indicator' && target && tk ? { d: target - tk.last, pct: ((target - tk.last) / tk.last) * 100 } : null;
   const indName = (key: string) => { const e = entryOf(key); return e ? (fa ? e.fa : e.en) : key; };
   const condName = (c: AlertCondition) => CONDITION_NAMES[c][fa ? 'fa' : 'en'];
   const draft = (): NewAlert | null => {
-    if (source === 'line' && !line) return null;
+    if (source === 'line' && !line && !bandNow) return null;
+    const bandLine = source === 'line' && bandNow;
     const base: NewAlert = {
-      symbol, condition: cond, value: source === 'line' ? (lineNow ?? 0) : v, source, interval, freq,
+      symbol, condition: cond, value: bandLine ? bandNow.low : source === 'line' ? (lineNow ?? 0) : linkedPrice ? levelNow! : v, source, interval, freq,
       field: source === 'price' ? field : undefined,
-      high: isChannel ? Number(high) : undefined, bars: isMove ? Math.max(1, Math.round(Number(bars))) : undefined,
-      line: source === 'line' ? line : undefined,
+      high: bandLine ? bandNow.high : isChannel ? Number(high) : undefined, bars: isMove ? Math.max(1, Math.round(Number(bars))) : undefined,
+      line: source === 'line' && !bandLine ? line : undefined,
+      drawingId: drawingId && source !== 'indicator' && (source === 'line' || linkedPrice) ? drawingId : undefined,
+      drawingType: drawingId && source !== 'indicator' && (source === 'line' || linkedPrice) ? drawingType : undefined,
       indicator: source === 'indicator' ? { key: indKey, output: indOut, inputs: indInputs, label: `${entryOf(indKey)?.abbr ?? indKey}${outputs.length > 1 ? ` ${outputs.find((o) => o.id === indOut)?.label ?? ''}` : ''}` } : undefined,
       and: andOn && andValue !== '' && !isChannel ? { condition: andCond, value: Number(andValue) } : undefined,
       cooldownMs: freq === 'every' ? Math.max(0, Number(cooldown) || 0) * 60_000 : undefined,
@@ -481,7 +505,7 @@ export function AlertDialog({ onClose, price: initialPrice, seed, edit }: { onCl
                   <div className="al-field two">
                     <select value={source} onChange={(e) => setSource(e.target.value as typeof source)} aria-label={L('منبع', 'Source')}>
                       <option value="price">{L(`قیمت ${symbol}`, `${symbol} price`)}</option>
-                      {line ? <option value="line">{L('خط روند', 'Trend line')}</option> : null}
+                      {line || bandNow ? <option value="line">{drawingLabel}</option> : null}
                       <option value="indicator">{L('اندیکاتور', 'Indicator')}</option>
                     </select>
                     {source === 'price' ? (
@@ -515,11 +539,13 @@ export function AlertDialog({ onClose, price: initialPrice, seed, edit }: { onCl
                 </div>
               </div>
               <div className="al-row">
-                <span className="al-label fa">{source === 'line' ? L('سطح اکنون', 'Level now') : isMove ? L('اندازه', 'Amount') : isChannel ? L('کانال', 'Channel') : L('مقدار', 'Value')}</span>
-                <div className={`al-field${isChannel || isMove ? ' three' : ''}`}>
-                  {source === 'line' ? <span className="num al-static">{lineNow != null ? formatPrice(lineNow, digits) : '—'} <span className="muted fa">{L('(با زمان جابه‌جا می‌شود)', '(slides with time)')}</span></span>
+                <span className="al-label fa">{source === 'line' || linkedPrice ? L('سطح اکنون', 'Level now') : isMove ? L('اندازه', 'Amount') : isChannel ? L('کانال', 'Channel') : L('مقدار', 'Value')}</span>
+                <div className={`al-field${(isChannel || isMove) && source !== 'line' && !linkedPrice ? ' three' : ''}`}>
+                  {source === 'line' && bandNow ? <span className="num al-static" data-band>{formatPrice(bandNow.low, digits)} – {formatPrice(bandNow.high, digits)} <span className="muted fa">{L('(با ترسیم جابه‌جا می‌شود)', '(follows the drawing)')}</span></span>
+                    : source === 'line' ? <span className="num al-static">{lineNow != null ? formatPrice(lineNow, digits) : '—'} <span className="muted fa">{drawingId ? L('(با ترسیم و با زمان جابه‌جا می‌شود)', '(follows the drawing and slides with time)') : L('(با زمان جابه‌جا می‌شود)', '(slides with time)')}</span></span>
+                    : linkedPrice ? <span className="num al-static">{formatPrice(levelNow!, digits)} <span className="muted fa">{L('(با ترسیم جابه‌جا می‌شود)', '(follows the drawing)')}</span></span>
                     : <input type="number" className="num" step={isMove && cond.endsWith('pct') ? 0.1 : source === 'indicator' ? 0.01 : 1 / 10 ** digits} value={value} onChange={(e) => setValue(e.target.value)} autoFocus aria-label={L('مقدار', 'Value')} placeholder={isChannel ? L('کف', 'Low') : undefined} />}
-                  {isChannel ? <input type="number" className="num" step={source === 'indicator' ? 0.01 : 1 / 10 ** digits} value={high} onChange={(e) => setHigh(e.target.value)} aria-label={L('سقف', 'High')} placeholder={L('سقف', 'High')} /> : null}
+                  {isChannel && source !== 'line' && !linkedPrice ? <input type="number" className="num" step={source === 'indicator' ? 0.01 : 1 / 10 ** digits} value={high} onChange={(e) => setHigh(e.target.value)} aria-label={L('سقف', 'High')} placeholder={L('سقف', 'High')} /> : null}
                   {isMove ? <label className="al-inline fa"><input type="number" className="num" min={1} value={bars} onChange={(e) => setBars(e.target.value)} aria-label={L('تعداد کندل', 'Bars')} /><span>{L('کندل', 'bars')}</span></label> : null}
                 </div>
               </div>

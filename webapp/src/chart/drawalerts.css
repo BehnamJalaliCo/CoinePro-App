@@ -1,0 +1,73 @@
+/* Drawings and alerts, and drawing on a phone (area A3). No blur, no coloured shadows. */
+
+/* ── The alert's drawing on its row ─────────────────────────────────────────────────────────── */
+.alert-sketch { flex: none; margin-inline-start: 6px; }
+.alert-sketch rect { fill: var(--bg-elevated); stroke: var(--line); stroke-width: 1; }
+.alert-sketch path { fill: none; stroke: var(--gold); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.badge.orphan { color: var(--down); background: var(--down-soft); border-radius: 999px; padding: 1px 8px; font-size: var(--fs-small); white-space: nowrap; margin-inline-start: 6px; flex: none; }
+
+/* ── «This drawing carries alerts» ─────────────────────────────────────────────────────────── */
+.dialog.dad { width: min(420px, calc(100vw - 24px)); }
+.dad-body { padding: 4px 16px 8px; display: flex; flex-direction: column; gap: 8px; }
+.dad-msg { margin: 0 0 4px; color: var(--text-2); line-height: 1.7; }
+.dad-choice { display: flex; flex-direction: column; align-items: stretch; gap: 4px; text-align: start; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); color: var(--text); font: inherit; cursor: pointer; }
+.dad-choice:hover { background: var(--bg-hover); }
+.dad-choice.danger { color: var(--down); }
+.dad-choice small { line-height: 1.6; }
+.dialog.dad .dialog-foot { justify-content: stretch; }
+.dialog.dad .dad-cancel { flex: 1; }
+
+/* ── The placement cursor and its banner (phone) ───────────────────────────────────────────── */
+.place-cursor { position: absolute; inset: 0; pointer-events: none; z-index: 6; }
+.place-cursor[hidden] { display: none; }
+.place-cursor .pc-v { position: absolute; left: var(--px); top: 0; height: var(--ph); border-left: 1px dashed rgba(41, 98, 255, 0.85); }
+.place-cursor .pc-h { position: absolute; top: var(--py); left: 0; width: var(--pw); border-top: 1px dashed rgba(41, 98, 255, 0.85); }
+.place-cursor .pc-dot { position: absolute; left: var(--px); top: var(--py); width: 10px; height: 10px; margin: -6.5px 0 0 -6.5px; border-radius: 50%; background: #2962FF; border: 1.5px solid var(--bg); box-sizing: content-box; }
+.draw-banner { position: absolute; top: 6px; left: 8px; right: 8px; z-index: 7; height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 10px; background: rgba(32, 36, 48, 0.95); color: #F0F3FA; }
+.draw-banner[hidden] { display: none; }
+.draw-banner .db-count { flex: none; padding: 4px 8px; border-radius: 6px; background: #363A45; font-size: 13px; font-weight: 500; }
+.draw-banner .db-count[hidden] { display: none; }
+.draw-banner .db-text { flex: 1; min-width: 0; text-align: center; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.draw-banner .db-cancel { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: inherit; cursor: pointer; }
+
+/* ── The drawing band (phone, drawing mode) ───────────────────────────────────────────────── */
+.draw-band { display: none; }
+@media (max-width: 760px) {
+  body.draw-mode .ws-main { grid-template-rows: minmax(0, 1fr) 46px auto; }
+  body.draw-mode .ws-timebar { display: none !important; }
+  .draw-band { display: flex; align-items: center; justify-content: space-between; gap: 2px; padding: 0 12px; border-top: 1px solid var(--line); background: var(--bg); min-width: 0; }
+}
+.db-btn { position: relative; width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: var(--radius); background: transparent; color: var(--text-2); cursor: pointer; flex: none; }
+.db-btn.on { color: #2962FF; }
+.db-btn:active { background: var(--bg-hover); }
+.db-sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; flex: none; }
+.db-badge { position: absolute; top: 3px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: #2962FF; color: #fff; font-size: 10px; line-height: 16px; text-align: center; }
+
+/* ── The floating drawing toolbar (phone, drawing mode) ───────────────────────────────────── */
+.dft { position: fixed; z-index: 28; width: 48px; display: flex; flex-direction: column; border-radius: 10px; background: #FFFFFF; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18); overflow: hidden; touch-action: none; }
+:root[data-theme='dark'] .dft { background: #1E222D; }
+:root[data-theme='dark'] .dft-tool:not(.on) { color: #D1D4DC; }
+:root[data-theme='dark'] .dft-dots i, :root[data-theme='dark'] .dft-tool.many::after { background: #50535E; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .dft { background: #1E222D; }
+  :root:not([data-theme='light']) .dft-tool:not(.on) { color: #D1D4DC; }
+  :root:not([data-theme='light']) .dft-dots i, :root:not([data-theme='light']) .dft-tool.many::after { background: #50535E; }
+}
+.dft-grip { height: 24px; display: grid; place-items: center; cursor: grab; flex: none; touch-action: none; }
+.dft-dots { display: grid; grid-template-columns: repeat(3, 3px); gap: 4px; }
+.dft-dots i { width: 3px; height: 3px; border-radius: 50%; background: #B2B5BE; }
+.dft-body { min-height: 0; overflow-y: auto; scrollbar-width: none; }
+.dft-body::-webkit-scrollbar { display: none; }
+.dft-inner { display: flex; flex-direction: column; align-items: center; padding-bottom: 4px; transform-origin: top center; animation: dft-spring 0.42s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.dft.folded .dft-inner { padding-bottom: 0; }
+@keyframes dft-spring { from { transform: scaleY(0.7); opacity: 0.4; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .dft-inner { animation: none; } }
+.dft-tool { position: relative; width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: transparent; color: #131722; cursor: pointer; padding: 0; -webkit-touch-callout: none; user-select: none; }
+.dft-plate { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 8px; }
+.dft-tool.on { color: #2962FF; }
+.dft-tool.on .dft-plate { background: rgba(41, 98, 255, 0.1); }
+.dft-tool.many::after { content: ''; position: absolute; right: 4px; bottom: 4px; width: 4px; height: 4px; border-radius: 1px; background: #B2B5BE; }
+.dft-fly { position: fixed; z-index: 29; width: 240px; max-height: 440px; overflow-y: auto; padding: 8px 0; border-radius: 10px; background: var(--bg-elevated); box-shadow: var(--shadow-pop); }
+.dft-fly-title { padding: 4px 16px; font-size: var(--fs-small); color: #787B86; }
+.dft-fly-row { width: 100%; height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border: 0; background: transparent; color: var(--text); font: inherit; cursor: pointer; text-align: start; }
+.dft-fly-row.on { color: #2962FF; background: rgba(41, 98, 255, 0.1); }

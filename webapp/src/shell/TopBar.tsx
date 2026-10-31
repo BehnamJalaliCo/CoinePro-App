@@ -23,6 +23,7 @@ import { faNum } from '../i18n/time';
 import { useL } from '../pages/kit';
 import { openTrade, publishIdea } from './publish';
 import './topbar.css';
+import { leaveDrawMode, usePhoneDraw } from './PhoneDrawing';
 import { ChartTypeParamsButton } from '../chart/ChartTypeParams';
 import { KeepWatchingButton } from './KeepWatching';
 
@@ -50,6 +51,7 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
   const L = useL();
   const lang = usePrefs((s) => s.lang);
   const fa = lang === 'fa';
+  const drawMode = usePhoneDraw((s) => s.on);
   const favTypes = usePrefs((s) => s.favChartTypes);
   const { symbol, interval, chartType } = useActive();
   const { canUndo, canRedo, drawingLayer: layer, bumpDrawings } = useChartBus();
@@ -121,7 +123,7 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
       <span className="sep" />
       <button className="ib desk-only tb-c" title={t('undo')} disabled={!canUndo} onClick={() => { layer?.undo(); bump(); }}><Icon name="ph-arrow-counter-clockwise" size="md" /></button>
       <button className="ib desk-only tb-c" title={t('redo')} disabled={!canRedo} onClick={() => { layer?.redo(); bump(); }}><Icon name="ph-arrow-clockwise" size="md" /></button>
-      <button className="ib phone-only" title={t('drawTrend')} onClick={() => document.body.classList.toggle('rail-open')}><Icon name="pencil" /></button>
+      <button className={`ib phone-only${drawMode ? ' on' : ''}`} data-act="draw-mode" title={t('drawTrend')} aria-pressed={drawMode} onClick={() => { if (usePhoneDraw.getState().on) leaveDrawMode(); else usePhoneDraw.getState().set(true); }}><Icon name="pencil" /></button>
       <span className="ws-spacer" />
       <button ref={gridBtn} className={`ib desk-only tb-c grid-btn${menu === 'grid' ? ' open' : ''}`} title={t('layout')} aria-haspopup="menu" aria-expanded={menu === 'grid'} onClick={() => toggle('grid')}>
         <GridGlyph id={grid} />

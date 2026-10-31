@@ -7,6 +7,7 @@ export function levelValues(d: Record<string, unknown>, type?: string): number[]
 export const EXT_REGISTRY: Record<string, { label: string; points: number; freehand?: boolean; poly?: boolean; screen?: boolean }>;
 export const EXT_LABELS: Record<string, string>;
 export const EXT_ONE: string[];
+export const EXT_NEED: Record<string, number>;
 export const EXT_POLY: string[];
 export function vwapPath(candles: { t: number; o: number; h: number; l: number; c: number; v?: number }[], t0: number): { t: number; v: number; sd: number }[];
 export function volumeRows(candles: { t: number; o: number; h: number; l: number; c: number; v?: number }[], t0: number, t1: number, rows?: number, va?: number): {
