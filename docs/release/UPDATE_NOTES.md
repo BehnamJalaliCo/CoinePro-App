@@ -47,7 +47,7 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 ---
 
-## 5.36.1
+## 5.36.2
 
 **fa**
 
