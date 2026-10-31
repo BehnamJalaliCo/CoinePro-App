@@ -19,6 +19,16 @@ export default async function ({ test, open, ready, expect }) {
     return seen.size;
   }, sel);
 
+  // The film fades in from its first frame, so a slow runner can sample it still empty: wait for colour.
+  const colourIn = (page) => page.waitForFunction(() => {
+    const c = document.querySelector('.coach-film');
+    if (!c || !c.width) return false;
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    const seen = new Set();
+    for (let i = 0; i < d.length; i += 40) seen.add(`${d[i] >> 4},${d[i + 1] >> 4},${d[i + 2] >> 4}`);
+    return seen.size > 8;
+  }, null, { timeout: 5000 }).catch(() => undefined);
+
   await test('coach: never shown to a page opened for another suite (?e2e=1)', async () => {
     const env = await open('BTCUSDT/1h?e2e=1');
     await ready(env.page);
@@ -75,6 +85,7 @@ export default async function ({ test, open, ready, expect }) {
     expect(id === 'chart_pinch', `first phone tip ${id}`);
     expect((await page.textContent('.coach-card .coach-head b')) === 'زوم با دو انگشت', 'touch title');
     await page.waitForFunction(() => document.querySelector('.coach-film')?.dataset.painted === '1', null, { timeout: 3000 });
+    await colourIn(page);
     expect((await painted(page, '.coach-film')) > 8, 'film is blank');
     // The scrim is dark where the page is, light through the hole over the plot.
     const dim = await page.evaluate(() => {
@@ -142,6 +153,7 @@ export default async function ({ test, open, ready, expect }) {
     await page.waitForSelector('.coach-layer.preview .coach-card', { timeout: 3000 });
     expect(!(await page.$('.coach-never')), 'a preview offers «بلدم»');
     await page.waitForFunction(() => document.querySelector('.coach-film')?.dataset.painted === '1', null, { timeout: 3000 });
+    await colourIn(page);
     const a = await painted(page, '.coach-film');
     await page.waitForTimeout(400);
     const frames = await page.evaluate(() => document.querySelector('.coach-film').toDataURL());
