@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { RepaintBadge } from '../chart/RepaintBadge';
 import { usePrefs } from '../state/prefs';
 import { SCRIPT, VIS_RANGES, useStudies, type FillStyle, type LevelStyle, type LineStyleName, type PlotStyle, type PlotType, type Study, type StudyStyle, type VisClass, type Visibility } from '../state/studies';
 import { STUDIES as REGISTRY } from '../engine/indicators_ext_c.js';
@@ -103,6 +104,7 @@ export function StudySettings({ uid, onClose }: { uid: string; onClose(): void }
           <button className="ib" onClick={() => { cancel(); usePage.getState().open('help', isScript ? 'namascript' : study.key); }} aria-label={L('راهنما', 'Help')} title={L('راهنما', 'Help')}><Icon name="ph-question" size="md" /></button>
           <button className="ib" onClick={cancel} aria-label={L('بستن', 'Close')}><Icon name="ph-x" size="md" /></button>
         </header>
+        {!isScript ? <RepaintBadge study={study} withNote /> : null}
         <nav className="st-tabs" role="tablist">
           {tabs.map((x) => <button key={x.id} role="tab" aria-selected={tab === x.id} className={`st-tab${tab === x.id ? ' on' : ''}`} onClick={() => setTab(x.id)}><span className="fa">{x.label}</span></button>)}
         </nav>

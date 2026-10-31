@@ -1,0 +1,51 @@
+/* The signal layer: the marks on the candles, the Now strip and the provenance line under the plot,
+   the Explain sheet, and the repaint badge. Direction is green or red; confidence is grey to gold. */
+.ws-chart > .chart-host { bottom: var(--sigfoot-h, 0px); }
+.ws-chart .replay-bar { bottom: calc(40px + var(--sigfoot-h, 0px)); }
+.signal-marks { position: absolute; left: 0; top: 0; z-index: 3; pointer-events: none; }
+
+.sig-foot { position: absolute; left: 0; right: 0; bottom: 0; z-index: 7; display: flex; flex-direction: column; gap: 2px; padding: 4px 8px; background: var(--bg); border-top: 1px solid var(--line); }
+.now-strip { display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; min-height: 26px; }
+.now-strip::-webkit-scrollbar { display: none; }
+.setup-chip, .sig-pill { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 12px; font-size: var(--fs-small); white-space: nowrap; color: var(--text); }
+.setup-chip { background: var(--bg-sunken); border: 1px solid var(--line); }
+.setup-chip b { font-size: 13px; }
+.setup-chip-label { color: var(--text-3); }
+.sig-pill { background: var(--bg-hover); }
+.setup-chip:hover, .sig-pill:hover { background: var(--bg-active); }
+.sig-dot { display: inline-block; flex: none; width: 6px; height: 6px; border-radius: 50%; }
+.sig-dot.big { width: 8px; height: 8px; }
+.sig-rate.thin { color: var(--text-3); }
+.prov-line { font-size: 11px; line-height: 15px; color: var(--text-3); max-width: min(560px, 60vw); white-space: normal; }
+
+.explain-sheet .xp-body { gap: 8px; }
+.xp-state { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.xp-sentence { margin: 0; font-size: 15px; color: var(--text); }
+.xp-what { margin: 0; font-size: var(--fs-small); }
+.xp-rule { border: 0; border-top: 1px solid var(--line); margin: 4px 0; width: 100%; }
+.xp-conf { display: flex; flex-direction: column; gap: 6px; }
+.xp-conf-title { font-weight: 600; font-size: 13px; }
+.xp-conf p { margin: 0; font-size: var(--fs-small); color: var(--text-2); }
+.xp-dots { display: flex; gap: 6px; }
+.xp-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.xp-chip { height: 26px; padding: 0 10px; border-radius: 13px; background: var(--bg-hover); color: var(--text-2); font-size: var(--fs-small); }
+.xp-chip.on { background: var(--text); color: var(--text-inverse); }
+.xp-stop { margin: 0; font-size: var(--fs-small); color: var(--text-2); }
+.xp-btn { width: 100%; height: 36px; border: 1px solid var(--line-strong); font-weight: 500; }
+.xp-btn:hover { background: var(--bg-hover); }
+.xp-label { font-size: 11px; }
+.xp-foot { margin: 6px 0 0; font-size: 11px; }
+.xp-score { display: flex; align-items: center; gap: 12px; }
+.xp-score > b { font-size: 28px; }
+.xp-side { font-weight: 600; }
+.xp-from { font-size: var(--fs-small); }
+.xp-row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 0; text-align: start; font-size: var(--fs-small); color: var(--text); }
+.xp-row:hover { background: var(--bg-hover); }
+.xp-row-text { flex: 1; }
+.xp-tf { display: flex; flex-direction: column; gap: 6px; }
+.xp-tf-row { display: flex; align-items: center; gap: 8px; font-size: var(--fs-small); }
+
+.repaint-badge { flex: none; display: inline-flex; align-items: center; height: 16px; padding: 0 6px; border-radius: 8px; font-size: 10px; line-height: 16px; white-space: nowrap; border: 1px solid var(--line-strong); color: var(--text-2); pointer-events: auto; }
+.repaint-badge[data-claim='settled'], .repaint-badge[data-claim='late'] { border-color: color-mix(in srgb, var(--gold-strong) 55%, transparent); color: var(--gold); }
+.repaint-badge[data-claim='repaints'] { border-color: color-mix(in srgb, var(--down) 45%, transparent); color: var(--down); }
+.st-repaint { display: flex; align-items: center; gap: 8px; padding: 6px 20px 0; font-size: var(--fs-small); color: var(--text-3); }

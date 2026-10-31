@@ -2,6 +2,8 @@
 // market, chart type, market status, OHLC coloured by the bar, bar change, volume, last day change),
 // the Buy/Sell boxes, then one row per indicator, volume and compared symbol — each with its tools on
 // hover (always on a touch screen) and a «⋯» menu — and the arrow that folds the rows away.
+import { RepaintBadge } from './RepaintBadge';
+import { ProvenanceLine } from './SignalStrip';
 import { useEffect, useRef, useState } from 'react';
 import type { Candle } from '../data/types';
 import { formatPct, formatPrice, formatVolume } from './format';
@@ -164,6 +166,7 @@ export function Legend({ symbol, displayName, interval, chartType, digits, shown
         ) : null}
       </div>
       {sourceLine ? <div className={`legend-source${fa ? ' fa' : ''}`} dir={fa ? 'rtl' : 'ltr'} data-source>{sourceLine}</div> : null}
+      <ProvenanceLine />
       {hoverEvents.length ? (
         <div className="legend-events">
           {hoverEvents.map((e, i) => <span key={i} className="num"><i className={`ev-dot ${e.impact}`} />{e.currency} · {e.title}{e.actual ? ` · ${e.actual}` : e.forecast ? ` · f ${e.forecast}` : ''}</span>)}
@@ -276,6 +279,7 @@ export function StudyRow({ row, digits, onStudySettings, onMenu }: { row: StudyL
     <div className={`legend-study${row.hidden || x.tfOff ? ' off' : ''}`} data-uid={row.uid}>
       <button type="button" className="legend-swatch" style={{ background: color }} title={L('تنظیمات', 'Settings')} aria-label={L('تنظیمات', 'Settings')} onClick={() => onStudySettings?.(row.uid)} />
       {cs.indTitles ? <span className="legend-study-name num" onDoubleClick={() => onStudySettings?.(row.uid)}>{t.name}{cs.indInputs && t.inputs ? <span className="legend-inputs"> {t.inputs}</span> : null}</span> : null}
+      <RepaintBadge study={study} />
       {values}
       <Tools>
         <button className="lt" title={row.hidden ? L('نمایش', 'Show') : L('پنهان کردن', 'Hide')} onClick={() => toggle(row.uid)}><Icon name={row.hidden ? 'eye_off' : 'ph-eye'} size="sm" /></button>

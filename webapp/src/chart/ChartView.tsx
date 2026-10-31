@@ -52,6 +52,7 @@ import { themeColours } from '../shell/SettingsDialog';
 import { ChartStatus } from './ChartStatus';
 import { tallMargins } from './tallFill';
 import { QuoteChip, TradeRing } from './ChartChips';
+import { SignalHost } from './SignalMarks';
 import './chart-x.css';
 
 export interface HistoryResult {
@@ -914,6 +915,7 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
       {cs.volumeProfile && !TIMELESS.includes(chartType) ? <VolumeProfile api={api} series={series} bars={view()} version={barsVersion + (replaySlice?.length ?? 0) + seriesVer} rows={cs.vpRows} valueArea={cs.vpValueArea} up={cs.up} down={cs.down} dark={dark} /> : null}
       <SetupZones api={api} series={series} version={seriesVer} bars={bars.current} />
       <EventMarks api={api} series={series} bars={view()} version={barsVersion + (replaySlice?.length ?? 0) + seriesVer} replaying={replaySlice != null} />
+      <SignalHost api={api} series={series} bars={studyBars()} version={barsVersion + (replaySlice?.length ?? 0) + seriesVer} lastClose={last?.c ?? null} digits={digits} replaying={replaySlice != null} wrap={wrap} />
       <canvas ref={drawCanvas} className="draw-layer" />
       <PriceLines series={series} api={api} version={seriesVer} bars={view()} barsVersion={barsVersion} digits={digits} />
       <Legend symbol={symbol} displayName={displayName} interval={interval} chartType={chartType} digits={digits} shown={shown ?? null} prev={prev}
