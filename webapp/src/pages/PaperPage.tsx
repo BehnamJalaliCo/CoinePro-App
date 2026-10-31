@@ -32,6 +32,7 @@ export default function PaperPage() {
   const [side, setSide] = useState<Side>('long');
   const [type, setType] = useState<OrderType>('market');
   const [tif, setTif] = useState<TimeInForce>('gtc');
+  const [reduceOnly, setReduceOnly] = useState(false);
   const [f, setF] = useState({ qty: '', limit: '', stop: '', trail: '1', sl: '', tp: '' });
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
 
@@ -45,14 +46,14 @@ export default function PaperPage() {
     book.place({
       symbol, side, type, qty,
       limitPrice: parseNum(f.limit) ?? undefined, stopPrice: parseNum(f.stop) ?? undefined, trailPercent: parseNum(f.trail) ?? undefined,
-      sl: parseNum(f.sl) ?? undefined, tp: parseNum(f.tp) ?? undefined, tif: type === 'limit' ? tif : undefined,
+      sl: parseNum(f.sl) ?? undefined, tp: parseNum(f.tp) ?? undefined, tif: type === 'limit' ? tif : undefined, reduceOnly: reduceOnly || undefined,
     }, tk.last);
   };
 
   const stats = useMemo(() => paperStats(book.history, book.rules.startingBalance), [book.history, book.rules.startingBalance]);
   const entryNow = type === 'limit' || type === 'stop_limit' ? parseNum(f.limit) : type === 'stop' ? parseNum(f.stop) : tk?.last ?? null;
 
-  const err = book.lastError === 'margin' ? L('مارجین کافی نیست.', 'Not enough margin.') : book.lastError === 'immediate' ? L('بی‌درنگ پر نشد و لغو شد', 'Not filled at once, so cancelled') : book.lastError ? L('قیمت یا مقدار سفارش درست نیست.', 'The order price or quantity is not valid.') : null;
+  const err = book.lastError === 'margin' ? L('مارجین کافی نیست.', 'Not enough margin.') : book.lastError === 'reduce' ? L('موقعیتی برای کاهش نبود', 'Nothing to reduce') : book.lastError === 'immediate' ? L('بی‌درنگ پر نشد و لغو شد', 'Not filled at once, so cancelled') : book.lastError ? L('قیمت یا مقدار سفارش درست نیست.', 'The order price or quantity is not valid.') : null;
   const go = (s: string) => { setSymbol(s); close(); };
 
   return (
@@ -83,6 +84,7 @@ export default function PaperPage() {
             <Field label={L('حد ضرر', 'Stop loss')}><input className="num" dir="ltr" inputMode="decimal" value={f.sl} onChange={set('sl')} /></Field>
             <Field label={L('حد سود', 'Take profit')}><input className="num" dir="ltr" inputMode="decimal" value={f.tp} onChange={set('tp')} /></Field>
           </div>
+          <label className="pp-check fa" title={L('فقط از موقعیتِ طرف مقابل همین نماد کم می‌کند؛ موقعیت تازه باز نمی‌کند و از اندازه‌ی آن بیشتر نمی‌شود.', 'Only takes from the position on the other side of this symbol; never opens one, and never more than its size.')}><input type="checkbox" data-act="reduce-only" checked={reduceOnly} onChange={(e) => setReduceOnly(e.target.checked)} /><span>{L('فقط کاهش موقعیت', 'Reduce only')}</span></label>
           {tk ? <FillPreview rules={book.rules} last={tk.last} side={side} type={type} qty={parseNum(f.qty)} limit={parseNum(f.limit)} digits={digits} /> : null}
           {err ? <p className="down fa small">{err}</p> : null}
           <button className={`btn ${side === 'long' ? 'buy' : 'sell'}`} disabled={!tk}>{side === 'long' ? L('ثبت خرید', 'Place buy') : L('ثبت فروش', 'Place sell')}</button>
@@ -110,6 +112,7 @@ export default function PaperPage() {
                     <td className="r nowrap">
                       {[0.25, 0.5, 0.75].map((x) => <button key={x} className="pp-part num" title={L('بستن بخشی از حجم', 'Close part of the position')} disabled={!px} onClick={() => px && book.closePart(p.id, x, px)}>{x * 100}%</button>)}
                       <button className="btn btn-quiet sm" disabled={!px} onClick={() => px && book.close(p.id, px)}>{L('بستن', 'Close')}</button>
+                      <button className="btn btn-quiet sm" data-act="reverse" disabled={!px} onClick={() => px && book.reverse(p.id, px)}>{L('برعکس کردن', 'Reverse')}</button>
                     </td>
                   </tr>
                 );
@@ -118,7 +121,7 @@ export default function PaperPage() {
           {tab === 'orders' ? (
             <table className="table"><thead><tr><th>{L('نماد', 'Symbol')}</th><th>{L('نوع', 'Type')}</th><th>{L('جهت', 'Side')}</th><th className="r">{L('مقدار', 'Qty')}</th><th className="r">{L('قیمت', 'Price')}</th><th /></tr></thead>
               <tbody>{book.orders.map((o) => (
-                <tr key={o.id}><td className="sym">{o.symbol}</td><td>{o.type}{o.type === 'limit' ? ` · ${(o.tif ?? 'gtc').toUpperCase()}` : ''}{o.triggered ? ' ✓' : ''}</td><td className={o.side === 'long' ? 'up' : 'down'}>{o.side === 'long' ? 'Buy' : 'Sell'}</td>
+                <tr key={o.id}><td className="sym">{o.symbol}</td><td>{o.type}{o.type === 'limit' ? ` · ${(o.tif ?? 'gtc').toUpperCase()}` : ''}{o.triggered ? ' ✓' : ''}{o.reduceOnly ? <small className="muted fa"> · {L('فقط کاهش موقعیت', 'Reduce only')}</small> : null}</td><td className={o.side === 'long' ? 'up' : 'down'}>{o.side === 'long' ? 'Buy' : 'Sell'}</td>
                   <td className="r num">{o.qty}</td><td className="r num">{o.limitPrice ?? o.stopPrice ?? (o.trailPercent ? `${o.trailPercent}%` : '—')}</td>
                   <td className="r"><button className="btn btn-quiet sm" onClick={() => book.cancel(o.id)}>{L('لغو', 'Cancel')}</button></td></tr>
               ))}</tbody></table>
@@ -128,7 +131,7 @@ export default function PaperPage() {
               <div className="row"><button className="btn btn-quiet sm" onClick={() => downloadCsv('paper-trades.csv', [['symbol', 'side', 'qty', 'entry', 'exit', 'pnl', 'fees', 'reason', 'opened', 'closed'], ...book.history.map((h) => [h.symbol, h.side, h.qty, h.entry, h.exit, +h.pnl.toFixed(2), +(h.fees ?? 0).toFixed(2), h.reason ?? 'manual', new Date(h.openedAt).toISOString(), new Date(h.closedAt).toISOString()])])}>CSV</button></div>
               <table className="table"><thead><tr><th>{L('نماد', 'Symbol')}</th><th>{L('جهت', 'Side')}</th><th className="r">{L('ورود', 'Entry')}</th><th className="r">{L('خروج', 'Exit')}</th><th>{L('دلیل', 'Reason')}</th><th className="r">P&amp;L</th><th className="r">{L('زمان', 'Closed')}</th></tr></thead>
                 <tbody>{book.history.map((h) => { const d = instrumentOf(h.symbol, h.exit).digits; return (
-                  <tr key={h.id + h.closedAt}><td className="sym">{h.symbol}</td><td className={h.side === 'long' ? 'up' : 'down'}>{h.side === 'long' ? 'Long' : 'Short'}</td><td className="r num">{formatPrice(h.entry, d)}</td><td className="r num">{formatPrice(h.exit, d)}</td><td>{(h.reason ?? 'manual').toUpperCase()}</td><td className={`r num ${h.pnl >= 0 ? 'up' : 'down'}`}>{money(h.pnl)}</td><td className="r num">{dateTime(h.closedAt)}</td></tr>
+                  <tr key={h.id + h.closedAt}><td className="sym">{h.symbol}</td><td className={h.side === 'long' ? 'up' : 'down'}>{h.side === 'long' ? 'Long' : 'Short'}</td><td className="r num">{formatPrice(h.entry, d)}</td><td className="r num">{formatPrice(h.exit, d)}</td><td>{h.reason === 'rev' ? L('برعکس شد', 'Reversed') : (h.reason ?? 'manual').toUpperCase()}</td><td className={`r num ${h.pnl >= 0 ? 'up' : 'down'}`}>{money(h.pnl)}</td><td className="r num">{dateTime(h.closedAt)}</td></tr>
                 ); })}</tbody></table>
               {book.fills.length ? <FillLog fills={book.fills} /> : null}
               <ExportCard trades={book.history.map(paperAsClosed)} name={(ext) => `coinepro-paper-trades.${ext}`} />

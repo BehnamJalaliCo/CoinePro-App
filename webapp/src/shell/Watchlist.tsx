@@ -6,6 +6,7 @@ import { usePrefs, useT } from '../state/prefs';
 import { ALL_COLS, FLAG_COLORS, FLAG_NAMES, exportList, parseList, useWatchView, useWatchlist, type WCol, type WSortKey } from '../state/watchlist';
 import { useCompare } from '../state/compare';
 import { usePanels } from '../state/panels';
+import { compareInGrid } from '../state/grid';
 import { usePage } from '../state/page';
 import { SymbolLogo, hasLogo } from '../ui/SymbolLogo';
 import { formatPrice, formatVolume, guessDigits } from '../chart/format';
@@ -198,6 +199,15 @@ export function Watchlist({ onAdd }: { onAdd(): void }) {
   const grid = { gridTemplateColumns: `minmax(${wide ? 112 : 0}px, 1.75fr) ${cols.map((c) => `minmax(${wide ? 62 : 0}px, ${c === 'last' ? 1.05 : c === 'changePct' ? 0.85 : 0.95}fr)`).join(' ')}` };
   const colLabel = (c: WCol) => (c === 'spark' ? L('روند', 'Trend') : c === 'last' ? t('last') : c === 'change' ? t('change') : c === 'changePct' ? t('changePct') : c === 'volume' ? L('حجم', 'Vol') : c === 'high' ? L('سقف', 'High') : c === 'low' ? L('کف', 'Low') : L('دامنه٪', 'Range%'));
   const count = fa ? faNum(visible.length) : String(visible.length);
+  // «تحلیل» (OLD WatchlistPanel watchlist_compare): the list's markets side by side in the
+  // multi-chart layout, in the order shown, only markets with artwork; offered from two up.
+  const comparable = groups.flatMap((g) => g.list).filter(hasLogo);
+  const compare = () => {
+    const n = compareInGrid(comparable);
+    // On a phone the panel covers the charts it just opened.
+    const panels = usePanels.getState();
+    if (n && window.innerWidth <= 760 && panels.open) panels.toggle(panels.open);
+  };
 
   return (
     <section className={`wl${view.table ? ' table' : ' listview'}${wide ? ' wide' : ''}`} aria-label={t('watchlist')}>
@@ -208,6 +218,7 @@ export function Watchlist({ onAdd }: { onAdd(): void }) {
         <span className="wl-count num" title={L('تعداد نمادها', 'Symbols')}>{count}</span>
         <span className="ws-spacer" />
         <button className={`ib${adding ? ' on' : ''}`} title={L('افزودن نماد', 'Add symbol')} aria-pressed={adding} onClick={() => setAdding((a) => !a)}><Icon name="ph-plus" size="md" /></button>
+        {comparable.length >= 2 ? <button className="ib" data-act="compare" title={L('تحلیل', 'Compare')} aria-label={L('تحلیل', 'Compare')} onClick={compare}><Icon name="layout_grid" size="md" /></button> : null}
         <button className={`ib${view.table ? ' on' : ''}`} title={L('نمای جدول', 'Table view')} aria-pressed={view.table} onClick={() => view.setView({ table: !view.table })}><Icon name="ph-table" size="md" /></button>
         <button ref={moreRef} className="ib" aria-haspopup="menu" title={L('تنظیمات فهرست', 'Watchlist settings')} onClick={() => setMenu(menu === 'more' ? null : 'more')}><Icon name="ph-dots-three" size="md" /></button>
       </header>

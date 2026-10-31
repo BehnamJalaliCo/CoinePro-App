@@ -5,12 +5,13 @@ import { CURSOR_TOOLS, EMOJIS, TOOL_GROUPS, toolDef, toolIcon, toolName, groupOf
 import { usePrefs } from '../state/prefs';
 import { useDrawing } from '../state/drawing';
 import { useStudies } from '../state/studies';
+import { redoChart, undoChart } from '../state/chartHistory';
 import { usePage } from '../state/page';
 import { useChartBus } from '../chart/chartBus';
 import { useL } from '../pages/kit';
 import { faNum } from '../i18n/time';
 import { zoomOut } from '../chart/DrawingZoom';
-import { bumpDrawings, indicatorsHidden, removableDrawings, removableStudies, setIndicatorsHidden } from '../chart/DrawingActions';
+import { indicatorsHidden, removableDrawings, removableStudies, setIndicatorsHidden } from '../chart/DrawingActions';
 import '../chart/drawing.css';
 
 // TradingView's drawing palette for the default colour.
@@ -204,7 +205,9 @@ export function ToolRail() {
     return null;
   };
 
-  const layerUndo = (redo: boolean) => { const l = useChartBus.getState().drawingLayer; if (!l) return; if (redo) l.redo(); else l.undo(); bumpDrawings(); };
+  // The rail's undo is the chart's undo (OLD ChartController.undoDrawing): one stack for drawings,
+  // indicators, the interval and the chart type.
+  const layerUndo = (redo: boolean) => { if (redo) redoChart(); else undoChart(); };
   const favTools = st.favorites.map((id) => toolDef(id)).filter((t): t is ToolDef => Boolean(t));
 
   return (

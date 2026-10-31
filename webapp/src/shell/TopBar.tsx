@@ -5,6 +5,7 @@ import { useT, usePrefs } from '../state/prefs';
 import { SymbolLogo } from '../ui/SymbolLogo';
 import { AccountMenu } from './AccountMenu';
 import { useChartBus } from '../chart/chartBus';
+import { redoChart, undoChart } from '../state/chartHistory';
 import { CHART_TYPES, chartTypeDef, type ChartType } from '../chart/chartTypes';
 import { useReplay } from '../state/replay';
 import { useAlerts } from '../state/alerts';
@@ -58,8 +59,7 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
   const drawMode = usePhoneDraw((s) => s.on);
   const favTypes = usePrefs((s) => s.favChartTypes);
   const { symbol, interval, chartType } = useActive();
-  const { canUndo, canRedo, drawingLayer: layer, bumpDrawings } = useChartBus();
-  const bump = () => { if (layer) bumpDrawings(layer.canUndo(), layer.canRedo(), layer.getDrawings().length); };
+  const { canUndo, canRedo } = useChartBus();
   const [menu, setMenu] = useState<MenuId>(null);
   const [dialog, setDialog] = useState<LayoutDialogMode | null>(null);
   const [quick, setQuick] = useState(false);
@@ -132,8 +132,8 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
       </button>
       <button className={`ib${replayOn ? ' on' : ''}`} title={t('replay')} onClick={onReplay}><Icon name="ph-rewind" size="md" /><span className="label fa tb-lbl">{t('replay')}</span></button>
       <span className="sep" />
-      <button className="ib desk-only tb-c" title={t('undo')} disabled={!canUndo} onClick={() => { layer?.undo(); bump(); }}><Icon name="ph-arrow-counter-clockwise" size="md" /></button>
-      <button className="ib desk-only tb-c" title={t('redo')} disabled={!canRedo} onClick={() => { layer?.redo(); bump(); }}><Icon name="ph-arrow-clockwise" size="md" /></button>
+      <button className="ib desk-only tb-c" data-act="undo" title={`${t('undo')} (Ctrl+Z) · ${L('آخرین تغییرِ اندیکاتور، بازه، نوعِ چارت یا ترسیم', 'The last indicator, span, chart type or drawing change')}`} disabled={!canUndo} onClick={undoChart}><Icon name="ph-arrow-counter-clockwise" size="md" /></button>
+      <button className="ib desk-only tb-c" data-act="redo" title={`${t('redo')} (Ctrl+Y) · ${L('آنچه برگرداندن پس گرفت', 'What undo took back')}`} disabled={!canRedo} onClick={redoChart}><Icon name="ph-arrow-clockwise" size="md" /></button>
       <button className={`ib phone-only${drawMode ? ' on' : ''}`} data-act="draw-mode" title={t('drawTrend')} aria-pressed={drawMode} onClick={() => { if (usePhoneDraw.getState().on) leaveDrawMode(); else usePhoneDraw.getState().set(true); }}><Icon name="pencil" /></button>
       <span className="ws-spacer" />
       <button ref={gridBtn} className={`ib desk-only tb-c grid-btn${menu === 'grid' ? ' open' : ''}`} title={t('layout')} aria-haspopup="menu" aria-expanded={menu === 'grid'} onClick={() => toggle('grid')}>

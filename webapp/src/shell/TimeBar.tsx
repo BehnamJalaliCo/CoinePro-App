@@ -13,6 +13,7 @@ import { marketOf } from '../data/symbols';
 import { regularSession } from '../data/feed';
 import { SESSIONS } from './SessionShading';
 import './topbar.css';
+import { chartAction, registerRangeApplier, useChartHistory } from '../state/chartHistory';
 
 // TradingView's bar under the chart: date ranges on the left (each picks an interval and shows
 // that span; the one in force is marked), go to a date or a custom range, then the clock with the
@@ -233,7 +234,9 @@ export function TimeBar({ supported }: { supported: (interval: string) => boolea
   const interval = usePrefs((s) => s.interval);
   const symbol = usePrefs((s) => s.symbol);
   const { api, bars, scale, autoScale, setScale, setAutoScale, setPendingSpan } = useChartBus();
-  const [active, setActive] = useState<string | null>(null);
+  // The marked range is part of what the chart's undo puts back (state/chartHistory.ts).
+  const active = useChartHistory((h) => h.range);
+  const setActive = useChartHistory((h) => h.setRange);
   const expected = useRef<{ symbol: string; interval: string } | null>(null);
 
   // The marked range holds until the reader moves the chart or picks another symbol or interval.
@@ -254,7 +257,15 @@ export function TimeBar({ supported }: { supported: (interval: string) => boolea
     return () => { window.removeEventListener('wheel', clear, { capture: true }); window.removeEventListener('pointermove', clear, { capture: true }); };
   }, [active]);
 
-  const pick = (r: (typeof RANGES)[number]) => {
+  const pick = (r: (typeof RANGES)[number]) => chartAction(() => pickRange(r));
+  // An undo or redo marks a range again through the same button, without recording it.
+  const pickRef = useRef(pickRange);
+  useEffect(() => {
+    pickRef.current = pickRange;
+    registerRangeApplier((id) => { const r = RANGES.find((x) => x.id === id); if (r) pickRef.current(r); });
+  });
+  useEffect(() => () => registerRangeApplier(null), []);
+  function pickRange(r: (typeof RANGES)[number]) {
     const span = r.id === 'YTD' ? ytdSpan() : r.span;
     r = { ...r, interval: rangeInterval(r) };
     const all = span === Number.MAX_SAFE_INTEGER;
@@ -280,7 +291,7 @@ export function TimeBar({ supported }: { supported: (interval: string) => boolea
       setInterval(iv);
       if (all) setTimeout(() => useChartBus.getState().api?.timeScale().fitContent(), 1500);
     }
-  };
+  }
 
   return (
     <div className="ws-timebar" role="toolbar">

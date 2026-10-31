@@ -47,6 +47,7 @@ interface ChartBusState {
   /** Seconds of history to show once the next load finishes (a time-bar range button). */
   pendingSpan: number | null;
   drawingLayer: DrawingLayer | null;
+  /** The chart's one undo and redo (state/chartHistory.ts publishes them; drawings are one kind of step). */
   canUndo: boolean;
   canRedo: boolean;
   drawingCount: number;
@@ -97,7 +98,9 @@ export const useChartBus = create<ChartBusState>((set, get) => ({
   textEdit: null,
   setTextEdit: (textEdit) => set({ textEdit }),
   setDrawingLayer: (drawingLayer) => set({ drawingLayer }),
-  bumpDrawings: (canUndo, canRedo, drawingCount) => set((s) => ({ canUndo, canRedo, drawingCount, drawingVersion: s.drawingVersion + 1 })),
+  // The undo flags are the chart history's, which covers indicators, interval, type and drawings;
+  // the layer's own flags passed here are kept in the signature for the callers.
+  bumpDrawings: (_canUndo, _canRedo, drawingCount) => set((s) => ({ drawingCount, drawingVersion: s.drawingVersion + 1 })),
   setApi: (api) => set({ api }),
   setSeries: (series) => set({ series }),
   setBars: (bars) => set({ bars }),

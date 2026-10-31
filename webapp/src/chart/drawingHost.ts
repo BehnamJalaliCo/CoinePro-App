@@ -23,6 +23,7 @@ import { attachPlacement } from './PlacementCursor';
 import { noteDrawings } from '../state/drawingLinks';
 import { followDrawings } from '../state/alerts';
 import { noteGlobal, stampScope } from '../state/drawingScope';
+import { clearChartHistory, noteDrawingAbandoned, noteDrawingRecorded, redoChart, undoChart } from '../state/chartHistory';
 
 const KEY = (symbol: string) => `pc.drawings.v1.${symbol}`;
 
@@ -121,6 +122,19 @@ export function attachDrawings(canvas: HTMLCanvasElement, chart: IChartApi): Dra
   };
 
   const bump = () => useChartBus.getState().bumpDrawings(layer.canUndo(), layer.canRedo(), layer.getDrawings().length);
+  // Every step the layer records is a step of the chart's one history (state/chartHistory.ts), so
+  // undo walks drawings, indicators, the interval and the chart type in the order they happened.
+  const hookHistory = () => {
+    const h = (layer as unknown as { _history: { record(current: unknown): void } })._history;
+    const rec = h.record.bind(h);
+    h.record = (current: unknown) => { rec(current); noteDrawingRecorded(); };
+  };
+  hookHistory();
+  const resetWhole = layer.resetHistory.bind(layer);
+  layer.resetHistory = () => { resetWhole(); hookHistory(); clearChartHistory(); };
+  const abandonWhole = layer.abandon.bind(layer);
+  const pastSize = () => (layer as unknown as { _history: { past: unknown[] } })._history.past.length;
+  layer.abandon = (i: number) => { const before = pastSize(); abandonWhole(i); if (pastSize() < before) noteDrawingAbandoned(); };
   // A drawing that carries alerts: the alerts take its new geometry (after the edit settles).
   let followTimer: ReturnType<typeof setTimeout> | null = null;
   // A drawing first seen in a change is a new one — placed with a tool, from a menu, pasted or cloned
@@ -266,8 +280,8 @@ export function attachDrawings(canvas: HTMLCanvasElement, chart: IChartApi): Dra
     if (el?.closest('input, textarea, select, [contenteditable], [role="dialog"], .dctx')) return;
     if (e.defaultPrevented) return;
     if ((e.key === 'Delete' || e.key === 'Backspace') && !e.ctrlKey && !e.metaKey && !e.altKey && layer.selectedIndices().length) { e.preventDefault(); layer.removeSelected(); }
-    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey && !e.altKey) { e.preventDefault(); layer.undo(); bump(); }
-    else if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); layer.redo(); bump(); }
+    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey && !e.altKey) { e.preventDefault(); undoChart(); }
+    else if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); redoChart(); }
   };
   window.addEventListener('keydown', onKey);
 

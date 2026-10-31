@@ -15,6 +15,7 @@ import { useLayouts } from '../state/layouts';
 import { usePanels, type PanelId } from '../state/panels';
 import { usePage } from '../state/page';
 import { useChartBus } from '../chart/chartBus';
+import { redoChart, undoChart } from '../state/chartHistory';
 import { useGrid, applyChartType, applyInterval, applySymbol, PRESETS, type Sync } from '../state/grid';
 import { CATALOG } from '../chart/indicatorCatalog';
 import { TOOL_GROUPS } from '../chart/tools';
@@ -117,8 +118,8 @@ export function QuickSearch({ actions, onClose }: { actions: QuickActions; onClo
     a('copylink', 'کپی لینک چارت', 'Copy chart link', 'ph-link', () => { void copyChartLink().then((u) => toast(u ? L('لینک چارت کپی شد', 'Chart link copied') : L('کپی ممکن نشد', 'Could not copy'))); });
     a('csv', 'دانلود داده‌ی چارت (CSV)', 'Export chart data (CSV)', 'ph-download-simple', () => exportBarsCsv());
     a('fullscreen', 'تمام‌صفحه', 'Fullscreen mode', 'maximize2', fullscreen, 'Ctrl+Alt+F');
-    a('undo', 'واگرد', 'Undo', 'ph-arrow-counter-clockwise', () => { const l = useChartBus.getState().drawingLayer; if (l) { l.undo(); useChartBus.getState().bumpDrawings(l.canUndo(), l.canRedo(), l.getDrawings().length); } }, 'Ctrl+Z');
-    a('redo', 'ازنو', 'Redo', 'ph-arrow-clockwise', () => { const l = useChartBus.getState().drawingLayer; if (l) { l.redo(); useChartBus.getState().bumpDrawings(l.canUndo(), l.canRedo(), l.getDrawings().length); } }, 'Ctrl+Y');
+    a('undo', 'واگرد', 'Undo', 'ph-arrow-counter-clockwise', undoChart, 'Ctrl+Z');
+    a('redo', 'ازنو', 'Redo', 'ph-arrow-clockwise', redoChart, 'Ctrl+Y');
     a('goto', 'رفتن به تاریخ…', 'Go to date…', 'ph-calendar-blank', () => window.dispatchEvent(new CustomEvent('pc:goto')), 'Alt+G');
     a('reset', 'بازنشانی نمای چارت', 'Reset chart view', 'ph-arrows-clockwise', () => { const api = useChartBus.getState().api; if (api) { api.priceScale('right').applyOptions({ autoScale: true }); api.timeScale().resetTimeScale(); api.timeScale().scrollToRealTime(); } });
     a('alert', 'هشدار تازه', 'Add alert', 'ph-bell', () => actions.alert(), 'Alt+A');

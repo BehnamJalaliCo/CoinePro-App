@@ -34,6 +34,7 @@ export function PaperPanel() {
   const [tab, setTab] = useState<Tab>('positions');
   const [type, setType] = useState<OrderType>('market');
   const [tif, setTif] = useState<TimeInForce>('gtc');
+  const [reduceOnly, setReduceOnly] = useState(false);
   const [f, setF] = useState({ qty: '', limit: '', stop: '', trail: '1', sl: '', tp: '' });
   // A fresh ticket for each symbol, sized at about 1,000 USDT until the reader types a quantity.
   const seeded = useRef<string | null>(null);
@@ -56,11 +57,11 @@ export function PaperPanel() {
     const id = book.place({
       symbol, side, type, qty: parseNum(f.qty) ?? 0,
       limitPrice: parseNum(f.limit) ?? undefined, stopPrice: parseNum(f.stop) ?? undefined, trailPercent: parseNum(f.trail) ?? undefined,
-      sl: parseNum(f.sl) ?? undefined, tp: parseNum(f.tp) ?? undefined, tif: type === 'limit' ? tif : undefined,
+      sl: parseNum(f.sl) ?? undefined, tp: parseNum(f.tp) ?? undefined, tif: type === 'limit' ? tif : undefined, reduceOnly: reduceOnly || undefined,
     }, tk.last);
     if (id) setTab(type === 'market' ? 'positions' : 'orders');
   };
-  const err = book.lastError === 'margin' ? L('مارجین کافی نیست.', 'Not enough margin.') : book.lastError === 'immediate' ? L('بی‌درنگ پر نشد و لغو شد', 'Not filled at once, so cancelled') : book.lastError ? L('قیمت یا مقدار سفارش درست نیست.', 'The order price or quantity is not valid.') : null;
+  const err = book.lastError === 'margin' ? L('مارجین کافی نیست.', 'Not enough margin.') : book.lastError === 'reduce' ? L('موقعیتی برای کاهش نبود', 'Nothing to reduce') : book.lastError === 'immediate' ? L('بی‌درنگ پر نشد و لغو شد', 'Not filled at once, so cancelled') : book.lastError ? L('قیمت یا مقدار سفارش درست نیست.', 'The order price or quantity is not valid.') : null;
   const count = (n: number) => (fa ? faNum(n) : String(n));
   const ordersFor = (s: string) => book.orders.filter((o) => o.symbol === s).length;
   const journal = useJournal((s) => s.entries);
@@ -68,7 +69,7 @@ export function PaperPanel() {
   const log = (h: PaperTrade) => useJournal.getState().upsert({ symbol: h.symbol, buy: h.side === 'long', entry: h.entry, exit: h.exit, size: h.qty, pnl: h.pnl, emotion: '', note: '', lesson: '', tags: [] });
   const SIDE = (s: Side) => (s === 'long' ? L('خرید', 'Long') : L('فروش', 'Short'));
   const TYPE: Record<OrderType, string> = { market: L('بازار', 'Market'), limit: L('لیمیت', 'Limit'), stop: L('استاپ', 'Stop'), stop_limit: L('استاپ‌لیمیت', 'Stop limit'), trailing: L('حد ضرر متحرک', 'Trailing stop') };
-  const REASON = { manual: L('دستی', 'Manual'), sl: L('حد ضرر', 'Stop loss'), tp: L('حد سود', 'Take profit'), liq: L('استاپ‌اوت', 'Stop-out') };
+  const REASON = { manual: L('دستی', 'Manual'), sl: L('حد ضرر', 'Stop loss'), tp: L('حد سود', 'Take profit'), liq: L('استاپ‌اوت', 'Stop-out'), rev: L('برعکس شد', 'Reversed') };
 
   return (
     <div className="paper pp2">
@@ -95,6 +96,7 @@ export function PaperPanel() {
             <label className="pp-f"><span className="fa">{L('حد ضرر', 'Stop loss')}</span><input className="num" inputMode="decimal" value={f.sl} onChange={set('sl')} dir="ltr" /></label>
             <label className="pp-f"><span className="fa">{L('حد سود', 'Take profit')}</span><input className="num" inputMode="decimal" value={f.tp} onChange={set('tp')} dir="ltr" /></label>
           </div>
+          <label className="pp-check fa" title={L('فقط از موقعیتِ طرف مقابل همین نماد کم می‌کند؛ موقعیت تازه باز نمی‌کند و از اندازه‌ی آن بیشتر نمی‌شود.', 'Only takes from the position on the other side of this symbol; never opens one, and never more than its size.')}><input type="checkbox" data-act="reduce-only" checked={reduceOnly} onChange={(e) => setReduceOnly(e.target.checked)} /><span>{L('فقط کاهش موقعیت', 'Reduce only')}</span></label>
           <RiskSizer compact entry={entryNow} sl={parseNum(f.sl)} onSize={(q) => setF({ ...f, qty: String(q) })} />
           {err ? <p className="down fa small pp-err">{err}</p> : null}
           <div className="pp-two">
@@ -136,6 +138,7 @@ export function PaperPanel() {
                       <span className={`num ${pnl >= 0 ? 'up' : 'down'}`}>{money(pnl)} <small>{px ? `${((pnl / (p.qty * p.entry)) * 100 * Math.max(1, p.leverage ?? 1)).toFixed(2)}%` : ''}</small></span>
                       <span className="pp-acts">
                         <button className="lt" title={L('بستن', 'Close')} disabled={!px} onClick={() => px && book.close(p.id, px)}><Icon name="ph-x" size="sm" /></button>
+                        <button className="lt" data-act="reverse" title={L('برعکس کردن', 'Reverse')} aria-label={L('برعکس کردن', 'Reverse')} disabled={!px} onClick={() => px && book.reverse(p.id, px)}><Icon name="ph-arrows-down-up" size="sm" /></button>
                         {[0.25, 0.5, 0.75].map((x) => <button key={x} className="pp-part num" title={L(`بستن ${x * 100}% حجم`, `Close ${x * 100}%`)} disabled={!px} onClick={() => px && book.closePart(p.id, x, px)}>{x * 100}%</button>)}
                       </span>
                     </div>
@@ -154,7 +157,7 @@ export function PaperPanel() {
                     <div key={o.id} className="bt-row pp-ord">
                       <span className="sym">{o.symbol}</span>
                       <span className={`fa ${o.side === 'long' ? 'up' : 'down'}`}>{o.side === 'long' ? L('خرید', 'Buy') : L('فروش', 'Sell')}</span>
-                      <span className="fa">{TYPE[o.type]}{o.type === 'limit' ? <small className="num muted pp-tif-tag"> {(o.tif ?? 'gtc').toUpperCase()}</small> : null}</span>
+                      <span className="fa">{TYPE[o.type]}{o.type === 'limit' ? <small className="num muted pp-tif-tag"> {(o.tif ?? 'gtc').toUpperCase()}</small> : null}{o.reduceOnly ? <small className="muted fa" data-reduce-only> · {L('فقط کاهش موقعیت', 'Reduce only')}</small> : null}</span>
                       <span className="num">{o.qty}</span>
                       <span className="num">{price || '—'}</span>
                       <span className="num">{o.sl != null ? formatPrice(o.sl, d) : '—'}</span>

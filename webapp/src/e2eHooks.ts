@@ -41,6 +41,7 @@ import { useSignals } from './chart/signalStore';
 import { useArena } from './state/arena';
 import { useDrawingScope } from './state/drawingScope';
 import { useRasadReads } from './chart/rasad';
+import { historyKinds, redoChart, undoChart, useChartHistory } from './state/chartHistory';
 
 export function expose(): void {
   (window as unknown as { __pc: unknown }).__pc = {
@@ -48,6 +49,7 @@ export function expose(): void {
     useTrading, useTicket, useVip, useEntitlements, pollVip, useVipMember, useSession, authed,
     pulse, scanWatch, useSignals,
     useArena, useDrawingScope, useRasadReads,
+    chartHistory: { undo: undoChart, redo: redoChart, kinds: historyKinds, store: useChartHistory },
     useLayouts, gridPresets: PRESETS.map((p) => ({ id: p.id, cells: p.cells })),
     /** The snapshot canvas's size and how many of its pixels differ from the background. */
     snapshotProbe: async (opts?: Record<string, unknown>) => {

@@ -7,6 +7,7 @@ import { Icon } from '../ui/Icon';
 import { useL } from '../pages/kit';
 import { usePrefs } from '../state/prefs';
 import { useChartBus } from '../chart/chartBus';
+import { redoChart, undoChart } from '../state/chartHistory';
 import { useLayouts } from '../state/layouts';
 import { copyChartLink, copySnapshot, downloadSnapshot } from '../chart/snapshot';
 import { toast } from './toast';
@@ -20,16 +21,15 @@ import type { QuickActions } from './QuickSearch';
 export function MoreSheet({ onClose, actions, onDialog, onQuick }: { onClose(): void; actions: QuickActions; onDialog(m: LayoutDialogMode): void; onQuick(): void }) {
   const L = useL();
   const fa = usePrefs((s) => s.lang) === 'fa';
-  const { canUndo, canRedo, drawingLayer: layer, bumpDrawings } = useChartBus();
+  const { canUndo, canRedo } = useChartBus();
   const { current, autosave, setAutosave, save, newLayout } = useLayouts();
   const [tpl, setTpl] = useState<HTMLElement | null>(null);
   const [grid, setGrid] = useState<HTMLElement | null>(null);
   const [snap, setSnap] = useState<HTMLElement | null>(null);
   const gridId = useGrid((g) => g.grid);
-  const bump = () => { if (layer) bumpDrawings(layer.canUndo(), layer.canRedo(), layer.getDrawings().length); };
   const close = (fn: () => void) => () => { onClose(); fn(); };
-  const tile = (icon: string, label: string, onClick: (el: HTMLElement) => void, opts: { disabled?: boolean; on?: boolean; className?: string } = {}) => (
-    <button className={`sheet-tile${opts.on ? ' on' : ''}${opts.className ? ` ${opts.className}` : ''}`} disabled={opts.disabled} onClick={(e) => onClick(e.currentTarget)}>
+  const tile = (icon: string, label: string, onClick: (el: HTMLElement) => void, opts: { disabled?: boolean; on?: boolean; className?: string; title?: string } = {}) => (
+    <button className={`sheet-tile${opts.on ? ' on' : ''}${opts.className ? ` ${opts.className}` : ''}`} title={opts.title} disabled={opts.disabled} onClick={(e) => onClick(e.currentTarget)}>
       {icon === 'grid' ? <GridGlyph id={gridId} /> : <Icon name={icon} size="md" />}<span className={fa ? 'fa' : ''}>{label}</span>
     </button>
   );
@@ -42,8 +42,8 @@ export function MoreSheet({ onClose, actions, onDialog, onQuick }: { onClose(): 
           {tile('ph-plus', L('مقایسه', 'Compare'), close(actions.compare))}
           {tile('layout_grid', L('قالب اندیکاتور', 'Templates'), setTpl)}
           {tile('grid', L('چند چارت', 'Multi-chart'), setGrid, { className: 'grid-tile' })}
-          {tile('ph-arrow-counter-clockwise', L('واگرد', 'Undo'), () => { layer?.undo(); bump(); }, { disabled: !canUndo })}
-          {tile('ph-arrow-clockwise', L('ازنو', 'Redo'), () => { layer?.redo(); bump(); }, { disabled: !canRedo })}
+          {tile('ph-arrow-counter-clockwise', L('واگرد', 'Undo'), undoChart, { disabled: !canUndo, title: L('آخرین تغییرِ اندیکاتور، بازه، نوعِ چارت یا ترسیم', 'The last indicator, span, chart type or drawing change'), className: 'undo-tile' })}
+          {tile('ph-arrow-clockwise', L('ازنو', 'Redo'), redoChart, { disabled: !canRedo, title: L('آنچه برگرداندن پس گرفت', 'What undo took back'), className: 'redo-tile' })}
           {tile('search', L('جستجوی سریع', 'Quick search'), onQuick)}
           {tile('settings2', L('تنظیمات', 'Settings'), close(actions.settings))}
           {tile('maximize2', L('تمام‌صفحه', 'Fullscreen'), close(() => { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen?.(); }))}

@@ -8,7 +8,8 @@ import { useMarket } from './market';
 
 export type Side = 'long' | 'short';
 export type OrderType = 'market' | 'limit' | 'stop' | 'stop_limit' | 'trailing';
-export type CloseReason = 'manual' | 'sl' | 'tp' | 'liq';
+/** How a trade closed: by hand, its stop, its target, a stop-out, or reversed (OLD PaperCloseReason.REVERSE). */
+export type CloseReason = 'manual' | 'sl' | 'tp' | 'liq' | 'rev';
 /** How long a limit waits (OLD PaperTimeInForce): good till cancelled; immediate or cancel; fill or kill. The book fills whole, so the last two behave alike. */
 export type TimeInForce = 'gtc' | 'ioc' | 'fok';
 export const TIME_IN_FORCE: TimeInForce[] = ['gtc', 'ioc', 'fok'];
@@ -32,6 +33,12 @@ export interface PaperOrder {
   sl?: number; tp?: number; createdAt: number; triggered?: boolean;
   /** Only a limit asks how long it waits; absent reads as good till cancelled. */
   tif?: TimeInForce;
+  /**
+   * «فقط کاهش موقعیت» (OLD PaperOrderRequest.reduceOnly): it only takes from a position on the
+   * other side of this symbol, never opens or adds. Its size is capped at that position's when it
+   * is placed, and what is left when it fills, if anything, does not open the other way.
+   */
+  reduceOnly?: boolean;
 }
 export interface PaperRules { startingBalance: number; leverage: number; takerFeePercent: number; makerFeePercent: number; slippagePercent: number; spreadPercent: number; stopOutPercent: number }
 
@@ -126,6 +133,12 @@ interface PaperState extends Stored {
   close(id: string, price: number, reason?: CloseReason, watched?: boolean): void;
   /** Closes `share` (0–1) of a position at the market; the rest stays open. */
   closePart(id: string, share: number, price: number): void;
+  /**
+   * «برعکس کردن» (OLD PaperEngine.reverse): closes the position and opens the same size on the other
+   * side, at one price, in one action. Two fills, both charged. Returns the new position's id, or
+   * null when the opening leg could not be margined — the close still stands, as it did happen.
+   */
+  reverse(id: string, price: number): string | null;
   /** Moves a working order's prices, stop or target (dragging its line on the chart). */
   modifyOrder(id: string, patch: Partial<Pick<PaperOrder, 'limitPrice' | 'stopPrice' | 'sl' | 'tp'>>): void;
   protect(id: string, sl?: number, tp?: number): void;
@@ -163,12 +176,60 @@ export const usePaper = create<PaperState>((set, get) => {
     return id;
   };
 
+  /**
+   * Takes `part` of a position out at a priced fill: the whole of it closes the position, less
+   * leaves the rest open with its share of the entry fee. Every way out goes through here.
+   */
+  const exitPart = (p: PaperPosition, part: number, priced: Priced, reference: number, reason: CloseReason, watched: boolean) => {
+    const { positions, rules } = get();
+    const whole = part >= p.qty - 1e-12;
+    const qty = whole ? p.qty : part;
+    const out: Side = p.side === 'long' ? 'short' : 'long';
+    const exit = priced.price;
+    const fee = qty * exit * (rules.takerFeePercent / 100);
+    const entryFee = whole ? (p.fees ?? 0) : (p.fees ?? 0) * (qty / p.qty);
+    const gain = pnlOf({ ...p, qty }, exit) - fee;
+    const balanceAfter = get().balance + gain;
+    set({
+      positions: whole ? positions.filter((x) => x.id !== p.id) : positions.map((x) => (x.id === p.id ? { ...x, qty: Number((x.qty - qty).toPrecision(6)), fees: (x.fees ?? 0) - entryFee } : x)),
+      history: [{ ...p, id: whole ? p.id : `${p.id}:${Date.now().toString(36)}`, qty, exit, closedAt: Date.now(), pnl: gain - entryFee, reason, fees: entryFee + fee, balanceAfter }, ...get().history].slice(0, 500),
+      balance: balanceAfter,
+      fills: logged(p.symbol, out, qty, priced, reference, fee, watched),
+    });
+    save();
+  };
+
+  /** What a reduce-only order may take: the positions on the other side of this symbol, oldest first. */
+  const opposing = (symbol: string, side: Side) => get().positions.filter((p) => p.symbol === symbol && p.side !== side).sort((a, b) => a.openedAt - b.openedAt);
+
+  /** A reduce-only fill: takes up to `qty` from the opposing positions and opens nothing. */
+  const reduceAgainst = (symbol: string, side: Side, qty: number, price: number, maker: boolean, watched = true, cap?: number): number => {
+    const { rules } = get();
+    const priced = maker ? resting(price) : taking(side, price, rules, cap);
+    let left = qty;
+    for (const p of opposing(symbol, side)) {
+      if (!(left > 1e-12)) break;
+      const take = Math.min(left, p.qty);
+      exitPart(p, Number(take.toPrecision(6)), priced, price, 'manual', watched);
+      left -= take;
+    }
+    set({ lastError: null });
+    return qty - Math.max(0, left);
+  };
+
   return {
     ...read(),
     lastError: null,
     open: (symbol, side, qty, price, sl, tp) => (qty > 0 && price > 0 ? fill(symbol, side, qty, price, false, sl, tp) : null),
     place: (o, price) => {
       if (!(o.qty > 0) || !(price > 0)) { set({ lastError: 'invalid' }); return null; }
+      if (o.reduceOnly) {
+        // Nothing on the other side: nothing to reduce (OLD PaperReject.NOTHING_TO_REDUCE).
+        const against = opposing(o.symbol, o.side).reduce((n, p) => n + p.qty, 0);
+        if (!(against > 0)) { set({ lastError: 'reduce' }); return null; }
+        o = { ...o, qty: Math.min(o.qty, against), sl: undefined, tp: undefined };
+      }
+      if (o.reduceOnly && o.type === 'market') { reduceAgainst(o.symbol, o.side, o.qty, price, false); return uuid(); }
       if (o.type === 'market') return fill(o.symbol, o.side, o.qty, price, false, o.sl, o.tp);
       if ((o.type === 'limit' || o.type === 'stop_limit') && !(o.limitPrice! > 0)) { set({ lastError: 'price' }); return null; }
       if ((o.type === 'stop' || o.type === 'stop_limit') && !(o.stopPrice! > 0)) { set({ lastError: 'price' }); return null; }
@@ -177,10 +238,11 @@ export const usePaper = create<PaperState>((set, get) => {
         // Immediate or cancel, fill or kill: a limit the market was not at goes no further.
         const marketable = o.side === 'long' ? price <= o.limitPrice! : price >= o.limitPrice!;
         if (!marketable) { set({ lastError: 'immediate' }); return null; }
+        if (o.reduceOnly) { reduceAgainst(o.symbol, o.side, o.qty, price, false, true, o.limitPrice); return uuid(); }
         return fill(o.symbol, o.side, o.qty, price, false, o.sl, o.tp, o.limitPrice);
       }
       const id = uuid();
-      set({ orders: [{ ...o, ...(o.type === 'limit' ? { tif: o.tif ?? 'gtc' } : { tif: undefined }), id, createdAt: Date.now(), trailRef: o.type === 'trailing' ? price : undefined }, ...get().orders], lastError: null });
+      set({ orders: [{ ...o, ...(o.type === 'limit' ? { tif: o.tif ?? 'gtc' } : { tif: undefined }), reduceOnly: o.reduceOnly || undefined, id, createdAt: Date.now(), trailRef: o.type === 'trailing' ? price : undefined }, ...get().orders], lastError: null });
       save();
       return id;
     },
@@ -190,19 +252,9 @@ export const usePaper = create<PaperState>((set, get) => {
       const p = positions.find((x) => x.id === id);
       if (!p) return;
       const out: Side = p.side === 'long' ? 'short' : 'long';
-      // By hand or by stop-out the position takes the market; a stop or target closes at its level.
-      const priced = reason === 'manual' || reason === 'liq' ? taking(out, price, rules) : resting(price);
-      const exit = priced.price;
-      const fee = p.qty * exit * (rules.takerFeePercent / 100);
-      const pnl = pnlOf(p, exit) - fee;
-      const balanceAfter = get().balance + pnl;
-      set({
-        positions: positions.filter((x) => x.id !== id),
-        history: [{ ...p, exit, closedAt: Date.now(), pnl: pnl - (p.fees ?? 0), reason, fees: (p.fees ?? 0) + fee, balanceAfter }, ...get().history].slice(0, 500),
-        balance: balanceAfter,
-        fills: logged(p.symbol, out, p.qty, priced, price, fee, watched),
-      });
-      save();
+      // By hand, by stop-out or reversed the position takes the market; a stop or target closes at its level.
+      const priced = reason === 'manual' || reason === 'liq' || reason === 'rev' ? taking(out, price, rules) : resting(price);
+      exitPart(p, p.qty, priced, price, reason, watched);
     },
     closePart: (id, share, price) => {
       const { positions, rules } = get();
@@ -212,19 +264,13 @@ export const usePaper = create<PaperState>((set, get) => {
       const part = Number((p.qty * share).toPrecision(6));
       if (!(part > 0) || part >= p.qty) { get().close(id, price); return; }
       const out: Side = p.side === 'long' ? 'short' : 'long';
-      const priced = taking(out, price, rules);
-      const exit = priced.price;
-      const fee = part * exit * (rules.takerFeePercent / 100);
-      const entryFee = (p.fees ?? 0) * (part / p.qty);
-      const gain = pnlOf({ ...p, qty: part }, exit) - fee;
-      const balanceAfter = get().balance + gain;
-      set({
-        positions: positions.map((x) => (x.id === id ? { ...x, qty: Number((x.qty - part).toPrecision(6)), fees: (x.fees ?? 0) - entryFee } : x)),
-        history: [{ ...p, id: `${p.id}:${Date.now().toString(36)}`, qty: part, exit, closedAt: Date.now(), pnl: gain - entryFee, reason: 'manual' as CloseReason, fees: entryFee + fee, balanceAfter }, ...get().history].slice(0, 500),
-        balance: balanceAfter,
-        fills: logged(p.symbol, out, part, priced, price, fee, true),
-      });
-      save();
+      exitPart(p, part, taking(out, price, rules), price, 'manual', true);
+    },
+    reverse: (id, price) => {
+      const p = get().positions.find((x) => x.id === id);
+      if (!p || !(price > 0)) return null;
+      get().close(id, price, 'rev');
+      return fill(p.symbol, p.side === 'long' ? 'short' : 'long', p.qty, price, false);
     },
     modifyOrder: (id, patch) => {
       set({ orders: get().orders.map((o) => (o.id === id ? { ...o, ...patch } : o)) });
@@ -263,7 +309,11 @@ export const usePaper = create<PaperState>((set, get) => {
           watched = watchedCross(prev, trigger, o.side === 'long');
           if (!go && nextRef !== ref) set({ orders: get().orders.map((x) => (x.id === o.id ? { ...x, trailRef: nextRef } : x)) });
         }
-        if (go) { get().cancel(o.id); fill(o.symbol, o.side, o.qty, at, maker, o.sl, o.tp, undefined, watched); }
+        if (go) {
+          get().cancel(o.id);
+          if (o.reduceOnly) reduceAgainst(o.symbol, o.side, o.qty, at, maker, watched);
+          else fill(o.symbol, o.side, o.qty, at, maker, o.sl, o.tp, undefined, watched);
+        }
       }
       // Protection.
       for (const p of get().positions.filter((x) => x.symbol === symbol)) {

@@ -81,6 +81,8 @@ interface StudiesState {
   patch(uid: string, p: Partial<Omit<Study, 'uid' | 'key'>>): void;
   /** Puts a study back exactly as it was (Cancel in the settings dialog). */
   restore(s: Study): void;
+  /** Puts the whole list back as it was (the chart's undo and redo). */
+  replace(list: Study[]): void;
   /** A copy right after the original, with its own uid. */
   duplicate(uid: string): string | null;
   /** One place up (−1) or down (+1) in the list, which is the pane order. */
@@ -129,6 +131,7 @@ export const useStudies = create<StudiesState>((set, get) => {
     setInputs: (uid, inputs) => map(uid, (s) => ({ ...s, inputs })),
     patch: (uid, p) => map(uid, (s) => ({ ...s, ...p })),
     restore: (st) => map(st.uid, () => clone(st)),
+    replace: (list) => { set({ list: clone(list) }); save(); },
     duplicate: (uid) => {
       const list = get().list;
       const i = list.findIndex((s) => s.uid === uid);

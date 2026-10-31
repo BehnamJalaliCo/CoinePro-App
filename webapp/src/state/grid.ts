@@ -202,3 +202,48 @@ export function applyChartType(chartType: ChartType): void {
   if (g.active > 0) g.setCell(g.active - 1, { chartType });
   else usePrefs.getState().setChartType(chartType);
 }
+
+// ── «تحلیل»: a watchlist side by side ───────────────────────────────────────────────────────────
+
+/** How many charts a window carries (OLD CoineProWindowClass.maxChartPanes): two on a phone, eight on a tablet, sixteen on a desktop. */
+export function maxPanesFor(width: number): number {
+  if (width < 600) return 2;
+  if (width >= 1400) return 16;
+  return 8;
+}
+
+/** The arrangement for `n` markets side by side, one per count the layouts offer. */
+const COMPARE_PRESETS: Record<number, string> = { 2: '2v', 3: '3c', 4: '4', 5: '3+2', 6: '6', 7: '4+3', 8: '8', 9: '9', 10: '10', 12: '12', 14: '14', 16: '16' };
+
+/**
+ * The markets and the layout for comparing a list (OLD ChartPanesScreen.compareSymbols): the list's
+ * own order, each market once, capped at what the window carries and cut to a count a layout
+ * offers (eleven becomes ten). Null below two: one market against itself is not a comparison.
+ */
+export function comparePlan(symbols: string[], width: number): { grid: GridId; symbols: string[] } | null {
+  let list = [...new Set(symbols.filter((s) => s.trim()))].slice(0, maxPanesFor(width));
+  while (list.length >= 2 && !COMPARE_PRESETS[list.length]) list = list.slice(0, -1);
+  if (list.length < 2) return null;
+  // Two on a phone stack, one over the other: side by side they would be two slivers.
+  const grid = list.length === 2 && width < 600 ? '2h' : COMPARE_PRESETS[list.length]!;
+  return { grid, symbols: list };
+}
+
+/**
+ * Opens the markets side by side in the multi-chart layout: the first on the main chart, the rest
+ * in the next charts on the main chart's interval. Returns how many charts it opened (0 for none).
+ */
+export function compareInGrid(symbols: string[], width = typeof window === 'undefined' ? 1440 : window.innerWidth): number {
+  const plan = comparePlan(symbols, width);
+  if (!plan) return 0;
+  const g = useGrid.getState();
+  const p = usePrefs.getState();
+  const interval = p.interval;
+  const cells = g.cells.map((c, i) => (i < plan.symbols.length - 1 ? { ...c, symbol: plan.symbols[i + 1]!, interval } : c));
+  p.setSymbol(plan.symbols[0]!);
+  g.setCells(cells);
+  g.setGrid(plan.grid);
+  g.setActive(0);
+  g.setMaximized(false);
+  return plan.symbols.length;
+}

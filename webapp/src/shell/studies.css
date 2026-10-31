@@ -395,6 +395,8 @@
 .pp-risk { display: flex; align-items: center; gap: 6px; font-size: var(--fs-small); color: var(--text-2); }
 .pp2 .pp-risk input, .pp-risk input { width: 58px; height: 26px; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
 .pp-risk .btn { margin-inline-start: auto; }
+.pp-check { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-small); color: var(--text-2); cursor: pointer; }
+.pp-check input { margin: 0; }
 .pp-right { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .pp-tabs { display: flex; align-items: center; gap: 2px; min-height: 34px; padding: 0 8px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .pp-tab { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 4px; color: var(--text-2); }
