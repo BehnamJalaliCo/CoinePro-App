@@ -5,7 +5,7 @@ import { usePage } from '../state/page';
 import { SymbolLogo, hasLogo } from '../ui/SymbolLogo';
 import { formatPrice, formatVolume } from '../chart/format';
 import { instrumentOf, marketOf } from '../data/symbols';
-import { loadHistory } from '../data/candles';
+import { pacedHistory } from '../data/pacer';
 import { rsi, ema, macd, bollinger, atr } from '../engine/indicators.js';
 import { Tabs, downloadCsv, pct, useL } from './kit';
 import { HubSwitch } from './MarketsHub';
@@ -121,7 +121,7 @@ export default function ScreenerPage({ param = null }: Partial<PageProps> = {}) 
       while (i < symbols.length && gen.current === mine) {
         const s = symbols[i++]!;
         try {
-          const { bars } = await loadHistory(s, tf, undefined, 'bulk');
+          const { bars } = await pacedHistory(s, tf);
           if (gen.current !== mine) return;
           out[s] = read(bars);
         } catch { /* skipped: a 429 or a symbol without bars */ }

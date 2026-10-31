@@ -8,13 +8,14 @@ import { Dropdown } from '../ui/Menu';
 import { useFlash } from '../ui/useFlash';
 import { formatPrice, formatVolume } from '../chart/format';
 import { instrumentOf, marketOf } from '../data/symbols';
-import { barsFor } from '../data/symbolStats';
+import { pacedBars } from '../data/pacer';
 import { technicalRating, RATING_FA, type RatingKey } from '../engine/techRating.js';
 import { downloadCsv, useL } from '../pages/kit';
 import { faNum } from '../i18n/time';
 import type { Market, Ticker } from '../data/types';
 import type { StringKey } from '../i18n/strings';
 import './panels-x.css';
+import { usePreviewPress } from '../pages/MarketPreview';
 
 type Col = 'last' | 'change' | 'changePct' | 'volume' | 'high' | 'low' | 'range' | 'rating';
 type SortKey = 'symbol' | Col;
@@ -46,7 +47,7 @@ function useRatings(symbols: string[], on: boolean): Record<string, RatingKey | 
       for (const s of todo) {
         if (!alive) return;
         waiting.add(s);
-        const bars = await barsFor(s, '60', 300_000).catch(() => []);
+        const bars = await pacedBars(s, '60');
         const r = technicalRating(bars);
         ratings.set(s, { at: Date.now(), key: r ? r.label : null });
         waiting.delete(s);
@@ -172,6 +173,8 @@ export function Screener({ compact = false }: { compact?: boolean }) {
 function ScrRow({ tk, cols, grid, on, watched, rating, fa, onOpen, onStar }: { tk: Ticker; cols: Col[]; grid: React.CSSProperties; on: boolean; watched: boolean; rating: RatingKey | null | undefined; fa: boolean; onOpen(): void; onStar(): void }) {
   const digits = instrumentOf(tk.symbol, tk.last).digits;
   const { ref, tick } = useFlash<HTMLSpanElement>(tk.last);
+  // Held (or right-clicked): the market preview, without leaving the list.
+  const press = usePreviewPress(tk.symbol);
   const tone = (v: number) => (v > 0 ? 'up' : v < 0 ? 'down' : '');
   const sign = (v: number) => (v > 0 ? '+' : v < 0 ? '−' : '');
   const vol = turnover(tk);
@@ -189,7 +192,7 @@ function ScrRow({ tk, cols, grid, on, watched, rating, fa, onOpen, onStar }: { t
     }
   };
   return (
-    <div role="row" tabIndex={0} className={`scr-row${on ? ' on' : ''}`} style={grid} onClick={onOpen} onKeyDown={(e) => { if (e.key === 'Enter') onOpen(); }}>
+    <div role="row" tabIndex={0} data-symbol={tk.symbol} className={`scr-row${on ? ' on' : ''}`} style={grid} onClick={onOpen} onKeyDown={(e) => { if (e.key === 'Enter') onOpen(); }} {...press}>
       <button className={`scr-star${watched ? ' on' : ''}`} aria-pressed={watched} title={watched ? (fa ? 'برداشتن از دیده‌بان' : 'Remove from watchlist') : (fa ? 'افزودن به دیده‌بان' : 'Add to watchlist')} onClick={(e) => { e.stopPropagation(); onStar(); }}>
         <Icon name={watched ? 'ph-star-fill' : 'ph-star'} size="sm" />
       </button>

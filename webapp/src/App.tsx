@@ -41,6 +41,7 @@ import { PhoneDrawing } from './shell/PhoneDrawing';
 // The founding-member mark is noted when the entitlements first answer (data/founding.ts).
 import './data/founding';
 import { TeachingLayer } from './coach/TeachingLayer';
+import { MarketPreviewHost } from './pages/MarketPreview';
 
 export function App() {
   const symbol = usePrefs((s) => s.symbol);
@@ -150,6 +151,7 @@ export function App() {
       <OfflineBar />
       <AlertHost />
       <DrawingAlertDeleteDialog />
+      <MarketPreviewHost />
       <StudiesHost />
       <TradeHost onSignIn={() => setSignIn(true)} />
       {premium ? <PremiumDialog onClose={() => setPremium(false)} onSignIn={() => { setPremium(false); setSignIn(true); }} /> : null}

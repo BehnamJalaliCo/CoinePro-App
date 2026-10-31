@@ -13,7 +13,7 @@
 // record, so its entrants are announced on a later pass rather than lost. Under ?e2e nothing runs
 // unless a test opts in and drives `runWatches` itself.
 import { create } from 'zustand';
-import { loadHistory } from '../data/candles';
+import { pacedHistory } from '../data/pacer';
 import { intervalSeconds } from '../data/intervals';
 import { entrants, matches, scanOf, MIN_BARS } from '../pages/growthScan';
 import { allowed, canSpend, isE2E, post, usePulse } from './pulse';
@@ -96,7 +96,7 @@ export async function scanWatch(w: ScanWatch, bars: (symbol: string) => Promise<
   return out.sort();
 }
 
-const defaultBars = (tf: string) => async (symbol: string) => (await loadHistory(symbol, tf, undefined, 'bulk')).bars;
+const defaultBars = (tf: string) => async (symbol: string) => (await pacedHistory(symbol, tf)).bars;
 
 /** One pass over every watch (OLD ScanWatchWorker.doWork). */
 export async function runWatches(now = Date.now(), bars?: (symbol: string, tf: string) => Promise<Candle[] | null>): Promise<void> {

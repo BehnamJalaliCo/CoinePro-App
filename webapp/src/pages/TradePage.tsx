@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePrefs, useT } from '../state/prefs';
 import { useMarket } from '../state/market';
 import { uuid } from '../data/http';
@@ -9,6 +9,8 @@ import { formatPrice } from '../chart/format';
 import { SymbolSearch } from '../shell/SymbolSearch';
 import { SymbolLogo } from '../ui/SymbolLogo';
 import { Field, State, Tabs, errorText, money, parseNum, useL, useLoad } from './kit';
+import { aggregated, aggregationDecimals, aggregationSteps, bookOf, cumulative, depthCurve, imbalance } from '../shell/depthLadder';
+import { AlertAtPrice, BidShare, DepthControls, DepthCurveView, DepthNotes, useLadderPref } from '../shell/DepthExtras';
 
 // Live trading on the connected exchange (core/execution LiveTrade.kt, TradeYar only): the account,
 // an order ticket that always asks for an explicit confirmation, open positions with protection,
@@ -160,33 +162,52 @@ function PositionRow({ p, onDone }: { p: Pos; onDone(): void }) {
   );
 }
 
-/** The order book: member depth, else the public one; bids and asks with cumulative bars. */
+/**
+ * The order book: member depth, else the public one; bids and asks with cumulative columns. The OLD
+ * ladder's tools on top (DepthOfMarketScreen.kt): price aggregation (fetched wide, 100 a side, and
+ * shown `depth` rows deep), the size or cumulative bars, the bid share near the touch, the depth
+ * curve, and «هشدار در این قیمت» on every level.
+ */
 export function OrderBook({ symbol }: { symbol: string }) {
   const L = useL();
   const [depth, setDepth] = useState(20);
   const book = useLoad(async () => {
-    const q = `symbol=${encodeURIComponent(symbol)}&depth=${depth}`;
-    const r = await ty<{ bids?: number[][]; asks?: number[][] }>(`api/mobile/v1/market/depth?${q}`)
-      .catch(() => pub<{ bids?: number[][]; asks?: number[][] }>(`/up/tradeyar/api/v1/public/market/depth?${q}`));
-    return { bids: (r.bids ?? []).slice(0, depth), asks: (r.asks ?? []).slice(0, depth) };
-  }, [symbol, depth]);
+    const q = `symbol=${encodeURIComponent(symbol)}&depth=100`;
+    const r = await ty<{ bids?: unknown[][]; asks?: unknown[][] }>(`api/mobile/v1/market/depth?${q}`)
+      .catch(() => pub<{ bids?: unknown[][]; asks?: unknown[][] }>(`/up/tradeyar/api/v1/public/market/depth?${q}`));
+    return bookOf(r);
+  }, [symbol]);
   useEffect(() => { const id = setInterval(book.reload, 3000); return () => clearInterval(id); }, [book.reload]);
-  const d = instrumentOf(symbol).digits;
-  const rows = (list: number[][], side: 'bid' | 'ask') => {
-    let cum = 0;
-    const withCum = list.map(([p, v]) => { cum += v ?? 0; return { p: p!, v: v ?? 0, cum }; });
-    const max = withCum[withCum.length - 1]?.cum || 1;
+  const [step, figure, choose] = useLadderPref(symbol);
+  const steps = useMemo(() => (book.data ? aggregationSteps(book.data, step) : []), [book.data, step]);
+  const shown = useMemo(() => (book.data ? aggregated(book.data, step) : null), [book.data, step]);
+  const curve = useMemo(() => (shown ? depthCurve(shown) : null), [shown]);
+  const d = step != null ? aggregationDecimals(step) : instrumentOf(symbol).digits;
+  const fmt = (v: number) => formatPrice(v, d);
+  const rows = (list: { price: number; quantity: number }[], side: 'bid' | 'ask') => {
+    const withCum = cumulative(list.map((l) => ({ ...l, orders: null })));
+    const max = withCum[withCum.length - 1]?.total || 1;
+    const maxQ = Math.max(0, ...withCum.map((r) => r.quantity)) || 1;
     return withCum.map((r) => (
-      <div key={side + r.p} className={`dom-row ${side}`}><i style={{ width: `${(r.cum / max) * 100}%` }} /><span className="num">{formatPrice(r.p, d)}</span><span className="num">{+r.v.toPrecision(6)}</span><span className="num muted">{+r.cum.toPrecision(6)}</span></div>
+      <div key={side + r.price} className={`dom-row ${side}`}><i style={{ width: `${(figure === 'amount' ? r.quantity / maxQ : r.total / max) * 100}%` }} /><span className="num"><AlertAtPrice symbol={symbol} price={r.price} label={fmt(r.price)} />{fmt(r.price)}</span><span className="num">{+r.quantity.toPrecision(6)}</span><span className="num muted">{+r.total.toPrecision(6)}</span></div>
     ));
   };
-  const best = book.data ? { bid: book.data.bids[0]?.[0], ask: book.data.asks[0]?.[0] } : null;
+  const best = shown ? { bid: shown.bids[0]?.price, ask: shown.asks[0]?.price } : null;
   return (
     <div className="dom">
       <div className="row"><b className="sym">{symbol}</b><select value={depth} onChange={(e) => setDepth(Number(e.target.value))}>{[10, 20, 50, 100].map((x) => <option key={x} value={x}>{x}</option>)}</select>
-        {best?.bid && best.ask ? <span className="muted num">{L('اسپرد', 'Spread')} {formatPrice(best.ask - best.bid, d)} ({(((best.ask - best.bid) / best.ask) * 100).toFixed(3)}%)</span> : null}</div>
+        {best?.bid && best.ask ? <span className="muted num">{L('اسپرد', 'Spread')} {fmt(best.ask - best.bid)} ({(((best.ask - best.bid) / best.ask) * 100).toFixed(3)}%)</span> : null}</div>
       <State loading={book.loading && !book.data} error={book.error} onRetry={book.reload}>
-        {book.data ? <div className="dom-cols"><div>{rows([...book.data.asks].reverse().slice(-depth), 'ask')}</div><div>{rows(book.data.bids, 'bid')}</div></div> : null}
+        {book.data && shown ? (
+          <>
+            <BidShare share={imbalance(book.data)} />
+            <DepthControls steps={steps} step={step} figure={figure} onStep={(x) => choose(x, figure)} onFigure={(f) => choose(step, f)} />
+            <div className="dom-row dom-cols-head muted"><span className="fa">{L('قیمت', 'Price')}</span><span className="fa">{L('اندازه', 'Size')}</span><span className="fa">{L('تجمعی', 'Cumulative')}</span></div>
+            <div className="dom-cols"><div>{rows(shown.asks.slice(0, depth), 'ask').reverse()}</div><div>{rows(shown.bids.slice(0, depth), 'bid')}</div></div>
+            {curve ? <DepthCurveView curve={curve} fmt={fmt} /> : null}
+            <DepthNotes showStepNote={steps.length > 0} showOrdersNote={false} />
+          </>
+        ) : null}
       </State>
     </div>
   );

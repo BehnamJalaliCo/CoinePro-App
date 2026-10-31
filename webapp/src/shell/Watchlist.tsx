@@ -25,6 +25,7 @@ import './panels-x.css';
 import { oldestSaved, useSaved } from '../data/saved';
 import { SAVED_TICKERS } from '../data/prices';
 import { SavedLine } from './Offline';
+import { openPreview } from '../pages/MarketPreview';
 
 const SECTION_LABEL: Record<Market, StringKey> = { crypto: 'crypto', forex: 'forex', metals: 'metals', indices: 'indices', energy: 'energy' };
 const MARKETS: Market[] = ['crypto', 'forex', 'metals', 'indices', 'energy'];
@@ -488,6 +489,7 @@ function RowMenu({ at, many, flagged, onNewSection, onClose, onDone }: { at: { s
       {!many ? (
         <>
           <button className="menu-item" onClick={run(() => setSymbol(s))}><Icon name="ph-chart-line-up" size="sm" /><span className="grow">{L('باز کردن چارت', 'Open chart')}</span></button>
+          <button className="menu-item wl-preview" onClick={run(() => openPreview(s))}><Icon name="ph-eye" size="sm" /><span className="grow">{L('پیش‌نمایش', 'Preview')}</span></button>
           <button className="menu-item" onClick={run(() => useCompare.getState().add(s))}><Icon name="ph-plus" size="sm" /><span className="grow">{L(`افزودن ${s} به مقایسه`, `Add ${s} to compare`)}</span></button>
           <button className="menu-item" onClick={run(() => openAlertDialog({ symbol: s, price: useMarket.getState().tickers[s]?.last }))}><Icon name="ph-bell" size="sm" /><span className="grow">{L(`هشدار روی ${s}…`, `Add alert on ${s}…`)}</span></button>
           <button className="menu-item" onClick={run(() => { setSymbol(s); usePanels.getState().show('order'); })}><Icon name="ph-shopping-cart" size="sm" /><span className="grow">{L(`معامله‌ی ${s}…`, `Trade ${s}…`)}</span></button>
