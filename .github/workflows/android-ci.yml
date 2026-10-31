@@ -16,7 +16,7 @@ concurrency:
 jobs:
   build:
     name: Lint, test, build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Write, for one step only in practice: the web bundle's rolling release (see that step). Pull
     # requests from forks still get a read-only token, and that step does not run for them.
     permissions:
@@ -39,8 +39,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      # ubuntu-latest moved to Ubuntu 26 (October 2026), whose Python has no wheels for the pinned
-      # Pillow and numpy the visual comparator uses; a fixed Python keeps those pins installable.
+      # The jobs run on ubuntu-24.04, not ubuntu-latest: Ubuntu 26 (ubuntu-latest from October 2026)
+      # has neither Playwright's browser dependencies nor wheels for the comparator's pinned Pillow
+      # and numpy. A fixed Python keeps those pins installable whatever the image ships.
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
@@ -310,7 +311,7 @@ jobs:
   # and a job that is allowed to fail is not evidence of anything.
   compose-ui-tests:
     name: Compose UI
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
 
     steps:
@@ -379,7 +380,7 @@ jobs:
 
   benchmark-smoke:
     name: Performance smoke
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
 
     steps:
