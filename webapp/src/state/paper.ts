@@ -14,7 +14,18 @@ export type TimeInForce = 'gtc' | 'ioc' | 'fok';
 export const TIME_IN_FORCE: TimeInForce[] = ['gtc', 'ioc', 'fok'];
 
 export interface PaperPosition { id: string; symbol: string; side: Side; qty: number; entry: number; openedAt: number; sl?: number; tp?: number; leverage?: number; fees?: number }
-export interface PaperTrade extends PaperPosition { exit: number; closedAt: number; pnl: number; reason?: CloseReason }
+export interface PaperTrade extends PaperPosition { exit: number; closedAt: number; pnl: number; reason?: CloseReason; /** The balance once it closed (absent on trades kept before 5.37). */ balanceAfter?: number }
+/** How a fill got its price (OLD PaperFillBasis): it took the market, or rested and filled at its own price. */
+export type FillBasis = 'taken' | 'rested';
+/**
+ * One fill, and the audit of its price (OLD PaperBook.PaperFill): the last price at that moment,
+ * what the spread and the slippage cost, the fee, whether anything watched the price cross the
+ * level, and whether the spread was assumed (this feed sends no book, so a taken fill's always is).
+ */
+export interface PaperFill {
+  id: string; symbol: string; side: Side; qty: number; price: number; reference: number; basis: FillBasis;
+  fee: number; slippage: number; spreadCost: number; watched: boolean; assumedSpread: boolean; at: number;
+}
 export interface PaperOrder {
   id: string; symbol: string; side: Side; type: OrderType; qty: number;
   limitPrice?: number; stopPrice?: number; trailPercent?: number; trailRef?: number;
@@ -27,23 +38,44 @@ export interface PaperRules { startingBalance: number; leverage: number; takerFe
 export const DEFAULT_RULES: PaperRules = { startingBalance: 10_000, leverage: 1, takerFeePercent: 0.05, makerFeePercent: 0.02, slippagePercent: 0.02, spreadPercent: 0.04, stopOutPercent: 50 };
 
 const KEY = 'pc.paper.v1';
-interface Stored { balance: number; positions: PaperPosition[]; history: PaperTrade[]; orders: PaperOrder[]; rules: PaperRules }
+interface Stored { balance: number; positions: PaperPosition[]; history: PaperTrade[]; orders: PaperOrder[]; rules: PaperRules; fills: PaperFill[] }
 const read = (): Stored => {
   try {
     const v = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Partial<Stored> | null;
-    if (v && typeof v.balance === 'number') return { balance: v.balance, positions: v.positions ?? [], history: v.history ?? [], orders: v.orders ?? [], rules: { ...DEFAULT_RULES, ...(v.rules ?? {}) } };
+    if (v && typeof v.balance === 'number') return { balance: v.balance, positions: v.positions ?? [], history: v.history ?? [], orders: v.orders ?? [], rules: { ...DEFAULT_RULES, ...(v.rules ?? {}) }, fills: v.fills ?? [] };
   } catch { /* fall through */ }
-  return { balance: DEFAULT_RULES.startingBalance, positions: [], history: [], orders: [], rules: DEFAULT_RULES };
+  return { balance: DEFAULT_RULES.startingBalance, positions: [], history: [], orders: [], rules: DEFAULT_RULES, fills: [] };
 };
 
 export const pnlOf = (p: PaperPosition, price: number) => (p.side === 'long' ? price - p.entry : p.entry - price) * p.qty;
 
-/** The price a market order really gets: half the spread plus the slippage, against the trader. */
-export function fillPrice(side: Side, price: number, rules: PaperRules, maker = false): number {
-  if (maker) return price;
-  const k = (rules.spreadPercent / 2 + rules.slippagePercent) / 100;
-  return side === 'long' ? price * (1 + k) : price * (1 - k);
+/** A fill's price and what made it (OLD PaperFills.Priced), per unit. */
+export interface Priced { price: number; basis: FillBasis; spreadPerUnit: number; slippagePerUnit: number; assumedSpread: boolean }
+/**
+ * Taking the market (OLD PaperFills.taking): the feed sends no book, so the assumed spread is
+ * widened around last — a buy pays the ask, a sell hits the bid — then the slippage on top, and a
+ * marketable limit never pays past its own price.
+ */
+export function taking(side: Side, last: number, rules: PaperRules, cap?: number): Priced {
+  const half = (last * rules.spreadPercent) / 100 / 2;
+  const touch = side === 'long' ? last + half : last - half;
+  const slipped = touch * (1 + (rules.slippagePercent / 100) * (side === 'long' ? 1 : -1));
+  const capped = cap == null ? slipped : side === 'long' ? Math.min(slipped, cap) : Math.max(slipped, cap);
+  const price = Number.isFinite(capped) && capped > 0 ? capped : last;
+  return { price, basis: 'taken', spreadPerUnit: Math.abs(touch - last), slippagePerUnit: Math.abs(price - touch), assumedSpread: true };
 }
+/** A resting order fills at its own price: no spread crossed, no slippage (OLD PaperFills.resting). */
+export const resting = (price: number): Priced => ({ price, basis: 'rested', spreadPerUnit: 0, slippagePerUnit: 0, assumedSpread: false });
+/** The fee on a fill: taker when it took the market, maker when it rested (OLD PaperFills.feeFor). */
+export const feeFor = (p: Priced, qty: number, rules: PaperRules) => (Math.abs(p.price * qty) * Math.abs(p.basis === 'taken' ? rules.takerFeePercent : rules.makerFeePercent)) / 100;
+
+/** The price a market order really gets: the assumed spread and the slippage, against the trader. */
+export function fillPrice(side: Side, price: number, rules: PaperRules, maker = false): number {
+  return maker ? price : taking(side, price, rules).price;
+}
+
+/** Whether the price was seen crossing `level` (OLD PaperFills.reached): unseen after a reload, or when it jumped there. */
+export const watchedCross = (previous: number | undefined, level: number, upward: boolean) => previous != null && (upward ? previous < level : previous > level);
 
 export const marginOf = (p: { qty: number; entry: number; leverage?: number }) => (p.qty * p.entry) / Math.max(1, p.leverage ?? 1);
 
@@ -91,33 +123,42 @@ interface PaperState extends Stored {
   open(symbol: string, side: Side, qty: number, price: number, sl?: number, tp?: number): string | null;
   place(order: Omit<PaperOrder, 'id' | 'createdAt'>, price: number): string | null;
   cancel(id: string): void;
-  close(id: string, price: number, reason?: CloseReason): void;
+  close(id: string, price: number, reason?: CloseReason, watched?: boolean): void;
   /** Closes `share` (0–1) of a position at the market; the rest stays open. */
   closePart(id: string, share: number, price: number): void;
   /** Moves a working order's prices, stop or target (dragging its line on the chart). */
   modifyOrder(id: string, patch: Partial<Pick<PaperOrder, 'limitPrice' | 'stopPrice' | 'sl' | 'tp'>>): void;
   protect(id: string, sl?: number, tp?: number): void;
   setRules(r: Partial<PaperRules>): void;
+  /** Starts the account again: balance back to the start, positions and orders dropped; the history stays (OLD PaperEngine.reset). */
   reset(): void;
+  /** Erases the account and every closed trade and fill (OLD PaperEngine.wipe). */
+  wipe(): void;
   /** Runs the book against a new price for a symbol: fills, triggers, protection, stop-out. */
   mark(symbol: string, price: number): void;
   lastError: string | null;
 }
 
-export const usePaper = create<PaperState>((set, get) => {
-  const save = () => { const { balance, positions, history, orders, rules } = get(); try { localStorage.setItem(KEY, JSON.stringify({ balance, positions, history, orders, rules })); } catch { /* ignore */ } };
+/** The last price each symbol was marked at, this session only (not stored: a reload has watched nothing). */
+const lastSeen = new Map<string, number>();
 
-  const fill = (symbol: string, side: Side, qty: number, price: number, maker: boolean, sl?: number, tp?: number, cap?: number): string | null => {
+export const usePaper = create<PaperState>((set, get) => {
+  const save = () => { const { balance, positions, history, orders, rules, fills } = get(); try { localStorage.setItem(KEY, JSON.stringify({ balance, positions, history, orders, rules, fills })); } catch { /* ignore */ } };
+  /** The fill log, newest first, the last 300 kept. */
+  const logged = (symbol: string, side: Side, qty: number, priced: Priced, reference: number, fee: number, watched: boolean): PaperFill[] =>
+    [{ id: uuid(), symbol, side, qty, price: priced.price, reference, basis: priced.basis, fee, slippage: priced.slippagePerUnit * qty, spreadCost: priced.spreadPerUnit * qty, watched, assumedSpread: priced.assumedSpread, at: Date.now() }, ...get().fills].slice(0, 300);
+
+  const fill = (symbol: string, side: Side, qty: number, price: number, maker: boolean, sl?: number, tp?: number, cap?: number, watched = true): string | null => {
     const { rules, balance, positions } = get();
-    let px = fillPrice(side, price, rules, maker);
     // A marketable limit takes the market but never pays past its own price.
-    if (cap != null) px = side === 'long' ? Math.min(px, cap) : Math.max(px, cap);
-    const fee = qty * px * ((maker ? rules.makerFeePercent : rules.takerFeePercent) / 100);
+    const priced = maker ? resting(price) : taking(side, price, rules, cap);
+    const px = priced.price;
+    const fee = feeFor(priced, qty, rules);
     const used = positions.reduce((n, p) => n + marginOf(p), 0);
     const need = (qty * px) / Math.max(1, rules.leverage);
     if (need + fee > balance - used) { set({ lastError: 'margin' }); return null; }
     const id = uuid();
-    set({ positions: [{ id, symbol, side, qty, entry: px, openedAt: Date.now(), sl, tp, leverage: rules.leverage, fees: fee }, ...positions], balance: balance - fee, lastError: null });
+    set({ positions: [{ id, symbol, side, qty, entry: px, openedAt: Date.now(), sl, tp, leverage: rules.leverage, fees: fee }, ...positions], balance: balance - fee, lastError: null, fills: logged(symbol, side, qty, priced, price, fee, watched) });
     save();
     return id;
   };
@@ -144,17 +185,22 @@ export const usePaper = create<PaperState>((set, get) => {
       return id;
     },
     cancel: (id) => { set({ orders: get().orders.filter((o) => o.id !== id) }); save(); },
-    close: (id, price, reason = 'manual') => {
+    close: (id, price, reason = 'manual', watched = true) => {
       const { positions, rules } = get();
       const p = positions.find((x) => x.id === id);
       if (!p) return;
-      const exit = reason === 'manual' || reason === 'liq' ? fillPrice(p.side === 'long' ? 'short' : 'long', price, rules) : price;
+      const out: Side = p.side === 'long' ? 'short' : 'long';
+      // By hand or by stop-out the position takes the market; a stop or target closes at its level.
+      const priced = reason === 'manual' || reason === 'liq' ? taking(out, price, rules) : resting(price);
+      const exit = priced.price;
       const fee = p.qty * exit * (rules.takerFeePercent / 100);
       const pnl = pnlOf(p, exit) - fee;
+      const balanceAfter = get().balance + pnl;
       set({
         positions: positions.filter((x) => x.id !== id),
-        history: [{ ...p, exit, closedAt: Date.now(), pnl: pnl - (p.fees ?? 0), reason, fees: (p.fees ?? 0) + fee }, ...get().history].slice(0, 500),
-        balance: get().balance + pnl,
+        history: [{ ...p, exit, closedAt: Date.now(), pnl: pnl - (p.fees ?? 0), reason, fees: (p.fees ?? 0) + fee, balanceAfter }, ...get().history].slice(0, 500),
+        balance: balanceAfter,
+        fills: logged(p.symbol, out, p.qty, priced, price, fee, watched),
       });
       save();
     },
@@ -165,14 +211,18 @@ export const usePaper = create<PaperState>((set, get) => {
       if (share >= 1) { get().close(id, price); return; }
       const part = Number((p.qty * share).toPrecision(6));
       if (!(part > 0) || part >= p.qty) { get().close(id, price); return; }
-      const exit = fillPrice(p.side === 'long' ? 'short' : 'long', price, rules);
+      const out: Side = p.side === 'long' ? 'short' : 'long';
+      const priced = taking(out, price, rules);
+      const exit = priced.price;
       const fee = part * exit * (rules.takerFeePercent / 100);
       const entryFee = (p.fees ?? 0) * (part / p.qty);
       const gain = pnlOf({ ...p, qty: part }, exit) - fee;
+      const balanceAfter = get().balance + gain;
       set({
         positions: positions.map((x) => (x.id === id ? { ...x, qty: Number((x.qty - part).toPrecision(6)), fees: (x.fees ?? 0) - entryFee } : x)),
-        history: [{ ...p, id: `${p.id}:${Date.now().toString(36)}`, qty: part, exit, closedAt: Date.now(), pnl: gain - entryFee, reason: 'manual' as CloseReason, fees: entryFee + fee }, ...get().history].slice(0, 500),
-        balance: get().balance + gain,
+        history: [{ ...p, id: `${p.id}:${Date.now().toString(36)}`, qty: part, exit, closedAt: Date.now(), pnl: gain - entryFee, reason: 'manual' as CloseReason, fees: entryFee + fee, balanceAfter }, ...get().history].slice(0, 500),
+        balance: balanceAfter,
+        fills: logged(p.symbol, out, part, priced, price, fee, true),
       });
       save();
     },
@@ -188,31 +238,37 @@ export const usePaper = create<PaperState>((set, get) => {
       for (const k of ['takerFeePercent', 'makerFeePercent', 'slippagePercent', 'spreadPercent'] as const) next[k] = Math.min(5, Math.max(0, next[k]));
       set({ rules: next }); save();
     },
-    reset: () => { set({ balance: get().rules.startingBalance, positions: [], history: [], orders: [], lastError: null }); save(); },
+    reset: () => { set({ balance: get().rules.startingBalance, positions: [], orders: [], lastError: null }); save(); },
+    wipe: () => { lastSeen.clear(); set({ balance: get().rules.startingBalance, positions: [], history: [], orders: [], fills: [], lastError: null }); save(); },
     mark: (symbol, price) => {
       const st = get();
+      // The price before this one: a level crossed between the two was watched; after a reload, or
+      // when the first price seen is already past it, it was not (OLD PaperFills.reached).
+      const prev = lastSeen.get(symbol);
+      lastSeen.set(symbol, price);
       // Pending orders.
       for (const o of st.orders.filter((x) => x.symbol === symbol)) {
-        let go = false; let maker = false; let at = price;
-        if (o.type === 'limit') { go = o.side === 'long' ? price <= o.limitPrice! : price >= o.limitPrice!; maker = true; at = o.limitPrice!; }
-        else if (o.type === 'stop') go = o.side === 'long' ? price >= o.stopPrice! : price <= o.stopPrice!;
+        let go = false; let maker = false; let at = price; let watched = prev != null;
+        if (o.type === 'limit') { go = o.side === 'long' ? price <= o.limitPrice! : price >= o.limitPrice!; maker = true; at = o.limitPrice!; watched = watchedCross(prev, o.limitPrice!, o.side !== 'long'); }
+        else if (o.type === 'stop') { go = o.side === 'long' ? price >= o.stopPrice! : price <= o.stopPrice!; watched = watchedCross(prev, o.stopPrice!, o.side === 'long'); }
         else if (o.type === 'stop_limit') {
           if (!o.triggered && (o.side === 'long' ? price >= o.stopPrice! : price <= o.stopPrice!)) { set({ orders: get().orders.map((x) => (x.id === o.id ? { ...x, triggered: true } : x)) }); }
           const armed = get().orders.find((x) => x.id === o.id)?.triggered;
-          if (armed) { go = o.side === 'long' ? price <= o.limitPrice! : price >= o.limitPrice!; maker = true; at = o.limitPrice!; }
+          if (armed) { go = o.side === 'long' ? price <= o.limitPrice! : price >= o.limitPrice!; maker = true; at = o.limitPrice!; watched = watchedCross(prev, o.limitPrice!, o.side !== 'long'); }
         } else if (o.type === 'trailing') {
           const ref = o.trailRef ?? price;
           const nextRef = o.side === 'long' ? Math.min(ref, price) : Math.max(ref, price);
           const trigger = o.side === 'long' ? nextRef * (1 + o.trailPercent! / 100) : nextRef * (1 - o.trailPercent! / 100);
           go = o.side === 'long' ? price >= trigger : price <= trigger;
+          watched = watchedCross(prev, trigger, o.side === 'long');
           if (!go && nextRef !== ref) set({ orders: get().orders.map((x) => (x.id === o.id ? { ...x, trailRef: nextRef } : x)) });
         }
-        if (go) { get().cancel(o.id); fill(o.symbol, o.side, o.qty, at, maker, o.sl, o.tp); }
+        if (go) { get().cancel(o.id); fill(o.symbol, o.side, o.qty, at, maker, o.sl, o.tp, undefined, watched); }
       }
       // Protection.
       for (const p of get().positions.filter((x) => x.symbol === symbol)) {
-        if (p.sl != null && (p.side === 'long' ? price <= p.sl : price >= p.sl)) get().close(p.id, p.sl, 'sl');
-        else if (p.tp != null && (p.side === 'long' ? price >= p.tp : price <= p.tp)) get().close(p.id, p.tp, 'tp');
+        if (p.sl != null && (p.side === 'long' ? price <= p.sl : price >= p.sl)) get().close(p.id, p.sl, 'sl', watchedCross(prev, p.sl, p.side !== 'long'));
+        else if (p.tp != null && (p.side === 'long' ? price >= p.tp : price <= p.tp)) get().close(p.id, p.tp, 'tp', watchedCross(prev, p.tp, p.side === 'long'));
       }
       // Stop-out: equity under the stop-out share of the margin in use closes everything.
       const now = get();
@@ -221,7 +277,7 @@ export const usePaper = create<PaperState>((set, get) => {
       const unreal = now.positions.reduce((n, p) => n + pnlOf(p, p.symbol === symbol ? price : tickers[p.symbol]?.last ?? p.entry), 0);
       const used = now.positions.reduce((n, p) => n + marginOf(p), 0);
       if (used > 0 && (now.balance + unreal) < used * (now.rules.stopOutPercent / 100) && now.rules.leverage > 1) {
-        for (const p of now.positions) get().close(p.id, p.symbol === symbol ? price : tickers[p.symbol]?.last ?? p.entry, 'liq');
+        for (const p of now.positions) get().close(p.id, p.symbol === symbol ? price : tickers[p.symbol]?.last ?? p.entry, 'liq', prev != null);
       }
     },
   };

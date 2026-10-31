@@ -1,0 +1,52 @@
+/* Records and reports: the portfolio's full report, the paper record and fill log, the journal and
+   activity filters. Flat fills and hairlines only — no gradient, no blur, no coloured shadow. */
+.rp-report { display: flex; flex-direction: column; gap: 12px; }
+.rp-card h3 { margin: 0 0 8px; font-size: var(--fs-ui); }
+.rp-card hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; }
+.rp-curve { display: block; width: 100%; }
+.rp-curve .rp-zero { stroke: var(--text-3); stroke-dasharray: 6 6; stroke-width: 1; opacity: 0.6; }
+.rp-curve .rp-band.up { fill: var(--up); opacity: 0.08; }
+.rp-curve .rp-band.down { fill: var(--down); opacity: 0.1; }
+.rp-curve .rp-given { fill: var(--down); opacity: 0.16; }
+.rp-curve .rp-peak { fill: none; stroke: var(--text-3); stroke-width: 1; stroke-dasharray: 4 6; }
+.rp-curve .rp-line { fill: none; stroke-width: 1.6; }
+.rp-curve .rp-line.up, .rp-curve .rp-rule.up { stroke: var(--up); }
+.rp-curve .rp-line.down, .rp-curve .rp-rule.down { stroke: var(--down); }
+.rp-curve .rp-rule { stroke-width: 1.5; }
+.rp-span { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.rp-span .grow { display: flex; flex-direction: column; min-width: 0; }
+.rp-swatch { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.rp-swatch.up { background: var(--up); opacity: 0.5; }
+.rp-swatch.down { background: var(--down); opacity: 0.5; }
+.rp-metric { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 3px 0; }
+.rp-note { margin: 0 0 4px; }
+.rp-attr { padding: 6px 0; border-top: 1px solid var(--line); }
+.rp-attr:first-of-type { border-top: 0; }
+.rp-attr .grow { display: flex; flex-direction: column; min-width: 0; }
+.rp-share { height: 4px; border-radius: 2px; background: var(--line); margin-top: 4px; overflow: hidden; }
+.rp-share span { display: block; height: 100%; border-radius: 2px; background: var(--text-3); opacity: 0.7; }
+.rp-share span.up { background: var(--up); }
+.rp-share span.down { background: var(--down); }
+.rp-grid-scroll { overflow-x: auto; max-width: 100%; }
+.rp-grid { border-collapse: collapse; font-size: var(--fs-small); }
+.rp-grid th, .rp-grid td { padding: 3px 6px; text-align: right; white-space: nowrap; min-width: 56px; color: var(--text-2); font-weight: normal; }
+.rp-grid th { color: var(--text-3); }
+.rp-grid td.up { color: var(--up); } .rp-grid td.down { color: var(--down); }
+.rp-grid .rp-total { font-weight: bold; }
+
+/* The paper record and the fill log. */
+.pr-record { display: flex; flex-direction: column; gap: 10px; }
+.pr-month { display: grid; grid-template-columns: minmax(70px, 0.3fr) minmax(0, 0.4fr) minmax(80px, 0.3fr); align-items: center; gap: 8px; padding: 2px 0; }
+.pr-month .bar { height: 6px; border-radius: 3px; }
+.pr-month .bar.up { background: var(--up); } .pr-month .bar.down { background: var(--down); } .pr-month .bar.flat { background: var(--line-strong); }
+.pr-fill { display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-top: 1px solid var(--line); }
+.pr-fill:first-of-type { border-top: 0; }
+.pr-fill .warn { color: var(--warn); }
+.pr-preview { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+.pr-preview .warn, .pr-rules .warn { color: var(--warn); }
+.pr-rules p { margin: 0 0 6px; }
+.pr-danger { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Outcome and screenshot filters, sample notes. */
+.rec-filters { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.rec-warn { color: var(--warn); }

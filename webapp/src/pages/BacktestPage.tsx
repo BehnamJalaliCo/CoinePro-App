@@ -8,12 +8,16 @@ import { INTERVALS, intervalLabel, intervalSeconds } from '../data/intervals';
 import { SymbolSearch } from '../shell/SymbolSearch';
 import { SymbolLogo } from '../ui/SymbolLogo';
 import { DEFAULT_OPTIONS, DEFAULT_PARAMS, barMagnifier, runBacktest, strategySet, type BacktestOptions, type BtResult, type StrategyId, type StrategyParams } from './backtestEngine';
-import { Field, dateTime, downloadCsv, errorText, money, parseNum, useL } from './kit';
+import { Field, dateTime, errorText, money, parseNum, useL } from './kit';
+import { faNum } from '../i18n/time';
+import './records.css';
+import { CONFIDENT_TRADES, XLSX_MIME, backtestCsv, backtestFileName, backtestXlsx, downloadFile, type BtRun } from './records';
 import { useT } from '../state/prefs';
 
 // The strategy tester as a page (the app's backtest screen): pick a symbol, an interval and a
 // built-in strategy or the NamaScript on the chart, set the stop, target, fees and sizing, and
-// read the report — overview, equity curve against buy-and-hold, every trade, CSV.
+// read the report — overview, equity curve against buy-and-hold, every trade — with the small-sample
+// sentence under thirty trades and the whole run as CSV or a real Excel workbook (OLD BacktestSheet).
 const STRATEGIES: { id: StrategyId; fa: string; en: string }[] = [
   { id: 'ma_cross', fa: 'تقاطع میانگین متحرک', en: 'Moving-average cross' },
   { id: 'rsi', fa: 'بازگشت RSI', en: 'RSI reversal' },
@@ -53,7 +57,8 @@ export default function BacktestPage() {
   const [magnify, setMagnify] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [res, setRes] = useState<(BtResult & { bars: number; from: number; to: number }) | null>(null);
+  const [res, setRes] = useState<(BtResult & { bars: number; from: number; to: number; run: BtRun }) | null>(null);
+  const [saved, setSaved] = useState<string | null>(null);
 
   const run = async () => {
     setBusy(true); setErr(null);
@@ -85,7 +90,10 @@ export default function BacktestPage() {
       // The growth setups are a rule about growth: long only, as in the app.
       const opts = { ...o, magnifier, ...(strategy === 'growth_scan' ? { direction: 'long' as const } : {}) };
       const r = runBacktest(bars, strategySet(bars, strategy, p), opts);
-      setRes({ ...r, bars: bars.length, from: bars[0]!.t, to: bars[bars.length - 1]!.t });
+      const from = bars[0]!.t; const to = bars[bars.length - 1]!.t;
+      const name = STRATEGIES.find((x) => x.id === strategy)?.fa ?? strategy;
+      setRes({ ...r, bars: bars.length, from, to, run: { symbol, strategy: name, direction: opts.direction, feePct: o.feePct, capital: o.capital, bars: bars.length, from, to, result: r } });
+      setSaved(null);
     } catch (e) {
       setErr(e instanceof Error && e.message === 'few' ? L('داده‌ی کافی برای این بازه نیست.', 'Not enough history for this interval.') : errorText(e, t));
     } finally { setBusy(false); }
@@ -145,9 +153,14 @@ export default function BacktestPage() {
                   [L('زمان در بازار', 'Time in market'), `${res.exposure.toFixed(0)}%`], [L('بازه‌ی داده', 'Data'), `${res.bars} bars`],
                 ] as [string, string, string?][]).map(([k, v, tone]) => <div key={k} className="bt-stat"><span className="bt-k fa">{k}</span><span className={`bt-v num ${tone ?? ''}`}>{v}</span></div>)}
               </div>
+              {res.trades.length < CONFIDENT_TRADES ? <p className="small fa rec-warn" data-part="thin-sample">{L(`فقط ${faNum(res.trades.length)} معامله بسته شد. زیر ${faNum(CONFIDENT_TRADES)} معامله، این عددها حکایت‌اند نه نتیجه.`, `Only ${res.trades.length} trades closed. Under ${CONFIDENT_TRADES} trades these numbers are anecdotes, not a result.`)}</p> : null}
               <p className="muted small num">{dateTime(res.from * 1000)} → {dateTime(res.to * 1000)}</p>
               {curve ? <svg className="bt-equity big" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-label="equity"><line x1="0" x2={W} y1={curve.base} y2={curve.base} className="bt-zero" /><path d={curve.d} className={res.net >= 0 ? 'up' : 'down'} /></svg> : null}
-              <div className="row"><button className="btn btn-quiet sm" onClick={() => downloadCsv(`backtest-${symbol}-${intervalLabel(interval)}.csv`, [['#', 'side', 'entry_time', 'entry', 'exit_time', 'exit', 'pnl', 'pct', 'reason'], ...res.trades.map((x, i) => [i + 1, x.dir === 1 ? 'long' : 'short', new Date(x.entryT * 1000).toISOString(), x.entry, new Date(x.exitT * 1000).toISOString(), x.exit, +x.pnl.toFixed(2), +x.pct.toFixed(2), x.reason])])}>CSV</button></div>
+              <div className="row" data-part="bt-export">
+                <button className="btn btn-quiet sm" data-export="csv" onClick={() => { downloadFile(backtestFileName(res.run.symbol, 'csv'), backtestCsv(res.run), 'text/csv;charset=utf-8'); setSaved(L('فایل ذخیره شد.', 'The file was saved.')); }}>{L('خروجی CSV', 'Export a CSV')}</button>
+                <button className="btn btn-quiet sm" data-export="xlsx" onClick={() => { downloadFile(backtestFileName(res.run.symbol, 'xlsx'), backtestXlsx(res.run), XLSX_MIME); setSaved(L('فایل ذخیره شد.', 'The file was saved.')); }}>{L('خروجی Excel', 'Export for Excel')}</button>
+              </div>
+              <p className="muted small fa">{L('همه‌ی معاملات، همه‌ی سنجه‌ها و بازه‌ی اجرا در یک فایل. رایگان — تریدینگ‌ویو برای همین خروجی اشتراک می‌گیرد.', "Every trade, every measure and the run's span in one file. Free — TradingView charges a subscription for this export.")}{saved ? ` ${saved}` : ''}</p>
               <table className="table">
                 <thead><tr><th>#</th><th>{L('جهت', 'Side')}</th><th className="r">{L('ورود', 'Entry')}</th><th className="r">{L('خروج', 'Exit')}</th><th>{L('دلیل', 'Reason')}</th><th className="r">P&amp;L</th><th className="r">%</th></tr></thead>
                 <tbody>{res.trades.slice().reverse().map((x, i) => (

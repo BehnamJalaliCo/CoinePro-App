@@ -8,9 +8,13 @@ import { MINIMUM_TRADES } from '../state/week';
 import { faNum } from '../i18n/time';
 import { MyWeekCard } from './MyWeekCard';
 import { Field, Tabs, dateTime, downloadCsv, downloadText, money, parseNum, pickText, useL } from './kit';
+import { filterJournal, journalStats, type JournalOutcome, type JournalShot } from './records';
+import './records.css';
 
 // The trade journal (feature/journal): write a trade down with the feeling and the lesson, see
-// what the record says — win rate, the result by feeling and by tag — and take it with you.
+// what the record says — win rate, the result by feeling and by tag — and take it with you. The list
+// filters by outcome (wins, losses, no P&L), by screenshot, by tag and by text, and the figures above
+// it — profit factor, expectancy — are over exactly the rows shown (OLD JournalFilter, JournalStats).
 const blank = (symbol: string, price: number | null) => ({ symbol, buy: true, entry: price ? String(price) : '', exit: '', size: '1', pnl: '', emotion: 'آرام', note: '', lesson: '', tags: [] as string[], screenshot: undefined as string | undefined, id: undefined as string | undefined });
 
 async function shrink(blob: Blob): Promise<string | undefined> {
@@ -34,11 +38,19 @@ export default function JournalPage() {
   const [tab, setTab] = useState<'list' | 'stats'>('list');
   const [draft, setDraft] = useState<ReturnType<typeof blank> | null>(null);
   const [filter, setFilter] = useState('');
+  const [outcome, setOutcome] = useState<JournalOutcome>('any');
+  const [shot, setShot] = useState<JournalShot>('any');
+  const [pickedTags, setPickedTags] = useState<string[]>([]);
   // Under five closed trades there is no win rate, only the count (OLD MyWeek.MINIMUM_TRADES).
   const winCount = (w: number, n: number) => (lang === 'fa' ? `${faNum(w)} از ${faNum(n)}` : `${w} of ${n}`);
+  const count = (n: number) => (lang === 'fa' ? faNum(n) : String(n));
   const emo = (e: string) => (lang === 'fa' ? e : EMOTIONS_EN[e] ?? e);
 
-  const list = useMemo(() => entries.filter((e) => !filter || e.symbol.includes(filter.toUpperCase()) || e.tags.includes(filter) || e.emotion === filter), [entries, filter]);
+  const list = useMemo(() => filterJournal(entries, { outcome, shot, tags: pickedTags, query: filter }), [entries, outcome, shot, pickedTags, filter]);
+  const shownStats = useMemo(() => journalStats(list), [list]);
+  const everything = outcome === 'any' && shot === 'any' && !pickedTags.length && !filter.trim();
+  // The tag cloud is over the whole journal, so a reader who filtered to one setup can swap it.
+  const tagCloud = useMemo(() => { const m = new Map<string, number>(); for (const e of entries) for (const tg of e.tags) m.set(tg, (m.get(tg) ?? 0) + 1); return [...m.entries()].sort((a, b) => b[1] - a[1]); }, [entries]);
   const stats = useMemo(() => {
     const closed = entries.filter((e) => e.pnl != null);
     const wins = closed.filter((e) => e.pnl! > 0);
@@ -47,7 +59,8 @@ export default function JournalPage() {
       for (const e of closed) for (const k of key(e)) { const r = m.get(k) ?? { n: 0, pnl: 0, wins: 0 }; r.n++; r.pnl += e.pnl!; if (e.pnl! > 0) r.wins++; m.set(k, r); }
       return [...m.entries()].sort((a, b) => b[1].pnl - a[1].pnl);
     };
-    return { n: entries.length, closed: closed.length, wins: wins.length, win: closed.length ? (wins.length / closed.length) * 100 : 0, net: closed.reduce((n, e) => n + e.pnl!, 0), byEmotion: by((e) => [e.emotion]), byTag: by((e) => e.tags), bySymbol: by((e) => [e.symbol]) };
+    const figures = journalStats(entries);
+    return { n: entries.length, closed: closed.length, wins: wins.length, win: closed.length ? (wins.length / closed.length) * 100 : 0, net: closed.reduce((n, e) => n + e.pnl!, 0), pf: figures.profitFactor, expectancy: figures.expectancy, byEmotion: by((e) => [e.emotion]), byTag: by((e) => e.tags), bySymbol: by((e) => [e.symbol]) };
   }, [entries]);
 
   const save = () => {
@@ -112,8 +125,32 @@ export default function JournalPage() {
       {error ? <p className="down fa">{L('حافظه‌ی مرورگر پر است؛ تصویرهای قدیمی را حذف کنید.', 'Browser storage is full; remove some pictures.')}</p> : null}
       {tab === 'list' ? (
         <>
-          <input className="scr-search" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={L('نماد، برچسب یا احساس', 'Symbol, tag or feeling')} dir="auto" />
-          {!list.length ? <div className="empty fa">{L('هنوز معامله‌ای ثبت نشده است.', 'No trades logged yet.')}</div> : null}
+          <section className="card" data-part="journal-stats">
+            <div className="rp-metric"><span className="muted fa">{L('تعداد ثبت', 'Entries')}</span><b className={lang === 'fa' ? 'fa' : 'num'}>{everything ? count(list.length) : L(`${faNum(list.length)} از ${faNum(entries.length)}`, `${list.length} of ${entries.length}`)}</b></div>
+            {shownStats.graded !== list.length ? <div className="rp-metric"><span className="muted fa">{L('با عدد سود و زیان', 'With a P&L')}</span><b className={lang === 'fa' ? 'fa' : 'num'}>{count(shownStats.graded)}</b></div> : null}
+            {shownStats.winRate != null ? <div className="rp-metric"><span className="muted fa">{L('نرخ برد', 'Win rate')}</span><b className={`num ${shownStats.winRate >= 50 ? 'up' : 'down'}`} dir="ltr">{shownStats.winRate.toFixed(1)}%</b></div> : null}
+            <div className="rp-metric"><span className="muted fa">{L('سود خالص', 'Net profit')}</span><b className={`num ${shownStats.net >= 0 ? 'up' : 'down'}`} dir="ltr">{money(shownStats.net)}</b></div>
+            {shownStats.profitFactor != null ? <div className="rp-metric" data-stat="pf"><span className="muted fa">{L('ضریب سود', 'Profit factor')}</span><b className="num">{shownStats.profitFactor.toFixed(2)}</b></div> : null}
+            {shownStats.expectancy != null ? <div className="rp-metric" data-stat="expectancy"><span className="muted fa">{L('انتظار هر معامله', 'Expectancy per trade')}</span><b className="num" dir="ltr">{money(shownStats.expectancy)}</b></div> : null}
+            {shownStats.averageWin != null ? <div className="rp-metric"><span className="muted fa">{L('میانگین برد', 'Average win')}</span><b className="num up">{money(shownStats.averageWin)}</b></div> : null}
+            {shownStats.averageLoss != null ? <div className="rp-metric"><span className="muted fa">{L('میانگین باخت', 'Average loss')}</span><b className="num down">{money(shownStats.averageLoss)}</b></div> : null}
+          </section>
+          <div className="rec-filters" data-part="journal-filter">
+            <span className="muted small fa">{L('فیلتر', 'Filter')}</span>
+            <div className="chips flat" role="group">
+              {([['any', L('همه', 'All')], ['wins', L('بردها', 'Wins')], ['losses', L('باخت‌ها', 'Losses')], ['ungraded', L('بدون عدد', 'No P&L')]] as const).map(([k, label]) => (
+                <button key={k} type="button" data-outcome={k} className={`chip${outcome === k ? ' on' : ''}`} onClick={() => setOutcome(k)}><span className="fa">{label}</span></button>
+              ))}
+            </div>
+            <div className="chips flat" role="group">
+              {([['with', L('با تصویر', 'With screenshot')], ['without', L('بدون تصویر', 'Without screenshot')]] as const).map(([k, label]) => (
+                <button key={k} type="button" data-shot={k} className={`chip${shot === k ? ' on' : ''}`} onClick={() => setShot(shot === k ? 'any' : k)}><span className="fa">{label}</span></button>
+              ))}
+            </div>
+            {tagCloud.length ? <div className="chips flat" role="group">{tagCloud.map(([tg, c]) => <button key={tg} type="button" className={`chip${pickedTags.includes(tg) ? ' on' : ''}`} onClick={() => setPickedTags(pickedTags.includes(tg) ? pickedTags.filter((x) => x !== tg) : [...pickedTags, tg])}><span className="fa">{`${tg} (${faNum(c)})`}</span></button>)}</div> : null}
+            <input className="scr-search" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={L('جست‌وجو در نماد، یادداشت و درس', 'Search symbol, note and lesson')} dir="auto" />
+          </div>
+          {!list.length ? <div className="empty fa">{entries.length ? L('رکوردی با این فیلترها نیست', 'No records match these filters') : L('هنوز معامله‌ای ثبت نشده است.', 'No trades logged yet.')}</div> : null}
           <div className="cards">
             {list.map((e) => (
               <article key={e.id} className="card journal-card">
@@ -137,6 +174,8 @@ export default function JournalPage() {
             <div className="card"><span className="muted fa">{L('معاملات', 'Trades')}</span><b className="num">{stats.n}</b></div>
             <div className="card" data-stat="win"><span className="muted fa">{L('نرخ برد', 'Win rate')}</span>{stats.closed >= MINIMUM_TRADES ? <b className="num">{stats.win.toFixed(1)}%</b> : <b className={lang === 'fa' ? 'fa' : 'num'}>{winCount(stats.wins, stats.closed)}</b>}</div>
             <div className="card"><span className="muted fa">{L('نتیجه‌ی خالص', 'Net result')}</span><b className={`num ${stats.net >= 0 ? 'up' : 'down'}`}>{money(stats.net)}</b></div>
+            <div className="card"><span className="muted fa">{L('ضریب سود', 'Profit factor')}</span><b className="num">{stats.pf == null ? '—' : stats.pf.toFixed(2)}</b></div>
+            <div className="card"><span className="muted fa">{L('انتظار هر معامله', 'Expectancy per trade')}</span><b className="num">{stats.expectancy == null ? '—' : money(stats.expectancy)}</b></div>
           </div>
           {([[L('بر اساس احساس', 'By feeling'), stats.byEmotion, true], [L('بر اساس برچسب', 'By tag'), stats.byTag, false], [L('بر اساس نماد', 'By symbol'), stats.bySymbol, false]] as const).map(([title, rows, isEmo]) => (
             <section key={title} className="card"><h3 className="fa">{title}</h3>
