@@ -1,0 +1,20 @@
+/* The screener's growth scan, the market-notification settings and the notification offer (area C1). */
+.scr-mode { margin-bottom: 4px; }
+.scr-growth .row.wrap { flex-wrap: wrap; gap: 6px; }
+.scr-growth .chip.sm { height: 26px; }
+.scr-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.scr-tag { font-size: 11px; line-height: 18px; padding: 0 6px; border-radius: 9px; background: var(--bg-sunken); color: var(--text-2); white-space: nowrap; }
+.scr-tag.down { color: var(--down); }
+.scr-growth-score b { font-weight: 700; }
+.scr-watch.on { color: var(--accent, var(--text)); }
+.scr-progress { min-width: 56px; }
+.pulse-note { margin: 4px 0 0; }
+.pulse-hour { display: flex; align-items: center; gap: 8px; }
+.pulse-hour input[type=time] { height: 30px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--bg); color: var(--text); padding: 0 8px; }
+.dialog.notify-offer { width: min(440px, calc(100vw - 32px)); padding: 0 20px 18px; gap: 10px; }
+.notify-offer .offer-sample { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-md, 10px); background: var(--bg-sunken); }
+.notify-offer .offer-sample .grow { flex: 1; min-width: 0; }
+.notify-offer .offer-sample b { display: block; font-weight: 600; }
+.notify-offer ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.notify-offer li { display: flex; align-items: center; gap: 10px; }
+.notify-offer .offer-actions { display: flex; justify-content: space-between; gap: 8px; }

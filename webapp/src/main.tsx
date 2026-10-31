@@ -12,6 +12,8 @@ import { startPrices } from './data/prices';
 import { startWatchlistSync } from './data/watchlistSync';
 import { startAlertWatch } from './state/alerts';
 import { startPaperWatch } from './state/paper';
+import { startPulse } from './state/pulse';
+import { startScanWatch } from './state/scanWatch';
 import { applyAddress } from './route';
 import { applyTheme, usePrefs } from './state/prefs';
 
@@ -28,6 +30,8 @@ startPrices();
 startWatchlistSync();
 startAlertWatch();
 startPaperWatch();
+startPulse();
+startScanWatch();
 
 // The sprite, the logo map and the names are small and needed by the first frame; wait for them
 // (never longer than 1.5 s) so the screen does not paint twice.

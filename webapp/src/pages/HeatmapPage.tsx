@@ -9,6 +9,7 @@ import { Tabs, pct, useL } from './kit';
 import { useWatchlist } from '../state/watchlist';
 import type { PageProps } from './registry';
 import type { Ticker } from '../data/types';
+import { chartable, deadTile, isChartable, type Chartable } from '../data/chartable';
 
 // The app's heat map (feature/heatmap): tiles sized by turnover (or equal), coloured by the day's
 // change or range, grouped by market; colour-blind and monochrome palettes. Squarified layout.
@@ -76,6 +77,9 @@ export default function HeatmapPage({ param = null }: Partial<PageProps> = {}) {
   const box = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 1000, h: 600 });
   const [hover, setHover] = useState<Ticker | null>(null);
+  const [scope, setScope] = useState<Chartable | null>(null);
+  // Only markets that can become a chart (OLD PlatformCapabilities.chartableSymbols).
+  useEffect(() => { let on = true; void chartable().then((c) => { if (on) setScope(c); }); return () => { on = false; }; }, []);
 
   useEffect(() => {
     const el = box.current;
@@ -87,11 +91,11 @@ export default function HeatmapPage({ param = null }: Partial<PageProps> = {}) {
 
   const rects = useMemo(() => {
     const mine = onlyList && list ? new Set(list.symbols) : null;
-    const items0 = Object.values(tickers).filter((x) => hasLogo(x.symbol) && (mine ? mine.has(x.symbol) : group === 'crypto' ? marketOf(x.symbol) === 'crypto' : marketOf(x.symbol) !== 'crypto'));
+    const items0 = Object.values(tickers).filter((x) => hasLogo(x.symbol) && isChartable(x.symbol, scope) && !deadTile(x) && (mine ? mine.has(x.symbol) : group === 'crypto' ? marketOf(x.symbol) === 'crypto' : marketOf(x.symbol) !== 'crypto'));
     const val = (x: Ticker) => (sizeBy === 'equal' ? 1 : Math.max(1, (x.volume ?? 0) * (marketOf(x.symbol) === 'crypto' ? x.last : 1)));
     const items = items0.map((tk) => ({ v: val(tk), tk })).sort((a, b) => b.v - a.v).slice(0, count);
     return squarify(items, 0, 0, size.w, size.h);
-  }, [tickers, group, sizeBy, count, size, onlyList, list]);
+  }, [tickers, group, sizeBy, count, size, onlyList, list, scope]);
 
   const metric = (x: Ticker) => (colourBy === 'change' ? x.changePct : x.high && x.low ? ((x.high - x.low) / x.low) * 100 : 0);
   const span = colourBy === 'change' ? (group === 'crypto' ? 6 : 1) : group === 'crypto' ? 12 : 2;

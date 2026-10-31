@@ -34,6 +34,7 @@ import { intervalBox } from './shell/IntervalMenu';
 import { StudiesHost } from './shell/StudiesHost';
 import { TradeHost } from './trade/TradeHost';
 import { VipLayer } from './vip/VipLayer';
+import { NotificationOffer } from './shell/NotificationOffer';
 
 export function App() {
   const symbol = usePrefs((s) => s.symbol);
@@ -124,6 +125,7 @@ export function App() {
       <WidgetBar />
       <PageHost onSignIn={() => setSignIn(true)} />
       <VipLayer />
+      <NotificationOffer />
       {menu ? <MainMenu onClose={() => setMenu(false)} onSignIn={() => setSignIn(true)} /> : null}
       {search !== null ? <SymbolSearch initial={search} allowExpr onClose={() => setSearch(null)} /> : null}
       {signIn ? <SignIn onClose={() => setSignIn(false)} /> : null}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMarket } from '../state/market';
 import { usePrefs, useT } from '../state/prefs';
 import { usePage } from '../state/page';
@@ -12,6 +12,13 @@ import { useWatchlist } from '../state/watchlist';
 import type { PageProps } from './registry';
 import { Icon } from '../ui/Icon';
 import type { Candle, Market, Ticker } from '../data/types';
+import { chartable, isChartable, type Chartable } from '../data/chartable';
+import { BULLISH, GROWTH_CHOICES, STRONG_GROWTH, WEAK_GROWTH, WITHIN_CHOICES, FRESH, chartStudiesOf, matches, scanOf, setupStudiesOf, tagsOf, type Scan } from './growthScan';
+import { useScanWatch } from '../state/scanWatch';
+import { useStudies } from '../state/studies';
+import { useChartSettings } from '../state/chartSettings';
+import { faNum } from '../i18n/time';
+import './scan.css';
 
 // The app's screener (feature/screener): field conditions on the live tickers, indicator
 // conditions scanned over each symbol's bars (RSI, EMA cross, MACD cross, Bollinger, new high/low,
@@ -24,6 +31,9 @@ interface Saved { name: string; market: Market | 'all'; conds: Cond[]; setup: Se
 interface ScanRow { symbol: string; rsi: number | null; atrPct: number | null; hit: boolean; barsAgo: number | null }
 
 const SAVED_KEY = 'pc.screens.v1';
+/** How far down the liquidity order the growth scan reads in one pass (OLD RESOLUTION_BUDGET). */
+const GROWTH_UNIVERSE = 120;
+type Mode = 'table' | 'growth';
 const turnover = (x: Ticker) => (x.volume ?? 0) * (marketOf(x.symbol) === 'crypto' ? x.last : 1);
 const fieldOf = (x: Ticker, f: Field) => (f === 'changePct' ? x.changePct : f === 'last' ? x.last : f === 'turnover' ? turnover(x) : x.high && x.low ? ((x.high - x.low) / x.low) * 100 : 0);
 
@@ -83,33 +93,79 @@ export default function ScreenerPage({ param = null }: Partial<PageProps> = {}) 
   const [saved, setSaved] = useState<Saved[]>(() => { try { return JSON.parse(localStorage.getItem(SAVED_KEY) ?? '[]') as Saved[]; } catch { return []; } });
   const [name, setName] = useState('');
 
-  const base = useMemo(() => Object.values(tickers)
-    .filter((x) => hasLogo(x.symbol) && (market === 'all' || marketOf(x.symbol) === market) && (!onlyList || !list || list.symbols.includes(x.symbol)))
-    .filter((x) => conds.every((c) => (c.op === '>' ? fieldOf(x, c.field) > c.value : fieldOf(x, c.field) < c.value)))
-    .sort((a, b) => turnover(b) - turnover(a)), [tickers, market, conds, onlyList, list]);
+  const [mode, setMode] = useState<Mode>(param === 'growth' ? 'growth' : 'table');
+  const [scope, setScope] = useState<Chartable | null>(null);
+  // Only markets that can become a chart are listed (OLD PlatformCapabilities.chartableSymbols).
+  useEffect(() => { let on = true; void chartable().then((c) => { if (on) setScope(c); }); return () => { on = false; }; }, []);
+  // A pass that outlives the screen keeps the chart the reader opened waiting behind it (OLD
+  // pauseResolution): every pass carries a generation, and leaving or restarting ends the old one.
+  const gen = useRef(0);
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; gen.current++; }; }, []);
+
+  const universe = useMemo(() => Object.values(tickers)
+    .filter((x) => hasLogo(x.symbol) && isChartable(x.symbol, scope) && (market === 'all' || marketOf(x.symbol) === market) && (!onlyList || !list || list.symbols.includes(x.symbol)))
+    .sort((a, b) => turnover(b) - turnover(a)), [tickers, market, onlyList, list, scope]);
+  const base = useMemo(() => universe
+    .filter((x) => conds.every((c) => (c.op === '>' ? fieldOf(x, c.field) > c.value : fieldOf(x, c.field) < c.value))), [universe, conds]);
 
   const rows = setup === 'none' ? base : base.filter((x) => scan[x.symbol]?.hit);
 
-  const runScan = async () => {
-    const universe = base.slice(0, 60).map((x) => x.symbol);
-    const out: Record<string, ScanRow> = {};
-    setScanning({ done: 0, total: universe.length });
+  const pass = async <T,>(symbols: string[], read: (bars: Candle[]) => T, done: (out: Record<string, T>) => void) => {
+    const mine = ++gen.current;
+    const out: Record<string, T> = {};
+    setScanning({ done: 0, total: symbols.length });
     let i = 0;
     const worker = async () => {
-      while (i < universe.length) {
-        const s = universe[i++]!;
+      while (i < symbols.length && gen.current === mine) {
+        const s = symbols[i++]!;
         try {
           const { bars } = await loadHistory(s, tf, undefined, 'bulk');
-          const d = detect(setup, bars);
-          out[s] = { symbol: s, ...d };
+          if (gen.current !== mine) return;
+          out[s] = read(bars);
         } catch { /* skipped: a 429 or a symbol without bars */ }
-        setScanning((p) => (p ? { ...p, done: p.done + 1 } : p));
+        if (alive.current && gen.current === mine) setScanning((p) => (p ? { ...p, done: p.done + 1 } : p));
       }
     };
     await Promise.all([worker(), worker(), worker(), worker()]);
-    setScan(out);
+    if (!alive.current || gen.current !== mine) return;
+    done(out);
     setScanning(null);
   };
+  const runScan = () => pass(base.slice(0, 60).map((x) => x.symbol), (bars) => ({ symbol: '', ...detect(setup, bars) }), (out) => setScan(Object.fromEntries(Object.entries(out).map(([k, v]) => [k, { ...v, symbol: k }]))));
+
+  // ── The growth scan (OLD GrowthScan, ScreenerController 5.17.0) ──
+  const [growth, setGrowth] = useState<Record<string, Scan | null>>({});
+  const [scanIds, setScanIds] = useState<string[]>([]);
+  const [within, setWithin] = useState(FRESH);
+  const [minGrowth, setMinGrowth] = useState<number | null>(null);
+  const growthSymbols = useMemo(() => universe.slice(0, GROWTH_UNIVERSE).map((x) => x.symbol), [universe]);
+  const growthKey = `${tf}|${growthSymbols.join(',')}`;
+  const lastGrowthKey = useRef('');
+  useEffect(() => {
+    if (mode !== 'growth' || !growthSymbols.length || lastGrowthKey.current === growthKey) return;
+    lastGrowthKey.current = growthKey;
+    setGrowth({});
+    void pass(growthSymbols, (bars) => scanOf(bars), (out) => setGrowth(out));
+  }, [mode, growthKey]);
+  useEffect(() => { if (mode !== 'growth') { gen.current++; setScanning(null); lastGrowthKey.current = ''; } }, [mode]);
+  const growthRows = useMemo(() => universe
+    .flatMap((x) => { const g = growth[x.symbol]; return g && matches(g, scanIds, within, minGrowth) ? [{ x, g }] : []; })
+    .sort((a, b) => b.g.growth - a.g.growth), [universe, growth, scanIds, within, minGrowth]);
+  const watch = useScanWatch((st) => st.watches.find((w) => [...w.scanIds].sort().join(',') === [...scanIds].sort().join(',') && w.within === within && w.minGrowth === minGrowth && w.tf === tf) ?? null);
+  const toggleWatch = () => {
+    if (!watch && typeof Notification !== 'undefined' && Notification.permission === 'default') void Notification.requestPermission().catch(() => undefined);
+    useScanWatch.getState().toggle({ ids: scanIds, within, minGrowth, tf, symbols: universe.map((x) => x.symbol), matched: growthRows.map((r) => r.x.symbol) });
+  };
+  /** Opens a scanned market with the studies that show its setups already on (OLD showSetup). */
+  const openSetup = (symbol: string, g: Scan) => {
+    const want = chartStudiesOf(setupStudiesOf(tagsOf(g, within)));
+    const st = useStudies.getState();
+    for (const key of want.keys) if (!st.list.some((x) => x.key === key)) useStudies.getState().add(key);
+    if (want.divergence || want.harmonic) useChartSettings.getState().set({ ...(want.divergence ? { autoDivergence: true } : {}), ...(want.harmonic ? { autoHarmonic: true } : {}) });
+    setSymbol(symbol); setInterval(tf); close();
+  };
+  const tagText = (label: string, ago: number) => (ago === 0 ? L(`${label} · همین کندل`, `${label} · this bar`) : L(`${label} · ${faNum(ago)} کندل پیش`, `${label} · ${ago} bars ago`));
 
   const save = () => {
     if (!name.trim()) return;
@@ -129,17 +185,66 @@ export default function ScreenerPage({ param = null }: Partial<PageProps> = {}) 
     { label: t('scrTopLosers'), apply: () => { setSetup('none'); setConds([{ field: 'changePct', op: '<', value: -5 }]); } },
   ];
 
-  const exportCsv = () => downloadCsv('screener.csv', [
+  const exportCsv = () => mode === 'growth' ? downloadCsv('screener-growth.csv', [
+    [L('نماد', 'Symbol'), t('last'), t('changePct'), L('امتیاز رشد', 'Growth score'), L('نرخ موفقیت', 'Hit rate'), L('الگوها', 'Setups')],
+    ...growthRows.map(({ x, g }) => [x.symbol, x.last, x.changePct.toFixed(2), Math.round(g.growth), g.reliability == null ? '' : Math.round(g.reliability), tagsOf(g, within).map(({ kind, ago }) => `${L(kind.fa, kind.en)} (${ago})`).join('; ')]),
+  ]) : downloadCsv('screener.csv', [
     ['Symbol', 'Last', 'Change %', 'Turnover', 'Day range %', 'RSI', 'ATR %', 'Bars ago'],
     ...rows.map((x) => [x.symbol, x.last, x.changePct.toFixed(2), Math.round(turnover(x)), fieldOf(x, 'range').toFixed(2), scan[x.symbol]?.rsi?.toFixed(1) ?? '', scan[x.symbol]?.atrPct?.toFixed(2) ?? '', scan[x.symbol]?.barsAgo ?? '']),
   ]);
 
+  const tint = (v: number) => (v >= STRONG_GROWTH ? 'up' : v <= WEAK_GROWTH ? 'down' : '');
+  const growthView = (
+    <>
+      <div className="card scr-conds scr-growth">
+        <span className="muted small fa">{L('الگوها', 'Setups')}</span>
+        <div className="row wrap">{BULLISH.map((k) => { const on = scanIds.includes(k.id); return <button key={k.id} className={`chip sm${on ? ' on' : ''}`} aria-pressed={on} data-scan={k.id} onClick={() => setScanIds(on ? scanIds.filter((x) => x !== k.id) : [...scanIds, k.id])}><span className="fa">{L(k.fa, k.en)}</span></button>; })}</div>
+        <span className="muted small fa">{L('رخ داده در', 'Fired within the last … bars')}</span>
+        <div className="row wrap">{WITHIN_CHOICES.map((n) => <button key={n} className={`chip sm${within === n ? ' on' : ''}`} aria-pressed={within === n} data-within={n} onClick={() => setWithin(n)}><span className="fa">{L(`${faNum(n)} کندل اخیر`, String(n))}</span></button>)}</div>
+        <span className="muted small fa">{L('امتیاز رشد', 'Growth score')}</span>
+        <div className="row wrap">
+          <button className={`chip sm${minGrowth == null ? ' on' : ''}`} aria-pressed={minGrowth == null} onClick={() => setMinGrowth(null)}><span className="fa">{L('همه', 'Any')}</span></button>
+          {GROWTH_CHOICES.map((n) => <button key={n} className={`chip sm num${minGrowth === n ? ' on' : ''}`} aria-pressed={minGrowth === n} data-min={n} onClick={() => setMinGrowth(n)}>≥ {n}</button>)}
+        </div>
+        <div className="row">
+          <select value={tf} onChange={(e) => setTf(e.target.value)} className="num" aria-label="timeframe"><option value="15">15m</option><option value="60">1h</option><option value="240">4h</option><option value="1D">1D</option><option value="1W">1W</option></select>
+          {scanning ? <span className="muted num scr-progress">{scanning.done}/{scanning.total}</span> : <span className="muted small fa">{L(`${faNum(growthRows.length)} بازار`, `${growthRows.length} markets`)}</span>}
+          <span className="ws-spacer" />
+          <button className={`btn btn-quiet sm scr-watch${watch ? ' on' : ''}`} aria-pressed={Boolean(watch)} onClick={toggleWatch}><Icon name="ph-bell" size="sm" /><span className="fa">{watch ? L('ورود نمادهای تازه را خبر می‌دهیم', 'Notifying you of new matches') : L('اعلان نمادهای تازه‌ی این اسکن', 'Notify me of new matches')}</span></button>
+          <button className="btn btn-quiet sm" onClick={exportCsv}>CSV</button>
+        </div>
+        {watch ? <p className="muted small fa">{L('هر نیم ساعت، تا وقتی یک زبانه‌ی پرو چارت باز است، این اسکن دوباره خوانده می‌شود و فقط نمادهای تازه خبر داده می‌شوند. اعلان مرورگر بدون زبانه‌ی باز نمی‌رسد.', 'Every half hour, while a Pro Chart tab is open, this scan is read again and only new markets are announced. Browser notifications need an open tab.')}</p> : null}
+      </div>
+      <table className="table scr-growth-table">
+        <thead><tr><th>{t('symbol')}</th><th className="r">{t('last')}</th><th className="r">{t('changePct')}</th><th className="r">{L('امتیاز رشد', 'Growth score')}</th><th className="r">{L('نرخ موفقیت', 'Hit rate')}</th></tr></thead>
+        <tbody>
+          {growthRows.slice(0, 300).map(({ x, g }) => {
+            const tags = tagsOf(g, within);
+            return (
+              <tr key={x.symbol} className="click" data-symbol={x.symbol} onClick={() => openSetup(x.symbol, g)}>
+                <td><span className="row"><SymbolLogo symbol={x.symbol} size={18} /><b className="sym">{x.symbol}</b></span>{tags.length ? <span className="scr-tags">{tags.map(({ kind, ago }) => <span key={kind.id} className={`scr-tag fa${kind.bullish ? '' : ' down'}`}>{tagText(L(kind.fa, kind.en), ago)}</span>)}</span> : null}</td>
+                <td className="r num">{formatPrice(x.last, instrumentOf(x.symbol, x.last).digits)}</td>
+                <td className={`r num ${x.changePct >= 0 ? 'up' : 'down'}`}>{pct(x.changePct)}</td>
+                <td className={`r num scr-growth-score ${tint(g.growth)}`}><b>{Math.trunc(g.growth)}</b></td>
+                <td className="r num" title={L(`${faNum(g.samples)} نشانه‌ی کامل‌شده`, `${g.samples} completed signals`)}>{g.reliability == null ? '—' : `${Math.round(g.reliability)}%`}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {!scanning && Object.keys(growth).length && !growthRows.length ? <div className="empty fa">{L('هیچ بازاری با این شرط‌ها پیدا نشد.', 'No market matches these conditions.')}</div> : null}
+      <p className="muted small fa">{L('امتیاز رشد یک چک‌لیست وزن‌دار است (روند، شتاب، قدرت، مشارکت حجم، الگوهای تازه، امتیاز تکنیکال)، نه پیش‌بینی. نرخ موفقیت: چند بار برگشت سوپرترند روی تاریخچه‌ی همین بازار درست از آب درآمده است؛ زیر ۵ نمونه نشان داده نمی‌شود.', 'The growth score is a weighted checklist (trend, momentum, strength, volume participation, fresh setups, technical rating), not a forecast. Hit rate: how often the SuperTrend turn was right on this market’s own history; not shown under 5 samples.')}</p>
+    </>
+  );
+
   return (
     <div className="page-inner">
+      <div className="row scr-mode"><Tabs value={mode} onChange={setMode} tabs={[{ id: 'table', label: L('جدول', 'Table') }, { id: 'growth', label: L('نشانه‌های رشد', 'Growth cues') }]} /></div>
       <div className="row">
         <Tabs value={market} onChange={(m) => { setMarket(m); setScan({}); }} tabs={[{ id: 'all', label: t('all') }, { id: 'crypto', label: t('crypto') }, { id: 'forex', label: t('forex') }, { id: 'metals', label: t('metals') }, { id: 'indices', label: t('indices') }, { id: 'energy', label: t('energy') }]} />
         {list ? <button className={`chip wl-filter${onlyList ? ' on' : ''}`} aria-pressed={onlyList} onClick={() => setOnlyList(!onlyList)}><span className="fa">{L('فهرست', 'List')}: {list.name}</span></button> : null}
       </div>
+      {mode === 'growth' ? growthView : <>
       <div className="row presets">{presets.map((p) => <button key={p.label} className="chip" onClick={p.apply}><span className="fa">{p.label}</span></button>)}</div>
       <div className="card scr-conds">
         {conds.map((c, i) => (
@@ -190,6 +295,7 @@ export default function ScreenerPage({ param = null }: Partial<PageProps> = {}) 
         </tbody>
       </table>
       {setup !== 'none' && !Object.keys(scan).length && !scanning ? <div className="empty fa">{t('scrPressScan')}</div> : null}
+      </>}
     </div>
   );
 }

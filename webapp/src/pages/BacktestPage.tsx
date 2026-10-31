@@ -3,11 +3,11 @@ import { usePrefs } from '../state/prefs';
 import { usePage } from '../state/page';
 import { usePanels } from '../state/panels';
 import { useScript } from '../state/script';
-import { loadHistory, intervalsFor } from '../data/candles';
-import { INTERVALS, intervalLabel } from '../data/intervals';
+import { loadHistory, intervalsFor, planFor } from '../data/candles';
+import { INTERVALS, intervalLabel, intervalSeconds } from '../data/intervals';
 import { SymbolSearch } from '../shell/SymbolSearch';
 import { SymbolLogo } from '../ui/SymbolLogo';
-import { DEFAULT_OPTIONS, DEFAULT_PARAMS, runBacktest, signals, type BacktestOptions, type BtResult, type StrategyId, type StrategyParams } from './backtestEngine';
+import { DEFAULT_OPTIONS, DEFAULT_PARAMS, barMagnifier, runBacktest, strategySet, type BacktestOptions, type BtResult, type StrategyId, type StrategyParams } from './backtestEngine';
 import { Field, dateTime, downloadCsv, errorText, money, parseNum, useL } from './kit';
 import { useT } from '../state/prefs';
 
@@ -21,7 +21,18 @@ const STRATEGIES: { id: StrategyId; fa: string; en: string }[] = [
   { id: 'bollinger', fa: 'بازگشت به باند بولینگر', en: 'Bollinger reversion' },
   { id: 'breakout', fa: 'شکست کانال دانچیان', en: 'Donchian breakout' },
   { id: 'supertrend', fa: 'سوپرترند', en: 'Supertrend' },
+  { id: 'growth_scan', fa: 'الگوهای رشد', en: 'Growth setups' },
 ];
+
+/** The finer native length under `interval` that divides it, for the bar magnifier (OLD ChartController.magnifierBars). */
+export function finerInterval(symbol: string, interval: string): string | null {
+  const len = intervalSeconds(interval);
+  const natives = INTERVALS.map((i) => i.id).filter((id) => planFor(symbol, id)?.fold === 'none');
+  const finer = natives.filter((id) => { const s = intervalSeconds(id); return s < len && len % s === 0; }).sort((a, b) => intervalSeconds(b) - intervalSeconds(a));
+  return finer[0] ?? null;
+}
+/** How many pages of finer bars the magnifier may fetch (OLD MAGNIFIER_PAGES). */
+const MAGNIFIER_PAGES = 12;
 
 export default function BacktestPage() {
   const L = useL();
@@ -39,6 +50,7 @@ export default function BacktestPage() {
   const [p, setP] = useState<StrategyParams>(DEFAULT_PARAMS);
   const [o, setO] = useState<BacktestOptions>(DEFAULT_OPTIONS);
   const [pick, setPick] = useState(false);
+  const [magnify, setMagnify] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [res, setRes] = useState<(BtResult & { bars: number; from: number; to: number }) | null>(null);
@@ -54,7 +66,25 @@ export default function BacktestPage() {
         bars = [...older.bars, ...bars]; more = older.more;
       }
       if (bars.length < 50) throw new Error('few');
-      const r = runBacktest(bars, signals(bars, strategy, p), o);
+      let magnifier: ((i: number) => typeof bars) | null = null;
+      const finer = magnify ? finerInterval(symbol, interval) : null;
+      if (finer && (o.stopPct > 0 || o.targetPct > 0)) {
+        // Paged back from the live edge to the first bar, or MAGNIFIER_PAGES pages.
+        let lower: typeof bars = [];
+        let before: number | undefined;
+        for (let i = 0; i < MAGNIFIER_PAGES; i++) {
+          const page = await loadHistory(symbol, finer, before, 'reader').catch(() => null);
+          const got = page?.bars.filter((b) => before == null || b.t < before) ?? [];
+          if (!got.length) break;
+          lower = [...got, ...lower];
+          before = got[0]!.t;
+          if (before <= bars[0]!.t || !page?.more) break;
+        }
+        if (lower.length) magnifier = barMagnifier(bars, lower.filter((b) => b.t >= bars[0]!.t));
+      }
+      // The growth setups are a rule about growth: long only, as in the app.
+      const opts = { ...o, magnifier, ...(strategy === 'growth_scan' ? { direction: 'long' as const } : {}) };
+      const r = runBacktest(bars, strategySet(bars, strategy, p), opts);
       setRes({ ...r, bars: bars.length, from: bars[0]!.t, to: bars[bars.length - 1]!.t });
     } catch (e) {
       setErr(e instanceof Error && e.message === 'few' ? L('داده‌ی کافی برای این بازه نیست.', 'Not enough history for this interval.') : errorText(e, t));
@@ -91,9 +121,12 @@ export default function BacktestPage() {
           {strategy === 'rsi' ? <div className="row three">{numIn(L('دوره', 'Length'), p.rsiLen, (n) => setP({ ...p, rsiLen: n }))}{numIn(L('اشباع فروش', 'Oversold'), p.rsiLow, (n) => setP({ ...p, rsiLow: n }))}{numIn(L('اشباع خرید', 'Overbought'), p.rsiHigh, (n) => setP({ ...p, rsiHigh: n }))}</div> : null}
           {strategy === 'bollinger' ? <div className="row two">{numIn(L('دوره', 'Length'), p.bbLen, (n) => setP({ ...p, bbLen: n }))}{numIn(L('ضریب', 'Multiplier'), p.bbMult, (n) => setP({ ...p, bbMult: n }))}</div> : null}
           {strategy === 'breakout' ? numIn(L('دوره‌ی کانال', 'Channel length'), p.donchian, (n) => setP({ ...p, donchian: Math.max(2, Math.round(n)) })) : null}
+          {strategy === 'growth_scan' ? <>{numIn(L('دوره‌ی کانال', 'Channel length'), p.donchian, (n) => setP({ ...p, donchian: Math.max(2, Math.round(n)) }))}<p className="muted small fa">{L('ورود با برگشت سوپرترند به بالا یا شکست سقف کانال با ADX بالای ۲۰؛ خروج با برگشت سوپرترند به پایین. فقط خرید.', 'In on a SuperTrend turn up or a channel breakout with ADX over 20; out when the SuperTrend turns down. Long only.')}</p></> : null}
           {strategy === 'supertrend' ? <div className="row two">{numIn('ATR', p.stLen, (n) => setP({ ...p, stLen: n }))}{numIn(L('ضریب', 'Multiplier'), p.stMult, (n) => setP({ ...p, stMult: n }))}</div> : null}
           <Field label={L('جهت', 'Direction')}><select value={o.direction} onChange={(e) => setO({ ...o, direction: e.target.value as BacktestOptions['direction'] })}><option value="both">{L('خرید و فروش', 'Long and short')}</option><option value="long">{L('فقط خرید', 'Long only')}</option><option value="short">{L('فقط فروش', 'Short only')}</option></select></Field>
           <div className="row two">{numIn(L('حد ضرر (درصد، ۰ = ندارد)', 'Stop % (0 = none)'), o.stopPct, (n) => setO({ ...o, stopPct: Math.max(0, n) }))}{numIn(L('حد سود (درصد، ۰ = ندارد)', 'Target % (0 = none)'), o.targetPct, (n) => setO({ ...o, targetPct: Math.max(0, n) }))}</div>
+          <label className="check row-between bt-magnifier"><span className="fa">{L('ذره‌بین کندل', 'Bar magnifier')}</span><input type="checkbox" role="switch" checked={magnify} disabled={!finerInterval(symbol, interval)} onChange={() => setMagnify(!magnify)} /></label>
+          {magnify ? <p className="muted small fa">{finerInterval(symbol, interval) ? L(`حد ضرر و حد سودی که در یک کندل لمس شوند با کندل‌های ${intervalLabel(finerInterval(symbol, interval)!)} به ترتیب واقعی‌شان خوانده می‌شوند.`, `A stop and a target touched in the same bar are read in their real order from ${intervalLabel(finerInterval(symbol, interval)!)} bars.`) : null}</p> : null}
           <div className="row three">{numIn(L('کارمزد هر طرف (درصد)', 'Fee per side %'), o.feePct, (n) => setO({ ...o, feePct: Math.max(0, n) }))}{numIn(L('سرمایه', 'Capital'), o.capital, (n) => setO({ ...o, capital: Math.max(1, n) }))}{numIn(L('سهم هر معامله (درصد)', 'Share per trade %'), o.riskShare, (n) => setO({ ...o, riskShare: Math.min(100, Math.max(1, n)) }))}</div>
           <button className="btn btn-primary" disabled={busy}>{busy ? `${t('loading')}…` : L('اجرای بک‌تست', 'Run the backtest')}</button>
           <button type="button" className="btn btn-quiet sm" onClick={() => { setSymbol(symbol); setInterval(interval); setBottom('backtest'); close(); }}>{scriptApplied ? L('گزارش استراتژی نمااسکریپت روی چارت', 'The NamaScript strategy report on the chart') : L('نوشتن استراتژی با نمااسکریپت', 'Write a strategy in NamaScript')}</button>

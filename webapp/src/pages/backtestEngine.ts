@@ -7,9 +7,10 @@
 // figures, the equity, drawdown and buy-and-hold curves; an optimizer and a walk-forward test sit
 // on top.
 import { atr, bollinger, ema, macd, rsi, sma } from '../engine/indicators.js';
+import * as ind from '../engine/indicators.js';
 import type { Candle } from '../data/types';
 
-export type StrategyId = 'ma_cross' | 'rsi' | 'macd' | 'bollinger' | 'breakout' | 'supertrend';
+export type StrategyId = 'ma_cross' | 'rsi' | 'macd' | 'bollinger' | 'breakout' | 'supertrend' | 'growth_scan';
 export interface StrategyParams { fast: number; slow: number; maType: 'sma' | 'ema'; rsiLen: number; rsiLow: number; rsiHigh: number; bbLen: number; bbMult: number; donchian: number; stLen: number; stMult: number }
 export const DEFAULT_PARAMS: StrategyParams = { fast: 9, slow: 21, maType: 'ema', rsiLen: 14, rsiLow: 30, rsiHigh: 70, bbLen: 20, bbMult: 2, donchian: 20, stLen: 10, stMult: 3 };
 
@@ -30,6 +31,12 @@ export interface BacktestOptions {
   /** Only trades inside this range of bar times (seconds). */
   from?: number | null;
   to?: number | null;
+  /**
+   * TradingView's «Bar magnifier» (OLD core/backtest BacktestReport.kt:209-212, Backtest.firstTouch):
+   * the lower-timeframe bars inside bar `i`, oldest first, so a stop and a target touched in the
+   * same bar are resolved in the order they really happened instead of «the stop first».
+   */
+  magnifier?: ((i: number) => Candle[]) | null;
 }
 export const DEFAULT_OPTIONS: BacktestOptions = { direction: 'both', stopPct: 0, targetPct: 0, feePct: 0.05, capital: 10_000, riskShare: 100 };
 
@@ -82,6 +89,10 @@ export function signals(bars: Candle[], id: StrategyId, p: StrategyParams): numb
       for (let k = i - p.donchian; k < i; k++) { hi = Math.max(hi, h[k]!); lo = Math.min(lo, l[k]!); }
       out[i] = c[i]! > hi ? 1 : c[i]! < lo ? -1 : 0;
     }
+  } else if (id === 'growth_scan') {
+    // As +1/−1: an entry, and a −1 where it leaves (a long-only reader filters the short side out).
+    const held = growthHeld(bars, p.donchian);
+    for (let i = 1; i < bars.length; i++) out[i] = held[i] && !held[i - 1] ? 1 : !held[i] && held[i - 1] ? -1 : 0;
   } else if (id === 'supertrend') {
     const a = atr(h, l, c, p.stLen);
     let up = 0; let dn = 0; let trend = 1;
@@ -98,6 +109,76 @@ export function signals(bars: Candle[], id: StrategyId, p: StrategyParams): numb
     }
   }
   return out;
+}
+
+/**
+ * The screener's growth setups as a strategy (OLD StrategyRules GROWTH_SCAN): in on a SuperTrend
+ * (10, 3) turn up or a close over the prior Donchian ceiling with ADX(14) ≥ 20, out when the
+ * SuperTrend turns down. Long only — it is a rule about growth. Returned as the held state per bar.
+ */
+export function growthHeld(bars: Candle[], channel: number): boolean[] {
+  const c = bars.map((b) => b.c); const h = bars.map((b) => b.h); const l = bars.map((b) => b.l);
+  const X = ind as unknown as { supertrend(h: number[], l: number[], c: number[], p: number, m: number): { trend: (number | null)[] }; adx(h: number[], l: number[], c: number[], p: number): (number | null)[] };
+  const trend = X.supertrend(h, l, c, 10, 3).trend;
+  const adx = X.adx(h, l, c, 14);
+  const held = new Array<boolean>(bars.length).fill(false);
+  let on = false;
+  for (let i = 1; i < bars.length; i++) {
+    const now = trend[i]; const before = trend[i - 1];
+    let ceiling: number | null = null;
+    if (i - 1 >= channel - 1) { ceiling = -Infinity; for (let k = i - channel; k <= i - 1; k++) ceiling = Math.max(ceiling, h[k]!); }
+    const strength = adx[i];
+    const turnedUp = now != null && before != null && now > 0 && before < 0;
+    const brokeOut = ceiling != null && strength != null && c[i]! > ceiling && strength >= 20;
+    on = on ? !(now != null && now < 0) : turnedUp || brokeOut;
+    held[i] = on;
+  }
+  return held;
+}
+
+/** A strategy's orders as a signal set: entries and reversals, or (growth_scan) long entries and exits. */
+export function strategySet(bars: Candle[], id: StrategyId, p: StrategyParams): SignalSet {
+  if (id !== 'growth_scan') return fromSigns(signals(bars, id, p));
+  const held = growthHeld(bars, p.donchian);
+  return {
+    long: held.map((v, i) => v && !(held[i - 1] ?? false)),
+    short: held.map(() => false),
+    exitL: held.map((v, i) => !v && (held[i - 1] ?? false)),
+    exitS: held.map(() => false),
+  };
+}
+
+/**
+ * Where a stop or a target is first touched along `path`, as [time, fill price], or null (OLD
+ * Backtest.firstTouch): each bar walked open → nearer extreme → farther extreme → close; a bar that
+ * opens beyond a level fills at its open, because a gap does not honour a stop's price.
+ */
+export function firstTouch(path: Candle[], long: boolean, stop: number | null, target: number | null): [number, number] | null {
+  for (const k of path) {
+    if (stop != null && (long ? k.o <= stop : k.o >= stop)) return [k.t, k.o];
+    if (target != null && (long ? k.o >= target : k.o <= target)) return [k.t, k.o];
+    const highFirst = k.h - k.o <= k.o - k.l;
+    for (const extreme of highFirst ? [k.h, k.l] : [k.l, k.h]) {
+      const up = extreme === k.h;
+      if (stop != null && (long ? !up && extreme <= stop : up && extreme >= stop)) return [k.t, stop];
+      if (target != null && (long ? up && extreme >= target : !up && extreme <= target)) return [k.t, target];
+    }
+  }
+  return null;
+}
+
+/** The finer bars inside each bar, by time: bar i owns every finer bar from its open to the next bar's (OLD BarMagnifier). */
+export function barMagnifier(bars: Candle[], finer: Candle[]): (i: number) => Candle[] {
+  const buckets: Candle[][] = [];
+  let cursor = 0;
+  for (let i = 0; i < bars.length; i++) {
+    const from = bars[i]!.t; const until = bars[i + 1]?.t ?? Infinity;
+    while (cursor < finer.length && finer[cursor]!.t < from) cursor++;
+    const start = cursor;
+    while (cursor < finer.length && finer[cursor]!.t < until) cursor++;
+    buckets.push(finer.slice(start, cursor));
+  }
+  return (i) => buckets[i] ?? [];
 }
 
 /** Entry and exit signals per bar: a script's `strategy.entry/exit/close`, or two alert conditions. */
@@ -192,9 +273,14 @@ export function simulate(bars: Candle[], s: SignalSet, o: BacktestOptions): BtRe
         l.hi = Math.max(l.hi, b.h); l.lo = Math.min(l.lo, b.l);
         const stop = o.stopPct > 0 ? l.entry * (1 - l.dir * o.stopPct / 100) : null;
         const target = o.targetPct > 0 ? l.entry * (1 + l.dir * o.targetPct / 100) : null;
-        // Within a bar the stop is assumed to come first: the cautious reading.
+        // With the magnifier, the finer bars' paths decide which level came first; without it the
+        // stop is assumed to come first: the cautious reading.
         let reason: ExitReason | null = null; let at = 0;
-        if (stop != null && (l.dir === 1 ? b.l <= stop : b.h >= stop)) { reason = 'stop'; at = stop; }
+        const finer = o.magnifier?.(i);
+        if (finer?.length && (stop != null || target != null)) {
+          const hit = firstTouch(finer, l.dir === 1, stop, target);
+          if (hit) { at = hit[1]; reason = stop != null && at === stop ? 'stop' : target != null && at === target ? 'target' : (l.dir === 1 ? at <= l.entry : at >= l.entry) ? 'stop' : 'target'; }
+        } else if (stop != null && (l.dir === 1 ? b.l <= stop : b.h >= stop)) { reason = 'stop'; at = stop; }
         else if (target != null && (l.dir === 1 ? b.h >= target : b.l <= target)) { reason = 'target'; at = target; }
         if (reason) { closeLot(l, at, b.t, i, reason); lots = lots.filter((x) => x !== l); }
       }
