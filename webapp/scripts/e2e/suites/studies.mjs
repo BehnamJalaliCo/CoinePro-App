@@ -360,6 +360,8 @@ export default async function ({ test, open, ready, pc, expect }) {
     await env.page.mouse.click(at.x, at.y);
     await env.page.mouse.dblclick(at.x, at.y);
     expect(await idx() === 300, `a plain click moved the replay: ${await idx()}`);
+    // A click right after a double click is read by the chart as part of it: wait as a hand would.
+    await env.page.waitForTimeout(700);
     await env.page.keyboard.down('Alt');
     await env.page.mouse.click(at.x, at.y);
     await env.page.keyboard.up('Alt');
