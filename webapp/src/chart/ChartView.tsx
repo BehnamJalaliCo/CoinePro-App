@@ -48,9 +48,15 @@ import { NavButtons, PaneControls } from './NavButtons';
 import { usePlacement } from './studyPlacement';
 import { SettingsHost } from '../shell/SettingsDialog';
 import { themeColours } from '../shell/SettingsDialog';
+import { ChartStatus } from './ChartStatus';
 import './chart-x.css';
 
-export interface HistoryResult { bars: Candle[]; more: boolean }
+export interface HistoryResult {
+  bars: Candle[];
+  more: boolean;
+  /** When the bars are the saved picture rather than a fresh answer: the time they were saved. */
+  savedAt?: number | null;
+}
 
 export interface ChartFeed {
   /** Bars ending now (or before `before`, a bar time in seconds), oldest first, and whether older exist. */
@@ -157,6 +163,7 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
   const [last, setLast] = useState<Candle | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [attempt, setAttempt] = useState(0);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
   const [legendRows, setLegendRows] = useState<StudyLegendRow[]>([]);
   const [panes, setPanes] = useState<{ top: number; height: number }[]>([]);
   const [menuAt, setMenuAt] = useState<MenuAt | null>(null);
@@ -720,8 +727,9 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
     let derivedTimer: ReturnType<typeof setTimeout> | null = null;
     setState('loading'); setHoverIdx(null);
     more.current = false;
-    feed.history(symbol, interval).then(({ bars: data, more: hasMore }) => {
+    feed.history(symbol, interval).then(({ bars: data, more: hasMore, savedAt: saved }) => {
       if (!alive) return;
+      setSavedAt(saved ?? null);
       bars.current = data;
       more.current = hasMore;
       paintPrice(); paintVolume();
@@ -881,9 +889,7 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
       {menuAt?.kind === 'price' ? <PriceScaleMenu at={menuAt} onClose={() => setMenuAt(null)} /> : null}
       {menuAt?.kind === 'time' ? <TimeScaleMenu at={menuAt} onClose={() => setMenuAt(null)} /> : null}
       {state === 'loading' ? <div className="chart-state fa">{t('loading')}…</div> : null}
-      {state === 'error' ? (
-        <div className="chart-state fa">{t('chartFailed')} <button className="link" onClick={() => setAttempt((a) => a + 1)}>{t('retry')}</button></div>
-      ) : null}
+      <ChartStatus state={state} savedAt={savedAt} onRetry={() => setAttempt((a) => a + 1)} />
     </div>
   );
 }

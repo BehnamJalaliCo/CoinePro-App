@@ -24,6 +24,7 @@ import { useL } from '../pages/kit';
 import { openTrade, publishIdea } from './publish';
 import './topbar.css';
 import { ChartTypeParamsButton } from '../chart/ChartTypeParams';
+import { KeepWatchingButton } from './KeepWatching';
 
 type MenuId = 'type' | 'layout' | 'templates' | 'grid' | 'snapshot' | null;
 
@@ -50,7 +51,7 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
   const lang = usePrefs((s) => s.lang);
   const fa = lang === 'fa';
   const favTypes = usePrefs((s) => s.favChartTypes);
-  const { symbol, chartType } = useActive();
+  const { symbol, interval, chartType } = useActive();
   const { canUndo, canRedo, drawingLayer: layer, bumpDrawings } = useChartBus();
   const bump = () => { if (layer) bumpDrawings(layer.canUndo(), layer.canRedo(), layer.getDrawings().length); };
   const [menu, setMenu] = useState<MenuId>(null);
@@ -138,6 +139,7 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
       <button className="ib desk-only tb-b qs-btn" title={`${t('quickSearch')} (Ctrl+K)`} onClick={() => setQuick(true)}><Icon name="search" size="md" /></button>
       <button className="ib desk-only tb-c" title={t('settings')} onClick={onSettings}><Icon name="settings2" size="md" /></button>
       <button className="ib desk-only tb-b" title={t('fullscreen')} onClick={fullscreen}><Icon name="maximize2" size="md" /></button>
+      <KeepWatchingButton symbol={symbol} interval={interval} className="desk-only tb-c" />
       <button ref={snapBtn} className={`ib desk-only tb-c snap-btn${menu === 'snapshot' ? ' open' : ''}`} title={t('snapshot')} aria-haspopup="menu" aria-expanded={menu === 'snapshot'} onClick={() => toggle('snapshot')}><Icon name="camera" size="md" /></button>
       <button className="ib desk-only tb-b publish-btn" title={L('انتشار ایده در انجمن', 'Publish idea')} onClick={() => void publishIdea()}><Icon name="ph-lightbulb" size="md" /></button>
       <span className="sep desk-only tb-b" />

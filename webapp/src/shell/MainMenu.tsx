@@ -8,10 +8,13 @@ import { useSession } from '../data/session';
 import { Icon } from '../ui/Icon';
 import { useL } from '../pages/kit';
 import './topbar.css';
+import './shell.css';
 
-// The menu behind the button at the top left, TradingView's: the help centre and the keyboard
-// shortcuts, the dark theme and drawings-toolbar switches and the language, then every screen of
-// the app in the app's own groups, with a search across them.
+// The menu behind the button at the top left: who the reader is, the Pro card, the dark theme and
+// drawings-toolbar switches and the language, then every screen of the app in the app's own groups
+// — one door per feature (feature/menu MenuCatalogue.kt): a page that is a face of another (the
+// heat map and the screener behind the markets hub) or already has its door (Pro, notification
+// settings) is not listed, though the search finds it.
 type RailState = { railHidden?: boolean; setRailHidden?(on: boolean): void };
 
 export function MainMenu({ onClose, onSignIn }: { onClose(): void; onSignIn(): void }) {
@@ -34,7 +37,7 @@ export function MainMenu({ onClose, onSignIn }: { onClose(): void; onSignIn(): v
     return () => window.removeEventListener('keydown', esc);
   }, [onClose]);
   const needle = q.trim().toLowerCase();
-  const pages = useMemo(() => PAGES.filter((p) => p.group && (!needle || p.fa.includes(q.trim()) || p.en.toLowerCase().includes(needle))), [needle, q]);
+  const pages = useMemo(() => PAGES.filter((p) => p.group && (needle ? p.fa.includes(q.trim()) || p.en.toLowerCase().includes(needle) : p.directory !== false)), [needle, q]);
   const dark = isDark(theme);
   const go = (fn: () => void) => () => { fn(); onClose(); };
   return createPortal(
@@ -48,6 +51,13 @@ export function MainMenu({ onClose, onSignIn }: { onClose(): void; onSignIn(): v
           </div>
           {!signed ? <button className="btn btn-primary sm" onClick={() => { onClose(); onSignIn(); }}>{t('signIn')}</button> : null}
         </div>
+        <button className="drawer-pro" onClick={go(() => open('pro'))}>
+          <span className="grow">
+            <b className={fa ? 'fa' : ''}>{L('پرو چارت پرمیوم', 'Pro Chart Premium')}</b>
+            <small className={fa ? 'fa' : ''}>{L('تا ۱۶ چارت کنار هم، اندیکاتور و هشدار بیشتر، چیدمان‌های ذخیره‌شده.', 'Up to 16 charts side by side, more indicators and alerts, saved layouts.')}</small>
+          </span>
+          <span className={`pill${fa ? ' fa' : ''}`}>{L('خرید', 'Buy')}</span>
+        </button>
         <label className="search-field drawer-search">
           <Icon name="search" size="sm" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('search')} autoFocus dir="auto" />
@@ -55,16 +65,6 @@ export function MainMenu({ onClose, onSignIn }: { onClose(): void; onSignIn(): v
         <div className="drawer-body">
           {!needle ? (
             <section className="drawer-tv">
-              <button className="drawer-row" onClick={go(() => open('markets'))}>
-                <Icon name="ph-squares-four" size="sm" /><span className={fa ? 'fa' : ''}>{L('خانه‌ی بازار', 'Home')}</span>
-              </button>
-              <button className="drawer-row" onClick={go(() => open('help'))}>
-                <Icon name="ph-question" size="sm" /><span className={fa ? 'fa' : ''}>{L('مرکز راهنما', 'Help Center')}</span>
-              </button>
-              <button className="drawer-row" onClick={go(() => open('help', 'shortcuts'))}>
-                <Icon name="ph-keyboard" size="sm" /><span className={fa ? 'fa' : ''}>{L('میانبرهای صفحه‌کلید', 'Keyboard shortcuts')}</span><kbd className="num">?</kbd>
-              </button>
-              <div className="menu-sep" />
               <button className="drawer-row" role="switch" aria-checked={dark} onClick={() => setTheme(dark ? 'light' : 'dark')}>
                 <Icon name="ph-moon" size="sm" /><span className={fa ? 'fa' : ''}>{L('تم تیره', 'Dark theme')}</span>
                 <span className={`switch${dark ? ' on' : ''}`} aria-hidden><i /></span>

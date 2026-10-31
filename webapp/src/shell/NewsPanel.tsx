@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePrefs, useT } from '../state/prefs';
 import { useMarket } from '../state/market';
-import { articleBody, cryptoNews, forexNews, type NewsItem } from '../data/intel';
+import { articleBody, cryptoNews, forexNews, SAVED_KEYS, type NewsItem } from '../data/intel';
+import { oldestSaved, useSaved } from '../data/saved';
+import { SavedLine } from './Offline';
 import { backendOf, instrumentOf } from '../data/symbols';
 import { hasLogo, SymbolLogo } from '../ui/SymbolLogo';
 import { Icon } from '../ui/Icon';
@@ -76,6 +78,7 @@ export function NewsPanel() {
   const seen = useRef<Set<string> | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const now = useNow(30_000);
+  const savedAt = useSaved((s) => oldestSaved(s.at, [SAVED_KEYS.cryptoNews, SAVED_KEYS.forexNews]));
   const market = backendOf(symbol) === 'tradeyar' ? 'crypto' : 'forex';
   const inst = instrumentsMap[symbol] ?? instrumentOf(symbol);
 
@@ -158,6 +161,7 @@ export function NewsPanel() {
           </button>
         ))}
       </nav>
+      <SavedLine at={savedAt} />
       <div className="panel-body" ref={listRef}>
         {items === null ? <div className="empty fa">{t('loading')}…</div> : null}
         {items !== null && !shown.length ? <div className="empty fa">{failed ? t('networkError') : t('nothingFound')}</div> : null}

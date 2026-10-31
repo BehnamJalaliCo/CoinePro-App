@@ -1,0 +1,52 @@
+/* Shell pieces: the offline banner, the saved-age line, the markets hub switch, the menu's Pro
+   card, the chart's failure actions and the picture-in-picture window. No blur, no coloured
+   shadow, no gradient. */
+
+.offline-bar {
+  position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 140;
+  display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px);
+  padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--down) 12%, var(--bg-elevated)); color: var(--text-2);
+  font-size: var(--fs-small, 12px); box-shadow: var(--shadow-pop);
+}
+.offline-bar .icon { color: var(--down); flex: none; }
+@media (max-width: 760px) { .offline-bar { bottom: 64px; } }
+
+.saved-line { display: flex; align-items: center; gap: 6px; padding: 4px 12px; color: var(--text-3); font-size: 11px; line-height: 16px; }
+.saved-line .icon { flex: none; }
+.saved-line.on-chart { position: absolute; left: 8px; bottom: 6px; z-index: 6; padding: 2px 8px; border-radius: 4px; background: color-mix(in srgb, var(--bg) 88%, transparent); pointer-events: none; }
+.saved-line.on-page { padding: 0 0 8px; }
+
+.hub-switch { display: inline-flex; gap: 2px; padding: 2px; margin: 0 0 12px; border-radius: 8px; background: var(--bg-sunken); }
+.hub-switch button { height: 30px; padding: 0 14px; border-radius: 6px; color: var(--text-2); font-weight: 500; }
+.hub-switch button:hover { color: var(--text); }
+.hub-switch button[aria-selected='true'] { background: var(--bg-elevated); color: var(--text); box-shadow: 0 0 0 1px var(--line); }
+
+.drawer-pro { display: flex; align-items: center; gap: 10px; width: calc(100% - 24px); margin: 4px 12px 10px; padding: 10px 12px; border-radius: 10px; background: var(--gold-strong); color: #1A1406; text-align: start; }
+.drawer-pro:hover { background: var(--gold); color: #fff; }
+.drawer-pro .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.drawer-pro b { font-size: 14px; }
+.drawer-pro small { font-size: 11px; opacity: 0.8; line-height: 16px; }
+.drawer-pro .pill { flex: none; padding: 2px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.35); font-size: 11px; font-weight: 700; }
+
+.chart-fail { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.chart-fail .chart-fail-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.chart-fail .chart-fail-auto { color: var(--text-3); font-size: 11px; }
+
+.help-academy { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 10px 12px; text-align: start; width: 100%; }
+.help-academy .grow { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+
+/* The picture-in-picture window: four facts and a line, nothing else. */
+.pip-body { margin: 0; height: 100vh; background: var(--bg); color: var(--text); overflow: hidden; }
+.pip { box-sizing: border-box; height: 100%; padding: 8px; display: flex; flex-direction: column; justify-content: center; gap: 4px; direction: ltr; }
+.pip-head { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-2); }
+.pip-head .pip-iv { color: var(--text-3); }
+.pip-price { font-size: 20px; font-weight: 600; line-height: 1.2; }
+.pip-chg { font-size: 11px; }
+.pip-chg.up { color: var(--up); }
+.pip-chg.down { color: var(--down); }
+.pip-line { width: 100%; height: 22px; margin-top: 4px; }
+.pip-cd { font-size: 11px; color: var(--text-3); }
+
+/* «هنوز بررسی نشده»: neutral, not a fault — the alert simply has not met a live price yet. */
+.badge.unchecked { background: transparent; box-shadow: inset 0 0 0 1px var(--line-strong, var(--line)); color: var(--text-3); }

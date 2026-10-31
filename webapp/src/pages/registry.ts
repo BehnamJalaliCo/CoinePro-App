@@ -25,6 +25,12 @@ export interface PageDef {
   icon: string;
   group: MenuGroup | null;
   member?: boolean;
+  /**
+   * False for a page that only repeated a door the reader already has — a face of the markets hub,
+   * the Pro card at the top of the menu, a row of the profile (feature/menu MenuCatalogue.kt
+   * `directory`). The menu does not list it, but its search still finds it.
+   */
+  directory?: boolean;
   component: LazyExoticComponent<ComponentType<PageProps>>;
 }
 
@@ -32,8 +38,8 @@ const P = (loader: () => Promise<{ default: ComponentType<PageProps> }>) => lazy
 
 export const PAGES: PageDef[] = [
   { id: 'markets', path: 'markets', fa: 'بازارها', en: 'Markets', icon: 'ph-squares-four', group: 'market', component: P(() => import('./MarketsPage')) },
-  { id: 'heatmap', path: 'heatmap', fa: 'هیت‌مپ بازار', en: 'Heat map', icon: 'ph-columns', group: 'market', component: P(() => import('./HeatmapPage')) },
-  { id: 'screener', path: 'screener', fa: 'اسکرینر', en: 'Screener', icon: 'ph-funnel', group: 'market', component: P(() => import('./ScreenerPage')) },
+  { id: 'heatmap', path: 'heatmap', fa: 'هیت‌مپ بازار', en: 'Heat map', icon: 'ph-columns', group: 'market', directory: false, component: P(() => import('./HeatmapPage')) },
+  { id: 'screener', path: 'screener', fa: 'اسکرینر', en: 'Screener', icon: 'ph-funnel', group: 'market', directory: false, component: P(() => import('./ScreenerPage')) },
   { id: 'news', path: 'market/news', fa: 'اخبار بازار', en: 'News', icon: 'ph-newspaper', group: 'market', component: P(() => import('./NewsPage')) },
   { id: 'calendar', path: 'market/calendar', fa: 'تقویم اقتصادی', en: 'Economic calendar', icon: 'ph-calendar-blank', group: 'market', component: P(() => import('./CalendarPage')) },
 
@@ -53,7 +59,7 @@ export const PAGES: PageDef[] = [
   { id: 'signal', path: 'signal', fa: 'سیگنال', en: 'Signal', icon: 'ph-lightning', group: null, component: P(() => import('./SignalPage')) },
   { id: 'assistant', path: 'ai/assistant', fa: 'دستیار', en: 'Assistant', icon: 'ph-robot', group: 'analysis', member: true, component: P(() => import('./AssistantPage')) },
 
-  { id: 'academy', path: 'academy', fa: 'آکادمی', en: 'Academy', icon: 'ph-crown', group: 'learn', member: true, component: P(() => import('./AcademyPage')) },
+  { id: 'academy', path: 'academy', fa: 'آکادمی', en: 'Academy', icon: 'ph-crown', group: 'learn', member: true, directory: false, component: P(() => import('./AcademyPage')) },
   { id: 'lesson', path: 'academy/lesson', fa: 'درس', en: 'Lesson', icon: 'ph-crown', group: null, member: true, component: P(() => import('./LessonPage')) },
   { id: 'community', path: 'community', fa: 'انجمن', en: 'Community', icon: 'ph-chat-circle', group: 'learn', component: P(() => import('./CommunityPage')) },
   { id: 'thread', path: 'community/post', fa: 'گفتگو', en: 'Thread', icon: 'ph-chat-circle', group: null, component: P(() => import('./ThreadPage')) },
@@ -63,14 +69,14 @@ export const PAGES: PageDef[] = [
   { id: 'privacy', path: 'legal/privacy', fa: 'حریم خصوصی', en: 'Privacy', icon: 'ph-info', group: null, component: P(() => import('./LegalPage')) },
 
   { id: 'panel', path: 'panel', fa: 'پنل کاربری', en: 'Your panel', icon: 'ph-identification-card', group: 'account', member: true, component: P(() => import('../usercp/PanelPage')) },
-  { id: 'home', path: 'home', fa: 'خانه و خلاصه‌ی حساب', en: 'Home', icon: 'ph-user-circle', group: 'account', member: true, component: P(() => import('./HomePage')) },
+  { id: 'home', path: 'home', fa: 'خانه و خلاصه‌ی حساب', en: 'Home and account summary', icon: 'ph-user-circle', group: 'account', member: true, directory: false, component: P(() => import('./HomePage')) },
   { id: 'profile', path: 'profile', fa: 'پروفایل و تنظیمات', en: 'Profile and settings', icon: 'ph-user-circle', group: 'account', component: P(() => import('./ProfilePage')) },
-  // The older exchange-membership screen is now the free-VIP funnel (vip-join); the address stays.
-  { id: 'membership', path: 'membership', fa: 'عضویت صرافی', en: 'Exchange membership', icon: 'ph-crown', group: null, member: true, component: P(() => import('./MembershipPage')) },
+  // The exchange membership (UID and referral) has its own row again, as on the phone's menu.
+  { id: 'membership', path: 'membership', fa: 'عضویت صرافی', en: 'Exchange membership', icon: 'ph-crown', group: 'account', member: true, component: P(() => import('./MembershipPage')) },
   { id: 'verify', path: 'account/verify', fa: 'احراز هویت', en: 'Verification', icon: 'ph-check', group: 'account', member: true, component: P(() => import('./VerifyPage')) },
   { id: 'activity', path: 'activity', fa: 'فعالیت', en: 'Activity', icon: 'ph-bell-ringing', group: 'account', member: true, component: P(() => import('./ActivityPage')) },
-  { id: 'notifications', path: 'notifications', fa: 'تنظیمات اعلان', en: 'Notification settings', icon: 'ph-bell', group: 'account', component: P(() => import('./NotificationsPage')) },
-  { id: 'pro', path: 'pro', fa: 'پرو چارت پرمیوم', en: 'Pro Chart Premium', icon: 'ph-crown', group: 'account', component: P(() => import('./ProPage')) },
+  { id: 'notifications', path: 'notifications', fa: 'تنظیمات اعلان', en: 'Notification settings', icon: 'ph-bell', group: 'account', directory: false, component: P(() => import('./NotificationsPage')) },
+  { id: 'pro', path: 'pro', fa: 'پرو چارت پرمیوم', en: 'Pro Chart Premium', icon: 'ph-crown', group: 'account', directory: false, component: P(() => import('./ProPage')) },
   { id: 'delete', path: 'account/delete', fa: 'حذف حساب', en: 'Delete account', icon: 'ph-trash', group: 'account', member: true, component: P(() => import('./DeleteAccountPage')) },
   { id: 'reset', path: 'reset', fa: 'بازیابی رمز', en: 'Reset password', icon: 'ph-sign-in', group: null, component: P(() => import('./ResetPage')) },
   // The free VIP (area H): TradeYar's sign-up funnel and rules on the web, and the user site's screens.

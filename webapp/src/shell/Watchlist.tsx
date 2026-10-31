@@ -20,6 +20,9 @@ import { faNum } from '../i18n/time';
 import type { Instrument, Market, Ticker } from '../data/types';
 import type { StringKey } from '../i18n/strings';
 import './panels-x.css';
+import { oldestSaved, useSaved } from '../data/saved';
+import { SAVED_TICKERS } from '../data/prices';
+import { SavedLine } from './Offline';
 
 const SECTION_LABEL: Record<Market, StringKey> = { crypto: 'crypto', forex: 'forex', metals: 'metals', indices: 'indices', energy: 'energy' };
 const MARKETS: Market[] = ['crypto', 'forex', 'metals', 'indices', 'energy'];
@@ -57,6 +60,7 @@ export function openAlertDialog(detail: Record<string, unknown>): void {
 interface Group { key: string; title: string | null; sectionId?: string; collapsed: boolean; list: string[]; total: number }
 
 export function Watchlist({ onAdd }: { onAdd(): void }) {
+  const savedAt = useSaved((s) => oldestSaved(s.at, [SAVED_TICKERS.crypto, SAVED_TICKERS.fx]));
   const t = useT();
   const L = useL();
   const lang = usePrefs((s) => s.lang);
@@ -266,6 +270,7 @@ export function Watchlist({ onAdd }: { onAdd(): void }) {
           {wl.lists.length > 1 ? <button className="menu-item" onClick={() => { setMenu(null); if (window.confirm(L(`فهرست «${activeName}» حذف شود؟`, `Delete "${activeName}"?`))) wl.deleteList(wl.active); }}><Icon name="ph-trash" size="sm" /><span>{L('حذف فهرست', 'Delete list')}</span></button> : null}
         </div></Dropdown>
       ) : null}
+      <SavedLine at={savedAt} />
       <div className="wl-scroll">
         {view.table ? (
           <div className="wl-cols" role="row" style={grid}>

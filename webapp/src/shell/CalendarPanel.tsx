@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePrefs, useT } from '../state/prefs';
-import { calendarWeek, type CalendarEvent } from '../data/intel';
+import { calendarWeek, SAVED_KEYS, type CalendarEvent } from '../data/intel';
+import { useSaved } from '../data/saved';
+import { SavedLine } from './Offline';
 import { instrumentOf } from '../data/symbols';
 import { countdown } from '../data/sessionClock';
 import { eventKey, readReminders, writeReminders, type Reminder } from '../data/reminders';
@@ -63,6 +65,7 @@ export function CalendarPanel() {
   const body = useRef<HTMLDivElement>(null);
   const actuals = useRef<Map<string, string>>(new Map());
   const now = useNow(1000);
+  const savedAt = useSaved((s) => s.at[SAVED_KEYS.calendar] ?? null);
 
   useEffect(() => {
     let alive = true;
@@ -144,6 +147,7 @@ export function CalendarPanel() {
         <label className="cal-related fa" title={related.join(', ')}><input type="checkbox" checked={prefs.related} onChange={(e) => setPrefs((p) => ({ ...p, related: e.target.checked }))} /><span>{L('مرتبط با', 'Moves')} <b className="sym">{symbol}</b></span></label>
       </div>
       {q != null ? <label className="wl-add-field alerts-search"><Icon name="search" size="sm" /><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={L('جستجوی رویداد', 'Search events')} onKeyDown={(e) => { if (e.key === 'Escape') setQ(null); }} /></label> : null}
+      <SavedLine at={savedAt} />
       <div className="cal-cols" role="row">
         <span className="fa">{L('زمان', 'Time')}</span><span /><span className="fa">{L('رویداد', 'Event')}</span>
         <span className="fa r">{L('واقعی', 'Actual')}</span><span className="fa r">{L('پیش‌بینی', 'Forecast')}</span><span className="fa r">{L('قبلی', 'Prior')}</span><span />

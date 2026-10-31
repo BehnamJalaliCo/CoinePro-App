@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useT } from '../state/prefs';
 import { usePage } from '../state/page';
 import { useSession } from '../data/session';
-import { articleBody, cryptoNews, forexNews, type NewsItem } from '../data/intel';
+import { articleBody, cryptoNews, forexNews, SAVED_KEYS, type NewsItem } from '../data/intel';
+import { useSaved } from '../data/saved';
+import { SavedLine } from '../shell/Offline';
 import { member, str, ms } from '../data/member';
 import { faAgo } from '../i18n/time';
 import { Tabs, useLoad, State } from './kit';
@@ -24,6 +26,7 @@ export default function NewsPage({ param }: { param: string | null }) {
   const [saved, setSaved] = useState<NewsItem[]>(readSaved);
   const [story, setStory] = useState<NewsItem | null>(null);
   const [body, setBody] = useState<string | null>(null);
+  const savedAt = useSaved((s) => (tab === 'crypto' ? s.at[SAVED_KEYS.cryptoNews] : tab === 'forex' ? s.at[SAVED_KEYS.forexNews] : undefined) ?? null);
   const feed = useLoad(async () => {
     if (tab === 'crypto') return cryptoNews(50);
     if (tab === 'forex') return forexNews();
@@ -79,6 +82,7 @@ export default function NewsPage({ param }: { param: string | null }) {
         <span className="ws-spacer" />
         <button className="link-btn" onClick={() => open('calendar')}>{t('calendar')}</button>
       </div>
+      <SavedLine at={savedAt} className="on-page" />
       <State loading={feed.loading} error={feed.error} empty={!list.length} onRetry={feed.reload}>
         {list.map((n) => (
           <div key={n.id} className={`news-card${n.importance >= 7 ? ' hot' : ''}`} dir="rtl">

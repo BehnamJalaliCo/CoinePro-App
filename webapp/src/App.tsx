@@ -35,6 +35,7 @@ import { StudiesHost } from './shell/StudiesHost';
 import { TradeHost } from './trade/TradeHost';
 import { VipLayer } from './vip/VipLayer';
 import { NotificationOffer } from './shell/NotificationOffer';
+import { OfflineBar } from './shell/Offline';
 
 export function App() {
   const symbol = usePrefs((s) => s.symbol);
@@ -62,6 +63,12 @@ export function App() {
   useRoute();
 
   useEffect(() => startPanel(), []);
+  // «نماد دیگر» on a chart that did not load, and anything else that asks for the symbol search.
+  useEffect(() => {
+    const on = () => setSearch('');
+    window.addEventListener('pc:symbol-search', on);
+    return () => window.removeEventListener('pc:symbol-search', on);
+  }, []);
   useEffect(() => { applyTheme(theme); }, [theme]);
   useEffect(() => { document.documentElement.lang = lang; }, [lang]);
 
@@ -133,6 +140,7 @@ export function App() {
       {studyUid ? <StudySettings uid={studyUid} onClose={() => setStudyUid(null)} /> : null}
       {alertAt !== undefined ? <AlertDialog price={alertAt ?? undefined} onClose={() => setAlertAt(undefined)} /> : null}
       <AlertToast />
+      <OfflineBar />
       <AlertHost />
       <StudiesHost />
       <TradeHost onSignIn={() => setSignIn(true)} />

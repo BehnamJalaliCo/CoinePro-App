@@ -8,6 +8,7 @@ import { instrumentOf, marketOf } from '../data/symbols';
 import { loadHistory } from '../data/candles';
 import { rsi, ema, macd, bollinger, atr } from '../engine/indicators.js';
 import { Tabs, downloadCsv, pct, useL } from './kit';
+import { HubSwitch } from './MarketsHub';
 import { useWatchlist } from '../state/watchlist';
 import type { PageProps } from './registry';
 import { Icon } from '../ui/Icon';
@@ -239,6 +240,7 @@ export default function ScreenerPage({ param = null }: Partial<PageProps> = {}) 
 
   return (
     <div className="page-inner">
+      <HubSwitch current="screener" />
       <div className="row scr-mode"><Tabs value={mode} onChange={setMode} tabs={[{ id: 'table', label: L('جدول', 'Table') }, { id: 'growth', label: L('نشانه‌های رشد', 'Growth cues') }]} /></div>
       <div className="row">
         <Tabs value={market} onChange={(m) => { setMarket(m); setScan({}); }} tabs={[{ id: 'all', label: t('all') }, { id: 'crypto', label: t('crypto') }, { id: 'forex', label: t('forex') }, { id: 'metals', label: t('metals') }, { id: 'indices', label: t('indices') }, { id: 'energy', label: t('energy') }]} />

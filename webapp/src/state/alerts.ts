@@ -23,6 +23,8 @@ import { barsFor } from '../data/symbolStats';
 import { lastQuote, watchQuote } from '../data/quote';
 import { indicatorSeries } from '../data/technicals';
 import { inQuietHours, playSound, readNotify, type SoundId } from './notify';
+import { useSaved } from '../data/saved';
+import { SAVED_TICKERS } from '../data/prices';
 
 export type AlertCondition =
   | 'above' | 'below' | 'cross' | 'cross_up' | 'cross_down'
@@ -78,6 +80,8 @@ export interface AlertPreset { name: string; settings: Partial<PriceAlert> }
 const KEY = 'pc.alerts.v1';
 const LOG_KEY = 'pc.alerts.log.v1';
 const PRESET_KEY = 'pc.alerts.presets.v1';
+const CHECKED_KEY = 'pc.alerts.checked.v1';
+const readChecked = (): number | null => { try { const v = Number(localStorage.getItem(CHECKED_KEY)); return Number.isFinite(v) && v > 0 ? v : null; } catch { return null; } };
 function readArr<T>(key: string): T[] { try { const v = JSON.parse(localStorage.getItem(key) ?? '[]') as unknown; return Array.isArray(v) ? (v as T[]) : []; } catch { return []; } }
 
 export type NewAlert = Partial<PriceAlert> & { symbol: string; condition: AlertCondition; value: number };
@@ -89,6 +93,11 @@ interface AlertsState {
   /** Firings the reader has not looked at yet (the log's badge). */
   unseen: number;
   presets: AlertPreset[];
+  /**
+   * When a pass last read live prices (ms), or null if none ever has — one time for the whole list,
+   * because a pass reads every alert's symbols together (core/notifications AlertReach.kt).
+   */
+  checkedAt: number | null;
   /** `serverId`: the alert already exists on the account (made by the alert centre); only watch it here. */
   add(symbol: string, condition: AlertCondition, value: number, serverId?: string): void;
   /** A full alert; returns its id. */
@@ -145,6 +154,7 @@ export const useAlerts = create<AlertsState>((set, get) => {
     log: readArr<AlertLogEntry>(LOG_KEY),
     unseen: 0,
     presets: readArr<AlertPreset>(PRESET_KEY),
+    checkedAt: readChecked(),
     add: (symbol, condition, value, serverId) => { get().create({ symbol, condition, value, serverId }); },
     create: (input) => {
       const a: PriceAlert = { ...input, id: uuid(), active: true, createdAt: Date.now() } as PriceAlert;
@@ -203,6 +213,15 @@ export const useAlerts = create<AlertsState>((set, get) => {
     },
   };
 });
+
+/**
+ * «هنوز بررسی نشده»: the ids of alerts created since the last pass that read live prices. Every
+ * active alert when no pass ever succeeded; never a paused one (the reader told it not to watch),
+ * never one with no creation time (rows from before the field existed).
+ */
+export function uncheckedIds(list: Pick<PriceAlert, 'id' | 'active' | 'createdAt'>[], checkedAt: number | null): Set<string> {
+  return new Set(list.filter((a) => a.active && (a.createdAt ?? 0) > 0 && (checkedAt == null || a.createdAt > checkedAt)).map((a) => a.id));
+}
 
 // ── Describing ────────────────────────────────────────────────────────────────────────────────────
 export const CONDITION_NAMES: Record<AlertCondition, { fa: string; en: string; sym: string }> = {
@@ -387,9 +406,18 @@ export function startAlertWatch(): void {
     useAlerts.setState({ list: next });
     try { localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* ignore */ }
   };
-  useMarket.subscribe((m) => {
+  let checkedSaved = 0;
+  useMarket.subscribe((m, p) => {
+    // A pass read live prices: every alert created before it has now been checked at least once.
+    if (m.liveAt && m.liveAt !== p.liveAt) {
+      useAlerts.setState({ checkedAt: m.liveAt });
+      if (m.liveAt - checkedSaved > 15_000) { checkedSaved = m.liveAt; try { localStorage.setItem(CHECKED_KEY, String(m.liveAt)); } catch { /* ignore */ } }
+    }
+    if (m.tickers === p.tickers) return;
     const st = useAlerts.getState();
     if (!st.list.some((a) => a.active)) return;
+    // Saved prices shown before the first poll answers are a picture, not a market: never judged.
+    const saved = useSaved.getState().at;
     const now = Date.now();
     let changed = false;
     const next = st.list.map((a) => {
@@ -397,6 +425,7 @@ export function startAlertWatch(): void {
       if (a.expiresAt && a.expiresAt < now) { changed = true; return { ...a, active: false, expired: true }; }
       const tk = m.tickers[a.symbol];
       if (!tk) return a;
+      if (saved[backendOf(a.symbol) === 'tradeyar' ? SAVED_TICKERS.crypto : SAVED_TICKERS.fx] != null) return a;
       const r = evaluate(a, tk.last, now);
       if (!r?.hit) return a;
       const after = fire(a, now);

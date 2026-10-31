@@ -323,7 +323,7 @@ export default async function ({ test, open, ready, pc, expect }) {
     const h1 = await env.page.$eval('.ws-bottom-body', (e) => e.getBoundingClientRect().height);
     expect(h1 > h0 + 60, `resize ${h0} → ${h1}`);
     await env.page.dblclick('.dock-grip');
-    expect(Math.abs((await env.page.$eval('.ws-bottom-body', (e) => e.getBoundingClientRect().height)) - 300) < 2, 'double-click reset');
+    expect(Math.abs((await env.page.$eval('.ws-bottom-body', (e) => e.getBoundingClientRect().height)) - 320) < 2, 'double-click reset (320)');
     await env.page.click('.ws-bottom-tabs [aria-label="Maximize panel"], .ws-bottom-tabs [aria-label="بزرگ‌ترین اندازه"]');
     expect((await env.page.$eval('.ws-bottom-body', (e) => e.getBoundingClientRect().height)) > 600, 'maximise');
     return env;

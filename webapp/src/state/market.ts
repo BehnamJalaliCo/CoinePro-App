@@ -7,13 +7,18 @@ import { instrumentOf } from '../data/symbols';
 interface MarketState {
   tickers: Record<string, Ticker>;
   instruments: Record<string, Instrument>;
+  /** When live prices last arrived from a backend (ms), 0 before the first; saved tickers do not count. */
+  liveAt: number;
   put(tickers: Ticker[]): void;
+  markLive(at: number): void;
   putInstruments(list: Instrument[]): void;
 }
 
 export const useMarket = create<MarketState>((set) => ({
   tickers: {},
   instruments: {},
+  liveAt: 0,
+  markLive: (at) => set({ liveAt: at }),
   put: (list) => set((s) => {
     const next = { ...s.tickers };
     for (const t of list) next[t.symbol] = t;

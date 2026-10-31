@@ -177,3 +177,4 @@ x-circle
 check-circle
 lock-key-open
 handshake
+picture-in-picture

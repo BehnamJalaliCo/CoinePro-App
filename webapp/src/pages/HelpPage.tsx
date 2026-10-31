@@ -10,6 +10,8 @@ import { State, Tabs, useL, useLoad } from './kit';
 import { HELP_ALIASES, helpImage, helpKey, loadHelp, type Bi, type BiList, type HelpEntry } from './helpLib';
 import { HelpDiagram, type Diagram } from './HelpDiagram';
 import { fold } from '../chart/indicatorCatalog';
+import { Icon } from '../ui/Icon';
+import '../shell/shell.css';
 
 // The tutorials: the phone's whole «؟» library (core/help, both languages, pictures) with the web's
 // own entries (scripts/help/extra.mjs) and the old Pro-Chart library's encyclopedic sections and
@@ -120,6 +122,14 @@ export default function HelpPage({ param }: { param: string | null }) {
         </article>
       ) : (
         <>
+          <button className="card help-academy" onClick={() => usePage.getState().open('academy')}>
+            <Icon name="ph-crown" size="md" />
+            <span className="grow">
+              <b className="fa">{L('آکادمی', 'Academy')}</b>
+              <span className="muted fa">{L('درس‌ها، آزمون‌ها و پیشرفت شما، گام به گام.', 'Lessons, quizzes and your progress, step by step.')}</span>
+            </span>
+            <Icon name={fa ? 'ph-caret-left' : 'ph-caret-right'} size="sm" />
+          </button>
           <input className="scr-search wide" value={q} onChange={(e) => setQ(e.target.value)} placeholder={L('جستجو در آموزش‌ها', 'Search the tutorials')} dir="auto" />
           {openId && lib.data && !resolved ? <p className="muted fa">{L('برای این مورد هنوز راهنمایی نوشته نشده است.', 'There is no entry for this yet.')}</p> : null}
           <State loading={lib.loading} error={lib.error} onRetry={lib.reload} empty={!rows.length}>

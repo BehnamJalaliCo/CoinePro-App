@@ -4,7 +4,8 @@
 // bar by bar on their common times, and stays live as any leg moves.
 import type { ChartFeed } from '../chart/ChartView';
 import type { Candle } from './types';
-import { bucketOf, loadEdge, loadHistory, type Fold } from './candles';
+import { bucketOf, loadEdge, loadHistory, UnsupportedInterval, type Fold } from './candles';
+import { readSnapshot, saveSnapshot } from './saved';
 import { intervalSeconds, parseIntervalId } from './intervals';
 import { onPrice, setFocus } from './prices';
 import { backendOf, exprLegs, instrumentOf } from './symbols';
@@ -147,12 +148,30 @@ function spreadLive(expr: string, legs: string[], interval: string, from: Candle
   return () => offs.forEach((f) => f());
 }
 
+/** How many of the latest bars are saved for an offline start. */
+const SAVED_BARS = 500;
+
 export const feed: ChartFeed = {
   async history(symbol, interval, before) {
     const legs = exprLegs(symbol);
-    if (legs) return spreadHistory(symbol, legs, interval, before);
-    if (!before) setFocus(symbol);
-    return loadHistory(symbol, interval, before, before ? 'bulk' : 'reader');
+    const load = () => {
+      if (legs) return spreadHistory(symbol, legs, interval, before);
+      if (!before) setFocus(symbol);
+      return loadHistory(symbol, interval, before, before ? 'bulk' : 'reader');
+    };
+    if (before) return load();
+    // The latest page is the chart's last good picture: saved when it arrives, shown with its age
+    // when the network does not answer (never for an interval the backend cannot draw at all).
+    const key = `bars:${symbol}|${interval}`;
+    try {
+      const page = await load();
+      if (page.bars.length) saveSnapshot(key, { bars: page.bars.slice(-SAVED_BARS) });
+      return { ...page, savedAt: null };
+    } catch (e) {
+      const snap = e instanceof UnsupportedInterval ? null : readSnapshot<{ bars: Candle[] }>(key);
+      if (!snap?.data.bars?.length) throw e;
+      return { bars: snap.data.bars, more: false, savedAt: snap.at };
+    }
   },
 
   live(symbol, interval, from, onBar) {

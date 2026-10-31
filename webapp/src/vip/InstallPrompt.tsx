@@ -6,7 +6,7 @@ import { useL } from '../pages/kit';
 // «نصب پرو چارت» — the user site's install banner (components/pwa/InstallPrompt.tsx): Chrome's own
 // install prompt when the browser offers one, a short guide on iOS Safari, nothing once installed
 // or for two weeks after «later». The page is installable through manifest.webmanifest and a
-// pass-through service worker (public/sw.js).
+// network-first service worker (public/sw.js) that also lets it open offline.
 interface InstallEvent extends Event { prompt(): Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> }
 
 const KEY = 'pc.install.v1';
@@ -40,7 +40,8 @@ export function InstallPrompt() {
   }, [hidden]);
 
   useEffect(() => {
-    // The pass-through worker only makes the page installable; it caches nothing.
+    // The worker makes the page installable and keeps the last good copy of the app for offline
+    // starts (never data). Skipped under automation: the e2e suite serves the app through routes.
     if (navigator.webdriver || !('serviceWorker' in navigator)) return;
     // `updateViaCache: 'none'`: the update check never takes sw.js from the HTTP cache, whatever an edge
     // (Cloudflare's browser TTL) puts on it.

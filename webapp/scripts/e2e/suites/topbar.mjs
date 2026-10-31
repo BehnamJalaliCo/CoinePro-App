@@ -462,8 +462,11 @@ export default async function ({ test, open, ready, pc, expect }) {
     expect(await pc(page, () => window.__pc.usePrefs.getState().theme) === 'dark', 'theme switch');
     await page.click('.lang-row .seg button >> nth=1');
     expect(await pc(page, () => window.__pc.usePrefs.getState().lang) === 'en', 'language');
-    await page.click('.drawer-row >> nth=2');
-    await page.waitForURL(/\/next\/tutorials\/shortcuts$/, { timeout: 5000 });
+    // One door per feature (area B2): the shortcuts are a tab of the tutorials, not a menu row.
+    await page.click('.drawer-item >> text=Tutorials');
+    await page.waitForURL(/\/next\/tutorials$/, { timeout: 5000 });
+    await page.click('.page-tabs >> text=Keyboard shortcuts');
+    await page.waitForSelector('.help kbd', { timeout: 5000 });
     return env;
   });
 

@@ -5,6 +5,7 @@
 //   calendar      GET /up/tradeyar/api/v1/public/calendar/week → [{title, country, date, impact, forecast, previous}]
 //                 else GET /up/coineprofx/api/academy/bn/calendar → {items:[…]}
 import { request } from './http';
+import { withSaved } from './saved';
 
 export interface NewsItem {
   id: string;
@@ -41,7 +42,7 @@ const ms = (raw: unknown): number => {
 
 const noTags = (s: unknown): string => (typeof s === 'string' ? s.replace(/<[^>]*>/g, '').trim() : '');
 
-export async function cryptoNews(limit = 30): Promise<NewsItem[]> {
+async function fetchCryptoNews(limit: number): Promise<NewsItem[]> {
   // The relay accepts at most 50.
   const r = await request<{ data?: Record<string, unknown>[] }>(`/api/news?limit=${Math.min(50, Math.max(1, limit))}`);
   return (r.data ?? []).map((x) => ({
@@ -53,7 +54,7 @@ export async function cryptoNews(limit = 30): Promise<NewsItem[]> {
   })).filter((n) => n.title);
 }
 
-export async function forexNews(): Promise<NewsItem[]> {
+async function fetchForexNews(): Promise<NewsItem[]> {
   const r = await request<{ items?: Record<string, unknown>[] }>('/up/coineprofx/api/academy/bn/news');
   return (r.items ?? []).map((x) => ({
     id: `f${String(x.id)}`, market: 'forex' as const,
@@ -79,7 +80,7 @@ const impactOf = (raw: unknown): CalendarEvent['impact'] => {
 };
 const str = (v: unknown) => (v == null ? '' : String(v));
 
-export async function calendarWeek(): Promise<CalendarEvent[]> {
+async function fetchCalendarWeek(): Promise<CalendarEvent[]> {
   let rows: Record<string, unknown>[] = [];
   try {
     const r = await request<unknown>('/up/tradeyar/api/v1/public/calendar/week');
@@ -96,4 +97,22 @@ export async function calendarWeek(): Promise<CalendarEvent[]> {
     impact: impactOf(x.impact_label ?? x.impact ?? x.importance),
     forecast: str(x.forecast), previous: str(x.previous), actual: str(x.actual),
   })).filter((e) => e.title && e.time).sort((a, b) => a.time - b.time);
+}
+
+// ── Saved copies ────────────────────────────────────────────────────────────────────────────────
+// Each list is kept when it arrives and shown, with its age, when the network does not answer
+// (data/saved.ts; the surfaces read `useSaved` under these keys).
+export const SAVED_KEYS = { cryptoNews: 'news:crypto', forexNews: 'news:forex', calendar: 'calendar' } as const;
+const some = <T>(x: T[]) => x.length > 0;
+
+export async function cryptoNews(limit = 30): Promise<NewsItem[]> {
+  return (await withSaved(SAVED_KEYS.cryptoNews, () => fetchCryptoNews(limit), some)).data;
+}
+
+export async function forexNews(): Promise<NewsItem[]> {
+  return (await withSaved(SAVED_KEYS.forexNews, fetchForexNews, some)).data;
+}
+
+export async function calendarWeek(): Promise<CalendarEvent[]> {
+  return (await withSaved(SAVED_KEYS.calendar, fetchCalendarWeek, some)).data;
 }

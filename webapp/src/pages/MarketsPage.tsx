@@ -7,6 +7,7 @@ import { SymbolLogo, hasLogo } from '../ui/SymbolLogo';
 import { formatPrice, formatVolume } from '../chart/format';
 import { instrumentOf, marketOf } from '../data/symbols';
 import { Tabs, pct } from './kit';
+import { HubSwitch } from './MarketsHub';
 import { Icon } from '../ui/Icon';
 import type { Ticker } from '../data/types';
 
@@ -66,16 +67,15 @@ export default function MarketsPage() {
 
   return (
     <div className="page-inner">
+      <HubSwitch current="markets" />
       <div className="pulse">
         <div className="card"><span className="muted fa">{t('mkBreadth')}</span><b className="num"><span className="up">{pulse.up}</span> / <span className="down">{pulse.down}</span></b></div>
         <div className="card"><span className="muted fa">{t('mkMedian')}</span><b className={`num ${pulse.median >= 0 ? 'up' : 'down'}`}>{pct(pulse.median)}</b></div>
         <div className="card"><span className="muted fa">{t('mkTurnover')}</span><b className="num">{formatVolume(pulse.total)} USDT</b></div>
         <div className="card"><span className="muted fa">{t('mkBtcShare')}</span><b className="num">{(pulse.btc * 100).toFixed(1)}%</b></div>
         <div className="card doors">
-          <button className="link-btn" onClick={() => open('heatmap')}>{t('heatmap')}</button>
           <button className="link-btn" onClick={() => open('news')}>{t('news')}</button>
           <button className="link-btn" onClick={() => open('calendar')}>{t('calendar')}</button>
-          <button className="link-btn" onClick={() => open('screener')}>{t('screener')}</button>
         </div>
       </div>
       <Tabs value={page} onChange={setPage} tabs={[

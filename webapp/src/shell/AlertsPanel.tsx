@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useT, usePrefs } from '../state/prefs';
 import {
-  CHANNEL, CONDITION_NAMES, FREQ_NAMES, MOVES, describeAlert, lineLevel, useAlerts,
+  CHANNEL, CONDITION_NAMES, FREQ_NAMES, MOVES, describeAlert, lineLevel, uncheckedIds, useAlerts,
   type AlertCondition, type AlertFreq, type NewAlert, type PriceAlert, type PriceField, type TrendLine,
 } from '../state/alerts';
 import { SOUNDS, playSound, type SoundId } from '../state/notify';
@@ -227,6 +227,7 @@ function AlertRow({ a, onEdit }: { a: PriceAlert; onEdit(): void }) {
       </button>
       <span className="alert-sub fa">
         <span className={`badge st ${a.active ? 'on' : a.expired ? 'exp' : 'off'}`}>{status}</span>
+        {uncheckedIds([a], st.checkedAt).has(a.id) ? <span className="badge unchecked" title={L('هنوز هیچ قیمتی با این هشدار سنجیده نشده است', 'No price has been checked against this alert yet')}>{L('هنوز بررسی نشده', 'Not checked yet')}</span> : null}
         <span className="badge">{FREQ_NAMES[a.freq ?? 'once'][fa ? 'fa' : 'en']}</span>
         {a.interval ? <span className="badge num">{intervalLabel(a.interval)}</span> : null}
         {a.serverId ? <span className="badge acct">{L('حساب', 'Account')}</span> : null}

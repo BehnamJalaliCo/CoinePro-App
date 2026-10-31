@@ -26,8 +26,10 @@ const TABS: { id: BottomTab; label?: StringKey; fa?: string; en?: string }[] = [
   { id: 'notes', fa: 'یادداشت‌ها', en: 'Notes' },
 ];
 const KEY = 'pc.dock.v1';
-const DEFAULT_H = 300;
-const readDock = (): { h: number; max: boolean } => { try { const v = JSON.parse(localStorage.getItem(KEY) ?? 'null') as { h?: number; max?: boolean } | null; return { h: v?.h && v.h >= 120 ? v.h : DEFAULT_H, max: Boolean(v?.max) }; } catch { return { h: DEFAULT_H, max: false }; } };
+const DEFAULT_H = 320;
+/** The panel never gets shorter than this by dragging (TradingView's dock floor). */
+export const MIN_H = 200;
+const readDock = (): { h: number; max: boolean } => { try { const v = JSON.parse(localStorage.getItem(KEY) ?? 'null') as { h?: number; max?: boolean } | null; return { h: v?.h && v.h >= MIN_H ? v.h : DEFAULT_H, max: Boolean(v?.max) }; } catch { return { h: DEFAULT_H, max: false }; } };
 
 export function BottomPanel() {
   const t = useT();
@@ -55,7 +57,7 @@ export function BottomPanel() {
     e.preventDefault();
     const y0 = e.clientY; const h0 = dock.max ? room : dock.h;
     let h = h0;
-    const move = (ev: PointerEvent) => { h = Math.max(120, Math.min(room, h0 + (y0 - ev.clientY))); setDock({ h, max: false }); };
+    const move = (ev: PointerEvent) => { h = Math.max(Math.min(MIN_H, room), Math.min(room, h0 + (y0 - ev.clientY))); setDock({ h, max: false }); };
     const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); save({ h, max: false }); };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);

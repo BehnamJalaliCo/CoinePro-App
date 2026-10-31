@@ -6,6 +6,7 @@ import { hasLogo } from '../ui/SymbolLogo';
 import { marketOf } from '../data/symbols';
 import { formatVolume } from '../chart/format';
 import { Tabs, pct, useL } from './kit';
+import { HubSwitch } from './MarketsHub';
 import { useWatchlist } from '../state/watchlist';
 import type { PageProps } from './registry';
 import type { Ticker } from '../data/types';
@@ -102,6 +103,7 @@ export default function HeatmapPage({ param = null }: Partial<PageProps> = {}) {
 
   return (
     <div className="page-inner heat">
+      <HubSwitch current="heatmap" />
       <div className="row">
         <Tabs value={group} onChange={(g) => { setGroup(g); setOnlyList(false); }} tabs={[{ id: 'crypto', label: t('crypto') }, { id: 'fx', label: t('forex') }]} />
         {list ? <button className={`chip wl-filter${onlyList ? ' on' : ''}`} aria-pressed={onlyList} onClick={() => setOnlyList(!onlyList)}><span className="fa">{L('فهرست', 'List')}: {list.name}</span></button> : null}

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePrefs, useT } from '../state/prefs';
 import { usePage } from '../state/page';
-import { calendarWeek } from '../data/intel';
+import { calendarWeek, SAVED_KEYS } from '../data/intel';
+import { useSaved } from '../data/saved';
+import { SavedLine } from '../shell/Offline';
 import { clock, faDay, faNum } from '../i18n/time';
 import { CurrencyFlag } from '../ui/SymbolLogo';
 import { Tabs, useLoad, State } from './kit';
@@ -19,6 +21,7 @@ export default function CalendarPage() {
   const [cur, setCur] = useState('all');
   const [q, setQ] = useState('');
   const [now, setNow] = useState(Date.now());
+  const savedAt = useSaved((s) => s.at[SAVED_KEYS.calendar] ?? null);
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, []);
   const currencies = useMemo(() => [...new Set((cal.data ?? []).map((e) => e.currency).filter(Boolean))].sort(), [cal.data]);
   const list = useMemo(() => (cal.data ?? []).filter((e) => (impact === 'all' || (impact === 'high' ? e.impact === 'high' : e.impact === 'high' || e.impact === 'medium')) && (cur === 'all' || e.currency === cur) && (!q.trim() || e.title.toLowerCase().includes(q.trim().toLowerCase()))), [cal.data, impact, cur, q]);
@@ -40,6 +43,7 @@ export default function CalendarPage() {
         <select value={cur} onChange={(e) => setCur(e.target.value)} className="num"><option value="all">{t('all')}</option>{currencies.map((c) => <option key={c} value={c}>{c}</option>)}</select>
         <input className="scr-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('search')} />
       </div>
+      <SavedLine at={savedAt} className="on-page" />
       <State loading={cal.loading} error={cal.error} empty={!list.length} onRetry={cal.reload}>
         {days.map((d) => (
           <div key={d[0]!.time} className="cal-day">
