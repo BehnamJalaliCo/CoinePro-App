@@ -5,6 +5,9 @@ import { usePrefs } from '../state/prefs';
 import { intervalLabel } from '../data/intervals';
 import { chartImage } from './snapshot';
 import { replayGoTo } from '../state/replay';
+import { candleCsv, csvFileName } from './candleCsv';
+import { useReplay } from '../state/replay';
+import { useMarket } from '../state/market';
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -45,11 +48,15 @@ export async function goToTime(t: number): Promise<boolean> {
 /** The loaded bars as a CSV file: time (UTC), open, high, low, close, volume. */
 export function exportBarsCsv(): void {
   const { bars } = useChartBus.getState();
-  const { symbol, interval } = usePrefs.getState();
-  const rows = ['time,open,high,low,close,volume', ...bars.map((b) => `${new Date(b.t * 1000).toISOString()},${b.o},${b.h},${b.l},${b.c},${b.v}`)];
+  const { symbol, interval, timezone, lang } = usePrefs.getState();
+  // What is on the chart: while replaying, only the bars the reader can see (OLD ChartExport).
+  const replay = useReplay.getState();
+  const shown = replay.state?.on && replay.slice ? replay.slice : bars;
+  const source = useMarket.getState().tickers[symbol]?.source ?? '';
+  const text = candleCsv(shown, { symbol, interval: intervalLabel(interval), source, timeZone: timezone, en: lang === 'en' });
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([rows.join('\n')], { type: 'text/csv' }));
-  a.download = `${symbol}_${intervalLabel(interval)}.csv`;
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+  a.download = csvFileName(symbol, intervalLabel(interval), timezone);
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
@@ -138,7 +145,7 @@ export function openIndicators(): void {
   window.dispatchEvent(new KeyboardEvent('keydown', { key: '/', bubbles: true }));
 }
 
-export interface OrderTicketDetail { symbol: string; side: 'buy' | 'sell'; price: number; source: 'legend' | 'axis-plus' | 'context-menu'; type?: 'limit' }
+export interface OrderTicketDetail { symbol: string; side: 'buy' | 'sell'; price: number; source: 'legend' | 'axis-plus' | 'context-menu' | 'position'; type?: 'limit'; quantity?: number; stopLoss?: number; takeProfit?: number }
 
 /** Offers an order to whoever trades from the chart (`pc:order-ticket`, cancelable). True when
  *  someone took it (called preventDefault); otherwise the caller falls back to paper trading. */

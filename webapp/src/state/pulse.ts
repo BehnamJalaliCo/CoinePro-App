@@ -23,7 +23,9 @@ import { formatPrice } from '../chart/format';
 import { hasLogo } from '../ui/SymbolLogo';
 import { faNum } from '../i18n/time';
 import { calendarWeek } from '../data/intel';
-import type { Ticker } from '../data/types';
+import type { Candle, Ticker } from '../data/types';
+import { readChart } from '../chart/rasad';
+import { feed } from '../data/feed';
 
 // ── The rules (OLD MarketPulse) ─────────────────────────────────────────────────────────────────
 export const WINDOW_MS = 4 * 60 * 60 * 1000;
@@ -147,8 +149,12 @@ export function moverOf(markets: BriefMarket[]): BriefMarket | null {
   return best;
 }
 
-/** The brief, or null where there is nothing honest to say (no market's change could be read). */
-export function briefOf(markets: BriefMarket[], en: boolean): Brief | null {
+/**
+ * The brief, or null where there is nothing honest to say (no market's change could be read). With
+ * the mover's closed hourly bars, رصد's first sentence about its chart follows the move (OLD
+ * RasadBrief.of moverSeries); without them the brief is the count and the move.
+ */
+export function briefOf(markets: BriefMarket[], en: boolean, moverBars: Candle[] | null = null): Brief | null {
   const measured = markets.filter((m) => m.changePercent != null && Number.isFinite(m.changePercent));
   if (!measured.length) return null;
   const up = measured.filter((m) => m.changePercent! > 0).length;
@@ -164,7 +170,8 @@ export function briefOf(markets: BriefMarket[], en: boolean): Brief | null {
       : down > 0 ? (en ? `${down} down` : `${faNum(down)} پایین`) : quietHeadline(up + down);
   const figure = Math.abs(move).toFixed(2);
   const line = en ? `${mover.symbol} ${move > 0 ? 'rose' : 'fell'} ${figure}%.` : `${mover.symbol} ${figure}٪ ${move > 0 ? 'بالا رفت' : 'پایین آمد'}.`;
-  return { headline, mover: mover.symbol, lines: [line] };
+  const reading = moverBars ? readChart(moverBars, null, null, en)[0] ?? null : null;
+  return { headline, mover: mover.symbol, lines: reading ? [line, reading] : [line] };
 }
 
 // ── Settings and the record (this browser) ──────────────────────────────────────────────────────
@@ -315,17 +322,38 @@ async function calendar(now: number, en: boolean, budget: number): Promise<void>
   record = { ...record, announced: [...announced].slice(-200) }; saveRecord();
 }
 
+/** Hourly bars, and enough for the coach's own minimum plus a margin (OLD MorningBriefEngine). */
+const BRIEF_INTERVAL = '60';
+const BRIEF_BARS = 200;
+/** The mover's closed hourly bars, or null: a forming bar repaints, and a sentence about it is not true by breakfast. */
+async function briefBars(symbol: string): Promise<Candle[] | null> {
+  try {
+    const page = await Promise.race([feed.history(symbol, BRIEF_INTERVAL), new Promise<never>((_, no) => setTimeout(() => no(new Error('slow')), 8000))]);
+    const closed = page.bars.slice(0, -1).slice(-BRIEF_BARS);
+    return closed.length ? closed : null;
+  } catch { return null; }
+}
+let briefBusy = false;
+
 /** The daily brief, once a day at or after the reader's hour (OLD MorningBriefEngine.run). */
-export function runBrief(now = Date.now()): boolean {
+export async function runBrief(now = Date.now()): Promise<boolean> {
   const s = usePulse.getState();
-  if (!s.brief || !allowed() || permission() !== 'granted') return false;
+  if (!s.brief || !allowed() || permission() !== 'granted' || briefBusy) return false;
   const today = dayOf(now);
   if (record.briefDay === today || minuteOf(now) < s.briefMinute) return false;
   const symbols = firstList(BRIEF_MARKETS);
   if (!symbols.length) return false;
   const tickers = useMarket.getState().tickers;
-  const brief = briefOf(symbols.map((symbol) => ({ symbol, changePercent: tickers[symbol]?.changePct ?? null })), usePrefs.getState().lang === 'en');
-  if (!brief) return false;
+  const markets = symbols.map((symbol) => ({ symbol, changePercent: tickers[symbol]?.changePct ?? null }));
+  const en = usePrefs.getState().lang === 'en';
+  if (!briefOf(markets, en)) return false;
+  briefBusy = true;
+  let brief: Brief | null;
+  try {
+    const mover = moverOf(markets);
+    brief = briefOf(markets, en, mover ? await briefBars(mover.symbol) : null);
+  } finally { briefBusy = false; }
+  if (!brief || record.briefDay === today) return false;
   // Once a day, and outside the six: it is the reader's own appointment, not the market's news.
   if (!post('morning_brief', brief.headline, brief.lines.join(' '), { tag: 'brief', onClick: brief.mover ? openChart(brief.mover) : undefined, now, counted: false })) return false;
   record = { ...record, briefDay: today }; saveRecord();
@@ -350,7 +378,7 @@ export function startPulse(): void {
   started = true;
   let tick = 0;
   const loop = () => {
-    runBrief();
+    void runBrief();
     if (tick % 15 === 1) void run();
     tick++;
   };

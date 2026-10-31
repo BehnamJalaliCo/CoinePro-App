@@ -169,7 +169,8 @@ export default async function ({ test, open, pc, expect, fixtures }) {
     expect((await pc(page, (t) => window.__pc.pulse.runBrief(t), seven)) === true, 'delivered');
     expect((await pc(page, (t) => window.__pc.pulse.runBrief(t), seven + 60e3)) === false, 'once a day');
     const p = await pc(page, () => window.__pc.pulse.posted.at(-1));
-    expect(p.title === '۱ بالا، ۱ پایین' && p.body === 'ETHUSDT 3.40٪ پایین آمد.', JSON.stringify(p));
+    // The mover's line, then رصد's first sentence about its hourly chart (OLD RasadBrief moverSeries).
+    expect(p.title === '۱ بالا، ۱ پایین' && p.body.startsWith('ETHUSDT 3.40٪ پایین آمد. ') && /نوسان/.test(p.body), JSON.stringify(p));
     return env;
   });
 

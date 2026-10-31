@@ -22,6 +22,7 @@ import { guardDrawingDeletes } from './drawingAlerts';
 import { attachPlacement } from './PlacementCursor';
 import { noteDrawings } from '../state/drawingLinks';
 import { followDrawings } from '../state/alerts';
+import { noteGlobal, stampScope } from '../state/drawingScope';
 
 const KEY = (symbol: string) => `pc.drawings.v1.${symbol}`;
 
@@ -34,6 +35,7 @@ function load(symbol: string): DrawingObject[] {
 
 function save(symbol: string, list: DrawingObject[]): void {
   noteDrawings(symbol, list);
+  noteGlobal(symbol, list);
   try {
     if (list.length) localStorage.setItem(KEY(symbol), JSON.stringify(list));
     else localStorage.removeItem(KEY(symbol));
@@ -121,7 +123,20 @@ export function attachDrawings(canvas: HTMLCanvasElement, chart: IChartApi): Dra
   const bump = () => useChartBus.getState().bumpDrawings(layer.canUndo(), layer.canRedo(), layer.getDrawings().length);
   // A drawing that carries alerts: the alerts take its new geometry (after the edit settles).
   let followTimer: ReturnType<typeof setTimeout> | null = null;
+  // A drawing first seen in a change is a new one — placed with a tool, from a menu, pasted or cloned
+  // — and takes the reach set now; lists put in place whole (a symbol, a layout) are remembered as
+  // they are, so nothing already drawn is ever widened (OLD DrawingSyncStore).
+  const known = new Set<unknown>();
+  const remember = (list: DrawingObject[]) => { for (const d of list) known.add((d as { id?: unknown }).id); };
+  const setWhole = layer.setDrawings.bind(layer);
+  layer.setDrawings = (arr: DrawingObject[], record?: boolean) => { setWhole(arr, record); remember(layer.getDrawings()); };
   layer.onChange = (list) => {
+    for (const d of list) {
+      const id = (d as { id?: unknown }).id;
+      if (id == null || known.has(id)) continue;
+      known.add(id);
+      if ((d as { scope?: unknown }).scope == null) stampScope(d);
+    }
     if (symbol) {
       save(symbol, list);
       const sym = symbol;

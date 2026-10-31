@@ -29,6 +29,7 @@ function readUser(u: Record<string, unknown> | undefined): AuthUser | null {
     plan: pick('plan') as string | undefined,
     planFa: pick('plan_fa') as string | undefined,
     vip: Boolean(pick('is_vip', 'vip', 'is_paid', 'paid')),
+    founding: pick('founding_member', 'is_founding_member', 'founding') === true,
   };
 }
 

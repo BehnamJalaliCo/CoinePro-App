@@ -21,6 +21,17 @@ import { MI, MSep, MSub, MTitle, PopMenu } from './menuKit';
 import { openChartSettings } from '../shell/SettingsDialog';
 import type { DrawingObject } from '../engine/drawings.js';
 import { askClearDrawings, drawingCount } from './ConfirmClear';
+import { useReplay } from '../state/replay';
+
+/** «بازپخش از اینجا»: the replay starts at the bar under the pointer (OLD ChartScreen enterReplayAt). */
+export function replayFromHere(time: number): boolean {
+  const bars = useChartBus.getState().bars;
+  if (!bars.length || bars[0]!.t > time) return false;
+  const r = useReplay.getState();
+  if (r.state?.on || r.selecting) r.exit();
+  useReplay.getState().start(bars, time, { keepView: true });
+  return Boolean(useReplay.getState().state?.on);
+}
 
 /** What the drawings area offers for pasting: its drawing clipboard (`useDrawing().clip`) and the
  *  layer's `pasteMany`, when the drawings area has them. */
@@ -88,6 +99,7 @@ export function ChartContextMenu({ at, onClose, onAlertAt }: { at: { x: number; 
           <MI icon="tool_short" act="short" label={L('پوزیشن فروش از اینجا', 'Short position from here')} onClick={() => addPosition('short', price, at.time)} />
         </>
       ) : null}
+      {at.time != null ? <><MSep /><MI icon="ph-rewind" act="replay-here" label={L('بازپخش از اینجا', 'Replay from here')} onClick={() => replayFromHere(at.time!)} /></> : null}
       <MSep />
       <MI icon="ph-chart-line-up" act="add-indicator" label={L('افزودن اندیکاتور…', 'Add indicator…')} hint="/" onClick={openIndicators} />
       {n ? (

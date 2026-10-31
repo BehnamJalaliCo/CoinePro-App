@@ -33,7 +33,7 @@
 /* ── The drawing band (phone, drawing mode) ───────────────────────────────────────────────── */
 .draw-band { display: none; }
 @media (max-width: 760px) {
-  body.draw-mode .ws-main { grid-template-rows: minmax(0, 1fr) 46px auto; }
+  body.draw-mode .ws-main { grid-template-rows: minmax(0, 1fr) auto 46px auto; }
   body.draw-mode .ws-timebar { display: none !important; }
   .draw-band { display: flex; align-items: center; justify-content: space-between; gap: 2px; padding: 0 12px; border-top: 1px solid var(--line); background: var(--bg); min-width: 0; }
 }

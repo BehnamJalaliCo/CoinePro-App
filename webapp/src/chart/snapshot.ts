@@ -10,6 +10,7 @@ import { usePrefs, isDark } from '../state/prefs';
 import { intervalLabel } from '../data/intervals';
 import { liteCharts } from './LiteChart';
 import { chartPath } from '../route';
+import { foundingStamp } from '../data/founding';
 
 export interface SnapshotOptions { format: 'png' | 'jpg'; hiRes: boolean; watermark: boolean; caption: boolean }
 const KEY = 'pc.snapshot.v1';
@@ -160,6 +161,15 @@ export async function composeSnapshot(opts: SnapshotOptions = readSnapshotOption
     ctx.textAlign = 'right';
     ctx.fillStyle = '#D4A64A';
     ctx.fillText('pro-chart.com', origin.width - 12, y);
+    // «عضو بنیان‌گذار» beside the address, only where the account data says so (OLD chart_share_founding).
+    const founding = foundingStamp(usePrefs.getState().lang === 'en');
+    if (founding) {
+      const w = ctx.measureText('pro-chart.com').width;
+      ctx.font = "600 12px IRANYekanX, sans-serif";
+      ctx.direction = usePrefs.getState().lang === 'en' ? 'ltr' : 'rtl';
+      ctx.textAlign = 'right';
+      ctx.fillText(founding, origin.width - 24 - w, y);
+    }
   }
   return out;
 }

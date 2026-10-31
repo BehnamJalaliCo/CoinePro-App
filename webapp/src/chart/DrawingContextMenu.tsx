@@ -8,6 +8,7 @@ import { useL } from '../pages/kit';
 import { toolIcon } from './tools';
 import { TEXT_TYPES } from '../engine/drawings.js';
 import { addAlertFor, alertDetail, applyStyle, bumpDrawings, copySelection, drawingName, saveAsDefault } from './DrawingActions';
+import { openPositionAsPaper, positionOrder } from './positionTrade';
 import './drawing.css';
 
 /** The timeframe classes «visibility on intervals» switches, in TradingView's order. */
@@ -108,6 +109,10 @@ export function DrawingContextMenu() {
       <div className="dctx-head"><Icon name={toolIcon(d.type)} size="sm" /><span>{typeof d.name === 'string' && d.name ? d.name : drawingName(d.type, lang)}</span></div>
       {row('ph-gear', L('تنظیمات…', 'Settings…'), done(() => useDrawing.getState().openSettings(i)), { act: 'settings' })}
       {alertDetail(d) ? row('ph-bell', L('افزودن آلارم روی این ترسیم', 'Add alert on this drawing'), done(() => { addAlertFor(d); }), { act: 'alert' }) : null}
+      {(d.type === 'longshort' || d.type === 'short') ? (() => {
+        const o = positionOrder(layer.positionStats(d));
+        return row('ph-arrow-square-out', L('باز کردن به‌صورت معامله‌ی آزمایشی', 'Open as a paper trade'), done(() => { if (o) openPositionAsPaper(usePrefs.getState().symbol, o); }), { act: 'paper-trade', disabled: !o });
+      })() : null}
       {TEXT_TYPES.includes(d.type) ? row('ph-pencil-simple', L('ویرایش متن', 'Edit text'), done(() => useChartBus.getState().setTextEdit({ index: i, fresh: false })), { act: 'text' }) : null}
       <div className="dfly-sep" />
       {row('ph-copy', L('تکثیر', 'Clone'), done(() => { layer.clone(i); }), { kbd: 'Ctrl+D', act: 'clone' })}

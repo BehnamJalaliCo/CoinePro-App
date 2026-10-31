@@ -14,6 +14,8 @@ import { faNum } from '../i18n/time';
 import type { Candle } from '../data/types';
 import { DuelBar, startDuel } from './DuelBar';
 import { useDuel } from '../state/duel';
+import { ArenaBar, ArenaResult, startArena } from './ArenaBar';
+import { ReplayReportSheet } from './ReplayReport';
 import './studies.css';
 
 // TradingView's replay controls, floating over the chart's bottom edge, with what the old Pro-Chart
@@ -163,6 +165,7 @@ export function ReplayBar() {
   const [panel, setPanel] = useState(false);
   const duel = useDuel((d) => d.session);
   const [duelBusy, setDuelBusy] = useState(false);
+  const [arenaBusy, setArenaBusy] = useState(false);
   const on = Boolean(state?.on);
   useReplayView();
   useReplayClicks(on);
@@ -186,10 +189,12 @@ export function ReplayBar() {
   const steps = UPDATE_STEPS[interval] ?? [];
   const date = slice?.length ? barDate(slice[slice.length - 1]!.t, timezone, interval) : '';
 
-  if (!selecting && !on) return null;
+  if (!selecting && !on) return <ArenaResult />;
   // «دوئل با گذشته»: its band stands where the controls stand, so nothing steps into the hidden bars.
   if (duel && on) return <div className="replay-bar rp2 duel-wrap"><DuelBar /></div>;
   const duelNow = () => { setMenu(null); setDuelBusy(true); void startDuel().finally(() => setDuelBusy(false)); };
+  // «میدان»: today's five-minute challenge, the same market and window for everybody.
+  const arenaNow = () => { setMenu(null); setArenaBusy(true); void startArena().finally(() => setArenaBusy(false)); };
 
   const pickMenu = menu ? (
     <Dropdown anchor={menu} onClose={() => setMenu(null)} className="rp-menu">
@@ -199,6 +204,7 @@ export function ReplayBar() {
         <button className="menu-item" onClick={() => { setMenu(null); exit(); firstBar(); }} disabled={bars.length < 60}><Icon name="ph-skip-back" size="sm" /><span className="fa">{L('اولین تاریخ موجود', 'Select the first available date')}</span></button>
         <button className="menu-item" onClick={() => { setMenu(null); exit(); randomBar(); }} disabled={bars.length < 60}><Icon name="ph-shuffle" size="sm" /><span className="fa">{L('کندل تصادفی', 'Random bar')}</span></button>
         <button className="menu-item" onClick={duelNow} disabled={duelBusy}><Icon name="ph-sword" size="sm" /><span className="fa">{L('دوئل با گذشته', 'Duel with the past')}</span></button>
+        <button className="menu-item rp-arena-item" onClick={arenaNow} disabled={arenaBusy}><Icon name="ph-crown-simple" size="sm" /><span className="fa">{L('میدان · چالش امروز', 'Arena · today\'s challenge')}</span></button>
       </div>
     </Dropdown>
   ) : null;
@@ -211,6 +217,7 @@ export function ReplayBar() {
         {dateOpen ? <PickDate onClose={() => setDateOpen(false)} /> : <button className="btn btn-quiet sm" onClick={() => setDateOpen(true)}><Icon name="ph-calendar-blank" size="sm" /><span className="fa">{L('تاریخ', 'Date')}</span></button>}
         <button className="btn btn-quiet sm" onClick={firstBar} disabled={bars.length < 60} title={L('اولین تاریخ موجود', 'Select the first available date')}><Icon name="ph-skip-back" size="sm" /><span className="fa">{L('اولین کندل', 'First bar')}</span></button>
         <button className="btn btn-quiet sm" onClick={randomBar} disabled={bars.length < 60}><Icon name="ph-shuffle" size="sm" /><span>Random bar</span></button>
+        <button className="btn btn-quiet sm rp-arena" onClick={arenaNow} disabled={arenaBusy} title={L('چالش امروز', 'Today\'s challenge')}><Icon name="ph-crown-simple" size="sm" /><span className="fa">{L('میدان', 'Arena')}</span></button>
         <button className="btn btn-quiet sm rp-duel" onClick={duelNow} disabled={duelBusy} title={L('یک لحظه از گذشته‌ی بازارهای خودتان، با ۲۰ کندل بعدیِ پنهان', 'A moment from your own markets, the next 20 bars hidden')}><Icon name="ph-sword" size="sm" /><span className="fa">{L('دوئل', 'Duel')}</span></button>
         {canResume ? <button className="btn btn-quiet sm" onClick={resume} title={session ? barDate(session.at, timezone, interval) : ''}><Icon name="ph-play" size="sm" /><span className="fa">{L('ادامه‌ی جلسه‌ی قبل', 'Resume last session')}</span></button> : null}
         <button className="lt" onClick={exit} aria-label="close"><Icon name="ph-x" size="sm" /></button>
@@ -222,6 +229,8 @@ export function ReplayBar() {
   return (
     <div className="replay-bar rp2" role="toolbar" aria-label={t('replay')}>
       {panel ? <PracticePanel onClose={() => setPanel(false)} /> : null}
+      <ArenaBar />
+      <ArenaResult />
       <div className="rp-row" dir="ltr">
         <button className="ib rp-pick" title="select bar" aria-label={L('انتخاب کندل', 'Select bar')} onClick={(e) => setMenu(menu ? null : e.currentTarget)}><Icon name="ph-target" size="sm" /><Icon name="ph-caret-down" size="sm" className="rp-caret" /></button>
         <span className="sep" />
@@ -301,6 +310,7 @@ function PracticePanel({ onClose }: { onClose(): void }) {
   const price = r.slice?.[r.slice.length - 1]?.c ?? 0;
   const digits = guessDigits(symbol, price);
   const [px, setPx] = useState('');
+  const [report, setReport] = useState(false);
   const st = r.settings;
   const stats = practiceStats(r.trades, st.balance, price);
   const live = r.trades.filter((t) => t.exit == null);
@@ -313,9 +323,11 @@ function PracticePanel({ onClose }: { onClose(): void }) {
   const how = (t: ReplayTrade) => ({ sl: L('حد ضرر', 'Stop loss'), tp: L('حد سود', 'Take profit'), manual: L('دستی', 'Manual'), reverse: L('معکوس', 'Reverse'), flatten: L('بستن همه', 'Flatten') }[t.how ?? 'manual']);
   return (
     <div className="rp-panel" dir={fa ? 'rtl' : 'ltr'} onMouseDown={(e) => e.stopPropagation()}>
+      {report ? <ReplayReportSheet onClose={() => setReport(false)} /> : null}
       <header className="rp-head">
         <b className="fa">{L('معامله‌ی تمرینی', 'Practice trading')}</b>
         <span className="muted fa">{L('فقط در همین بازپخش؛ به حساب کاغذی کاری ندارد', 'Only inside this replay; the paper account is untouched')}</span>
+        <button className="btn btn-quiet sm rp-report-open" onClick={() => setReport(true)}><span className="fa">{L('گزارش این جلسه', 'Report for this session')}</span></button>
         <button className="ib" title={L('شروع دوباره‌ی آمار', 'Reset the statistics')} onClick={r.resetPractice}><Icon name="ph-arrow-counter-clockwise" size="sm" /></button>
         <button className="ib" title={L('بستن', 'Close')} onClick={onClose}><Icon name="ph-x" size="sm" /></button>
       </header>

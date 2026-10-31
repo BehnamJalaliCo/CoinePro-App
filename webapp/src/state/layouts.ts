@@ -12,6 +12,7 @@ import { useChartSettings, type ChartSettings } from './chartSettings';
 import { useChartBus } from '../chart/chartBus';
 import type { ChartType } from '../chart/chartTypes';
 import type { DrawingObject } from '../engine/drawings.js';
+import { forLayout, readGlobal, withGlobal } from './drawingScope';
 
 export interface Layout {
   name: string;
@@ -80,7 +81,9 @@ export function captureLayout(): Omit<Layout, 'name' | 'savedAt' | 'openedAt'> {
   const drawings: Record<string, DrawingObject[]> = {};
   for (const s of symbols) {
     const list = s === p.symbol && layer ? layer.getDrawings() : readDrawings(s);
-    if (list.length) drawings[s] = JSON.parse(JSON.stringify(list)) as DrawingObject[];
+    // Only what belongs to the layout: not the scratch drawings, not the ones seen everywhere.
+    const kept = forLayout(list);
+    if (kept.length) drawings[s] = JSON.parse(JSON.stringify(kept)) as DrawingObject[];
   }
   const { set: _set, reset: _reset, ...settings } = useChartSettings.getState();
   void _set; void _reset;
@@ -101,7 +104,9 @@ function applyLayoutNow(l: Layout): void {
   const p = usePrefs.getState();
   // Drawings first, so the chart that loads a symbol finds its own.
   if (l.drawings) {
-    for (const [sym, list] of Object.entries(l.drawings)) {
+    for (const [sym, list0] of Object.entries(l.drawings)) {
+      // The layout's own drawings, with the symbol's every-layout drawings joined in.
+      const list = withGlobal(list0, readGlobal(sym));
       try { if (list.length) localStorage.setItem(DRAWINGS(sym), JSON.stringify(list)); else localStorage.removeItem(DRAWINGS(sym)); } catch { /* storage full */ }
     }
   }
@@ -121,7 +126,7 @@ function applyLayoutNow(l: Layout): void {
   // The main chart keeps its symbol: its drawings change in place.
   const layer = useChartBus.getState().drawingLayer;
   if (sameSymbol && layer && l.drawings) {
-    layer.setDrawings(JSON.parse(JSON.stringify(l.drawings[l.symbol] ?? [])) as DrawingObject[]);
+    layer.setDrawings(JSON.parse(JSON.stringify(withGlobal(l.drawings[l.symbol] ?? [], readGlobal(l.symbol)))) as DrawingObject[]);
     useChartBus.getState().bumpDrawings(layer.canUndo(), layer.canRedo(), layer.getDrawings().length);
   }
 }

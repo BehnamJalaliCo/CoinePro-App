@@ -11,6 +11,8 @@ export interface AuthUser {
   plan?: string;
   planFa?: string;
   vip?: boolean;
+  /** «عضو بنیان‌گذار» — only where the platform's account data says so. */
+  founding?: boolean;
 }
 
 export interface Session {

@@ -355,7 +355,7 @@ export function SettingsDialog({ onClose, initialTab = 'symbol' }: { onClose(): 
                   <Row label={L('نشانه‌ی بالاترین سقف و پایین‌ترین کف', 'Highest high and lowest low marks')} check={chk('hhll')} />
                   <Row label={L('نمادهای مقایسه', 'Compared symbols')}>
                     <Sel act="compareMode" value={s.compareMode} wide onChange={(v) => set({ compareMode: v })}
-                      options={[['own', L('هر کدام با مقیاس خودش', 'Each on its own scale')], ['percent', L('همه به درصد', 'All in percent')]]} />
+                      options={[['own', L('هر کدام با مقیاس خودش', 'Each on its own scale')], ['percent', L('همه به درصد', 'All in percent')], ['indexed', L('شاخص ۱۰۰', 'Index 100')], ['ratio', L('نسبت', 'Ratio')]]} />
                   </Row>
                 </Section>
                 <Section title={L('مقیاس زمان', 'Time scale')}>

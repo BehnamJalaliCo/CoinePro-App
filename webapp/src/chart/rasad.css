@@ -1,0 +1,70 @@
+/* «رصد» under the plot and its sheet; the Arena's band and result; the replay report. */
+.rasad-line { display: flex; align-items: center; gap: 8px; width: 100%; padding: 4px 10px; background: var(--bg-panel); border: 0; border-top: 1px solid var(--line); color: var(--text-2); font: inherit; font-size: var(--fs-small); text-align: start; cursor: pointer; min-height: 28px; }
+.rasad-line:hover { background: var(--bg-hover); }
+.rasad-mark { flex: none; padding: 1px 6px; border-radius: 4px; background: var(--gold-soft); color: var(--gold-strong); font-weight: 600; font-size: 11px; }
+.rasad-first { flex: 1; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.5; }
+@media (min-width: 761px) { .rasad-first { -webkit-line-clamp: 1; } }
+
+.dialog.rasad-sheet { width: min(560px, calc(100vw - 24px)); }
+.rasad-body { padding: 4px 20px 20px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+.rasad-short { margin: 0; }
+.rasad-sentences { display: flex; flex-direction: column; gap: 8px; }
+.rasad-sentence { margin: 0; padding-inline-start: 10px; border-inline-start: 2px solid var(--gold); line-height: 1.7; color: var(--text); }
+.rasad-suggest, .rasad-review { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.rasad-why { margin: 0; color: var(--text-2); font-size: var(--fs-small); line-height: 1.7; }
+.rasad-alert { justify-content: center; gap: 6px; }
+.rasad-review-head { color: var(--text-3); font-size: 11px; }
+.rasad-review p { margin: 0; line-height: 1.7; }
+
+.rd-panel { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; }
+.rd-head { display: flex; gap: 8px; align-items: center; color: var(--text-3); font-size: 11px; }
+.rd-iv { color: var(--gold-strong); font-weight: 600; }
+.rd-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 10px; }
+.rd-col { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rd-label { color: var(--text-3); font-size: 11px; }
+.rd-value { font-size: 15px; color: var(--text); }
+.rd-value.up, .rd-meter.up i { color: var(--up); }
+.rd-value.down, .rd-meter.down i { color: var(--down); }
+.rd-value.muted { color: var(--text-3); }
+.rd-meter { display: block; height: 4px; border-radius: 2px; background: var(--bg-sunken); overflow: hidden; color: var(--text-2); }
+.rd-meter i { display: block; height: 100%; background: currentColor; transition: width .25s ease; }
+.rd-meter.muted i { color: var(--text-3); }
+.rd-why { color: var(--text-3); font-size: 11px; line-height: 1.5; }
+@media (prefers-reduced-motion: reduce) { .rd-meter i { transition: none; } }
+
+/* The Arena's band, above the replay controls. */
+.arena-bar { display: flex; flex-direction: column; border-bottom: 1px solid var(--line); }
+.arena-row { display: flex; align-items: center; gap: 10px; padding: 4px 8px; }
+.arena-name { color: var(--gold-strong); font-weight: 600; font-size: 12px; }
+.arena-clock { flex: 1; font-size: 15px; font-weight: 700; color: var(--text); }
+.arena-clock.urgent { color: var(--down); }
+.arena-rule { height: 2px; background: var(--gold); transition: width 1s linear; }
+.arena-rule.urgent { background: var(--down); }
+@media (prefers-reduced-motion: reduce) { .arena-rule { transition: none; } }
+.dialog.arena-result { width: min(440px, calc(100vw - 24px)); }
+.arena-body { padding: 4px 20px 20px; display: flex; flex-direction: column; gap: 10px; }
+.arena-total { font-size: 44px; font-weight: 700; color: var(--gold-strong); line-height: 1.1; }
+.arena-halves { display: flex; gap: 24px; }
+.arena-halves div { display: flex; flex-direction: column; gap: 2px; }
+.arena-halves span { color: var(--text-3); font-size: 11px; }
+.arena-halves b { font-size: 17px; }
+.arena-working, .arena-best { color: var(--text-3); font-size: var(--fs-small); margin: 0; line-height: 1.7; }
+.arena-streak { margin: 0; }
+.arena-symbol { color: var(--text-3); font-size: 11px; }
+
+/* The replay session's own report. */
+.dialog.rp-report { width: min(520px, calc(100vw - 24px)); }
+.rp-report-body { padding: 4px 20px 20px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+.rp-report-sub { margin: 0; color: var(--text-3); font-size: var(--fs-small); line-height: 1.6; }
+.rp-report dl { margin: 0; display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; }
+.rp-report dl div { display: flex; justify-content: space-between; gap: 12px; }
+.rp-report dt { color: var(--text-3); }
+.rp-report dd { margin: 0; font-weight: 600; }
+.rp-report .note { margin: 0; color: var(--text-3); font-size: 11px; line-height: 1.7; }
+.rp-report .warn { color: var(--warn); }
+.rasad-slot { min-width: 0; }
+@media (max-width: 760px) { .ws-top .topbar-symbol { touch-action: none; } }
+/* «ترسیم تازه کجا دیده شود» in the layout menu. */
+.drawing-scope .ds-seg { margin: 4px 12px; display: flex; }
+.drawing-scope .ds-seg button { flex: 1; }
+.drawing-scope .ds-note { max-width: 260px; }

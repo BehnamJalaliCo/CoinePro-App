@@ -14,6 +14,7 @@ import type { PageProps } from './registry';
 import { faNum } from '../i18n/time';
 import { AvatarComposer, AvatarView, decodeAvatar, encodeAvatar } from './Avatar';
 import { PROFILE_KEY, readProfile, type Profile } from './profileStore';
+import { isFounding } from '../data/founding';
 import { drawable, foundingFact, kycState, membershipFact, planFact, recordFacts, verificationFact, winRate, type Fact } from './profileFacts';
 import './home2.css';
 
@@ -80,9 +81,9 @@ export default function ProfilePage({ onSignIn }: PageProps) {
   const tyEnt = useLoad(() => (sessions.tradeyar ? authed<Record<string, unknown>>('tradeyar', '/up/tradeyar/api/mobile/v1/entitlements').catch(() => null) : Promise.resolve(null)), [Boolean(sessions.tradeyar)]);
   const me = useLoad(() => (sessions.coineprofx ? academy<Record<string, unknown>>('me').catch(() => null) : Promise.resolve(null)), [Boolean(sessions.coineprofx)]);
   const premium = usePremium();
-  // The founding mark only where the platform's own account data says so — never awarded by this browser.
+  // The founding mark: the account's own data, or the one-way mark noted while everything was open (data/founding.ts).
   const founding = [sessions.tradeyar?.user, sessions.coineprofx?.user].some((u) => Boolean((u as Record<string, unknown> | null | undefined)?.founding || (u as Record<string, unknown> | null | undefined)?.founding_member))
-    || tyEnt.data?.founding_member === true || tyEnt.data?.founding === true;
+    || tyEnt.data?.founding_member === true || tyEnt.data?.founding === true || isFounding();
   const planLabel = useMemo(() => {
     if (premium.vip || premium.plan === 'vip') return 'VIP';
     if (!premium.premium) return null;

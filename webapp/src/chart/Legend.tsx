@@ -411,6 +411,8 @@ function CompareMenu({ symbol, at, onClose }: { symbol: string; at: { x: number;
       <MI act="cmp-show" icon={st.hidden[symbol] ? 'ph-eye' : 'ph-eye-slash'} label={st.hidden[symbol] ? L('نمایش', 'Show') : L('پنهان کردن', 'Hide')} onClick={() => st.toggle(symbol)} />
       <MI act="cmp-own" checked={cs.compareMode === 'own'} label={L('مقیاس جداگانه', 'Own scale')} onClick={() => cs.set({ compareMode: 'own' })} />
       <MI act="cmp-pct" checked={cs.compareMode === 'percent'} label={L('مقیاس درصدی', 'Percent scale')} onClick={() => cs.set({ compareMode: 'percent' })} />
+      <MI act="cmp-indexed" checked={cs.compareMode === 'indexed'} label={L('شاخص ۱۰۰', 'Index 100')} onClick={() => cs.set({ compareMode: 'indexed' })} />
+      <MI act="cmp-ratio" checked={cs.compareMode === 'ratio'} label={L('نسبت', 'Ratio')} title={L('نماد مقایسه تقسیم بر همین نماد، کندل به کندل', 'The compared symbol divided by this one, bar for bar')} onClick={() => cs.set({ compareMode: 'ratio' })} />
       <MSep />
       <MI act="cmp-remove" icon="ph-trash" danger label={L('حذف', 'Remove')} onClick={() => st.remove(symbol)} />
     </PopMenu>

@@ -16,7 +16,7 @@ import { IntervalControl } from './IntervalMenu';
 import { QuickSearch, type QuickActions } from './QuickSearch';
 import { MoreSheet } from './MoreSheet';
 import { Toasts, toast } from './toast';
-import { applyChartType, useGrid } from '../state/grid';
+import { applyChartType, applySymbol, useGrid } from '../state/grid';
 import { startLayoutWatch, useLayouts } from '../state/layouts';
 import { isExpression } from '../data/symbols';
 import { faNum } from '../i18n/time';
@@ -28,6 +28,8 @@ import { leaveDrawMode, usePhoneDraw } from './PhoneDrawing';
 import { useStudies, VOLUME } from '../state/studies';
 import { ChartTypeParamsButton } from '../chart/ChartTypeParams';
 import { KeepWatchingButton } from './KeepWatching';
+import { useSymbolWheel } from './symbolWheel';
+import { useWatchlist } from '../state/watchlist';
 
 type MenuId = 'type' | 'layout' | 'templates' | 'grid' | 'snapshot' | null;
 
@@ -77,6 +79,8 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
   const current = useLayouts((s) => s.current);
   const dirty = useLayouts((s) => s.dirty);
   const toggle = (m: MenuId) => setMenu(menu === m ? null : m);
+  // The phone's symbol wheel: drag the name up or down to the next or previous symbol of the list.
+  const wheel = useSymbolWheel(() => useWatchlist.getState().symbols, symbol, (s) => applySymbol(s));
 
   // Autosave and the unsaved mark follow every change the layout holds.
   useEffect(() => startLayoutWatch(), []);
@@ -100,7 +104,8 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
   return (
     <header className="ws-top" role="toolbar" aria-label={t('appName')}>
       <button className="ib menu-btn" title={t('menu')} onClick={onMenu}><Icon name="ph-list" size="md" /></button>
-      <button className="ib topbar-symbol" onClick={onSymbolSearch} title={t('symbolSearch')}>
+      <button className="ib topbar-symbol" onClick={() => { if (!wheel.swallowClick()) onSymbolSearch(); }} title={t('symbolSearch')}
+        onPointerDown={wheel.onPointerDown} onPointerMove={wheel.onPointerMove} onPointerUp={wheel.onPointerUp} onPointerCancel={wheel.onPointerCancel}>
         {isExpression(symbol) ? <span className="logo logo-expr" aria-hidden><Icon name="ph-function" size="sm" /></span> : <SymbolLogo symbol={symbol} size={20} />}
         <span className="label sym">{symbol}</span>
       </button>

@@ -39,5 +39,6 @@ export function sma(src: number[], p: number): (number | null)[];
 export function ema(src: number[], p: number): (number | null)[];
 export function rsi(closes: number[], p?: number): (number | null)[];
 export function atr(h: number[], l: number[], c: number[], p?: number): (number | null)[];
+export function adx(h: number[], l: number[], c: number[], p?: number): (number | null)[];
 export function macd(c: number[], fast?: number, slow?: number, sig?: number): { macd: (number | null)[]; signal: (number | null)[]; hist: (number | null)[] };
 export function bollinger(c: number[], p?: number, mult?: number): { upper: (number | null)[]; basis: (number | null)[]; lower: (number | null)[] };

@@ -20,6 +20,7 @@ import { useStudies, VOLUME } from '../state/studies';
 import { useChartSettings, showsLine, showsValue, type ChartSettings, type CrossStyle } from '../state/chartSettings';
 import { timeOptions, zoneOf } from './time';
 import { compareColor, useCompare } from '../state/compare';
+import { ratioSeries } from './compareRatio';
 import { DrawingStyleBar } from './DrawingStyleBar';
 import { SessionBreaks, separatorPeriod } from './SessionBreaks';
 import { AutoOverlay } from './AutoOverlay';
@@ -360,9 +361,11 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
     const s = csRef.current;
     const b = useChartBus.getState();
     const left = s.scalePlacement === 'left';
-    const cmp = useCompare.getState().symbols.length > 0 && s.compareMode === 'percent';
+    const anyCmp = useCompare.getState().symbols.length > 0;
+    const cmp = anyCmp && s.compareMode === 'percent';
     const pct = b.scale === 'percent' || cmp;
-    const mode = pct ? PriceScaleMode.Percentage : b.scale === 'log' ? PriceScaleMode.Logarithmic : b.scale === 'indexed' ? PriceScaleMode.IndexedTo100 : PriceScaleMode.Normal;
+    const idx = anyCmp && s.compareMode === 'indexed';
+    const mode = pct ? PriceScaleMode.Percentage : idx || b.scale === 'indexed' ? PriceScaleMode.IndexedTo100 : b.scale === 'log' ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal;
     const look = lookOf(darkRef.current, s);
     const common = { borderColor: look.lineSep, alignLabels: s.noOverlap, scaleMargins: { top: s.marginTop / 100, bottom: s.marginBottom / 100 }, textColor: look.text };
     const main = { ...common, mode, autoScale: b.autoScale || s.lockRatio, invertScale: b.invert, visible: true, scaleMargins: mainMargins() };
@@ -700,7 +703,10 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
           const tail = entry.data[entry.data.length - 1];
           if (!tail) return;
           tail.v = px;
-          s.update({ time: tail.t as UTCTimestamp, value: px });
+          if (csRef.current.compareMode === 'ratio') {
+            const r = ratioSeries([tail], bars.current)[0];
+            if (r) s.update({ time: r.t as UTCTimestamp, value: r.v });
+          } else s.update({ time: tail.t as UTCTimestamp, value: px });
           if (useChartBus.getState().hover == null) publishCompare(null);
         }));
       }).catch(() => undefined);
@@ -710,8 +716,12 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compare, interval, symbol]);
   useEffect(() => {
-    const pct = scale === 'percent' || cs.compareMode === 'percent';
-    cmpSeries.current.forEach(({ series }, sym) => {
+    const pct = scale === 'percent' || cs.compareMode === 'percent' || cs.compareMode === 'indexed';
+    const ratio = cs.compareMode === 'ratio';
+    cmpSeries.current.forEach(({ series, data }, sym) => {
+      // «نسبت»: the line is the compared close over this chart's close, on its own scale.
+      const shown = ratio ? ratioSeries(data, bars.current) : data;
+      if (data.length) series.setData(shown.map((p) => ({ time: p.t as UTCTimestamp, value: p.v })));
       series.applyOptions({
         priceScaleId: pct ? mainScale() : `cmp-${sym}`, visible: !cmpHidden[sym], color: compareColor(useCompare.getState(), sym),
         autoscaleInfoProvider: (b: () => AutoscaleInfo | null) => (pct && csRef.current.scalePriceOnly ? null : b()),
@@ -720,7 +730,7 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
     });
     publishCompare(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compare, cmpHidden, cmpColors, scale, cs.compareMode, cs.scalePlacement, cs.scalePriceOnly, cmpVer]);
+  }, [compare, cmpHidden, cmpColors, scale, cs.compareMode, cs.scalePlacement, cs.scalePriceOnly, cmpVer, cs.compareMode === 'ratio' ? barsVersion : 0]);
   const [compareRows, setCompareRows] = useState<CompareRow[]>([]);
   function publishCompare(time: number | null) {
     const st = useCompare.getState();

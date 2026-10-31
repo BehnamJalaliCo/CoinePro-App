@@ -43,6 +43,7 @@ import './data/founding';
 import { TeachingLayer } from './coach/TeachingLayer';
 import { MarketPreviewHost } from './pages/MarketPreview';
 import { OwnerBanners } from './shell/OwnerBanners';
+import { RasadHost } from './chart/Rasad';
 
 export function App() {
   const symbol = usePrefs((s) => s.symbol);
@@ -133,6 +134,7 @@ export function App() {
         <ChartGrid feed={feedFor(session)} onCellSearch={setCellSearch}>
           <ChartView feed={feedFor(session)} digits={inst.digits} displayName={displayName} onStudySettings={setStudyUid} onAlertAt={(p) => setAlertAt(p)} />
         </ChartGrid>
+        <RasadHost />
         <TimeBar supported={(iv) => supported.includes(iv)} />
         <PhoneDrawing />
         <BottomPanel />

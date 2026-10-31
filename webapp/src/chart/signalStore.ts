@@ -21,6 +21,7 @@ import {
   DEFAULT_HORIZON, emptyReport, isSilent, makeSeries, measureRead, noteText, readLine, readStudy, readVerdicts, setupScore, snapHorizon,
   type ConfidenceReport, type Exclusion, type MarkerStyle, type MarketState, type Series, type SetupScore, type SignalRead,
 } from './signals';
+import { useRasadReads } from './rasad';
 
 export interface SignalLayer {
   reads: SignalRead[];
@@ -187,3 +188,11 @@ export async function readAcross(st: Study, symbol: string, interval: string, en
 
 /** The registry's colour for a study, when the legend has none to hand. */
 export const registryColour = (key: string) => REGISTRY[key]?.color ?? ALL_STUDIES[key]?.color ?? null;
+
+// رصد's third sentence reads what the studies on the chart say now (chart/rasad.ts): the layer is
+// published there whenever it changes; an empty layer is «not known», not «none».
+useSignals.subscribe((s, prev) => {
+  if (s.layer === prev.layer) return;
+  const { reads, setup } = s.layer;
+  useRasadReads.getState().set(reads.length ? reads.map((r) => ({ state: r.state })) : null, reads.length ? setup.side : null);
+});

@@ -101,7 +101,7 @@ export interface ChartSettings {
   dateFormat: 'dd MMM \'yy' | 'MMM dd, yyyy' | 'yyyy-MM-dd' | 'dd/MM/yyyy' | 'MM/dd/yyyy';
   hour12: boolean;
   /** Compared symbols: each on its own hidden scale (unless the axis is in %), or all in percent. */
-  compareMode: 'own' | 'percent';
+  compareMode: 'own' | 'percent' | 'indexed' | 'ratio';
 
   // ── Canvas ──
   bgType: 'solid' | 'gradient';
