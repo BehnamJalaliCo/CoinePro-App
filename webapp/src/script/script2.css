@@ -4,14 +4,14 @@
 .sx-sheet .dialog-head p { margin: 2px 0 0; }
 .sx-sheet-body { padding: 4px 20px 18px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
 .sx-sheet-body h3 { margin: 4px 0 0; font-size: 15px; }
-.sx-sheet-body textarea { width: 100%; border: 1px solid var(--line-strong); border-radius: 8px; padding: 8px 10px; background: var(--bg); color: var(--text); font-family: ui-monospace, monospace; }
+.sx-sheet-body textarea { width: 100%; border: 1px solid var(--line-strong); border-radius: 8px; padding: 8px 10px; background: var(--bg); color: var(--text); }
 .sx-fix, .sx-template { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; }
 .sx-template .btn { align-self: flex-start; }
 .sx-unsupported { display: block; white-space: pre; overflow-x: auto; background: var(--bg-sunken); border-radius: 6px; padding: 6px 8px; font-size: 12px; color: var(--text-3); text-align: left; }
 .sx-actions { gap: 8px; }
 .sx-prompt-text { max-height: 320px; overflow: auto; background: var(--bg-sunken); border-radius: 8px; padding: 10px; font-size: 12px; }
 .sx-prompt-ask p { margin: 0 0 2px; unicode-bidi: plaintext; }
-.sx-code { margin: 8px 0 0; white-space: pre; overflow-x: auto; text-align: left; font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.6; background: var(--bg-sunken); border-radius: 8px; padding: 8px 10px; color: var(--text); }
+.sx-code { margin: 8px 0 0; white-space: pre; overflow-x: auto; text-align: left; font-size: 12px; line-height: 1.6; background: var(--bg-sunken); border-radius: 8px; padding: 8px 10px; color: var(--text); }
 .sx-prompt-text .sx-code { background: transparent; padding: 0; }
 .sx-note { margin: 0; }
 
