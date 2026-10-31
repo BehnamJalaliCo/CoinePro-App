@@ -98,9 +98,11 @@
 .details-range .row { display: flex; justify-content: space-between; font-size: var(--fs-small); color: var(--text-2); }
 .details-range .bar { position: relative; height: 4px; border-radius: 2px; background: var(--bg-active); margin: 6px 0; }
 .details-range .fill { position: absolute; top: -3px; width: 2px; height: 10px; background: var(--text); transform: translateX(-1px); }
-.details-stats { display: grid; grid-template-columns: 1fr auto; row-gap: 6px; margin: 12px 0 0; font-size: var(--fs-small); }
-.details-stats dt { color: var(--text-2); }
-.details-stats dd { margin: 0; text-align: right; }
+/* Labels keep one line; a long value (a metal's trading hours) wraps inside its own column instead
+   of squeezing the label column word by word. */
+.details-stats { display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: 12px; row-gap: 6px; align-items: baseline; margin: 12px 0 0; font-size: var(--fs-small); }
+.details-stats dt { color: var(--text-2); white-space: nowrap; }
+.details-stats dd { margin: 0; min-width: 0; text-align: right; overflow-wrap: anywhere; }
 
 /* Generic panel */
 .panel-generic { display: flex; flex-direction: column; min-height: 0; flex: 1; }

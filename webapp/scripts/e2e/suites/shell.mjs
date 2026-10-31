@@ -193,6 +193,18 @@ export default async function ({ test, open, ready, pc, expect }) {
     return env;
   });
 
+  await test('shell: a metal’s «درباره‌ی نماد» keeps every label on one line', async () => {
+    for (const sym of ['XAUUSD', 'XAGUSD', 'EURUSD', 'BTCUSDT']) {
+      const env = await open(`${sym}/1h?e2e=1`, { width: 1440, height: 900 });
+      await ready(env.page);
+      await env.page.waitForSelector('.details-stats.about dt', { timeout: 10000 });
+      const rows = await env.page.$$eval('.details-stats.about dt', (els) => els.map((e) => [e.textContent, Math.round(e.getBoundingClientRect().height), parseFloat(getComputedStyle(e).lineHeight) || 20]));
+      const broken = rows.filter(([, h, lh]) => h > lh * 1.5);
+      expect(!broken.length, `${sym}: labels wrapped ${JSON.stringify(broken)}`);
+    }
+    return null;
+  });
+
   await test('shell: the bottom dock opens at 320 and never drags below 200', async () => {
     const env = await open('BTCUSDT/1h?e2e=1');
     await ready(env.page);
