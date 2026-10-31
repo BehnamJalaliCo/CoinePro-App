@@ -196,7 +196,7 @@ export const DEFAULT_SETTINGS: ChartSettings = {
 
   alertLines: true, alertLinesActiveOnly: true, alertLineColor: '#F7A600',
 
-  events: true, eventImportance: 'high', eventsFutureOnly: false, news: false,
+  events: true, eventImportance: 'high', eventsFutureOnly: false, news: true,
   sessionBreaks: false, sessionBreakColor: '', sessionBreakStyle: 'dashed', sessionBreakWidth: 1,
   sessionsOn: false, sessions: ['sydney', 'tokyo', 'london', 'newyork'], sessionOverlaps: true,
 

@@ -23,4 +23,6 @@ export interface Ticker {
   volume?: number;
   prevClose?: number;
   ts: number;
+  /** The venue the live price came from, as the feed names it (Finnhub, LBank), when it says. */
+  source?: string;
 }

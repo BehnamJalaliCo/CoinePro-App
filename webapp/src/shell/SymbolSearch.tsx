@@ -11,6 +11,7 @@ import { exprLegs, instrumentOf, isExpression, normaliseExpression } from '../da
 import { activeChart, applySymbol } from '../state/grid';
 import { useCompare, COMPARE_COLORS } from '../state/compare';
 import { useL } from '../pages/kit';
+import { candleSource } from '../data/venue';
 import './topbar.css';
 
 // TradingView's symbol search: a centred dialog, the query field on top, market tabs under it,
@@ -36,8 +37,6 @@ function typeLabel(market: Market, fa: boolean): string {
   if (fa) return { crypto: 'کریپتو اسپات', forex: 'فارکس', metals: 'فلز CFD', indices: 'شاخص CFD', energy: 'انرژی CFD' }[market];
   return { crypto: 'spot crypto', forex: 'forex', metals: 'commodity cfd', indices: 'index cfd', energy: 'commodity cfd' }[market];
 }
-/** Where the prices come from, as the phone names its candle sources (CandleGateway.sourceName). */
-const sourceOf = (market: Market) => (market === 'crypto' ? 'LBank' : 'MetaTrader 5');
 
 /** The ticker with the letters the query matched marked, as TradingView marks them. */
 function Marked({ text, q }: { text: string; q: string }): ReactNode {
@@ -160,7 +159,7 @@ export function SymbolSearch({ onClose, onPick, initial = '', allowExpr = false,
         <span className={`name${fa ? ' fa' : ''}`}>{name ?? ''}</span>
         <span className="src">
           <span className={`kind${fa ? ' fa' : ''}`}>{typeLabel(i.market, fa)}</span>
-          <span className="venue">{sourceOf(i.market)}</span>
+          <span className="venue">{candleSource(i.symbol)}</span>
         </span>
         {mode === 'compare' ? (
           <span className={`add${added ? ' on' : ''}`} style={added ? { color: COMPARE_COLORS[compared.indexOf(i.symbol) % COMPARE_COLORS.length] } : undefined}>

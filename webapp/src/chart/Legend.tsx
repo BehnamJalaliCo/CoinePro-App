@@ -34,6 +34,7 @@ import { openChartSettings } from '../shell/SettingsDialog';
 import { addTextNote, offerOrderTicket, openAlertDialog, openIndicators } from './actions';
 import { usePlacement } from './studyPlacement';
 import { useEventsAt, useNewsAt } from './EventMarks';
+import { useSourceCaption } from '../data/venue';
 import './chart-x.css';
 
 const MARKET_NAME: Record<string, [string, string]> = {
@@ -104,6 +105,7 @@ export function Legend({ symbol, displayName, interval, chartType, digits, shown
   const typeDef = chartTypeDef(chartType);
   const hoverEvents = useEventsAt(shown?.t ?? null, hovering);
   const hoverNews = useNewsAt(shown?.t ?? null, hovering);
+  const sourceLine = useSourceCaption(symbol, fa);
 
   const title = cs.titleMode === 'ticker' || displayName === symbol ? symbol : cs.titleMode === 'description' ? displayName : null;
   const at = (e: React.MouseEvent, kind: 'symbol' | 'study' | 'volume' | 'compare', uid?: string) => {
@@ -161,6 +163,7 @@ export function Legend({ symbol, displayName, interval, chartType, digits, shown
           </span>
         ) : null}
       </div>
+      {sourceLine ? <div className={`legend-source${fa ? ' fa' : ''}`} dir={fa ? 'rtl' : 'ltr'} data-source>{sourceLine}</div> : null}
       {hoverEvents.length ? (
         <div className="legend-events">
           {hoverEvents.map((e, i) => <span key={i} className="num"><i className={`ev-dot ${e.impact}`} />{e.currency} · {e.title}{e.actual ? ` · ${e.actual}` : e.forecast ? ` · f ${e.forecast}` : ''}</span>)}

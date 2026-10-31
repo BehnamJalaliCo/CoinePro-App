@@ -1,0 +1,24 @@
+/* The event lane's sheets (OLD ChartEventSheet / NotableBarSheet): a capped, scrolling list of event cards. */
+.ev-sheet { width: min(460px, calc(100vw - 32px)); }
+.ev-sheet .dialog-head { align-items: flex-start; }
+.ev-sheet-head { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ev-sheet-head h2 { font-size: 17px; }
+.ev-sheet-sub { margin: 0; font-size: var(--fs-small); }
+.ev-sheet-body { display: flex; flex-direction: column; gap: 10px; padding: 12px 20px 18px; overflow: auto; max-height: min(520px, 70vh); }
+.ev-list { display: flex; flex-direction: column; gap: 8px; }
+.ev-row { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.ev-row-top, .ev-row-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ev-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.ev-pill { color: var(--pill); border: 1px solid color-mix(in srgb, var(--pill) 32%, transparent); background: color-mix(in srgb, var(--pill) 12%, transparent); border-radius: 999px; padding: 2px 8px; font-size: 11px; line-height: 16px; }
+.ev-clock, .ev-row-foot { font-size: var(--fs-small); }
+.ev-title { font-weight: 600; font-size: 14px; color: var(--text); }
+.ev-detail { font-size: 13px; color: var(--text-2); }
+.ev-reading { margin: 0; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+.ev-reading > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.ev-reading dt { color: var(--text-2); font-size: 13px; }
+.ev-reading dd { margin: 0; font-weight: 600; white-space: nowrap; }
+.ev-move.up { color: var(--up); }
+.ev-move.down { color: var(--down); }
+.ev-within { font-size: var(--fs-small); }
+.ev-nothing { margin: 4px 0; font-size: 13px; line-height: 1.7; }
+.legend-source { width: max-content; max-width: 100%; overflow: hidden; text-overflow: ellipsis; color: var(--text-3, #8C8C8C); font-size: 11px; line-height: 16px; white-space: nowrap; pointer-events: none; }

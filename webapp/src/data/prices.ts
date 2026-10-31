@@ -9,6 +9,7 @@ import { HttpError, pageVisible, request } from './http';
 import { backendOf, instrumentOf } from './symbols';
 import { useMarket } from '../state/market';
 import type { Ticker } from './types';
+import { venueName } from './venue';
 
 type PriceListener = (price: number, tsMs: number) => void;
 const listeners = new Map<string, Set<PriceListener>>();
@@ -32,8 +33,12 @@ function emit(symbol: string, price: number, ts: number) {
 const last = new Map<string, number>();
 function publish(tickers: Ticker[]) {
   const changed: Ticker[] = [];
-  for (const t of tickers) {
-    if (last.get(t.symbol) !== t.last || !useMarket.getState().tickers[t.symbol]) changed.push(t);
+  const known = useMarket.getState().tickers;
+  for (const raw of tickers) {
+    // A feed that does not name its venue keeps the one another feed reported for the symbol.
+    const source = raw.source || known[raw.symbol]?.source;
+    const t = source ? { ...raw, source } : raw;
+    if (last.get(t.symbol) !== t.last || !known[t.symbol] || known[t.symbol]!.source !== t.source) changed.push(t);
     if (last.get(t.symbol) !== t.last) emit(t.symbol, t.last, t.ts);
     last.set(t.symbol, t.last);
   }
@@ -51,7 +56,7 @@ async function pollCrypto(): Promise<number> {
   publish(rows.map((x) => {
     const pct = Number(x.c ?? 0);
     const prev = pct > -100 ? x.p / (1 + pct / 100) : x.p;
-    return { symbol: x.s, last: x.p, change: x.p - prev, changePct: pct, high: x.h, low: x.l, volume: x.v, prevClose: prev, ts: x.t ? x.t * 1000 : now };
+    return { symbol: x.s, last: x.p, change: x.p - prev, changePct: pct, high: x.h, low: x.l, volume: x.v, prevClose: prev, ts: x.t ? x.t * 1000 : now, source: 'LBank' };
   }));
   if (!cryptoCatalogued && rows.length) {
     cryptoCatalogued = true;
@@ -82,13 +87,14 @@ async function pollFxTickers(): Promise<number> {
 async function pollFxFocus(): Promise<number> {
   const sym = focus;
   if (!sym || backendOf(sym) !== 'coineprofx') return 1500;
-  const r = await request<{ prices?: Record<string, { price?: number; ts?: number }> }>(`/up/coineprofx/api/ws/snapshot?symbols=${encodeURIComponent(sym)}`, { timeoutMs: 8000 });
+  const r = await request<{ prices?: Record<string, { price?: number; ts?: number; source?: string }> }>(`/up/coineprofx/api/ws/snapshot?symbols=${encodeURIComponent(sym)}`, { timeoutMs: 8000 });
   const q = r.prices?.[sym];
   if (q && Number.isFinite(q.price)) {
     const prior = useMarket.getState().tickers[sym];
-    if (prior && prior.last !== q.price) {
+    const source = venueName(q.source) || undefined;
+    if (prior && (prior.last !== q.price || (source && prior.source !== source))) {
       const open = prior.prevClose ?? prior.last;
-      publish([{ ...prior, last: q.price!, change: q.price! - open, changePct: open ? ((q.price! - open) / open) * 100 : 0, ts: q.ts ?? Date.now() }]);
+      publish([{ ...prior, last: q.price!, change: q.price! - open, changePct: open ? ((q.price! - open) / open) * 100 : 0, ts: q.ts ?? Date.now(), ...(source ? { source } : {}) }]);
     } else if (!prior) emit(sym, q.price!, q.ts ?? Date.now());
   }
   return 1500;

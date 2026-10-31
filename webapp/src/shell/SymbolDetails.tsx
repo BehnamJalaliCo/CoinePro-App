@@ -6,7 +6,7 @@ import { SymbolLogo } from '../ui/SymbolLogo';
 import { Icon } from '../ui/Icon';
 import { useFlash, useNow } from '../ui/useFlash';
 import { formatPrice, formatVolume } from '../chart/format';
-import { backendOf, instrumentOf } from '../data/symbols';
+import { instrumentOf } from '../data/symbols';
 import { marketStatus } from '../data/sessions';
 import { countdown, contractSize, nextSessionChange, sessionText } from '../data/sessionClock';
 import { useQuote } from '../data/quote';
@@ -21,6 +21,7 @@ import { community, listOf, readPost, type Post } from '../data/community';
 import { usePage } from '../state/page';
 import { faAgo, faNum } from '../i18n/time';
 import { useL } from '../pages/kit';
+import { candleSource, sourceCaption, useQuoteSource } from '../data/venue';
 import './panels-x.css';
 
 // The latest stories, fetched once a visit for the details card.
@@ -166,8 +167,10 @@ export function SymbolDetails({ onCompare, onSearch }: { onCompare?(): void; onS
   const next = nextSessionChange(inst.market, now);
   const quote = useQuote(symbol);
   const { ref: priceRef, tick } = useFlash<HTMLSpanElement>(tk?.last);
-  // The market the prices come from, as symbol search names it: LBank for crypto, MetaTrader 5 for the rest.
-  const venue = backendOf(symbol) === 'tradeyar' ? 'LBank' : 'MetaTrader 5';
+  // The venue the candles come from, and the live price's own when the feed names a different one.
+  const venue = candleSource(symbol);
+  const quoteVenue = useQuoteSource(symbol);
+  const venueLine = sourceCaption(venue, quoteVenue, fa);
   const openPage = usePage((s) => s.open);
   const [copied, setCopied] = useState(false);
 
@@ -254,7 +257,7 @@ export function SymbolDetails({ onCompare, onSearch }: { onCompare?(): void; onS
       {head}
       <div className="details-meta">
         <span className={`details-name${fa ? ' fa' : ''}`}>{name}</span>
-        <span className="dot-sep">·</span><span className="details-venue">{venue.toUpperCase()}</span>
+        {venue ? <><span className="dot-sep">·</span><span className="details-venue">{venue.toUpperCase()}</span></> : null}
       </div>
       <div className="details-type"><span className="fa">{kind}</span><span className="dot-sep">·</span><span className="fa">{fa ? type.fa : type.en}</span></div>
       <div className="details-price">
@@ -362,7 +365,7 @@ export function SymbolDetails({ onCompare, onSearch }: { onCompare?(): void; onS
         <dt className="fa">{L('اندازه‌ی قرارداد', 'Contract size')}</dt><dd className="num">{contractSize(symbol, inst.market, fa)}</dd>
         <dt className="fa">{L('کمترین تیک', 'Minimum tick')}</dt><dd className="num">{(1 / 10 ** digits).toFixed(digits)}</dd>
         <dt className="fa">{L('ساعت معامله', 'Session')}</dt><dd className="fa">{sessionText(inst.market, fa)}</dd>
-        <dt className="fa">{L('منبع داده', 'Data source')}</dt><dd>{venue}</dd>
+        {venueLine ? <><dt className="fa">{L('منبع داده', 'Data source')}</dt><dd className={fa ? 'fa' : ''} data-source>{venueLine}</dd></> : null}
       </dl>
 
       {posts.length ? (

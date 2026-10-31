@@ -858,7 +858,7 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
       {autoOn ? <AutoOverlay api={api} series={series} bars={view()} version={barsVersion + (replaySlice?.length ?? 0) + seriesVer} flags={{ divergence: cs.autoDivergence, harmonic: cs.autoHarmonic, gaps: cs.autoGaps }} fa={lang === 'fa'} /> : null}
       {cs.volumeProfile && !TIMELESS.includes(chartType) ? <VolumeProfile api={api} series={series} bars={view()} version={barsVersion + (replaySlice?.length ?? 0) + seriesVer} rows={cs.vpRows} valueArea={cs.vpValueArea} up={cs.up} down={cs.down} dark={dark} /> : null}
       <SetupZones api={api} series={series} version={seriesVer} bars={bars.current} />
-      <EventMarks api={api} series={series} bars={bars.current} version={barsVersion + seriesVer} />
+      <EventMarks api={api} series={series} bars={view()} version={barsVersion + (replaySlice?.length ?? 0) + seriesVer} replaying={replaySlice != null} />
       <canvas ref={drawCanvas} className="draw-layer" />
       <PriceLines series={series} api={api} version={seriesVer} bars={view()} barsVersion={barsVersion} digits={digits} />
       <Legend symbol={symbol} displayName={displayName} interval={interval} chartType={chartType} digits={digits} shown={shown ?? null} prev={prev}

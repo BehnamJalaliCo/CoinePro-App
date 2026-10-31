@@ -124,8 +124,9 @@
 .legend.with-bg .legend-row, .legend.with-bg .legend-study, .legend.with-bg .legend-fold, .legend.with-bg .legend-chip { background: var(--legend-bg); border-radius: 4px; padding: 0 4px; }
 .legend-confirm { display: flex; align-items: center; gap: 8px; width: max-content; margin: 2px 0; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg-elevated); box-shadow: var(--shadow-pop); pointer-events: auto; font-size: var(--fs-small); }
 .ev-dot.high { background: #F23645; }
-.ev-dot.medium { background: #FF9800; }
-.ev-dot.low, .ev-dot.holiday { background: #B2B5BE; }
+.ev-dot.medium { background: #FB8C00; }
+.ev-dot.low { background: #2962FF; }
+.ev-dot.holiday { background: #787B86; }
 .ev-dot.news { background: #9C27B0; }
 .legend-events.news { max-width: 520px; }
 .legend-events.news span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
