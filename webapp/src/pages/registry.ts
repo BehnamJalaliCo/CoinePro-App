@@ -8,7 +8,7 @@ export type PageId =
   | 'backtest' | 'script' | 'alerts' | 'tools' | 'vision' | 'ai' | 'signals' | 'signal' | 'assistant'
   | 'academy' | 'lesson' | 'community' | 'thread' | 'help' | 'safety' | 'terms' | 'privacy'
   | 'home' | 'profile' | 'membership' | 'verify' | 'activity' | 'notifications' | 'delete' | 'pro' | 'reset'
-  | 'panel'
+  | 'panel' | 'coach'
   | 'vip-join' | 'vip-status' | 'affiliate' | 'performance' | 'copytrade';
 
 /** What every page receives: the address's extra segment, and a way to ask the reader to sign in. */
@@ -64,6 +64,8 @@ export const PAGES: PageDef[] = [
   { id: 'community', path: 'community', fa: 'انجمن', en: 'Community', icon: 'ph-chat-circle', group: 'learn', component: P(() => import('./CommunityPage')) },
   { id: 'thread', path: 'community/post', fa: 'گفتگو', en: 'Thread', icon: 'ph-chat-circle', group: null, component: P(() => import('./ThreadPage')) },
   { id: 'help', path: 'tutorials', fa: 'آموزش‌ها', en: 'Tutorials', icon: 'ph-question', group: 'learn', component: P(() => import('./HelpPage')) },
+  // The coach's library: every tip the app teaches once, playable again (OLD menu «آموزش‌ها»).
+  { id: 'coach', path: 'tutorials/tips', fa: 'نکته‌های آموزشی', en: 'Tips', icon: 'ph-sparkle', group: 'learn', component: P(() => import('../coach/CoachLibrary')) },
   { id: 'safety', path: 'launch-readiness', fa: 'ایمنی و نسخه', en: 'Safety and version', icon: 'ph-info', group: 'learn', component: P(() => import('./SafetyPage')) },
   { id: 'terms', path: 'legal/terms', fa: 'قوانین استفاده', en: 'Terms of use', icon: 'ph-info', group: null, component: P(() => import('./LegalPage')) },
   { id: 'privacy', path: 'legal/privacy', fa: 'حریم خصوصی', en: 'Privacy', icon: 'ph-info', group: null, component: P(() => import('./LegalPage')) },

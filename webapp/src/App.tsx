@@ -38,6 +38,7 @@ import { NotificationOffer } from './shell/NotificationOffer';
 import { OfflineBar } from './shell/Offline';
 import { DrawingAlertDeleteDialog } from './chart/drawingAlerts';
 import { PhoneDrawing } from './shell/PhoneDrawing';
+import { TeachingLayer } from './coach/TeachingLayer';
 
 export function App() {
   const symbol = usePrefs((s) => s.symbol);
@@ -136,6 +137,7 @@ export function App() {
       <PageHost onSignIn={() => setSignIn(true)} />
       <VipLayer />
       <NotificationOffer />
+      <TeachingLayer onSignIn={() => setSignIn(true)} />
       {menu ? <MainMenu onClose={() => setMenu(false)} onSignIn={() => setSignIn(true)} /> : null}
       {search !== null ? <SymbolSearch initial={search} allowExpr onClose={() => setSearch(null)} /> : null}
       {signIn ? <SignIn onClose={() => setSignIn(false)} /> : null}

@@ -1,0 +1,64 @@
+/* The coach (OLD CoineProCoach.kt): pastel in both themes on purpose — over the dark of the scrim a
+   light card is the brightest thing on the glass, which is where the eye should be. The card's soft
+   gradient and the ring belong to the coach's one picture, as the Kotlin coach's do (allow-listed
+   there for that reason). No blur; the one shadow is black at low alpha. */
+.coach-layer { position: fixed; inset: 0; z-index: 160; }
+.coach-layer.quiet { pointer-events: none; }
+.coach-glass { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.coach-card {
+  position: absolute; box-sizing: border-box; padding: 16px; border-radius: 28px; pointer-events: auto;
+  background: linear-gradient(180deg, #FFFFFF, #F4F1FF); color: #41456B;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22); transform-origin: 50% 50%;
+}
+.coach-card.quiet { border-radius: 20px; padding: 14px 14px 10px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
+.coach-stage, .coach-film { display: block; width: 100%; height: 180px; border-radius: 20px; }
+.coach-stage { margin-bottom: 12px; }
+.coach-head { display: flex; align-items: center; gap: 8px; color: #23264A; font-size: 15px; }
+.coach-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: linear-gradient(135deg, #B9B3FF, #A9DCFF, #A8EDD0, #FFD3BE); }
+.coach-text { margin: 4px 0 12px; font-size: 14px; line-height: 22px; color: #41456B; }
+.coach-acts { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.coach-never { background: none; border: 0; padding: 8px; border-radius: 999px; color: #8186A6; font: inherit; font-size: 12px; cursor: pointer; }
+.coach-never:hover { color: #41456B; }
+.coach-ok { background: #7479F2; color: #fff; border: 0; border-radius: 999px; padding: 8px 24px; font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; }
+.coach-ok:hover { background: #6267E6; }
+.coach-ok:focus-visible, .coach-never:focus-visible { outline: 2px solid #23264A; outline-offset: 2px; }
+
+/* The library («آموزش‌ها» in the menu): every tip, playable on demand. */
+.coach-lib { max-width: 720px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.coach-lead { border-radius: 28px; padding: 16px; background: linear-gradient(180deg, #FFFFFF, #F4F1FF); color: #41456B; border: 1px solid var(--line); }
+.coach-lead p { margin: 0 0 12px; line-height: 22px; font-size: 14px; }
+.coach-replay { background: #7479F2; color: #fff; border: 0; border-radius: 999px; padding: 8px 16px; font: inherit; font-weight: 700; cursor: pointer; }
+.coach-replay.done { background: rgba(116, 121, 242, 0.14); color: #7479F2; cursor: default; }
+.coach-group { margin: 16px 0 4px; font-size: 13px; font-weight: 500; color: var(--text-3); }
+.coach-row, .coach-academy {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 10px 16px; box-sizing: border-box;
+  border: 0; border-radius: var(--radius-lg); background: var(--bg-sunken); color: var(--text); font: inherit; text-align: start; cursor: pointer;
+}
+.coach-row:hover, .coach-academy:hover { background: var(--bg-hover); }
+.coach-academy { font-weight: 700; }
+.coach-play { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, #B9B3FF, #A9DCFF, #A8EDD0, #FFD3BE); }
+.coach-play.line { background: linear-gradient(135deg, #FFE3A8, #FFCFD9); }
+.coach-play i { display: block; width: 0; height: 0; border-style: solid; border-width: 6px 0 6px 10px; border-color: transparent transparent transparent #23264A; margin-left: 3px; }
+.coach-play.line i { width: 8px; height: 8px; border: 0; border-radius: 50%; background: #23264A; margin: 0; }
+.coach-row-text { display: flex; flex-direction: column; gap: 2px; }
+.coach-row-text b { font-weight: 500; font-size: 14px; }
+.coach-row-text span { font-size: 12px; color: var(--text-3); }
+
+/* Styled chrome tooltips (TradingView's, after a 500 ms pause; shell/panels-x.css data-tip's look). */
+.chrome-tip {
+  position: fixed; z-index: 400; pointer-events: none; padding: 4px 8px; border-radius: 4px; background: #131722; color: #fff;
+  font-size: 12px; line-height: 16px; white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Reader mode «تازه‌کارم» (OLD ReaderMode.SIMPLE): the replay controls, the order book, NamaScript and
+   multi-chart layouts leave the chrome. Nothing is removed from the app: every one is a menu away,
+   and the main menu switches the mode back in one tap. */
+:root[data-reader="simple"] .ws-top .ib:has(> svg > use[href="#ph-rewind"]),
+:root[data-reader="simple"] .ws-top .grid-btn,
+:root[data-reader="simple"] .wbar-btn[data-panel="dom"],
+:root[data-reader="simple"] .ws-bottom-tabs .tab[data-tab="namascript"] { display: none !important; }
+
+/* «رشد یعنی قرمز»: a rise in red across the app's own colours (the chart takes it from its settings). */
+:root[data-rise="red"] {
+  --up: #F23645; --down: #089981; --up-soft: rgba(242, 54, 69, 0.12); --down-soft: rgba(8, 153, 129, 0.12);
+}

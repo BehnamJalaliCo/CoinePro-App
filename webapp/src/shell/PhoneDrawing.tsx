@@ -82,7 +82,7 @@ function DrawingBand() {
   const shownTool = armed ? st.tool : Object.entries(st.lastInGroup).find(([g]) => g !== 'cursors')?.[1] ?? 'trend';
   const objects = usePanels((s) => s.open === 'objects');
   return (
-    <div className="draw-band" role="toolbar" aria-label={L('ابزارهای حالت ترسیم', 'Drawing mode')} data-band>
+    <div className="draw-band" data-coach="draw_band" role="toolbar" aria-label={L('ابزارهای حالت ترسیم', 'Drawing mode')} data-band>
       <button className="db-btn on" data-act="exit" title={L('خروج از حالت ترسیم', 'Leave drawing mode')} aria-label={L('خروج از حالت ترسیم', 'Leave drawing mode')} onClick={leaveDrawMode}><Icon name="pencil" /></button>
       <span className="db-sep" />
       <button className={`db-btn${armed ? ' on' : ''}`} data-act="tools" title={toolName(shownTool, lang)} aria-label={toolName(shownTool, lang)} onClick={() => document.body.classList.toggle('rail-open')}><Icon name={toolIcon(shownTool)} /></button>
@@ -171,7 +171,7 @@ function FloatingToolbar() {
   const left = bounds.left + EDGE + at.x;
   return createPortal(
     <>
-      <div ref={ref} className={`dft${collapsed ? ' folded' : ''}`} dir="ltr" role="toolbar" aria-label={L('ابزارهای ترسیم', 'Drawing tools')}
+      <div ref={ref} className={`dft${collapsed ? ' folded' : ''}`} data-coach="draw_toolbar" dir="ltr" role="toolbar" aria-label={L('ابزارهای ترسیم', 'Drawing tools')}
         style={{ left, top: bounds.top + EDGE + at.y, maxHeight: bounds.height - EDGE * 2 }} data-floating-tools>
         <div className="dft-grip" role="button" tabIndex={0} aria-label={collapsed ? L('باز کردن نوار ابزار', 'Unfold the toolbar') : L('جمع کردن نوار ابزار', 'Fold the toolbar')} aria-expanded={!collapsed}
           onPointerDown={(e) => { try { (e.target as HTMLElement).setPointerCapture?.(e.pointerId); } catch { /* a pointer the browser does not track */ } grip.current = { x: e.clientX, y: e.clientY, dragging: false, id: e.pointerId }; }}

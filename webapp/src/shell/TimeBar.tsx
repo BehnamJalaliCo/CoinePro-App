@@ -296,9 +296,9 @@ export function TimeBar({ supported }: { supported: (interval: string) => boolea
       <span className="sep" />
       <button className={`ib scale${scale === 'percent' ? ' on' : ''}`} aria-pressed={scale === 'percent'} title="Alt+P"
         onClick={() => setScale(scale === 'percent' ? 'normal' : 'percent')}>%</button>
-      <button className={`ib scale${scale === 'log' ? ' on' : ''}`} aria-pressed={scale === 'log'} title="Alt+L"
+      <button className={`ib scale${scale === 'log' ? ' on' : ''}`} data-coach="axis_minis" aria-pressed={scale === 'log'} title="Alt+L"
         onClick={() => setScale(scale === 'log' ? 'normal' : 'log')}>log</button>
-      <button className={`ib scale${autoScale ? ' on' : ''}`} aria-pressed={autoScale}
+      <button className={`ib scale${autoScale ? ' on' : ''}`} data-coach="axis_minis" aria-pressed={autoScale}
         onClick={() => setAutoScale(!autoScale)}>auto</button>
       <button className="ib timebar-gear" title={`${t('settings')} · ${L('مقیاس‌ها', 'Scales')}`}
         onClick={() => window.dispatchEvent(new CustomEvent('pc:settings', { detail: { tab: 'scales' } }))}>

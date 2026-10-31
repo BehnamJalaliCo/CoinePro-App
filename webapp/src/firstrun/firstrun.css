@@ -1,0 +1,58 @@
+/* The first run. Above the workspace and its pages (z 90), under every dialog (the sign-in, z 100). */
+.first-run { position: fixed; inset: 0; z-index: 98; display: flex; justify-content: center; overflow-y: auto; background: var(--bg); color: var(--text); }
+
+/* The welcome: near-black in both themes, one accent, the brand gold (OLD WelcomeSlides.kt). The 2 %
+   lift down the stage is the depth its scenes are lit against (allow-listed in the Kotlin file). */
+.first-run.welcome { background: linear-gradient(180deg, #141414, #0F0F0F); color: #DBDBDB; touch-action: pan-y; user-select: none; }
+.wl-col { width: 100%; max-width: 448px; min-height: 100%; box-sizing: border-box; padding: 24px 16px 24px; display: flex; flex-direction: column; align-items: center; }
+.wl-stage { flex: 1 1 auto; width: 100%; display: flex; flex-direction: column; justify-content: center; padding-bottom: 8vh; }
+.wl-brand { display: flex; align-items: center; justify-content: center; gap: 12px; aspect-ratio: 1.6; }
+.wl-mark { width: 48px; height: 48px; }
+.wl-brand b { font-size: 28px; font-weight: 700; color: #DBDBDB; }
+.wl-slide { display: flex; flex-direction: column; align-items: center; text-align: center; animation: wl-in 260ms ease-out; }
+.wl-art { width: 62%; aspect-ratio: 1; display: block; }
+.wl-slide h2 { margin: 32px 0 0; font-size: 28px; line-height: 36px; font-weight: 600; color: #DBDBDB; }
+.wl-slide p { margin: 24px 0 0; font-size: 15px; line-height: 22px; color: #DBDBDB; opacity: 0.7; }
+.wl-dots { display: flex; gap: 4px; height: 6px; margin-bottom: 24px; }
+.wl-dots button { width: 6px; height: 6px; padding: 0; border: 0; border-radius: 999px; background: #3D3D3D; cursor: pointer; transition: width 300ms cubic-bezier(.3, 1.4, .5, 1); }
+.wl-dots button.on { width: 20px; background: #D4A64A; }
+.wl-buttons { width: 100%; display: flex; flex-direction: column; gap: 16px; }
+.wl-primary, .wl-secondary { height: 56px; border-radius: 999px; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
+.wl-primary { background: #D4A64A; color: #0F0F0F; border: 0; }
+.wl-primary:hover { background: #E2B85E; }
+.wl-secondary { background: transparent; color: #DBDBDB; border: 1px solid #3D3D3D; }
+.wl-secondary:hover { background: #1F1F1F; }
+.wl-terms { margin: 8px 0 0; text-align: center; font-size: 12px; color: #8C8C8C; }
+@keyframes wl-in { from { opacity: 0; transform: translateX(var(--wl-from, 25%)); } to { opacity: 1; transform: none; } }
+[dir="rtl"] .wl-slide { --wl-from: -25%; }
+
+/* The starter preferences and the one question: the app's own palette, which the reader has just chosen. */
+.fr-col { width: 100%; max-width: 448px; box-sizing: border-box; padding: 32px 16px 24px; display: flex; flex-direction: column; gap: 24px; margin: auto 0; }
+.fr-col h2 { margin: 0; font-size: 22px; line-height: 30px; font-weight: 700; }
+.fr-choice { display: flex; flex-direction: column; gap: 8px; }
+.fr-choice-title { font-size: 12px; color: var(--text-3); }
+.fr-pills { display: flex; gap: 8px; }
+.fr-pill { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 12px 8px; border-radius: 999px;
+  border: 1px solid var(--line-strong); background: transparent; color: var(--text); font: inherit; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.fr-pill.on { background: var(--gold-strong); border-color: transparent; color: #0F0F0F; font-weight: 600; }
+.fr-swatch { width: 8px; height: 8px; border-radius: 999px; }
+.fr-done { height: 46px; border-radius: 999px; font-size: 15px; }
+.question .fr-col { gap: 0; }
+.question h2 { margin-bottom: 4px; }
+.fr-reassure { margin: 0 0 16px; font-size: 14px; color: var(--text-3); }
+.fr-mode { display: flex; align-items: center; gap: 16px; width: 100%; margin-bottom: 8px; padding: 14px 16px; box-sizing: border-box; border-radius: var(--radius-lg);
+  border: 1px solid var(--line); background: var(--bg-panel); color: var(--text); font: inherit; text-align: start; cursor: pointer; }
+.fr-mode:hover { background: var(--bg-hover); }
+.fr-mode:active { transform: scale(0.99); }
+.fr-plate { flex: none; width: 40px; height: 40px; border-radius: var(--radius); display: grid; place-items: center; background: var(--gold-soft); color: var(--gold); }
+.fr-mode-text { flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; }
+.fr-mode-text b { font-size: 15px; font-weight: 600; }
+.fr-mode-text span { font-size: 13px; color: var(--text-3); }
+.fr-chev { color: var(--text-3); flex: none; }
+.fr-skip { align-self: flex-start; margin-top: 16px; padding: 8px; border: 0; border-radius: var(--radius); background: none; color: var(--gold); font: inherit; font-size: 14px; cursor: pointer; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wl-slide { animation: none; }
+  .wl-dots button { transition: none; }
+  .fr-mode:active { transform: none; }
+}

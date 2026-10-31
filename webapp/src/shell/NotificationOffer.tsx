@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useFirstRun } from '../firstrun/store';
 import { usePrefs } from '../state/prefs';
 import { offerDue, offerSeen } from '../state/pulse';
 import { SymbolLogo } from '../ui/SymbolLogo';
@@ -16,7 +17,13 @@ export function NotificationOffer() {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     // After the first paint has settled, so the offer is not the first thing that moves.
-    const t = window.setTimeout(() => { if (offerDue()) { offerSeen(); setOpen(true); } }, 2500);
+    // Never over the first-run screens: it waits until they are done (checked again every 5 s).
+    let t = 0;
+    const tryOffer = (wait: number) => { t = window.setTimeout(() => {
+      if (useFirstRun.getState().active) { tryOffer(5000); return; }
+      if (offerDue()) { offerSeen(); setOpen(true); }
+    }, wait); };
+    tryOffer(2500);
     return () => window.clearTimeout(t);
   }, []);
   if (!open) return null;

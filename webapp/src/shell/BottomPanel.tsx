@@ -70,7 +70,7 @@ export function BottomPanel() {
       {bottom ? <div className="dock-grip" onPointerDown={drag} onDoubleClick={() => save({ h: DEFAULT_H, max: false })} title={L('کشیدن برای تغییر اندازه؛ دوبار کلیک برای اندازه‌ی پیش‌فرض', 'Drag to resize; double-click for the default height')} role="separator" aria-orientation="horizontal" /> : null}
       <nav className="ws-bottom-tabs" role="tablist">
         {TABS.map((x) => (
-          <button key={x.id} role="tab" aria-selected={bottom === x.id} className={`tab${bottom === x.id ? ' on' : ''}`} onClick={() => setBottom(x.id)}>
+          <button key={x.id} data-tab={x.id} role="tab" aria-selected={bottom === x.id} className={`tab${bottom === x.id ? ' on' : ''}`} onClick={() => setBottom(x.id)}>
             <span className="fa">{label(x)}</span>
           </button>
         ))}

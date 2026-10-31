@@ -7,6 +7,7 @@ import { useDrawing } from '../state/drawing';
 import { useSession } from '../data/session';
 import { Icon } from '../ui/Icon';
 import { useL } from '../pages/kit';
+import { ReaderModeRow } from '../firstrun/ReaderModeRow';
 import './topbar.css';
 import './shell.css';
 
@@ -82,6 +83,7 @@ export function MainMenu({ onClose, onSignIn }: { onClose(): void; onSignIn(): v
                   <button className={lang === 'en' ? 'on' : ''} aria-pressed={lang === 'en'} onClick={() => setLang('en')}>English</button>
                 </div>
               </div>
+              <ReaderModeRow />
             </section>
           ) : null}
           {GROUPS.map((g) => {

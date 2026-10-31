@@ -209,7 +209,7 @@ export function ToolRail() {
 
   return (
     <>
-      <nav className="ws-rail" ref={railRef} aria-label={L('ابزارهای ترسیم', 'Drawing tools')}>
+      <nav className="ws-rail" data-coach="draw_toolbar" ref={railRef} aria-label={L('ابزارهای ترسیم', 'Drawing tools')}>
         <button className="tool phone-only" title={L('واگرد', 'Undo')} aria-label={L('واگرد', 'Undo')} disabled={!canUndo} onClick={() => layerUndo(false)}><Icon name="ph-arrow-counter-clockwise" size="md" /></button>
         <button className="tool phone-only" title={L('ازنو', 'Redo')} aria-label={L('ازنو', 'Redo')} disabled={!canRedo} onClick={() => layerUndo(true)}><Icon name="ph-arrow-clockwise" size="md" /></button>
         <span className="rail-sep phone-only" />
