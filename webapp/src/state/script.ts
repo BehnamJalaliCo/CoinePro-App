@@ -7,13 +7,14 @@ import { EXAMPLES } from '../engine/scriptlib.js';
 import type { ScriptResult } from '../engine/namascript.js';
 import type { BacktestOptions, BtResult } from '../pages/backtestEngine';
 import { SCRIPT, useStudies } from './studies';
+import type { ScriptMeta } from '../script/doc';
 
 const KEY = 'pc.namascript.v1';
 const LIB_KEY = 'pc.scripts.v1';
 const STRAT_KEY = 'pc.strategies.v1';
 
-export interface ScriptTab { id: string; name: string; code: string; savedId: string | null }
-export interface SavedScript { id: string; name: string; code: string; updatedAt: number; versions?: { at: number; code: string }[] }
+export interface ScriptTab { id: string; name: string; code: string; savedId: string | null; meta?: ScriptMeta }
+export interface SavedScript { id: string; name: string; code: string; updatedAt: number; versions?: { at: number; code: string }[]; meta?: ScriptMeta }
 /** TradingView's strategy Properties, plus which signals to test when there is no strategy. */
 export interface StrategyProps extends BacktestOptions { showTrades: boolean }
 export interface SavedStrategy { id: string; name: string; script: string; code: string; inputs: Record<string, unknown>; props: StrategyProps; at: number }
@@ -27,6 +28,8 @@ interface Stored {
   tabs: ScriptTab[]; active: string; on: boolean; inputs: Record<string, unknown>; barMode: boolean;
   /** The code that is on the chart (what "Add to chart" took), apart from the edits since. */
   runCode: string; props: StrategyProps;
+  /** «این اسکریپت مال من است» of the script on the chart (its colour and own panel), taken with it. */
+  runMeta?: ScriptMeta | null;
 }
 
 const id = () => Math.random().toString(36).slice(2, 10);
@@ -38,12 +41,25 @@ export function scriptTitle(code: string): string | null {
   return /\b(?:indicator|study|strategy)\s*\(\s*["']([^"']+)["']/.exec(code)?.[1] ?? null;
 }
 
+/** The engine's colour for a plot that was given none. */
+export const ENGINE_PLOT_COLOUR = '#3b82f6';
+
+/** A run's result in the script's own colour: the plots it left in the engine's default take the chosen one. */
+export function withMeta(r: ScriptResult, meta: ScriptMeta | null | undefined): ScriptResult {
+  const c = meta?.colour;
+  if (!c || !r.ok || !r.plots) return r;
+  return { ...r, plots: r.plots.map((p) => (p.color?.toLowerCase() === ENGINE_PLOT_COLOUR ? { ...p, color: c } : p)) };
+}
+
+/** Whether the script on the chart asked for a panel of its own. */
+export const scriptOwnPane = (): boolean => Boolean(useScript.getState().runMeta?.ownPane);
+
 function initial(): Stored {
   const v = read<Partial<Stored> & { source?: string; applied?: boolean } | null>(KEY, null);
   if (v && Array.isArray(v.tabs) && v.tabs.length) {
     const tabs = v.tabs.filter((t) => typeof t?.code === 'string');
     const active = tabs.some((t) => t.id === v.active) ? v.active! : tabs[0]!.id;
-    return { tabs, active, on: Boolean(v.on), inputs: v.inputs ?? {}, barMode: Boolean(v.barMode), runCode: v.runCode ?? tabs[0]!.code, props: { ...DEFAULT_PROPS, ...(v.props ?? {}) } };
+    return { tabs, active, on: Boolean(v.on), inputs: v.inputs ?? {}, barMode: Boolean(v.barMode), runCode: v.runCode ?? tabs[0]!.code, props: { ...DEFAULT_PROPS, ...(v.props ?? {}) }, runMeta: v.runMeta ?? null };
   }
   // The first version kept one script: { source, applied, inputs }.
   const code = typeof v?.source === 'string' ? v.source : EXAMPLES[1]?.code ?? '';
@@ -77,7 +93,9 @@ interface ScriptState extends Stored {
   setRunning(on: boolean): void;
   setBacktest(b: BtResult | null): void;
   setProps(p: Partial<StrategyProps>): void;
-  newTab(code?: string, name?: string): void;
+  newTab(code?: string, name?: string, meta?: ScriptMeta): void;
+  /** Changes the open tab's «this script is mine» fields (a saved script takes them on its next save). */
+  setMeta(p: Partial<ScriptMeta>): void;
   closeTab(tabId: string): void;
   switchTab(tabId: string): void;
   rename(name: string): void;
@@ -94,7 +112,7 @@ interface ScriptState extends Stored {
 export const useScript = create<ScriptState>((set, get) => {
   const st = initial();
   const tabOf = (s: Stored) => s.tabs.find((t) => t.id === s.active) ?? s.tabs[0]!;
-  const persist = () => { const { tabs, active, on, inputs, barMode, runCode, props } = get(); write(KEY, { tabs, active, on, inputs, barMode, runCode, props }); };
+  const persist = () => { const { tabs, active, on, inputs, barMode, runCode, props, runMeta } = get(); write(KEY, { tabs, active, on, inputs, barMode, runCode, props, runMeta }); };
   const patchTab = (p: Partial<ScriptTab>) => {
     const tabs = get().tabs.map((t) => (t.id === get().active ? { ...t, ...p } : t));
     set({ tabs, source: tabOf({ ...get(), tabs }).code });
@@ -117,7 +135,8 @@ export const useScript = create<ScriptState>((set, get) => {
     setBarMode: (barMode) => { set((s) => ({ barMode, seq: s.seq + 1 })); persist(); },
     apply: () => {
       const code = get().source;
-      set((s) => ({ on: true, runCode: code, seq: s.seq + 1 }));
+      const runMeta = tabOf(get()).meta ?? null;
+      set((s) => ({ on: true, runCode: code, runMeta, seq: s.seq + 1 }));
       persist();
       useStudies.getState().setScript(true);
     },
@@ -126,9 +145,9 @@ export const useScript = create<ScriptState>((set, get) => {
     setRunning: (running) => set({ running }),
     setBacktest: (backtest) => set({ backtest }),
     setProps: (p) => { set((s) => ({ props: { ...s.props, ...p }, seq: s.seq + 1 })); persist(); },
-    newTab: (code, name) => {
+    newTab: (code, name, meta) => {
       const c = code ?? '// NamaScript\nindicator("My script")\nplot(ta.sma(close, 20), "SMA", color.blue)\n';
-      const tab = { id: id(), name: name ?? scriptTitle(c) ?? 'Untitled', code: c, savedId: null };
+      const tab: ScriptTab = { id: id(), name: name ?? scriptTitle(c) ?? 'Untitled', code: c, savedId: null, ...(meta ? { meta } : {}) };
       set({ tabs: [...get().tabs, tab], active: tab.id, source: c });
       persist();
     },
@@ -146,6 +165,12 @@ export const useScript = create<ScriptState>((set, get) => {
       persist();
     },
     rename: (name) => patchTab({ name: name.trim() || 'Untitled' }),
+    setMeta: (p) => {
+      const meta = { ...(tabOf(get()).meta ?? {}), ...p };
+      patchTab({ meta });
+      // The script on the chart redraws in its new colour or panel at once.
+      if (get().on && get().runCode === get().source) { set((s) => ({ runMeta: meta, seq: s.seq + 1 })); persist(); }
+    },
     save: (asNew = false, name) => {
       const tab = tabOf(get());
       const lib = get().lib;
@@ -153,7 +178,7 @@ export const useScript = create<ScriptState>((set, get) => {
       const sid = have?.id ?? id();
       const nm = name ?? (asNew ? `${tab.name} (2)` : tab.name);
       const versions = [...(have?.versions ?? []), ...(have && have.code !== tab.code ? [{ at: have.updatedAt, code: have.code }] : [])].slice(-30);
-      const entry: SavedScript = { id: sid, name: nm, code: tab.code, updatedAt: Date.now(), versions };
+      const entry: SavedScript = { id: sid, name: nm, code: tab.code, updatedAt: Date.now(), versions, ...(tab.meta ? { meta: tab.meta } : {}) };
       const next = [entry, ...lib.filter((x) => x.id !== sid)];
       set({ lib: next });
       write(LIB_KEY, next);
@@ -165,7 +190,7 @@ export const useScript = create<ScriptState>((set, get) => {
       if (!s) return;
       const already = get().tabs.find((t) => t.savedId === savedId);
       if (already) { get().switchTab(already.id); return; }
-      const tab = { id: id(), name: s.name, code: s.code, savedId };
+      const tab: ScriptTab = { id: id(), name: s.name, code: s.code, savedId, ...(s.meta ? { meta: s.meta } : {}) };
       set({ tabs: [...get().tabs, tab], active: tab.id, source: s.code });
       persist();
     },

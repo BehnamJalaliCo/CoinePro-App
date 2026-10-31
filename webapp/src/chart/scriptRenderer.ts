@@ -15,6 +15,7 @@ import {
 import type { ScriptResult } from '../engine/namascript.js';
 import type { DrawingLayer } from '../engine/drawings.js';
 import type { Candle } from '../data/types';
+import { scriptOwnPane } from '../state/script';
 
 export interface PaintData {
   bgs?: { color?: string; bars?: number[] }[];
@@ -184,7 +185,7 @@ export class ScriptRenderer {
   draw(r: ScriptResult | null, bars: Candle[]): void {
     this.clear();
     if (!r || !r.ok) return;
-    this.overlay = scriptIsOverlay(r, bars);
+    this.overlay = !scriptOwnPane() && scriptIsOverlay(r, bars);
     const pane = this.overlay ? 0 : this.firstFreePane();
     for (const p of r.plots ?? []) {
       const s = this.chart.addSeries(LineSeries, {

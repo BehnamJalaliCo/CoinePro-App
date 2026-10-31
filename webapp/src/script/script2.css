@@ -1,0 +1,52 @@
+/* NamaScript extras: the paste and prompt sheets, «این اسکریپت مال من است», the lessons, and a post's code. */
+.sx-sheet { width: min(640px, calc(100vw - 32px)); }
+.sx-sheet .dialog-head h2 { margin: 0; font-size: 17px; }
+.sx-sheet .dialog-head p { margin: 2px 0 0; }
+.sx-sheet-body { padding: 4px 20px 18px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+.sx-sheet-body h3 { margin: 4px 0 0; font-size: 15px; }
+.sx-sheet-body textarea { width: 100%; border: 1px solid var(--line-strong); border-radius: 8px; padding: 8px 10px; background: var(--bg); color: var(--text); font-family: ui-monospace, monospace; }
+.sx-fix, .sx-template { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; }
+.sx-template .btn { align-self: flex-start; }
+.sx-unsupported { display: block; white-space: pre; overflow-x: auto; background: var(--bg-sunken); border-radius: 6px; padding: 6px 8px; font-size: 12px; color: var(--text-3); text-align: left; }
+.sx-actions { gap: 8px; }
+.sx-prompt-text { max-height: 320px; overflow: auto; background: var(--bg-sunken); border-radius: 8px; padding: 10px; font-size: 12px; }
+.sx-prompt-ask p { margin: 0 0 2px; unicode-bidi: plaintext; }
+.sx-code { margin: 8px 0 0; white-space: pre; overflow-x: auto; text-align: left; font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.6; background: var(--bg-sunken); border-radius: 8px; padding: 8px 10px; color: var(--text); }
+.sx-prompt-text .sx-code { background: transparent; padding: 0; }
+.sx-note { margin: 0; }
+
+.sx-mine { display: flex; flex-direction: column; gap: 8px; }
+.sx-mine-head { display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: 0; padding: 0; color: var(--text); cursor: pointer; }
+.sx-mine-body { display: flex; flex-direction: column; gap: 8px; }
+.sx-field { height: 36px; border: 1px solid var(--line-strong); border-radius: 8px; padding: 0 10px; background: var(--bg); color: var(--text); }
+.sx-label { font-weight: 600; font-size: var(--fs-ui); }
+.sx-swatch { display: inline-block; width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--line-strong); }
+.sx-swatch.big { width: 26px; height: 26px; cursor: pointer; }
+.sx-swatch.on { border: 2px solid var(--gold); }
+.sx-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.sx-switch { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sx-version { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sx-version code { font-size: 12px; color: var(--text-3); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0; flex: 1; text-align: left; }
+
+.sx-lessons { gap: 10px; }
+.sx-lesson-head { background: none; border: 0; padding: 0; width: 100%; text-align: start; color: var(--text); cursor: pointer; font-size: 15px; }
+.sx-lesson p { margin: 8px 0 0; line-height: 1.9; }
+.sx-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sx-takeaway { color: var(--gold-strong); font-weight: 600; }
+.sx-try { margin-top: 8px; }
+
+.post-code { max-height: none; }
+.post-code.feed { max-height: 7.2em; overflow: hidden; }
+.shared-script { display: flex; flex-direction: column; gap: 6px; }
+.founding { color: var(--gold-strong); font-size: var(--fs-small); }
+.post-menu-btn { margin-inline-start: 4px; }
+.script-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+/* «معامله با کارگزار» */
+.partners-sheet .trade-here { width: 100%; }
+.partner-card { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; }
+.partner-mark { display: flex; align-items: center; gap: 8px; color: var(--text); }
+.partner-mark b { font-size: 16px; }
+.partner-logo { width: 26px; height: 26px; flex: none; }
+.partner-logo.wide { width: 192px; height: 18px; }
+a.partner-open { color: var(--text); text-decoration: none; }

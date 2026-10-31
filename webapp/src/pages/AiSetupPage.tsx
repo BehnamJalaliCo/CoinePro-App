@@ -10,6 +10,7 @@ import { formatPrice } from '../chart/format';
 import { MiniChart } from './MiniChart';
 import { Field, State, Tabs, errorText, useL, useLoad } from './kit';
 import type { Backend } from '../data/symbols';
+import { readSnapshot, swingPosition, type AiSnapshot } from './aiEvidence';
 
 // The AI setup builder (feature/ai, core/aisignal): the reader's symbol, timeframe, style, bias,
 // risk appetite, minimum R:R and account size go to the platform's model; the job is polled until
@@ -20,7 +21,7 @@ const TF: Record<Backend, string[]> = { tradeyar: ['5m', '15m', '30m', '1h', '4h
 const IV: Record<string, string> = { '5m': '5', '15m': '15', '30m': '30', '1h': '60', '4h': '240', '1d': '1D', M5: '5', M15: '15', H1: '60', H4: '240', D1: '1D' };
 const call = <T,>(b: Backend, p: string, o = {}) => (b === 'tradeyar' ? ty<T>(`api/mobile/v1/ai/${p}`, o) : fx<T>(`user/ai-signal/${p}`, o));
 
-interface Setup { symbol: string; direction: 'long' | 'short'; timeframe: string; entry: number | null; zoneLow: number | null; zoneHigh: number | null; sl: number | null; tps: number[]; confidence: number | null; rr: number | null; rationale: string; warnings: string[]; lot: number | null }
+interface Setup { symbol: string; direction: 'long' | 'short'; timeframe: string; entry: number | null; zoneLow: number | null; zoneHigh: number | null; sl: number | null; tps: number[]; confidence: number | null; rr: number | null; rationale: string; warnings: string[]; lot: number | null; snapshot: AiSnapshot | null }
 
 function readSetup(r: Record<string, unknown>): Setup {
   const zone = (r.entry_zone ?? {}) as Record<string, unknown>;
@@ -30,6 +31,7 @@ function readSetup(r: Record<string, unknown>): Setup {
     entry: num(r.entry), zoneLow: num(zone.low), zoneHigh: num(zone.high), sl: num(r.sl ?? r.stop_loss),
     tps: [r.tp1, r.tp2, r.tp3].map(num).filter((v): v is number => v != null), confidence: conf == null ? null : conf <= 1 ? conf * 100 : conf,
     rr: num(r.rr ?? r.risk_reward_tp1), rationale: str(r.rationale), warnings: Array.isArray(r.warnings) ? (r.warnings as unknown[]).map(String) : r.warnings ? [String(r.warnings)] : [], lot: num(r.lot),
+    snapshot: readSnapshot(r),
   };
 }
 
@@ -110,6 +112,7 @@ export default function AiSetupPage() {
               <div className="bt-stats wide">
                 {([[L('ورود', 'Entry'), setup.zoneLow != null && setup.zoneHigh != null ? `${fp(setup.zoneLow)} – ${fp(setup.zoneHigh)}` : fp(setup.entry)], [L('حد ضرر', 'Stop'), fp(setup.sl), 'down'], ...setup.tps.map((p, i): [string, string, string] => [`TP${i + 1}`, fp(p), 'up']), ['R:R', setup.rr?.toFixed(2) ?? '—'], [L('اعتماد', 'Confidence'), setup.confidence != null ? `${Math.round(setup.confidence)}%` : '—'], ...(setup.lot != null ? [[L('لات', 'Lot'), String(setup.lot)] as [string, string]] : [])] as [string, string, string?][]).map(([k, v, tone]) => <div key={k} className="bt-stat"><span className="bt-k fa">{k}</span><span className={`bt-v num ${tone ?? ''}`}>{v}</span></div>)}
               </div>
+              {setup.snapshot ? <EvidencePanel snapshot={setup.snapshot} /> : null}
               {setup.rationale ? <section className="card"><h3 className="fa">{L('دلیل', 'Reasoning')}</h3><p className="fa" dir="auto">{setup.rationale}</p></section> : null}
               {setup.warnings.length ? <section className="card warn">{setup.warnings.map((w, i) => <p key={i} className="fa" dir="auto">⚠ {w}</p>)}</section> : null}
               <p className="muted small fa">{L('خروجی هوش مصنوعی تضمین نتیجه نیست؛ پیش از هر معامله خودتان بررسی کنید.', 'AI output is not a guaranteed outcome; check it yourself before any trade.')}</p>
@@ -118,5 +121,37 @@ export default function AiSetupPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * «شواهد تکنیکال»: the indicator readings the model was given, so the setup can be checked rather than
+ * trusted (the phone's AiEvidencePanel). Grouped — trend, momentum, range — because those are three
+ * different questions; the twenty-bar range gets a marker bar, because where price sits inside it is
+ * a spatial question.
+ */
+function EvidencePanel({ snapshot: s }: { snapshot: AiSnapshot }) {
+  const L = useL();
+  const fmt = (v: number | null, d = 2) => (v == null ? '—' : v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }));
+  const row = (label: string, v: number | null, d = 2) => <div className="ev-row"><span className="muted">{label}</span><span className="num" dir="ltr">{fmt(v, d)}</span></div>;
+  const pos = swingPosition(s);
+  return (
+    <section className="card ai-evidence">
+      <h3 className="fa">{L('شواهد تکنیکال', 'Technical evidence')}</h3>
+      {s.priceNow != null ? row(L('قیمت لحظه‌ی تحلیل', 'Price at analysis'), s.priceNow) : null}
+      <div className="ev-group fa">{L('میانگین‌های متحرک', 'Moving averages')}</div>
+      {row('EMA 20', s.ema20)}{row('EMA 50', s.ema50)}{row('EMA 200', s.ema200)}
+      <div className="ev-group fa">{L('مومنتوم و نوسان', 'Momentum and volatility')}</div>
+      {row('RSI 14', s.rsi14, 1)}{row('ATR 14', s.atr14)}{row('MACD', s.macd, 4)}
+      {row(L('باند بالای بولینگر', 'Bollinger upper'), s.bbUpper)}{row(L('باند پایین بولینگر', 'Bollinger lower'), s.bbLower)}
+      <div className="ev-group fa">{L('محدوده‌ی بیست کندل', 'Twenty-bar range')}</div>
+      {row(L('سقف بیست کندل', 'Twenty-bar high'), s.swingHigh20)}{row(L('کف بیست کندل', 'Twenty-bar low'), s.swingLow20)}
+      {s.change20 != null ? <div className="ev-row"><span className="muted">{L('تغییر بیست کندل', 'Twenty-bar change')}</span><span className={`num ${s.change20 >= 0 ? 'up' : 'down'}`} dir="ltr">{`${s.change20 >= 0 ? '+' : '−'}${Math.abs(s.change20).toFixed(2)}%`}</span></div> : null}
+      {pos != null ? (
+        <div className="ev-row"><span className="muted">{L('جای قیمت در این محدوده', 'Where price sits in that range')}</span>
+          <span className="ev-range" dir="ltr" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pos * 100)}><i style={{ left: `${pos * 100}%` }} /></span></div>
+      ) : null}
+      <p className="muted small fa">{L('این مقادیر همان چیزی است که به مدل داده شد. مقدار محاسبه‌نشده «—» نشان داده می‌شود، نه صفر.', 'These are the readings the model was given. A value that could not be computed shows as “—”, not zero.')}</p>
+    </section>
   );
 }

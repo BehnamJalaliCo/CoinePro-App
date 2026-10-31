@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useScript } from '../state/script';
+import { useScript, withMeta } from '../state/script';
 import { useStudies } from '../state/studies';
 import { useReplay } from '../state/replay';
 import { useChartBus } from '../chart/chartBus';
@@ -30,7 +30,7 @@ export async function runOnChart(view: Candle[]): Promise<void> {
     if (al.length >= 2) sig = fromAlerts(view, al[0]!.bars, al[1]!.bars);
   }
   const s = useScript.getState();
-  s.setResult(r, engine);
+  s.setResult(withMeta(r, s.runMeta), engine);
   s.setBacktest(sig ? simulate(view, sig, s.props) : null);
   s.setRunning(false);
   useStudies.getState().touch('script');

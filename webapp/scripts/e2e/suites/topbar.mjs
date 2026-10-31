@@ -449,6 +449,8 @@ export default async function ({ test, open, ready, pc, expect }) {
     await page.waitForSelector('.alert-btn .badge');
     expect((await page.textContent('.alert-btn .badge')) === '۱', 'badge not in Persian digits');
     await page.click('.trade-btn');
+    // Trade opens «معامله با کارگزار»; its first button is this app's own route.
+    await page.click('.partners-sheet .trade-here');
     await page.waitForURL(/\/next\/paper-trade$/, { timeout: 5000 });
     await pc(page, () => window.__pc.usePage.getState().close());
     await ready(page);

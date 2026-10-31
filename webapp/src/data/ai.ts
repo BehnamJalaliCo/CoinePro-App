@@ -6,6 +6,7 @@ import { authed } from './auth';
 import { HttpError } from './http';
 import { backendOf, type Backend } from './symbols';
 import { useSession } from './session';
+import { readContext, type ContextItem } from '../pages/aiEvidence';
 
 export interface VisionResult {
   assessment: string;
@@ -79,7 +80,7 @@ export async function readChart(symbol: string, image: Blob, onStatus?: (s: stri
   }
 }
 
-export async function askAssistant(message: string): Promise<{ answer: string; remaining: number | null }> {
-  const r = await authed<{ answer?: string; remaining?: number }>('coineprofx', '/up/coineprofx/api/user/ai/chat', { body: { message: message.slice(0, 4000) }, timeoutMs: 90_000 });
-  return { answer: r.answer ?? '', remaining: r.remaining ?? null };
+export async function askAssistant(message: string): Promise<{ answer: string; remaining: number | null; context: ContextItem[] }> {
+  const r = await authed<{ answer?: string; remaining?: number } & Record<string, unknown>>('coineprofx', '/up/coineprofx/api/user/ai/chat', { body: { message: message.slice(0, 4000) }, timeoutMs: 90_000 });
+  return { answer: r.answer ?? '', remaining: r.remaining ?? null, context: readContext(r) };
 }

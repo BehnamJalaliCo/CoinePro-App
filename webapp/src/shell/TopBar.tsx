@@ -22,6 +22,7 @@ import { isExpression } from '../data/symbols';
 import { faNum } from '../i18n/time';
 import { useL } from '../pages/kit';
 import { openTrade, publishIdea } from './publish';
+import { PartnersSheet } from '../trade/PartnersSheet';
 import './topbar.css';
 import { leaveDrawMode, usePhoneDraw } from './PhoneDrawing';
 import { useStudies, VOLUME } from '../state/studies';
@@ -61,6 +62,8 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
   const [dialog, setDialog] = useState<LayoutDialogMode | null>(null);
   const [quick, setQuick] = useState(false);
   const [more, setMore] = useState(false);
+  // Trade opens «معامله با کارگزار»: this app's own order route first, then the partner venues.
+  const [partners, setPartners] = useState(false);
   const gridBtn = useRef<HTMLButtonElement>(null);
   const layoutBtn = useRef<HTMLButtonElement>(null);
   const tplBtn = useRef<HTMLButtonElement>(null);
@@ -148,11 +151,12 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
       <button ref={snapBtn} className={`ib desk-only tb-c snap-btn${menu === 'snapshot' ? ' open' : ''}`} title={t('snapshot')} aria-haspopup="menu" aria-expanded={menu === 'snapshot'} onClick={() => toggle('snapshot')}><Icon name="camera" size="md" /></button>
       <button className="ib desk-only tb-b publish-btn" title={L('انتشار ایده در انجمن', 'Publish idea')} onClick={() => void publishIdea()}><Icon name="ph-lightbulb" size="md" /></button>
       <span className="sep desk-only tb-b" />
-      <button className="trade-btn desk-only tb-b" title={L('معامله', 'Trade')} onClick={openTrade}><span className="fa">{L('معامله', 'Trade')}</span></button>
+      <button className="trade-btn desk-only tb-b" title={L('معامله', 'Trade')} onClick={() => setPartners(true)}><span className="fa">{L('معامله', 'Trade')}</span></button>
       <button className="cta" title={t('premium')} onClick={onPremium}><span className="fa">{t('premium')}</span></button>
       <AccountMenu onSignIn={onSignIn} onPremium={onPremium} />
       <button className="ib more-btn" title={L('بیشتر', 'More')} aria-haspopup="dialog" onClick={() => setMore(true)}><Icon name="ph-dots-three" size="md" /></button>
 
+      {partners ? <PartnersSheet onClose={() => setPartners(false)} onTradeHere={() => { setPartners(false); openTrade(); }} /> : null}
       {menu === 'grid' ? <GridMenu anchor={gridBtn.current} onClose={() => setMenu(null)} /> : null}
       {menu === 'layout' ? <LayoutMenu anchor={layoutBtn.current} onClose={() => setMenu(null)} onDialog={setDialog} /> : null}
       {menu === 'templates' ? <TemplateMenu anchor={tplBtn.current} onClose={() => setMenu(null)} /> : null}

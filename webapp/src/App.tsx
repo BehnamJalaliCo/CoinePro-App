@@ -38,6 +38,8 @@ import { NotificationOffer } from './shell/NotificationOffer';
 import { OfflineBar } from './shell/Offline';
 import { DrawingAlertDeleteDialog } from './chart/drawingAlerts';
 import { PhoneDrawing } from './shell/PhoneDrawing';
+// The founding-member mark is noted when the entitlements first answer (data/founding.ts).
+import './data/founding';
 import { TeachingLayer } from './coach/TeachingLayer';
 
 export function App() {

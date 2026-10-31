@@ -19,7 +19,7 @@ import { patternName } from '../engine/candlePatterns.js';
 import type { Candle } from '../data/types';
 import { SCRIPT, visibleOn, type LevelStyle, type LineStyleName, type PlotStyle, type PlotType, type Study } from '../state/studies';
 import { usePrefs } from '../state/prefs';
-import { useScript, scriptTitle } from '../state/script';
+import { useScript, scriptTitle, scriptOwnPane } from '../state/script';
 import { intervalLabel, intervalSeconds } from '../data/intervals';
 import { plotName } from './studyMeta';
 import { CrossPaint, ScriptPaint, barColorData, scriptIsOverlay, scriptMarkers } from './scriptRenderer';
@@ -352,7 +352,7 @@ export class StudyRenderer {
       let res = isScript ? useScript.getState().result : null;
       if (isScript) {
         if (res && !res.ok) res = null;
-        if (res) this.scriptOverlay = scriptIsOverlay(res, bars);
+        if (res) this.scriptOverlay = !scriptOwnPane() && scriptIsOverlay(res, bars);
         overlay = this.scriptOverlay;
       } else overlay = def!.pane === 'main';
       const pane = overlay ? 0 : nextPane++;
