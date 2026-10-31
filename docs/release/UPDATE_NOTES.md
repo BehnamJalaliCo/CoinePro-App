@@ -51,11 +51,11 @@ Verified against the server's own reading on 2026-09-19: 5.0.0 is **244** charac
 
 **fa**
 
-> نسخه‌ی وب در pro-chart.com/next بخش بزرگی از آنچه اپ اندروید داشت گرفت: صاعقه‌ی خبر و دایره‌ی تقویم روی چارت با برگه‌ی رویدادها، نقطه‌ی کندل غیرعادی با «چرا این حرکت؟»، آموزش انیمیشنی، اسکن رشد، اعلان‌های بازار، «هفته‌ی من»، «دوئل با گذشته»، حالت آفلاین و هشداری که با ترسیمش جابه‌جا می‌شود. در اپ اندروید فقط متن حریم خصوصی به‌روز شد.
+> نسخه‌ی وب در pro-chart.com/next آنچه اپ اندروید داشت گرفت: لایه‌ی نشانه‌ها با درصد موفقیت و برگه‌ی توضیح، رصد، چالش روزانه‌ی آرنا، خبر و تقویم روی چارت، هشدار با وب‌هوک و تا پنج شرط، گزارش کامل سبد و اکسل، پیش‌نمایش بازار، تنظیمات نقشه‌ی حرارتی، اسکریپت از هوش مصنوعی و «این صفحه چیست؟». در اپ اندروید فقط متن حریم خصوصی به‌روز شد.
 
 **en**
 
-> The web app at pro-chart.com/next now has much of what the Android app had: news and calendar glyphs with their event sheet, the unusual-bar dot with «why this move?», the animated coach, the growth scan, market notifications, «my week», the duel, offline start and alerts that follow their drawing. In the Android app only the privacy text changed.
+> The web app at pro-chart.com/next now has what the Android app had: the signal layer with hit rates and its explain sheet, Rasad, the daily Arena, news and calendar on the chart, alerts with webhooks and up to five conditions, the full portfolio report and Excel, market preview, heat map settings, scripts from AI and «what is this page?». In the Android app only the privacy text changed.
 
 ---
 
