@@ -354,11 +354,16 @@ export default async function ({ test, open, ready, pc, expect }) {
     const n = await R(() => window.__pc.useReplay.getState().state.length);
     expect(await idx() === n - 1, 'last bar');
     await env.page.$eval('.rp-scrub', (el) => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, '300'); el.dispatchEvent(new Event('input', { bubbles: true })); });
-    // A click on a revealed bar goes back to it.
+    // A plain click (or a double click) on a revealed bar leaves the replay where it is; Alt+click goes back to it.
     await env.page.waitForTimeout(150);
     const at = await R(() => { const api = window.__pc.useChartBus.getState().api; const r = api.chartElement().getBoundingClientRect(); return { x: r.left + api.timeScale().logicalToCoordinate(280), y: r.top + 150 }; });
     await env.page.mouse.click(at.x, at.y);
-    expect(Math.abs((await idx()) - 280) <= 1, `click to seek: ${await idx()}`);
+    await env.page.mouse.dblclick(at.x, at.y);
+    expect(await idx() === 300, `a plain click moved the replay: ${await idx()}`);
+    await env.page.keyboard.down('Alt');
+    await env.page.mouse.click(at.x, at.y);
+    await env.page.keyboard.up('Alt');
+    expect(Math.abs((await idx()) - 280) <= 1, `Alt+click to seek: ${await idx()}`);
     // Go to date (Alt+G) moves the replay.
     const local = await R(() => { const t = window.__pc.useReplay.getState().controller.full[200].t; return new Date(t * 1000 - new Date(t * 1000).getTimezoneOffset() * 60000).toISOString().slice(0, 16); });
     await env.page.keyboard.press('Alt+g');

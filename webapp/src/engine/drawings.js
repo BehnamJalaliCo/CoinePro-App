@@ -738,6 +738,7 @@ export class DrawingLayer {
       if (this.measuring) { this.measuring = false; this.dragging = false; this.tmp = null; this.didDrag = false; this.render(); return; }
       if (this.tmp && this.dragging) {
         if (this.didDrag) { this._pushUndo(); const nd = this._applyDef(this.tmp); extInit(nd, this); this.drawings.push(nd); this.tmp = null; this.dragging = false; this.didDrag = false; this._created(); } // کشیده شد ⇒ ثبت
+        else if ((this.tmp.type === 'longshort' || this.tmp.type === 'short') && this._defaultPosition(this.tmp)) { this._pushUndo(); const nd = this._applyDef(this.tmp); this.drawings.push(nd); this.tmp = null; this.dragging = false; this._created(); } // یک کلیک روی موقعیت ⇒ اندازه‌ی پیش‌فرض (مثل TV)، بعد جابه‌جا می‌شود
         else { this.dragging = false; this.twoClick = true; this.render(); } // فقط کلیک شد ⇒ منتظر کلیک دوم (مثل TV)
       }
     };
@@ -1180,6 +1181,21 @@ export class DrawingLayer {
     ctx.restore();
   }
 
+  // A position placed with one click (TradingView's): the entry where it was clicked, the stop one
+  // and a half average true ranges away (14 bars before the entry; 1% of the price without bars),
+  // the target at two times the risk, twenty bars wide. False when the click has no price or time.
+  _defaultPosition(d) {
+    if (!d || !d.p0 || d.p0.t == null || d.p0.p == null) return false;
+    const cs = this.candles || [], iv = this._barInterval() || 3600;
+    let end = cs.length - 1; while (end > 0 && cs[end].t > d.p0.t) end--;
+    let tr = 0, n = 0;
+    for (let i = Math.max(1, end - 13); i <= end && i < cs.length; i++) { const c = cs[i], pc = cs[i - 1].c; tr += Math.max(c.h - c.l, Math.abs(c.h - pc), Math.abs(c.l - pc)); n++; }
+    const risk = n ? (tr / n) * 1.5 : Math.abs(d.p0.p) * 0.01;
+    if (!(risk > 0)) return false;
+    const long = d.type === 'longshort';
+    d.p1 = { t: d.p0.t + 20 * iv, p: long ? d.p0.p - risk : d.p0.p + risk };
+    return true;
+  }
   // Entry, stop and target of a long or short position. The target is the reader's (d.tp) once
   // dragged or typed; until then two times the risk, as before.
   _posPrices(d) {

@@ -85,13 +85,18 @@ function useReplayView() {
   }, [slice, startedAt]);
 }
 
-/** A click on a revealed bar goes back to it (with the cursor, not while drawing). */
+/**
+ * Alt+click on a revealed bar goes back to it (with the cursor, not while drawing). A plain click is
+ * the reader's — selecting a drawing, double-clicking a line — and never moves the replay; «بازپخش از
+ * اینجا» in the chart's menu does the same.
+ */
 function useReplayClicks(on: boolean) {
   const api = useChartBus((b) => b.api);
   useEffect(() => {
     if (!on || !api) return;
     const click = (p: MouseEventParams<Time>) => {
       const r = useReplay.getState();
+      if (!p.sourceEvent?.altKey) return;
       if (!r.state?.on || r.selecting || typeof p.time !== 'number' || useDuel.getState().session) return;
       const tool = useDrawing.getState().tool;
       if (tool !== 'cursor' && tool !== 'select') return;
