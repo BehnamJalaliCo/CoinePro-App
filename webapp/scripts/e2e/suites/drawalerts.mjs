@@ -250,6 +250,8 @@ export default async function ({ test, open, ready, pc, expect }) {
       const ev = (type, x, y) => e.dispatchEvent(new PointerEvent(type, { pointerType: 'touch', pointerId: 4, clientX: x, clientY: y, bubbles: true }));
       ev('pointerdown', p.x, p.y); ev('pointermove', p.x + 60, p.y + 80); ev('pointermove', p.x + 120, p.y + 160); ev('pointerup', p.x + 120, p.y + 160);
     }, { x: g.x + g.width / 2, y: g.y + g.height / 2 });
+    // A pointer move is a continuous event: React may commit the new place a frame later.
+    await page.waitForFunction((t) => { const r = document.querySelector('.dft')?.getBoundingClientRect(); return !!r && r.x - t.x > 80 && r.y - t.y > 100; }, tb, { timeout: 3000 }).catch(() => undefined);
     const tb2 = await page.locator('.dft').boundingBox();
     expect(tb2.x - tb.x > 80 && tb2.y - tb.y > 100, `drag ${JSON.stringify([tb, tb2])}`);
     expect(!(await page.locator('.dft.folded').count()), 'a drag folded the toolbar');

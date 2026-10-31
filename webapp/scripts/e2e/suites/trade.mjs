@@ -247,6 +247,8 @@ export default async function ({ test, open, ready, pc, expect }) {
     await ready(page);
     await page.click('.ws-wbar .vip-wbtn');
     await page.waitForSelector('.vip-pitch .tr-steps');
+    // The server's message and the join terms arrive on their own requests, after the steps draw.
+    await page.waitForFunction(() => { const t = document.querySelector('.vip-pitch')?.textContent ?? ''; return /نیاز به اشتراک فعال/.test(t) && /50 USDT/.test(t); }, null, { timeout: 8000 }).catch(() => undefined);
     const text = await page.textContent('.vip-pitch');
     expect(/نیاز به اشتراک فعال/.test(text) && /50 USDT/.test(text), 'the server’s message and the minimum deposit');
     expect(await page.getAttribute('.vip-pitch a[href*="lbank"]', 'href') === 'https://lbank.com/ref/e2e', 'the referral link');
