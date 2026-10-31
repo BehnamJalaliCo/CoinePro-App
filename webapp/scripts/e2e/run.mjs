@@ -885,7 +885,7 @@ await test('context menu: invert, indexed, prev close, CSV; Alt+I', async () => 
   await env.page.hover('.ctx [data-act=more-tools]');
   await env.page.click('.ctx [data-act=csv]');
   const file = await dl;
-  expect(/ETHUSDT_1h\.csv/.test(file.suggestedFilename()), file.suggestedFilename());
+  expect(/^ETHUSDT-1h-\d{4}-\d{2}-\d{2}\.csv$/.test(file.suggestedFilename()), file.suggestedFilename());
   return env;
 });
 

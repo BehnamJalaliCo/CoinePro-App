@@ -187,7 +187,9 @@ export default async function ({ test, open, ready, pc, expect }) {
     expect((await path(env.page)) === '/next/screener', `screener: ${await path(env.page)}`);
     expect((await env.page.getAttribute('.hub-switch [role=tab]:nth-child(3)', 'aria-selected')) === 'true', 'screener selected');
     await env.page.click('.hub-switch >> text=بازارها');
-    await env.page.waitForSelector('.pulse', { timeout: 10000 });
+    await env.page.waitForSelector('.hub-switch [role=tab]:nth-child(1)[aria-selected=true]', { timeout: 10000 });
+    await settle(env.page);
+    expect((await path(env.page)) === '/next/markets', `markets: ${await path(env.page)}`);
     return env;
   });
 
