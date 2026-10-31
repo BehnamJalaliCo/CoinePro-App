@@ -13,6 +13,7 @@ import { PARAM_TYPES, chartTypeDef } from '../chart/chartTypes';
 import { DATE_FORMATS } from '../chart/time';
 import { PopMenu, MI, MSep } from '../chart/menuKit';
 import { priceToBarRatio } from '../chart/PriceScaleMenu';
+import { useStudies, VOLUME } from '../state/studies';
 import '../chart/chart-x.css';
 
 // Candle colour pairs: TradingView's, the reversed pair some markets read, colour-blind and monochrome.
@@ -152,6 +153,7 @@ export function SettingsDialog({ onClose, initialTab = 'symbol' }: { onClose(): 
   const chartType = usePrefs((p) => p.chartType);
   const timezone = usePrefs((p) => p.timezone);
   const bus = useChartBus();
+  const volumeOn = useStudies((st) => st.list.some((x) => x.key === VOLUME && !x.hidden));
   const [tab, setTab] = useState<SettingsTab>(initialTab);
   const [tplAt, setTplAt] = useState<{ x: number; y: number } | null>(null);
   const [tplName, setTplName] = useState('');
@@ -160,10 +162,10 @@ export function SettingsDialog({ onClose, initialTab = 'symbol' }: { onClose(): 
   const tc = themeColours(dark);
 
   // What to put back on Cancel: the settings, the scale switches, the time zone and the theme.
-  const snap = useRef<{ cs: ChartSettings; scale: ScaleMode; autoScale: boolean; invert: boolean; timezone: string; theme: Theme } | null>(null);
+  const snap = useRef<{ cs: ChartSettings; scale: ScaleMode; autoScale: boolean; invert: boolean; timezone: string; theme: Theme; volume: boolean } | null>(null);
   if (!snap.current) {
     const b = useChartBus.getState(); const p = usePrefs.getState();
-    snap.current = { cs: pickSettings(useChartSettings.getState()), scale: b.scale, autoScale: b.autoScale, invert: b.invert, timezone: p.timezone, theme: p.theme };
+    snap.current = { cs: pickSettings(useChartSettings.getState()), scale: b.scale, autoScale: b.autoScale, invert: b.invert, timezone: p.timezone, theme: p.theme, volume: useStudies.getState().list.some((x) => x.key === VOLUME && !x.hidden) };
   }
   const cancel = () => {
     const x = snap.current!;
@@ -173,6 +175,8 @@ export function SettingsDialog({ onClose, initialTab = 'symbol' }: { onClose(): 
     const p = usePrefs.getState();
     if (p.timezone !== x.timezone) p.setTimezone(x.timezone);
     if (p.theme !== x.theme) p.setTheme(x.theme);
+    const vol = useStudies.getState().list.some((v) => v.key === VOLUME && !v.hidden);
+    if (vol !== x.volume) useStudies.getState().setVolume(x.volume);
     onClose();
   };
   const cancelRef = useRef(cancel);
@@ -271,6 +275,9 @@ export function SettingsDialog({ onClose, initialTab = 'symbol' }: { onClose(): 
                 {PARAM_TYPES.includes(chartType) ? (
                   <Section title={L('ورودی‌های نوع چارت', 'Chart type inputs')}><div className="ctp-body in-settings"><ChartTypeFields type={chartType} /></div></Section>
                 ) : null}
+                <Section title={L('حجم', 'Volume')}>
+                  <Row label={L('حجم', 'Volume')} check={{ on: volumeOn, set: (v: boolean) => useStudies.getState().setVolume(v), act: 'volume' }} hint={L('هیستوگرام حجم در پایین چارت قیمت', 'The volume histogram at the foot of the price pane')} />
+                </Section>
                 <Section title={L('اصلاح داده', 'Data modification')}>
                   <Row label={L('دقت', 'Precision')}>
                     <Sel act="precision" value={s.precision} wide onChange={(v) => set({ precision: v })}
@@ -438,6 +445,8 @@ export function SettingsDialog({ onClose, initialTab = 'symbol' }: { onClose(): 
                   <Row label={L('پوزیشن‌ها', 'Positions')} check={chk('positionLines')} hint={L('ورود، حد ضرر و حد سود هر پوزیشن باز روی چارت', 'Each open position\'s entry, stop loss and take profit on the chart')} />
                   <Row label={L('سفارش‌ها', 'Orders')} check={chk('orderLines')} />
                   <Row label={L('نشانه‌های اجرا', 'Execution marks')} check={chk('executionMarks')} />
+                  <Row label={L('دکمه‌ی معامله زیر کندل زنده', 'Trade button under the live bar')} check={chk('tradeRing')} />
+                  <Row label={L('برچسب ارز مظنه', 'Quote currency chip')} check={chk('quoteChip')} hint={L('ارز مظنه در گوشه‌ی بالای چارت؛ مقیاس قیمت را باز می‌کند', 'The quote currency in the plot\'s top corner; opens the price scale')} />
                 </Section>
                 <p className="cs-note">{L('معامله‌ها روی حساب آزمایشی این مرورگر انجام می‌شوند.', 'Trades go to this browser\'s paper-trading account.')}</p>
               </>

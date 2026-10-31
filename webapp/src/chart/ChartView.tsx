@@ -14,14 +14,14 @@ import { useT, usePrefs, isDark } from '../state/prefs';
 import { intervalLabel, intervalSeconds } from '../data/intervals';
 import { showSpan, useChartBus, type CompareRow } from './chartBus';
 import { attachDrawings, type DrawingHost } from './drawingHost';
-import { BRICKS, DERIVED, TIMELESS, buildSeries, createPriceSeries, livePoint, tint, type SeriesStyle, type TypeParams } from './chartTypes';
-import { StudyRenderer, type StudyLegendRow } from './studies';
+import { BRICKS, COLUMN_CAP_PX, DERIVED, TIMELESS, buildSeries, columnsRange, createPriceSeries, livePoint, tint, type SeriesStyle, type TypeParams } from './chartTypes';
+import { StudyRenderer, plotTitles, type StudyLegendRow } from './studies';
 import { useStudies, VOLUME } from '../state/studies';
 import { useChartSettings, showsLine, showsValue, type ChartSettings, type CrossStyle } from '../state/chartSettings';
 import { timeOptions, zoneOf } from './time';
 import { compareColor, useCompare } from '../state/compare';
 import { DrawingStyleBar } from './DrawingStyleBar';
-import { SessionBreaks } from './SessionBreaks';
+import { SessionBreaks, separatorPeriod } from './SessionBreaks';
 import { AutoOverlay } from './AutoOverlay';
 import { BandFillPrimitive } from '../engine/bandFill.js';
 import { onPrice } from '../data/prices';
@@ -32,10 +32,11 @@ import { useReplay } from '../state/replay';
 import { useOverlay } from '../state/overlay';
 import { ReplayBar } from '../shell/ReplayBar';
 import { ChartContextMenu } from './ChartContextMenu';
+import { ConfirmClearHost } from './ConfirmClear';
 import { PriceScaleMenu } from './PriceScaleMenu';
 import { TimeScaleMenu } from './TimeScaleMenu';
 import { TextEditor } from './TextEditor';
-import { CountdownPrimitive, KagiPrimitive, PnfPrimitive } from './primitives';
+import { ColumnCapsPrimitive, CountdownPrimitive, KagiPrimitive, PnfPrimitive } from './primitives';
 import { secondsToClose, countdownTint } from '../engine/scales_crosshair.js';
 import { Legend, PaneLegend } from './Legend';
 import { PriceLines } from './PriceLines';
@@ -49,6 +50,8 @@ import { usePlacement } from './studyPlacement';
 import { SettingsHost } from '../shell/SettingsDialog';
 import { themeColours } from '../shell/SettingsDialog';
 import { ChartStatus } from './ChartStatus';
+import { tallMargins } from './tallFill';
+import { QuoteChip, TradeRing } from './ChartChips';
 import './chart-x.css';
 
 export interface HistoryResult {
@@ -77,7 +80,8 @@ function lookOf(dark: boolean, s: ChartSettings): Look {
     text: s.scaleTextColor || t.text, lineSep: s.scaleLineColor || t.line,
     gridV: s.vertGridColor || (dark ? 'rgba(242,242,242,0.06)' : 'rgba(46,46,46,0.06)'),
     gridH: s.horzGridColor || (dark ? 'rgba(242,242,242,0.06)' : 'rgba(46,46,46,0.06)'),
-    cross: s.crossColor || t.cross, crossLabel: dark ? '#4A4A4A' : '#131722', watermark: s.watermarkColor || t.watermark,
+    // TradingView's crosshair tags: #3D3D3D on the dark chart, #6A6D78 on the light one.
+    cross: s.crossColor || t.cross, crossLabel: dark ? '#3D3D3D' : '#6A6D78', watermark: s.watermarkColor || t.watermark,
   };
 }
 
@@ -183,6 +187,7 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
   const kagiPrim = useRef<KagiPrimitive | null>(null);
   const pnfPrim = useRef<PnfPrimitive | null>(null);
   const countdownPrim = useRef<CountdownPrimitive | null>(null);
+  const capsPrim = useRef<ColumnCapsPrimitive | null>(null);
 
   const fmt = () => ({ precision: digitsRef.current, minMove: 1 / 10 ** digitsRef.current });
   const timeless = () => TIMELESS.includes(typeRef.current);
@@ -201,7 +206,19 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
     price.current?.setData(built.data as never);
     if (built.kagi) kagiPrim.current?.setData(built.kagi, { yang: s.up, yin: s.down, yangWidth: Math.max(2, s.lineWidth + 1), yinWidth: 1 });
     if (built.pnf) pnfPrim.current?.setData(built.pnf.cols, built.pnf.box, s.up, s.down);
+    paintCaps();
     paintHlc();
+  }
+  // Columns: the full-strength cap at each close, and the last price's label in the bar's own colour.
+  function paintCaps() {
+    const caps = capsPrim.current;
+    if (!caps || typeRef.current !== 'columns') return;
+    const s = csRef.current;
+    const v = shownRef.current;
+    const points = v.map((b, i) => ({ time: b.t, value: b.c, color: b.c >= (v[i - 1]?.c ?? b.o) ? s.up : s.down }));
+    caps.setData(points);
+    const tail = points[points.length - 1];
+    if (tail) price.current?.applyOptions({ priceLineColor: tail.color });
   }
   // HLC area: the high–close band in the rising colour and the close–low band in the falling one.
   const hlc = useRef<{ series: ISeriesApi<SeriesType>; up: BandFillPrimitive; down: BandFillPrimitive } | null>(null);
@@ -262,7 +279,7 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
           series.applyOptions({
             priceScaleId: scaleId,
             lastValueVisible: labels !== 'hidden' && series.seriesType() !== 'Histogram',
-            title: labels === 'name-value' && k === 0 ? row.label.split(' ')[0] : '',
+            title: plotTitles.get(series) ?? (labels === 'name-value' && k === 0 ? row.label.split(' ')[0] : ''),
           });
           // «Scale price chart only»: an indicator over the price does not stretch the price scale.
           if (scaleId === main && series.getPane().paneIndex() === 0 && !wrapped.has(series)) {
@@ -311,8 +328,29 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
         const r = el?.getBoundingClientRect();
         return { top: r ? r.top - origin.top : 0, height: r ? r.height : pane.getHeight() };
       });
+      refitTall();
       setPanes((prev) => (prev.length === next.length && prev.every((v, i) => Math.abs(v.top - next[i]!.top) < 0.5 && Math.abs(v.height - next[i]!.height) < 0.5) ? prev : next));
     });
+  }
+
+  /** The price pane's margins: the settings', widened on a pane taller than it is wide (tallFill). */
+  const tallKey = useRef('');
+  function mainMargins() {
+    const c = chart.current; const s = csRef.current;
+    let w = 0; let h = 0;
+    try { w = c?.timeScale().width() ?? 0; h = c?.panes()[0]?.getHeight() ?? 0; } catch { /* not laid out */ }
+    const m = tallMargins(s.marginTop / 100, s.marginBottom / 100, w, h);
+    tallKey.current = `${m.top.toFixed(4)}|${m.bottom.toFixed(4)}`;
+    return m;
+  }
+  /** On a resize or a new pane: the margins again, only when the tall-plot share changed. */
+  function refitTall() {
+    const c = chart.current; const s = csRef.current;
+    if (!c) return;
+    let w = 0; let h = 0;
+    try { w = c.timeScale().width(); h = c.panes()[0]?.getHeight() ?? 0; } catch { return; }
+    const m = tallMargins(s.marginTop / 100, s.marginBottom / 100, w, h);
+    if (`${m.top.toFixed(4)}|${m.bottom.toFixed(4)}` !== tallKey.current) applyScales();
   }
 
   function applyScales() {
@@ -326,7 +364,7 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
     const mode = pct ? PriceScaleMode.Percentage : b.scale === 'log' ? PriceScaleMode.Logarithmic : b.scale === 'indexed' ? PriceScaleMode.IndexedTo100 : PriceScaleMode.Normal;
     const look = lookOf(darkRef.current, s);
     const common = { borderColor: look.lineSep, alignLabels: s.noOverlap, scaleMargins: { top: s.marginTop / 100, bottom: s.marginBottom / 100 }, textColor: look.text };
-    const main = { ...common, mode, autoScale: b.autoScale || s.lockRatio, invertScale: b.invert, visible: true };
+    const main = { ...common, mode, autoScale: b.autoScale || s.lockRatio, invertScale: b.invert, visible: true, scaleMargins: mainMargins() };
     const other = (used: boolean) => ({ ...common, visible: used, mode: PriceScaleMode.Normal, autoScale: true, invertScale: false });
     c.applyOptions({
       rightPriceScale: left ? other(scalesUsed.current.right) : main,
@@ -348,10 +386,11 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
         panes: { separatorColor: look.lineSep, separatorHoverColor: 'rgba(212,166,74,0.4)', enableResize: true },
       },
       grid: { vertLines: { color: look.gridV, style: LineStyle.Dotted }, horzLines: { color: look.gridH, style: LineStyle.Dotted } },
+      // The settings' crosshair from the first paint (TradingView's Large Dashed [6, 6] by default).
       crosshair: {
-        mode: CrosshairMode.Normal,
-        vertLine: { color: look.cross, style: LineStyle.Dashed, width: 1, labelBackgroundColor: look.crossLabel },
-        horzLine: { color: look.cross, style: LineStyle.Dashed, width: 1, labelBackgroundColor: look.crossLabel },
+        mode: s.crosshair === 'magnet' ? CrosshairMode.Magnet : CrosshairMode.Normal,
+        vertLine: { color: look.cross, style: CROSS_STYLE[s.crossStyle] ?? LineStyle.LargeDashed, width: s.crossWidth as 1 | 2 | 3 | 4, labelBackgroundColor: look.crossLabel },
+        horzLine: { color: look.cross, style: CROSS_STYLE[s.crossStyle] ?? LineStyle.LargeDashed, width: s.crossWidth as 1 | 2 | 3 | 4, labelBackgroundColor: look.crossLabel },
       },
       rightPriceScale: { borderColor: look.lineSep, scaleMargins: { top: s.marginTop / 100, bottom: s.marginBottom / 100 } },
       leftPriceScale: { borderColor: look.lineSep, visible: false },
@@ -409,6 +448,8 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
     kagiPrim.current = null; pnfPrim.current = null;
     if (typeRef.current === 'kagi') { kagiPrim.current = new KagiPrimitive({ yang: s.up, yin: s.down, yangWidth: 3, yinWidth: 1 }); series.attachPrimitive(kagiPrim.current); }
     if (typeRef.current === 'pnf') { pnfPrim.current = new PnfPrimitive(s.up, s.down); series.attachPrimitive(pnfPrim.current); }
+    capsPrim.current = null;
+    if (typeRef.current === 'columns') { capsPrim.current = new ColumnCapsPrimitive(COLUMN_CAP_PX); series.attachPrimitive(capsPrim.current); }
     countdownPrim.current = new CountdownPrimitive();
     series.attachPrimitive(countdownPrim.current);
     // Auto-scale: Point & figure by its columns; «Lock price to bar ratio» holds price per bar fixed.
@@ -420,6 +461,12 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
           const r = c.timeScale().getVisibleLogicalRange();
           const range = r ? pnf.range(r.from, r.to) : null;
           if (range) info = { priceRange: range };
+        }
+        // Columns stand on zero; the scale follows the visible closes, not the base.
+        if (typeRef.current === 'columns') {
+          const r = c.timeScale().getVisibleLogicalRange();
+          const range = r ? columnsRange(shownRef.current, r.from, r.to) : null;
+          if (range) info = { ...(info ?? {}), priceRange: range };
         }
         const st = csRef.current;
         if (!st.lockRatio || !info?.priceRange || !(st.lockRatioValue > 0)) return info;
@@ -445,7 +492,7 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
     if (!c) return;
     const s = csRef.current;
     const look = lookOf(dark, s);
-    const cross = { color: look.cross, style: CROSS_STYLE[s.crossStyle] ?? LineStyle.Dashed, width: s.crossWidth as 1 | 2 | 3 | 4, labelBackgroundColor: look.crossLabel };
+    const cross = { color: look.cross, style: CROSS_STYLE[s.crossStyle] ?? LineStyle.LargeDashed, width: s.crossWidth as 1 | 2 | 3 | 4, labelBackgroundColor: look.crossLabel };
     c.applyOptions({
       layout: {
         background: look.gradient ? { type: ColorType.VerticalGradient, topColor: look.bg, bottomColor: look.bg2 } : { type: ColorType.Solid, color: look.bg },
@@ -756,7 +803,7 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
         if (useReplay.getState().slice) return;
         const s = csRef.current;
         const point = livePoint(typeRef.current, bar, list[list.length - 2], styleOf(darkRef.current, s));
-        if (point) price.current?.update(point as never);
+        if (point) { price.current?.update(point as never); if (typeRef.current === 'columns') paintCaps(); }
         else if (!derivedTimer) derivedTimer = setTimeout(() => { derivedTimer = null; paintPrice(); if (BRICKS.includes(typeRef.current)) paintVolume(); }, fresh ? 0 : 250);
         if (showVolume() && !BRICKS.includes(typeRef.current)) volume.current?.update({ time: bar.t as UTCTimestamp, value: bar.v, color: volColor(bar, s, darkRef.current, list[list.length - 2]) });
         if (fresh && s.volumeMa) paintVolume();
@@ -861,7 +908,7 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
     <div ref={wrap} className={`ws-chart nav-${cs.navButtons} panebtn-${cs.paneButtons}`} onContextMenu={onContextMenu} onDoubleClick={onDoubleClick} data-type={chartType}>
       <div ref={host} className="chart-host" />
       {/* The overlay canvases sit beside the chart's own (a snapshot lays every canvas of the cell over the chart's picture). */}
-      {sessionBreaks ? <SessionBreaks api={api} bars={bars.current} intraday={intraday} timezone={timezone} version={barsVersion + seriesVer} color={breakColor} width={cs.sessionBreakWidth} style={cs.sessionBreakStyle} /> : null}
+      {sessionBreaks ? <SessionBreaks api={api} bars={bars.current} period={timeless() ? null : separatorPeriod(intervalSeconds(interval))} timezone={timezone} version={barsVersion + seriesVer} color={breakColor} width={cs.sessionBreakWidth} style={cs.sessionBreakStyle} /> : null}
       {cs.sessionsOn && intraday && !timeless() ? <SessionShading api={api} bars={bars.current} sessions={cs.sessions} overlaps={cs.sessionOverlaps} version={barsVersion + seriesVer} fa={lang === 'fa'} dark={dark} /> : null}
       {autoOn ? <AutoOverlay api={api} series={series} bars={view()} version={barsVersion + (replaySlice?.length ?? 0) + seriesVer} flags={{ divergence: cs.autoDivergence, harmonic: cs.autoHarmonic, gaps: cs.autoGaps }} fa={lang === 'fa'} /> : null}
       {cs.volumeProfile && !TIMELESS.includes(chartType) ? <VolumeProfile api={api} series={series} bars={view()} version={barsVersion + (replaySlice?.length ?? 0) + seriesVer} rows={cs.vpRows} valueArea={cs.vpValueArea} up={cs.up} down={cs.down} dark={dark} /> : null}
@@ -881,10 +928,13 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
       <NavButtons api={api} paneHeight={panes[0]?.height ?? 0} />
       <AxisPlus api={api} series={series} digits={digits} onAlertAt={onAlertAt} />
       <AxisChips api={api} symbol={symbol} paneHeight={panes[0]?.height ?? 0} />
+      {state === 'ready' && !replaySlice ? <TradeRing api={api} lastTime={bars.current[bars.current.length - 1]?.t ?? null} paneHeight={panes[0]?.height ?? 0} version={barsVersion + seriesVer} /> : null}
+      {state === 'ready' ? <QuoteChip api={api} symbol={symbol} below={panes.length > 1 ? 28 : 0} onOpen={(x, y) => setMenuAt({ kind: 'price', x, y })} /> : null}
       <ReplayBar />
       <DrawingStyleBar />
       <TextEditor />
       <SettingsHost />
+      <ConfirmClearHost />
       {menuAt?.kind === 'chart' ? <ChartContextMenu at={menuAt} onClose={() => setMenuAt(null)} onAlertAt={onAlertAt} /> : null}
       {menuAt?.kind === 'price' ? <PriceScaleMenu at={menuAt} onClose={() => setMenuAt(null)} /> : null}
       {menuAt?.kind === 'time' ? <TimeScaleMenu at={menuAt} onClose={() => setMenuAt(null)} /> : null}

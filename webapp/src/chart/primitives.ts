@@ -183,3 +183,37 @@ export class CountdownPrimitive extends Base {
   }
   priceAxisViews() { return this.views; }
 }
+
+// ── Columns ───────────────────────────────────────────────────────────────────────────────────────
+/** The full-strength cap along each column's top (the old Pro-Chart's drawColumns): the histogram
+ *  draws the body at 55 % of the colour, this the 1.5px edge at the close, as wide as the column. */
+export class ColumnCapsPrimitive extends Base {
+  private points: { time: number; value: number; color: string }[] = [];
+  constructor(private height = 1.5) { super(); }
+  setData(points: { time: number; value: number; color: string }[]): void { this.points = points; this.update(); }
+  private readonly views = [new View((target) => this.paint(target), 'normal')];
+  paneViews() { return this.views; }
+  private paint(target: CanvasRenderingTarget2D): void {
+    const chart = this.chart; const series = this.series;
+    if (!chart || !series || !this.points.length) return;
+    const ts = chart.timeScale();
+    const range = ts.getVisibleLogicalRange();
+    const spacing = ts.options().barSpacing;
+    target.useBitmapCoordinateSpace(({ context: ctx, horizontalPixelRatio: hpr, verticalPixelRatio: vpr }) => {
+      // The column's width as lightweight-charts' histogram lays it out: the bar spacing less a 1px gap.
+      const gap = Math.ceil(spacing * hpr) <= 1 ? 0 : Math.max(1, Math.floor(hpr));
+      const w = Math.max(1, Math.round(spacing * hpr) - gap);
+      const cap = Math.max(1, Math.round(this.height * vpr));
+      const from = range ? Math.max(0, Math.floor(range.from) - 1) : 0;
+      const to = range ? Math.min(this.points.length - 1, Math.ceil(range.to) + 1) : this.points.length - 1;
+      for (let i = from; i <= to; i++) {
+        const p = this.points[i]!;
+        const x = ts.timeToCoordinate(p.time as Time); const y = series.priceToCoordinate(p.value);
+        if (x == null || y == null) continue;
+        const left = Math.round(x * hpr) - Math.floor(w / 2);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(left, Math.round(y * vpr), w, cap);
+      }
+    });
+  }
+}

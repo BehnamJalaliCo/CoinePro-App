@@ -21,7 +21,7 @@ import { REGISTRY } from '../engine/indicators.js';
 import { chartTypeDef, type ChartType } from './chartTypes';
 import { useMarket } from '../state/market';
 import { marketOf } from '../data/symbols';
-import { marketStatus } from '../data/sessions';
+import { marketState } from '../data/sessions';
 import { useQuote } from '../data/quote';
 import { useReplay } from '../state/replay';
 import { usePaper } from '../state/paper';
@@ -89,7 +89,7 @@ export function Legend({ symbol, displayName, interval, chartType, digits, shown
   const { toggle: toggleStudy, remove: removeStudy, clear: clearStudies } = useStudies();
   const tk = useMarket((m) => m.tickers[symbol]);
   const market = marketOf(symbol);
-  const open = marketStatus(market);
+  const mstate = marketState(market);
   const quote = useQuote(symbol);
   const replayOn = useReplay((r) => Boolean(r.state?.on));
   const [menu, setMenu] = useState<{ kind: 'symbol' | 'study' | 'volume' | 'compare'; uid?: string; x: number; y: number } | null>(null);
@@ -143,7 +143,7 @@ export function Legend({ symbol, displayName, interval, chartType, digits, shown
           <span className={`legend-mkt${fa ? ' fa' : ''}`}>{MARKET_NAME[market]?.[fa ? 0 : 1] ?? market}</span>
           <span className="legend-type" title={fa ? typeDef.fa : typeDef.en}><Icon name={typeDef.icon} size="sm" /></span>
           {cs.showMarketStatus ? (
-            <span className={`legend-status ${open ? 'open' : 'closed'}`} title={open ? L('بازار باز است', 'Market open') : L('بازار بسته است', 'Market closed')} aria-label={open ? L('بازار باز است', 'Market open') : L('بازار بسته است', 'Market closed')}><i /></span>
+            <MarketStateGlyph state={mstate} label={mstate === 'open' ? L('بازار باز است', 'Market open') : mstate === 'weekend' ? L('بازار تعطیل است', 'Market closed for the weekend') : L('بازار بسته است', 'Market closed')} />
           ) : null}
           <Tools>
             <button className="lt" title={L('تنظیمات چارت', 'Chart settings')} aria-label={L('تنظیمات چارت', 'Chart settings')} onClick={() => openChartSettings('symbol')}><Icon name="ph-gear" size="sm" /></button>
@@ -410,5 +410,28 @@ function CompareMenu({ symbol, at, onClose }: { symbol: string; at: { x: number;
       <MSep />
       <MI act="cmp-remove" icon="ph-trash" danger label={L('حذف', 'Remove')} onClick={() => st.remove(symbol)} />
     </PopMenu>
+  );
+}
+
+/** TradingView's market-state mark (OLD ChartLegendOverlay statusGlyph): a 15px disc of the state's
+ *  colour at 15 %, with the plain dot when trading, its bar for «closed», its pinwheel for a weekend
+ *  or holiday — the glyphs on TradingView's 18-point grid. */
+export function MarketStateGlyph({ state, label }: { state: 'open' | 'closed' | 'weekend'; label: string }) {
+  return (
+    <span className={`legend-status ${state}`} title={label} aria-label={label} role="img" data-state={state}>
+      {state === 'open' ? <i /> : (
+        <svg viewBox="0 0 18 18" aria-hidden>
+          {state === 'closed'
+            ? <path d="M6 7h6a2 2 0 0 1 2 2 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 1 2-2z" />
+            : (
+              <>
+                <path d="M9.3 9l0.906-4.53C10.358 3.71 9.776 3 9 3S7.642 3.71 7.794 4.47L8.7 9l-0.906 4.53C7.642 14.29 8.224 15 9 15s1.358-0.71 1.206-1.47L9.3 9z" />
+                <path d="M9.15 9.26l4.375-1.48c0.736-0.249 1.06-1.108 0.671-1.78-0.388-0.672-1.293-0.821-1.876-0.309l-3.47 3.05-4.375 1.48C3.74 10.468 3.416 11.327 3.804 12c0.388 0.671 1.294 0.82 1.877 0.308l3.47-3.05z" />
+                <path d="M9.15 8.74L5.68 5.691C5.098 5.179 4.192 5.328 3.804 6 3.416 6.672 3.74 7.53 4.474 7.78L8.85 9.26l3.47 3.049c0.582 0.512 1.488 0.363 1.876-0.31 0.388-0.671 0.064-1.53-0.67-1.779L9.15 8.74z" />
+              </>
+            )}
+        </svg>
+      )}
+    </span>
   );
 }

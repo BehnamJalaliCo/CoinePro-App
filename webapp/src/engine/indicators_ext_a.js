@@ -296,7 +296,7 @@ const _src = (c, i) => {
 export const EXT_REGISTRY_A = {
   // ===== §5.1 روند / میانگین‌های متحرک =====
   smma: {
-    label: 'SMMA / RMA (وایلدر)', pane: 'main', inputs: { source: 'close', period: 14 }, color: '#84cc16',
+    label: 'SMMA / RMA (وایلدر)', pane: 'main', inputs: { source: 'close', period: 14, shift: 0 }, color: '#84cc16',
     calc: (c, i) => ({ line: _smma(_src(c, i), i.period) }),
   },
   zlema: {

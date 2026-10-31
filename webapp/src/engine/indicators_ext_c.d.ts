@@ -4,6 +4,8 @@ export const EXT_REGISTRY_C: Record<string, IndicatorDef>;
 export const STUDIES: Record<string, IndicatorDef>;
 export function profileRows(c: IndicatorColumns, a: number, b: number, rows?: number, vaPct?: number): { rows: ProfileRow[]; poc: number; vah: number; val: number } | null;
 export function periodKey(t: number, anchor: string): number;
+/** The prior-period levels' «auto» anchor for these bar times: 'D' intraday, 'W' daily, 'M' weekly and longer. */
+export function autoAnchor(time: number[]): 'D' | 'W' | 'M';
 export function swings(h: number[], l: number[], len: number): { i: number; price: number; high: boolean }[];
 export interface Swing { i: number; price: number; high: boolean }
 /** Pattern kinds of Auto Chart Patterns: [Persian name, English name, direction (1 up, −1 down, 0 either)]. */

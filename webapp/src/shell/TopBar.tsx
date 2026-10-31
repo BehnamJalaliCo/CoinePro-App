@@ -24,6 +24,7 @@ import { useL } from '../pages/kit';
 import { openTrade, publishIdea } from './publish';
 import './topbar.css';
 import { leaveDrawMode, usePhoneDraw } from './PhoneDrawing';
+import { useStudies, VOLUME } from '../state/studies';
 import { ChartTypeParamsButton } from '../chart/ChartTypeParams';
 import { KeepWatchingButton } from './KeepWatching';
 
@@ -67,6 +68,8 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
   const snapBtn = useRef<HTMLButtonElement>(null);
   const grid = useGrid((g) => g.grid);
   const replayOn = useReplay((r) => r.selecting || Boolean(r.state?.on));
+  // Lit while the chart carries indicators (the volume histogram aside), as the old Pro-Chart's toolbar did.
+  const hasStudies = useStudies((st) => st.list.some((x) => x.key !== VOLUME));
   const alerts = useAlerts((s) => s.list.filter((a) => a.active).length);
   const current = useLayouts((s) => s.current);
   const dirty = useLayouts((s) => s.dirty);
@@ -110,10 +113,10 @@ export function TopBar({ onSymbolSearch, onIndicators, onSignIn, onCompare, onAl
       ))}
       <ChartTypeParamsButton />
       <span className="sep" />
-      <button className="ib" onClick={onIndicators} title={t('indicators')}>
+      <button className={`ib ind-btn${hasStudies ? ' on' : ''}`} aria-pressed={hasStudies} onClick={onIndicators} title={t('indicators')}>
         <Icon name="ph-chart-line-up" size="md" /><span className="label fa tb-lbl">{t('indicators')}</span>
       </button>
-      <button ref={tplBtn} className="ib desk-only tb-c" title={t('indicatorTemplates')} onClick={() => toggle('templates')}><Icon name="layout_grid" size="md" /></button>
+      <button ref={tplBtn} className="ib desk-only tb-c tpl-btn" title={t('indicatorTemplates')} onClick={() => toggle('templates')}><Icon name="layout_grid" size="md" /></button>
       <span className="sep" />
       <button className="ib alert-btn" title={t('alert')} onClick={onAlert}>
         <Icon name="ph-bell" size="md" /><span className="label fa tb-lbl">{t('alert')}</span>

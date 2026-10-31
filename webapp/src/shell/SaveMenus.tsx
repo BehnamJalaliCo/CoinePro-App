@@ -6,6 +6,7 @@ import { Icon } from '../ui/Icon';
 import { useL } from '../pages/kit';
 import { exportBarsCsv } from '../chart/actions';
 import { intervalLabel } from '../data/intervals';
+import { BUILT_IN_TEMPLATES, applyBuiltInTemplate, templateSummary } from '../chart/builtinTemplates';
 
 export type LayoutDialogMode = 'save' | 'saveAs' | 'rename' | 'copy' | 'open';
 
@@ -59,6 +60,8 @@ export function LayoutMenu({ anchor, onClose, onDialog }: { anchor: HTMLElement 
 
 export function TemplateMenu({ anchor, onClose }: { anchor: HTMLElement | null; onClose(): void }) {
   const t = useT();
+  const L = useL();
+  const fa = usePrefs((s) => s.lang) === 'fa';
   const { templates, saveTemplate, applyTemplate, removeTemplate } = useLayouts();
   const [name, setName] = useState('');
   return (
@@ -67,6 +70,13 @@ export function TemplateMenu({ anchor, onClose }: { anchor: HTMLElement | null; 
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('templateName')} />
         <button className="btn btn-quiet sm" type="submit"><span className="fa">{t('templateSave')}</span></button>
       </form>
+      <div className="menu-sep" />
+      <div className={`menu-title${fa ? ' fa' : ''}`}>{L('قالب‌های اندیکاتور', 'Indicator templates')}</div>
+      {BUILT_IN_TEMPLATES.map((bt) => (
+        <button key={bt.id} type="button" className="menu-item saved tpl-builtin" role="menuitem" data-tpl={bt.id} onClick={() => { applyBuiltInTemplate(bt.id); onClose(); }}>
+          <span className={fa ? 'fa' : ''}>{fa ? bt.fa : bt.en}</span><span className="num muted" dir="ltr">{templateSummary(bt)}</span>
+        </button>
+      ))}
       <div className="menu-sep" />
       <div className="menu-title fa">{t('templatesSaved')}</div>
       {!templates.length ? <div className="menu-empty fa">{t('nothingSaved')}</div> : null}

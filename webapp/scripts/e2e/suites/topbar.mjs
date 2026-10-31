@@ -255,7 +255,7 @@ export default async function ({ test, open, ready, pc, expect }) {
     const { page } = env;
     await ready(page);
     const presets = await pc(page, () => window.__pc.gridPresets);
-    expect(presets.length >= 25 && Math.max(...presets.map((p) => p.cells)) === 8, `presets ${presets.length}`);
+    expect(presets.length >= 33 && Math.max(...presets.map((p) => p.cells)) === 16, `presets ${presets.length}`);
     await page.click('.grid-btn');
     for (const id of ['3c', '4l', '6', '8', '4']) {
       await page.click(`[data-grid="${id}"]`);

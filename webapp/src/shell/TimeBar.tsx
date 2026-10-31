@@ -30,6 +30,18 @@ export const RANGES: { id: string; interval: string; span: number }[] = [
   { id: 'All', interval: '1M', span: Number.MAX_SAFE_INTEGER },
 ];
 
+/** The interval a range button puts the chart on at `nowSec` (OLD ChartRange.intervalAt): the
+ *  same for every range but YTD, which takes 4-hour bars while the year is young enough (day 60 or
+ *  earlier) for daily ones to draw fewer than sixty bars, and daily bars after. */
+export function rangeInterval(r: { id: string; interval: string }, nowSec = Math.floor(Date.now() / 1000)): string {
+  if (r.id !== 'YTD') return r.interval;
+  const d = new Date(nowSec * 1000);
+  const dayOfYear = Math.floor((Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - Date.UTC(d.getUTCFullYear(), 0, 1)) / 86400000) + 1;
+  return dayOfYear <= YTD_MIN_BARS ? '240' : '1D';
+}
+/** The fewest bars a range may draw before it stops looking like a chart (OLD ChartRange.MIN_BARS). */
+const YTD_MIN_BARS = 60;
+
 function ytdSpan(): number {
   const now = new Date();
   return Math.floor((now.getTime() - Date.UTC(now.getUTCFullYear(), 0, 1)) / 1000);
@@ -244,6 +256,7 @@ export function TimeBar({ supported }: { supported: (interval: string) => boolea
 
   const pick = (r: (typeof RANGES)[number]) => {
     const span = r.id === 'YTD' ? ytdSpan() : r.span;
+    r = { ...r, interval: rangeInterval(r) };
     const all = span === Number.MAX_SAFE_INTEGER;
     const g = useGrid.getState();
     const n = cellCount(g.grid);

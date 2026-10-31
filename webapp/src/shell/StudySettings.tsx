@@ -5,7 +5,7 @@ import { STUDIES as REGISTRY } from '../engine/indicators_ext_c.js';
 import { DEFAULT_PROPS, useScript, scriptTitle, type StrategyProps } from '../state/script';
 import { entryOf } from '../chart/indicatorCatalog';
 import { GUIDE, shortName, splitColor, studyGuides, studyPlots, withAlpha } from '../chart/studies';
-import { INPUT_LABELS, MENU_INPUTS, SOURCES, SOURCE_LABELS, TIMEFRAMES, inputLabel, plotName } from '../chart/studyMeta';
+import { INPUT_LABELS, SOURCES, SOURCE_LABELS, TIMEFRAMES, inputLabel, menuFor, plotName } from '../chart/studyMeta';
 import { useChartBus } from '../chart/chartBus';
 import { useReplay } from '../state/replay';
 import { intervalSeconds } from '../data/intervals';
@@ -192,11 +192,12 @@ function Inputs({ study, all }: { study: Study; all: Study[] }) {
             </Row>
           );
         }
-        if (MENU_INPUTS[key]) {
+        const menu = menuFor(study.key, key);
+        if (menu) {
           return (
             <Row key={key} label={label}>
               <select className="st-select" value={String(v)} onChange={(e) => set(key, e.target.value)}>
-                {MENU_INPUTS[key]!.map((o) => <option key={o.value} value={o.value}>{fa ? o.fa : o.en}</option>)}
+                {menu.map((o) => <option key={o.value} value={o.value}>{fa ? o.fa : o.en}</option>)}
               </select>
             </Row>
           );

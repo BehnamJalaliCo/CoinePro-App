@@ -135,6 +135,10 @@ export interface ChartSettings {
   positionLines: boolean;
   orderLines: boolean;
   executionMarks: boolean;
+  /** TradingView's trade button: a purple ring with a bolt under the live bar (OLD ChartAppearance.tradeRing). */
+  tradeRing: boolean;
+  /** The quote currency chip in the plot's top corner, which opens the price scale menu (OLD quoteChip). */
+  quoteChip: boolean;
 
   // ── Alerts ──
   alertLines: boolean;
@@ -188,11 +192,11 @@ export const DEFAULT_SETTINGS: ChartSettings = {
   pdhl: 'hidden', hhll: false, symbolNameLabel: false, dayOfWeek: true, dateFormat: 'dd MMM \'yy', hour12: false, compareMode: 'own',
 
   bgType: 'solid', bgColor: '', bgColor2: '', vertGrid: true, vertGridColor: '', horzGrid: true, horzGridColor: '',
-  crossColor: '', crossWidth: 1, crossStyle: 'dashed', watermark: false, watermarkColor: '', watermarkOpacity: 7,
+  crossColor: '', crossWidth: 1, crossStyle: 'large-dashed', watermark: false, watermarkColor: '', watermarkOpacity: 7,
   scaleTextColor: '', scaleFontSize: 12, scaleLineColor: '', navButtons: 'hover', paneButtons: 'hover',
   marginTop: 10, marginBottom: 8, rightOffset: 10, scrollScale: true, crosshair: 'normal',
 
-  instantOrders: true, positionLines: true, orderLines: true, executionMarks: true,
+  instantOrders: true, positionLines: true, orderLines: true, executionMarks: true, tradeRing: true, quoteChip: true,
 
   alertLines: true, alertLinesActiveOnly: true, alertLineColor: '#F7A600',
 

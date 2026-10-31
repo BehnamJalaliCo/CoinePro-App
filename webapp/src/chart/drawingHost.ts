@@ -177,10 +177,33 @@ export function attachDrawings(canvas: HTMLCanvasElement, chart: IChartApi): Dra
   // bars' open/high/low/close while the magnet is on (TradingView); otherwise the chart settings'.
   // Re-applied a moment after any change, so it wins over the chart's own settings effect.
   let crossTimer: ReturnType<typeof setTimeout> | null = null;
+  // TradingView's momentary magnet (OLD ChartShortcuts.kt:63,266; DrawingController.holdMagnet):
+  // Ctrl (⌘ on a Mac) held while a drawing tool is armed snaps to the bars' open/high/low/close for
+  // as long as it is down — strong from off, the reader's own mode when the magnet is already on.
+  // Never in the cursor modes, so Ctrl+click still adds a drawing to the selection there.
+  let held = false;
+  const armed = (tool: string) => !isCursorMode(tool) && tool !== 'select' && tool !== 'eraser' && tool !== 'zoom';
+  const hold = (on: boolean) => {
+    const d = useDrawing.getState();
+    const next = on && armed(d.tool);
+    if (next === held) return;
+    held = next;
+    if (held) layer.setMagnet(true, d.magnet ? d.magnetMode : 'strong');
+    else layer.setMagnet(d.magnet, d.magnetMode);
+    scheduleCross();
+  };
+  const onModifier = (e: KeyboardEvent) => {
+    if (e.key !== 'Control' && e.key !== 'Meta') return;
+    hold(e.type === 'keydown');
+  };
+  const letGo = () => hold(false);
+  window.addEventListener('keydown', onModifier);
+  window.addEventListener('keyup', onModifier);
+  window.addEventListener('blur', letGo);
   const crossMode = () => {
     const d = useDrawing.getState();
     if (d.tool === 'arrowcursor' || d.tool === 'demonstration' || d.tool === 'eraser') return CrosshairMode.Hidden;
-    if (d.magnet) return CrosshairMode.MagnetOHLC;
+    if (d.magnet || held) return CrosshairMode.MagnetOHLC;
     return useChartSettings.getState().crosshair === 'magnet' ? CrosshairMode.Magnet : CrosshairMode.Normal;
   };
   const applyCross = () => { try { chart.applyOptions({ crosshair: { mode: crossMode() } }); } catch { /* chart gone */ } };
@@ -196,7 +219,10 @@ export function attachDrawings(canvas: HTMLCanvasElement, chart: IChartApi): Dra
       // Drawing while everything is hidden shows the drawings again, as TradingView does.
       if (prev && s.hidden && !isCursorMode(s.tool) && s.tool !== 'zoom' && s.tool !== 'select') useDrawing.getState().setHidden(false);
     }
-    if (!prev || s.magnet !== prev.magnet || s.magnetMode !== prev.magnetMode) layer.setMagnet(s.magnet, s.magnetMode);
+    if (prev && held && s.tool !== prev.tool && !armed(s.tool)) held = false;
+    if (!prev || s.magnet !== prev.magnet || s.magnetMode !== prev.magnetMode || (prev && s.tool !== prev.tool)) {
+      if (held) layer.setMagnet(true, s.magnet ? s.magnetMode : 'strong'); else layer.setMagnet(s.magnet, s.magnetMode);
+    }
     if (!prev || s.stay !== prev.stay) layer.setStayInMode(s.stay);
     if (!prev || s.hidden !== prev.hidden) canvas.style.visibility = s.hidden ? 'hidden' : 'visible';
     if (prev && s.locked !== prev.locked) layer.lockAll(s.locked);
@@ -294,6 +320,9 @@ export function attachDrawings(canvas: HTMLCanvasElement, chart: IChartApi): Dra
       ro.disconnect();
       cursor?.dispose();
       window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keydown', onModifier);
+      window.removeEventListener('keyup', onModifier);
+      window.removeEventListener('blur', letGo);
       canvas.removeEventListener('contextmenu', onContext);
       host?.removeEventListener('pointerdown', onPointerDownCapture, true);
       for (const ev of ['touchstart', 'touchmove', 'touchend', 'touchcancel'] as const) host?.removeEventListener(ev, onTouchCapture, { capture: true });

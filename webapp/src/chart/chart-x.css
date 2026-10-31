@@ -92,10 +92,13 @@
 .legend-mkt { color: var(--text-2); font-size: var(--fs-ui); }
 .legend-type { display: inline-flex; color: var(--text-3); }
 .legend-type .icon.sm { width: 16px; height: 16px; }
-.legend-status { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--up-soft); }
+.legend-status { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 50%; background: var(--up-soft); }
 .legend-status i { width: 7px; height: 7px; border-radius: 50%; background: var(--up); }
 .legend-status.closed { background: var(--down-soft); }
 .legend-status.closed i { background: var(--down); }
+.legend-status svg { width: 15px; height: 15px; fill: currentColor; }
+.legend-status.closed { color: var(--down); }
+.legend-status.weekend { color: var(--text-2); background: color-mix(in srgb, var(--text-2) 15%, transparent); }
 .legend-values { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .legend-values .legend-ohlc { margin-left: 0; }
 .legend-values i { font-style: normal; color: var(--text-2); margin: 0 2px 0 0; }
@@ -208,3 +211,16 @@
   .legend-desc, .legend-mkt, .legend-type, .legend-iv + .legend-dot { display: none; }
   .nav-buttons { display: none; }
 }
+
+/* «Remove drawings» confirmation */
+.confirm-clear .tv-small-body p { margin: 0; font-size: 14px; line-height: 1.7; color: var(--text); }
+.btn-danger { background: var(--down); color: #FFFFFF; }
+.btn-danger:hover:not(:disabled) { opacity: 0.9; }
+
+/* Trade ring under the live bar and the quote chip in the plot's corner (Settings → Trading) */
+.trade-ring { position: absolute; z-index: 4; width: 20px; height: 20px; padding: 0; border-radius: 50%; border: 1.5px solid #8D32A9; background: var(--bg); color: #8D32A9; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.trade-ring svg { width: 20px; height: 20px; fill: currentColor; }
+.trade-ring:hover { background: color-mix(in srgb, #8D32A9 12%, var(--bg)); }
+.quote-chip { position: absolute; top: 4px; z-index: 4; height: 26px; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 14px; cursor: pointer; }
+.quote-chip:hover { background: var(--hover, var(--bg)); }
+.quote-chip .icon { width: 12px; height: 12px; }

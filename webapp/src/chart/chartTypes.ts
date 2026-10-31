@@ -4,7 +4,7 @@
 // inputs (box size by ATR or fixed, reversal, line count) by the old Pro-Chart's builders.
 import {
   AreaSeries, BarSeries, BaselineSeries, CandlestickSeries, HistogramSeries, LineSeries, LineType,
-  type IChartApi, type ISeriesApi, type SeriesType, type UTCTimestamp,
+  type AutoscaleInfo, type IChartApi, type ISeriesApi, type SeriesType, type UTCTimestamp,
 } from 'lightweight-charts';
 import { avgRange, kagi, lineBreak, rangeBars } from '../engine/chartbuilders.js';
 import { hollowCandles } from '../engine/charttypes_ext.js';
@@ -63,6 +63,23 @@ export const BRICKS: ChartType[] = ['renko', 'linebreak', 'range'];
 export const PARAM_TYPES: ChartType[] = ['renko', 'linebreak', 'kagi', 'pnf', 'range', 'baseline'];
 
 const CLEAR = 'rgba(0,0,0,0)';
+/** How much of a column's colour its body keeps (the old Pro-Chart's COLUMN_ALPHA). */
+export const COLUMN_ALPHA = 0.55;
+/** The full-strength edge along a column's top, where the close is, in CSS pixels. */
+export const COLUMN_CAP_PX = 1.5;
+
+/** The visible closes' range, for the Columns type's auto-scale: the base at zero is left out, so
+ *  the columns rise and fall with the price instead of all standing at full height. */
+export function columnsRange(bars: { c: number }[], from: number, to: number): { minValue: number; maxValue: number } | null {
+  let lo = Infinity; let hi = -Infinity;
+  for (let i = Math.max(0, Math.floor(from)); i <= Math.min(bars.length - 1, Math.ceil(to)); i++) {
+    const c = bars[i]!.c;
+    if (!Number.isFinite(c)) continue;
+    if (c < lo) lo = c;
+    if (c > hi) hi = c;
+  }
+  return Number.isFinite(lo) ? { minValue: lo, maxValue: hi } : null;
+}
 
 export function createPriceSeries(chart: IChartApi, type: ChartType, p: SeriesStyle, fmt: { precision: number; minMove: number }): ISeriesApi<SeriesType> {
   const priceFormat = { type: 'price' as const, ...fmt };
@@ -94,8 +111,24 @@ export function createPriceSeries(chart: IChartApi, type: ChartType, p: SeriesSt
       return chart.addSeries(AreaSeries, { ...common, lineColor: p.line, lineWidth: p.lineWidth as 1 | 2 | 3 | 4, topColor: p.areaTop, bottomColor: p.areaBottom });
     case 'baseline':
       return chart.addSeries(BaselineSeries, { ...common, topLineColor: p.up, bottomLineColor: p.down, topFillColor1: tint(p.up, 0.28), topFillColor2: tint(p.up, 0.05), bottomFillColor1: tint(p.down, 0.05), bottomFillColor2: tint(p.down, 0.28), lineWidth: p.lineWidth as 1 | 2 | 3 | 4 });
-    case 'columns':
-      return chart.addSeries(HistogramSeries, { ...common, color: p.up });
+    case 'columns': {
+      // Columns stand on zero: the scale is fitted to the visible closes so they do not all stand at full height.
+      const series = chart.addSeries(HistogramSeries, { ...common, color: p.up });
+      series.applyOptions({
+        autoscaleInfoProvider: (base: () => AutoscaleInfo | null) => {
+          const r = chart.timeScale().getVisibleLogicalRange();
+          if (!r) return base();
+          let lo = Infinity; let hi = -Infinity;
+          for (let i = Math.max(0, Math.floor(r.from)); i <= Math.ceil(r.to); i++) {
+            const d = series.dataByIndex(i) as { value?: number } | null;
+            if (d?.value == null) continue;
+            lo = Math.min(lo, d.value); hi = Math.max(hi, d.value);
+          }
+          return Number.isFinite(lo) ? { priceRange: { minValue: lo, maxValue: hi } } : base();
+        },
+      });
+      return series;
+    }
     case 'highlow':
       // A body from the low to the high, no close tick, coloured by the close against the previous close.
       return chart.addSeries(CandlestickSeries, { ...common, upColor: p.up, downColor: p.down, borderVisible: false, wickVisible: false });
@@ -223,7 +256,9 @@ export function buildSeries(type: ChartType, bars: Candle[], p: SeriesStyle, q: 
     case 'line': case 'linemarkers': case 'step': case 'area': case 'baseline': case 'hlcarea':
       return { candles: bars, data: bars.map((b) => ({ time: b.t as UTCTimestamp, value: b.c })) };
     case 'columns':
-      return { candles: bars, data: bars.map((b, i) => ({ time: b.t as UTCTimestamp, value: b.c, color: b.c >= (bars[i - 1]?.c ?? b.o) ? p.up : p.down })) };
+      // The old Pro-Chart's columns: the body at 55 % of the colour, a full-strength cap at the close
+      // (ColumnCapsPrimitive), and the scale fitted to the closes, never stretched down to zero.
+      return { candles: bars, data: bars.map((b, i) => ({ time: b.t as UTCTimestamp, value: b.c, color: tint(b.c >= (bars[i - 1]?.c ?? b.o) ? p.up : p.down, COLUMN_ALPHA) })) };
     case 'bars':
       return { candles: bars, data: p.colorByPrevClose ? bars.map((b, i) => ({ time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c, color: b.c >= (bars[i - 1]?.c ?? b.o) ? p.up : p.down })) : ohlc(bars) };
     case 'hollow':
@@ -278,7 +313,7 @@ export function livePoint(type: ChartType, bar: Candle, prev: Candle | undefined
     case 'line': case 'linemarkers': case 'step': case 'area': case 'baseline':
       return { time: bar.t as UTCTimestamp, value: bar.c };
     case 'columns':
-      return { time: bar.t as UTCTimestamp, value: bar.c, color: bar.c >= (prev?.c ?? bar.o) ? p.up : p.down };
+      return { time: bar.t as UTCTimestamp, value: bar.c, color: tint(bar.c >= (prev?.c ?? bar.o) ? p.up : p.down, COLUMN_ALPHA) };
     case 'volcandles':
       return volCandle(bar, prev?.v ?? bar.v, p);
     case 'bars':

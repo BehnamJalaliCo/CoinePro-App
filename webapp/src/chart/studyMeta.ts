@@ -35,6 +35,7 @@ export const INPUT_LABELS: Record<string, Bi> = {
   short: ['طول کوتاه', 'Short length'],
   long: ['طول بلند', 'Long length'],
   offset: ['جابه‌جایی', 'Offset'],
+  shift: ['جابه‌جایی', 'Offset'],
   sigma: ['سیگما', 'Sigma'],
   base: ['طول پایه', 'Base length'],
   step: ['گام', 'Step'],
@@ -98,7 +99,7 @@ export const SOURCE_LABELS: Record<string, Bi> = {
 };
 export const SOURCES = SOURCE_OPTS;
 
-/** Inputs that are menus: their choices, with labels. */
+/** Inputs that are menus: their choices, with labels (a `study.input` key is that study's own menu). */
 export const MENU_INPUTS: Record<string, { value: string; fa: string; en: string }[]> = {
   pivotType: [
     { value: 'Classic', fa: 'کلاسیک', en: 'Traditional' }, { value: 'Fibonacci', fa: 'فیبوناچی', en: 'Fibonacci' },
@@ -108,6 +109,11 @@ export const MENU_INPUTS: Record<string, { value: string; fa: string; en: string
     { value: 'SMA50', fa: 'SMA50', en: 'SMA50' }, { value: 'SMA50,SMA200', fa: 'SMA50 و SMA200', en: 'SMA50, SMA200' }, { value: 'none', fa: 'بدون تشخیص', en: 'No detection' },
   ],
   anchor: [
+    { value: 'D', fa: 'روز', en: 'Day' }, { value: 'W', fa: 'هفته', en: 'Week' }, { value: 'M', fa: 'ماه', en: 'Month' },
+  ],
+  // The prior-period levels' own choices: «Auto» takes the next period up from the bar length.
+  'prevHLC.anchor': [
+    { value: 'auto', fa: 'خودکار', en: 'Auto' },
     { value: 'D', fa: 'روز', en: 'Day' }, { value: 'W', fa: 'هفته', en: 'Week' }, { value: 'M', fa: 'ماه', en: 'Month' },
   ],
   basis: [
@@ -137,6 +143,7 @@ export const PLOT_NAMES: Record<string, Bi[]> = {
   chandeKroll: [['توقف خرید', 'Stop Long'], ['توقف فروش', 'Stop Short']],
   maCross: [['میانگین کوتاه', 'Short'], ['میانگین بلند', 'Long']],
   avwap: [['VWAP', 'VWAP'], ['باند بالا', 'Upper Band'], ['باند پایین', 'Lower Band']],
+  prevHLC: [['سقف دوره‌ی قبل', 'Previous High'], ['کف دوره‌ی قبل', 'Previous Low'], ['بسته‌ی دوره‌ی قبل', 'Previous Close'], ['باز شدن این دوره', 'Open']],
 };
 
 export function plotName(key: string, index: number, fallback: string, fa: boolean): string {
@@ -152,3 +159,8 @@ export const TIMEFRAMES: { id: string; fa: string; en: string }[] = [
   { id: '60', fa: '۱ ساعت', en: '1 hour' }, { id: '120', fa: '۲ ساعت', en: '2 hours' }, { id: '240', fa: '۴ ساعت', en: '4 hours' },
   { id: '1D', fa: '۱ روز', en: '1 day' }, { id: '1W', fa: '۱ هفته', en: '1 week' }, { id: '1M', fa: '۱ ماه', en: '1 month' },
 ];
+
+/** The menu of choices for one study's input, its own first, else the shared one. */
+export function menuFor(studyKey: string, input: string): { value: string; fa: string; en: string }[] | undefined {
+  return MENU_INPUTS[`${studyKey}.${input}`] ?? MENU_INPUTS[input];
+}

@@ -193,17 +193,45 @@ const autoFibExt = (c, i) => {
   return { levels: RATIOS.map(([r, color]) => ({ price: d.price + move * r, color, label: `${r}` })) };
 };
 
+/** The bar length's next period up, for the prior-period levels' «auto» anchor (OLD Sessions.kt
+ *  previousPeriodLevels): yesterday on intraday bars, last week on daily, last month on weekly and
+ *  longer. The bar length is the most common gap of the last 50 bars, not the last one (a weekend). */
+export const autoAnchor = (time) => {
+  const n = time.length;
+  if (n < 2) return 'D';
+  const m = Math.min(n - 1, 50);
+  const gaps = [];
+  for (let k = 0; k < m; k++) gaps.push(time[n - 1 - k] - time[n - 2 - k]);
+  gaps.sort((a, b) => a - b);
+  const spacing = gaps[m >> 1];
+  return spacing < 86400 ? 'D' : spacing < 7 * 86400 ? 'W' : 'M';
+};
+
+// Previous period's high, low and close, and this period's open (OLD Sessions.kt:122): each level
+// across every bar of the period it applies to, broken at each boundary (a gap, not a vertical
+// stroke through the candles); the first period has no previous one and is left empty. Labelled
+// PH, PL, PC and O on the price axis.
 const prevHLC = (c, i) => {
-  const n = c.close.length; const anchor = i.anchor || 'D';
-  const H = nulls(n), L = nulls(n), C = nulls(n);
-  let ph = null, pl = null, pc = null, ch = -Infinity, cl = Infinity, cc = null, key = null;
+  const n = c.close.length;
+  const anchor = !i.anchor || i.anchor === 'auto' ? autoAnchor(c.time) : i.anchor;
+  const H = nulls(n), L = nulls(n), C = nulls(n), O = nulls(n);
+  let ph = null, pl = null, pc = null, ch = -Infinity, cl = Infinity, cc = null, po = null, key = null;
   for (let k = 0; k < n; k++) {
     const p = periodKey(c.time[k], anchor);
-    if (p !== key) { if (key != null) { ph = ch; pl = cl; pc = cc; } key = p; ch = -Infinity; cl = Infinity; }
+    const boundary = p !== key;
+    if (boundary) { if (key != null) { ph = ch; pl = cl; pc = cc; } key = p; ch = -Infinity; cl = Infinity; po = c.open[k]; }
     ch = Math.max(ch, c.high[k]); cl = Math.min(cl, c.low[k]); cc = c.close[k];
-    H[k] = ph; L[k] = pl; C[k] = pc;
+    if (boundary && k > 0) continue;
+    H[k] = ph; L[k] = pl; C[k] = pc; O[k] = ph != null ? po : null;
   }
-  return { lines: [{ data: H, color: '#089981', gaps: true, name: 'High' }, { data: L, color: '#F23645', gaps: true, name: 'Low' }, { data: C, color: '#2962FF', dashed: true, gaps: true, name: 'Close' }] };
+  return {
+    lines: [
+      { data: H, color: '#089981', gaps: true, name: 'High', title: 'PH' },
+      { data: L, color: '#F23645', gaps: true, name: 'Low', title: 'PL' },
+      { data: C, color: '#2962FF', dashed: true, gaps: true, name: 'Close', title: 'PC' },
+      { data: O, color: '#E0A85C', gaps: true, name: 'Open', title: 'O' },
+    ],
+  };
 };
 
 const anchored = (c, anchor, f) => { const n = c.close.length; const out = nulls(n); let key = null, acc = null; for (let k = 0; k < n; k++) { const p = periodKey(c.time[k], anchor); if (p !== key) { key = p; acc = null; } acc = f(acc, k); out[k] = acc.v; } return out; };
@@ -395,7 +423,7 @@ export const EXT_REGISTRY_C = {
   autoTrendlines: { label: 'خطوط روند خودکار (Auto Trendlines)', pane: 'main', inputs: { depth: 10 }, color: '#2962FF', calc: autoTrend },
   autoPitchfork: { label: 'چنگال خودکار (Auto Pitchfork)', pane: 'main', inputs: { depth: 10 }, color: '#F23645', calc: autoPitchfork },
   autoChartPatterns: { label: 'الگوهای کلاسیک خودکار (Auto Chart Patterns)', pane: 'main', inputs: { depth: 5 }, color: '#2962FF', calc: autoChartPatterns },
-  prevHLC: { label: 'سقف، کف و بسته‌ی دوره‌ی قبل (Previous High/Low/Close)', pane: 'main', inputs: { anchor: 'D' }, color: '#2962FF', calc: prevHLC },
+  prevHLC: { label: 'سقف، کف و بسته‌ی دوره‌ی قبل (Previous High/Low/Close)', pane: 'main', inputs: { anchor: 'auto' }, color: '#2962FF', calc: prevHLC },
   performance: { label: 'بازدهی (Performance)', pane: 'main', inputs: {}, color: '#2962FF', calc: tables.performance },
   seasonality: { label: 'فصلی بودن (Seasonality)', pane: 'main', inputs: {}, color: '#2962FF', calc: tables.seasonality },
   moonPhases: { label: 'فازهای ماه (Moon Phases)', pane: 'main', inputs: {}, color: '#FFB300', calc: moon },

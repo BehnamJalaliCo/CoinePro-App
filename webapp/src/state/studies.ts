@@ -74,6 +74,8 @@ interface StudiesState {
   add(key: string): string | null;
   remove(uid: string): void;
   toggle(uid: string): void;
+  /** Hides (or shows) every indicator but the volume at once: the chart menu's «Hide all indicators». */
+  setAllHidden(hidden: boolean): void;
   setInputs(uid: string, inputs: Study['inputs']): void;
   /** Replaces any of a study's fields but its uid and key (the settings dialog's live preview). */
   patch(uid: string, p: Partial<Omit<Study, 'uid' | 'key'>>): void;
@@ -123,6 +125,7 @@ export const useStudies = create<StudiesState>((set, get) => {
     },
     remove: (uid) => { set({ list: get().list.filter((s) => s.uid !== uid) }); save(); },
     toggle: (uid) => map(uid, (s) => ({ ...s, hidden: !s.hidden })),
+    setAllHidden: (hidden) => { set({ list: get().list.map((s) => (s.key === VOLUME || Boolean(s.hidden) === hidden ? s : { ...s, hidden })) }); save(); },
     setInputs: (uid, inputs) => map(uid, (s) => ({ ...s, inputs })),
     patch: (uid, p) => map(uid, (s) => ({ ...s, ...p })),
     restore: (st) => map(st.uid, () => clone(st)),

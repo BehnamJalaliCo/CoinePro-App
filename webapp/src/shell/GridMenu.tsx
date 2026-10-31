@@ -1,4 +1,4 @@
-// TradingView's "Select layout": every arrangement of one to eight charts in rows by count, then
+// TradingView's "Select layout": every arrangement of one to sixteen charts in rows by count, then
 // "Sync in layout" (symbol, interval, crosshair, time, date range), then what the other charts
 // take from the main one (its indicators, its horizontal lines), and maximise (Alt+Enter).
 import { Dropdown } from '../ui/Menu';

@@ -1,5 +1,5 @@
-// Multi-chart layouts, TradingView's "Select layout": every arrangement of one to eight charts it
-// offers up to eight (and the old Pro-Chart's ten), the sync switches under them, and the active
+// Multi-chart layouts, TradingView's "Select layout": every arrangement of one to sixteen charts it
+// offers (with the old Pro-Chart's mixed grids), the sync switches under them, and the active
 // chart the top bar drives. Cell 0 is the main chart (symbol, interval and type in prefs); the
 // others keep their own symbol, interval and chart type here.
 import { create } from 'zustand';
@@ -8,7 +8,7 @@ import { usePrefs } from './prefs';
 
 export interface Preset { id: string; cells: number; areas: string[] }
 
-// Each arrangement as CSS grid areas; the letters a…h are the cells in order (a is the main chart).
+// Each arrangement as CSS grid areas; the letters a…p are the cells in order (a is the main chart).
 export const PRESETS: Preset[] = [
   { id: '1', cells: 1, areas: ['a'] },
   { id: '2v', cells: 2, areas: ['a b'] },
@@ -31,21 +31,31 @@ export const PRESETS: Preset[] = [
   { id: '5r', cells: 5, areas: ['a', 'b', 'c', 'd', 'e'] },
   { id: '5l', cells: 5, areas: ['a b', 'a c', 'a d', 'a e'] },
   { id: '5g', cells: 5, areas: ['a a a b b b', 'c c d d e e'] },
+  // TradingView's mixed grids the old Pro-Chart added (OLD ChartLayoutPreset.kt:62-66): three over two.
+  { id: '3+2', cells: 5, areas: ['a a b b c c', 'd d d e e e'] },
   { id: '6', cells: 6, areas: ['a b c', 'd e f'] },
   { id: '6g', cells: 6, areas: ['a b', 'c d', 'e f'] },
   { id: '6c', cells: 6, areas: ['a b c d e f'] },
   { id: '6t', cells: 6, areas: ['a a a a a', 'b c d e f'] },
+  { id: '4+2', cells: 6, areas: ['a b c d', 'e e f f'] },
   { id: '7', cells: 7, areas: ['a a a a b b b b c c c c', 'd d d e e e f f f g g g'] },
   { id: '7l', cells: 7, areas: ['a b c', 'a d e', 'a f g'] },
   { id: '7c', cells: 7, areas: ['a b c d e f g'] },
+  { id: '4+3', cells: 7, areas: ['a a a b b b c c c d d d', 'e e e e f f f f g g g g'] },
   { id: '8', cells: 8, areas: ['a b c d', 'e f g h'] },
   { id: '8g', cells: 8, areas: ['a b', 'c d', 'e f', 'g h'] },
   { id: '8c', cells: 8, areas: ['a b c d e f g h'] },
+  // TradingView's larger grids: 9, 10, 12, 14 and 16 charts.
+  { id: '9', cells: 9, areas: ['a b c', 'd e f', 'g h i'] },
+  { id: '10', cells: 10, areas: ['a b c d e', 'f g h i j'] },
+  { id: '12', cells: 12, areas: ['a b c d', 'e f g h', 'i j k l'] },
+  { id: '14', cells: 14, areas: ['a b c d e f g', 'h i j k l m n'] },
+  { id: '16', cells: 16, areas: ['a b c d', 'e f g h', 'i j k l', 'm n o p'] },
 ];
 
 export type GridId = string;
-export const CELL_AREAS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-export const MAX_CELLS = 8;
+export const CELL_AREAS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p'];
+export const MAX_CELLS = 16;
 
 export const presetOf = (id: string): Preset => PRESETS.find((p) => p.id === id) ?? PRESETS[0]!;
 export const cellCount = (g: GridId) => presetOf(g).cells;
@@ -70,6 +80,8 @@ interface Stored { grid: GridId; cells: Cell[]; sync: Sync; mirror: Mirror }
 const DEFAULT_CELLS: Cell[] = [
   { symbol: 'ETHUSDT', interval: '60' }, { symbol: 'XAUUSD', interval: '60' }, { symbol: 'EURUSD', interval: '60' },
   { symbol: 'SOLUSDT', interval: '60' }, { symbol: 'GBPUSD', interval: '60' }, { symbol: 'BNBUSDT', interval: '60' }, { symbol: 'XAGUSD', interval: '60' },
+  { symbol: 'XRPUSDT', interval: '60' }, { symbol: 'USDJPY', interval: '60' }, { symbol: 'ADAUSDT', interval: '60' }, { symbol: 'AUDUSD', interval: '60' },
+  { symbol: 'DOGEUSDT', interval: '60' }, { symbol: 'USDCHF', interval: '60' }, { symbol: 'LTCUSDT', interval: '60' }, { symbol: 'TRXUSDT', interval: '60' },
 ];
 // TradingView's defaults: the crosshair follows across charts; nothing else is linked.
 export const DEFAULT_SYNC: Sync = { symbol: false, interval: false, crosshair: true, time: false, dateRange: false };
@@ -94,7 +106,7 @@ const read = (): Stored => {
 /** A crosshair or a visible time range shared between the charts of the layout. */
 export interface SharedHover { t: number; src: number }
 export interface SharedRange { from: number; to: number; src: number }
-/** A time-bar date range for some charts of the layout (1…7: the extra charts). */
+/** A time-bar date range for some charts of the layout (1…15: the extra charts). */
 export interface RangeRequest { seq: number; span: number | null; interval: string; targets: number[] }
 
 interface GridState extends Stored {

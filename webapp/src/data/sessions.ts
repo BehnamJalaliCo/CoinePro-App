@@ -13,3 +13,15 @@ export function marketStatus(market: Market, now: Date = new Date()): boolean {
   if (market !== 'forex' && h === 21) return false;
   return true;
 }
+
+/** The market's state as TradingView's legend tells it apart: trading, shut for the day (the
+ *  rollover hour), or shut for the weekend or a holiday (OLD ChartMarketStatus OPEN / CLOSED / WEEKEND). */
+export type MarketState = 'open' | 'closed' | 'weekend';
+
+export function marketState(market: Market, now: Date = new Date()): MarketState {
+  if (marketStatus(market, now)) return 'open';
+  const day = now.getUTCDay();
+  const h = now.getUTCHours();
+  if (day === 6 || (day === 0 && h < 22) || (day === 5 && h >= 22)) return 'weekend';
+  return 'closed';
+}

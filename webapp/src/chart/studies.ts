@@ -59,7 +59,11 @@ export interface StudyLegendRow {
 /** One output of a study, as the settings dialog lists it. */
 export interface PlotInfo { name: string; color: string; hist: boolean; dashed: boolean; width: number }
 
-interface Item { values: Values; color: string; hist?: boolean; dashed?: boolean; width?: number; connect?: boolean; colorFor?: (v: number | null, k: number) => string; name: string }
+interface Item { values: Values; color: string; hist?: boolean; dashed?: boolean; width?: number; connect?: boolean; colorFor?: (v: number | null, k: number) => string; name: string; title?: string }
+
+/** A plot's own short name on the price axis (the prior-period levels' PH, PL, PC, O), by series:
+ *  the chart's label settings keep it rather than putting the study's name there. */
+export const plotTitles = new WeakMap<object, string>();
 
 interface Rendered {
   study: Study;
@@ -147,6 +151,17 @@ export function fromTimeframe(values: Values, b: Buckets, wait: boolean): Values
   });
 }
 
+/** An Offset input as whole bars, within ±200 (the old Pro-Chart's bound), or 0. */
+export function plotShift(v: unknown): number {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.max(-200, Math.min(200, n)) : 0;
+}
+
+/** Values moved `by` bars to the right (left when negative): out[i] = v[i − by]. */
+export function shiftValues(v: Values, by: number): Values {
+  return v.map((_, i) => v[i - by] ?? null);
+}
+
 function mapOutput(out: IndicatorOutput, f: (v: Values) => Values): IndicatorOutput {
   const m: IndicatorOutput = { ...out };
   for (const k of ['line', 'signal', 'signal2', 'hist', 'upper', 'basis', 'lower'] as const) if (out[k]) m[k] = f(out[k]!);
@@ -219,6 +234,10 @@ export function computeStudy(st: Study, bars: Candle[], cache: Map<string, Item[
     } else out = def.calc(cols, inputs);
   } catch { return null; }
   if (mask) { const m = mask; out = mapOutput(out, (v) => v.map((x, i) => (m[i] ? null : x))); }
+  // TradingView's «Offset» on the moving averages: the plot moved that many bars right (left when
+  // negative); what moves past the last bar is not drawn (OLD ChartCatalog's EMA shift).
+  const shift = plotShift(inputs.shift);
+  if (shift) out = mapOutput(out, (v) => shiftValues(v, shift));
   const items = flatten(out, TV_COLOR[st.key] ?? def.color);
   if (ownTf && st.waitClose !== false) for (const it of items) it.connect = true;
   cache.set(st.uid, items);
@@ -244,7 +263,7 @@ function flatten(out: IndicatorOutput, main: string): Item[] {
   if (out.line) list.push({ values: out.line, color: main, name: 'Plot' });
   if (out.signal) list.push({ values: out.signal, color: SIGNAL, name: 'Signal' });
   if (out.signal2) list.push({ values: out.signal2, color: out.signal2Color ?? '#787B86', name: 'Signal 2' });
-  (out.lines ?? []).forEach((l, i) => list.push({ values: l.data, color: l.color, dashed: l.dashed, connect: l.connectNulls, name: l.name ?? `Plot ${i + 1}` }));
+  (out.lines ?? []).forEach((l, i) => list.push({ values: l.data, color: l.color, dashed: l.dashed, connect: l.connectNulls, name: l.name ?? `Plot ${i + 1}`, ...(l.title ? { title: l.title } : {}) }));
   return list;
 }
 
@@ -309,7 +328,7 @@ export class StudyRenderer {
       const res = computeStudy(r.study, this.bars, cache, studies);
       if (!res) continue;
       if (r.profile && res.out.profile) r.profile.setData(res.out.profile.segments);
-      res.items.forEach((it, i) => { const sr = r.plotSeries[i]; if (sr && sr.seriesType() !== 'Histogram') sr.setData(this.lineData(this.bars, it.values, it.connect)); });
+      res.items.forEach((it, i) => { const sr = r.plotSeries[i]; if (sr && sr.seriesType() !== 'Histogram') sr.setData(this.seriesLine(sr, this.bars, it.values, it.connect)); });
       r.items = res.items;
     }
   }
@@ -384,7 +403,7 @@ export class StudyRenderer {
         if (!s) return;
         const ps = r.study.style?.plots?.[i];
         if (s.seriesType() === 'Histogram') s.setData(this.histData(bars, it.values, ps?.color ? () => withAlpha(ps.color!, ps.opacity) : it.colorFor ? (v, k) => withAlpha(it.colorFor!(v, k), ps?.opacity) : () => withAlpha(it.color, ps?.opacity)));
-        else s.setData(this.lineData(bars, it.values, it.connect));
+        else s.setData(this.seriesLine(s, bars, it.values, it.connect));
       });
     }
   }
@@ -403,7 +422,10 @@ export class StudyRenderer {
         const def = REGISTRY[st.key]!;
         const all = { ...def.inputs, ...st.inputs };
         name = shortName(st.key, def.label);
-        args = Object.entries(all).filter(([k, v]) => typeof v === 'number' || (k === 'source' && typeof v === 'string' && v !== 'close')).map(([, v]) => (String(v).startsWith('study:') ? '⧉' : String(v))).join(' ');
+        args = Object.entries(all).filter(([k, v]) => k !== 'shift' && (typeof v === 'number' || (k === 'source' && typeof v === 'string' && v !== 'close'))).map(([, v]) => (String(v).startsWith('study:') ? '⧉' : String(v))).join(' ');
+        // The Offset as the old Pro-Chart's legend wrote it: «EMA 20 +5»; nothing when there is none.
+        const shift = plotShift(all.shift);
+        if (shift) args = `${args}${args ? ' ' : ''}${shift > 0 ? '+' : '−'}${Math.abs(shift)}`;
         if (st.timeframe) args = `${args}${args ? ' ' : ''}${intervalLabel(st.timeframe)}`;
       }
       const shown = r.items.map((it, k) => ({ it, k })).filter(({ k }) => st.style?.plots?.[k]?.visible !== false);
@@ -451,6 +473,13 @@ export class StudyRenderer {
     if (m != null && panes[0]) panes[0].setStretchFactor(m);
   }
 
+  /** A plot's data for its series: a drawn line is broken at its gaps (see breakAtGaps). */
+  private seriesLine(series: ISeriesApi<SeriesType>, bars: Candle[], v: Values, connect?: boolean) {
+    const data = this.lineData(bars, v, connect);
+    const o = series.options() as { lineVisible?: boolean; pointMarkersVisible?: boolean };
+    return series.seriesType() === 'Line' && o.lineVisible !== false && !o.pointMarkersVisible ? breakAtGaps(data) : data;
+  }
+
   private lineData(bars: Candle[], v: Values, connect?: boolean) {
     const out: { time: UTCTimestamp; value?: number }[] = [];
     for (let i = 0; i < bars.length; i++) {
@@ -496,7 +525,8 @@ export class StudyRenderer {
       pointMarkersVisible: type === 'circles', pointMarkersRadius: type === 'circles' ? width + 1 : undefined,
     }, r.pane);
     const data = this.lineData(bars, it.values, it.connect);
-    s.setData(data);
+    s.setData(lineVisibleType(type) ? breakAtGaps(data) : data);
+    if (it.title) { plotTitles.set(s, it.title); s.applyOptions({ title: it.title }); }
     if (type === 'cross') {
       const prim = new CrossPaint(data.filter((d): d is { time: UTCTimestamp; value: number } => d.value != null), color, width);
       s.attachPrimitive(prim as never);
@@ -660,6 +690,25 @@ export class StudyRenderer {
 
   /** The price series was replaced (a chart-type change): markers and levels follow it. */
   resetPriceSeries(): void { this.markersApi = null; }
+}
+
+const lineVisibleType = (t: PlotType) => t === 'line' || t === 'step';
+
+/** A line broken where its values stop: lightweight-charts draws a line across whitespace, so the
+ *  segment that would bridge a gap (drawn in the colour of the point before it) is made clear —
+ *  the prior-period levels step from one period to the next without a stroke through the candles,
+ *  and a Supertrend or SAR side ends where it ends. */
+export function breakAtGaps<T extends { time: UTCTimestamp; value?: number; color?: string }>(data: T[]): T[] {
+  let lastValued = -1;
+  let gap = false;
+  const out = data.slice();
+  for (let i = 0; i < out.length; i++) {
+    if (out[i]!.value == null) { if (lastValued >= 0) gap = true; continue; }
+    if (gap && lastValued >= 0) out[lastValued] = { ...out[lastValued]!, color: 'rgba(0,0,0,0)' };
+    gap = false;
+    lastValued = i;
+  }
+  return out;
 }
 
 /** TradingView-style short name for the legend: the Latin abbreviation in the label, else the label. */

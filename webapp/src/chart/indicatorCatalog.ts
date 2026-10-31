@@ -21,7 +21,7 @@ const EN: Record<string, string> = {
   chandeKroll: 'Chande Kroll Stop', chandelier: 'Chandelier Exit', volatilityStop: 'Volatility Stop',
   pivots: 'Pivot Points Standard', pivotsMulti: 'Pivot Points (Multi)', pivotHL: 'Pivot Points High Low', fractals: 'Williams Fractals',
   candlePatterns: 'All Candlestick Patterns', zigzag: 'Zig Zag', autoFib: 'Auto Fib Retracement', srLevels: 'Support and Resistance', supplyDemand: 'Supply and Demand Zones',
-  median: 'Median Price', typicalPrice: 'Typical Price', weightedClose: 'Weighted Close',
+  median: 'Moving Median', typicalPrice: 'Typical Price', weightedClose: 'Weighted Close',
   rsi: 'Relative Strength Index', macd: 'MACD', stoch: 'Stochastic', stochrsi: 'Stochastic RSI',
   cci: 'Commodity Channel Index', willr: 'Williams %R', adx: 'Average Directional Index', dmi: 'Directional Movement Index', aroon: 'Aroon', aroonOsc: 'Aroon Oscillator',
   mom: 'Momentum', roc: 'Rate Of Change', trix: 'TRIX', ppo: 'Price Oscillator', pvo: 'Percentage Volume Oscillator', ao: 'Awesome Oscillator', ac: 'Accelerator Oscillator', accelerator: 'Accelerator Oscillator (classic)',

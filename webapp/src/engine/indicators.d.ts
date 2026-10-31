@@ -6,7 +6,7 @@ export interface IndicatorOutput {
   line?: Values; signal?: Values; signal2?: Values; signal2Color?: string;
   hist?: Values; histMode?: 'sign'; palette?: (v: number | null, k: number) => string; macd?: boolean;
   hists?: { data: Values; color: string }[];
-  lines?: { data: Values; color: string; dashed?: boolean; gaps?: boolean; connectNulls?: boolean; name?: string }[];
+  lines?: { data: Values; color: string; dashed?: boolean; gaps?: boolean; connectNulls?: boolean; name?: string; /** A short name on the price axis beside the last value (PH, PL…). */ title?: string }[];
   upper?: Values; basis?: Values; lower?: Values; multi?: boolean;
   cloud?: number[]; cloudColors?: string[];
   guides?: number[]; range?: [number, number]; zone?: [number, number];

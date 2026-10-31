@@ -78,8 +78,8 @@ const barAt = (bars: Candle[], t: number): Candle | undefined => {
 function palette(dark: boolean): Palette & { text: string; grid: string; lineSep: string; crossLabel: string } {
   const { up, down } = useChartSettings.getState();
   return dark
-    ? { bg: '#0F0F0F', text: '#B8B8B8', lineSep: '#2E2E2E', grid: 'rgba(242,242,242,0.06)', crossLabel: '#4A4A4A', up, down, line: '#2962FF' }
-    : { bg: '#FFFFFF', text: '#0F0F0F', lineSep: '#EBEBEB', grid: 'rgba(46,46,46,0.06)', crossLabel: '#131722', up, down, line: '#2962FF' };
+    ? { bg: '#0F0F0F', text: '#B8B8B8', lineSep: '#2E2E2E', grid: 'rgba(242,242,242,0.06)', crossLabel: '#3D3D3D', up, down, line: '#2962FF' }
+    : { bg: '#FFFFFF', text: '#0F0F0F', lineSep: '#EBEBEB', grid: 'rgba(46,46,46,0.06)', crossLabel: '#6A6D78', up, down, line: '#2962FF' };
 }
 
 export function LiteChart({ feed, index, cell, active, onSymbol, onActivate, onMain }: {
@@ -127,7 +127,7 @@ export function LiteChart({ feed, index, cell, active, onSymbol, onActivate, onM
       autoSize: true,
       layout: { background: { type: ColorType.Solid, color: p.bg }, textColor: p.text, fontSize: 11, fontFamily: "'IRANYekanX', system-ui, sans-serif", attributionLogo: false, panes: { separatorColor: p.lineSep } },
       grid: { vertLines: { color: p.grid, style: LineStyle.Dotted }, horzLines: { color: p.grid, style: LineStyle.Dotted } },
-      crosshair: { mode: CrosshairMode.Normal, vertLine: { labelBackgroundColor: p.crossLabel, style: LineStyle.Dashed }, horzLine: { labelBackgroundColor: p.crossLabel, style: LineStyle.Dashed } },
+      crosshair: { mode: CrosshairMode.Normal, vertLine: { labelBackgroundColor: p.crossLabel, style: LineStyle.LargeDashed }, horzLine: { labelBackgroundColor: p.crossLabel, style: LineStyle.LargeDashed } },
       rightPriceScale: { borderColor: p.lineSep, scaleMargins: { top: 0.12, bottom: 0.08 } },
       timeScale: { borderColor: p.lineSep, barSpacing: 6, rightOffset: 10, timeVisible: true },
       localization: { locale: 'en-US', priceFormatter: (v: number) => formatPrice(v, digitsOf(symbol)) },

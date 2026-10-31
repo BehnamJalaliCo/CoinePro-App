@@ -64,11 +64,12 @@ describe('the address', () => {
 });
 
 describe('multi-chart presets', () => {
-  it('has every old Pro-Chart arrangement and TradingView’s up to eight', () => {
+  it('has every old Pro-Chart arrangement and TradingView’s up to sixteen', () => {
     const ids = PRESETS.map((p) => p.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const id of ['1', '2v', '2h', '3', '3c', '3r', '4', '4c', '4r', '6', '8']) expect(ids).toContain(id);
-    expect(Math.max(...PRESETS.map((p) => p.cells))).toBe(8);
+    expect(Math.max(...PRESETS.map((p) => p.cells))).toBe(16);
+    for (const id of ['3+2', '4+2', '4+3', '9', '10', '12', '14', '16']) expect(ids).toContain(id);
   });
   it('each preset is a rectangle of rectangles with the right number of charts', () => {
     for (const p of PRESETS) {

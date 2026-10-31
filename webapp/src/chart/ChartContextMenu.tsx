@@ -20,6 +20,7 @@ import { faNum } from '../i18n/time';
 import { MI, MSep, MSub, MTitle, PopMenu } from './menuKit';
 import { openChartSettings } from '../shell/SettingsDialog';
 import type { DrawingObject } from '../engine/drawings.js';
+import { askClearDrawings, drawingCount } from './ConfirmClear';
 
 /** What the drawings area offers for pasting: its drawing clipboard (`useDrawing().clip`) and the
  *  layer's `pasteMany`, when the drawings area has them. */
@@ -63,6 +64,7 @@ export function ChartContextMenu({ at, onClose, onAlertAt }: { at: { x: number; 
   const kind = (side: 'long' | 'short') => ((side === 'long') === ((price ?? 0) < last) ? L('محدود', 'limit') : L('توقف', 'stop'));
   const toggle = (k: 'sessionBreaks' | 'events' | 'news' | 'sessionsOn' | 'autoDivergence' | 'autoHarmonic' | 'autoGaps' | 'volumeProfile') => () => settings.set({ [k]: !settings[k] });
   const n = studies.length;
+  const allHidden = n > 0 && studies.every((x) => x.hidden);
   const fullscreen = () => { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen?.(); };
 
   return (
@@ -88,6 +90,10 @@ export function ChartContextMenu({ at, onClose, onAlertAt }: { at: { x: number; 
       ) : null}
       <MSep />
       <MI icon="ph-chart-line-up" act="add-indicator" label={L('افزودن اندیکاتور…', 'Add indicator…')} hint="/" onClick={openIndicators} />
+      {n ? (
+        <MI icon={allHidden ? 'ph-eye' : 'ph-eye-slash'} act="hide-indicators" label={allHidden ? L('نمایش همه‌ی اندیکاتورها', 'Show all indicators') : L('پنهان کردن همه‌ی اندیکاتورها', 'Hide all indicators')}
+          onClick={() => useStudies.getState().setAllHidden(!allHidden)} />
+      ) : null}
       <MI icon="ph-arrows-down-up" act="invert" checked={bus.invert} label={L('وارونه‌کردن مقیاس', 'Invert scale')} hint="Alt+I" onClick={() => bus.setInvert(!bus.invert)} />
       <MI icon="ph-percent" act="indexed" checked={bus.scale === 'indexed'} label={L('پایه‌ی ۱۰۰', 'Indexed to 100')} onClick={() => bus.setScale(bus.scale === 'indexed' ? 'normal' : 'indexed')} />
       <MSub icon="ph-eye" act="show" label={L('نمایش روی چارت', 'Show on chart')}>
@@ -117,7 +123,7 @@ export function ChartContextMenu({ at, onClose, onAlertAt }: { at: { x: number; 
         <MI icon="ph-arrows-out" act="fullscreen" label={L('تمام‌صفحه', 'Fullscreen')} hint="Shift+F" onClick={fullscreen} />
       </MSub>
       <MSep />
-      <MI icon="trash2" act="remove-drawings" danger label={t('contextRemoveDrawings')} onClick={drawing.clearAll} />
+      <MI icon="trash2" act="remove-drawings" danger disabled={!drawingCount()} label={t('contextRemoveDrawings')} onClick={askClearDrawings} />
       <MI icon="ph-trash" act="remove-indicators" danger disabled={!n} label={n ? (fa ? `حذف ${faNum(n)} اندیکاتور` : `Remove ${n} indicator${n === 1 ? '' : 's'}`) : t('contextRemoveStudies')} onClick={() => useStudies.getState().clear()} />
       <MSep />
       <MI icon="ph-gear" act="settings" label={L('تنظیمات…', 'Settings…')} onClick={() => openChartSettings('symbol')} />
