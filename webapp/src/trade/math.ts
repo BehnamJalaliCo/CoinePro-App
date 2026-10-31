@@ -71,6 +71,13 @@ export function roundDown(v: number, decimals: number): number {
   return Math.floor(v * k + 1e-9) / k;
 }
 
+/** «بستن نیمی» (OLD LiveTradeSheet): half the position, rounded down to the venue's quantity step; null when that is nothing. */
+export function halfQuantity(quantity: number, price: number | null, venue: Venue | null): number | null {
+  if (!finite(quantity) || quantity <= 0) return null;
+  const q = roundDown(quantity / 2, qtyDecimals(price, venue));
+  return q > 0 && q < quantity ? q : null;
+}
+
 /** The size that spends `pct` % of what is available at this leverage, fee included. */
 export function qtyForPercent(pct: number, available: number | null, leverage: number, price: number | null, feeRate: number, decimals: number): number | null {
   if (!finite(available) || available <= 0 || !finite(price) || price <= 0 || !(pct > 0)) return null;

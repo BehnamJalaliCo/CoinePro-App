@@ -178,6 +178,20 @@ const read = (): Stored => {
 };
 const write = (s: Stored) => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* full or blocked */ } };
 
+// Replay sessions the reader finished, by when (OLD arena results feed «هفته‌ی من» the same way).
+const SESSIONS_KEY = 'pc.replay.sessions.v1';
+/** When each finished replay session ended (ms), oldest first. */
+export function replaySessionTimes(): number[] {
+  try { const v = JSON.parse(localStorage.getItem(SESSIONS_KEY) ?? '[]') as unknown; return Array.isArray(v) ? v.filter((x): x is number => typeof x === 'number') : []; } catch { return []; }
+}
+function recordSession(at: number): void {
+  try { localStorage.setItem(SESSIONS_KEY, JSON.stringify([...replaySessionTimes(), at].slice(-500))); } catch { /* full or blocked */ }
+}
+/** The next exit is not a practice session (a duel rides on the replay but is not one). */
+let uncounted = false;
+/** Leaves the replay without counting it as a finished practice session. */
+export function exitReplayUncounted(): void { uncounted = true; useReplay.getState().exit(); }
+
 let seq = 0;
 const tid = () => `r${Date.now().toString(36)}${(seq++).toString(36)}`;
 
@@ -318,6 +332,8 @@ export const useReplay = create<ReplayStore>((set, get) => {
       persist();
     },
     exit: () => {
+      if (get().state?.on && !uncounted) recordSession(Date.now());
+      uncounted = false;
       persist();
       controller.exit();
       controller.disableIntrabar();

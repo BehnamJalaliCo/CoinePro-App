@@ -54,6 +54,19 @@ export function marksOf(p: Payload | null): { flags: Record<string, number>; not
   return { flags, notes };
 }
 
+/** Each list's own notes (`web_notes`), list id → symbol → text. */
+export function listNotesOf(p: Payload | null): Record<string, Record<string, string>> {
+  const out: Record<string, Record<string, string>> = {};
+  const del = p?.deleted ?? {};
+  for (const l of p?.lists ?? []) {
+    if (String(l.id) in del) continue;
+    const n: Record<string, string> = {};
+    for (const [s, t] of Object.entries(l.web_notes ?? {})) if (typeof t === 'string' && t) n[s] = t;
+    if (Object.keys(n).length) out[String(l.id)] = n;
+  }
+  return out;
+}
+
 /** One list's document entry as the web would write it, from the doc's own entry (or none). */
 export function listDoc(d: ListDoc | undefined, l: WList, flags: Record<string, number>, notes: Record<string, string>, now: number): ListDoc {
   const f: Record<string, string> = {};
@@ -78,7 +91,9 @@ async function pull(): Promise<void> {
     const st = useWatchlist.getState();
     st.setLists(lists);
     const marks = marksOf(r.payload);
-    if (Object.keys(marks.flags).length || Object.keys(marks.notes).length) st.setMarks({ ...st.flags, ...marks.flags }, { ...st.notes, ...marks.notes });
+    if (Object.keys(marks.flags).length) st.setMarks({ ...st.flags, ...marks.flags }, useWatchlist.getState().notes);
+    const notes = listNotesOf(r.payload);
+    if (Object.keys(notes).length) useWatchlist.getState().setListNotes(notes);
     applyingRemote = false;
   } else {
     await push(useWatchlist.getState().lists, []);
@@ -90,13 +105,13 @@ async function push(lists: WList[], removed: string[], attempt = 0): Promise<voi
   pushing = true;
   try {
     const now = Date.now();
-    const { flags, notes } = useWatchlist.getState();
+    const { flags, listNotes } = useWatchlist.getState();
     const payload: Payload = { schema: 1, ...(doc.payload ?? {}), lists: [...(doc.payload?.lists ?? [])], deleted: { ...(doc.payload?.deleted ?? {}) } };
     const docLists = payload.lists!;
     for (const l of lists) {
       const i = docLists.findIndex((d) => String(d.id) === l.id);
-      if (i >= 0) docLists[i] = listDoc(docLists[i], l, flags, notes, now);
-      else docLists.push(listDoc(undefined, l, flags, notes, now));
+      if (i >= 0) docLists[i] = listDoc(docLists[i], l, flags, listNotes[l.id] ?? {}, now);
+      else docLists.push(listDoc(undefined, l, flags, listNotes[l.id] ?? {}, now));
     }
     for (const id of removed) { payload.lists = payload.lists!.filter((d) => String(d.id) !== id); payload.deleted![id] = now; }
     const r = readDoc(await authed('tradeyar', PATH, { method: 'PUT', body: { version: doc.version, payload } }));
@@ -126,7 +141,7 @@ export function startWatchlistSync(): void {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let removed: string[] = [];
   useWatchlist.subscribe((s, prev) => {
-    if (applyingRemote || !doc || (s.lists === prev.lists && s.flags === prev.flags && s.notes === prev.notes)) return;
+    if (applyingRemote || !doc || (s.lists === prev.lists && s.flags === prev.flags && s.listNotes === prev.listNotes)) return;
     removed = [...removed, ...prev.lists.filter((l) => !s.lists.some((x) => x.id === l.id)).map((l) => l.id)];
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => { const gone = removed; removed = []; void push(useWatchlist.getState().lists, gone); }, 800);

@@ -6,6 +6,21 @@ import { faAgo } from '../i18n/time';
 import { State, Tabs, dateTime, errorText, useL, useLoad } from './kit';
 import type { PageProps } from './registry';
 import { takePendingPost } from '../shell/publish';
+import { create } from 'zustand';
+import './extras.css';
+
+// The authors this reader follows (OLD core/community CommunityController.toggleFollow): kept in this
+// browser, by display name, and a «دنبال‌شده‌ها» chip that narrows whichever topic is chosen to them.
+const FOLLOW_KEY = 'pc.community.follows.v1';
+const readFollows = (): string[] => { try { const v = JSON.parse(localStorage.getItem(FOLLOW_KEY) ?? '[]') as unknown; return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []; } catch { return []; } };
+export const useFollows = create<{ follows: string[]; toggle(author: string): void }>((set, get) => ({
+  follows: readFollows(),
+  toggle: (author) => {
+    const follows = get().follows.includes(author) ? get().follows.filter((x) => x !== author) : [...get().follows, author];
+    set({ follows });
+    try { localStorage.setItem(FOLLOW_KEY, JSON.stringify(follows)); } catch { /* blocked */ }
+  },
+}));
 
 // The community (feature/community): the feed by category with search, posts with likes and
 // reactions, a name to post under, the composer with a picture, and the leaderboard. Anonymous:
@@ -45,6 +60,9 @@ export default function CommunityPage({ param }: Partial<PageProps> = {}) {
   const [page, setPage] = useState(1);
   const [posts, setPosts] = useState<Post[]>([]);
   const me = useMe();
+  const follows = useFollows((f) => f.follows);
+  const toggleFollow = useFollows((f) => f.toggle);
+  const [followingOnly, setFollowingOnly] = useState(false);
   const feed = useLoad(() => (search.length >= 2 ? community<Record<string, unknown>>(`posts/search?q=${encodeURIComponent(search)}`) : community<Record<string, unknown>>(`posts?page=${page}&category=${encodeURIComponent(cat)}`)).then((r) => listOf(r).map(readPost)), [cat, page, search]);
   useEffect(() => { if (feed.data) setPosts((cur) => (page === 1 || search ? feed.data! : [...cur, ...feed.data!.filter((p) => !cur.some((c) => c.id === p.id))])); }, [feed.data, page, search]);
   const leaders = useLoad(() => (tab === 'leaders' ? community<Record<string, unknown>>('leaderboard') : Promise.resolve(null)), [tab]);
@@ -57,13 +75,17 @@ export default function CommunityPage({ param }: Partial<PageProps> = {}) {
         <>
           <div className="row">
             <Tabs value={cat} onChange={(c) => { setCat(c); setPage(1); }} tabs={[{ id: '', label: L('همه', 'All') }, ...CATEGORIES.map((c) => ({ id: c, label: catLabel(c) }))]} />
+            {!search ? <button className={`chip following-chip${followingOnly ? ' on' : ''}`} aria-pressed={followingOnly} onClick={() => setFollowingOnly(!followingOnly)}><span className="fa">{L('دنبال‌شده‌ها', 'Following')}</span></button> : null}
             <form onSubmit={(e) => { e.preventDefault(); setSearch(q.trim()); setPage(1); }}><input className="scr-search" value={q} onChange={(e) => { setQ(e.target.value); if (!e.target.value) setSearch(''); }} placeholder={L('جستجو', 'Search')} dir="auto" /></form>
           </div>
           <State loading={feed.loading && !posts.length} error={feed.error} onRetry={feed.reload} empty={!posts.length}>
             <div className="stack">
-              {posts.map((p) => (
+              {followingOnly && !search && !posts.some((p) => follows.includes(p.author)) ? (
+                <div className="empty fa following-empty">{L('هنوز پستی از نویسنده‌هایی که دنبال می‌کنید اینجا نیست.', 'No posts from the authors you follow here yet.')} <button className="btn btn-quiet sm" onClick={() => setFollowingOnly(false)}>{L('نمایش همه‌ی پست‌ها', 'Show all posts')}</button></div>
+              ) : null}
+              {posts.filter((p) => !followingOnly || search || follows.includes(p.author)).map((p) => (
                 <article key={p.id} className="card post click" onClick={() => open('thread', p.id)}>
-                  <div className="row"><b dir="auto">{p.author}</b><span className="chip"><span className="fa">{catLabel(p.category)}</span></span>{p.pending ? <span className="muted fa small">{L('در انتظار تأیید', 'Awaiting review')}</span> : null}<span className="ws-spacer" /><span className="muted small">{p.createdAt ? (lang === 'fa' ? faAgo(p.createdAt) : dateTime(p.createdAt)) : ''}</span></div>
+                  <div className="row"><b dir="auto">{p.author}</b><span className="chip"><span className="fa">{catLabel(p.category)}</span></span>{p.pending ? <span className="muted fa small">{L('در انتظار تأیید', 'Awaiting review')}</span> : null}<span className="ws-spacer" />{p.author && p.author !== me.data?.name ? <button className="link-btn follow-btn" data-author={p.author} aria-pressed={follows.includes(p.author)} onClick={(e) => { e.stopPropagation(); toggleFollow(p.author); }}>{follows.includes(p.author) ? L('لغو دنبال کردن', 'Unfollow author') : L('دنبال کردن نویسنده', 'Follow author')}</button> : null}<span className="muted small">{p.createdAt ? (lang === 'fa' ? faAgo(p.createdAt) : dateTime(p.createdAt)) : ''}</span></div>
                   <p className="fa post-body" dir="auto">{p.content.length > 600 ? `${p.content.slice(0, 600)}…` : p.content}</p>
                   {p.image ? <PostImage url={p.image} /> : null}
                   <Reactions post={p} onChange={(n) => setPosts((cur) => cur.map((x) => (x.id === n.id ? n : x)))} />

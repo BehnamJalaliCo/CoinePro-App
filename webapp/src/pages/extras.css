@@ -1,0 +1,66 @@
+/* C2 extras: «هفته‌ی من», the duel band, the news chips, the watchlist trend column, NamaScript table slots. */
+.my-week { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.my-week h3 { margin: 0; }
+.my-week .mw-since { margin: 0; }
+.my-week .mw-empty { color: var(--text-2); margin: 4px 0 0; }
+.my-week .mw-rows { margin: 4px 0 0; display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--line); padding-top: 6px; }
+.my-week .mw-row { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.my-week .mw-row dt { color: var(--text-2); }
+.my-week .mw-row dd { margin: 0; font-weight: 600; }
+.my-week .mw-floor { margin: 0; }
+.my-week .mw-share { align-self: stretch; margin-top: 4px; }
+
+/* دوئل با گذشته: the band in place of the replay controls. */
+.duel-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; background: var(--bg-elevated, var(--bg)); border: 1px solid var(--line); border-radius: 8px; pointer-events: auto; max-width: min(720px, calc(100% - 24px)); }
+.duel-bar .duel-name { color: var(--info); font-weight: 700; font-size: 12px; }
+.duel-bar .duel-q { flex: 1; min-width: 160px; color: var(--text-2); font-size: 13px; }
+.duel-bar .duel-out { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: 2px; }
+.duel-bar .duel-verdict { font-weight: 700; }
+.duel-bar .duel-verdict.right { color: var(--up); }
+.duel-bar .duel-verdict.wrong { color: var(--down); }
+.duel-bar .duel-verdict.too_close { color: var(--text-2); }
+.duel-bar .duel-sub { color: var(--text-3); font-size: 12px; }
+.duel-bar .duel-pill { border-radius: 999px; padding: 4px 14px; font-weight: 600; }
+
+/* News: impact and sentiment chips. */
+.news-chip { display: inline-flex; align-items: center; padding: 0 6px; border-radius: 999px; font-size: 11px; line-height: 18px; border: 1px solid var(--line); color: var(--text-2); margin-inline-start: 6px; }
+.news-chip.impact-high { color: var(--down); border-color: currentColor; }
+.news-chip.impact-medium { color: #FB8C00; border-color: currentColor; }
+.news-chip.bullish { color: var(--up); border-color: currentColor; }
+.news-chip.bearish { color: var(--down); border-color: currentColor; }
+
+/* Watchlist: the day's line. */
+.wl-spark { display: block; width: 100%; height: 18px; }
+.wl-spark .spark-line { fill: none; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+.wl-spark.up .spark-line { stroke: var(--up); }
+.wl-spark.down .spark-line { stroke: var(--down); }
+.wl-spark.flat .spark-line { stroke: var(--text-3); }
+.wl-spark .spark-fill { stroke: none; opacity: 0.12; }
+.wl-spark.up .spark-fill { fill: var(--up); }
+.wl-spark.down .spark-fill { fill: var(--down); }
+.wl-spark.flat .spark-fill { fill: var(--text-3); }
+.wl-spark.pending .spark-line { stroke: var(--line); stroke-dasharray: 3 3; }
+
+/* NamaScript tables in Pine's nine slots. */
+.ns-tables.ns-slots { position: absolute; inset: 34px 72px 34px 8px; z-index: 6; pointer-events: none; display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; gap: 0; flex-direction: initial; align-items: stretch; }
+.ns-slot { display: flex; flex-direction: column; gap: 6px; }
+.ns-slot.top { justify-content: flex-start; }
+.ns-slot.middle { justify-content: center; }
+.ns-slot.bottom { justify-content: flex-end; }
+.ns-slot.left { align-items: flex-start; }
+.ns-slot.center { align-items: center; }
+.ns-slot.right { align-items: flex-end; }
+@media (max-width: 760px) { .ns-tables.ns-slots { right: 56px; } }
+
+/* Community: follow. */
+.post .follow-btn { font-size: 12px; }
+
+/* Calendar: «افزودن به تقویم» under the reminder bell. */
+.cal-row.x > button.cal-bell { grid-area: auto; grid-column: 7; grid-row: 1; }
+.cal-row.x .cal-ics { grid-column: 7; grid-row: 2; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 4px; color: var(--text-3); opacity: 0; }
+.cal-row.x:hover .cal-ics, .cal-row.x .cal-ics:focus-visible { opacity: 1; }
+.cal-row.x .cal-ics:hover { background: var(--bg-active); }
+.cal-row.wide .cal-ics { color: var(--text-3); }
+.cal-row.wide .cal-ics:hover { color: var(--text); }
+.page-inner .cal-row.wide { grid-template-columns: 44px 18px 18px minmax(0, 1fr) auto 24px 70px; }
+@media (max-width: 760px) { .page-inner .cal-row.wide { grid-template-columns: 40px 18px 18px minmax(0, 1fr) auto 24px; } }

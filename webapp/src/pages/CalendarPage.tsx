@@ -6,7 +6,9 @@ import { useSaved } from '../data/saved';
 import { SavedLine } from '../shell/Offline';
 import { clock, faDay, faNum } from '../i18n/time';
 import { CurrencyFlag } from '../ui/SymbolLogo';
-import { Tabs, useLoad, State } from './kit';
+import { Tabs, useLoad, State, useL } from './kit';
+import { Icon } from '../ui/Icon';
+import { calendarMatches, downloadIcs } from '../data/calendarExtras';
 
 // The app's economic calendar: impact and currency filters, search, a countdown to the next
 // event, actual/forecast/previous, and the chart the event moves (gold for USD, the pair otherwise).
@@ -14,6 +16,7 @@ const MOVES: Record<string, string> = { USD: 'XAUUSD', EUR: 'EURUSD', GBP: 'GBPU
 
 export default function CalendarPage() {
   const t = useT();
+  const L = useL();
   const setSymbol = usePrefs((s) => s.setSymbol);
   const close = usePage((s) => s.close);
   const cal = useLoad(() => calendarWeek(), []);
@@ -24,7 +27,7 @@ export default function CalendarPage() {
   const savedAt = useSaved((s) => s.at[SAVED_KEYS.calendar] ?? null);
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, []);
   const currencies = useMemo(() => [...new Set((cal.data ?? []).map((e) => e.currency).filter(Boolean))].sort(), [cal.data]);
-  const list = useMemo(() => (cal.data ?? []).filter((e) => (impact === 'all' || (impact === 'high' ? e.impact === 'high' : e.impact === 'high' || e.impact === 'medium')) && (cur === 'all' || e.currency === cur) && (!q.trim() || e.title.toLowerCase().includes(q.trim().toLowerCase()))), [cal.data, impact, cur, q]);
+  const list = useMemo(() => (cal.data ?? []).filter((e) => (impact === 'all' || (impact === 'high' ? e.impact === 'high' : e.impact === 'high' || e.impact === 'medium')) && (cur === 'all' || e.currency === cur) && calendarMatches(e, q)), [cal.data, impact, cur, q]);
   const next = list.find((e) => e.time > now);
   const left = next ? Math.max(0, Math.floor((next.time - now) / 1000)) : 0;
   const days = useMemo(() => { const by = new Map<string, typeof list>(); for (const e of list) { const k = new Date(e.time).toDateString(); by.set(k, [...(by.get(k) ?? []), e]); } return [...by.values()]; }, [list]);
@@ -41,7 +44,7 @@ export default function CalendarPage() {
       <div className="row">
         <Tabs value={impact} onChange={setImpact} tabs={[{ id: 'all', label: t('all') }, { id: 'high', label: t('highImpact') }, { id: 'medium', label: t('calMediumUp') }]} />
         <select value={cur} onChange={(e) => setCur(e.target.value)} className="num"><option value="all">{t('all')}</option>{currencies.map((c) => <option key={c} value={c}>{c}</option>)}</select>
-        <input className="scr-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('search')} />
+        <input className="scr-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={L('جست‌وجوی رویداد', 'Find a release')} />
       </div>
       <SavedLine at={savedAt} className="on-page" />
       <State loading={cal.loading} error={cal.error} empty={!list.length} onRetry={cal.reload}>
@@ -59,6 +62,7 @@ export default function CalendarPage() {
                   <span title="forecast">{e.forecast || '—'}</span>
                   <span className="muted" title="previous">{e.previous || '—'}</span>
                 </span>
+                {e.time > now ? <button className="link-btn cal-ics" title={L('افزودن به تقویم', 'Add to calendar')} aria-label={L('افزودن به تقویم', 'Add to calendar')} onClick={() => downloadIcs(e)}><Icon name="ph-calendar-plus" size="sm" /></button> : <span />}
                 {MOVES[e.currency] ? <button className="link-btn num" onClick={() => { setSymbol(MOVES[e.currency]!); close(); }}>{MOVES[e.currency]}</button> : <span />}
               </div>
             ))}

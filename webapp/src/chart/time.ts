@@ -50,14 +50,16 @@ export function barTimeText(t: number, timezone: string, interval: string, look:
 
 export function timeOptions(timezone: string, interval: string, look: TimeLook = {}): DeepPartial<TimeChartOptions> {
   const daily = intervalSeconds(interval) >= 86400;
+  // Seconds and tick bars: the clock with its seconds.
+  const fine = intervalSeconds(interval) < 60;
   const tz = daily ? 'UTC' : zoneOf(timezone);
-  const time = safeFormat(tz, { hour: '2-digit', minute: '2-digit', hour12: Boolean(look.hour12) }, look.hour12 ? 'en-US' : 'en-GB');
+  const time = safeFormat(tz, { hour: '2-digit', minute: '2-digit', ...(fine ? { second: '2-digit' as const } : {}), hour12: Boolean(look.hour12) }, look.hour12 ? 'en-US' : 'en-GB');
   const day = safeFormat(tz, { day: 'numeric' });
   const month = safeFormat(tz, { month: 'short' });
   const year = safeFormat(tz, { year: 'numeric' });
   const at = (t: unknown) => new Date((typeof t === 'number' ? t : 0) * 1000);
   return {
-    localization: { timeFormatter: (t: unknown) => barTimeText(typeof t === 'number' ? t : 0, timezone, interval, look) },
+    localization: { timeFormatter: (t: unknown) => (fine ? `${dateText(typeof t === 'number' ? t : 0, tz, look)}  ${time.format(at(t))}` : barTimeText(typeof t === 'number' ? t : 0, timezone, interval, look)) },
     timeScale: {
       tickMarkFormatter: (t: unknown, type: number) => {
         const d = at(t);

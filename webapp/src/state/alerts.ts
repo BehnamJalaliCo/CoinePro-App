@@ -15,7 +15,7 @@
 import { create } from 'zustand';
 import { useMarket } from './market';
 import { authed } from '../data/auth';
-import { backendOf, FX_SYMBOLS } from '../data/symbols';
+import { backendOf } from '../data/symbols';
 import { useSession } from '../data/session';
 import { uuid } from '../data/http';
 import { intervalSeconds } from '../data/intervals';
@@ -128,7 +128,8 @@ function serverPath(symbol: string): string | null {
   if (/[-+*/() ]/.test(symbol)) return null;
   const backend = backendOf(symbol);
   if (!useSession.getState().sessions[backend]) return null;
-  if (backend === 'coineprofx' && !FX_SYMBOLS.includes(symbol)) return null;
+  // Any CoinePro-FX chart symbol: the server says which it takes, and a refusal leaves the alert
+  // watched in this browser.
   return backend === 'tradeyar' ? '/up/tradeyar/api/mobile/v1/alerts' : '/up/coineprofx/api/user/mobile/alerts';
 }
 /** Only a plain level on the price reaches the platforms; the rest is watched here. */

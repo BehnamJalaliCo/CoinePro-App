@@ -12,6 +12,8 @@ import { intervalLabel } from '../data/intervals';
 import { formatPrice, guessDigits } from '../chart/format';
 import { faNum } from '../i18n/time';
 import type { Candle } from '../data/types';
+import { DuelBar, startDuel } from './DuelBar';
+import { useDuel } from '../state/duel';
 import './studies.css';
 
 // TradingView's replay controls, floating over the chart's bottom edge, with what the old Pro-Chart
@@ -88,7 +90,7 @@ function useReplayClicks(on: boolean) {
     if (!on || !api) return;
     const click = (p: MouseEventParams<Time>) => {
       const r = useReplay.getState();
-      if (!r.state?.on || r.selecting || typeof p.time !== 'number') return;
+      if (!r.state?.on || r.selecting || typeof p.time !== 'number' || useDuel.getState().session) return;
       const tool = useDrawing.getState().tool;
       if (tool !== 'cursor' && tool !== 'select') return;
       const full = r.controller.full as Candle[];
@@ -159,6 +161,8 @@ export function ReplayBar() {
   const [speedMenu, setSpeedMenu] = useState<HTMLElement | null>(null);
   const [dateOpen, setDateOpen] = useState(false);
   const [panel, setPanel] = useState(false);
+  const duel = useDuel((d) => d.session);
+  const [duelBusy, setDuelBusy] = useState(false);
   const on = Boolean(state?.on);
   useReplayView();
   useReplayClicks(on);
@@ -183,6 +187,9 @@ export function ReplayBar() {
   const date = slice?.length ? barDate(slice[slice.length - 1]!.t, timezone, interval) : '';
 
   if (!selecting && !on) return null;
+  // «دوئل با گذشته»: its band stands where the controls stand, so nothing steps into the hidden bars.
+  if (duel && on) return <div className="replay-bar rp2 duel-wrap"><DuelBar /></div>;
+  const duelNow = () => { setMenu(null); setDuelBusy(true); void startDuel().finally(() => setDuelBusy(false)); };
 
   const pickMenu = menu ? (
     <Dropdown anchor={menu} onClose={() => setMenu(null)} className="rp-menu">
@@ -191,6 +198,7 @@ export function ReplayBar() {
         <button className="menu-item" onClick={() => { setMenu(null); select(); setDateOpen(true); }}><Icon name="ph-calendar-blank" size="sm" /><span className="fa">{L('انتخاب تاریخ…', 'Select date…')}</span></button>
         <button className="menu-item" onClick={() => { setMenu(null); exit(); firstBar(); }} disabled={bars.length < 60}><Icon name="ph-skip-back" size="sm" /><span className="fa">{L('اولین تاریخ موجود', 'Select the first available date')}</span></button>
         <button className="menu-item" onClick={() => { setMenu(null); exit(); randomBar(); }} disabled={bars.length < 60}><Icon name="ph-shuffle" size="sm" /><span className="fa">{L('کندل تصادفی', 'Random bar')}</span></button>
+        <button className="menu-item" onClick={duelNow} disabled={duelBusy}><Icon name="ph-sword" size="sm" /><span className="fa">{L('دوئل با گذشته', 'Duel with the past')}</span></button>
       </div>
     </Dropdown>
   ) : null;
@@ -203,6 +211,7 @@ export function ReplayBar() {
         {dateOpen ? <PickDate onClose={() => setDateOpen(false)} /> : <button className="btn btn-quiet sm" onClick={() => setDateOpen(true)}><Icon name="ph-calendar-blank" size="sm" /><span className="fa">{L('تاریخ', 'Date')}</span></button>}
         <button className="btn btn-quiet sm" onClick={firstBar} disabled={bars.length < 60} title={L('اولین تاریخ موجود', 'Select the first available date')}><Icon name="ph-skip-back" size="sm" /><span className="fa">{L('اولین کندل', 'First bar')}</span></button>
         <button className="btn btn-quiet sm" onClick={randomBar} disabled={bars.length < 60}><Icon name="ph-shuffle" size="sm" /><span>Random bar</span></button>
+        <button className="btn btn-quiet sm rp-duel" onClick={duelNow} disabled={duelBusy} title={L('یک لحظه از گذشته‌ی بازارهای خودتان، با ۲۰ کندل بعدیِ پنهان', 'A moment from your own markets, the next 20 bars hidden')}><Icon name="ph-sword" size="sm" /><span className="fa">{L('دوئل', 'Duel')}</span></button>
         {canResume ? <button className="btn btn-quiet sm" onClick={resume} title={session ? barDate(session.at, timezone, interval) : ''}><Icon name="ph-play" size="sm" /><span className="fa">{L('ادامه‌ی جلسه‌ی قبل', 'Resume last session')}</span></button> : null}
         <button className="lt" onClick={exit} aria-label="close"><Icon name="ph-x" size="sm" /></button>
       </div>

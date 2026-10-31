@@ -7,6 +7,7 @@ import type { Candle } from './types';
 import { bucketOf, loadEdge, loadHistory, UnsupportedInterval, type Fold } from './candles';
 import { readSnapshot, saveSnapshot } from './saved';
 import { intervalSeconds, parseIntervalId } from './intervals';
+import { tickFill } from './ticks';
 import { onPrice, setFocus } from './prices';
 import { backendOf, exprLegs, instrumentOf } from './symbols';
 import { pageVisible } from './http';
@@ -88,7 +89,23 @@ export function watchExpression(expr: string): void {
 // Spreads with alerts on them are priced from the first tick, chart open or not.
 useMarket.subscribe((m, p) => { if (m.tickers !== p.tickers) refreshExpressions(m.tickers); });
 
+/** A tick chart's live edge: every price the feed brings is one more trade in the forming bar. */
+function tickLive(symbol: string, count: number, from: Candle | undefined, onBar: (bar: Candle) => void): () => void {
+  let bar: Candle | null = from ? { ...from } : null;
+  let filled = tickFill.get(`${symbol}|${count}`) ?? 0;
+  return onPrice(symbol, (price) => {
+    if (!bar || filled === 0) {
+      const t = Math.max(Math.floor(Date.now() / 1000), bar ? bar.t + 1 : 0);
+      bar = { t, o: price, h: price, l: price, c: price, v: 0 };
+    } else bar = { ...bar, h: Math.max(bar.h, price), l: Math.min(bar.l, price), c: price };
+    filled = (filled + 1) % count;
+    onBar(bar);
+  });
+}
+
 function plainLive(symbol: string, interval: string, from: Candle | undefined, onBar: (bar: Candle) => void): () => void {
+  const iv = parseIntervalId(interval);
+  if (iv?.unit === 'T') return tickLive(symbol, iv.n, from, onBar);
   let bar: Candle | null = from ? { ...from } : null;
   let alive = true;
   const fold = liveFold(interval);

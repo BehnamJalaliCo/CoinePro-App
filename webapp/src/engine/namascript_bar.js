@@ -224,6 +224,8 @@ self.onmessage = function (e) {
   var color={blue:'#3b82f6',red:'#ef4444',green:'#22c55e',orange:'#f59e0b',purple:'#a855f7',gray:'#94a3b8',white:'#e5e7eb',yellow:'#eab308',aqua:'#22d3ee',teal:'#14b8a6',black:'#000000',silver:'#cbd5e1',lime:'#84cc16',maroon:'#7f1d1d',navy:'#1e3a8a',fuchsia:'#d946ef',
     new:colorNew, rgb:function(r,g,b,t){ var a=(t==null?0:Math.max(0,Math.min(100,t))); return 'rgba('+(r|0)+','+(g|0)+','+(b|0)+','+((100-a)/100)+')'; }};
   var shape={up:'up',down:'down',circle:'circle',cross:'cross',flag:'flag',triangleup:'up',triangledown:'down',arrowup:'up',arrowdown:'down',labelup:'up',labeldown:'down'};
+  // Pine's nine table slots (table.new's first argument).
+  var position={top_left:'top_left',top_center:'top_center',top_right:'top_right',middle_left:'middle_left',middle_center:'middle_center',middle_right:'middle_right',bottom_left:'bottom_left',bottom_center:'bottom_center',bottom_right:'bottom_right'};
 
   // ───────── خروجی‌های رسم (per-bar: روی کندل جاری جمع می‌شوند) ─────────
   // هر plot یک سطل نام‌دار است؛ در هر کندل یک نقطه اضافه می‌شود (کلید = نام، تا چند plot از هم جدا بمانند).
@@ -242,8 +244,10 @@ self.onmessage = function (e) {
   function bgcolor(cond,col){ col=col||'rgba(59,130,246,.12)'; var b=bgMap[col]; if(!b){ b={color:col,bars:[]}; bgMap[col]=b; bgs.push(b); } if(cond)b.bars.push(T[bar]); }
   var fillState=null;
   function fill(a,b,col){ if(!fillState){ fillState={color:col||'rgba(59,130,246,.12)',a:[],b:[]}; fills.push(fillState); } if(col)fillState.color=col; if(!isna(a))fillState.a.push({time:T[bar],value:a}); if(!isna(b))fillState.b.push({time:T[bar],value:b}); }
-  var barcolorState=null;
-  function barcolor(col,cond){ if(cond===undefined){ if(!barcolorState||!barcolorState.all){ barcolorState={color:col,all:true}; barcolors.push(barcolorState); } return; } if(!barcolorState||barcolorState.all){ barcolorState={color:col,bars:[]}; barcolors.push(barcolorState); } barcolorState.color=col; if(cond)barcolorState.bars.push(T[bar]); }
+  // barcolor(color[, condition]) on this bar: na or a false condition leaves it as it was; grouped by colour.
+  var BC={};   // bar time → its colour; a later call on the same bar wins, as in Pine
+  function barcolor(col,cond){ if(cond!==undefined&&!cond)return; if(isna(col)||col===''||typeof col!=='string')return; BC[T[bar]]=col; }
+  function barcolorGroups(){ var map={}; for(var i=0;i<N;i++){ var c=BC[T[i]]; if(c==null)continue; if(!map[c]){ map[c]={color:c,bars:[]}; barcolors.push(map[c]); } map[c].bars.push(T[i]); } }
   // riskreward(entry,sl,tp1[,tp2,tp3]) — آخرین مقادیر معتبر را در پایان اجرا به جعبه‌ی سود/ضرر تبدیل می‌کنیم
   var rrLast=null;
   function riskreward(entry,sl,tp1,tp2,tp3){ if(!isna(entry)&&!isna(sl)&&!isna(tp1)){ rrLast={entry:entry,sl:sl,tp1:tp1,tp2:tp2,tp3:tp3,bar:bar}; } }
@@ -253,9 +257,11 @@ self.onmessage = function (e) {
   var line={ new:function(x1,y1,x2,y2,col,w,style){ lines.push({x1:xtime(x1),y1:y1,x2:xtime(x2),y2:y2,color:col||'#3b82f6',width:w||1,style:style||0}); return lines.length-1; }, set_xy1:function(){}, set_xy2:function(){}, set_color:function(){}, set_width:function(){}, delete:function(id){ if(id!=null&&lines[id])lines[id]=null; } };
   var box={ new:function(l,t,r,bm,col,bg){ boxes.push({left:xtime(l),top:t,right:xtime(r),bottom:bm,color:col||'#3b82f6',bg:bg||'rgba(59,130,246,.08)'}); return boxes.length-1; }, set_top:function(){}, set_bottom:function(){}, delete:function(id){ if(id!=null&&boxes[id])boxes[id]=null; } };
   function table(){}
-  table.new=function(){ var t={cells:[]}; tables.push(t); return t; };
-  table.cell=function(t,c,r,txt,col){ if(t&&t.cells)t.cells.push({col:c|0,row:r|0,text:String(disp(txt)),color:col||null}); };
-  table.cell_set_text=function(t,c,r,txt){ if(t&&t.cells)t.cells.push({col:c|0,row:r|0,text:String(disp(txt))}); };
+  // table.new(position, columns, rows, bgcolor) — one table per slot: a script that makes it on every bar (no var) keeps one.
+  table.new=function(pos,cols,rows,bg){ pos=(typeof pos==='string'&&position[pos])?pos:'top_right'; for(var i=0;i<tables.length;i++)if(tables[i].position===pos)return tables[i]; var t={cells:[],position:pos,bg:(typeof bg==='string'&&bg)?bg:null}; tables.push(t); return t; };
+  function cellAt(t,c,r){ c=c|0; r=r|0; for(var i=0;i<t.cells.length;i++){ var x=t.cells[i]; if(x.col===c&&x.row===r)return x; } var n={col:c,row:r,text:'',color:null}; t.cells.push(n); return n; }
+  table.cell=function(t,c,r,txt,col){ if(t&&t.cells){ var x=cellAt(t,c,r); x.text=String(disp(txt)); x.color=(typeof col==='string'&&col)?col:null; } };
+  table.cell_set_text=function(t,c,r,txt){ if(t&&t.cells)cellAt(t,c,r).text=String(disp(txt)); };
   // alert(msg) / alert(cond, msg) — کندل جاری اگر شرط برقرار باشد ثبت می‌شود
   var alertMap={};
   function alert(a,b){ var msg, cond; if(typeof a==='string'){ msg=a; cond=true; } else { cond=a; msg=b||'هشدار'; } if(!cond)return; var al=alertMap[msg]; if(!al){ al={msg:String(msg),bars:[],dynamic:true}; alertMap[msg]=al; alerts.push(al); } al.bars.push(T[bar]); }
@@ -336,7 +342,7 @@ self.onmessage = function (e) {
 
     var body = new Function(
       'ta','math','input','plot','plotshape','plotchar','plotarrow','plotcandle','hline','bgcolor','fill','riskreward','barcolor','label','alertcondition','alert','line','box','table','strategy','study','indicator','runtime_error',
-      'crossover','crossunder','cross','nz','na','iff','request','int','float','bool','color','shape','str','__h','__setinit','__ctx',
+      'crossover','crossunder','cross','nz','na','iff','request','int','float','bool','color','shape','position','str','__h','__setinit','__ctx',
       'with(__ctx){ '+__SRC+' \\n}'
     );
 
@@ -355,7 +361,7 @@ self.onmessage = function (e) {
 
       // اجرای بدنه‌ی کاربر برای این کندل
       body(taW,math,input,plot,plotshape,plotchar,plotarrow,plotcandle,hline,bgcolor,fill,riskreward,barcolor,label,alertcondition,alert,line,box,table,strategy,study,indicator,runtime_error,
-           crossover,crossunder,crossf,nz,naf,iff,request,toint,tofloat,tobool,color,shape,str,__h,__setinit,ctx);
+           crossover,crossunder,crossf,nz,naf,iff,request,toint,tofloat,tobool,color,shape,position,str,__h,__setinit,ctx);
 
       // پس از اجرا: مقدار نهایی هر var پایدار را از ctx بخوان و تاریخچه‌اش را ثبت کن
       for(var pk2 in PERSIST_NAMES){ var nv=ctx[pk2]; PERSIST[pk2]=(nv===undefined)?PERSIST[pk2]:nv; if(!PERSIST_HIST[pk2])PERSIST_HIST[pk2]=new Array(N); PERSIST_HIST[pk2][bar]=PERSIST[pk2]; }
@@ -390,6 +396,7 @@ self.onmessage = function (e) {
         avgWin:avgW,avgLoss:avgL,maxWin:maxW,maxLoss:maxL,longN:longN,shortN:shortN,winStreak:wsMax,lossStreak:lsMax,avgTrade:avgTrade,expectancy:expectancy,sharpe:sharpe,grossProfit:gp,grossLoss:gl,wins:wins,losses:nT-wins};
     }
 
+    barcolorGroups();
         var sigs=null; if(strat.enabled){ var idx=function(a){ var o=[]; for(var i=0;i<N;i++)if(a[i])o.push(i); return o; }; sigs={long:idx(strat.longBars),short:idx(strat.shortBars),exitL:idx(strat.exitLBars),exitS:idx(strat.exitSBars)}; }
     self.postMessage({ok:true,plots:plots,shapes:shapes,hlines:hlines,bgs:bgs,labels:labels,alerts:alerts,inputs:inputs,zones:zones,fills:fills,lines:lines.filter(Boolean),boxes:boxes.filter(Boolean),tables:tables,barcolors:barcolors,candleplots:candleplots,strategy:stratResult,signals:sigs});
   } catch (err) {

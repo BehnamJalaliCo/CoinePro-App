@@ -17,6 +17,8 @@ import { backendOf, marketOf } from '../data/symbols';
 import { searchText } from '../data/names';
 import { downloadCsv, useL } from '../pages/kit';
 import { faNum } from '../i18n/time';
+import { requestSparkline, sparkPoints, useSparklines } from '../data/sparklines';
+import '../pages/extras.css';
 import type { Instrument, Market, Ticker } from '../data/types';
 import type { StringKey } from '../i18n/strings';
 import './panels-x.css';
@@ -100,7 +102,7 @@ export function Watchlist({ onAdd }: { onAdd(): void }) {
     const order = (list: string[]) => {
       const sort = view.sort;
       if (!sort) return list;
-      const v = (s: string): number | string => (sort.key === 'symbol' ? s : (rowValues(s, tickers[s], prev[s])[sort.key] ?? -Infinity));
+      const v = (s: string): number | string => (sort.key === 'symbol' ? s : sort.key === 'spark' ? 0 : (rowValues(s, tickers[s], prev[s])[sort.key] ?? -Infinity));
       return [...list].sort((a, b) => { const x = v(a), y = v(b); const c = typeof x === 'string' ? x.localeCompare(y as string) : (x as number) - (y as number); return sort.desc ? -c : c; });
     };
     const shown = new Set(visible);
@@ -193,7 +195,7 @@ export function Watchlist({ onAdd }: { onAdd(): void }) {
   const cols = view.columns;
   const wide = view.table && cols.length > 3;
   const grid = { gridTemplateColumns: `minmax(${wide ? 112 : 0}px, 1.75fr) ${cols.map((c) => `minmax(${wide ? 62 : 0}px, ${c === 'last' ? 1.05 : c === 'changePct' ? 0.85 : 0.95}fr)`).join(' ')}` };
-  const colLabel = (c: WCol) => (c === 'last' ? t('last') : c === 'change' ? t('change') : c === 'changePct' ? t('changePct') : c === 'volume' ? L('حجم', 'Vol') : c === 'high' ? L('سقف', 'High') : c === 'low' ? L('کف', 'Low') : L('دامنه٪', 'Range%'));
+  const colLabel = (c: WCol) => (c === 'spark' ? L('روند', 'Trend') : c === 'last' ? t('last') : c === 'change' ? t('change') : c === 'changePct' ? t('changePct') : c === 'volume' ? L('حجم', 'Vol') : c === 'high' ? L('سقف', 'High') : c === 'low' ? L('کف', 'Low') : L('دامنه٪', 'Range%'));
   const count = fa ? faNum(visible.length) : String(visible.length);
 
   return (
@@ -240,7 +242,7 @@ export function Watchlist({ onAdd }: { onAdd(): void }) {
           <div className="menu-sep" />
           <div className="menu-title fa">{L('ستون‌ها', 'Customize columns')}</div>
           {ALL_COLS.map((c) => (
-            <label key={c} className="menu-item check"><input type="checkbox" checked={cols.includes(c)} onChange={() => view.toggleColumn(c)} /><span>{c === 'last' ? L('آخرین قیمت', 'Last') : c === 'change' ? L('تغییر', 'Change') : c === 'changePct' ? L('درصد تغییر', 'Change %') : c === 'volume' ? L('حجم', 'Volume') : c === 'high' ? L('سقف روز', 'High') : c === 'low' ? L('کف روز', 'Low') : L('دامنه‌ی روز ٪', 'Range %')}</span></label>
+            <label key={c} className="menu-item check"><input type="checkbox" checked={cols.includes(c)} onChange={() => view.toggleColumn(c)} /><span>{c === 'spark' ? L('روند (۲۴ ساعت)', 'Trend (24h)') : c === 'last' ? L('آخرین قیمت', 'Last') : c === 'change' ? L('تغییر', 'Change') : c === 'changePct' ? L('درصد تغییر', 'Change %') : c === 'volume' ? L('حجم', 'Volume') : c === 'high' ? L('سقف روز', 'High') : c === 'low' ? L('کف روز', 'Low') : L('دامنه‌ی روز ٪', 'Range %')}</span></label>
           ))}
           <label className="menu-item check" title={L(`برای ${faNum(PREV_CLOSE_LIMIT)} نماد اول`, `For the first ${PREV_CLOSE_LIMIT} symbols`)}><input type="checkbox" checked={view.fromClose} onChange={() => view.setView({ fromClose: !view.fromClose })} /><span>{L('تغییر نسبت به بسته شدن دیروز', 'Change from the previous close')}</span></label>
           <div className="menu-sep" />
@@ -275,7 +277,7 @@ export function Watchlist({ onAdd }: { onAdd(): void }) {
         {view.table ? (
           <div className="wl-cols" role="row" style={grid}>
             <button className="c-sym fa" onClick={() => sortBy('symbol')}>{t('symbol')}{mark('symbol')}</button>
-            {cols.map((c) => <button key={c} className="c-num fa" onClick={() => sortBy(c)}>{colLabel(c)}{mark(c)}</button>)}
+            {cols.map((c) => (c === 'spark' ? <span key={c} className="c-num fa c-spark">{colLabel(c)}</span> : <button key={c} className="c-num fa" onClick={() => sortBy(c)}>{colLabel(c)}{mark(c)}</button>))}
           </div>
         ) : null}
         <div className="wl-body" role="list" tabIndex={0} ref={bodyRef} onKeyDown={onKey} aria-label={activeName}>
@@ -358,6 +360,7 @@ function WatchRow(p: RowProps) {
       case 'high': return <span key={c} className="c-num num">{v.high != null ? formatPrice(v.high, digits) : '—'}</span>;
       case 'low': return <span key={c} className="c-num num">{v.low != null ? formatPrice(v.low, digits) : '—'}</span>;
       case 'range': return <span key={c} className="c-num num">{v.range != null ? `${v.range.toFixed(2)}%` : '—'}</span>;
+      case 'spark': return <span key={c} className="c-num c-spark"><WatchSpark symbol={s} change={v.changePct} /></span>;
     }
   };
   const symCell = (
@@ -534,5 +537,24 @@ function SectionMenu({ at, onClose }: { at: { id: string; x: number; y: number }
       <div className="menu-sep" />
       <button className="menu-item danger" onClick={run(() => wl.deleteSection(sec.id))}><Icon name="ph-trash" size="sm" /><span className="grow">{L('حذف بخش (نمادها می‌مانند)', 'Remove section (keep symbols)')}</span></button>
     </Menu>
+  );
+}
+
+/** The day's line in the move's colour (OLD MarketListRow SPARKLINE), dashed while it loads. */
+function WatchSpark({ symbol, change }: { symbol: string; change: number | null }) {
+  const line = useSparklines((x) => x.lines[symbol]);
+  const pending = useSparklines((x) => Boolean(x.pending[symbol]));
+  useEffect(() => { requestSparkline(symbol); }, [symbol]);
+  const W = 52; const H = 18;
+  const pts = line ? sparkPoints(line, W, H) : null;
+  // The way the line went when no change is known, never «up» by default.
+  const dir = change ?? (line && line.length >= 2 ? line[line.length - 1]! - line[0]! : 0);
+  const tone = dir > 0 ? 'up' : dir < 0 ? 'down' : 'flat';
+  if (!pts) return <svg className={`wl-spark ${pending ? 'pending' : 'flat'}`} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden data-spark="none"><polyline className="spark-line" points={`0,${H / 2} ${W},${H / 2}`} /></svg>;
+  return (
+    <svg className={`wl-spark ${tone}`} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden data-spark={line!.length}>
+      <polyline className="spark-fill" points={`0,${H} ${pts} ${W},${H}`} />
+      <polyline className="spark-line" points={pts} />
+    </svg>
   );
 }

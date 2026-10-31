@@ -8,6 +8,7 @@ import { runScript } from '../engine/namascript.js';
 import { runScriptBar } from '../engine/namascript_bar.js';
 import { fromAlerts, fromIndices, simulate, type SignalSet } from '../pages/backtestEngine';
 import type { Candle } from '../data/types';
+import '../pages/extras.css';
 
 /** Runs the script on the chart over the bars on screen: once on "Add to chart", again on new bars, on an
  *  input or property change, and on every replay step (so a replayed script never sees its future). */
@@ -66,7 +67,10 @@ export function ScriptHost() {
   return <ScriptTables />;
 }
 
-/** `table.new` tables over the chart's top-right corner, as TradingView puts a script's table. */
+/** Pine's nine table slots, in the grid's reading order. */
+const SLOTS = ['top_left', 'top_center', 'top_right', 'middle_left', 'middle_center', 'middle_right', 'bottom_left', 'bottom_center', 'bottom_right'];
+
+/** `table.new` tables over the chart, each in the slot its position names (top right when none), as TradingView puts a script's tables. */
 function ScriptTables() {
   const result = useScript((s) => s.result);
   const on = useScript((s) => s.on);
@@ -75,17 +79,26 @@ function ScriptTables() {
   const host = api?.chartElement().closest('.ws-chart') as HTMLElement | null | undefined;
   const tables = on && !hidden && result?.ok ? (result.tables ?? []).filter((t) => t.cells?.length) : [];
   if (!host || !tables.length) return null;
+  const slotOf = (t: (typeof tables)[number]) => (t.position && SLOTS.includes(t.position) ? t.position : 'top_right');
   return createPortal(
-    <div className="ns-tables" dir="auto">
-      {tables.map((t, i) => {
-        const rows = Math.max(...t.cells.map((c) => c.row)) + 1;
-        const cols = Math.max(...t.cells.map((c) => c.col)) + 1;
-        const grid: (typeof t.cells[number] | undefined)[][] = Array.from({ length: rows }, () => Array.from({ length: cols }, () => undefined));
-        for (const c of t.cells) grid[c.row]![c.col] = c;
+    <div className="ns-tables ns-slots" dir="ltr">
+      {SLOTS.map((slot) => {
+        const here = tables.filter((t) => slotOf(t) === slot);
+        const [v, h] = slot.split('_');
         return (
-          <table key={i} className="ns-table">
-            <tbody>{grid.map((r, ri) => <tr key={ri}>{r.map((c, ci) => <td key={ci} style={c?.color ? { color: c.color } : undefined}>{c?.text ?? ''}</td>)}</tr>)}</tbody>
-          </table>
+          <div key={slot} className={`ns-slot ${v} ${h}`} data-slot={slot}>
+            {here.map((t, i) => {
+              const rows = Math.max(...t.cells.map((c) => c.row)) + 1;
+              const cols = Math.max(...t.cells.map((c) => c.col)) + 1;
+              const grid: (typeof t.cells[number] | undefined)[][] = Array.from({ length: rows }, () => Array.from({ length: cols }, () => undefined));
+              for (const c of t.cells) grid[c.row]![c.col] = c;
+              return (
+                <table key={i} className="ns-table" dir="auto" style={t.bg ? { background: t.bg } : undefined}>
+                  <tbody>{grid.map((r, ri) => <tr key={ri}>{r.map((c, ci) => <td key={ci} style={c?.color ? { color: c.color } : undefined}>{c?.text ?? ''}</td>)}</tr>)}</tbody>
+                </table>
+              );
+            })}
+          </div>
         );
       })}
     </div>,

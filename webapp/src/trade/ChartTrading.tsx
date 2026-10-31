@@ -15,7 +15,7 @@ import { useL } from '../pages/kit';
 import { amendOrder, cancelOrder, closePosition, protectPosition } from './api';
 import { protectionOf, useTrading, workingOrders } from './store';
 import { venueOf, type Venue } from './venue';
-import { pnlAt } from './math';
+import { halfQuantity, pnlAt } from './math';
 import { tradeErrorText, type Order, type Position } from './wire';
 import { chartFrame, frameLoop, paneBox, snap, yOf } from './overlay';
 import { notify } from './toast';
@@ -38,6 +38,8 @@ interface Item {
   title: string;
   move?(price: number): Promise<void>;
   remove?: { ask: boolean; run(): Promise<void>; label: string };
+  /** «بستن نیمی»: half the position, asked on the line like the full close. */
+  half?: { run(): Promise<void>; label: string };
   spawn?: { sl: boolean; tp: boolean; position: Position };
 }
 
@@ -66,7 +68,7 @@ function TradeLines({ venue, symbol }: { venue: Venue; symbol: string }) {
   const last = useMarket((s) => s.tickers[symbol]?.last ?? null);
   const digits = digitsOf(symbol);
   const [drag, setDrag] = useState<{ key: string; price: number } | null>(null);
-  const [pending, setPending] = useState<{ key: string; price: number | null } | null>(null);
+  const [pending, setPending] = useState<{ key: string; price: number | null; half?: boolean } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [ghost, setGhost] = useState<{ kind: 'sl' | 'tp'; position: Position; price: number } | null>(null);
   const root = useRef<HTMLDivElement>(null);
@@ -98,6 +100,10 @@ function TradeLines({ venue, symbol }: { venue: Venue; symbol: string }) {
         title: L(`موقعیت ${p.side === 'long' ? 'خرید' : 'فروش'} ${p.quantity} @ ${fmt(p.entry)}`, `${p.side === 'long' ? 'Long' : 'Short'} ${p.quantity} @ ${fmt(p.entry)}`),
         remove: { ask: true, label: L('بستن موقعیت؟', 'Close the position?'), run: () => run(key, async () => { await closePosition(venue, { client_request_id: uuid(), symbol, side: p.side, quantity: null }); }, L(`دستور بستن ${symbol} فرستاده شد`, `${symbol} close sent`)) },
         spawn: { sl: prot.sl == null, tp: prot.tp == null, position: p },
+        half: (() => {
+          const q = halfQuantity(p.quantity, p.entry, venue);
+          return q == null ? undefined : { label: L(`نیمی (${q}) بسته شود؟`, `Close half (${q})?`), run: () => run(key, async () => { await closePosition(venue, { client_request_id: uuid(), symbol, side: p.side, quantity: q }); }, L(`دستور بستن نیمی از ${symbol} فرستاده شد`, `${symbol} half close sent`)) };
+        })(),
       });
       if (prot.sl != null) {
         const k = `sl:${p.side}`;
@@ -226,9 +232,9 @@ function TradeLines({ venue, symbol }: { venue: Venue; symbol: string }) {
               ) : null}
               {ask ? (
                 <>
-                  <span className="ltl-ask fa">{pending!.price == null ? it.remove?.label : L('اینجا؟', 'Here?')}</span>
+                  <span className="ltl-ask fa">{pending!.price == null ? (pending!.half ? it.half?.label : it.remove?.label) : L('اینجا؟', 'Here?')}</span>
                   <button className="ltl-ok" aria-label={L('تأیید', 'Confirm')} onClick={() => {
-                    if (pending!.price == null) { void it.remove?.run(); return; }
+                    if (pending!.price == null) { void (pending!.half ? it.half?.run() : it.remove?.run()); return; }
                     if (it.key === 'ghost' && ghost) {
                       const prot = protectionOf(venue, ghost.position, book.orders, memory);
                       void protect(ghost.position, ghost.kind === 'sl' ? pending!.price : prot.sl, ghost.kind === 'tp' ? pending!.price : prot.tp, 'ghost');
@@ -237,7 +243,10 @@ function TradeLines({ venue, symbol }: { venue: Venue; symbol: string }) {
                   <button className="ltl-no" aria-label={L('انصراف', 'Cancel')} onClick={() => { setPending(null); if (it.key === 'ghost') setGhost(null); }}>✕</button>
                 </>
               ) : it.remove ? (
+                <>
+                {it.half ? <button className="ltl-half" title={L('بستن نیمی', 'Close half')} aria-label={L('بستن نیمی', 'Close half')} onClick={() => setPending({ key: it.key, price: null, half: true })}>½</button> : null}
                 <button className="ltl-x" title={it.remove.ask ? L('بستن موقعیت', 'Close position') : L('لغو سفارش', 'Cancel order')} aria-label="×" onClick={() => (it.remove!.ask ? setPending({ key: it.key, price: null }) : void it.remove!.run())}>×</button>
+                </>
               ) : null}
               {side && busy === it.key ? <span className="ltl-spin" aria-hidden /> : null}
             </div>

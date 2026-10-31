@@ -5,6 +5,7 @@ import { useDrawing } from './state/drawing';
 import { useScript } from './state/script';
 import { useChartBus } from './chart/chartBus';
 import { useReplay } from './state/replay';
+import { useDuel } from './state/duel';
 import { useAlerts } from './state/alerts';
 import { usePanels } from './state/panels';
 import { useGrid } from './state/grid';
@@ -39,7 +40,7 @@ import * as scanWatch from './state/scanWatch';
 
 export function expose(): void {
   (window as unknown as { __pc: unknown }).__pc = {
-    usePrefs, useStudies, useDrawing, useScript, useChartBus, useReplay, useAlerts, usePanels, useGrid, useMarket, useCompare, usePage, usePaper, useJournal, useWatchlist, useChartSettings, useWatchView, usePlacement, useOverlay,
+    usePrefs, useStudies, useDrawing, useScript, useChartBus, useReplay, useDuel, useAlerts, usePanels, useGrid, useMarket, useCompare, usePage, usePaper, useJournal, useWatchlist, useChartSettings, useWatchView, usePlacement, useOverlay,
     useTrading, useTicket, useVip, useEntitlements, pollVip, useVipMember, useSession, authed,
     pulse, scanWatch,
     useLayouts, gridPresets: PRESETS.map((p) => ({ id: p.id, cells: p.cells })),

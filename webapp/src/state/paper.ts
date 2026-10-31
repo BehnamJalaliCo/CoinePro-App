@@ -9,6 +9,9 @@ import { useMarket } from './market';
 export type Side = 'long' | 'short';
 export type OrderType = 'market' | 'limit' | 'stop' | 'stop_limit' | 'trailing';
 export type CloseReason = 'manual' | 'sl' | 'tp' | 'liq';
+/** How long a limit waits (OLD PaperTimeInForce): good till cancelled; immediate or cancel; fill or kill. The book fills whole, so the last two behave alike. */
+export type TimeInForce = 'gtc' | 'ioc' | 'fok';
+export const TIME_IN_FORCE: TimeInForce[] = ['gtc', 'ioc', 'fok'];
 
 export interface PaperPosition { id: string; symbol: string; side: Side; qty: number; entry: number; openedAt: number; sl?: number; tp?: number; leverage?: number; fees?: number }
 export interface PaperTrade extends PaperPosition { exit: number; closedAt: number; pnl: number; reason?: CloseReason }
@@ -16,6 +19,8 @@ export interface PaperOrder {
   id: string; symbol: string; side: Side; type: OrderType; qty: number;
   limitPrice?: number; stopPrice?: number; trailPercent?: number; trailRef?: number;
   sl?: number; tp?: number; createdAt: number; triggered?: boolean;
+  /** Only a limit asks how long it waits; absent reads as good till cancelled. */
+  tif?: TimeInForce;
 }
 export interface PaperRules { startingBalance: number; leverage: number; takerFeePercent: number; makerFeePercent: number; slippagePercent: number; spreadPercent: number; stopOutPercent: number }
 
@@ -102,9 +107,11 @@ interface PaperState extends Stored {
 export const usePaper = create<PaperState>((set, get) => {
   const save = () => { const { balance, positions, history, orders, rules } = get(); try { localStorage.setItem(KEY, JSON.stringify({ balance, positions, history, orders, rules })); } catch { /* ignore */ } };
 
-  const fill = (symbol: string, side: Side, qty: number, price: number, maker: boolean, sl?: number, tp?: number): string | null => {
+  const fill = (symbol: string, side: Side, qty: number, price: number, maker: boolean, sl?: number, tp?: number, cap?: number): string | null => {
     const { rules, balance, positions } = get();
-    const px = fillPrice(side, price, rules, maker);
+    let px = fillPrice(side, price, rules, maker);
+    // A marketable limit takes the market but never pays past its own price.
+    if (cap != null) px = side === 'long' ? Math.min(px, cap) : Math.max(px, cap);
     const fee = qty * px * ((maker ? rules.makerFeePercent : rules.takerFeePercent) / 100);
     const used = positions.reduce((n, p) => n + marginOf(p), 0);
     const need = (qty * px) / Math.max(1, rules.leverage);
@@ -125,8 +132,14 @@ export const usePaper = create<PaperState>((set, get) => {
       if ((o.type === 'limit' || o.type === 'stop_limit') && !(o.limitPrice! > 0)) { set({ lastError: 'price' }); return null; }
       if ((o.type === 'stop' || o.type === 'stop_limit') && !(o.stopPrice! > 0)) { set({ lastError: 'price' }); return null; }
       if (o.type === 'trailing' && !(o.trailPercent! > 0)) { set({ lastError: 'price' }); return null; }
+      if (o.type === 'limit' && o.tif && o.tif !== 'gtc') {
+        // Immediate or cancel, fill or kill: a limit the market was not at goes no further.
+        const marketable = o.side === 'long' ? price <= o.limitPrice! : price >= o.limitPrice!;
+        if (!marketable) { set({ lastError: 'immediate' }); return null; }
+        return fill(o.symbol, o.side, o.qty, price, false, o.sl, o.tp, o.limitPrice);
+      }
       const id = uuid();
-      set({ orders: [{ ...o, id, createdAt: Date.now(), trailRef: o.type === 'trailing' ? price : undefined }, ...get().orders], lastError: null });
+      set({ orders: [{ ...o, ...(o.type === 'limit' ? { tif: o.tif ?? 'gtc' } : { tif: undefined }), id, createdAt: Date.now(), trailRef: o.type === 'trailing' ? price : undefined }, ...get().orders], lastError: null });
       save();
       return id;
     },

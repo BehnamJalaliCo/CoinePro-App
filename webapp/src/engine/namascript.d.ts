@@ -13,7 +13,8 @@ export interface ScriptResult {
   boxes?: { left: number; right: number; top: number; bottom: number; color?: string; bg?: string }[];
   zones?: { entry: number; sl: number; tps?: number[]; tp?: number; fromTime: number; toTime: number }[];
   labels?: { time: number; price: number; text: string; color: string }[];
-  tables?: { cells: { col: number; row: number; text: string; color?: string | null }[] }[];
+  /** `table.new` tables, each in one of Pine's nine slots (`top_right` when none was given). */
+  tables?: { cells: { col: number; row: number; text: string; color?: string | null }[]; position?: string; bg?: string | null }[];
   barcolors?: { color?: string; bars?: number[]; all?: boolean }[];
   candleplots?: { name: string; color: string | null; bars?: boolean; data: { time: number; open: number; high: number; low: number; close: number }[] }[];
   alerts?: { msg: string; bars: number[]; dynamic?: boolean }[];

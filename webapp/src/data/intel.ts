@@ -18,11 +18,46 @@ export interface NewsItem {
   slug?: string;
   url?: string;
   importance: number;
+  /** The feed's own classification where it sent one (named apart from a calendar event's `impact`) (OLD MarketImpact / NewsSentiment); never guessed. */
+  newsImpact?: NewsImpact;
+  sentiment?: NewsSentiment;
 }
+
+export type NewsImpact = 'high' | 'medium' | 'low';
+export type NewsSentiment = 'bullish' | 'bearish' | 'neutral';
+const first = (x: Record<string, unknown>, keys: string[]): string | null => {
+  for (const k of keys) { const v = x[k]; if (v != null && String(v).trim()) return String(v).trim().toLowerCase(); }
+  return null;
+};
+/** OLD MarketIntelGateway parseImpact: words and 1–3 levels, in either language. */
+export function parseImpact(raw: string | null): NewsImpact | undefined {
+  if (raw == null) return undefined;
+  if (['low', '1', 'کم', 'پایین'].includes(raw)) return 'low';
+  if (['medium', 'moderate', '2', 'متوسط', 'میانه'].includes(raw)) return 'medium';
+  if (['high', '3', 'زیاد', 'بالا', 'پرتأثیر', 'پرتاثیر'].includes(raw)) return 'high';
+  return undefined;
+}
+export function parseSentiment(raw: string | null): NewsSentiment | undefined {
+  if (raw === 'bullish' || raw === 'positive') return 'bullish';
+  if (raw === 'bearish' || raw === 'negative') return 'bearish';
+  if (raw === 'neutral') return 'neutral';
+  return undefined;
+}
+/** TradeYar's 0–10 importance as three levels (OLD TradeYarPublicNews: 7 and up high, 4 and up medium). */
+export function impactOfScore(score: unknown): NewsImpact | undefined {
+  if (score == null || score === '') return undefined;
+  const n = Number(score);
+  if (!Number.isFinite(n)) return undefined;
+  return n >= 7 ? 'high' : n >= 4 ? 'medium' : 'low';
+}
+const IMPACT_KEYS = ['impact', 'impact_level', 'impactLevel', 'severity'];
+const SENTIMENT_KEYS = ['sentiment', 'tone'];
 
 export interface CalendarEvent {
   title: string;
   currency: string;
+  /** The country the feed names, where it names one apart from the currency (search reads it). */
+  country?: string;
   time: number; // ms
   impact: 'high' | 'medium' | 'low' | 'holiday';
   forecast: string;
@@ -51,6 +86,7 @@ async function fetchCryptoNews(limit: number): Promise<NewsItem[]> {
     source: String(x.source ?? ''), time: ms(x.publishedAt), image: imageUrl(x.sourceImageUrl),
     slug: typeof x.slug === 'string' ? x.slug : undefined, url: typeof x.sourceUrl === 'string' ? x.sourceUrl : undefined,
     importance: Number(x.importance ?? 0),
+    newsImpact: parseImpact(first(x, IMPACT_KEYS)) ?? impactOfScore(x.importance), sentiment: parseSentiment(first(x, SENTIMENT_KEYS)),
   })).filter((n) => n.title);
 }
 
@@ -60,6 +96,7 @@ async function fetchForexNews(): Promise<NewsItem[]> {
     id: `f${String(x.id)}`, market: 'forex' as const,
     title: noTags(x.title), summary: noTags(x.summary), source: String(x.source ?? ''),
     time: ms(x.published_at), image: imageUrl(x.image), url: typeof x.url === 'string' ? x.url : undefined, importance: 0,
+    newsImpact: parseImpact(first(x, IMPACT_KEYS)), sentiment: parseSentiment(first(x, SENTIMENT_KEYS)),
   })).filter((n) => n.title);
 }
 
@@ -93,6 +130,7 @@ async function fetchCalendarWeek(): Promise<CalendarEvent[]> {
   return rows.map((x) => ({
     title: str(x.title ?? x.event ?? x.name),
     currency: str(x.currency ?? x.country),
+    country: str(x.country ?? x.country_code ?? x.countryCode ?? x.region) || undefined,
     time: ms(x.event_time ?? x.date ?? x.scheduled_at ?? x.datetime),
     impact: impactOf(x.impact_label ?? x.impact ?? x.importance),
     forecast: str(x.forecast), previous: str(x.previous), actual: str(x.actual),

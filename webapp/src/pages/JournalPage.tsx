@@ -4,6 +4,9 @@ import { usePaper } from '../state/paper';
 import { usePrefs } from '../state/prefs';
 import { useMarket } from '../state/market';
 import { chartImage } from '../chart/snapshot';
+import { MINIMUM_TRADES } from '../state/week';
+import { faNum } from '../i18n/time';
+import { MyWeekCard } from './MyWeekCard';
 import { Field, Tabs, dateTime, downloadCsv, downloadText, money, parseNum, pickText, useL } from './kit';
 
 // The trade journal (feature/journal): write a trade down with the feeling and the lesson, see
@@ -31,6 +34,8 @@ export default function JournalPage() {
   const [tab, setTab] = useState<'list' | 'stats'>('list');
   const [draft, setDraft] = useState<ReturnType<typeof blank> | null>(null);
   const [filter, setFilter] = useState('');
+  // Under five closed trades there is no win rate, only the count (OLD MyWeek.MINIMUM_TRADES).
+  const winCount = (w: number, n: number) => (lang === 'fa' ? `${faNum(w)} از ${faNum(n)}` : `${w} of ${n}`);
   const emo = (e: string) => (lang === 'fa' ? e : EMOTIONS_EN[e] ?? e);
 
   const list = useMemo(() => entries.filter((e) => !filter || e.symbol.includes(filter.toUpperCase()) || e.tags.includes(filter) || e.emotion === filter), [entries, filter]);
@@ -42,7 +47,7 @@ export default function JournalPage() {
       for (const e of closed) for (const k of key(e)) { const r = m.get(k) ?? { n: 0, pnl: 0, wins: 0 }; r.n++; r.pnl += e.pnl!; if (e.pnl! > 0) r.wins++; m.set(k, r); }
       return [...m.entries()].sort((a, b) => b[1].pnl - a[1].pnl);
     };
-    return { n: entries.length, closed: closed.length, win: closed.length ? (wins.length / closed.length) * 100 : 0, net: closed.reduce((n, e) => n + e.pnl!, 0), byEmotion: by((e) => [e.emotion]), byTag: by((e) => e.tags), bySymbol: by((e) => [e.symbol]) };
+    return { n: entries.length, closed: closed.length, wins: wins.length, win: closed.length ? (wins.length / closed.length) * 100 : 0, net: closed.reduce((n, e) => n + e.pnl!, 0), byEmotion: by((e) => [e.emotion]), byTag: by((e) => e.tags), bySymbol: by((e) => [e.symbol]) };
   }, [entries]);
 
   const save = () => {
@@ -94,6 +99,7 @@ export default function JournalPage() {
 
   return (
     <div className="page-inner">
+      <MyWeekCard />
       <div className="row">
         <Tabs value={tab} onChange={setTab} tabs={[{ id: 'list', label: L('معاملات', 'Trades') }, { id: 'stats', label: L('آمار', 'Statistics') }]} />
         <span className="ws-spacer" />
@@ -129,12 +135,12 @@ export default function JournalPage() {
         <>
           <div className="pulse">
             <div className="card"><span className="muted fa">{L('معاملات', 'Trades')}</span><b className="num">{stats.n}</b></div>
-            <div className="card"><span className="muted fa">{L('نرخ برد', 'Win rate')}</span><b className="num">{stats.win.toFixed(1)}%</b></div>
+            <div className="card" data-stat="win"><span className="muted fa">{L('نرخ برد', 'Win rate')}</span>{stats.closed >= MINIMUM_TRADES ? <b className="num">{stats.win.toFixed(1)}%</b> : <b className={lang === 'fa' ? 'fa' : 'num'}>{winCount(stats.wins, stats.closed)}</b>}</div>
             <div className="card"><span className="muted fa">{L('نتیجه‌ی خالص', 'Net result')}</span><b className={`num ${stats.net >= 0 ? 'up' : 'down'}`}>{money(stats.net)}</b></div>
           </div>
           {([[L('بر اساس احساس', 'By feeling'), stats.byEmotion, true], [L('بر اساس برچسب', 'By tag'), stats.byTag, false], [L('بر اساس نماد', 'By symbol'), stats.bySymbol, false]] as const).map(([title, rows, isEmo]) => (
             <section key={title} className="card"><h3 className="fa">{title}</h3>
-              <table className="table"><tbody>{rows.map(([k, r]) => <tr key={k}><td className="fa">{isEmo ? emo(k) : k}</td><td className="r num">{r.n}</td><td className="r num">{((r.wins / r.n) * 100).toFixed(0)}%</td><td className={`r num ${r.pnl >= 0 ? 'up' : 'down'}`}>{money(r.pnl)}</td></tr>)}</tbody></table>
+              <table className="table"><tbody>{rows.map(([k, r]) => <tr key={k}><td className="fa">{isEmo ? emo(k) : k}</td><td className="r num">{r.n}</td><td className={`r ${r.n >= MINIMUM_TRADES || lang !== 'fa' ? 'num' : 'fa'}`}>{r.n >= MINIMUM_TRADES ? `${((r.wins / r.n) * 100).toFixed(0)}%` : winCount(r.wins, r.n)}</td><td className={`r num ${r.pnl >= 0 ? 'up' : 'down'}`}>{money(r.pnl)}</td></tr>)}</tbody></table>
             </section>
           ))}
         </>

@@ -3,8 +3,8 @@
 // become series — on the price when their values sit in the price's range, in a pane of their own
 // when they do not (an RSI, a score) — horizontal lines become price lines, shapes and labels
 // become markers with their text, `plotcandle`/`plotbar` become candle or bar series, and what is
-// painted freely (backgrounds, fills, boxes, lines, bar colours, risk/reward zones) is drawn by
-// ScriptPaint, a series primitive. Tables are an HTML overlay (shell/ScriptTables.tsx).
+// painted freely (backgrounds, fills, boxes, lines, risk/reward zones) is drawn by ScriptPaint, a
+// series primitive; `barcolor` recolours the price bars (barColorData). Tables are an HTML overlay (shell/ScriptTables.tsx).
 //
 // `ScriptRenderer` is the chart view's first runner, kept for its constructor and calls; the chart
 // view now always hands it nothing (useScript.applied stays false), and the study renderer draws.
@@ -74,11 +74,7 @@ export class ScriptPaint implements ISeriesPrimitive<Time> {
         ctx.strokeStyle = l.color || '#3b82f6'; ctx.lineWidth = l.width || 1; ctx.setLineDash(l.style === 2 ? [5, 3] : []);
         ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.setLineDash([]);
       }
-      for (const bc of d.barcolors ?? []) {
-        if (bc.all) continue;
-        ctx.fillStyle = bc.color || '#f59e0b';
-        for (const t of bc.bars ?? []) { const x = this.x(t); if (x == null) continue; ctx.beginPath(); ctx.arc(x, H - 8, 2.5, 0, 7); ctx.fill(); }
-      }
+      // Bar colours recolour the bars themselves (barColorData, drawn by the study renderer).
       // Risk/reward zones, as TradingView's long/short position: green to the targets, red to the stop,
       // drawn forward from the last bar.
       for (const z of d.zones ?? []) {
@@ -129,6 +125,26 @@ export class CrossPaint implements ISeriesPrimitive<Time> {
     }
     ctx.stroke();
   }
+}
+
+/**
+ * `barcolor`: the price bars recoloured, as TradingView paints them — the bars a script coloured,
+ * each in the last colour given to it, ready for a candle or bar series laid over the price.
+ */
+export function barColorData(bars: Candle[], groups: PaintData['barcolors']): { time: UTCTimestamp; open: number; high: number; low: number; close: number; color: string; wickColor: string; borderColor: string }[] {
+  if (!groups?.length) return [];
+  const at = new Map<number, string>();
+  for (const g of groups) {
+    if (!g.color) continue;
+    if (g.all) { for (const b of bars) at.set(b.t, g.color); continue; }
+    for (const t of g.bars ?? []) at.set(t, g.color);
+  }
+  const out = [];
+  for (const b of bars) {
+    const c = at.get(b.t);
+    if (c) out.push({ time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c, color: c, wickColor: c, borderColor: c });
+  }
+  return out;
 }
 
 /** Whether a script's plots belong on the price (their median sits in the bars' range). */

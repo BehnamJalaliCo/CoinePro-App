@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { usePaper, pnlOf, marginOf, paperStats, type OrderType, type Side } from '../state/paper';
+import { usePaper, pnlOf, marginOf, paperStats, type OrderType, type Side, TIME_IN_FORCE, type TimeInForce } from '../state/paper';
 import { useMarket } from '../state/market';
 import { usePrefs } from '../state/prefs';
 import { usePage } from '../state/page';
@@ -26,6 +26,7 @@ export default function PaperPage() {
   const [tab, setTab] = useState<'positions' | 'orders' | 'history' | 'stats' | 'rules'>('positions');
   const [side, setSide] = useState<Side>('long');
   const [type, setType] = useState<OrderType>('market');
+  const [tif, setTif] = useState<TimeInForce>('gtc');
   const [f, setF] = useState({ qty: '', limit: '', stop: '', trail: '1', sl: '', tp: '' });
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
 
@@ -39,14 +40,14 @@ export default function PaperPage() {
     book.place({
       symbol, side, type, qty,
       limitPrice: parseNum(f.limit) ?? undefined, stopPrice: parseNum(f.stop) ?? undefined, trailPercent: parseNum(f.trail) ?? undefined,
-      sl: parseNum(f.sl) ?? undefined, tp: parseNum(f.tp) ?? undefined,
+      sl: parseNum(f.sl) ?? undefined, tp: parseNum(f.tp) ?? undefined, tif: type === 'limit' ? tif : undefined,
     }, tk.last);
   };
 
   const stats = useMemo(() => paperStats(book.history, book.rules.startingBalance), [book.history, book.rules.startingBalance]);
   const entryNow = type === 'limit' || type === 'stop_limit' ? parseNum(f.limit) : type === 'stop' ? parseNum(f.stop) : tk?.last ?? null;
 
-  const err = book.lastError === 'margin' ? L('مارجین کافی نیست.', 'Not enough margin.') : book.lastError ? L('قیمت یا مقدار سفارش درست نیست.', 'The order price or quantity is not valid.') : null;
+  const err = book.lastError === 'margin' ? L('مارجین کافی نیست.', 'Not enough margin.') : book.lastError === 'immediate' ? L('بی‌درنگ پر نشد و لغو شد', 'Not filled at once, so cancelled') : book.lastError ? L('قیمت یا مقدار سفارش درست نیست.', 'The order price or quantity is not valid.') : null;
   const go = (s: string) => { setSymbol(s); close(); };
 
   return (
@@ -70,6 +71,7 @@ export default function PaperPage() {
           <Field label={L('مقدار', 'Quantity')}><input className="num" dir="ltr" inputMode="decimal" value={f.qty} onChange={set('qty')} placeholder={tk ? String(Number((1000 / tk.last).toPrecision(2))) : ''} /></Field>
           <RiskSizer entry={entryNow} sl={parseNum(f.sl)} onSize={(q) => setF({ ...f, qty: String(q) })} />
           {type === 'limit' || type === 'stop_limit' ? <Field label={L('قیمت محدود', 'Limit price')}><input className="num" dir="ltr" inputMode="decimal" value={f.limit} onChange={set('limit')} /></Field> : null}
+          {type === 'limit' ? <div className="field pp-tif"><span className="fa">{L('مدت اعتبار', 'Time in force')}</span><Tabs value={tif} onChange={setTif} tabs={TIME_IN_FORCE.map((x) => ({ id: x, label: x.toUpperCase() }))} /><small className="muted fa">{L('GTC: تا لغو · IOC: فوری یا لغو · FOK: کامل یا لغو', 'GTC: good till cancelled · IOC: immediate or cancel · FOK: fill or kill')}</small></div> : null}
           {type === 'stop' || type === 'stop_limit' ? <Field label={L('قیمت فعال‌سازی', 'Stop price')}><input className="num" dir="ltr" inputMode="decimal" value={f.stop} onChange={set('stop')} /></Field> : null}
           {type === 'trailing' ? <Field label={L('فاصله‌ی دنباله (درصد)', 'Trail %')}><input className="num" dir="ltr" inputMode="decimal" value={f.trail} onChange={set('trail')} /></Field> : null}
           <div className="row two">
@@ -110,7 +112,7 @@ export default function PaperPage() {
           {tab === 'orders' ? (
             <table className="table"><thead><tr><th>{L('نماد', 'Symbol')}</th><th>{L('نوع', 'Type')}</th><th>{L('جهت', 'Side')}</th><th className="r">{L('مقدار', 'Qty')}</th><th className="r">{L('قیمت', 'Price')}</th><th /></tr></thead>
               <tbody>{book.orders.map((o) => (
-                <tr key={o.id}><td className="sym">{o.symbol}</td><td>{o.type}{o.triggered ? ' ✓' : ''}</td><td className={o.side === 'long' ? 'up' : 'down'}>{o.side === 'long' ? 'Buy' : 'Sell'}</td>
+                <tr key={o.id}><td className="sym">{o.symbol}</td><td>{o.type}{o.type === 'limit' ? ` · ${(o.tif ?? 'gtc').toUpperCase()}` : ''}{o.triggered ? ' ✓' : ''}</td><td className={o.side === 'long' ? 'up' : 'down'}>{o.side === 'long' ? 'Buy' : 'Sell'}</td>
                   <td className="r num">{o.qty}</td><td className="r num">{o.limitPrice ?? o.stopPrice ?? (o.trailPercent ? `${o.trailPercent}%` : '—')}</td>
                   <td className="r"><button className="btn btn-quiet sm" onClick={() => book.cancel(o.id)}>{L('لغو', 'Cancel')}</button></td></tr>
               ))}</tbody></table>

@@ -11,7 +11,8 @@
 // not start on a bucket's first bar drops that partial bucket, so paging back never leaves a
 // half-built bar on the chart.
 import type { Candle } from './types';
-import { intervalId, intervalSeconds, parseIntervalId, INTERVALS } from './intervals';
+import { intervalId, intervalSeconds, isSubMinute, parseIntervalId, INTERVALS } from './intervals';
+import { subMinuteHistory } from './ticks';
 import { HttpError, request } from './http';
 import { backendOf, exprLegs } from './symbols';
 import { accessFor } from './auth';
@@ -33,7 +34,7 @@ const nativesOf = (symbol: string) => (backendOf(symbol) === 'tradeyar' ? CRYPTO
 export function planFor(symbol: string, interval: string): Plan | null {
   const natives = nativesOf(symbol);
   const p = parseIntervalId(interval);
-  if (!p) return null;
+  if (!p || p.unit === 'S' || p.unit === 'T') return null;
   const id = intervalId(p.n, p.unit);
   if (natives[id]) return { tf: natives[id]!, fold: 'none', factor: 1, base: id };
   if (p.unit === 'm') {
@@ -163,6 +164,7 @@ async function forexPage(symbol: string, plan: Plan, before: number | undefined,
 
 /** Bars for the interval ending now, or before `before` (a bar time, seconds), oldest first. */
 export async function loadHistory(symbol: string, interval: string, before?: number, urgency: Urgency = 'reader'): Promise<HistoryPage> {
+  if (isSubMinute(interval)) return subMinuteHistory(symbol, interval, before);
   const crypto = backendOf(symbol) === 'tradeyar';
   const plan = planFor(symbol, interval);
   if (!plan) throw new UnsupportedInterval(interval);
@@ -177,6 +179,8 @@ export async function loadHistory(symbol: string, interval: string, before?: num
 
 /** The last few native bars, folded: the live edge's correction of what the price ticks built. */
 export async function loadEdge(symbol: string, interval: string): Promise<Candle[]> {
+  // Seconds: the server's newest bars; ticks are continued from the price feed alone.
+  if (isSubMinute(interval)) return parseIntervalId(interval)?.unit === 'S' ? (await subMinuteHistory(symbol, interval)).bars.slice(-3) : [];
   const crypto = backendOf(symbol) === 'tradeyar';
   const plan = planFor(symbol, interval);
   if (!plan) return [];
@@ -197,6 +201,8 @@ export function intervalsFor(symbol: string): string[] {
 export function canDraw(symbol: string, interval: string): boolean {
   const legs = exprLegs(symbol);
   if (legs) return legs.every((s) => planFor(s, interval) !== null);
+  // Seconds and tick bars come from the trade history, for any plain symbol (not a spread).
+  if (isSubMinute(interval)) return true;
   return planFor(symbol, interval) !== null;
 }
 

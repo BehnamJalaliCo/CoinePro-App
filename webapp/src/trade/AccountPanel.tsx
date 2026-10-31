@@ -16,7 +16,7 @@ import { amendOrder, cancelOrder, closePosition, getHistory, protectPosition } f
 import { protectionOf, useTrading, workingOrders } from './store';
 import { LiveNeeds } from './LiveNeeds';
 import { ORDER_STATUS } from './OrderTicket';
-import { pnlAt } from './math';
+import { halfQuantity, pnlAt } from './math';
 import { tradeErrorText, type Fill, type Order, type Position } from './wire';
 import { notify } from './toast';
 import { LIVE_VENUES, VENUE_LABEL, type Venue } from './venue';
@@ -103,9 +103,10 @@ function PositionRow({ venue, p, last, prot }: { venue: Venue; p: Position; last
   const [edit, setEdit] = useState(false);
   const [sl, setSl] = useState(prot.sl != null ? String(prot.sl) : '');
   const [tp, setTp] = useState(prot.tp != null ? String(prot.tp) : '');
-  const [ask, setAsk] = useState(false);
+  const [ask, setAsk] = useState<false | 'all' | 'half'>(false);
   const [busy, setBusy] = useState(false);
   const side = p.side === 'long' ? 'buy' : 'sell';
+  const half = halfQuantity(p.quantity, p.entry ?? last, venue);
   const pnl = last != null && p.entry != null ? pnlAt(side, p.entry, last, p.quantity) : p.upnl;
   const pct = pnl != null && p.entry ? (pnl / (p.entry * p.quantity)) * 100 * (p.leverage ?? 1) : null;
   const f = (v: number | null | undefined) => (v == null ? '—' : formatPrice(v, d));
@@ -130,11 +131,18 @@ function PositionRow({ venue, p, last, prot }: { venue: Venue; p: Position; last
         <td className="r num">{f(p.liquidation)}</td><td className="r num down">{f(prot.sl)}</td><td className="r num up">{f(prot.tp)}</td>
         <td className="r acct-acts" onClick={(e) => e.stopPropagation()}>
           <button className="btn btn-quiet sm" disabled={busy} onClick={() => setEdit(!edit)}>SL/TP</button>
-          {ask ? (
+          {ask === 'half' && half != null ? (
+            <span className="vip-ask acct-ask-half"><span className="fa">{L(`نیمی (${half}) بسته شود؟`, `Close half (${half})?`)}</span>
+              <button className="btn sell sm" disabled={busy} onClick={() => void act(() => closePosition(venue, { client_request_id: uuid(), symbol: p.symbol, side: p.side, quantity: half }), L(`دستور بستن نیمی از ${p.symbol} فرستاده شد`, `${p.symbol} half close sent`))}>{L('بستن نیمی', 'Close half')}</button>
+              <button className="lt" onClick={() => setAsk(false)} aria-label="×"><Icon name="ph-x" size="sm" /></button></span>
+          ) : ask ? (
             <span className="vip-ask"><span className="fa">{L('بسته شود؟', 'Close it?')}</span>
               <button className="btn sell sm" disabled={busy} onClick={() => void act(() => closePosition(venue, { client_request_id: uuid(), symbol: p.symbol, side: p.side, quantity: null }), L(`دستور بستن ${p.symbol} فرستاده شد`, `${p.symbol} close sent`))}>{L('بستن', 'Close')}</button>
               <button className="lt" onClick={() => setAsk(false)} aria-label="×"><Icon name="ph-x" size="sm" /></button></span>
-          ) : <button className="btn btn-quiet sm" disabled={busy} onClick={() => setAsk(true)}>{L('بستن', 'Close')}</button>}
+          ) : <>
+            {half != null ? <button className="btn btn-quiet sm acct-half" disabled={busy} onClick={() => setAsk('half')}>{L('بستن نیمی', 'Close half')}</button> : null}
+            <button className="btn btn-quiet sm" disabled={busy} onClick={() => setAsk('all')}>{L('بستن', 'Close')}</button>
+          </>}
         </td>
       </tr>
       {edit ? (

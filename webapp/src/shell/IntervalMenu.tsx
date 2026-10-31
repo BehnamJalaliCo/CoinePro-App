@@ -11,7 +11,7 @@ import { Dropdown } from '../ui/Menu';
 import { usePrefs, useT } from '../state/prefs';
 import { useL } from '../pages/kit';
 import {
-  INTERVALS, byLength, intervalGroup, intervalId, intervalLabel, intervalLongLabel, isStandardInterval,
+  INTERVALS, SUB_MINUTE, byLength, intervalGroup, intervalId, intervalLabel, intervalLongLabel, isStandardInterval,
   parseIntervalInput, type IntervalGroup, type IntervalUnit,
 } from '../data/intervals';
 import { canDraw } from '../data/candles';
@@ -22,6 +22,8 @@ export const intervalBox = { open: false };
 import { activeChart, applyInterval, useGrid } from '../state/grid';
 
 const GROUPS: { id: IntervalGroup; fa: string; en: string }[] = [
+  { id: 'ticks', fa: 'تیک', en: 'Ticks' },
+  { id: 'seconds', fa: 'ثانیه', en: 'Seconds' },
   { id: 'minutes', fa: 'دقیقه', en: 'Minutes' },
   { id: 'hours', fa: 'ساعت', en: 'Hours' },
   { id: 'days', fa: 'روز', en: 'Days' },
@@ -99,7 +101,7 @@ function IntervalMenu({ anchor, symbol, interval, favs, custom, onClose, onAdd }
   const typed = needle ? parseIntervalInput(q) : null;
   const match = (id: string) => !needle || id === typed || intervalLabel(id).toLowerCase().includes(needle)
     || intervalLongLabel(id, 'en').includes(needle) || intervalLongLabel(id, 'fa').includes(q.trim());
-  const all = useMemo(() => [...new Set([...INTERVALS.map((i) => i.id), ...custom])].sort(byLength), [custom]);
+  const all = useMemo(() => [...new Set([...SUB_MINUTE, ...INTERVALS.map((i) => i.id), ...custom])].sort(byLength), [custom]);
   const fold = (g: IntervalGroup) => {
     const next = folded.includes(g) ? folded.filter((x) => x !== g) : [...folded, g];
     setFolded(next);
@@ -147,7 +149,7 @@ function IntervalMenu({ anchor, symbol, interval, favs, custom, onClose, onAdd }
               {shut ? null : ids.map((id) => {
                 const ok = canDraw(symbol, id);
                 const fav = favs.includes(id);
-                const mine = !isStandardInterval(id);
+                const mine = !isStandardInterval(id) && !SUB_MINUTE.includes(id);
                 return (
                   <div key={id} role="menuitemradio" aria-checked={id === interval} aria-disabled={!ok} tabIndex={-1}
                     className={`menu-item iv-row${id === interval ? ' on' : ''}${ok ? '' : ' off'}`}
@@ -172,6 +174,7 @@ function IntervalMenu({ anchor, symbol, interval, favs, custom, onClose, onAdd }
 }
 
 const UNITS: { id: IntervalUnit | 'h'; fa: string; en: string }[] = [
+  { id: 'T', fa: 'تیک', en: 'ticks' }, { id: 'S', fa: 'ثانیه', en: 'seconds' },
   { id: 'm', fa: 'دقیقه', en: 'minutes' }, { id: 'h', fa: 'ساعت', en: 'hours' }, { id: 'D', fa: 'روز', en: 'days' },
   { id: 'W', fa: 'هفته', en: 'weeks' }, { id: 'M', fa: 'ماه', en: 'months' },
 ];
@@ -190,7 +193,7 @@ function CustomIntervalDialog({ onClose }: { onClose(): void }) {
   const add = () => {
     if (!parsed || !ok) return;
     const p = usePrefs.getState();
-    if (!isStandardInterval(parsed) && !p.customIntervals.includes(parsed)) p.setCustomIntervals([...p.customIntervals, parsed].sort(byLength));
+    if (!isStandardInterval(parsed) && !SUB_MINUTE.includes(parsed) && !p.customIntervals.includes(parsed)) p.setCustomIntervals([...p.customIntervals, parsed].sort(byLength));
     applyInterval(parsed);
     onClose();
   };

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { usePaper, pnlOf, marginOf, paperStats, type OrderType, type PaperTrade, type Side } from '../state/paper';
+import { usePaper, pnlOf, marginOf, paperStats, type OrderType, type PaperTrade, type Side, TIME_IN_FORCE, type TimeInForce } from '../state/paper';
 import { useMarket, digitsOf } from '../state/market';
 import { usePrefs } from '../state/prefs';
 import { usePage } from '../state/page';
@@ -33,6 +33,7 @@ export function PaperPanel() {
   const digits = instrumentOf(symbol, tk?.last).digits;
   const [tab, setTab] = useState<Tab>('positions');
   const [type, setType] = useState<OrderType>('market');
+  const [tif, setTif] = useState<TimeInForce>('gtc');
   const [f, setF] = useState({ qty: '', limit: '', stop: '', trail: '1', sl: '', tp: '' });
   // A fresh ticket for each symbol, sized at about 1,000 USDT until the reader types a quantity.
   const seeded = useRef<string | null>(null);
@@ -55,11 +56,11 @@ export function PaperPanel() {
     const id = book.place({
       symbol, side, type, qty: parseNum(f.qty) ?? 0,
       limitPrice: parseNum(f.limit) ?? undefined, stopPrice: parseNum(f.stop) ?? undefined, trailPercent: parseNum(f.trail) ?? undefined,
-      sl: parseNum(f.sl) ?? undefined, tp: parseNum(f.tp) ?? undefined,
+      sl: parseNum(f.sl) ?? undefined, tp: parseNum(f.tp) ?? undefined, tif: type === 'limit' ? tif : undefined,
     }, tk.last);
     if (id) setTab(type === 'market' ? 'positions' : 'orders');
   };
-  const err = book.lastError === 'margin' ? L('مارجین کافی نیست.', 'Not enough margin.') : book.lastError ? L('قیمت یا مقدار سفارش درست نیست.', 'The order price or quantity is not valid.') : null;
+  const err = book.lastError === 'margin' ? L('مارجین کافی نیست.', 'Not enough margin.') : book.lastError === 'immediate' ? L('بی‌درنگ پر نشد و لغو شد', 'Not filled at once, so cancelled') : book.lastError ? L('قیمت یا مقدار سفارش درست نیست.', 'The order price or quantity is not valid.') : null;
   const count = (n: number) => (fa ? faNum(n) : String(n));
   const ordersFor = (s: string) => book.orders.filter((o) => o.symbol === s).length;
   const journal = useJournal((s) => s.entries);
@@ -87,6 +88,7 @@ export function PaperPanel() {
           </select>
           <label className="pp-f"><span className="fa">{L('مقدار', 'Quantity')}</span><input className="num" type="number" min="0" step="any" value={f.qty} onChange={set('qty')} aria-label="quantity" dir="ltr" /></label>
           {type === 'limit' || type === 'stop_limit' ? <label className="pp-f"><span className="fa">{L('قیمت لیمیت', 'Limit price')}</span><input className="num" inputMode="decimal" value={f.limit} onChange={set('limit')} placeholder={tk ? formatPrice(tk.last, digits).replace(/,/g, '') : ''} dir="ltr" /></label> : null}
+          {type === 'limit' ? <div className="seg pp-tif" role="radiogroup" aria-label={L('مدت اعتبار', 'Time in force')} title={L('GTC: تا لغو · IOC: فوری یا لغو · FOK: کامل یا لغو', 'GTC: good till cancelled · IOC: immediate or cancel · FOK: fill or kill')}>{TIME_IN_FORCE.map((x) => <button key={x} type="button" role="radio" aria-checked={tif === x} className={tif === x ? 'on' : ''} data-tif={x} onClick={() => setTif(x)}><span className="num">{x.toUpperCase()}</span></button>)}</div> : null}
           {type === 'stop' || type === 'stop_limit' ? <label className="pp-f"><span className="fa">{L('قیمت استاپ', 'Stop price')}</span><input className="num" inputMode="decimal" value={f.stop} onChange={set('stop')} placeholder={tk ? formatPrice(tk.last, digits).replace(/,/g, '') : ''} dir="ltr" /></label> : null}
           {type === 'trailing' ? <label className="pp-f"><span className="fa">{L('فاصله (درصد)', 'Trail %')}</span><input className="num" inputMode="decimal" value={f.trail} onChange={set('trail')} dir="ltr" /></label> : null}
           <div className="pp-two">
@@ -152,7 +154,7 @@ export function PaperPanel() {
                     <div key={o.id} className="bt-row pp-ord">
                       <span className="sym">{o.symbol}</span>
                       <span className={`fa ${o.side === 'long' ? 'up' : 'down'}`}>{o.side === 'long' ? L('خرید', 'Buy') : L('فروش', 'Sell')}</span>
-                      <span className="fa">{TYPE[o.type]}</span>
+                      <span className="fa">{TYPE[o.type]}{o.type === 'limit' ? <small className="num muted pp-tif-tag"> {(o.tif ?? 'gtc').toUpperCase()}</small> : null}</span>
                       <span className="num">{o.qty}</span>
                       <span className="num">{price || '—'}</span>
                       <span className="num">{o.sl != null ? formatPrice(o.sl, d) : '—'}</span>

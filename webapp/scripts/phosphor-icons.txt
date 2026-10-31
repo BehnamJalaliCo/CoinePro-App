@@ -79,6 +79,10 @@ keyboard
 upload-simple
 note
 shuffle
+sword
+user-plus
+user-check
+calendar-plus
 table
 list-plus
 flag

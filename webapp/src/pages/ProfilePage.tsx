@@ -5,6 +5,7 @@ import { useSession } from '../data/session';
 import { signOut } from '../data/auth';
 import { Field, Tabs, downloadText, pickText, useL } from './kit';
 import type { PageProps } from './registry';
+import { faNum } from '../i18n/time';
 
 // Profile and settings (feature/profile, ProfileStore): the name and line others see on this
 // device, an avatar, hiding balances, appearance and language, the archive of everything this
@@ -24,12 +25,24 @@ export function archive(): Record<string, string> {
   return out;
 }
 
+/** Keys whose list is merged with what this browser holds instead of replaced: the journal. */
+const MERGED = 'pc.journal.v1';
+
+/** The journal in the archive joined with this browser's: every entry kept once by id, this browser's copy winning, newest first. */
+export function mergeJournal(mine: string | null, theirs: string): string {
+  const list = (raw: string | null): Record<string, unknown>[] => { try { const v = JSON.parse(raw ?? '[]') as unknown; return Array.isArray(v) ? v.filter((x): x is Record<string, unknown> => Boolean(x) && typeof x === 'object') : []; } catch { return []; } };
+  const here = list(mine);
+  const ids = new Set(here.map((e) => String(e.id ?? '')));
+  const added = list(theirs).filter((e) => !ids.has(String(e.id ?? '')) || !e.id);
+  return JSON.stringify([...here, ...added].sort((a, b) => Number(b.createdAt ?? 0) - Number(a.createdAt ?? 0)));
+}
+
 export function restore(data: unknown): number {
   if (!data || typeof data !== 'object') return 0;
   let n = 0;
   for (const [k, v] of Object.entries(data as Record<string, unknown>)) {
     if (!k.startsWith('pc.') || k === 'pc.sessions.v1' || typeof v !== 'string') continue;
-    try { localStorage.setItem(k, v); n++; } catch { /* full */ }
+    try { localStorage.setItem(k, k === MERGED ? mergeJournal(localStorage.getItem(k), v) : v); n++; } catch { /* full */ }
   }
   return n;
 }
@@ -93,7 +106,7 @@ export default function ProfilePage({ onSignIn }: PageProps) {
         <p className="muted fa small">{L('دیده‌بان، ترسیم‌ها، چیدمان‌ها، اسکریپت‌ها، ژورنال، معامله‌ی آزمایشی و تنظیمات؛ بدون اطلاعات ورود.', 'Watchlists, drawings, layouts, scripts, journal, paper account and settings; never the sign-in.')}</p>
         <div className="row">
           <button className="btn btn-quiet sm" onClick={() => downloadText(`pro-chart-archive-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(archive()))}>{L('خروجی بایگانی', 'Export the archive')}</button>
-          <button className="btn btn-quiet sm" onClick={() => void pickText().then((t) => { if (!t) return; try { const n = restore(JSON.parse(t)); setMsg(L(`${n} مورد بازگردانده شد؛ صفحه دوباره بارگذاری می‌شود.`, `${n} items restored; reloading.`)); setTimeout(() => window.location.reload(), 900); } catch { setMsg(L('این فایل بایگانی پرو چارت نیست.', 'That is not a Pro Chart archive.')); } })}>{L('بازگردانی', 'Restore')}</button>
+          <button className="btn btn-quiet sm" onClick={() => void pickText().then((t) => { if (!t) return; try { const n = restore(JSON.parse(t)); setMsg(L(`${faNum(n)} مورد بازگردانده شد؛ صفحه دوباره بارگذاری می‌شود.`, `${n} items restored; reloading.`)); setTimeout(() => window.location.reload(), 900); } catch { setMsg(L('این فایل بایگانی پرو چارت نیست.', 'That is not a Pro Chart archive.')); } })}>{L('بازگردانی', 'Restore')}</button>
         </div>
         {msg ? <p className="fa">{msg}</p> : null}
       </section>

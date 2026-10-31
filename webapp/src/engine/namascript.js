@@ -146,16 +146,19 @@ self.onmessage = function (e) {
   var line={ new:function(x1,y1,x2,y2,col,w,style){ lines.push({x1:xtime(x1),y1:y1,x2:xtime(x2),y2:y2,color:col||'#3b82f6',width:w||1,style:style||0}); return lines.length-1; }, set_xy1:function(){}, set_xy2:function(){}, set_color:function(){}, set_width:function(){}, delete:function(id){ if(id!=null&&lines[id])lines[id]=null; } };
   var box={ new:function(l,t,r,bm,col,bg){ boxes.push({left:xtime(l),top:t,right:xtime(r),bottom:bm,color:col||'#3b82f6',bg:bg||'rgba(59,130,246,.08)'}); return boxes.length-1; }, set_top:function(){}, set_bottom:function(){}, delete:function(id){ if(id!=null&&boxes[id])boxes[id]=null; } };
   function table(){}
-  table.new=function(){ var t={cells:[]}; tables.push(t); return t; };
-  table.cell=function(t,c,r,txt,col){ if(t&&t.cells)t.cells.push({col:c|0,row:r|0,text:String(disp(txt)),color:col||null}); };
-  table.cell_set_text=function(t,c,r,txt){ if(t&&t.cells)t.cells.push({col:c|0,row:r|0,text:String(disp(txt))}); };
+  // table.new(position, columns, rows, bgcolor) — one table per slot: a script that makes it on every bar (no var) keeps one.
+  table.new=function(pos,cols,rows,bg){ pos=(typeof pos==='string'&&position[pos])?pos:'top_right'; for(var i=0;i<tables.length;i++)if(tables[i].position===pos)return tables[i]; var t={cells:[],position:pos,bg:(typeof bg==='string'&&bg)?bg:null}; tables.push(t); return t; };
+  function cellAt(t,c,r){ c=c|0; r=r|0; for(var i=0;i<t.cells.length;i++){ var x=t.cells[i]; if(x.col===c&&x.row===r)return x; } var n={col:c,row:r,text:'',color:null}; t.cells.push(n); return n; }
+  table.cell=function(t,c,r,txt,col){ if(t&&t.cells){ var x=cellAt(t,c,r); x.text=String(disp(txt)); x.color=(typeof col==='string'&&col)?col:null; } };
+  table.cell_set_text=function(t,c,r,txt){ if(t&&t.cells)cellAt(t,c,r).text=String(disp(txt)); };
   // alert(message[, freq]) پویا — یا alert(condition, message)
   function alert(a,b){ if(Array.isArray(a)){ var bars=[]; for(var i=0;i<N;i++)if(a[i])bars.push(T[i]); alerts.push({msg:b||'هشدار',bars:bars,dynamic:true}); } else { alerts.push({msg:String(a==null?'هشدار':a),bars:[T[N-1]],dynamic:true}); } }
   // ناحیه‌ی ریسک/ریوارد: جعبه‌ی سبز کم‌رنگ برای هدف‌ها (تا TP3) و جعبه‌ی قرمز کم‌رنگ برای حد ضرر (SL)
   // riskreward(entry, sl, tp1[, tp2, tp3]) — TP2/TP3 اختیاری‌اند.
   function riskreward(entry,sl,tp1,tp2,tp3){ entry=arr(entry);sl=arr(sl);tp1=arr(tp1);tp2=arr(tp2);tp3=arr(tp3); var e=null,s=null,a=null,b=null,c=null; for(var i=N-1;i>=0;i--){ if(entry[i]!=null&&sl[i]!=null&&tp1[i]!=null){e=entry[i];s=sl[i];a=tp1[i];b=tp2[i];c=tp3[i];break;} } if(e!=null){ var tps=[a]; if(b!=null)tps.push(b); if(c!=null)tps.push(c); zones.push({entry:e,sl:s,tps:tps,tp:a,fromTime:T[Math.max(0,N-60)],toTime:T[N-1]}); } }
   // barcolor(color[, condition]) — رنگ کندل‌ها (همه یا شرطی)
-  function barcolor(col,c){ if(c===undefined){ barcolors.push({color:col,all:true}); return; } c=arr(c); var b=[]; for(var i=0;i<N;i++)if(c[i])b.push(T[i]); barcolors.push({color:col,bars:b}); }
+  // The colour may be a series (one per bar); na or a false condition leaves the bar as it was.
+  function barcolor(col,c){ var cs=Array.isArray(col)?col:null; c=(c===undefined)?null:arr(c); var map={},order=[]; for(var i=0;i<N;i++){ if(c&&!c[i])continue; var k=cs?cs[i]:col; if(k==null||k===''||(typeof k==='number'))continue; if(!map[k]){map[k]=[];order.push(k);} map[k].push(T[i]); } order.forEach(function(k){ barcolors.push({color:k,bars:map[k]}); }); }
   var label={ new:function(c,s,txt,col){ c=arr(c);s=arr(s); for(var i=0;i<N;i++)if(c[i])labels.push({time:T[i],price:s[i],text:txt||'',color:col||'#e5e7eb'}); } };
   function alertcondition(c,msg){ c=arr(c); var b=[]; for(var i=0;i<N;i++)if(c[i])b.push(T[i]); alerts.push({msg:msg||'هشدار',bars:b}); }
 
@@ -167,6 +170,8 @@ self.onmessage = function (e) {
     new:function(c,t){ if(t==null)return c; var a=Math.max(0,Math.min(100,t)); return hexToRgba(c,((100-a)/100)); },
     rgb:function(r,g,b,t){ var a=(t==null?0:Math.max(0,Math.min(100,t))); return 'rgba('+(r|0)+','+(g|0)+','+(b|0)+','+((100-a)/100)+')'; }};
   var shape={up:'up',down:'down',circle:'circle',cross:'cross',flag:'flag',triangleup:'up',triangledown:'down',arrowup:'up',arrowdown:'down',labelup:'up',labeldown:'down'};
+  // Pine's nine table slots (table.new's first argument).
+  var position={top_left:'top_left',top_center:'top_center',top_right:'top_right',middle_left:'middle_left',middle_center:'middle_center',middle_right:'middle_right',bottom_left:'bottom_left',bottom_center:'bottom_center',bottom_right:'bottom_right'};
   // str.* — توابع رشته
   var str={ tostring:function(a,fmt){ return String(disp(a)); }, tonumber:function(a){ return Array.isArray(a)?a.map(Number):Number(a); }, length:function(s){ return s==null?0:String(s).length; }, contains:function(s,t){ return String(s).indexOf(t)>=0; }, replace_all:function(s,t,r){ return String(s).split(t).join(r); }, split:function(s,d){ return String(s).split(d); }, upper:function(s){ return String(s).toUpperCase(); }, lower:function(s){ return String(s).toLowerCase(); }, startswith:function(s,t){ return String(s).indexOf(t)===0; }, endswith:function(s,t){ var x=String(s),y=String(t); return x.indexOf(y,x.length-y.length)!==-1; }, format:function(f){ var args=Array.prototype.slice.call(arguments,1),k=0; return String(f).replace(/\\{\\d+([^}]*)?\\}/g,function(){ var v=args[k++]; return String(disp(v)); }); } };
   var open=O,high=H,low=L,close=C,volume=V,time=T,hl2=[],hlc3=[],ohlc4=[],hlcc4=[],bar_index=[];
@@ -187,8 +192,8 @@ self.onmessage = function (e) {
       return src;
     }
     var __SRC = preprocess(d.source);
-    var f = new Function('ta','math','input','plot','plotshape','plotchar','plotarrow','plotcandle','plotbar','hline','bgcolor','fill','riskreward','barcolor','label','alertcondition','alert','line','box','table','strategy','study','indicator','crossover','crossunder','cross','nz','na','iff','ref','security','request','int','float','bool','add','sub','mul','div','gt','lt','ge','le','and','or','color','shape','open','high','low','close','volume','time','hl2','hlc3','ohlc4','hlcc4','bar_index','last_bar_index','barstate','str','S', __SRC);
-    f(ta,math,input,plot,plotshape,plotchar,plotarrow,plotcandle,plotbar,hline,bgcolor,fill,riskreward,barcolor,label,alertcondition,alert,line,box,table,strategy,study,indicator,crossover,crossunder,cross,nz,naf,iff,ref,security,request,toint,tofloat,tobool,add,sub,mul,div,gt,lt,ge,le,and,or,color,shape,open,high,low,close,volume,time,hl2,hlc3,ohlc4,hlcc4,bar_index,last_bar_index,barstate,str,S);
+    var f = new Function('ta','math','input','plot','plotshape','plotchar','plotarrow','plotcandle','plotbar','hline','bgcolor','fill','riskreward','barcolor','label','alertcondition','alert','line','box','table','strategy','study','indicator','crossover','crossunder','cross','nz','na','iff','ref','security','request','int','float','bool','add','sub','mul','div','gt','lt','ge','le','and','or','color','shape','position','open','high','low','close','volume','time','hl2','hlc3','ohlc4','hlcc4','bar_index','last_bar_index','barstate','str','S', __SRC);
+    f(ta,math,input,plot,plotshape,plotchar,plotarrow,plotcandle,plotbar,hline,bgcolor,fill,riskreward,barcolor,label,alertcondition,alert,line,box,table,strategy,study,indicator,crossover,crossunder,cross,nz,naf,iff,ref,security,request,toint,tofloat,tobool,add,sub,mul,div,gt,lt,ge,le,and,or,color,shape,position,open,high,low,close,volume,time,hl2,hlc3,ohlc4,hlcc4,bar_index,last_bar_index,barstate,str,S);
 
     var stratResult=null;
     if(strat.enabled){

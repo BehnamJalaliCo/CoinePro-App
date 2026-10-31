@@ -43,7 +43,7 @@ export function Tabs<K extends string>({ value, onChange, tabs }: { value: K; on
   return (
     <nav className="chips page-tabs" role="tablist">
       {tabs.map((x) => (
-        <button key={x.id} role="tab" aria-selected={value === x.id} className={`chip${value === x.id ? ' on' : ''}`} onClick={() => onChange(x.id)}>
+        <button key={x.id} type="button" role="tab" aria-selected={value === x.id} className={`chip${value === x.id ? ' on' : ''}`} onClick={() => onChange(x.id)}>
           <span className="fa">{x.label}</span>
         </button>
       ))}

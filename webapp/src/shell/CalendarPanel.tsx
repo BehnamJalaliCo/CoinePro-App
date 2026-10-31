@@ -3,6 +3,8 @@ import { usePrefs, useT } from '../state/prefs';
 import { calendarWeek, SAVED_KEYS, type CalendarEvent } from '../data/intel';
 import { useSaved } from '../data/saved';
 import { SavedLine } from './Offline';
+import { calendarMatches, downloadIcs } from '../data/calendarExtras';
+import '../pages/extras.css';
 import { instrumentOf } from '../data/symbols';
 import { countdown } from '../data/sessionClock';
 import { eventKey, readReminders, writeReminders, type Reminder } from '../data/reminders';
@@ -98,7 +100,7 @@ export function CalendarPanel() {
     return (events ?? []).filter((e) => (e.impact === 'holiday' || prefs.impact.includes(e.impact as Impact))
       && (prefs.currency === 'all' || e.currency === prefs.currency)
       && (!prefs.related || related.includes(e.currency))
-      && (!needle || e.title.toLowerCase().includes(needle) || e.currency.toLowerCase().includes(needle)));
+      && (!needle || calendarMatches(e, needle)));
   }, [events, prefs, related, q]);
   const days = useMemo(() => { const by = new Map<string, CalendarEvent[]>(); for (const e of list) { const k = dayOf(e.time); by.set(k, [...(by.get(k) ?? []), e]); } return [...by.entries()]; }, [list, dayOf]);
   const week = useMemo(() => { const by = new Map<string, { t: number; n: number; high: number }>(); for (const e of events ?? []) { const k = dayOf(e.time); const x = by.get(k) ?? { t: e.time, n: 0, high: 0 }; x.n++; if (e.impact === 'high') x.high++; by.set(k, x); } return [...by.entries()].sort((a, b) => a[1].t - b[1].t); }, [events, dayOf]);
@@ -176,6 +178,7 @@ export function CalendarPanel() {
                   </span>
                   <span className="cal-fc num r">{e.forecast || '—'}</span>
                   <span className="cal-prev num r muted">{e.previous || '—'}</span>
+                  {e.time > now ? <button className="cal-ics" title={L('افزودن به تقویم', 'Add to calendar')} aria-label={L('افزودن به تقویم', 'Add to calendar')} onClick={(ev) => { ev.stopPropagation(); downloadIcs(e); }}><Icon name="ph-calendar-plus" size="sm" /></button> : null}
                   {e.time > now ? (
                     <button className={`cal-bell${has ? ' on' : ''}`} title={has ? L('برداشتن یادآور', 'Remove reminder') : L('یادآوری در زمان رویداد', 'Remind me')} aria-pressed={has} onClick={(ev) => { ev.stopPropagation(); remind(e); }}>
                       <Icon name={has ? 'ph-bell-ringing' : 'ph-bell'} size="sm" />

@@ -12,6 +12,7 @@ import { faAgo, faNum } from '../i18n/time';
 import { useL } from '../pages/kit';
 import type { Instrument } from '../data/types';
 import './panels-x.css';
+import '../pages/extras.css';
 
 // TradingView's news panel with the old Pro-Chart's extras: the open symbol's stories, its market's
 // or everything; category chips with counts; the tickers a story names (a click opens the chart);
@@ -72,6 +73,9 @@ export function NewsPanel() {
   const [scope, setScope] = useState<'symbol' | 'market' | 'all'>('market');
   const [cat, setCat] = useState<Cat | null>(null);
   const [source, setSource] = useState('');
+  // OLD NewsFilter: high impact and a sentiment, AND-ed with the rest; drawn only when the feed classifies.
+  const [highOnly, setHighOnly] = useState(false);
+  const [mood, setMood] = useState<'bullish' | 'bearish' | null>(null);
   const [open, setOpen] = useState<NewsItem | null>(null);
   const [body, setBody] = useState<string | null>(null);
   const [fresh, setFresh] = useState<Set<string>>(new Set());
@@ -109,7 +113,12 @@ export function NewsPanel() {
   const scoped = useMemo(() => (items ?? []).filter((n) => scope === 'all' || (scope === 'market' ? n.market === market : keys.some((k) => n.title.includes(k) || n.summary.includes(k)))), [items, scope, market, keys]);
   const counts = useMemo(() => { const c: Partial<Record<Cat, number>> = {}; for (const n of scoped) for (const x of categoriesOf(n)) c[x] = (c[x] ?? 0) + 1; return c; }, [scoped]);
   const sources = useMemo(() => [...new Set((items ?? []).map((n) => n.source).filter(Boolean))].sort(), [items]);
-  const shown = useMemo(() => scoped.filter((n) => (!cat || categoriesOf(n).includes(cat)) && (!source || n.source === source)), [scoped, cat, source]);
+  const classified = useMemo(() => (items ?? []).some((n) => n.newsImpact || n.sentiment), [items]);
+  const shown = useMemo(() => scoped.filter((n) => (!cat || categoriesOf(n).includes(cat)) && (!source || n.source === source) && (!highOnly || n.newsImpact === 'high') && (!mood || n.sentiment === mood)), [scoped, cat, source, highOnly, mood]);
+  const filtering = highOnly || mood != null || cat != null || Boolean(source);
+  const IMPACT = { high: L('تأثیر بالا', 'High impact'), medium: L('تأثیر متوسط', 'Medium impact'), low: L('تأثیر کم', 'Low impact') };
+  const MOOD = { bullish: L('صعودی', 'Bullish'), bearish: L('نزولی', 'Bearish'), neutral: L('خنثی', 'Neutral') };
+  const chipsOf = (n: NewsItem) => <>{n.newsImpact ? <span className={`news-chip impact-${n.newsImpact} fa`} data-impact={n.newsImpact}>{IMPACT[n.newsImpact]}</span> : null}{n.sentiment ? <span className={`news-chip ${n.sentiment} fa`} data-sentiment={n.sentiment}>{MOOD[n.sentiment]}</span> : null}</>;
   // Instruments a chip can open: the ones with artwork, the most traded first.
   const universe = useMemo(() => Object.values(instrumentsMap).filter((i) => hasLogo(i.symbol))
     .sort((a, b) => ((tickers[b.symbol]?.volume ?? 0) * (tickers[b.symbol]?.last ?? 0)) - ((tickers[a.symbol]?.volume ?? 0) * (tickers[a.symbol]?.last ?? 0))).slice(0, 160), [instrumentsMap, tickers]);
@@ -133,7 +142,7 @@ export function NewsPanel() {
         <article className="panel-body article" dir="rtl">
           {open.image ? <img src={open.image} alt="" className="article-img" /> : null}
           <h3>{open.title}</h3>
-          <div className="news-meta"><span>{open.source}</span> · <span title={absTime(open.time)}>{ago(open.time)}</span></div>
+          <div className="news-meta"><span>{open.source}</span> · <span title={absTime(open.time)}>{ago(open.time)}</span>{chipsOf(open)}</div>
           {chips.length ? <div className="news-tickers" dir="ltr">{chips.map((s) => <button key={s} className="news-ticker" onClick={() => setSymbol(s)}><SymbolLogo symbol={s} size={14} /><span className="sym">{s}</span></button>)}</div> : null}
           <p className="article-text">{body ?? open.summary}</p>
           {open.url ? <a className="link" href={open.url} target="_blank" rel="noopener noreferrer">{open.source}</a> : null}
@@ -162,9 +171,18 @@ export function NewsPanel() {
         ))}
       </nav>
       <SavedLine at={savedAt} />
+      {classified ? (
+        <nav className="chips panel-chips news-filters">
+          <button className={`chip sm${highOnly ? ' on' : ''}`} data-filter="high" aria-pressed={highOnly} onClick={() => setHighOnly(!highOnly)}><span className="fa">{L('اثر زیاد', 'High impact')}</span></button>
+          <button className={`chip sm${mood === 'bullish' ? ' on' : ''}`} data-filter="bullish" aria-pressed={mood === 'bullish'} onClick={() => setMood(mood === 'bullish' ? null : 'bullish')}><span className="fa">{L('صعودی', 'Bullish')}</span></button>
+          <button className={`chip sm${mood === 'bearish' ? ' on' : ''}`} data-filter="bearish" aria-pressed={mood === 'bearish'} onClick={() => setMood(mood === 'bearish' ? null : 'bearish')}><span className="fa">{L('نزولی', 'Bearish')}</span></button>
+        </nav>
+      ) : null}
       <div className="panel-body" ref={listRef}>
         {items === null ? <div className="empty fa">{t('loading')}…</div> : null}
-        {items !== null && !shown.length ? <div className="empty fa">{failed ? t('networkError') : t('nothingFound')}</div> : null}
+        {items !== null && !shown.length ? (filtering && !failed && scoped.length ? (
+          <div className="empty fa news-none">{L('هیچ خبری با این فیلترها جور نیست.', 'No story matches these filters.')} <button className="link-btn" onClick={() => { setHighOnly(false); setMood(null); setCat(null); setSource(''); }}>{L('پاک کردن فیلترها', 'Clear filters')}</button></div>
+        ) : <div className="empty fa">{failed ? t('networkError') : t('nothingFound')}</div>) : null}
         {shown.map((n) => {
           const hot = importanceOf(n) >= 7;
           const chips = tickersIn(n, universe, 3);
@@ -174,7 +192,7 @@ export function NewsPanel() {
               <span className="news-title">{fresh.has(n.id) ? <b className="news-new fa">{L('تازه', 'New')}</b> : null}{hot ? <i className="news-hot" title={L('مهم', 'Important')} /> : null}{n.title}</span>
               {n.summary ? <span className="news-sum">{n.summary}</span> : null}
               <span className="news-meta">
-                <span>{n.source}</span> · <span title={absTime(n.time)}>{ago(n.time)}</span>
+                <span>{n.source}</span> · <span title={absTime(n.time)}>{ago(n.time)}</span>{chipsOf(n)}
                 {chips.length ? <span className="news-tickers" dir="ltr">{chips.map((s) => <button key={s} className="news-ticker" onClick={(e) => { e.stopPropagation(); setSymbol(s); }}><SymbolLogo symbol={s} size={14} /><span className="sym">{s}</span></button>)}</span> : null}
               </span>
             </div>

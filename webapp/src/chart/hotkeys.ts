@@ -7,6 +7,7 @@ import { useDrawing } from '../state/drawing';
 import { usePrefs } from '../state/prefs';
 import { useChartBus } from './chartBus';
 import { useReplay } from '../state/replay';
+import { duelHidesFuture } from '../state/duel';
 import { usePanels } from '../state/panels';
 import { INTERVALS } from '../data/intervals';
 import { intervalsFor } from '../data/candles';
@@ -117,8 +118,8 @@ export function appHotkeyHandlers(actions: HotkeyActions): Record<string, (e: Ke
     newAlert: () => actions.newAlert(),
     settings: () => actions.settings(),
     replayToggle: () => { const r = useReplay.getState(); if (r.state?.on || r.selecting) r.exit(); else r.select(); },
-    replayPlay: () => { const r = useReplay.getState(); if (r.state?.on) r.controller.toggle(); },
-    replayStep: nudgeOr('ArrowRight', true, () => { const r = useReplay.getState(); if (r.state?.on) r.controller.step(); }),
+    replayPlay: () => { const r = useReplay.getState(); if (r.state?.on && !duelHidesFuture()) r.controller.toggle(); },
+    replayStep: nudgeOr('ArrowRight', true, () => { const r = useReplay.getState(); if (r.state?.on && !duelHidesFuture()) r.controller.step(); }),
     replayStepBack: nudgeOr('ArrowLeft', true, () => { const r = useReplay.getState(); if (r.state?.on) r.controller.stepBack(); }),
     screenshot: () => { void takeSnapshot(); },
     saveLayout: () => useLayouts.getState().save(),

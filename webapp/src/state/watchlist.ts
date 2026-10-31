@@ -1,6 +1,7 @@
 // The reader's watchlists, as TradingView keeps them: several named lists, one active; sections
 // inside a list (a header, then its symbols, folded or open); seven colour flags on any symbol (each
-// flag colour is a list of its own); a note per symbol. A guest's live in this browser; a
+// flag colour is a list of its own); a note per symbol in each list (OLD WatchlistStore.note: a note
+// on gold in «positions I hold» is not a note on gold in «watching for an entry»). A guest's live in this browser; a
 // signed-in reader's lists are the phone's document on TradeYar (data/watchlistSync.ts), list by
 // list, with the sections, flags and notes in the document's extra fields.
 //
@@ -29,7 +30,26 @@ export const FLAG_NAMES: { fa: string; en: string }[] = [
 
 export interface WSection { id: string; name: string; symbols: string[]; collapsed?: boolean }
 export interface WList { id: string; name: string; symbols: string[]; sections?: WSection[] }
-interface Stored { lists: WList[]; active: string; flags: Record<string, number>; notes: Record<string, string> }
+interface Stored {
+  lists: WList[]; active: string; flags: Record<string, number>;
+  /** The active list's notes, symbol → text (what the rows read); kept in step with `listNotes`. */
+  notes: Record<string, string>;
+  /** Every list's notes: list id → symbol → text. */
+  listNotes: Record<string, Record<string, string>>;
+}
+
+const NO_NOTES: Record<string, string> = Object.freeze({}) as Record<string, string>;
+
+/** Notes from before they were per list (one map for every list): each goes to every list holding its symbol, the rest to the active list. */
+export function migrateNotes(lists: WList[], active: string, notes: Record<string, string>): Record<string, Record<string, string>> {
+  const out: Record<string, Record<string, string>> = {};
+  for (const [sym, text] of Object.entries(notes)) {
+    if (typeof text !== 'string' || !text) continue;
+    const holders = lists.filter((l) => l.symbols.includes(sym)).map((l) => l.id);
+    for (const id of holders.length ? holders : [active]) out[id] = { ...(out[id] ?? {}), [sym]: text };
+  }
+  return out;
+}
 
 const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
 
@@ -54,12 +74,14 @@ function read(): Stored {
     const v = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Stored | null;
     if (v && Array.isArray(v.lists) && v.lists.length) {
       const lists = v.lists.map((l) => normalizeList({ id: String(l.id), name: String(l.name ?? 'Watchlist'), symbols: strings(l.symbols), sections: Array.isArray(l.sections) ? l.sections : undefined }));
-      return { lists, active: lists.some((l) => l.id === v.active) ? v.active : lists[0]!.id, flags: v.flags ?? {}, notes: v.notes ?? {} };
+      const active = lists.some((l) => l.id === v.active) ? v.active : lists[0]!.id;
+      const listNotes = v.listNotes && typeof v.listNotes === 'object' ? v.listNotes : migrateNotes(lists, active, v.notes ?? {});
+      return { lists, active, flags: v.flags ?? {}, notes: listNotes[active] ?? {}, listNotes };
     }
   } catch { /* fall through */ }
   let first = DEFAULT_WATCHLIST;
   try { const old = strings(JSON.parse(localStorage.getItem(KEY_V1) ?? 'null')); if (old.length) first = old; } catch { /* ignore */ }
-  return { lists: [{ id: 'default', name: 'Watchlist', symbols: first }], active: 'default', flags: {}, notes: {} };
+  return { lists: [{ id: 'default', name: 'Watchlist', symbols: first }], active: 'default', flags: {}, notes: {}, listNotes: {} };
 }
 
 const cleanSymbol = (raw: string) => raw.trim().replace(/^[A-Z0-9_]+:/i, '').replace(/[/\-_.!]/g, '').toUpperCase();
@@ -122,9 +144,12 @@ interface WatchlistState extends Stored {
   flag(symbol: string, color: number | null): void;
   flagMany(symbols: string[], color: number | null): void;
   unflagAll(): void;
-  note(symbol: string, text: string): void;
-  /** Replaces the flags and notes (the sync's pull). */
+  /** The reader's note on a symbol in a list (the active one by default); empty text removes it. */
+  note(symbol: string, text: string, listId?: string): void;
+  /** Replaces the flags, and the active list's notes (the sync's pull). */
   setMarks(flags: Record<string, number>, notes: Record<string, string>): void;
+  /** Merges notes per list (the sync's pull of each list's own notes). */
+  setListNotes(listNotes: Record<string, Record<string, string>>): void;
 }
 
 export const useWatchlist = create<WatchlistState>((set, get) => {
@@ -134,9 +159,10 @@ export const useWatchlist = create<WatchlistState>((set, get) => {
     if (patch.lists) patch = { ...patch, lists: patch.lists.map(normalizeList) };
     const next = { ...get(), ...patch };
     const symbols = activeSymbols(next);
-    set({ ...patch, symbols });
-    const { lists, active, flags, notes } = get();
-    try { localStorage.setItem(KEY, JSON.stringify({ lists, active, flags, notes })); localStorage.setItem(KEY_V1, JSON.stringify(symbols)); } catch { /* ignore */ }
+    const notes = next.listNotes[next.active] ?? NO_NOTES;
+    set({ ...patch, symbols, ...(notes !== get().notes ? { notes } : {}) });
+    const { lists, active, flags, listNotes } = get();
+    try { localStorage.setItem(KEY, JSON.stringify({ lists, active, flags, notes: get().notes, listNotes })); localStorage.setItem(KEY_V1, JSON.stringify(symbols)); } catch { /* ignore */ }
   };
   const mapActive = (fn: (l: WList) => WList) => get().lists.map((l) => (l.id === get().active ? fn(l) : l));
   const newId = (p: string) => `${p}-${uuid().slice(0, 8)}`;
@@ -241,18 +267,25 @@ export const useWatchlist = create<WatchlistState>((set, get) => {
       commit({ flags });
     },
     unflagAll: () => commit({ flags: {} }),
-    note: (symbol, text) => {
-      const notes = { ...get().notes };
-      if (text.trim()) notes[symbol] = text.trim(); else delete notes[symbol];
-      commit({ notes });
+    note: (symbol, text, listId) => {
+      const id = listId ?? get().active;
+      const own = { ...(get().listNotes[id] ?? {}) };
+      if (text.trim()) own[symbol] = text.trim(); else delete own[symbol];
+      commit({ listNotes: { ...get().listNotes, [id]: own } });
     },
-    setMarks: (flags, notes) => commit({ flags, notes }),
+    setMarks: (flags, notes) => commit({ flags, listNotes: { ...get().listNotes, [get().active]: notes } }),
+    setListNotes: (more) => {
+      const listNotes = { ...get().listNotes };
+      for (const [id, n] of Object.entries(more)) listNotes[id] = { ...(listNotes[id] ?? {}), ...n };
+      commit({ listNotes });
+    },
   };
 });
 
 // ── How the list is shown ─────────────────────────────────────────────────────────────────────────
-export type WCol = 'last' | 'change' | 'changePct' | 'volume' | 'high' | 'low' | 'range';
-export const ALL_COLS: WCol[] = ['last', 'change', 'changePct', 'volume', 'high', 'low', 'range'];
+export type WCol = 'last' | 'change' | 'changePct' | 'volume' | 'high' | 'low' | 'range' | 'spark';
+/** 'spark' is the day's line («روند», OLD WatchlistColumn.SPARKLINE). */
+export const ALL_COLS: WCol[] = ['last', 'change', 'changePct', 'volume', 'high', 'low', 'range', 'spark'];
 export type WSortKey = 'symbol' | WCol;
 export interface WatchView {
   columns: WCol[];

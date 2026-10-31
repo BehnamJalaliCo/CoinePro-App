@@ -22,7 +22,7 @@ import { usePrefs } from '../state/prefs';
 import { useScript, scriptTitle } from '../state/script';
 import { intervalLabel, intervalSeconds } from '../data/intervals';
 import { plotName } from './studyMeta';
-import { CrossPaint, ScriptPaint, scriptIsOverlay, scriptMarkers } from './scriptRenderer';
+import { CrossPaint, ScriptPaint, barColorData, scriptIsOverlay, scriptMarkers } from './scriptRenderer';
 import { ProfilePaint } from './profilePaint';
 import { create } from 'zustand';
 import { useStudies } from '../state/studies';
@@ -653,10 +653,20 @@ export class StudyRenderer {
       s.setData(cp.data.map((d) => ({ ...d, time: d.time as UTCTimestamp })));
       r.series.push(s);
     }
-    const host = r.pane === 0 ? this.price() : r.series[0] ?? null;
+    // barcolor: the price bars recoloured, on the price pane whatever pane the script's plots are in.
+    const price = this.price();
+    const painted = price ? barColorData(this.bars, res.barcolors) : [];
+    const type = usePrefs.getState().chartType;
+    if (price && painted.length && ['candles', 'hollow', 'volcandles', 'bars'].includes(type)) {
+      const opts = { priceScaleId: price.options().priceScaleId, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false };
+      const s = type === 'bars' ? this.chart.addSeries(BarSeries, { ...opts, thinBars: false }, 0) : this.chart.addSeries(CandlestickSeries, opts, 0);
+      s.setData(type === 'bars' ? painted.map(({ wickColor: _w, borderColor: _b, ...p }) => p) : painted);
+      r.series.push(s);
+    }
+    const host = r.pane === 0 ? price : r.series[0] ?? null;
     if (host) {
       for (const h of res.hlines ?? []) r.priceLines.push({ series: host, line: host.createPriceLine({ price: h.price, color: h.color, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: h.title }) });
-      const paint = { bgs: res.bgs, fills: res.fills, boxes: res.boxes, lines: res.lines, barcolors: res.barcolors, zones: res.zones };
+      const paint = { bgs: res.bgs, fills: res.fills, boxes: res.boxes, lines: res.lines, zones: res.zones };
       if (Object.values(paint).some((x) => x?.length)) {
         const prim = new ScriptPaint(paint);
         host.attachPrimitive(prim as never);

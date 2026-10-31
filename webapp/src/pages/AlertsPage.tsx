@@ -4,7 +4,7 @@ import { AlertDrawingMark } from '../shell/AlertDrawingMark';
 import { usePrefs, useT } from '../state/prefs';
 import { useMarket } from '../state/market';
 import { useSession } from '../data/session';
-import { backendOf, FX_SYMBOLS } from '../data/symbols';
+import { backendOf, isExpression } from '../data/symbols';
 import { ty, fx, num, ms, str } from '../data/member';
 import { SymbolSearch } from '../shell/SymbolSearch';
 import { SymbolLogo } from '../ui/SymbolLogo';
@@ -16,6 +16,8 @@ import type { Backend } from '../data/symbols';
 // crossing, a channel, a move over bars or RSI against a level (the server's spec, CoinePro-FX),
 // once or every time, with an expiry and the delivery channels.
 type Kind = 'price' | 'channel' | 'move' | 'rsi';
+/** The timeframes CoinePro-FX evaluates a move or an RSI on (alert_specs.TIMEFRAMES). */
+const SERVER_TIMEFRAMES: [string, string][] = [['M5', '5m'], ['M15', '15m'], ['H1', '1h'], ['H4', '4h'], ['D1', '1D']];
 type Cond = 'above' | 'below' | 'cross_up' | 'cross_down' | 'cross';
 interface ServerAlert { id: string; symbol: string; condition: string; value: number | null; trigger: string; active: boolean; createdAt: number | null; lastAt: number | null; expiresAt: number | null; spec: Record<string, string> | null; channels: string[]; backend: Backend }
 
@@ -109,11 +111,11 @@ function NewAlert({ onDone }: { onDone(): void }) {
   const sessions = useSession((s) => s.sessions);
   const local = useAlerts((s) => s.add);
   const backend = backendOf(symbol);
-  const onServer = Boolean(sessions[backend]) && (backend === 'tradeyar' ? symbol.endsWith('USDT') : FX_SYMBOLS.includes(symbol));
+  const onServer = Boolean(sessions[backend]) && !isExpression(symbol) && (backend === 'tradeyar' ? symbol.endsWith('USDT') : true);
   const advanced = onServer && backend === 'coineprofx';
   const [kind, setKind] = useState<Kind>('price');
   const [cond, setCond] = useState<Cond>('cross');
-  const [f, setF] = useState({ value: price ? String(price) : '', low: '', high: '', chOp: 'enter', moveOp: 'up_percent', amount: '2', bars: '4', rsiOp: 'cross_up', rsiLen: '14', rsiLevel: '70', expires: '' });
+  const [f, setF] = useState({ value: price ? String(price) : '', low: '', high: '', chOp: 'enter', moveOp: 'up_percent', amount: '2', bars: '4', rsiOp: 'cross_up', rsiLen: '14', rsiLevel: '70', expires: '', tf: 'H1' });
   const [trigger, setTrigger] = useState<'once' | 'recurring'>('once');
   const [channels, setChannels] = useState<string[]>(['push']);
   const [pick, setPick] = useState(false);
@@ -127,8 +129,8 @@ function NewAlert({ onDone }: { onDone(): void }) {
     let spec: Record<string, string> | null = null;
     let wireValue = value;
     if (kind === 'channel') { const lo = parseNum(f.low); const hi = parseNum(f.high); if (lo == null || hi == null || lo > hi) { setErr(L('کف و سقف کانال را درست وارد کنید.', 'Enter a valid channel low and high.')); return; } spec = { kind: 'channel', low: String(lo), high: String(hi), op: f.chOp }; wireValue = hi; }
-    if (kind === 'move') { spec = { kind: 'move', op: f.moveOp, amount: f.amount, bars: f.bars, tf: 'H1' }; wireValue = parseNum(f.amount); }
-    if (kind === 'rsi') { spec = { kind: 'indicator', id: 'rsi', period: f.rsiLen, op: f.rsiOp, value: f.rsiLevel, tf: 'H1' }; wireValue = parseNum(f.rsiLevel); }
+    if (kind === 'move') { spec = { kind: 'move', op: f.moveOp, amount: f.amount, bars: f.bars, tf: f.tf }; wireValue = parseNum(f.amount); }
+    if (kind === 'rsi') { spec = { kind: 'indicator', id: 'rsi', period: f.rsiLen, op: f.rsiOp, value: f.rsiLevel, tf: f.tf }; wireValue = parseNum(f.rsiLevel); }
     if (!wireValue || wireValue <= 0) { setErr(L('مقدار را وارد کنید.', 'Enter a value.')); return; }
     if (kind === 'price' && !onServer) {
       local(symbol, cond === 'above' ? 'above' : cond === 'below' ? 'below' : 'cross', wireValue);
@@ -175,8 +177,11 @@ function NewAlert({ onDone }: { onDone(): void }) {
         <div className="row three">
           <Field label={L('جهت', 'Direction')}><select value={f.moveOp} onChange={set('moveOp')}><option value="up_percent">{L('بالا', 'Up')}</option><option value="down_percent">{L('پایین', 'Down')}</option></select></Field>
           <Field label={L('درصد', 'Percent')}><input className="num" dir="ltr" inputMode="decimal" value={f.amount} onChange={set('amount')} /></Field>
-          <Field label={L('در چند کندل یک‌ساعته', 'Over how many 1h bars')}><input className="num" dir="ltr" inputMode="numeric" value={f.bars} onChange={set('bars')} /></Field>
+          <Field label={L('در چند کندل', 'Over how many bars')}><input className="num" dir="ltr" inputMode="numeric" value={f.bars} onChange={set('bars')} /></Field>
         </div>
+      ) : null}
+      {kind === 'move' || kind === 'rsi' ? (
+        <Field label={L('تایم‌فریم کندل‌ها', 'Bar timeframe')}><select className="num alert-tf" value={f.tf} onChange={set('tf')}>{SERVER_TIMEFRAMES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></Field>
       ) : null}
       {kind === 'rsi' ? (
         <div className="row three">
