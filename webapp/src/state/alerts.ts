@@ -12,6 +12,11 @@
 // condition; once, once per bar, once per bar close, once per minute or every time (with a
 // cool-down); an expiry; a name and a message with {{placeholders}}; a sound and its length. Every
 // firing goes into the log.
+//
+// And the phone's (feature/alerts, core/notifications, core/webhook): up to five conditions that
+// must all hold; once a day, and «until I see it» every N minutes; the 24-hour change over or
+// under a per cent; a NamaScript `alertcondition`; every firing posted to the reader's webhooks;
+// and each alert's own history of what it did (alertAudit.ts).
 import { create } from 'zustand';
 import { useMarket } from './market';
 import { authed } from '../data/auth';
@@ -28,18 +33,30 @@ import { SAVED_TICKERS } from '../data/prices';
 import { boundsAt, findDrawing, BAND_ALERT_TYPES, LINE_ALERT_TYPES } from './drawingLinks';
 import type { DrawingObject } from '../engine/drawings.js';
 import { toolName } from '../chart/tools';
+import { useAlertAudit, saveLine, type AuditEvent, type AuditView, type ChangeKey, type DeliveryReason } from './alertAudit';
+import { useWebhooks, failed as hookFailed, timeframeName } from './webhooks';
+import { runScript } from '../engine/namascript.js';
 
 export type AlertCondition =
   | 'above' | 'below' | 'cross' | 'cross_up' | 'cross_down'
   | 'enter_channel' | 'exit_channel' | 'inside_channel' | 'outside_channel'
-  | 'move_up_pct' | 'move_down_pct' | 'move_up' | 'move_down';
-export type AlertFreq = 'once' | 'per_bar' | 'per_bar_close' | 'per_minute' | 'every';
+  | 'move_up_pct' | 'move_down_pct' | 'move_up' | 'move_down'
+  | 'change24_over' | 'change24_under';
+export type AlertFreq = 'once' | 'per_bar' | 'per_bar_close' | 'per_minute' | 'daily' | 'every';
 export type PriceField = 'last' | 'bid' | 'ask' | 'close' | 'high' | 'low';
 export interface TrendLine { t1: number; p1: number; t2: number; p2: number }
 export interface Operand { condition: AlertCondition; value: number; high?: number; bars?: number }
 
 export const CHANNEL: AlertCondition[] = ['enter_channel', 'exit_channel', 'inside_channel', 'outside_channel'];
 export const MOVES: AlertCondition[] = ['move_up_pct', 'move_down_pct', 'move_up', 'move_down'];
+/** The 24-hour change against a per cent (LocalAlertCondition.CHANGE_24H_OVER / _UNDER). */
+export const CHANGE24: AlertCondition[] = ['change24_over', 'change24_under'];
+/** At most this many conditions, the first included, and all of them must hold (MultiCondition). */
+export const MAX_CONDITIONS = 5;
+/** «تا وقتی ببینمش»: the intervals offered, and the default (LocalPriceAlert.DEFAULT_REPEAT_MINUTES). */
+export const UNTIL_SEEN_MINUTES = [5, 15, 30, 60];
+export const DEFAULT_REPEAT_MINUTES = 15;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export interface PriceAlert {
   id: string;
@@ -64,10 +81,22 @@ export interface PriceAlert {
   expiresAt?: number;
   expired?: boolean;
   field?: PriceField;
-  source?: 'price' | 'line' | 'indicator';
+  source?: 'price' | 'line' | 'indicator' | 'script';
   line?: TrendLine;
   indicator?: { key: string; output: string; inputs?: Record<string, number | string | boolean>; label?: string; uid?: string };
+  /** The second condition of alerts made before there could be more (read through `extraConditions`). */
   and?: Operand;
+  /** The conditions after the first, up to MAX_CONDITIONS − 1; every one must hold. */
+  ands?: Operand[];
+  /** «تا وقتی ببینمش»: keeps firing every `repeatMinutes` until the reader says they saw it. */
+  untilSeen?: boolean;
+  repeatMinutes?: number;
+  /** When the reader saw it (an until-seen alert stops then). */
+  seenAt?: number;
+  /** A NamaScript `alertcondition`: the script travels with the alert (AlertTrigger.ScriptCondition). */
+  script?: { source: string; condition: string; name: string; inputs?: Record<string, unknown> };
+  /** The webhooks it posts to; absent: every webhook that is switched on. */
+  webhooks?: string[];
   sound?: SoundId;
   soundSecs?: number;
   popup?: boolean;
@@ -109,7 +138,10 @@ interface AlertsState {
   add(symbol: string, condition: AlertCondition, value: number, serverId?: string): void;
   /** A full alert; returns its id. */
   create(a: NewAlert): string;
-  update(id: string, patch: Partial<PriceAlert>): void;
+  /** `silent`: a change the reader did not make here (the drawing it follows moved) writes no history. */
+  update(id: string, patch: Partial<PriceAlert>, opts?: { silent?: boolean }): void;
+  /** The reader saw it: an until-seen alert stops («دیدم»). */
+  acknowledge(id: string): void;
   clone(id: string): string | null;
   remove(id: string): void;
   toggle(id: string): void;
@@ -133,7 +165,27 @@ function serverPath(symbol: string): string | null {
   return backend === 'tradeyar' ? '/up/tradeyar/api/mobile/v1/alerts' : '/up/coineprofx/api/user/mobile/alerts';
 }
 /** Only a plain level on the price reaches the platforms; the rest is watched here. */
-const serverable = (a: PriceAlert) => (a.source ?? 'price') === 'price' && ['above', 'below', 'cross', 'cross_up', 'cross_down'].includes(a.condition) && !a.and && (a.field ?? 'last') === 'last';
+const serverable = (a: PriceAlert) => (a.source ?? 'price') === 'price' && ['above', 'below', 'cross', 'cross_up', 'cross_down'].includes(a.condition) && !extraConditions(a).length && (a.field ?? 'last') === 'last'
+  // Once a day and until-seen have no server spelling; the platforms would fire every time.
+  && !a.untilSeen && (a.freq ?? 'once') !== 'daily';
+
+/** What the editor shows of an alert, for the history's «what changed» (AlertAuditTrail.changes). */
+export function auditView(a: PriceAlert): AuditView {
+  return {
+    symbol: a.symbol,
+    scope: a.group ?? '',
+    condition: [describeAlert(a, true), a.field ?? 'last', a.interval ?? '', a.source ?? 'price', ...extraConditions(a).map((o) => `${o.condition} ${o.value} ${o.high ?? ''} ${o.bars ?? ''}`)].join('|'),
+    frequency: `${a.freq ?? 'once'}|${a.freq === 'every' ? a.cooldownMs ?? 0 : ''}|${a.untilSeen ? a.repeatMinutes ?? DEFAULT_REPEAT_MINUTES : ''}`,
+    channels: `${a.popup !== false}|${a.webhooks ? a.webhooks.join(',') : '*'}`,
+    loudness: `${a.sound ?? 'chime'}|${a.soundSecs ?? 0}`,
+    message: a.message ?? '',
+    active: a.active,
+    spent: Boolean(a.triggeredAt),
+  };
+}
+/** One line about the reader's own act: no price, because none of these is a reading of the market. */
+const audit = (a: PriceAlert, event: AuditEvent, extra: { changed?: ChangeKey[] } = {}) =>
+  useAlertAudit.getState().record({ alertId: a.id, event, at: Date.now(), symbol: a.symbol, timeframe: a.interval, ...extra });
 
 export const useAlerts = create<AlertsState>((set, get) => {
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(get().list)); } catch { /* ignore */ } };
@@ -168,14 +220,17 @@ export const useAlerts = create<AlertsState>((set, get) => {
       const a: PriceAlert = { ...input, id: uuid(), active: true, createdAt: Date.now() } as PriceAlert;
       for (const k of Object.keys(a) as (keyof PriceAlert)[]) if (a[k] === undefined) delete a[k];
       set({ list: [a, ...get().list] }); save();
+      audit(a, 'created');
       toServer(a);
       return a.id;
     },
-    update: (id, patch) => {
+    update: (id, patch, opts) => {
       const before = get().list.find((x) => x.id === id);
       if (!before) return;
       const next: PriceAlert = { ...before, ...patch, id };
+      for (const k of Object.keys(next) as (keyof PriceAlert)[]) if (next[k] === undefined) delete next[k];
       set({ list: get().list.map((x) => (x.id === id ? next : x)) }); save();
+      if (!opts?.silent) { const line = saveLine(auditView(before), auditView(next)); if (line) audit(next, line.event, { changed: line.changed }); }
       lastSeen.delete(id); prevInd.delete(id); closes.delete(id);
       if (before.serverId) {
         if (serverable(next)) patchServer(next, { active: next.active, value: next.value, condition: next.condition, trigger: (next.freq ?? 'once') === 'once' ? 'once' : 'recurring' });
@@ -191,23 +246,30 @@ export const useAlerts = create<AlertsState>((set, get) => {
     remove: (id) => {
       const a = get().list.find((x) => x.id === id);
       set({ list: get().list.filter((x) => x.id !== id) }); save();
-      if (a) deleteServer(a);
+      if (a) { audit(a, 'deleted'); deleteServer(a); }
+    },
+    acknowledge: (id) => {
+      const a = get().list.find((x) => x.id === id);
+      if (!a?.untilSeen || a.seenAt) return;
+      set({ list: get().list.map((x) => (x.id === id ? { ...x, seenAt: Date.now(), active: false } : x)) }); save();
+      patchServer(a, { active: false });
     },
     toggle: (id) => {
       const a = get().list.find((x) => x.id === id);
       if (!a) return;
       const active = !a.active;
       const expired = active && a.expiresAt && a.expiresAt < Date.now() ? undefined : a.expired;
-      set({ list: get().list.map((x) => (x.id === id ? { ...x, active, triggeredAt: x.active ? x.triggeredAt : undefined, expired, expiresAt: active && a.expired ? undefined : x.expiresAt } : x)) }); save();
+      set({ list: get().list.map((x) => (x.id === id ? { ...x, active, triggeredAt: x.active ? x.triggeredAt : undefined, expired, expiresAt: active && a.expired ? undefined : x.expiresAt, seenAt: active ? undefined : x.seenAt } : x)) }); save();
+      audit(a, active ? 'armed' : 'snoozed');
       patchServer(a, { active });
     },
-    stopAll: () => { const on = get().list.filter((a) => a.active); set({ list: get().list.map((a) => ({ ...a, active: false })) }); save(); on.forEach((a) => patchServer(a, { active: false })); },
+    stopAll: () => { const on = get().list.filter((a) => a.active); set({ list: get().list.map((a) => ({ ...a, active: false })) }); save(); on.forEach((a) => { audit(a, 'snoozed'); patchServer(a, { active: false }); }); },
     restartInactive: () => {
       const off = get().list.filter((a) => !a.active);
-      set({ list: get().list.map((a) => (a.active ? a : { ...a, active: true, triggeredAt: undefined, expired: undefined, expiresAt: a.expired ? undefined : a.expiresAt })) }); save();
-      off.forEach((a) => { lastSeen.delete(a.id); patchServer(a, { active: true }); });
+      set({ list: get().list.map((a) => (a.active ? a : { ...a, active: true, triggeredAt: undefined, expired: undefined, seenAt: undefined, expiresAt: a.expired ? undefined : a.expiresAt })) }); save();
+      off.forEach((a) => { lastSeen.delete(a.id); audit(a, 'armed'); patchServer(a, { active: true }); });
     },
-    deleteInactive: () => { const off = get().list.filter((a) => !a.active); set({ list: get().list.filter((a) => a.active) }); save(); off.forEach(deleteServer); },
+    deleteInactive: () => { const off = get().list.filter((a) => !a.active); set({ list: get().list.filter((a) => a.active) }); save(); off.forEach((a) => { audit(a, 'deleted'); deleteServer(a); }); },
     dismiss: () => set({ fired: null }),
     clearLog: () => { set({ log: [], unseen: 0 }); try { localStorage.setItem(LOG_KEY, '[]'); } catch { /* ignore */ } },
     markSeen: () => set({ unseen: 0 }),
@@ -246,12 +308,15 @@ export const CONDITION_NAMES: Record<AlertCondition, { fa: string; en: string; s
   move_down_pct: { fa: 'افت درصدی', en: 'Moving down %', sym: '▼%' },
   move_up: { fa: 'رشد به اندازه‌ی', en: 'Moving up', sym: '▲' },
   move_down: { fa: 'افت به اندازه‌ی', en: 'Moving down', sym: '▼' },
+  change24_over: { fa: '۲۴ ساعته بالای', en: '24h over', sym: '24h▲' },
+  change24_under: { fa: '۲۴ ساعته زیر', en: '24h under', sym: '24h▼' },
 };
 export const FREQ_NAMES: Record<AlertFreq, { fa: string; en: string }> = {
   once: { fa: 'فقط یک بار', en: 'Only once' },
   per_bar: { fa: 'یک بار در هر کندل', en: 'Once per bar' },
   per_bar_close: { fa: 'یک بار در بسته شدن کندل', en: 'Once per bar close' },
   per_minute: { fa: 'یک بار در دقیقه', en: 'Once per minute' },
+  daily: { fa: 'روزی یک بار', en: 'Once a day' },
   every: { fa: 'هر بار', en: 'Every time' },
 };
 
@@ -261,8 +326,15 @@ export function lineLevel(l: TrendLine, tSec: number): number {
   return l.p1 + ((l.p2 - l.p1) * (tSec - l.t1)) / (l.t2 - l.t1);
 }
 
+/** The conditions after the first: the list, or the one `and` of an older alert. */
+export const extraConditions = (a: Pick<PriceAlert, 'and' | 'ands'>): Operand[] => a.ands ?? (a.and ? [a.and] : []);
+
 /** The alert's own words: "BTCUSDT Crossing 90,000". */
-export function describeAlert(a: Pick<PriceAlert, 'symbol' | 'condition' | 'value' | 'high' | 'bars' | 'source' | 'indicator' | 'line'> & { drawingType?: string }, fa: boolean, fmt: (v: number) => string = String): string {
+export function describeAlert(a: Pick<PriceAlert, 'symbol' | 'condition' | 'value' | 'high' | 'bars' | 'source' | 'indicator' | 'line'> & { drawingType?: string; script?: PriceAlert['script'] }, fa: boolean, fmt: (v: number) => string = String): string {
+  if (a.source === 'script' && a.script) return fa ? `اسکریپت «${a.script.name}»: ${a.script.condition}` : `Script "${a.script.name}": ${a.script.condition}`;
+  // The 24-hour change (the phone's sentences): «تغییر ۲۴ ساعته‌ی BTCUSDT بیشتر از 5%».
+  if (a.condition === 'change24_over') return fa ? `تغییر ۲۴ ساعته‌ی ${a.symbol} بیشتر از ${a.value}%` : `${a.symbol} 24h change over ${a.value}%`;
+  if (a.condition === 'change24_under') return fa ? `تغییر ۲۴ ساعته‌ی ${a.symbol} کمتر از منفی ${a.value}%` : `${a.symbol} 24h change under minus ${a.value}%`;
   const c = CONDITION_NAMES[a.condition];
   const drawn = a.source === 'line' && a.drawingType ? toolName(a.drawingType, fa ? 'fa' : 'en') : null;
   const what = a.source === 'indicator' ? (a.indicator?.label ?? a.indicator?.key ?? '').toString() : a.source === 'line' ? (drawn ?? (fa ? 'خط روند' : 'Trend line')) : a.symbol;
@@ -305,6 +377,9 @@ export function conditionHolds(op: Operand, prev: number | null, cur: number, re
     case 'move_down_pct': return ref != null && ref > 0 && ((ref - cur) / ref) * 100 >= v;
     case 'move_up': return ref != null && cur - ref >= v;
     case 'move_down': return ref != null && ref - cur >= v;
+    // `cur` is the 24-hour change in per cent here; a missing figure is not a flat market.
+    case 'change24_over': return Number.isFinite(cur) && cur >= v;
+    case 'change24_under': return Number.isFinite(cur) && cur <= -v;
   }
 }
 
@@ -325,14 +400,46 @@ function notify(a: PriceAlert, price: number, plot: number | null = null) {
   const log = [{ id: uuid(), alertId: a.id, symbol: a.symbol, name, message, price, at: now }, ...st.log].slice(0, 300);
   useAlerts.setState({ log, unseen: st.unseen + 1 });
   try { localStorage.setItem(LOG_KEY, JSON.stringify(log)); } catch { /* ignore */ }
+  const record = useAlertAudit.getState().record;
+  const base = { alertId: a.id, symbol: a.symbol, at: now, price, timeframe: a.interval };
+  // The decision first, then whether it reached anybody (AlertEvaluator's order).
+  record({ ...base, event: 'fired' });
+  postWebhooks(a, base, a.message ? message : '');
   const prefs = readNotify();
-  if (inQuietHours(new Date(), prefs)) return;
+  if (inQuietHours(new Date(), prefs)) { record({ ...base, event: 'delivery_failed', reasons: ['suppressed'] }); return; }
   if (prefs.sound) playSound(a.sound ?? 'chime', a.soundSecs ?? 0);
+  const reasons: DeliveryReason[] = [];
+  let shown = false;
   try {
     if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(name, { body: message, tag: a.id, icon: `${import.meta.env.BASE_URL}generated/app-icons/favicon-32.png` });
-    }
-  } catch { /* notifications unavailable */ }
+      const n = new Notification(name, { body: message, tag: a.id, icon: `${import.meta.env.BASE_URL}generated/app-icons/favicon-32.png` });
+      shown = true;
+      // Opening it is seeing it: an until-seen alert stops.
+      n.onclick = () => { try { window.focus(); } catch { /* ignore */ } useAlerts.getState().acknowledge(a.id); };
+    } else reasons.push('no_permission');
+  } catch { reasons.push('post_failed'); }
+  // The toast in this tab counts only while the tab is on screen.
+  const onPage = a.popup !== false && typeof document !== 'undefined' && document.visibilityState === 'visible';
+  if (shown || onPage) record({ ...base, event: 'delivered' });
+  else {
+    if (a.popup !== false) reasons.push('tab_hidden');
+    record({ ...base, event: 'delivery_failed', reasons: reasons.length ? reasons : ['no_channels'] });
+  }
+}
+
+/**
+ * Posts a firing to the reader's webhooks and writes the ones that did not arrive into the alert's
+ * history beside the firing (AlertEvaluator.postWebhooks); a delivery that worked lives in the log.
+ */
+function postWebhooks(a: PriceAlert, base: { alertId: string; symbol: string; at: number; price: number; timeframe?: string }, message: string) {
+  const hooks = useWebhooks.getState();
+  if (!hooks.targets.some((t) => t.enabled && (!a.webhooks || a.webhooks.includes(t.id)))) return;
+  void hooks.dispatch({ alertId: a.id, symbol: a.symbol, firedAt: base.at, message, price: base.price, timeframe: timeframeName(a.interval) }, a.webhooks)
+    .then((attempts) => {
+      const bad = attempts.filter(hookFailed);
+      if (bad.length) useAlertAudit.getState().record(bad.map((x) => ({ ...base, event: 'delivery_failed' as const, hook: { name: x.targetName, outcome: x.outcome, reason: x.reason } })));
+    })
+    .catch(() => undefined);
 }
 
 const barStart = (interval: string | undefined, now: number) => { const s = intervalSeconds(interval ?? '1') * 1000; return Math.floor(now / s) * s; };
@@ -369,21 +476,37 @@ function moveRef(a: PriceAlert, bars: number | undefined, now: number): number |
 }
 
 /** Applies the trigger frequency to a hit: whether it fires now, and the alert after it. */
-function fire(a: PriceAlert, now: number): PriceAlert | null {
+export function fire(a: PriceAlert, now: number): PriceAlert | null {
   const freq = a.freq ?? 'once';
   const last = a.lastFiredAt ?? 0;
+  if (a.untilSeen) {
+    // Until the reader says they saw it, every N minutes (clamped to a minute … a day).
+    if (a.seenAt) return null;
+    const every = Math.min(24 * 60, Math.max(1, a.repeatMinutes ?? DEFAULT_REPEAT_MINUTES)) * 60_000;
+    if (last && now - last < every) return null;
+  }
   if (freq === 'per_bar' && last && barStart(a.interval, last) === barStart(a.interval, now)) return null;
   if (freq === 'per_minute' && now - last < 60_000) return null;
+  if (freq === 'daily' && last && now - last < DAY_MS) return null;
   if (freq === 'every' && now - last < (a.cooldownMs ?? 0)) return null;
-  return { ...a, active: freq === 'once' ? false : a.active, triggeredAt: now, lastFiredAt: now, fires: (a.fires ?? 0) + 1 };
+  return { ...a, active: freq === 'once' && !a.untilSeen ? false : a.active, triggeredAt: now, lastFiredAt: now, fires: (a.fires ?? 0) + 1 };
 }
 
-function evaluate(a: PriceAlert, tkLast: number, now: number): { hit: boolean; value: number } | null {
-  if ((a.source ?? 'price') === 'indicator') return null;
+/** Every condition after the first holds (they are ANDed). */
+function extrasHold(a: PriceAlert, prev: number | null, cur: number, now: number): boolean {
+  return extraConditions(a).every((op) => conditionHolds(op, prev, cur, MOVES.includes(op.condition) ? moveRef(a, op.bars, now) : null));
+}
+
+function evaluate(a: PriceAlert, tkLast: number, now: number, changePct?: number): { hit: boolean; value: number } | null {
+  if ((a.source ?? 'price') === 'indicator' || a.source === 'script') return null;
   const cur = fieldValue(a, tkLast, now);
   if (cur == null) return null;
   const prev = lastSeen.get(a.id) ?? null;
   lastSeen.set(a.id, cur);
+  if (CHANGE24.includes(a.condition)) {
+    const pct = changePct ?? NaN;
+    return { hit: conditionHolds({ condition: a.condition, value: a.value }, null, pct) && extrasHold(a, prev, cur, now), value: cur };
+  }
   if (a.freq === 'per_bar_close') {
     // Judged once, on the close of each bar: the closed bar's last price against the one before.
     const start = barStart(a.interval, now);
@@ -420,17 +543,16 @@ function drawingHit(a: PriceAlert, prev: number | null, cur: number, now: number
 
 function test(a: PriceAlert, prev: number | null, cur: number, now: number): boolean {
   const viaDrawing = MOVES.includes(a.condition) ? null : drawingHit(a, prev, cur, now, null);
-  if (viaDrawing != null) {
-    if (!viaDrawing || !a.and) return viaDrawing;
-    const ref2 = MOVES.includes(a.and.condition) ? moveRef(a, a.and.bars, now) : null;
-    return conditionHolds(a.and, prev, cur, ref2);
-  }
+  if (viaDrawing != null) return viaDrawing && extrasHold(a, prev, cur, now);
   const op: Operand = a.source === 'line' && a.line ? { condition: a.condition, value: lineLevel(a.line, now / 1000) } : { condition: a.condition, value: a.value, high: a.high, bars: a.bars };
   const ref = MOVES.includes(a.condition) ? moveRef(a, a.bars, now) : null;
-  const main = conditionHolds(op, prev, cur, ref);
-  if (!main || !a.and) return main;
-  const ref2 = MOVES.includes(a.and.condition) ? moveRef(a, a.and.bars, now) : null;
-  return conditionHolds(a.and, prev, cur, ref2);
+  return conditionHolds(op, prev, cur, ref) && extrasHold(a, prev, cur, now);
+}
+
+/** Whether a script's `alertcondition` named `condition` holds on the bar that opened at `barTime`. */
+export function scriptConditionHolds(alerts: { msg: string; bars: number[]; dynamic?: boolean }[] | undefined, condition: string, barTime: number): boolean {
+  const al = (alerts ?? []).find((x) => !x.dynamic && x.msg === condition);
+  return Boolean(al && al.bars.includes(barTime));
 }
 
 let watching = false;
@@ -457,11 +579,15 @@ export function startAlertWatch(): void {
     let changed = false;
     const next = st.list.map((a) => {
       if (!a.active) return a;
-      if (a.expiresAt && a.expiresAt < now) { changed = true; return { ...a, active: false, expired: true }; }
+      if (a.expiresAt && a.expiresAt < now) {
+        changed = true;
+        useAlertAudit.getState().record({ alertId: a.id, event: 'expired', at: now, symbol: a.symbol });
+        return { ...a, active: false, expired: true };
+      }
       const tk = m.tickers[a.symbol];
       if (!tk) return a;
       if (saved[backendOf(a.symbol) === 'tradeyar' ? SAVED_TICKERS.crypto : SAVED_TICKERS.fx] != null) return a;
-      const r = evaluate(a, tk.last, now);
+      const r = evaluate(a, tk.last, now, tk.changePct);
       if (!r?.hit) return a;
       const after = fire(a, now);
       if (!after) return a;
@@ -495,13 +621,34 @@ export function startAlertWatch(): void {
       const prev = prevInd.get(a.id) ?? (vals[at - 1] ?? null);
       prevInd.set(a.id, cur);
       if (closeOnly && a.lastFiredAt && barStart(iv, a.lastFiredAt) === barStart(iv, now)) continue;
-      const hit = conditionHolds({ condition: a.condition, value: a.value, high: a.high }, prev, cur) && (!a.and || conditionHolds(a.and, prev, cur));
+      const hit = conditionHolds({ condition: a.condition, value: a.value, high: a.high }, prev, cur) && extraConditions(a).every((op) => conditionHolds(op, prev, cur));
       if (!hit) continue;
       const fresh = useAlerts.getState().list.find((x) => x.id === a.id);
       if (!fresh?.active) continue;
       const after = fire(fresh, now);
       if (!after) continue;
       notify(after, useMarket.getState().tickers[a.symbol]?.last ?? cur, cur);
+      useAlerts.setState({ fired: after });
+      commit(useAlerts.getState().list.map((x) => (x.id === a.id ? after : x)));
+    }
+    // Script alerts: the reader's script over the alert's timeframe; it fires when the named
+    // `alertcondition` holds on the last bar (the last closed one, on bar close).
+    const scripts = useAlerts.getState().list.filter((a) => a.active && a.source === 'script' && a.script);
+    for (const a of scripts) {
+      const iv = a.interval ?? '60';
+      const bars = await barsFor(a.symbol, iv, Math.min(60_000, intervalSeconds(iv) * 500));
+      const closeOnly = a.freq === 'per_bar_close';
+      const at = bars[closeOnly ? bars.length - 2 : bars.length - 1];
+      if (!at) continue;
+      if (closeOnly && a.lastFiredAt && barStart(iv, a.lastFiredAt) === barStart(iv, now)) continue;
+      const r = await runScript(a.script!.source, bars, a.script!.inputs).catch(() => null);
+      if (!r?.ok) continue;
+      if (!scriptConditionHolds(r.alerts, a.script!.condition, at.t)) continue;
+      const fresh = useAlerts.getState().list.find((x) => x.id === a.id);
+      if (!fresh?.active) continue;
+      const after = fire(fresh, now);
+      if (!after) continue;
+      notify(after, useMarket.getState().tickers[a.symbol]?.last ?? at.c);
       useAlerts.setState({ fired: after });
       commit(useAlerts.getState().list.map((x) => (x.id === a.id ? after : x)));
     }
@@ -542,6 +689,6 @@ export function followDrawings(symbol: string, list: DrawingObject[]): void {
     const valueSame = g.line ? true : close(a.value, g.value);
     if (lineSame && bandSame && valueSame) continue;
     const patch: Partial<PriceAlert> = g.line ? { line: g.line } : g;
-    st.update(a.id, patch);
+    st.update(a.id, patch, { silent: true });
   }
 }

@@ -1,0 +1,75 @@
+/* Alerts, wave 2: the webhook sheet, an alert's own history, the extra conditions, until-seen, and
+ * the signal page's high-impact event window. Flat surfaces, no blur, no coloured shadows. */
+
+/* The alert dialog's additions */
+.al-extra .al-label { text-align: center; }
+.al-addcond { gap: 8px; }
+.al-addcond .chip { height: 28px; padding: 0 10px; font-size: var(--fs-small); }
+.al-hooks { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--line); padding-top: 6px; margin-top: 4px; }
+.al-hook { padding-inline-start: 22px; min-height: 30px; }
+.badge.until-seen { background: color-mix(in srgb, var(--gold) 14%, transparent); color: var(--text); }
+.alert-tools .lt.seen { width: auto; padding: 0 6px; font-size: 11px; color: var(--gold); }
+
+/* The webhook sheet */
+.dialog.webhook-dlg { width: min(520px, calc(100vw - 24px)); }
+.wh-sub { margin: 2px 0 0; }
+.wh-body { gap: 6px; padding-bottom: 16px; max-height: min(66vh, 600px); }
+.wh-row { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.wh-row.off .wh-main b { color: var(--text-3); }
+.wh-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: stretch; text-align: start; gap: 2px; }
+.wh-main b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wh-url { font-size: 11px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; unicode-bidi: isolate; }
+html[dir='rtl'] .wh-url, [dir='rtl'] .wh-url { text-align: right; }
+.chip.danger { color: var(--down); }
+.wh-new { margin: 8px 0 4px; }
+.wh-log { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; border-top: 1px solid var(--line); padding-top: 8px; }
+.wh-log-head { display: flex; justify-content: space-between; align-items: center; font-size: var(--fs-small); color: var(--text-2); margin-bottom: 2px; }
+.wh-line { display: flex; gap: 8px; align-items: baseline; font-size: 11px; line-height: 1.7; color: var(--text-3); }
+.wh-line .wh-name { flex: 0 0 auto; max-width: 30%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
+.wh-line .wh-sum { flex: 1 1 auto; min-width: 0; }
+.wh-line .wh-at { flex: 0 0 auto; }
+.wh-line.bad .wh-sum { color: var(--down); font-weight: 600; }
+.wh-line.unknown .wh-sum { color: var(--text-2); }
+.wh-editor { display: flex; flex-direction: column; gap: 10px; }
+.wh-editor .al-col small { font-size: 11px; line-height: 1.7; }
+.wh-editor input.invalid { border-color: var(--down); }
+.wh-switch, .wh-test { display: flex; align-items: center; gap: 8px; min-height: 30px; }
+.wh-switch > span { flex: 1 1 auto; color: var(--text-2); font-size: var(--fs-small); }
+.wh-result { font-size: 11px; color: var(--text-2); flex: 1 1 auto; }
+.wh-back { align-self: flex-start; }
+
+/* An alert's own history */
+.dialog.audit-dlg { width: min(500px, calc(100vw - 24px)); }
+.audit-sentence { margin: 2px 0 0; }
+.audit-body { gap: 8px; padding-bottom: 16px; max-height: min(66vh, 600px); }
+.audit-lead { color: var(--text-2); line-height: 1.8; margin: 4px 0; }
+.audit-hooks { display: flex; flex-direction: column; gap: 2px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.audit-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 24px 0 28px; text-align: center; color: var(--text-2); }
+.audit-timeline { list-style: none; margin: 0; padding: 0; }
+.audit-row { display: flex; gap: 10px; align-items: stretch; }
+.audit-rail { flex: 0 0 16px; display: flex; flex-direction: column; align-items: center; padding-top: 12px; }
+.audit-rail i { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); flex: 0 0 auto; }
+.audit-rail::after { content: ''; flex: 1 1 auto; width: 1px; background: var(--line); margin-top: 2px; }
+.audit-row:last-child .audit-rail::after { display: none; }
+.audit-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; padding: 8px 0; }
+.audit-text b { font-weight: 500; }
+.audit-note { color: var(--text-3); margin-top: 2px; }
+.ev-fired .audit-rail i { background: var(--gold); }
+.ev-delivered .audit-rail i { background: var(--up); }
+/* A notification that did not arrive is the line the reader is looking for. */
+.ev-delivery_failed .audit-rail i { width: 11px; height: 11px; background: var(--down); }
+.ev-delivery_failed .audit-text { background: var(--down-soft); border-inline-start: 3px solid var(--down); border-radius: 6px; padding: 8px 10px; margin: 4px 0; }
+.ev-delivery_failed .audit-text b { color: var(--down); font-weight: 700; }
+.ev-delivery_failed .audit-note { color: var(--text-2); }
+
+/* The signal page's high-impact event window */
+.sig-impact { border: 1px solid color-mix(in srgb, var(--down) 55%, transparent); background: var(--down-soft); border-radius: var(--radius-lg, 10px); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.sig-impact h3 { margin: 0; color: var(--down); font-size: 15px; }
+.sig-impact p { margin: 0; color: var(--text-2); font-size: var(--fs-small); line-height: 1.8; }
+.sig-impact-row { display: flex; justify-content: space-between; gap: 12px; padding-top: 8px; border-top: 1px solid var(--line); font-size: var(--fs-small); }
+.sig-impact-row b { font-weight: 500; }
+.sig-impact-row .when { color: var(--warn); white-space: nowrap; }
+@media (prefers-reduced-motion: no-preference) {
+  .sig-impact { animation: sig-impact-in 180ms ease-out; }
+  @keyframes sig-impact-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+}

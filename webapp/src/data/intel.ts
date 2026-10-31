@@ -63,6 +63,23 @@ export interface CalendarEvent {
   forecast: string;
   previous: string;
   actual: string;
+  /** The markets it moves (gold, silver, crypto), as the feed tags them (MarketRelevance). */
+  relevance?: ('gold' | 'silver' | 'crypto')[];
+}
+
+/** The feed's market tags (MarketIntelGateway.parseRelevance); null where a row carries none. */
+export function parseRelevance(x: Record<string, unknown>): ('gold' | 'silver' | 'crypto')[] | null {
+  const raw = x.relevance ?? x.symbols ?? x.markets ?? x.tags;
+  if (raw == null) return null;
+  const list = Array.isArray(raw) ? raw.map(String) : String(raw).split(',');
+  const out = new Set<'gold' | 'silver' | 'crypto'>();
+  for (const v of list) {
+    const k = v.trim().toLowerCase();
+    if (['gold', 'xau', 'xauusd'].includes(k)) out.add('gold');
+    else if (['silver', 'xag', 'xagusd'].includes(k)) out.add('silver');
+    else if (['crypto', 'digital_assets'].includes(k)) out.add('crypto');
+  }
+  return [...out];
 }
 
 const imageUrl = (raw: unknown): string | null => {
@@ -119,6 +136,9 @@ const str = (v: unknown) => (v == null ? '' : String(v));
 
 async function fetchCalendarWeek(): Promise<CalendarEvent[]> {
   let rows: Record<string, unknown>[] = [];
+  // The week's public file is about the dollar: a release in it moves both metals and never a coin
+  // (PublicCalendarFeed); the academy's rows say which markets they move themselves.
+  let untagged: ('gold' | 'silver' | 'crypto')[] = ['gold', 'silver'];
   try {
     const r = await request<unknown>('/up/tradeyar/api/v1/public/calendar/week');
     if (Array.isArray(r)) rows = r as Record<string, unknown>[];
@@ -126,6 +146,7 @@ async function fetchCalendarWeek(): Promise<CalendarEvent[]> {
   if (!rows.length) {
     const r = await request<{ items?: Record<string, unknown>[] }>('/up/coineprofx/api/academy/bn/calendar');
     rows = r.items ?? [];
+    untagged = [];
   }
   return rows.map((x) => ({
     title: str(x.title ?? x.event ?? x.name),
@@ -134,6 +155,7 @@ async function fetchCalendarWeek(): Promise<CalendarEvent[]> {
     time: ms(x.event_time ?? x.date ?? x.scheduled_at ?? x.datetime),
     impact: impactOf(x.impact_label ?? x.impact ?? x.importance),
     forecast: str(x.forecast), previous: str(x.previous), actual: str(x.actual),
+    relevance: parseRelevance(x) ?? untagged,
   })).filter((e) => e.title && e.time).sort((a, b) => a.time - b.time);
 }
 

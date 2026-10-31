@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useT, usePrefs } from '../state/prefs';
 import {
-  CHANNEL, CONDITION_NAMES, FREQ_NAMES, MOVES, describeAlert, lineLevel, uncheckedIds, useAlerts,
+  CHANNEL, CHANGE24, CONDITION_NAMES, DEFAULT_REPEAT_MINUTES, FREQ_NAMES, MAX_CONDITIONS, MOVES, UNTIL_SEEN_MINUTES, describeAlert, extraConditions, lineLevel, uncheckedIds, useAlerts,
   type AlertCondition, type AlertFreq, type NewAlert, type PriceAlert, type PriceField, type TrendLine,
 } from '../state/alerts';
+import { useWebhooks } from '../state/webhooks';
+import { WebhookSheet } from './WebhookSheet';
+import { AlertAuditDialog } from './AlertAudit';
+import './alerts2.css';
 import { SOUNDS, playSound, type SoundId } from '../state/notify';
 import { useMarket, digitsOf } from '../state/market';
 import { useStudies } from '../state/studies';
@@ -39,6 +43,8 @@ export interface AlertSeed {
   drawingId?: string; drawingType?: string;
   /** A watchlist id: the alert goes on every symbol of the list (or of `symbols`). */
   list?: string; symbols?: string[];
+  /** A NamaScript `alertcondition` (the script travels with the alert). */
+  script?: { source: string; condition: string; name: string; inputs?: Record<string, unknown>; interval?: string };
 }
 
 // ── Account alerts (the platforms'), merged into the panel ───────────────────────────────────────
@@ -89,6 +95,8 @@ export function AlertsPanel({ onNew }: { onNew(): void }) {
   const [sort, setSort] = useState<Sort>(() => { try { return (localStorage.getItem('pc.alerts.sort.v1') as Sort) || 'created'; } catch { return 'created'; } });
   const [filter, setFilter] = useState<Filter>('all');
   const [menu, setMenu] = useState<'sort' | 'more' | null>(null);
+  const [hooks, setHooks] = useState(false);
+  const [history, setHistory] = useState<PriceAlert | null>(null);
   const sortRef = useRef<HTMLButtonElement>(null);
   const moreRef = useRef<HTMLButtonElement>(null);
   useNow(30_000);
@@ -153,6 +161,7 @@ export function AlertsPanel({ onNew }: { onNew(): void }) {
           <button className="menu-item danger" disabled={!inactiveN} onClick={() => { setMenu(null); if (window.confirm(L('همه‌ی هشدارهای متوقف حذف شوند؟', 'Delete all inactive alerts?'))) st.deleteInactive(); }}><Icon name="ph-trash" size="sm" /><span className="grow">{L('حذف همه‌ی متوقف‌ها', 'Delete all inactive')}</span></button>
           <div className="menu-sep" />
           <button className="menu-item" disabled={!st.log.length} onClick={() => { setMenu(null); st.clearLog(); }}><Icon name="ph-trash" size="sm" /><span className="grow">{L('پاک کردن گزارش', 'Clear log')}</span></button>
+          <button className="menu-item" data-act="webhooks" onClick={() => { setMenu(null); setHooks(true); }}><Icon name="ph-plugs-connected" size="sm" /><span className="grow">{L('وب‌هوک', 'Webhooks')}</span></button>
           {'Notification' in window && Notification.permission !== 'granted' ? <button className="menu-item" onClick={() => { setMenu(null); void Notification.requestPermission(); }}><Icon name="ph-bell-ringing" size="sm" /><span className="grow">{L('اجازه‌ی اعلان مرورگر', 'Allow browser notifications')}</span></button> : null}
         </div></Dropdown>
       ) : null}
@@ -181,7 +190,7 @@ export function AlertsPanel({ onNew }: { onNew(): void }) {
               </div>
             ) : null}
             {st.list.length && !shown.length ? <div className="empty fa">{t('nothingFound')}</div> : null}
-            {shown.map((a) => <AlertRow key={a.id} a={a} onEdit={() => setEdit(a)} />)}
+            {shown.map((a) => <AlertRow key={a.id} a={a} onEdit={() => setEdit(a)} onHistory={() => setHistory(a)} />)}
             {remote.length ? <div className="alerts-sub fa">{L('هشدارهای حساب (گوشی و تلگرام)', 'On your account (phone and Telegram)')}</div> : null}
             {remote.map((a) => (
               <div key={a.backend + a.id} className={`alert-row${a.active ? '' : ' off'}`}>
@@ -209,11 +218,13 @@ export function AlertsPanel({ onNew }: { onNew(): void }) {
       </div>
       <QuickTrade />
       {edit ? <AlertDialog edit={edit} onClose={() => setEdit(null)} /> : null}
+      {hooks ? <WebhookSheet onClose={() => setHooks(false)} /> : null}
+      {history ? <AlertAuditDialog alert={history} onClose={() => setHistory(null)} /> : null}
     </section>
   );
 }
 
-function AlertRow({ a, onEdit }: { a: PriceAlert; onEdit(): void }) {
+function AlertRow({ a, onEdit, onHistory }: { a: PriceAlert; onEdit(): void; onHistory(): void }) {
   const t = useT();
   const L = useL();
   const lang = usePrefs((s) => s.lang);
@@ -237,6 +248,8 @@ function AlertRow({ a, onEdit }: { a: PriceAlert; onEdit(): void }) {
         <span className={`badge st ${a.active ? 'on' : a.expired ? 'exp' : 'off'}`}>{status}</span>
         {uncheckedIds([a], st.checkedAt).has(a.id) ? <span className="badge unchecked" title={L('هنوز هیچ قیمتی با این هشدار سنجیده نشده است', 'No price has been checked against this alert yet')}>{L('هنوز بررسی نشده', 'Not checked yet')}</span> : null}
         <span className="badge">{FREQ_NAMES[a.freq ?? 'once'][fa ? 'fa' : 'en']}</span>
+        {a.untilSeen ? <span className="badge until-seen">{L('تا وقتی ببینمش', 'Until I see it')}</span> : null}
+        {extraConditions(a).length ? <span className="badge num" title={L('همه‌ی شرط‌ها باید برقرار باشند', 'All conditions must hold')}>{L(`${faNum(extraConditions(a).length + 1)} شرط`, `${extraConditions(a).length + 1} conditions`)}</span> : null}
         {a.interval ? <span className="badge num">{intervalLabel(a.interval)}</span> : null}
         {a.serverId ? <span className="badge acct">{L('حساب', 'Account')}</span> : null}
         {a.group ? <span className="badge">{L('فهرست', 'List')}</span> : null}
@@ -249,6 +262,8 @@ function AlertRow({ a, onEdit }: { a: PriceAlert; onEdit(): void }) {
         <button className="lt" onClick={() => st.toggle(a.id)} title={a.active ? L('توقف', 'Stop') : L('ادامه', 'Restart')}><Icon name={a.active ? 'ph-pause' : 'ph-play'} size="sm" /></button>
         <button className="lt" onClick={() => st.clone(a.id)} title={L('همسان‌سازی', 'Clone')}><Icon name="ph-copy" size="sm" /></button>
         <button className="lt" onClick={() => st.remove(a.id)} title={t('remove')}><Icon name="ph-trash" size="sm" /></button>
+        {a.untilSeen && a.active && a.lastFiredAt && !a.seenAt ? <button className="lt seen" data-act="seen" onClick={() => st.acknowledge(a.id)} title={L('دیدم', 'Seen')}><span className="fa">{L('دیدم', 'Seen')}</span></button> : null}
+        <button className="lt" data-act="history" onClick={onHistory} title={L('کارنامه‌ی هشدار', 'What this alert did')}><Icon name="ph-clock-counter-clockwise" size="sm" /></button>
       </span>
     </div>
   );
@@ -279,12 +294,15 @@ function QuickTrade() {
 }
 
 // ── The dialog ─────────────────────────────────────────────────────────────────────────────────
-const PRICE_CONDS: AlertCondition[] = ['cross', 'cross_up', 'cross_down', 'above', 'below', 'enter_channel', 'exit_channel', 'inside_channel', 'outside_channel', 'move_up_pct', 'move_down_pct', 'move_up', 'move_down'];
+const PRICE_CONDS: AlertCondition[] = ['cross', 'cross_up', 'cross_down', 'above', 'below', 'enter_channel', 'exit_channel', 'inside_channel', 'outside_channel', 'move_up_pct', 'move_down_pct', 'move_up', 'move_down', 'change24_over', 'change24_under'];
+/** What each condition after the first may be: a level against the same price. */
+const EXTRA_CONDS: AlertCondition[] = ['above', 'below', 'cross', 'cross_up', 'cross_down'];
 const LINE_CONDS: AlertCondition[] = ['cross', 'cross_up', 'cross_down', 'above', 'below'];
 /** A shape (rectangle, channel): entering and leaving it, and crossing either boundary. */
 const BAND_CONDS: AlertCondition[] = ['enter_channel', 'exit_channel', 'inside_channel', 'outside_channel', 'cross', 'cross_up', 'cross_down'];
 const IND_CONDS: AlertCondition[] = ['cross', 'cross_up', 'cross_down', 'above', 'below', 'enter_channel', 'exit_channel', 'inside_channel', 'outside_channel'];
-const LIST_CONDS: AlertCondition[] = ['move_up_pct', 'move_down_pct'];
+const LIST_CONDS: AlertCondition[] = ['move_up_pct', 'move_down_pct', 'change24_over', 'change24_under'];
+const SCRIPT_CONDS: AlertCondition[] = ['above'];
 const FIELDS: { id: PriceField; fa: string; en: string }[] = [
   { id: 'last', fa: 'آخرین (میانه)', en: 'Last (mid)' }, { id: 'bid', fa: 'خرید (Bid)', en: 'Bid' }, { id: 'ask', fa: 'فروش (Ask)', en: 'Ask' },
   { id: 'close', fa: 'بسته شدن', en: 'Close' }, { id: 'high', fa: 'سقف کندل', en: 'High' }, { id: 'low', fa: 'کف کندل', en: 'Low' },
@@ -326,23 +344,28 @@ export function AlertDialog({ onClose, price: initialPrice, seed, edit }: { onCl
   const nowBounds = drawing ? boundsAt(drawing, Date.now() / 1000) : [];
   const bandNow = isBand ? (nowBounds.length === 2 ? { low: nowBounds[0]!, high: nowBounds[1]! } : seed?.band ?? (edit?.high != null ? { low: edit.value, high: edit.high } : undefined)) : undefined;
   const drawingLabel = drawingType ? toolName(drawingType, lang) : L('خط روند', 'Trend line');
-  const initialSource: 'price' | 'line' | 'indicator' = edit?.source ?? (seed?.study ? 'indicator' : seed?.line || seed?.band ? 'line' : 'price');
-  const [source, setSource] = useState<'price' | 'line' | 'indicator'>(initialSource);
+  const script = edit?.script ?? (seed?.script ? { source: seed.script.source, condition: seed.script.condition, name: seed.script.name, inputs: seed.script.inputs } : undefined);
+  const initialSource: 'price' | 'line' | 'indicator' | 'script' = edit?.source ?? (script ? 'script' : seed?.study ? 'indicator' : seed?.line || seed?.band ? 'line' : 'price');
+  const [source, setSource] = useState<'price' | 'line' | 'indicator' | 'script'>(initialSource);
   const [field, setField] = useState<PriceField>(edit?.field ?? 'last');
-  const [cond, setCond] = useState<AlertCondition>(edit?.condition ?? (listId ? 'move_up_pct' : seed?.band ? 'enter_channel' : (initialPrice ?? seed?.price) != null && tk && (initialPrice ?? seed?.price)! < tk.last ? 'below' : 'cross'));
+  const [cond, setCond] = useState<AlertCondition>(edit?.condition ?? (script ? 'above' : listId ? 'move_up_pct' : seed?.band ? 'enter_channel' : (initialPrice ?? seed?.price) != null && tk && (initialPrice ?? seed?.price)! < tk.last ? 'below' : 'cross'));
   const [value, setValue] = useState(edit ? String(edit.value) : listId ? '3' : start ? fmt(start) : '');
   const [high, setHigh] = useState(edit?.high != null ? String(edit.high) : start ? fmt(start * 1.01) : '');
   const [bars, setBars] = useState(String(edit?.bars ?? 4));
-  const [interval, setIv] = useState(edit?.interval ?? (ALERT_TFS.includes(chartInterval) ? chartInterval : '60'));
+  const [interval, setIv] = useState(edit?.interval ?? seed?.script?.interval ?? (ALERT_TFS.includes(chartInterval) ? chartInterval : '60'));
   const [line] = useState<TrendLine | undefined>(edit?.line ?? seed?.line);
   const [indKey, setIndKey] = useState(edit?.indicator?.key ?? study?.key ?? seed?.study?.key ?? 'rsi');
   const [indInputs] = useState(edit?.indicator?.inputs ?? study?.inputs);
   const [outputs, setOutputs] = useState<{ id: string; label: string; last: number | null }[]>([]);
   const [indOut, setIndOut] = useState(edit?.indicator?.output ?? '');
-  const [andOn, setAndOn] = useState(Boolean(edit?.and));
-  const [andCond, setAndCond] = useState<AlertCondition>(edit?.and?.condition ?? 'below');
-  const [andValue, setAndValue] = useState(edit?.and ? String(edit.and.value) : '');
-  const [freq, setFreq] = useState<AlertFreq>(edit?.freq ?? 'once');
+  // The conditions after the first (all must hold), up to MAX_CONDITIONS in all.
+  const [extras, setExtras] = useState<{ condition: AlertCondition; value: string }[]>(() => (edit ? extraConditions(edit) : []).map((o) => ({ condition: o.condition, value: String(o.value) })));
+  const [freq, setFreq] = useState<AlertFreq>(edit?.freq ?? (script ? 'per_bar' : 'once'));
+  const [untilSeen, setUntilSeen] = useState(Boolean(edit?.untilSeen));
+  const [repeatMinutes, setRepeatMinutes] = useState(edit?.repeatMinutes ?? DEFAULT_REPEAT_MINUTES);
+  const hookTargets = useWebhooks((h) => h.targets);
+  const [hookSel, setHookSel] = useState<string[] | null>(edit?.webhooks ?? null);
+  const [hookSheet, setHookSheet] = useState(false);
   const [cooldown, setCooldown] = useState(String(Math.round((edit?.cooldownMs ?? 60_000) / 60_000)));
   const [expires, setExpires] = useState(edit?.expiresAt ? toLocalInput(edit.expiresAt) : '');
   const [name, setName] = useState(edit?.name ?? '');
@@ -372,16 +395,17 @@ export function AlertDialog({ onClose, price: initialPrice, seed, edit }: { onCl
     return () => { alive = false; };
   }, [source, symbol, interval, indKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const conds = scope === 'list' ? LIST_CONDS : source === 'line' ? (isBand ? BAND_CONDS : LINE_CONDS) : source === 'indicator' ? IND_CONDS : PRICE_CONDS;
+  const conds = source === 'script' ? SCRIPT_CONDS : scope === 'list' ? LIST_CONDS : source === 'line' ? (isBand ? BAND_CONDS : LINE_CONDS) : source === 'indicator' ? IND_CONDS : PRICE_CONDS;
   useEffect(() => { if (!conds.includes(cond)) setCond(conds[0]!); }, [conds, cond]);
   const isChannel = CHANNEL.includes(cond);
   const isMove = MOVES.includes(cond);
+  const isChange = CHANGE24.includes(cond);
   const v = Number(value);
   const lineNow = isBand ? null : line ? lineLevel(line, Date.now() / 1000) : null;
   // A horizontal drawing: its price now, which the alert keeps following.
   const levelNow = drawingId && !isBand && !line && nowBounds.length === 1 ? nowBounds[0]! : null;
   const linkedPrice = source === 'price' && drawingId != null && !isMove && levelNow != null;
-  const target = source === 'line' ? lineNow : isMove ? null : linkedPrice ? levelNow : v;
+  const target = source === 'line' ? lineNow : isMove || isChange || source === 'script' ? null : linkedPrice ? levelNow : v;
   const pip = symbol.length === 6 && !/^X(AU|AG)/.test(symbol) ? (symbol.includes('JPY') ? 0.01 : 0.0001) : null;
   const dist = source !== 'indicator' && target && tk ? { d: target - tk.last, pct: ((target - tk.last) / tk.last) * 100 } : null;
   const indName = (key: string) => { const e = entryOf(key); return e ? (fa ? e.fa : e.en) : key; };
@@ -397,7 +421,12 @@ export function AlertDialog({ onClose, price: initialPrice, seed, edit }: { onCl
       drawingId: drawingId && source !== 'indicator' && (source === 'line' || linkedPrice) ? drawingId : undefined,
       drawingType: drawingId && source !== 'indicator' && (source === 'line' || linkedPrice) ? drawingType : undefined,
       indicator: source === 'indicator' ? { key: indKey, output: indOut, inputs: indInputs, label: `${entryOf(indKey)?.abbr ?? indKey}${outputs.length > 1 ? ` ${outputs.find((o) => o.id === indOut)?.label ?? ''}` : ''}` } : undefined,
-      and: andOn && andValue !== '' && !isChannel ? { condition: andCond, value: Number(andValue) } : undefined,
+      script: source === 'script' ? script : undefined,
+      ands: !isChannel && source !== 'script' && scope === 'symbol' && extras.some((x) => x.value !== '') ? extras.filter((x) => x.value !== '' && Number.isFinite(Number(x.value))).map((x) => ({ condition: x.condition, value: Number(x.value) })) : undefined,
+      and: undefined,
+      untilSeen: untilSeen || undefined,
+      repeatMinutes: untilSeen ? repeatMinutes : undefined,
+      webhooks: hookSel ?? undefined,
       cooldownMs: freq === 'every' ? Math.max(0, Number(cooldown) || 0) * 60_000 : undefined,
       expiresAt: expires ? Date.parse(expires) : undefined,
       name: name.trim() || undefined, message: message.trim() || undefined, sound, soundSecs, popup,
@@ -410,11 +439,11 @@ export function AlertDialog({ onClose, price: initialPrice, seed, edit }: { onCl
     setErr(null);
     const d = draft();
     if (!d) return;
-    if (source !== 'line' && (!Number.isFinite(d.value) || (d.value <= 0 && source === 'price' && !isMove))) { setErr(L('مقدار را درست وارد کنید.', 'Enter a valid value.')); setTab('settings'); return; }
+    if (source !== 'line' && source !== 'script' && (!Number.isFinite(d.value) || (d.value <= 0 && source === 'price' && !isMove))) { setErr(L('مقدار را درست وارد کنید.', 'Enter a valid value.')); setTab('settings'); return; }
     if (isChannel && !(Number.isFinite(d.high!) && d.high !== d.value)) { setErr(L('کف و سقف کانال را وارد کنید.', 'Enter the channel low and high.')); setTab('settings'); return; }
     if (source === 'indicator' && !indOut) { setErr(L('خروجی اندیکاتور را انتخاب کنید.', 'Pick the indicator output.')); return; }
     if (d.expiresAt && d.expiresAt < Date.now()) { setErr(L('زمان انقضا گذشته است.', 'The expiry is in the past.')); return; }
-    if (edit) st.update(edit.id, { ...d, active: true, expired: undefined, triggeredAt: undefined });
+    if (edit) st.update(edit.id, { ...d, active: true, expired: undefined, triggeredAt: undefined, seenAt: undefined });
     else if (scope === 'list') {
       const group = `wl-${Date.now().toString(36)}`;
       for (const s of listSymbols) st.create({ ...d, symbol: s, group, name: d.name ? `${d.name} · ${s}` : undefined });
@@ -441,7 +470,7 @@ export function AlertDialog({ onClose, price: initialPrice, seed, edit }: { onCl
     setMessage(message.slice(0, a) + ph + message.slice(b));
     requestAnimationFrame(() => { el.focus(); el.setSelectionRange(a + ph.length, a + ph.length); });
   };
-  const onServer = Boolean(sessions[backendOf(symbol)]) && (backendOf(symbol) === 'tradeyar' || FX_SYMBOLS.includes(symbol)) && source === 'price' && ['above', 'below', 'cross', 'cross_up', 'cross_down'].includes(cond) && !andOn && field === 'last';
+  const onServer = Boolean(sessions[backendOf(symbol)]) && (backendOf(symbol) === 'tradeyar' || FX_SYMBOLS.includes(symbol)) && source === 'price' && ['above', 'below', 'cross', 'cross_up', 'cross_down'].includes(cond) && !extras.some((x) => x.value !== '') && field === 'last' && !untilSeen && freq !== 'daily';
 
   return (
     <div className="scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -469,7 +498,7 @@ export function AlertDialog({ onClose, price: initialPrice, seed, edit }: { onCl
         </nav>
         {presetMenu ? (
           <Dropdown anchor={presetRef.current} onClose={() => setPresetMenu(false)} align="right" className="wl-more"><div dir={fa ? 'rtl' : 'ltr'}>
-            <button className="menu-item" onClick={() => { setPresetMenu(false); const n = window.prompt(L('نام پیش‌تنظیم', 'Preset name'), autoName()); const d = draft(); if (n && d) { const { symbol: _s, line: _l, indicator: _i, value, ...rest } = d; st.savePreset(n, { ...rest, value: isMove ? value : undefined }); } }}><Icon name="ph-floppy-disk" size="sm" /><span className="grow">{L('ذخیره به‌عنوان پیش‌تنظیم…', 'Save as preset…')}</span></button>
+            <button className="menu-item" onClick={() => { setPresetMenu(false); const n = window.prompt(L('نام پیش‌تنظیم', 'Preset name'), autoName()); const d = draft(); if (n && d) { const { symbol: _s, line: _l, indicator: _i, script: _sc, value, ...rest } = d; st.savePreset(n, { ...rest, value: isMove ? value : undefined }); } }}><Icon name="ph-floppy-disk" size="sm" /><span className="grow">{L('ذخیره به‌عنوان پیش‌تنظیم…', 'Save as preset…')}</span></button>
             <div className="menu-sep" />
             <button className="menu-item" onClick={() => { setPresetMenu(false); applyPreset({ condition: 'move_up_pct', value: 2, bars: 1, freq: 'per_bar' }); }}><span className="grow">{L('رشد ۲٪ در یک کندل', 'Up 2% in one bar')}</span></button>
             <button className="menu-item" onClick={() => { setPresetMenu(false); applyPreset({ condition: 'move_down_pct', value: 2, bars: 1, freq: 'per_bar' }); }}><span className="grow">{L('افت ۲٪ در یک کندل', 'Down 2% in one bar')}</span></button>
@@ -499,7 +528,12 @@ export function AlertDialog({ onClose, price: initialPrice, seed, edit }: { onCl
                   )}
                 </div>
               </div>
-              {scope === 'symbol' ? (
+              {source === 'script' && script ? (
+                <div className="al-row" data-script-cond>
+                  <span className="al-label fa">{L('اسکریپت', 'Script')}</span>
+                  <div className="al-field"><span className="al-static"><b dir="auto">{script.name}</b> · <span dir="auto">{script.condition}</span> <span className="muted fa">{L('(روی کندل آخر)', '(on the last bar)')}</span></span></div>
+                </div>
+              ) : scope === 'symbol' ? (
                 <div className="al-row">
                   <span className="al-label fa">{L('منبع', 'Condition')}</span>
                   <div className="al-field two">
@@ -530,6 +564,7 @@ export function AlertDialog({ onClose, price: initialPrice, seed, edit }: { onCl
                   </div>
                 </div>
               ) : null}
+              {source !== 'script' ? (<>
               <div className="al-row">
                 <span className="al-label" />
                 <div className="al-field">
@@ -539,16 +574,18 @@ export function AlertDialog({ onClose, price: initialPrice, seed, edit }: { onCl
                 </div>
               </div>
               <div className="al-row">
-                <span className="al-label fa">{source === 'line' || linkedPrice ? L('سطح اکنون', 'Level now') : isMove ? L('اندازه', 'Amount') : isChannel ? L('کانال', 'Channel') : L('مقدار', 'Value')}</span>
+                <span className="al-label fa">{source === 'line' || linkedPrice ? L('سطح اکنون', 'Level now') : isMove ? L('اندازه', 'Amount') : isChange ? L('درصد', 'Percent') : isChannel ? L('کانال', 'Channel') : L('مقدار', 'Value')}</span>
                 <div className={`al-field${(isChannel || isMove) && source !== 'line' && !linkedPrice ? ' three' : ''}`}>
                   {source === 'line' && bandNow ? <span className="num al-static" data-band>{formatPrice(bandNow.low, digits)} – {formatPrice(bandNow.high, digits)} <span className="muted fa">{L('(با ترسیم جابه‌جا می‌شود)', '(follows the drawing)')}</span></span>
                     : source === 'line' ? <span className="num al-static">{lineNow != null ? formatPrice(lineNow, digits) : '—'} <span className="muted fa">{drawingId ? L('(با ترسیم و با زمان جابه‌جا می‌شود)', '(follows the drawing and slides with time)') : L('(با زمان جابه‌جا می‌شود)', '(slides with time)')}</span></span>
                     : linkedPrice ? <span className="num al-static">{formatPrice(levelNow!, digits)} <span className="muted fa">{L('(با ترسیم جابه‌جا می‌شود)', '(follows the drawing)')}</span></span>
-                    : <input type="number" className="num" step={isMove && cond.endsWith('pct') ? 0.1 : source === 'indicator' ? 0.01 : 1 / 10 ** digits} value={value} onChange={(e) => setValue(e.target.value)} autoFocus aria-label={L('مقدار', 'Value')} placeholder={isChannel ? L('کف', 'Low') : undefined} />}
+                    : <input type="number" className="num" step={(isMove && cond.endsWith('pct')) || isChange ? 0.1 : source === 'indicator' ? 0.01 : 1 / 10 ** digits} value={value} onChange={(e) => setValue(e.target.value)} autoFocus aria-label={L('مقدار', 'Value')} placeholder={isChannel ? L('کف', 'Low') : undefined} />}
                   {isChannel && source !== 'line' && !linkedPrice ? <input type="number" className="num" step={source === 'indicator' ? 0.01 : 1 / 10 ** digits} value={high} onChange={(e) => setHigh(e.target.value)} aria-label={L('سقف', 'High')} placeholder={L('سقف', 'High')} /> : null}
                   {isMove ? <label className="al-inline fa"><input type="number" className="num" min={1} value={bars} onChange={(e) => setBars(e.target.value)} aria-label={L('تعداد کندل', 'Bars')} /><span>{L('کندل', 'bars')}</span></label> : null}
+                  {isChange ? <span className="muted num">%</span> : null}
                 </div>
               </div>
+              </>) : null}
               {dist && scope === 'symbol' ? (
                 <div className="al-row"><span className="al-label" /><div className={`al-dist num ${dist.d >= 0 ? 'up' : 'down'}`}>
                   {dist.d >= 0 ? '+' : '−'}{formatPrice(Math.abs(dist.d), digits)} · {dist.pct >= 0 ? '+' : '−'}{Math.abs(dist.pct).toFixed(2)}%{pip ? ` · ${(Math.abs(dist.d) / pip).toFixed(1)} pips` : ''}
@@ -556,21 +593,28 @@ export function AlertDialog({ onClose, price: initialPrice, seed, edit }: { onCl
                   {source === 'price' && (field === 'bid' || field === 'ask') && quote ? <span className="muted"> · {field} {formatPrice(field === 'bid' ? quote.bid : quote.ask, digits)}</span> : null}
                 </div></div>
               ) : null}
-              {!isChannel && scope === 'symbol' ? (
-                <div className="al-row">
-                  <span className="al-label" />
-                  <div className="al-field and">
-                    <label className="al-inline fa"><input type="checkbox" checked={andOn} onChange={(e) => setAndOn(e.target.checked)} /><span>{L('و شرط دوم', 'AND a second condition')}</span></label>
-                    {andOn ? (
-                      <>
-                        <select value={andCond} onChange={(e) => setAndCond(e.target.value as AlertCondition)} aria-label={L('شرط دوم', 'Second condition')}>
-                          {(['above', 'below', 'cross', 'cross_up', 'cross_down'] as AlertCondition[]).map((c) => <option key={c} value={c}>{condName(c)}</option>)}
+              {!isChannel && scope === 'symbol' && source !== 'script' ? (
+                <>
+                  {extras.map((x, i) => (
+                    <div key={i} className="al-row al-extra" data-extra={i}>
+                      <span className="al-label fa">{L('و', 'AND')}</span>
+                      <div className="al-field and">
+                        <select value={x.condition} onChange={(e) => setExtras(extras.map((y, j) => (j === i ? { ...y, condition: e.target.value as AlertCondition } : y)))} aria-label={L(`شرط ${faNum(i + 2)}`, `Condition ${i + 2}`)}>
+                          {EXTRA_CONDS.map((c) => <option key={c} value={c}>{condName(c)}</option>)}
                         </select>
-                        <input type="number" className="num" value={andValue} onChange={(e) => setAndValue(e.target.value)} aria-label={L('مقدار دوم', 'Second value')} />
-                      </>
-                    ) : null}
+                        <input type="number" className="num" value={x.value} step={1 / 10 ** digits} onChange={(e) => setExtras(extras.map((y, j) => (j === i ? { ...y, value: e.target.value } : y)))} aria-label={L(`مقدار شرط ${faNum(i + 2)}`, `Value of condition ${i + 2}`)} />
+                        <button type="button" className="lt" data-act="remove-cond" title={L('برداشتن این شرط', 'Remove this condition')} aria-label={L('برداشتن این شرط', 'Remove this condition')} onClick={() => setExtras(extras.filter((_, j) => j !== i))}><Icon name="ph-x" size="sm" /></button>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="al-row">
+                    <span className="al-label" />
+                    <div className="al-field al-addcond">
+                      {extras.length + 1 < MAX_CONDITIONS ? <button type="button" className="chip" data-act="add-cond" onClick={() => setExtras([...extras, { condition: 'below', value: tk ? fmt(tk.last) : '' }])}><span className="fa">{L('+ شرط', '+ Condition')}</span></button> : null}
+                      <span className="muted small fa" data-cap>{L(`حداکثر ${faNum(MAX_CONDITIONS)} شرط، و همه با هم باید برقرار باشند`, `At most ${MAX_CONDITIONS} conditions, and all of them must hold`)}</span>
+                    </div>
                   </div>
-                </div>
+                </>
               ) : null}
               <div className="al-row">
                 <span className="al-label fa">{L('بازه‌ی زمانی', 'Timeframe')}</span>
@@ -589,6 +633,22 @@ export function AlertDialog({ onClose, price: initialPrice, seed, edit }: { onCl
                   {freq === 'every' ? <label className="al-inline fa"><span>{L('فاصله', 'Cool-down')}</span><input type="number" className="num" min={0} value={cooldown} onChange={(e) => setCooldown(e.target.value)} aria-label={L('فاصله (دقیقه)', 'Cool-down (minutes)')} /><span>{L('دقیقه', 'min')}</span></label> : null}
                 </div>
               </div>
+              <div className="al-row al-until">
+                <span className="al-label fa">{L('تا کِی خبر بدهد', 'Keep telling me')}</span>
+                <div className="al-field chips-row" data-until>
+                  <button type="button" className={`chip${!untilSeen ? ' on' : ''}`} onClick={() => setUntilSeen(false)}><span className="fa">{L('یک بار کافی است', 'Once is enough')}</span></button>
+                  <button type="button" className={`chip${untilSeen ? ' on' : ''}`} data-act="until-seen" onClick={() => setUntilSeen(true)}><span className="fa">{L('تا وقتی ببینمش', 'Until I see it')}</span></button>
+                </div>
+              </div>
+              {untilSeen ? (
+                <div className="al-row">
+                  <span className="al-label" />
+                  <div className="al-field chips-row" data-minutes>
+                    {UNTIL_SEEN_MINUTES.map((m) => <button key={m} type="button" className={`chip${repeatMinutes === m ? ' on' : ''}`} onClick={() => setRepeatMinutes(m)}><span className="fa">{L(`${faNum(m)} دقیقه`, `${m} min`)}</span></button>)}
+                    <p className="muted small fa al-note" data-until-note>{L(`هر ${faNum(repeatMinutes)} دقیقه برمی‌گردد و به‌محض باز کردنش یا زدن «دیدم» می‌ایستد.`, `It comes back every ${repeatMinutes} minutes and stops the moment you open it or press Seen.`)}</p>
+                  </div>
+                </div>
+              ) : null}
               <div className="al-row">
                 <span className="al-label fa">{L('انقضا', 'Expiration')}</span>
                 <div className="al-field two">
@@ -639,6 +699,19 @@ export function AlertDialog({ onClose, price: initialPrice, seed, edit }: { onCl
                 <span>{L('اعلان مرورگر', 'Browser notification')}</span>
                 <span className="muted">{'Notification' in window ? (Notification.permission === 'granted' ? L('روشن', 'on') : <button type="button" className="link-btn" onClick={() => void Notification.requestPermission()}>{L('اجازه دهید', 'Allow')}</button>) : L('در دسترس نیست', 'unavailable')}</span>
               </div>
+              <div className="al-hooks" data-hooks>
+                <div className="al-check fa"><Icon name="ph-plugs-connected" size="sm" /><span>{L('وب‌هوک', 'Webhooks')}</span>
+                  <button type="button" className="link-btn" onClick={() => setHookSheet(true)}>{hookTargets.length ? L('مدیریت', 'Manage') : L('وب‌هوک تازه', 'New webhook')}</button>
+                </div>
+                {hookTargets.length ? (
+                  <>
+                    <label className="al-check fa"><input type="checkbox" checked={hookSel == null} onChange={(e) => setHookSel(e.target.checked ? null : hookTargets.filter((t) => t.enabled).map((t) => t.id))} /><span>{L('همه‌ی وب‌هوک‌های روشن', 'Every webhook that is on')}</span></label>
+                    {hookSel != null ? hookTargets.map((t) => (
+                      <label key={t.id} className="al-check fa al-hook"><input type="checkbox" checked={hookSel.includes(t.id)} disabled={!t.enabled} onChange={(e) => setHookSel(e.target.checked ? [...hookSel, t.id] : hookSel.filter((x) => x !== t.id))} /><span dir="auto">{t.name}</span>{!t.enabled ? <span className="muted">{L('خاموش', 'Off')}</span> : null}</label>
+                    )) : null}
+                  </>
+                ) : <p className="muted small fa">{L('هر هشداری که اجرا شود، به این نشانی‌ها هم فرستاده می‌شود.', 'Every alert that fires is also posted to these addresses.')}</p>}
+              </div>
               <p className="muted small fa">{onServer ? L('روی گوشی (پوش) و تلگرام هم می‌رسد، چون در حساب شما ثبت می‌شود.', 'Also reaches the phone (push) and Telegram, as it is kept on your account.') : L('این هشدار در همین مرورگر پایش می‌شود، تا وقتی صفحه باز است.', 'Watched in this browser while the page is open.')}</p>
             </>
           ) : null}
@@ -650,6 +723,7 @@ export function AlertDialog({ onClose, price: initialPrice, seed, edit }: { onCl
           <button className="btn btn-primary" onClick={create}><span className="fa">{edit ? L('ذخیره', 'Save') : scope === 'list' ? L(`ساخت ${faNum(listSymbols.length)} هشدار`, `Create ${listSymbols.length} alerts`) : t('alertCreate')}</span></button>
         </footer>
       </div>
+      {hookSheet ? <WebhookSheet onClose={() => setHookSheet(false)} /> : null}
       {pick ? <SymbolSearch onClose={() => setPick(false)} onPick={(s) => { setSym(s); const p = useMarket.getState().tickers[s]?.last; if (p && source === 'price' && !isMove) setValue(p.toFixed(instrumentOf(s, p).digits)); }} /> : null}
     </div>
   );
@@ -677,11 +751,12 @@ export function AlertToast() {
   return (
     <div className="toast" role="alert">
       <Icon name="ph-bell-ringing" size="md" />
-      <button className="toast-main" onClick={() => { setSymbol(fired.symbol); dismiss(); }}>
+      <button className="toast-main" onClick={() => { setSymbol(fired.symbol); if (fired.untilSeen) useAlerts.getState().acknowledge(fired.id); dismiss(); }}>
         <b className={fired.name ? 'fa' : 'sym'} dir="auto">{fired.name || fired.symbol}</b>
         <span className="muted" dir="auto">{describeAlert(fired, lang === 'fa', (v) => formatPrice(v, digitsOf(fired.symbol)))}</span>
       </button>
       <span className="num">{formatPrice(useMarket.getState().tickers[fired.symbol]?.last ?? fired.value, digitsOf(fired.symbol))}</span>
+      {fired.untilSeen ? <button className="btn btn-quiet sm" data-act="seen" onClick={() => { useAlerts.getState().acknowledge(fired.id); dismiss(); }}><span className="fa">{L('دیدم', 'Seen')}</span></button> : null}
       <button className="lt" onClick={dismiss} aria-label={L('بستن', 'close')}><Icon name="ph-x" size="sm" /></button>
     </div>
   );

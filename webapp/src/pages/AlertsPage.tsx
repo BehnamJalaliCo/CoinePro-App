@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { describeAlert, uncheckedIds, useAlerts } from '../state/alerts';
+import { describeAlert, uncheckedIds, useAlerts, type PriceAlert } from '../state/alerts';
+import { WebhookSheet } from '../shell/WebhookSheet';
+import { AlertAuditDialog } from '../shell/AlertAudit';
 import { AlertDrawingMark } from '../shell/AlertDrawingMark';
 import { usePrefs, useT } from '../state/prefs';
 import { useMarket } from '../state/market';
@@ -38,6 +40,8 @@ export default function AlertsPage() {
   const local = useAlerts();
   const fa = usePrefs((s) => s.lang) === 'fa';
   const [tab, setTab] = useState<'server' | 'browser' | 'new'>(sessions.tradeyar || sessions.coineprofx ? 'server' : 'browser');
+  const [hooks, setHooks] = useState(false);
+  const [history, setHistory] = useState<PriceAlert | null>(null);
   const server = useLoad(async () => {
     const out: ServerAlert[] = [];
     for (const b of ['tradeyar', 'coineprofx'] as Backend[]) {
@@ -83,20 +87,23 @@ export default function AlertsPage() {
       {tab === 'browser' ? (
         <>
           <div className="row">
+            <button className="btn btn-quiet sm" data-act="webhooks" onClick={() => setHooks(true)}>{L('وب‌هوک', 'Webhooks')}</button>
             {'Notification' in window && Notification.permission !== 'granted' ? <button className="btn btn-quiet sm" onClick={() => void Notification.requestPermission()}>{L('اجازه‌ی اعلان مرورگر', 'Allow browser notifications')}</button> : null}
           </div>
           {!local.list.length ? <div className="empty fa">{t('nothingFound')}</div> : null}
           <table className="table"><tbody>{local.list.map((a) => (
             <tr key={a.id} className={a.active ? '' : 'muted'}>
               <td><span className="row"><SymbolLogo symbol={a.symbol} size={18} /><b className="sym">{a.symbol}</b></span></td>
-              <td className="num"><span className="row">{a.drawingId ? describeAlert(a, fa) : `${a.condition === 'above' ? '≥' : a.condition === 'below' ? '≤' : '⇄'} ${a.value}`}<AlertDrawingMark a={a} /></span></td>
+              <td className="num"><span className="row">{a.drawingId || (a.source ?? 'price') !== 'price' || !['above', 'below', 'cross'].includes(a.condition) ? describeAlert(a, fa) : `${a.condition === 'above' ? '≥' : a.condition === 'below' ? '≤' : '⇄'} ${a.value}`}<AlertDrawingMark a={a} /></span></td>
               <td className="num">{a.triggeredAt ? `✓ ${dateTime(a.triggeredAt)}` : dateTime(a.createdAt)}{uncheckedIds([a], local.checkedAt).has(a.id) ? <> <span className="badge unchecked fa">{L('هنوز بررسی نشده', 'Not checked yet')}</span></> : null}</td>
               <td>{a.serverId ? L('در حساب هم ثبت شد', 'Also on the account') : ''}</td>
-              <td className="r"><button className="btn btn-quiet sm" onClick={() => local.toggle(a.id)}>{a.active ? L('توقف', 'Pause') : L('فعال', 'Resume')}</button> <button className="btn btn-quiet sm" onClick={() => local.remove(a.id)}>{L('حذف', 'Delete')}</button></td>
+              <td className="r"><button className="btn btn-quiet sm" data-act="history" onClick={() => setHistory(a)}>{L('کارنامه', 'History')}</button> <button className="btn btn-quiet sm" onClick={() => local.toggle(a.id)}>{a.active ? L('توقف', 'Pause') : L('فعال', 'Resume')}</button> <button className="btn btn-quiet sm" onClick={() => local.remove(a.id)}>{L('حذف', 'Delete')}</button></td>
             </tr>
           ))}</tbody></table>
         </>
       ) : null}
+      {hooks ? <WebhookSheet onClose={() => setHooks(false)} /> : null}
+      {history ? <AlertAuditDialog alert={history} onClose={() => setHistory(null)} /> : null}
       {tab === 'new' ? <NewAlert onDone={() => { server.reload(); setTab(sessions.tradeyar || sessions.coineprofx ? 'server' : 'browser'); }} /> : null}
     </div>
   );

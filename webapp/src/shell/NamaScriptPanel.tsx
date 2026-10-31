@@ -10,6 +10,8 @@ import { useL } from '../pages/kit';
 import { dateTime } from '../pages/kit';
 import { faNum } from '../i18n/time';
 import { Icon } from '../ui/Icon';
+import { useChartBus } from '../chart/chartBus';
+import { useReplay } from '../state/replay';
 import './studies.css';
 
 // NamaScript's editor, where TradingView keeps Pine Editor: the script's name and its menu (new,
@@ -62,6 +64,16 @@ export function NamaScriptPanel() {
   const isStrategy = /\bstrategy\s*\.\s*(entry|exit|close)\b|\bstrategy\s*\(/.test(tab.code);
   const plots = result?.ok ? result.plots ?? [] : [];
   const alerts = result?.ok ? (result.alerts ?? []).filter((a) => !a.dynamic) : [];
+  // Whether each condition holds on the last bar the script ran over (the phone's script sheet).
+  const chartBars = useChartBus((b) => b.bars);
+  const slice = useReplay((r) => r.slice);
+  const lastBar = (slice ?? chartBars).at(-1)?.t;
+  const chartSymbol = usePrefs((p) => p.symbol);
+  const chartInterval = usePrefs((p) => p.interval);
+  /** «ساخت هشدار» on one `alertcondition`: the alert dialog, with the script travelling in the alert. */
+  const alertOn = (condition: string) => {
+    window.dispatchEvent(new CustomEvent('pc:alert-dialog', { detail: { symbol: chartSymbol, script: { source: s.runCode, condition, name: scriptTitle(s.runCode) || name, inputs: { ...s.inputs }, interval: chartInterval } } }));
+  };
 
   return (
     <div className={`ns ns2${fa ? '' : ' sa-ltr'}`}>
@@ -137,7 +149,17 @@ export function NamaScriptPanel() {
                 {l.line ? <button className="link-btn" onClick={() => editor.current?.goToLine(l.line!)}>{l.text}</button> : <span dir="auto">{l.text}</span>}
               </div>
             ))}
-            {alerts.map((a, i) => <div key={`a${i}`} className="ns-log info"><span className="num ns-time">alert</span><span dir="auto">{a.msg} · <b>{L(`${faNum(a.bars.length)} بار`, `${a.bars.length} hits`)}</b></span></div>)}
+            {alerts.map((a, i) => {
+              const firing = lastBar != null && a.bars.includes(lastBar);
+              return (
+                <div key={`a${i}`} className="ns-log info ns-alert" data-script-alert={a.msg}>
+                  <span className="num ns-time">alert</span>
+                  <span dir="auto">{a.msg} · <b>{L(`${faNum(a.bars.length)} بار`, `${a.bars.length} hits`)}</b> · <span className={`fa ${firing ? 'up' : 'muted'}`} data-firing={firing}>{firing ? L('روی کندل آخر برقرار است', 'Holding on the last bar') : L('برقرار نیست', 'Not holding')}</span></span>
+                  <span className="ws-spacer" />
+                  <button className="btn btn-quiet sm" data-act="script-alert" onClick={() => alertOn(a.msg)}><span className="fa">{L('هشدار بسازید', 'Create an alert')}</span></button>
+                </div>
+              );
+            })}
             {!log.length && !alerts.length ? <div className="ns-log muted fa">{L('هنوز اجرا نشده؛ «افزودن به چارت» را بزنید.', 'Nothing run yet: press Add to chart.')}</div> : null}
           </div>
         ) : null}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useT } from '../state/prefs';
 import { usePage } from '../state/page';
 import { useSession } from '../data/session';
@@ -12,6 +12,38 @@ import { intervalOfTimeframe, signalDetail } from '../data/signals';
 import { showSignal } from './SignalsPage';
 import { Field, State, dateTime, errorText, money, parseNum, pct, useL, useLoad } from './kit';
 import type { PageProps } from './registry';
+import { calendarWeek, type CalendarEvent } from '../data/intel';
+import { highImpactWarningsFor } from './eventWindow';
+import { clock } from '../i18n/time';
+import { usePrefs } from '../state/prefs';
+import '../shell/alerts2.css';
+
+/** «بازه‌ی خبر پرتأثیر»: the calendar's high-impact events near an active signal (SignalDetailScreen). */
+function HighImpactWindow({ symbol }: { symbol: string }) {
+  const L = useL();
+  const fa = usePrefs((p) => p.lang) === 'fa';
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  useEffect(() => {
+    let alive = true;
+    calendarWeek().then((e) => { if (alive) setEvents(e); }).catch(() => undefined);
+    return () => { alive = false; };
+  }, []);
+  const near = highImpactWarningsFor(events, symbol, Date.now());
+  if (!near.length) return null;
+  const when = (t: number) => `${fa ? new Intl.DateTimeFormat('fa-IR-u-ca-persian', { day: 'numeric', month: 'long' }).format(new Date(t)) : dateTime(t).slice(5, 10)} · \u2066${clock(t)}\u2069`;
+  return (
+    <section className="sig-impact" role="alert" data-impact-window>
+      <h3 className="fa">{L('بازه‌ی خبر پرتأثیر', 'High-impact event window')}</h3>
+      <p className="fa">{L('رویدادهای تقویم اقتصادی نزدیک این سیگنال فعال. این هشدار ریسک است، نه پیش‌بینی.', 'Calendar events near this active signal. This is a risk warning, not a prediction.')}</p>
+      {near.slice(0, 3).map((e) => (
+        <div key={`${e.time}-${e.title}`} className="sig-impact-row">
+          <b dir="auto">{e.title}</b>
+          <span className="when">{when(e.time)}</span>
+        </div>
+      ))}
+    </section>
+  );
+}
 
 // One signal (feature/signal-detail): its levels with which targets were hit, the live price, the
 // score's parts, the rationale and the result; on the chart in one click; and, on TradeYar, sent to
@@ -55,6 +87,7 @@ export default function SignalPage({ param }: PageProps) {
               <span className="ws-spacer" />
               <button className="btn btn-primary sm" onClick={() => { showSignal(s); close(); }}>{L('نمایش روی چارت', 'Show on the chart')}</button>
             </div>
+            {s.status.toLowerCase() === 'active' ? <HighImpactWindow symbol={s.symbol} /> : null}
             <div className="card"><MiniChart symbol={s.symbol} interval={intervalOfTimeframe(s.timeframe) ?? '60'} levels={[
               ...(s.entry != null ? [{ price: s.entry, color: '#2962FF', title: 'E' }] : []),
               ...(s.sl != null ? [{ price: s.sl, color: '#F23645', title: 'SL' }] : []),
