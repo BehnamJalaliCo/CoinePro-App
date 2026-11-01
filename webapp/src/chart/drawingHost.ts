@@ -202,7 +202,7 @@ export function attachDrawings(canvas: HTMLCanvasElement, chart: IChartApi): Dra
   const watchScale = () => {
     scaleRaf = requestAnimationFrame(watchScale);
     const s = (layer as unknown as { series?: ISeriesApi<SeriesType> | null }).series;
-    if (!s || document.hidden) return;
+    if (!s || document.hidden || !layer.getDrawings().length) return;
     const key = `${s.coordinateToPrice(0)}|${s.coordinateToPrice(100)}`;
     if (key !== scaleKey) { scaleKey = key; layer.render(); }
   };
