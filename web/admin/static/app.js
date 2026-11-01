@@ -575,23 +575,30 @@ async function renderOverview(host) {
         <p>${jalaliFull.format(new Date())} · ${down.length ? `<span class="pill bad">${fmt.fa(down.length)} سرویس مشکل دارد</span>` : '<span class="pill good">همهٔ سرویس‌ها سالم‌اند</span>'}</p>
       </div>
       <div class="hero-stats">
-        <div><strong>${fmt.n(k.live_now)}</strong><span>آنلاین در ۳۰ دقیقهٔ اخیر</span></div>
-        <div><strong>${fmt.n(k.installs_total)}</strong><span>کل نصب‌های ثبت‌شده</span></div>
+        <div><strong>${fmt.n(k.live_now)}</strong><span>اپ: آنلاین در ۳۰ دقیقهٔ اخیر</span></div>
+        <div><strong>${fmt.n(k.installs_total)}</strong><span>کل نصب‌های اپ</span></div>
+        <div><strong>${fmt.n(k.web_live_now)}</strong><span>وب: آنلاین در ۳۰ دقیقهٔ اخیر</span></div>
         <div><strong>${fmt.n(k.downloads_total)}</strong><span>کل دانلودها</span></div>
         <div><strong>${fmt.n(k.live_messages)}</strong><span>پیام فعال</span></div>
       </div>
     </section>
     <div class="grid g-4">
       ${kpi({ label: 'دانلود امروز', value: fmt.n(k.downloads_today), iconName: 'download', color: '#8b7bff', foot: `${delta(k.downloads_today, k.downloads_yesterday)} نسبت به دیروز`, spark: d.series.downloads.slice(-14) })}
-      ${kpi({ label: 'کاربران فعال امروز', value: fmt.n(k.dau), iconName: 'users', color: '#2ad4c4', foot: `${delta(k.dau, k.dau_yesterday)} نسبت به دیروز`, spark: d.series.dau.slice(-14) })}
+      ${kpi({ label: 'کاربران فعال اپ امروز', value: fmt.n(k.dau), iconName: 'users', color: '#2ad4c4', foot: `${delta(k.dau, k.dau_yesterday)} نسبت به دیروز`, spark: d.series.dau.slice(-14) })}
       ${kpi({ label: 'نصب جدید (۷ روز)', value: fmt.n(k.new_7d), iconName: 'phone', color: '#f5a524', foot: `امروز ${fmt.n(k.new_today)}`, spark: d.series.new_installs.slice(-14) })}
-      ${kpi({ label: 'بازدید وب امروز', value: fmt.n(k.visits_today), iconName: 'globe', color: '#5b8cff', foot: `۷ روز: <b class="num">${fmt.n(k.visits_7d)}</b>`, spark: d.series.visits.slice(-14) })}
+      ${kpi({ label: 'بازدید سایت امروز (هر IP)', value: fmt.n(k.visits_today), iconName: 'globe', color: '#5b8cff', foot: `۷ روز: <b class="num">${fmt.n(k.visits_7d)}</b>`, spark: d.series.visits.slice(-14) })}
     </div>
     <div class="grid g-4">
       ${kpi({ label: 'دانلود ۷ روز', value: fmt.n(k.downloads_7d), iconName: 'bolt', color: '#c06cf0', foot: `${delta(k.downloads_7d, k.downloads_prev_7d)} نسبت به هفتهٔ قبل` })}
-      ${kpi({ label: 'فعال هفتگی (WAU)', value: fmt.n(k.wau), iconName: 'users', color: '#7ad36b', foot: `ماهانه (MAU): <b class="num">${fmt.n(k.mau)}</b>` })}
+      ${kpi({ label: 'فعال هفتگی اپ (WAU)', value: fmt.n(k.wau), iconName: 'users', color: '#7ad36b', foot: `ماهانه (MAU): <b class="num">${fmt.n(k.mau)}</b>` })}
       ${kpi({ label: 'چسبندگی DAU/MAU', value: k.mau ? fmt.pct(k.dau / k.mau, 0) : '—', iconName: 'pulse', color: '#ff8a5b', foot: 'بالای ۲۰٪ یعنی عادت روزانه' })}
       ${kpi({ label: 'روی آخرین نسخه', value: k.adoption === null ? '—' : fmt.pct(k.adoption, 0), iconName: 'rocket', color: '#2ad4c4', foot: `بررسی به‌روزرسانی امروز: <b class="num">${fmt.n(k.update_checks_today)}</b>` })}
+    </div>
+    <div class="grid g-4">
+      ${kpi({ label: 'بازدیدکنندهٔ وب امروز', value: fmt.n(k.web_dau), iconName: 'globe', color: '#5b8cff', foot: `${delta(k.web_dau, k.web_dau_yesterday)} نسبت به دیروز · هر مرورگر یک نفر`, spark: (d.series.web_dau || []).slice(-14) })}
+      ${kpi({ label: 'بازدیدکنندهٔ تازهٔ وب (۷ روز)', value: fmt.n(k.web_new_7d), iconName: 'plus', color: '#f5a524', foot: `امروز ${fmt.n(k.web_new_today)}`, spark: (d.series.web_new || []).slice(-14) })}
+      ${kpi({ label: 'بازدیدکنندهٔ هفتگی وب', value: fmt.n(k.web_wau), iconName: 'users', color: '#7ad36b', foot: `ماهانه: <b class="num">${fmt.n(k.web_mau)}</b>` })}
+      ${kpi({ label: 'کل بازدیدکنندگان وب', value: fmt.n(k.web_total), iconName: 'globe', color: '#c06cf0', foot: 'کاربران واردشده در بخش «کاربران وب»' })}
     </div>
     <div class="grid g-main">
       <div class="card"><div class="card-head"><div><h3>روند ۳۰ روز</h3><p>دانلود، کاربر فعال، بازدید وب و نصب جدید</p></div></div><div id="ov-chart"></div></div>

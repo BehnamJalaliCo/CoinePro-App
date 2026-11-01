@@ -213,6 +213,38 @@ class ConsoleTest(AioHTTPTestCase):
         # Only a salted hash of the id is kept.
         self.assertNotIn("install-0001", json.dumps([dict(r) for r in rows]))
 
+    async def test_a_browser_that_clears_its_storage_stays_one_web_visitor(self):
+        first = await self.client.post("/api/app/hello", json={"install_id": "page-made-0001", "platform": "web"})
+        self.assertEqual(first.status, 200)
+        cookie = first.cookies.get(admin.WEB_COOKIE)
+        self.assertIsNotNone(cookie)
+        self.assertTrue(cookie["httponly"])
+        # The page lost its localStorage and made a new id; the browser still sends the cookie.
+        again = await self.client.post("/api/app/hello", json={"install_id": "page-made-0002", "platform": "web"},
+                                       cookies={admin.WEB_COOKIE: cookie.value})
+        self.assertEqual(again.status, 200)
+        web = self.store.q("SELECT hellos FROM installs WHERE platform='web'")
+        self.assertEqual([r["hellos"] for r in web], [2])
+        # The app's installs never read the cookie.
+        await self.client.post("/api/app/hello", json={"install_id": "app-install-01", "platform": "android"},
+                               cookies={admin.WEB_COOKIE: cookie.value})
+        self.assertEqual(self.store.one("SELECT COUNT(*) FROM installs WHERE platform='android'"), 1)
+
+    async def test_overview_counts_the_app_and_the_web_apart(self):
+        await self.hello("install-a1")
+        await self.hello("install-a2")
+        for n in range(3):  # three browsers: each starts without the other's cookie
+            self.client.session.cookie_jar.clear()
+            await self.hello(f"browser-000{n}", platform="web")
+        await self.sign_in()
+        k = (await (await self.client.get("/admin/api/overview")).json())["kpis"]
+        self.assertEqual((k["dau"], k["wau"], k["mau"], k["installs_total"], k["new_7d"], k["live_now"]), (2, 2, 2, 2, 2, 2))
+        self.assertEqual((k["web_dau"], k["web_wau"], k["web_mau"], k["web_total"], k["web_new_7d"], k["web_live_now"]), (3, 3, 3, 3, 3, 3))
+        app = await (await self.client.get("/admin/api/audience")).json()
+        web = await (await self.client.get("/admin/api/audience?platform=web")).json()
+        self.assertEqual((app["dau"][-1], web["dau"][-1]), (2, 3))
+        self.assertEqual([p["label"] for p in app["platforms"]], ["android"])
+
     async def test_hello_refuses_a_missing_id(self):
         response = await self.client.post("/api/app/hello", json={"install_id": "x"})
         self.assertEqual(response.status, 400)
@@ -972,6 +1004,22 @@ class CommandLineTest(unittest.TestCase):
             row = store.q("SELECT pw_hash FROM users WHERE username='owner'")[0]
             self.assertTrue(admin.verify_password("a-long-Passphrase-1", row["pw_hash"]))
             self.assertNotIn("a-long-Passphrase-1", Path(db).read_bytes().decode("latin-1"))
+
+    def test_forget_web_installs_keeps_the_app(self):
+        with tempfile.TemporaryDirectory() as folder:
+            db = str(Path(folder) / "admin.sqlite3")
+            store = admin.Store(db)
+            for id_hash, platform in (("a", "android"), ("w1", "web"), ("w2", "web")):
+                store.x("INSERT INTO installs(id_hash, first_seen, last_seen, platform, hellos) VALUES (?,?,?,?,1)", (id_hash, 1, 1, platform))
+                store.x("INSERT INTO active_days(day, id_hash) VALUES ('2026-11-01', ?)", (id_hash,))
+                store.x("INSERT INTO install_hours(id_hash, day, hour, count) VALUES (?, '2026-11-01', 9, 1)", (id_hash,))
+            store.x("INSERT INTO active_hours(day, hour, weekday, count) VALUES ('2026-11-01', 9, 6, 3)")
+            with mock.patch.object(admin.Config, "__init__", _config_with(db)):
+                self.assertEqual(admin.forget_cli(["forget-web-installs"]), 0)
+            store = admin.Store(db)
+            self.assertEqual([r[0] for r in store.q("SELECT id_hash FROM installs")], ["a"])
+            self.assertEqual([r[0] for r in store.q("SELECT id_hash FROM active_days")], ["a"])
+            self.assertEqual(store.one("SELECT count FROM active_hours"), 1)
 
     def test_set_password_refuses_a_weak_one(self):
         with mock.patch.object(sys, "stdin", io.StringIO("short\n")):

@@ -15,19 +15,58 @@ export type ReaderMode = 'simple' | 'trader' | 'pro';
 export type Rise = 'green' | 'red';
 
 const KEY = 'pc.firstrun.v1';
+// The same answers in a first-party cookie: some browsers clear script storage between visits (a
+// «clear site data on close» setting, an in-app browser) and the reader was asked again every time.
+const COOKIE = 'pc_fr';
+const COOKIE_AGE = 2 * 365 * 86400;
 
 interface Stored { welcome: boolean; starter: boolean; reader: ReaderMode | null; rise: Rise }
 
+const isReader = (v: unknown): v is ReaderMode => v === 'simple' || v === 'trader' || v === 'pro';
+
+/** `w.s.<reader>.<rise>`: the three steps as letters, so the cookie stays a few bytes. */
+export function encodeCookie(s: Stored): string {
+  return [s.welcome ? 'w' : '-', s.starter ? 's' : '-', s.reader ?? '-', s.rise].join('.');
+}
+
+export function decodeCookie(text: string | null | undefined): Stored | null {
+  const m = /^([w-])\.([s-])\.(simple|trader|pro|-)\.(green|red)$/.exec(text ?? '');
+  if (!m) return null;
+  return { welcome: m[1] === 'w', starter: m[2] === 's', reader: isReader(m[3]) ? m[3] : null, rise: m[4] === 'red' ? 'red' : 'green' };
+}
+
+function readCookie(): Stored | null {
+  try {
+    const hit = document.cookie.split('; ').find((c) => c.startsWith(`${COOKIE}=`));
+    return hit ? decodeCookie(decodeURIComponent(hit.slice(COOKIE.length + 1))) : null;
+  } catch { return null; }
+}
+
+function writeCookie(s: Stored): void {
+  try {
+    const secure = location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `${COOKIE}=${encodeURIComponent(encodeCookie(s))}; Max-Age=${COOKIE_AGE}; Path=/; SameSite=Lax${secure}`;
+  } catch { /* cookies blocked */ }
+}
+
+/** The furthest of the two records: a step done in either is done. */
+export function merge(a: Stored | null, b: Stored | null): Stored | null {
+  if (!a) return b;
+  if (!b) return a;
+  return { welcome: a.welcome || b.welcome, starter: a.starter || b.starter, reader: a.reader ?? b.reader, rise: a.reader ? a.rise : b.rise };
+}
+
 function read(): Stored {
+  let local: Stored | null = null;
   try {
     const v = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Partial<Stored> | null;
-    if (v) return { welcome: v.welcome === true, starter: v.starter === true, reader: v.reader === 'simple' || v.reader === 'trader' || v.reader === 'pro' ? v.reader : null, rise: v.rise === 'red' ? 'red' : 'green' };
+    if (v) local = { welcome: v.welcome === true, starter: v.starter === true, reader: isReader(v.reader) ? v.reader : null, rise: v.rise === 'red' ? 'red' : 'green' };
   } catch { /* storage blocked */ }
-  return { welcome: false, starter: false, reader: null, rise: 'green' };
+  return merge(local, readCookie()) ?? { welcome: false, starter: false, reader: null, rise: 'green' };
 }
 
 /** A browser that has used the app before (its preferences were saved before this module loaded). */
-const returning = (() => { try { return localStorage.getItem('pc.prefs.v1') !== null && localStorage.getItem(KEY) === null; } catch { return true; } })();
+const returning = (() => { try { return localStorage.getItem('pc.prefs.v1') !== null && localStorage.getItem(KEY) === null && readCookie() === null; } catch { return true; } })();
 
 export type Step = 'welcome' | 'starter' | 'question' | null;
 
@@ -54,7 +93,11 @@ export const isReturning = returning;
 export const firstRunPermitted = firstRunAllowed;
 
 export const useFirstRun = create<FirstRunState>((set, get) => {
-  const save = () => { const { welcome, starter, reader, rise } = get(); try { localStorage.setItem(KEY, JSON.stringify({ welcome, starter, reader, rise })); } catch { /* for this visit */ } };
+  const save = () => {
+    const { welcome, starter, reader, rise } = get();
+    try { localStorage.setItem(KEY, JSON.stringify({ welcome, starter, reader, rise })); } catch { /* for this visit */ }
+    writeCookie({ welcome, starter, reader, rise });
+  };
   return {
     ...read(),
     active: false,

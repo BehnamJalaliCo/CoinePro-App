@@ -685,6 +685,12 @@ def message_for(row: sqlite3.Row, lang: str) -> dict:
     }
 
 
+# The web app's visitor id, kept by the browser (HttpOnly, two years) so a cleared localStorage is
+# not a new visitor; installs from the Android app never carry it.
+WEB_COOKIE = "pc_wid"
+WEB_COOKIE_AGE = 2 * 365 * 86400
+
+
 async def hello(request: web.Request) -> web.Response:
     store: Store = request.app["store"]
     ip = client_ip(request)
@@ -692,10 +698,15 @@ async def hello(request: web.Request) -> web.Response:
         return fail(429, "slow_down")
     body = await read_json(request)
     install_id = clean_text(body.get("install_id"), 128)
-    if len(install_id) < 8:
-        return fail(400, "install_id")
     platform = clean_text(body.get("platform"), 16).lower()
     platform = platform if platform in PLATFORMS else "android"
+    # A browser is one visitor for as long as it keeps the cookie this route sets, even when its
+    # script storage (where the page keeps its own id) is cleared between visits.
+    kept = clean_text(request.cookies.get(WEB_COOKIE), 128) if platform == "web" else ""
+    if len(kept) >= 8:
+        install_id = kept
+    if len(install_id) < 8:
+        return fail(400, "install_id")
     flavour = clean_text(body.get("flavour"), 16).lower()
     flavour = flavour if flavour in FLAVOURS else "direct"
     lang = "en" if clean_text(body.get("lang"), 8).lower().startswith("en") else "fa"
@@ -734,7 +745,7 @@ async def hello(request: web.Request) -> web.Response:
         if _install_matches(audience, record):
             messages.append(message_for(row, lang))
     settings = store.config()
-    return web.json_response({
+    response = web.json_response({
         "server_time": stamp,
         "messages": messages,
         "config": {
@@ -744,6 +755,11 @@ async def hello(request: web.Request) -> web.Response:
             "hello_every_hours": settings.get("hello_every_hours"),
         },
     })
+    if platform == "web":
+        secure = request.secure or request.headers.get("X-Forwarded-Proto", "").lower() == "https"
+        response.set_cookie(WEB_COOKIE, install_id, max_age=WEB_COOKIE_AGE, path="/api/app/", httponly=True,
+                            secure=secure, samesite="Lax")
+    return response
 
 
 async def app_event(request: web.Request) -> web.Response:
@@ -967,8 +983,15 @@ def _latest(config: Config) -> dict | None:
         return None
 
 
-def _active_since(store: Store, seconds: int) -> int:
-    return store.one("SELECT COUNT(*) FROM installs WHERE last_seen>=?", (now() - seconds,)) or 0
+# The Android app's installs and the web app's visitors share the check-in tables; every figure
+# that says «install» or «user of the app» reads the app's rows only, the web's are counted apart.
+_APP_ONLY = "JOIN installs i ON i.id_hash=a.id_hash WHERE i.platform IS NOT 'web'"
+_WEB_ONLY = "JOIN installs i ON i.id_hash=a.id_hash WHERE i.platform='web'"
+
+
+def _active_since(store: Store, seconds: int, web: bool = False) -> int:
+    return store.one("SELECT COUNT(*) FROM installs WHERE last_seen>=? AND platform " + ("= 'web'" if web else "IS NOT 'web'"),
+                     (now() - seconds,)) or 0
 
 
 async def overview(request: web.Request) -> web.Response:
@@ -978,12 +1001,21 @@ async def overview(request: web.Request) -> web.Response:
     days = _days(request.app, 30)
     today, yesterday = days[-1], days[-2]
     downloads = _series(store, "SELECT day, COUNT(*) FROM downloads WHERE day>=? GROUP BY day", days)
-    dau = _series(store, "SELECT day, COUNT(*) FROM active_days WHERE day>=? GROUP BY day", days)
+    dau = _series(store, f"SELECT a.day, COUNT(*) FROM active_days a {_APP_ONLY} AND a.day>=? GROUP BY a.day", days)
+    web_dau = _series(store, f"SELECT a.day, COUNT(*) FROM active_days a {_WEB_ONLY} AND a.day>=? GROUP BY a.day", days)
     visits = _series(store, "SELECT day, COUNT(*) FROM visits WHERE day>=? GROUP BY day", days)
-    first_days = {row[0]: row[1] for row in store.q(
-        "SELECT day, COUNT(*) FROM (SELECT id_hash, MIN(day) AS day FROM active_days GROUP BY id_hash) WHERE day>=? GROUP BY day",
-        (days[0],))}
-    new_installs = [int(first_days.get(day, 0)) for day in days]
+
+    def firsts(only: str) -> list[int]:
+        found = {row[0]: row[1] for row in store.q(
+            f"SELECT day, COUNT(*) FROM (SELECT a.id_hash, MIN(a.day) AS day FROM active_days a {only} GROUP BY a.id_hash) "
+            "WHERE day>=? GROUP BY day", (days[0],))}
+        return [int(found.get(day, 0)) for day in days]
+
+    new_installs = firsts(_APP_ONLY)
+    new_web = firsts(_WEB_ONLY)
+
+    def distinct_since(only: str, day: str) -> int:
+        return store.one(f"SELECT COUNT(DISTINCT a.id_hash) FROM active_days a {only} AND a.day>=?", (day,)) or 0
     latest = _latest(config)
     latest_code = int((latest or {}).get("version_code") or 0)
     active = config.active_window_days * 86400
@@ -999,20 +1031,26 @@ async def overview(request: web.Request) -> web.Response:
             "downloads_total": store.one("SELECT COUNT(*) FROM downloads") or 0,
             "downloads_30d": sum(downloads),
             "dau": dau[-1], "dau_yesterday": dau[-2],
-            "wau": store.one("SELECT COUNT(DISTINCT id_hash) FROM active_days WHERE day>=?", (days[-7],)) or 0,
-            "mau": store.one("SELECT COUNT(DISTINCT id_hash) FROM active_days WHERE day>=?", (days[0],)) or 0,
-            "installs_total": store.one("SELECT COUNT(*) FROM installs") or 0,
+            "wau": distinct_since(_APP_ONLY, days[-7]),
+            "mau": distinct_since(_APP_ONLY, days[0]),
+            "installs_total": store.one("SELECT COUNT(*) FROM installs WHERE platform IS NOT 'web'") or 0,
             "new_today": new_installs[-1], "new_7d": sum(new_installs[-7:]),
             "live_now": _active_since(store, 30 * 60),
+            "web_dau": web_dau[-1], "web_dau_yesterday": web_dau[-2],
+            "web_wau": distinct_since(_WEB_ONLY, days[-7]), "web_mau": distinct_since(_WEB_ONLY, days[0]),
+            "web_total": store.one("SELECT COUNT(*) FROM installs WHERE platform='web'") or 0,
+            "web_new_today": new_web[-1], "web_new_7d": sum(new_web[-7:]),
+            "web_live_now": _active_since(store, 30 * 60, web=True),
             "visits_today": visits[-1], "visits_7d": sum(visits[-7:]),
             "update_checks_today": store.one("SELECT COUNT(*) FROM update_checks WHERE day=?", (today,)) or 0,
             "live_messages": len(live_messages(store, now())),
             "adoption": (on_latest / android_active) if on_latest is not None and android_active else None,
         },
-        "series": {"downloads": downloads, "dau": dau, "visits": visits, "new_installs": new_installs},
+        "series": {"downloads": downloads, "dau": dau, "visits": visits, "new_installs": new_installs,
+                   "web_dau": web_dau, "web_new": new_web},
         "versions": [dict(row) for row in store.q(
             "SELECT COALESCE(NULLIF(version, ''), '?') AS label, COUNT(*) AS value FROM installs WHERE last_seen>=? "
-            "GROUP BY version ORDER BY MAX(version_code) DESC LIMIT 8", (now() - active,))],
+            "AND platform IS NOT 'web' GROUP BY version ORDER BY MAX(version_code) DESC LIMIT 8", (now() - active,))],
         "platforms": [dict(row) for row in store.q(
             "SELECT platform || CASE WHEN platform='android' THEN ' · ' || flavour ELSE '' END AS label, COUNT(*) AS value "
             "FROM installs WHERE last_seen>=? GROUP BY label ORDER BY value DESC", (now() - active,))],
@@ -1056,14 +1094,17 @@ async def audience_report(request: web.Request) -> web.Response:
     store: Store = request.app["store"]
     count = _days_param(request, 30)
     days = _days(request.app, count)
-    dau = _series(store, "SELECT day, COUNT(*) FROM active_days WHERE day>=? GROUP BY day", days)
+    web_view = request.query.get("platform") == "web"
+    only = _WEB_ONLY if web_view else _APP_ONLY
+    on_platform = "platform='web'" if web_view else "platform IS NOT 'web'"
+    dau = _series(store, f"SELECT a.day, COUNT(*) FROM active_days a {only} AND a.day>=? GROUP BY a.day", days)
     # Retention: of the installs first seen N days ago, how many were active again on or after day N.
     retention = {}
     for horizon in (1, 7, 30):
         cohort_day = (datetime.now(request.app["zone"]).date() - timedelta(days=horizon + 6)).isoformat()
         cohort_end = (datetime.now(request.app["zone"]).date() - timedelta(days=horizon)).isoformat()
         cohort = store.q(
-            "SELECT id_hash, MIN(day) AS first FROM active_days GROUP BY id_hash HAVING first>=? AND first<=?",
+            f"SELECT a.id_hash, MIN(a.day) AS first FROM active_days a {only} GROUP BY a.id_hash HAVING first>=? AND first<=?",
             (cohort_day, cohort_end))
         if not cohort:
             retention[str(horizon)] = None
@@ -1083,11 +1124,11 @@ async def audience_report(request: web.Request) -> web.Response:
     def split(column: str, limit: int = 10) -> list[dict]:
         return [dict(row) for row in store.q(
             f"SELECT COALESCE(NULLIF(CAST({column} AS TEXT), ''), '?') AS label, COUNT(*) AS value FROM installs WHERE last_seen>=? "
-            f"GROUP BY {column} ORDER BY value DESC LIMIT {limit}", (now() - active,))]
+            f"AND {on_platform} GROUP BY {column} ORDER BY value DESC LIMIT {limit}", (now() - active,))]
 
     return web.json_response({
-        "days": days, "dau": dau,
-        "wau": [store.one("SELECT COUNT(DISTINCT id_hash) FROM active_days WHERE day>? AND day<=?",
+        "days": days, "dau": dau, "platform": "web" if web_view else "app",
+        "wau": [store.one(f"SELECT COUNT(DISTINCT a.id_hash) FROM active_days a {only} AND a.day>? AND a.day<=?",
                           ((datetime.fromisoformat(day) - timedelta(days=7)).date().isoformat(), day)) or 0 for day in days],
         "retention": retention, "heat": heat,
         "versions": split("version", 12), "langs": split("lang"), "flavours": split("flavour"),
@@ -3246,6 +3287,21 @@ def forget_cli(args: list[str]) -> int:
     `python admin.py forget-ip <address> [YYYY-MM-DD]` — that address's downloads, visits and update
     checks, on one day or on every day. Both are written to the audit log.
     """
+    if args and args[0] == "forget-web-installs":
+        # Every web check-in so far: before 5.36.3 a browser that cleared its storage came back as a
+        # new visitor, so those rows overstate the web. The app's installs are not touched.
+        store = Store(Config().db_path)
+        hashes = [row[0] for row in store.q("SELECT id_hash FROM installs WHERE platform='web'")]
+        removed = 0
+        for id_hash in hashes:
+            for row in store.q("SELECT day, hour, count FROM install_hours WHERE id_hash=?", (id_hash,)):
+                store.x("UPDATE active_hours SET count=MAX(0, count-?) WHERE day=? AND hour=?", (row["count"], row["day"], row["hour"]))
+            for table in ("installs", "active_days", "message_events", "install_hours"):
+                removed += store.x(f"DELETE FROM {table} WHERE id_hash=?", (id_hash,)).rowcount
+        store.x("DELETE FROM active_hours WHERE count<=0")
+        store.audit("console", "console", "data.forget_web_installs", {"installs": len(hashes), "rows": removed})
+        print(f"{len(hashes)} web visitors, {removed} rows removed")
+        return 0
     if len(args) < 2 or args[0] not in ("forget-install", "forget-ip", "forget-hour"):
         print("usage: python admin.py forget-install <install_id> | forget-ip <address> [YYYY-MM-DD] | "
               "forget-hour <YYYY-MM-DD> <hour>", file=sys.stderr)
@@ -3296,7 +3352,7 @@ def forget_cli(args: list[str]) -> int:
 def main() -> None:
     if len(sys.argv) > 1 and sys.argv[1] == "set-password":
         raise SystemExit(set_password_cli(sys.argv[2:]))
-    if len(sys.argv) > 1 and sys.argv[1] in ("forget-install", "forget-ip", "forget-hour"):
+    if len(sys.argv) > 1 and sys.argv[1] in ("forget-install", "forget-ip", "forget-hour", "forget-web-installs"):
         raise SystemExit(forget_cli(sys.argv[1:]))
     if len(sys.argv) > 1 and sys.argv[1] == "ingest":
         app = build_app(Config(background=False))

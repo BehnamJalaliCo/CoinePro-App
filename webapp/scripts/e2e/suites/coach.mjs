@@ -225,6 +225,13 @@ export default async function ({ test, open, ready, expect }) {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await ready(page);
     expect(!(await page.$('.first-run')), 'first run shown twice');
+    // Not again in a browser that clears its script storage between visits: the cookie remembers.
+    expect(/(^|; )pc_fr=w\.s\.(simple|pro)\.red/.test(await page.evaluate(() => document.cookie)), `cookie ${await page.evaluate(() => document.cookie)}`);
+    await page.evaluate(() => localStorage.clear());
+    await page.goto('http://pc.local/next/BTCUSDT/1h?e2e=1&firstrun=1', { waitUntil: 'domcontentloaded' });
+    await ready(page);
+    await page.waitForTimeout(800);
+    expect(!(await page.$('.first-run')), 'first run shown again after the storage was cleared');
     return env;
   });
 
