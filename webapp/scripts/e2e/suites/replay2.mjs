@@ -37,6 +37,23 @@ export default async function ({ test, open, ready, pc, expect }) {
     return env;
   });
 
+  await test('replay2: after a big jump the drawings are drawn on the new price scale without moving the mouse', async () => {
+    const env = await open('BTCUSDT/1h?e2e=1');
+    const { page } = env;
+    await ready(page);
+    await pc(page, () => { const r = window.__pc.useReplay.getState(); const bars = window.__pc.useChartBus.getState().bars; r.select(); window.__pc.useReplay.getState().start(bars, bars[60].t, { keepView: false }); });
+    await page.waitForFunction(() => window.__pc.useReplay.getState().slice?.length > 0, null, { timeout: 5000 });
+    await layer(page, (l) => { const s = window.__pc.useReplay.getState().slice; l.addDrawing({ type: 'fib', p0: { t: s.at(-20).t, p: s.at(-20).l }, p1: { t: s.at(-2).t, p: s.at(-2).h }, color: '#2962FF' }); });
+    // Note the price scale every time the layer draws.
+    await layer(page, (l) => { const r = l.render.bind(l); window.__drawnAt = null; l.render = (...a) => { window.__drawnAt = l.series.coordinateToPrice(50); return r(...a); }; });
+    await page.mouse.move(5, 5);
+    await pc(page, () => window.__pc.useReplay.getState().controller.seek({ index: 480 }));
+    await page.waitForTimeout(600);
+    const s = await layer(page, (l) => ({ drawn: window.__drawnAt, now: l.series.coordinateToPrice(50) }));
+    expect(s.drawn != null && Math.abs(s.drawn - s.now) < 1e-6, `the drawings were left on the old scale ${JSON.stringify(s)}`);
+    return env;
+  });
+
   await test('replay2: one click places a long position at a default size; a short opens the other way', async () => {
     const env = await open('BTCUSDT/1h?e2e=1');
     const { page } = env;

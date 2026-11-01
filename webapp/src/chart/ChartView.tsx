@@ -671,6 +671,8 @@ export function ChartView({ feed, digits: instDigits, displayName, onStudySettin
     // The drawings read the bars on screen too: a point past the replay's last bar is then empty
     // space they extend into, not a gap inside the data they would refuse to draw.
     drawing.current?.layer.setCandles(replaySlice ?? bars.current);
+    // Drawn again once the chart has laid the new bars out (a jump may not scroll the time scale).
+    requestAnimationFrame(() => drawing.current?.layer.render());
     publishLegend(null);
     if (!replaySlice) chart.current.timeScale().scrollToRealTime();
     // eslint-disable-next-line react-hooks/exhaustive-deps

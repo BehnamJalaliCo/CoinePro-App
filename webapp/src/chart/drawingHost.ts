@@ -195,6 +195,18 @@ export function attachDrawings(canvas: HTMLCanvasElement, chart: IChartApi): Dra
   const repaint = () => layer.render();
   chart.timeScale().subscribeVisibleLogicalRangeChange(repaint);
   chart.subscribeCrosshairMove(repaint);
+  // The price scale has no change event: an autoscale after a replay jump or a new bar moves every
+  // drawing's y without a scroll or a crosshair move. Two prices read per frame tell when it moved.
+  let scaleKey = '';
+  let scaleRaf = 0;
+  const watchScale = () => {
+    scaleRaf = requestAnimationFrame(watchScale);
+    const s = (layer as unknown as { series?: ISeriesApi<SeriesType> | null }).series;
+    if (!s || document.hidden) return;
+    const key = `${s.coordinateToPrice(0)}|${s.coordinateToPrice(100)}`;
+    if (key !== scaleKey) { scaleKey = key; layer.render(); }
+  };
+  scaleRaf = requestAnimationFrame(watchScale);
   const ro = new ResizeObserver(resize);
   if (canvas.parentElement) ro.observe(canvas.parentElement);
   resize();
@@ -358,6 +370,7 @@ export function attachDrawings(canvas: HTMLCanvasElement, chart: IChartApi): Dra
       layer.destroy();
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(repaint);
       chart.unsubscribeCrosshairMove(repaint);
+      cancelAnimationFrame(scaleRaf);
       useChartBus.getState().setDrawingLayer(null);
       useChartBus.getState().setSelectedDrawing(-1);
     },
