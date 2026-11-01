@@ -23,7 +23,9 @@ if (!existsSync(join(DIST, 'index.html'))) { console.error('dist/ is missing: ru
 mkdirSync(SHOTS, { recursive: true });
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────────────────────────
-const NOW = Math.floor(Date.now() / 1000);
+// The fixtures' clock: moved to the present at the start of every test, so a long run (a full suite
+// on a slow machine takes over an hour) still serves a last bar that is the current bar.
+let NOW = Math.floor(Date.now() / 1000);
 function series(seed, base, step, n) {
   let p = base, x = seed;
   const rnd = () => { x = (x * 9301 + 49297) % 233280; return x / 233280; };
@@ -280,6 +282,7 @@ const opened = [];
 async function test(name, fn) {
   if (ONLY && !name.includes(ONLY)) return;
   const t = Date.now();
+  NOW = Math.floor(t / 1000);
   const mark = opened.length;
   let env;
   try {
